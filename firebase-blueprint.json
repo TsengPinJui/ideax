@@ -1,0 +1,192 @@
+{
+  "categories": {
+    "core_transactions": {
+      "title": "業務核心與交易類 (Core Business & Transactions)",
+      "description": "包含問題題庫、專家落地方案、交易與點數流水、即時對話商議",
+      "collections": ["questions", "answers", "transactions", "conversations"]
+    },
+    "identity_governance": {
+      "title": "用戶身分與審核治理類 (Identity, Verification & Governance)",
+      "description": "包含用戶個人與帳號資料、專家審核申請庫、管理員操作與高權限稽核日誌",
+      "collections": ["users", "certifications", "audit_logs"]
+    },
+    "engagement_social": {
+      "title": "互動通知與評價體系類 (Engagement, Notifications & Reviews)",
+      "description": "包含站內即時通知、用戶個人收藏題庫、專家評價評分紀錄",
+      "collections": ["notifications", "bookmarks", "solvers"]
+    },
+    "compliance_settings": {
+      "title": "法律合規與平台設定類 (Compliance & Platform Settings)",
+      "description": "包含法律條款同意簽署存證、會員方案費率定價、首頁看板公開指標設定",
+      "collections": ["terms_agreements", "platform_settings"]
+    }
+  },
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with balance, points, role, KYC status, and bank account",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "balance": { "type": "number" },
+        "pendingEarnings": { "type": "number" },
+        "reputation": { "type": "number" },
+        "realNameAuthStatus": { "type": "string" },
+        "expertCertStatus": { "type": "string" },
+        "isBlocked": { "type": "boolean" },
+        "bankAccount": { "type": "object" }
+      },
+      "required": ["id", "name", "role", "balance"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "Problem or inquiry posted by a questioner",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "authorId": { "type": "string" },
+        "reward": { "type": "number" },
+        "level": { "type": "string" },
+        "category": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "authorId", "reward", "status"]
+    },
+    "Answer": {
+      "title": "Answer",
+      "description": "Solution proposal submitted by a solver",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "questionId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string" },
+        "rating": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "questionId", "authorId", "content", "status"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Ledger record of points, payouts, recharges, and escrows",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "amount", "type", "createdAt"]
+    },
+    "NotificationItem": {
+      "title": "NotificationItem",
+      "description": "In-app notification for events, messages, and AI matching",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "message", "read"]
+    },
+    "TermsAgreement": {
+      "title": "TermsAgreement",
+      "description": "Legal consent and agreement record with timestamp and version",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "termType": { "type": "string" },
+        "version": { "type": "string" },
+        "agreedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "termType", "version", "agreedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Security audit record for admin actions, grants, and blocks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "adminId": { "type": "string" },
+        "action": { "type": "string" },
+        "targetUserId": { "type": "string" },
+        "details": { "type": "object" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "adminId", "action", "createdAt"]
+    },
+    "PlatformSetting": {
+      "title": "PlatformSetting",
+      "description": "Global settings for commissions, plans, and metrics",
+      "type": "object",
+      "properties": {
+        "commissionRate": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/questions/{questionId}": {
+      "schema": "Question",
+      "description": "Stores questions and bounties posted on IdeaX"
+    },
+    "/answers/{answerId}": {
+      "schema": "Answer",
+      "description": "Stores solution proposals submitted for questions"
+    },
+    "/transactions/{txId}": {
+      "schema": "Transaction",
+      "description": "Stores all financial, point transfer, and escrow records"
+    },
+    "/conversations/{convId}": {
+      "schema": "object",
+      "description": "Stores chat and proposal negotiations"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores user profiles, points, balances, and verification state"
+    },
+    "/certifications/{certId}": {
+      "schema": "object",
+      "description": "Stores expert certification and KYC applications"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Stores admin governance, grant quota, and moderation logs"
+    },
+    "/notifications/{notifId}": {
+      "schema": "NotificationItem",
+      "description": "Stores user in-app notifications and alerts"
+    },
+    "/bookmarks/{userId}": {
+      "schema": "object",
+      "description": "Stores bookmarked questions per user"
+    },
+    "/solvers/{solverId}": {
+      "schema": "object",
+      "description": "Stores certified solvers, specialty tags, and reputation metrics"
+    },
+    "/terms_agreements/{agreementId}": {
+      "schema": "TermsAgreement",
+      "description": "Stores legal terms agreement timestamps and versions"
+    },
+    "/platform_settings/{settingId}": {
+      "schema": "PlatformSetting",
+      "description": "Stores system configurations, subscription plans, and admin grants"
+    }
+  }
+}
