@@ -33,7 +33,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   onOpenChatWithUser,
   onNavigateToSolvers,
 }) => {
-  const { solvers, availableUsers, questions, answers, startDirectChat } = useApp();
+  const { solvers, availableUsers, questions, answers, startDirectChat, isDemoMode } = useApp();
 
   const [activeTab, setActiveTab] = useState<'solvers' | 'questioners' | 'weekly_discussions' | 'weekly_solutions' | 'analytics'>('solvers');
 
@@ -196,11 +196,11 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
   // 全站各等級問題分佈統計
   const levelCountsOverall: Record<ProblemLevel, number> = {
-    L0: questions.filter((q) => q.level === 'L0').length + 18,
-    L1: questions.filter((q) => q.level === 'L1').length + 32,
-    L2: questions.filter((q) => q.level === 'L2').length + 45,
-    L3: questions.filter((q) => q.level === 'L3').length + 22,
-    L4: questions.filter((q) => q.level === 'L4').length + 9,
+    L0: questions.filter((q) => q.level === 'L0').length + (isDemoMode ? 18 : 0),
+    L1: questions.filter((q) => q.level === 'L1').length + (isDemoMode ? 32 : 0),
+    L2: questions.filter((q) => q.level === 'L2').length + (isDemoMode ? 45 : 0),
+    L3: questions.filter((q) => q.level === 'L3').length + (isDemoMode ? 22 : 0),
+    L4: questions.filter((q) => q.level === 'L4').length + (isDemoMode ? 9 : 0),
   };
   const totalQuestions = Object.values(levelCountsOverall).reduce((a, b) => a + b, 0);
 

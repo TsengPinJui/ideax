@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { SubscriptionTier } from '../types';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
+import { isMockTransactionId, isMockQuestionId } from '../data/mockData';
 import {
   X,
   Sliders,
@@ -138,22 +139,24 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     if (!pendingConfirm) return;
     if (pendingConfirm.type === 'liveOperation') {
       if (pendingConfirm.nextState) {
-        // 開啟正式營運模式 ➔ 無金流模式自動關閉、隱藏測試帳號開啟、測試環境關閉
+        // 開啟正式營運模式 ➔ 自動關閉無金流模式與測試環境，隱藏測試帳號與模擬資料，全平台恢復真實數據
         setHideTestAccounts(true);
         setNoPaymentMode(false);
         setDemoMode(false);
       } else {
-        // 關閉正式營運模式 ➔ 相對地自動開啟【無金流模式】與公開測試帳號
-        setHideTestAccounts(false);
+        // 關閉正式營運模式 ➔ 相對地自動切換為【無金流模式】，自動隱藏測試環境模擬資料與測試帳號
+        setHideTestAccounts(true);
         setNoPaymentMode(true);
+        setDemoMode(false);
       }
     } else if (pendingConfirm.type === 'noPayment') {
       if (pendingConfirm.nextState) {
-        // 開啟無金流模式 ➔ 相對地自動關閉【正式營運模式】與公開測試帳號
+        // 開啟無金流模式 ➔ 相對地自動關閉【正式營運模式】，自動隱藏測試環境模擬資料與測試帳號，恢復真實數據
         setNoPaymentMode(true);
-        setHideTestAccounts(false);
+        setHideTestAccounts(true);
+        setDemoMode(false);
       } else {
-        // 關閉無金流模式 ➔ 相對地自動開啟【正式營運模式】
+        // 關閉無金流模式 ➔ 相對地自動切換為【正式營運模式】，自動隱藏測試環境模擬資料與測試帳號
         setNoPaymentMode(false);
         setHideTestAccounts(true);
         setDemoMode(false);
@@ -191,20 +194,30 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     setPendingConfirm(null);
   };
 
-  // Compute platform metrics
-  const totalGMV = transactions.reduce((acc, t) => acc + t.amount, 0);
-  const totalPlatformFees = transactions.reduce((acc, t) => acc + t.platformFee, 0);
-  const totalBountyPool = questions.filter((q) => q.status === 'open').reduce((acc, q) => acc + q.bounty, 0);
+  // Compute platform metrics (營運模式 NORM 與無金流模式 FREE 下，初始全站交易額與獲利均純淨歸零)
+  const totalGMV = isNoPaymentMode
+    ? 0
+    : !isDemoMode
+    ? (transactions.filter((t) => !isMockTransactionId(t.id)).reduce((acc, t) => acc + (t.amount || 0), 0))
+    : transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
+  const totalPlatformFees = isNoPaymentMode
+    ? 0
+    : !isDemoMode
+    ? (transactions.filter((t) => !isMockTransactionId(t.id)).reduce((acc, t) => acc + (t.platformFee || 0), 0))
+    : transactions.reduce((acc, t) => acc + (t.platformFee || 0), 0);
+  const totalBountyPool = isNoPaymentMode
+    ? 0
+    : questions.filter((q) => q.status === 'open' && !isMockQuestionId(q.id, q.authorId)).reduce((acc, q) => acc + (q.bounty || 0), 0);
   const solvedQuestionsCount = questions.filter((q) => q.status === 'solved').length;
   const openQuestionsCount = questions.filter((q) => q.status === 'open').length;
 
-  // Plan user counts
+  // Plan user counts (正式模式僅統計真實用戶，無任何模擬虛報數據)
   const planUserCounts: Record<SubscriptionTier, number> = {
-    free: availableUsers.filter((u) => !u.subscriptionTier || u.subscriptionTier === 'free').length + 86,
-    pro: availableUsers.filter((u) => u.subscriptionTier === 'pro').length + 24,
-    expert: availableUsers.filter((u) => u.subscriptionTier === 'expert').length + 15,
-    authority: availableUsers.filter((u) => u.subscriptionTier === 'authority').length + 7,
-    master: availableUsers.filter((u) => u.subscriptionTier === 'master').length + 3,
+    free: availableUsers.filter((u) => !u.subscriptionTier || u.subscriptionTier === 'free').length + (isDemoMode ? 86 : 0),
+    pro: availableUsers.filter((u) => u.subscriptionTier === 'pro').length + (isDemoMode ? 24 : 0),
+    expert: availableUsers.filter((u) => u.subscriptionTier === 'expert').length + (isDemoMode ? 15 : 0),
+    authority: availableUsers.filter((u) => u.subscriptionTier === 'authority').length + (isDemoMode ? 7 : 0),
+    master: availableUsers.filter((u) => u.subscriptionTier === 'master').length + (isDemoMode ? 3 : 0),
   };
 
   const verifiedSolversCount = solvers.filter((s) => s.verifiedBadge).length;
@@ -434,22 +447,26 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             <span className="text-[11px] text-stone-400 font-mono">即時統計</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
-              <span className="text-[11px] text-stone-500 font-bold block">平台總交易流水 (GMV)</span>
-              <span className="text-xl font-black text-stone-900 font-mono mt-1 block">
-                NT$ {(totalGMV || 0).toLocaleString()}
-              </span>
-              <span className="text-[10px] text-stone-400 mt-0.5 block">累計媒合總額</span>
-            </div>
+          <div className={`grid ${isNoPaymentMode ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'} gap-3 text-center`}>
+            {!isNoPaymentMode && (
+              <>
+                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
+                  <span className="text-[11px] text-stone-500 font-bold block">平台總交易流水 (GMV)</span>
+                  <span className="text-xl font-black text-stone-900 font-mono mt-1 block">
+                    NT$ {(totalGMV || 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-stone-400 mt-0.5 block">累計媒合總額</span>
+                </div>
 
-            <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
-              <span className="text-[11px] text-amber-800 font-bold block">平台累計獲利 (淨抽成)</span>
-              <span className="text-xl font-black text-amber-700 font-mono mt-1 block">
-                NT$ {(totalPlatformFees || 0).toLocaleString()}
-              </span>
-              <span className="text-[10px] text-amber-600 mt-0.5 block">平台實收服務費</span>
-            </div>
+                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
+                  <span className="text-[11px] text-amber-800 font-bold block">平台累計獲利 (淨抽成)</span>
+                  <span className="text-xl font-black text-amber-700 font-mono mt-1 block">
+                    NT$ {(totalPlatformFees || 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-amber-600 mt-0.5 block">平台實收服務費</span>
+                </div>
+              </>
+            )}
 
             <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
               <span className="text-[11px] text-stone-500 font-bold block">市場問題總數</span>
@@ -1199,7 +1216,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 type="button"
                 onClick={() => setPendingConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
                 className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer font-mono ${
-                  !isHideTestAccounts
+                  isHideTestAccounts
                     ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
                     : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
                 }`}
@@ -1310,18 +1327,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               )}
               {pendingConfirm.type === 'liveOperation' && (
                 pendingConfirm.nextState
-                  ? '即將開啟【正式營運模式】：（全站平台同步生效）系統將自動關閉無金流模式並隱藏所有測試帳號，全平台同步啟用標準商業金流與履約託管機制。'
-                  : '即將關閉【正式營運模式】：（全站平台同步生效）系統將相對地自動開啟【無金流模式】與公開測試帳號。'
+                  ? '即將開啟【正式營運模式】：（全站平台同步生效）系統將自動關閉無金流模式並隱藏所有測試帳號與模擬資料，全平台恢復真實數據，同步啟用標準商業金流與履約託管機制。'
+                  : '即將關閉【正式營運模式】：（全站平台同步生效）系統將相對地自動切換為【無金流模式】，並持續隱藏測試環境模擬資料與測試帳號。'
               )}
               {pendingConfirm.type === 'demo' && (
                 pendingConfirm.nextState
                   ? '即將開啟【測試環境】：（僅作用於管理員帳號視角）管理員畫面將載入預設示範問題、提案與專家數據，不影響外部真實會員與訪客。'
-                  : '即將關閉【測試環境】：（僅作用於管理員帳號視角）管理員畫面將恢復純淨實時平台數據。'
+                  : '即將關閉【測試環境】：（僅作用於管理員帳號視角）管理員畫面將恢復純淨實時平台真實數據。'
               )}
               {pendingConfirm.type === 'noPayment' && (
                 pendingConfirm.nextState
-                  ? '即將開啟【無金流模式】：（全站平台同步生效）系統將相對地自動關閉正式營運模式，全站平台同步隱藏會員訂閱與儲值點數。'
-                  : '即將關閉【無金流模式】：（全站平台同步生效）系統將相對地自動開啟【正式營運模式】，全站平台同步恢復標準商業會員訂閱方案與點數機制。'
+                  ? '即將開啟【無金流模式】：（全站平台同步生效）系統將自動關閉正式營運模式，隱藏所有測試帳號與模擬資料，全平台恢復真實數據；所有用戶帳號均無點數、儲值與金流相關設定，開放全站免費提問與互動。'
+                  : '即將關閉【無金流模式】：（全站平台同步生效）系統將相對地自動切換為【正式營運模式】，恢復標準商業金流機制，並持續隱藏測試環境模擬資料與測試帳號。'
               )}
               {pendingConfirm.type === 'hideTestAccounts' && (
                 pendingConfirm.nextState
@@ -1375,21 +1392,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         </button>
       </div>
 
-      {/* 平台版本號與最近更新時間與當前環境簡稱 (純英文與數字) */}
+      {/* 平台版本號與最近更新時間與當前環境簡稱 (純英文與數字，以連字號連接至少兩個英文標籤) */}
       <div className="py-2.5 text-center bg-stone-50/50 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
-        v1.2.1 • 2026.09.29 • {(() => {
-          const isLiveOperation = isHideTestAccounts && !isNoPaymentMode && !isDemoMode;
-          if (isLiveOperation) return 'NORM';
-          const codes = [];
-          if (isDemoMode) codes.push('DEMO');
-          if (isNoPaymentMode) codes.push('FREE');
-          if (isHideTestAccounts) {
-            codes.push('HIDE');
-          } else {
-            codes.push('SHOW');
-          }
-          return codes.length > 0 ? codes.join(' • ') : 'TEST';
-        })()}
+        v1.2.1 • 2026.09.29 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
     </div>
   );

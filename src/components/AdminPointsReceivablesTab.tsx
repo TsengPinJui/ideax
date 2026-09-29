@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { User } from '../types';
 import {
   Coins,
+  Send,
   Building2,
   Search,
   User as UserIcon,
@@ -11,18 +11,38 @@ import {
   ArrowRight,
   Plus,
   Minus,
-  Edit3,
+  Sparkles,
+  ShieldCheck,
+  Clock,
+  History,
 } from 'lucide-react';
 
 export const AdminPointsReceivablesTab: React.FC = () => {
-  const { availableUsers, adjustUserBalance, currentUser } = useApp();
+  const {
+    currentUser,
+    availableUsers,
+    adminDailyQuota,
+    getAdminRemainingDailyQuota,
+    adminTransferPoints,
+    adjustUserBalance,
+    transactions,
+  } = useApp();
 
-  const [selectedUserId, setSelectedUserId] = useState<string>(availableUsers[0]?.id || 'user-1');
+  const remainingQuota = getAdminRemainingDailyQuota(currentUser.id);
+  const usedQuota = Math.max(0, adminDailyQuota - remainingQuota);
+  const quotaPercent = Math.min(100, Math.round((usedQuota / adminDailyQuota) * 100));
+
+  const [selectedUserId, setSelectedUserId] = useState<string>(
+    availableUsers.find((u) => u.id !== currentUser.id)?.id || availableUsers[0]?.id || ''
+  );
   const [searchUserQuery, setSearchUserQuery] = useState('');
-  const [deltaPoints, setDeltaPoints] = useState<number>(500);
-  const [isAdding, setIsAdding] = useState(true);
-  const [adjustReason, setAdjustReason] = useState('管理員手動核發活動體驗金');
+  const [actionType, setActionType] = useState<'transfer' | 'adjust'>('transfer');
+  const [amount, setAmount] = useState<number>(1000);
+  const [isAdding, setIsAdding] = useState<boolean>(true); // for adjust mode: add or deduct
+  const [reasonCategory, setReasonCategory] = useState<string>('活動獎勵發放');
+  const [customReasonNote, setCustomReasonNote] = useState<string>('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [isConfirming, setIsConfirming] = useState<boolean>(false);
 
   const selectedUser = availableUsers.find((u) => u.id === selectedUserId) || availableUsers[0];
 
@@ -32,34 +52,76 @@ export const AdminPointsReceivablesTab: React.FC = () => {
     return (
       (u.name || '').toLowerCase().includes(q) ||
       (u.title || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
       (u.id || '').toLowerCase().includes(q)
     );
   });
 
-  const handleAdjustBalance = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUser) return;
-    if (deltaPoints <= 0) {
-      setFeedbackMsg({ text: '調整點數必須大於 0！', isError: true });
+  const PRESET_AMOUNTS = [500, 1000, 3000, 5000, 10000, 20000];
+
+  const PRESET_REASONS = [
+    '活動獎勵發放',
+    '新用戶體驗金',
+    '優質解答激勵',
+    '系統維護補償',
+    '合作贊助撥付',
+    '業務審計微調',
+  ];
+
+  // Transfer & adjustment history
+  const historyTransactions = transactions.filter(
+    (tx) =>
+      tx.type === '管理員轉入點數' ||
+      tx.note?.includes('【管理員點數轉入】') ||
+      tx.note?.includes('管理員手動') ||
+      tx.fromUserName?.includes('管理')
+  );
+
+  const handleExecute = () => {
+    if (!selectedUser) {
+      setFeedbackMsg({ text: '請選擇受款用戶！', isError: true });
       return;
     }
-    if (!adjustReason.trim()) {
-      setFeedbackMsg({ text: '請輸入調整點數之原因備註！', isError: true });
+    if (amount <= 0) {
+      setFeedbackMsg({ text: '點數金額必須大於 0！', isError: true });
       return;
     }
 
-    const finalDelta = isAdding ? deltaPoints : -deltaPoints;
-    const success = adjustUserBalance(selectedUser.id, finalDelta, adjustReason.trim());
-    if (success) {
-      setFeedbackMsg({
-        text: `🎉 已成功為「${selectedUser.name}」${isAdding ? '增加' : '扣除'} ${deltaPoints.toLocaleString()} 點！系統已寫入帳務審計日誌並發送通知。`,
-        isError: false,
-      });
-      setAdjustReason('管理員手動調整點數');
+    const fullReason = customReasonNote.trim()
+      ? `${reasonCategory} - ${customReasonNote.trim()}`
+      : reasonCategory;
+
+    if (actionType === 'transfer') {
+      if (amount > remainingQuota) {
+        setFeedbackMsg({
+          text: `轉入點數 (${amount.toLocaleString()}) 超出今日剩餘配額 (${remainingQuota.toLocaleString()})！`,
+          isError: true,
+        });
+        return;
+      }
+      const res = adminTransferPoints(selectedUser.id, amount, fullReason);
+      if (res.success) {
+        setFeedbackMsg({ text: res.message, isError: false });
+        setCustomReasonNote('');
+      } else {
+        setFeedbackMsg({ text: res.message, isError: true });
+      }
     } else {
-      setFeedbackMsg({ text: '調整點數失敗，請重試。', isError: true });
+      const finalDelta = isAdding ? amount : -amount;
+      const success = adjustUserBalance(selectedUser.id, finalDelta, fullReason);
+      if (success) {
+        setFeedbackMsg({
+          text: `🎉 已成功為「${selectedUser.name}」${isAdding ? '增加' : '扣除'} ${amount.toLocaleString()} 點！系統已寫入審計帳本。`,
+          isError: false,
+        });
+        setCustomReasonNote('');
+      } else {
+        setFeedbackMsg({ text: '調整點數失敗，請確認該用戶點數餘額足夠。', isError: true });
+      }
     }
-    setTimeout(() => setFeedbackMsg(null), 4000);
+
+    setIsConfirming(false);
+    setTimeout(() => setFeedbackMsg(null), 5000);
   };
 
   return (
@@ -82,16 +144,25 @@ export const AdminPointsReceivablesTab: React.FC = () => {
         </div>
       )}
 
-      {/* 頂部標題 */}
+      {/* 頂部標題與說明 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3.5">
         <div>
-          <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
+          <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2 flex-wrap">
             <Coins className="w-5 h-5 text-purple-600" />
-            <span>點數 & 應收帳款管理</span>
+            <span>點數與帳務管理</span>
+            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
+              每日撥付配額 {adminDailyQuota.toLocaleString()} 點
+            </span>
           </h3>
           <p className="text-xs text-stone-500 mt-1">
-            管理者可在此查閱全站個別用戶之帳目狀態（點數餘額、第三方應收帳款、累計撥款與銀行帳戶），並執行帳務調整。
+            查閱全站用戶帳目、點數餘額與應收撥款，並執行管理員點數撥發、活動激勵與帳務調度。
           </p>
+        </div>
+        <div className="text-right shrink-0">
+          <span className="text-[11px] text-stone-400 block font-mono">今日剩餘可轉配額</span>
+          <span className="text-base font-black text-amber-700 font-mono">
+            {remainingQuota.toLocaleString()} <span className="text-xs font-normal">點</span>
+          </span>
         </div>
       </div>
 
@@ -100,13 +171,13 @@ export const AdminPointsReceivablesTab: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <label className="text-xs font-black text-purple-950 flex items-center gap-1.5">
             <UserIcon className="w-4 h-4 text-purple-700" />
-            <span>選擇查閱之個別用戶帳目：</span>
+            <span>選擇受款 / 查閱之會員用戶：</span>
           </label>
-          <div className="relative sm:w-60">
+          <div className="relative sm:w-64">
             <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="搜尋用戶姓名..."
+              placeholder="搜尋用戶姓名、Email、職稱..."
               value={searchUserQuery}
               onChange={(e) => setSearchUserQuery(e.target.value)}
               className="w-full pl-8 pr-3 py-1 bg-white border border-purple-200 rounded-xl text-xs focus:outline-none focus:border-purple-600"
@@ -128,7 +199,11 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                     : 'bg-white text-stone-800 border-stone-200 hover:border-purple-300 hover:bg-white'
                 }`}
               >
-                <img src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt="" className="w-7 h-7 rounded-lg object-cover ring-1 ring-white/50 shrink-0" />
+                <img
+                  src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                  alt=""
+                  className="w-7 h-7 rounded-lg object-cover ring-1 ring-white/50 shrink-0"
+                />
                 <div className="min-w-0">
                   <span className="block text-xs font-bold truncate">{u.name}</span>
                   <span className={`text-[10px] block truncate ${isSelected ? 'text-purple-200' : 'text-stone-400'}`}>
@@ -141,166 +216,316 @@ export const AdminPointsReceivablesTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 選定用戶帳目明細儀表盤 */}
+      {/* 選定用戶帳目明細與調度面板 */}
       {selectedUser && (
         <div className="space-y-4">
           <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+            {/* 用戶身分抬頭 */}
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3 flex-wrap gap-2">
               <div className="flex items-center gap-3">
                 <img
                   src={selectedUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                  alt={selectedUser.name}
-                  className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200"
+                  alt=""
+                  className="w-10 h-10 rounded-xl object-cover ring-2 ring-purple-100"
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="font-black text-base text-stone-900">{selectedUser.name}</h4>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-800">
-                      {selectedUser.role === 'admin' ? '管理員' : selectedUser.role === 'solver' ? '解答者' : '提問者'}
+                    <h4 className="font-extrabold text-sm text-stone-900">{selectedUser.name}</h4>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 font-bold">
+                      {selectedUser.role === 'admin' ? '超級管理員' : selectedUser.role === 'solver' ? '認證專家' : '提問者'}
                     </span>
-                    {selectedUser.isBlocked && (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-600 text-white">
-                        已封鎖
-                      </span>
-                    )}
                   </div>
-                  <p className="text-xs text-stone-500 mt-0.5">{selectedUser.title || '領域用戶'} · 帳號：{selectedUser.id}</p>
+                  <p className="text-xs text-stone-500 mt-0.5">{selectedUser.email || '未提供電子郵件'}</p>
                 </div>
               </div>
+              <span className="text-xs text-stone-400 font-mono">ID: {selectedUser.id}</span>
             </div>
 
-            {/* 個別用戶 4 大帳務指標 */}
+            {/* 用戶 3 大帳務指標 */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
                 <span className="text-xs font-bold text-amber-900 block">可用點數餘額</span>
                 <span className="text-2xl font-black text-amber-950 font-mono mt-1 block">
                   {(selectedUser.balance || 0).toLocaleString()} <span className="text-xs font-normal">點</span>
                 </span>
-                <span className="text-[10px] text-amber-800 mt-0.5 block">可於提問懸賞中隨時抵用</span>
+                <span className="text-[10px] text-amber-800 mt-0.5 block">可於發布懸賞時隨時抵用</span>
               </div>
 
               <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200">
-                <span className="text-xs font-bold text-blue-900 block">應收帳款（第三方託管中）</span>
+                <span className="text-xs font-bold text-blue-900 block">應收帳款（託管中）</span>
                 <span className="text-2xl font-black text-blue-950 font-mono mt-1 block">
                   NT$ {(selectedUser.withheldPoints || 0).toLocaleString()}
                 </span>
-                <span className="text-[10px] text-blue-800 mt-0.5 block">待提問方驗收後自動拆款入帳</span>
+                <span className="text-[10px] text-blue-800 mt-0.5 block">待提問方驗收後自動撥付</span>
               </div>
 
               <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200">
                 <span className="text-xs font-bold text-emerald-900 block">累計已撥款出金</span>
                 <span className="text-2xl font-black text-emerald-950 font-mono mt-1 block">
-                  NT$ {(selectedUser.totalPaidOut || selectedUser.totalWithdrawn || 0).toLocaleString()}
+                  NT$ {(selectedUser.totalPaidOut || 0).toLocaleString()}
                 </span>
                 <span className="text-[10px] text-emerald-800 mt-0.5 block">歷史直撥銀行累計總額</span>
               </div>
             </div>
 
             {/* 綁定銀行帳戶資訊 */}
-            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-1.5">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-stone-600" />
-                <h5 className="font-extrabold text-xs text-stone-900">該用戶綁定的收款銀行帳戶</h5>
+                <h5 className="font-extrabold text-xs text-stone-900">該用戶綁定之直撥收款銀行帳戶</h5>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-white border border-stone-200">
+                <div className="p-2 rounded-xl bg-white border border-stone-200">
                   <span className="text-[10px] text-stone-400 block">銀行名稱</span>
-                  <span className="font-bold text-stone-800">{selectedUser.bankAccount?.bankName || '822 中國信託商業銀行'}</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-white border border-stone-200">
-                  <span className="text-[10px] text-stone-400 block">銀行代碼</span>
-                  <span className="font-mono font-bold text-stone-800">{selectedUser.bankAccount?.bankCode || '822'}</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-white border border-stone-200">
-                  <span className="text-[10px] text-stone-400 block">帳戶號碼</span>
-                  <span className="font-mono font-bold text-stone-800">
-                    {selectedUser.bankAccount?.accountNumber ? `•••• ${selectedUser.bankAccount.accountNumber.slice(-4)}` : '•••• 6789'}
+                  <span className="font-bold text-stone-800 truncate block">
+                    {selectedUser.bankAccount?.bankName || '822 中國信託商業銀行'}
                   </span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-white border border-stone-200">
+                <div className="p-2 rounded-xl bg-white border border-stone-200">
+                  <span className="text-[10px] text-stone-400 block">銀行代碼</span>
+                  <span className="font-mono font-bold text-stone-800">
+                    {selectedUser.bankAccount?.bankCode || '822'}
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-white border border-stone-200">
+                  <span className="text-[10px] text-stone-400 block">帳戶號碼</span>
+                  <span className="font-mono font-bold text-stone-800">
+                    {selectedUser.bankAccount?.accountNumber
+                      ? `•••• ${selectedUser.bankAccount.accountNumber.slice(-4)}`
+                      : '•••• 6789'}
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-white border border-stone-200">
                   <span className="text-[10px] text-stone-400 block">戶名</span>
-                  <span className="font-bold text-stone-800">{selectedUser.bankAccount?.accountHolder || selectedUser.name}</span>
+                  <span className="font-bold text-stone-800 truncate block">
+                    {selectedUser.bankAccount?.accountHolder || selectedUser.name}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* 管理員手動調整該用戶點數工具 */}
-            <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-200 space-y-3">
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-purple-700" />
-                <h5 className="font-extrabold text-xs text-purple-950">
-                  管理員手動調整點數餘額（直接入帳 / 扣除）
-                </h5>
-              </div>
-
-              <form onSubmit={handleAdjustBalance} className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-[11px] font-bold text-stone-700 block mb-1">操作類型</label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsAdding(true)}
-                        className={`flex-1 py-1.5 rounded-xl text-xs font-bold border flex items-center justify-center gap-1 cursor-pointer ${
-                          isAdding
-                            ? 'bg-emerald-600 text-white border-emerald-600 font-black shadow-2xs'
-                            : 'bg-white text-stone-600 border-stone-200'
-                        }`}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>增加點數</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsAdding(false)}
-                        className={`flex-1 py-1.5 rounded-xl text-xs font-bold border flex items-center justify-center gap-1 cursor-pointer ${
-                          !isAdding
-                            ? 'bg-rose-600 text-white border-rose-600 font-black shadow-2xs'
-                            : 'bg-white text-stone-600 border-stone-200'
-                        }`}
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                        <span>扣除點數</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold text-stone-700 block mb-1">調整點數額度 *</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      step={50}
-                      value={deltaPoints}
-                      onChange={(e) => setDeltaPoints(Number(e.target.value))}
-                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-xl text-xs font-mono font-bold text-stone-900 focus:border-purple-600 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold text-stone-700 block mb-1">調整原因備註（寄發通知） *</label>
-                    <input
-                      type="text"
-                      required
-                      value={adjustReason}
-                      onChange={(e) => setAdjustReason(e.target.value)}
-                      placeholder="例如：平台官方補償點數、特別榮譽獎勵"
-                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-xl text-xs text-stone-900 focus:border-purple-600 outline-none"
-                    />
-                  </div>
+            {/* 點數調度操作區 */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-stone-900 to-stone-950 text-white space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Send className="w-4 h-4 text-amber-400" />
+                  <span className="font-bold text-sm text-stone-100">執行點數撥發與帳務調度</span>
                 </div>
-
-                <div className="flex justify-end pt-1">
+                {/* 模式切換 (轉入撥發 vs 手動調整) */}
+                <div className="flex items-center p-1 bg-stone-800 rounded-xl text-xs">
                   <button
-                    type="submit"
-                    className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    type="button"
+                    onClick={() => setActionType('transfer')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      actionType === 'transfer'
+                        ? 'bg-amber-400 text-stone-950 shadow-2xs'
+                        : 'text-stone-400 hover:text-stone-200'
+                    }`}
                   >
-                    <span>確認執行點數調整並通知用戶</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    點數轉入 (每日配額)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActionType('adjust')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      actionType === 'adjust'
+                        ? 'bg-purple-600 text-white shadow-2xs'
+                        : 'text-stone-400 hover:text-stone-200'
+                    }`}
+                  >
+                    帳務微調 (加點/扣點)
                   </button>
                 </div>
-              </form>
+              </div>
+
+              {actionType === 'adjust' && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-stone-300 font-bold">微調動作：</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAdding(true)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                        isAdding ? 'bg-emerald-600 text-white' : 'bg-stone-800 text-stone-400'
+                      }`}
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>增加點數</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAdding(false)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                        !isAdding ? 'bg-rose-600 text-white' : 'bg-stone-800 text-stone-400'
+                      }`}
+                    >
+                      <Minus className="w-3 h-3" />
+                      <span>扣除點數</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 點數金額快選與自訂 */}
+              <div className="space-y-2">
+                <label className="text-xs text-stone-300 font-bold flex items-center justify-between">
+                  <span>點數金額：</span>
+                  {actionType === 'transfer' && (
+                    <span className="text-[11px] text-amber-400 font-mono">
+                      今日上限剩餘：{remainingQuota.toLocaleString()} 點
+                    </span>
+                  )}
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {PRESET_AMOUNTS.map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setAmount(val)}
+                      className={`py-1.5 px-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                        amount === val
+                          ? 'bg-amber-400 text-stone-950 font-black shadow-xs'
+                          : 'bg-stone-800 hover:bg-stone-700 text-stone-200'
+                      }`}
+                    >
+                      {val.toLocaleString()} 點
+                    </button>
+                  ))}
+                </div>
+                <div className="relative mt-2">
+                  <input
+                    type="number"
+                    min={1}
+                    value={amount || ''}
+                    onChange={(e) => setAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                    placeholder="自訂點數金額..."
+                    className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-amber-400"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400">點數</span>
+                </div>
+              </div>
+
+              {/* 原因選擇與備註 */}
+              <div className="space-y-2">
+                <label className="text-xs text-stone-300 font-bold">調度原因分類與備註：</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESET_REASONS.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setReasonCategory(r)}
+                      className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                        reasonCategory === r
+                          ? 'bg-purple-500 text-white font-bold'
+                          : 'bg-stone-800 hover:bg-stone-700 text-stone-300'
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  placeholder="補充說明備註（可選填，例如：9月專家優質解題激勵金）..."
+                  value={customReasonNote}
+                  onChange={(e) => setCustomReasonNote(e.target.value)}
+                  className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              {/* 執行按鈕 */}
+              <div className="pt-2 flex items-center justify-between border-t border-stone-800">
+                <div className="text-xs text-stone-400">
+                  受款對象：<strong className="text-white">{selectedUser.name}</strong> • 異動：
+                  <strong className={actionType === 'adjust' && !isAdding ? 'text-rose-400' : 'text-amber-400'}>
+                    {actionType === 'adjust' && !isAdding ? '-' : '+'}
+                    {amount.toLocaleString()} 點
+                  </strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsConfirming(true)}
+                  disabled={amount <= 0 || (actionType === 'transfer' && amount > remainingQuota)}
+                  className="px-5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-stone-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <Send className="w-3.5 h-3.5 text-stone-950" />
+                  <span>確認執行調度</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 最近點數調度審計歷史 */}
+      <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+        <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+          <div className="flex items-center gap-2">
+            <History className="w-4 h-4 text-purple-600" />
+            <h4 className="font-extrabold text-sm text-stone-900">最近點數撥發與調度紀錄</h4>
+          </div>
+          <span className="text-[11px] text-stone-400 font-mono">共 {historyTransactions.length} 筆</span>
+        </div>
+
+        {historyTransactions.length === 0 ? (
+          <div className="py-8 text-center text-xs text-stone-400">尚無點數調度紀錄</div>
+        ) : (
+          <div className="divide-y divide-stone-100">
+            {historyTransactions.slice(0, 6).map((tx) => (
+              <div key={tx.id} className="py-2.5 flex items-center justify-between text-xs gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-stone-900 truncate">
+                      撥至：{tx.toUserName || '會員用戶'}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-mono">
+                      {tx.type}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-500 truncate mt-0.5">{tx.note || '管理員點數異動'}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="font-black text-amber-700 font-mono block">
+                    +{tx.amount?.toLocaleString()} 點
+                  </span>
+                  <span className="text-[10px] text-stone-400 font-mono">{tx.createdAt}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 確認彈窗 */}
+      {isConfirming && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-stone-200">
+            <div className="flex items-center gap-2.5 text-amber-700">
+              <ShieldCheck className="w-5 h-5 text-amber-600" />
+              <h4 className="font-black text-sm text-stone-900">確認執行點數調度？</h4>
+            </div>
+            <p className="text-xs text-stone-600 leading-relaxed">
+              即將為「<strong>{selectedUser?.name}</strong>」
+              {actionType === 'adjust' && !isAdding ? '扣除 ' : '撥入 '}
+              <strong className="text-amber-700 text-sm font-mono">{amount.toLocaleString()} 點</strong>。
+              <br />
+              原因備註：{customReasonNote.trim() ? `${reasonCategory} - ${customReasonNote.trim()}` : reasonCategory}。
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setIsConfirming(false)}
+                className="px-3.5 py-1.5 rounded-xl border border-stone-200 text-stone-700 text-xs font-bold hover:bg-stone-100 cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleExecute}
+                className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black cursor-pointer shadow-xs"
+              >
+                確定執行
+              </button>
             </div>
           </div>
         </div>

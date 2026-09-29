@@ -11,8 +11,10 @@ import {
   Copy,
   Check,
   ExternalLink,
+  Sparkles,
 } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
+import { downloadAppLauncherFile } from '../services/pwaInstaller';
 
 interface PwaInstallModalProps {
   isOpen: boolean;
@@ -263,6 +265,25 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
                   </ol>
                 </div>
               )}
+
+              {/* 直接下載捷徑檔按鈕 */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadAppLauncherFile();
+                    setInstallSuccess(true);
+                    setTimeout(() => setInstallSuccess(false), 3000);
+                  }}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:scale-98 text-stone-950 font-black rounded-2xl shadow-md flex items-center justify-center gap-2 text-xs transition-all cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-stone-950" />
+                  <span>{installSuccess ? '✅ App 啟動檔已成功下載！' : '📥 一鍵直接下載 App 啟動捷徑檔'}</span>
+                </button>
+                <p className="text-[10px] text-center text-stone-400 mt-1">
+                  支援全平台：下載後雙擊即可秒速全螢幕啟動 IdeaX App
+                </p>
+              </div>
 
             </div>
           )}

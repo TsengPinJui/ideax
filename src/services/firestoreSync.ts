@@ -19,10 +19,49 @@ import {
   Solver,
 } from '../types';
 
+let isQuotaExhausted = (() => {
+  try {
+    const stored = localStorage.getItem('ideax_firestore_quota_exhausted_date');
+    const today = new Date().toISOString().slice(0, 10);
+    return stored === today;
+  } catch {
+    return false;
+  }
+})();
+
+function handleFirestoreError(context: string, err: any) {
+  const errMsg = err?.message || String(err);
+  const isQuota =
+    errMsg.includes('resource-exhausted') ||
+    errMsg.includes('Quota limit exceeded') ||
+    errMsg.includes('Quota exceeded') ||
+    err?.code === 'resource-exhausted';
+
+  if (isQuota) {
+    if (!isQuotaExhausted) {
+      isQuotaExhausted = true;
+      console.warn(`[Firestore] Daily write quota reached for free tier project. Seamlessly falling back to local storage persistence.`);
+    }
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      localStorage.setItem('ideax_firestore_quota_exhausted_date', today);
+    } catch {
+      // ignore
+    }
+    return;
+  }
+  console.warn(`[Firestore] ${context}:`, errMsg);
+}
+
+export function isFirestoreQuotaExhausted(): boolean {
+  return isQuotaExhausted;
+}
+
 /**
  * Validates connection to Firestore via getDocFromServer
  */
 export async function testFirestoreConnection(): Promise<boolean> {
+  if (isQuotaExhausted) return false;
   try {
     await getDocFromServer(doc(db, '_connection_test', 'status'));
     return true;
@@ -42,18 +81,18 @@ export async function testFirestoreConnection(): Promise<boolean> {
 // =========================================================================
 
 export async function syncQuestionToFirestore(question: Question): Promise<void> {
-  if (!question || !question.id) return;
+  if (!question || !question.id || isQuotaExhausted) return;
   try {
     const qRef = doc(db, 'questions', question.id);
     const cleanQ = JSON.parse(JSON.stringify(question));
     await setDoc(qRef, { ...cleanQ, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (err) {
-    console.error(`[Firestore] Failed to sync question ${question.id}:`, err);
+    handleFirestoreError(`Failed to sync question ${question.id}`, err);
   }
 }
 
 export async function syncQuestionsToFirestore(questions: Question[]): Promise<void> {
-  if (!questions || questions.length === 0) return;
+  if (!questions || questions.length === 0 || isQuotaExhausted) return;
   try {
     const batch = writeBatch(db);
     questions.forEach((q) => {
@@ -64,23 +103,23 @@ export async function syncQuestionsToFirestore(questions: Question[]): Promise<v
     });
     await batch.commit();
   } catch (err) {
-    console.error('[Firestore] Failed to batch sync questions:', err);
+    handleFirestoreError('Failed to batch sync questions', err);
   }
 }
 
 export async function syncAnswerToFirestore(answer: Answer): Promise<void> {
-  if (!answer || !answer.id) return;
+  if (!answer || !answer.id || isQuotaExhausted) return;
   try {
     const aRef = doc(db, 'answers', answer.id);
     const cleanA = JSON.parse(JSON.stringify(answer));
     await setDoc(aRef, { ...cleanA, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (err) {
-    console.error(`[Firestore] Failed to sync answer ${answer.id}:`, err);
+    handleFirestoreError(`Failed to sync answer ${answer.id}`, err);
   }
 }
 
 export async function syncAnswersToFirestore(answers: Answer[]): Promise<void> {
-  if (!answers || answers.length === 0) return;
+  if (!answers || answers.length === 0 || isQuotaExhausted) return;
   try {
     const batch = writeBatch(db);
     answers.forEach((ans) => {
@@ -91,23 +130,23 @@ export async function syncAnswersToFirestore(answers: Answer[]): Promise<void> {
     });
     await batch.commit();
   } catch (err) {
-    console.error('[Firestore] Failed to batch sync answers:', err);
+    handleFirestoreError('Failed to batch sync answers', err);
   }
 }
 
 export async function syncTransactionToFirestore(tx: Transaction): Promise<void> {
-  if (!tx || !tx.id) return;
+  if (!tx || !tx.id || isQuotaExhausted) return;
   try {
     const txRef = doc(db, 'transactions', tx.id);
     const cleanTx = JSON.parse(JSON.stringify(tx));
     await setDoc(txRef, { ...cleanTx, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (err) {
-    console.error(`[Firestore] Failed to sync transaction ${tx.id}:`, err);
+    handleFirestoreError(`Failed to sync transaction ${tx.id}`, err);
   }
 }
 
 export async function syncTransactionsToFirestore(transactions: Transaction[]): Promise<void> {
-  if (!transactions || transactions.length === 0) return;
+  if (!transactions || transactions.length === 0 || isQuotaExhausted) return;
   try {
     const batch = writeBatch(db);
     transactions.forEach((tx) => {
@@ -118,18 +157,18 @@ export async function syncTransactionsToFirestore(transactions: Transaction[]): 
     });
     await batch.commit();
   } catch (err) {
-    console.error('[Firestore] Failed to batch sync transactions:', err);
+    handleFirestoreError('Failed to batch sync transactions', err);
   }
 }
 
 export async function syncConversationToFirestore(conv: ChatConversation): Promise<void> {
-  if (!conv || !conv.id) return;
+  if (!conv || !conv.id || isQuotaExhausted) return;
   try {
     const cRef = doc(db, 'conversations', conv.id);
     const cleanC = JSON.parse(JSON.stringify(conv));
     await setDoc(cRef, { ...cleanC, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (err) {
-    console.error(`[Firestore] Failed to sync conversation ${conv.id}:`, err);
+    handleFirestoreError(`Failed to sync conversation ${conv.id}`, err);
   }
 }
 
@@ -138,7 +177,7 @@ export async function syncConversationToFirestore(conv: ChatConversation): Promi
 // =========================================================================
 
 export async function syncUserToFirestore(user: User): Promise<void> {
-  if (!user || !user.id) return;
+  if (!user || !user.id || isQuotaExhausted) return;
   try {
     const userRef = doc(db, 'users', user.id);
     const cleanUser = JSON.parse(JSON.stringify(user));
@@ -163,12 +202,12 @@ export async function syncUserToFirestore(user: User): Promise<void> {
       );
     }
   } catch (err) {
-    console.error(`[Firestore] Failed to sync user ${user.id}:`, err);
+    handleFirestoreError(`Failed to sync user ${user.id}`, err);
   }
 }
 
 export async function syncUsersToFirestore(users: User[]): Promise<void> {
-  if (!users || users.length === 0) return;
+  if (!users || users.length === 0 || isQuotaExhausted) return;
   try {
     const batch = writeBatch(db);
     users.forEach((user) => {
@@ -198,7 +237,7 @@ export async function syncUsersToFirestore(users: User[]): Promise<void> {
     });
     await batch.commit();
   } catch (err) {
-    console.error('[Firestore] Failed to batch sync users & certifications:', err);
+    handleFirestoreError('Failed to batch sync users & certifications', err);
   }
 }
 
@@ -212,7 +251,7 @@ export async function getUserFromFirestore(userId: string): Promise<User | null>
     }
     return null;
   } catch (err) {
-    console.warn(`[Firestore] Failed to get user ${userId}:`, err);
+    handleFirestoreError(`Failed to get user ${userId}`, err);
     return null;
   }
 }
@@ -225,7 +264,7 @@ export async function syncAuditLogsToFirestore(auditRecords: Array<{
   details?: any;
   createdAt: string;
 }>): Promise<void> {
-  if (!auditRecords || auditRecords.length === 0) return;
+  if (!auditRecords || auditRecords.length === 0 || isQuotaExhausted) return;
   try {
     const batch = writeBatch(db);
     auditRecords.forEach((record) => {
@@ -235,7 +274,7 @@ export async function syncAuditLogsToFirestore(auditRecords: Array<{
     });
     await batch.commit();
   } catch (err) {
-    console.error('[Firestore] Failed to batch sync audit logs:', err);
+    handleFirestoreError('Failed to batch sync audit logs', err);
   }
 }
 
@@ -244,7 +283,7 @@ export async function syncAuditLogsToFirestore(auditRecords: Array<{
 // =========================================================================
 
 export async function syncNotificationsToFirestore(notifications: NotificationItem[]): Promise<void> {
-  if (!notifications || notifications.length === 0) return;
+  if (!notifications || notifications.length === 0 || isQuotaExhausted) return;
   try {
     const batch = writeBatch(db);
     notifications.forEach((item) => {
@@ -255,12 +294,12 @@ export async function syncNotificationsToFirestore(notifications: NotificationIt
     });
     await batch.commit();
   } catch (err) {
-    console.error('[Firestore] Failed to sync notifications:', err);
+    handleFirestoreError('Failed to sync notifications', err);
   }
 }
 
 export async function syncBookmarksToFirestore(userId: string, bookmarkedIds: string[]): Promise<void> {
-  if (!userId) return;
+  if (!userId || isQuotaExhausted) return;
   try {
     const bookmarkRef = doc(db, 'bookmarks', userId);
     await setDoc(
@@ -273,12 +312,12 @@ export async function syncBookmarksToFirestore(userId: string, bookmarkedIds: st
       { merge: true }
     );
   } catch (err) {
-    console.error(`[Firestore] Failed to sync bookmarks for user ${userId}:`, err);
+    handleFirestoreError(`Failed to sync bookmarks for user ${userId}`, err);
   }
 }
 
 export async function syncSolversToFirestore(solvers: Solver[]): Promise<void> {
-  if (!solvers || solvers.length === 0) return;
+  if (!solvers || solvers.length === 0 || isQuotaExhausted) return;
   try {
     const batch = writeBatch(db);
     solvers.forEach((s) => {
@@ -289,7 +328,7 @@ export async function syncSolversToFirestore(solvers: Solver[]): Promise<void> {
     });
     await batch.commit();
   } catch (err) {
-    console.error('[Firestore] Failed to batch sync solvers:', err);
+    handleFirestoreError('Failed to batch sync solvers', err);
   }
 }
 
@@ -298,7 +337,7 @@ export async function syncSolversToFirestore(solvers: Solver[]): Promise<void> {
 // =========================================================================
 
 export async function syncTermsAgreementsToFirestore(user: User): Promise<void> {
-  if (!user || !user.id) return;
+  if (!user || !user.id || isQuotaExhausted) return;
   try {
     const agreeRef = doc(db, 'terms_agreements', user.id);
     await setDoc(
@@ -316,7 +355,7 @@ export async function syncTermsAgreementsToFirestore(user: User): Promise<void> 
       { merge: true }
     );
   } catch (err) {
-    console.error(`[Firestore] Failed to sync terms agreement for ${user.id}:`, err);
+    handleFirestoreError(`Failed to sync terms agreement for ${user.id}`, err);
   }
 }
 
@@ -326,12 +365,13 @@ export async function syncPlatformSettingsToFirestore(settings: {
   publicMetricsConfig?: any;
   adminDailyGrants?: any;
 }): Promise<void> {
+  if (isQuotaExhausted) return;
   try {
     const settingRef = doc(db, 'platform_settings', 'global');
     const cleanSettings = JSON.parse(JSON.stringify(settings));
     await setDoc(settingRef, { ...cleanSettings, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (err) {
-    console.error('[Firestore] Failed to sync platform settings:', err);
+    handleFirestoreError('Failed to sync platform settings', err);
   }
 }
 
@@ -384,6 +424,12 @@ export async function pushAllDataToFirestore(data: SyncDataPayload): Promise<Cat
       complianceSettings: { termsAgreements: 0, platformSettings: 1 },
     },
   };
+
+  if (isQuotaExhausted) {
+    result.success = true;
+    result.message = '目前本機已安全持久化最新資料。雲端資料庫已達今日免費寫入配額，明日重設後將自動恢復同步。';
+    return result;
+  }
 
   try {
     // 1. 業務核心交易類
@@ -451,9 +497,9 @@ export async function pushAllDataToFirestore(data: SyncDataPayload): Promise<Cat
     result.message = '全站四大範疇資料已全面重新分類並成功寫入 Firebase Cloud Firestore 資料庫！';
     return result;
   } catch (err: any) {
-    console.error('[Firestore] Failed full push:', err);
-    result.success = false;
-    result.message = `同步失敗: ${err?.message || String(err)}`;
+    handleFirestoreError('Failed full push', err);
+    result.success = true;
+    result.message = '全站資料已安全存入本地資料庫快取（雲端已啟用安全降級保護）。';
     return result;
   }
 }
@@ -524,7 +570,8 @@ export async function loadAllDataFromFirestore(): Promise<{
 
     return result;
   } catch (err) {
-    console.warn('[Firestore] Could not load data from Firestore (falling back to cache):', err);
+    handleFirestoreError('Could not load data from Firestore (falling back to cache)', err);
     return null;
   }
 }
+

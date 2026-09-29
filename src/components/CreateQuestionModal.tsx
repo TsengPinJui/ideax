@@ -52,7 +52,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   initialPostType = 'seek_solution',
   initialPublishIdentity = 'admin',
 }) => {
-  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal } = useApp();
+  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode } = useApp();
 
   const [publishIdentity, setPublishIdentity] = useState<'admin' | 'platform'>(initialPublishIdentity || 'admin');
 
@@ -121,8 +121,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
 
-  const effectiveBounty = enablePhasedDelivery && bounty > 0 ? (phase1Points + phase2Points) : bounty;
-  const currentBounty = Number(effectiveBounty) || 0;
+  const effectiveBounty = isNoPaymentMode ? 0 : (enablePhasedDelivery && bounty > 0 ? (phase1Points + phase2Points) : bounty);
+  const currentBounty = isNoPaymentMode ? 0 : (Number(effectiveBounty) || 0);
 
   // Update subcategory whenever category changes
   const handleCategoryChange = (newCat: Category) => {
@@ -694,8 +694,18 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
         </div>
 
-        {/* Problem Level & Bounty Configuration */}
-        {postType !== 'chat_discussion' && (
+        {/* Problem Level & Bounty Configuration (無金流模式下全站免費提問) */}
+        {isNoPaymentMode ? (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 text-xs font-bold text-amber-950 flex items-center gap-2.5 shadow-2xs">
+            <Coins className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <div className="font-black text-amber-900">【⚡ 無金流模式運作中】：全站免費提問與深度交流</div>
+              <div className="text-[11px] text-amber-800/80 font-normal mt-0.5">
+                此模式下所有會員均可免費發布問題與提供解答，無須設定點數、支付懸賞金或負擔金流服務費。
+              </div>
+            </div>
+          </div>
+        ) : postType !== 'chat_discussion' && (
           <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <div className="flex items-center gap-2">

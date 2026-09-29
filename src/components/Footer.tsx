@@ -10,6 +10,7 @@ import {
 import { IdeaXLogo } from './IdeaXLogo';
 import { AppTab, AboutSection } from '../types';
 import { useApp } from '../context/AppContext';
+import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
 
 interface FooterProps {
   onNavClick: (tab: AppTab, section?: AboutSection | string) => void;
@@ -19,10 +20,6 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearchTag }) => {
   const { openCustomerService, openPwaInstallModal } = useApp();
-
-  const handlePwaDownload = () => {
-    openPwaInstallModal();
-  };
 
   const handleTagClick = (tagWithHash: string) => {
     const rawTag = tagWithHash.replace('#', '').trim();
@@ -62,18 +59,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             <p className="text-stone-400 leading-relaxed pt-1">
               一個問題，找到更多可能。專為新創團隊、商業領袖與技術探索者打造的高價值問題與解決方案交易市場。讓想法發光，連結無限可能。
             </p>
-            {/* 頁尾下載 APP 專用按鈕 */}
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={handlePwaDownload}
-                className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:scale-95 text-stone-950 rounded-xl font-black text-xs shadow-md shadow-amber-500/20 transition-all cursor-pointer group"
-                title="一鍵將 IdeaX 加入主畫面與桌面 App"
-              >
-                <Download className="w-3.5 h-3.5 text-stone-950 shrink-0 group-hover:translate-y-0.5 transition-transform" />
-                <span>下載APP</span>
-              </button>
-            </div>
           </div>
 
           {/* Quick links: 平台導覽 */}
@@ -148,11 +133,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               </li>
               <li>
                 <button
-                  onClick={handlePwaDownload}
-                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 group"
+                  onClick={() => triggerDirectAppDownloadOrInstall(openPwaInstallModal)}
+                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  title="直接下載或安裝 IdeaX 行動與桌面版 App"
                 >
-                  <Download className="w-3.5 h-3.5 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span>下載APP</span>
+                  <Download className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-bounce" />
+                  <span>下載 APP</span>
                 </button>
               </li>
             </ul>
@@ -235,14 +221,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
             >
               客服服務
-            </button>
-            <span>•</span>
-            <button
-              onClick={handlePwaDownload}
-              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer inline-flex items-center gap-1"
-            >
-              <Download className="w-3 h-3 text-amber-400 shrink-0" />
-              <span>下載APP</span>
             </button>
             <span>•</span>
             <span>讓創新想法化為真實商業價值。</span>

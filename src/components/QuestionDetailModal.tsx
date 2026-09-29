@@ -97,6 +97,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     spendPoints,
     subscribePlan,
     incrementQuestionViews,
+    isNoPaymentMode,
   } = useApp();
 
   useEffect(() => {
@@ -468,7 +469,14 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         </div>
 
         <div className="flex items-center gap-2">
-          {(question.bounty || 0) > 0 ? (
+          {isNoPaymentMode ? (
+            <div className="text-right shrink-0">
+              <span className="text-[11px] font-semibold text-stone-500 block">無金流交流模式</span>
+              <span className="text-xs sm:text-sm font-black text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300">
+                全站免費提案
+              </span>
+            </div>
+          ) : (question.bounty || 0) > 0 ? (
             <div className="text-right shrink-0">
               <span className="text-[11px] font-semibold text-stone-500 block">懸賞獎金</span>
               <span className="text-lg sm:text-xl font-black text-amber-600 font-mono">
@@ -1217,7 +1225,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               ) : (
                 solutionAnswers.map((ans) => {
                   const isSolver = currentUser.id === ans.solverId;
-                  const isUnlocked = isSolver || ans.isAccepted || (ans.unlockedByUserIds && ans.unlockedByUserIds.includes(currentUser.id)) || (!ans.isPaid);
+                  const isUnlocked = isNoPaymentMode || isSolver || ans.isAccepted || (ans.unlockedByUserIds && ans.unlockedByUserIds.includes(currentUser.id)) || (!ans.isPaid);
                   const isAccepted = ans.isAccepted;
                   const isExpanded = expandedAnswers[ans.id] ?? false;
 

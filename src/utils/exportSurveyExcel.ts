@@ -185,12 +185,12 @@ export function exportSurveyToExcelXlsx(
   summaryRows.push({ '統計維度': '【3. 尋求解答預算區間】', '分類項目': '', '人數/票數': '', '百分比': '' });
   const budgetCounts: Record<string, number> = {};
   validUsers.forEach((u) => {
-    const b = u.surveyData?.willingQuestionBudget || '2000_5000';
-    budgetCounts[b] = (budgetCounts[b] || 0) + 1;
+    const b = u.surveyData?.willingQuestionBudget;
+    if (b) budgetCounts[b] = (budgetCounts[b] || 0) + 1;
   });
   Object.entries(BUDGET_MAP).forEach(([key, label]) => {
     const c = budgetCounts[key] || 0;
-    summaryRows.push({ '統計維度': '', '分類項目': label, '人數/票數': c, '百分比': `${((c / total) * 100).toFixed(1)}%` });
+    summaryRows.push({ '統計維度': '', '分類項目': label, '人數/票數': c, '百分比': total > 0 ? `${((c / total) * 100).toFixed(1)}%` : '0.0%' });
   });
   summaryRows.push({});
 
@@ -198,12 +198,12 @@ export function exportSurveyToExcelXlsx(
   summaryRows.push({ '統計維度': '【4. 為他人提供有償解方意願】', '分類項目': '', '人數/票數': '', '百分比': '' });
   const solveCounts: Record<string, number> = {};
   validUsers.forEach((u) => {
-    const w = u.surveyData?.willingToProvideSolutions || (u.role === 'solver' ? 'very_willing' : 'depends_bounty');
-    solveCounts[w] = (solveCounts[w] || 0) + 1;
+    const w = u.surveyData?.willingToProvideSolutions;
+    if (w) solveCounts[w] = (solveCounts[w] || 0) + 1;
   });
   Object.entries(WILLING_SOLVE_MAP).forEach(([key, label]) => {
     const c = solveCounts[key] || 0;
-    summaryRows.push({ '統計維度': '', '分類項目': label, '人數/票數': c, '百分比': `${((c / total) * 100).toFixed(1)}%` });
+    summaryRows.push({ '統計維度': '', '分類項目': label, '人數/票數': c, '百分比': total > 0 ? `${((c / total) * 100).toFixed(1)}%` : '0.0%' });
   });
   summaryRows.push({});
 
@@ -211,12 +211,12 @@ export function exportSurveyToExcelXlsx(
   summaryRows.push({ '統計維度': '【5. 打開 IdeaX 頻率習慣】', '分類項目': '', '人數/票數': '', '百分比': '' });
   const freqCounts: Record<string, number> = {};
   validUsers.forEach((u) => {
-    const f = u.surveyData?.usageFrequency || 'few_times_weekly';
-    freqCounts[f] = (freqCounts[f] || 0) + 1;
+    const f = u.surveyData?.usageFrequency;
+    if (f) freqCounts[f] = (freqCounts[f] || 0) + 1;
   });
   Object.entries(FREQ_MAP).forEach(([key, label]) => {
     const c = freqCounts[key] || 0;
-    summaryRows.push({ '統計維度': '', '分類項目': label, '人數/票數': c, '百分比': `${((c / total) * 100).toFixed(1)}%` });
+    summaryRows.push({ '統計維度': '', '分類項目': label, '人數/票數': c, '百分比': total > 0 ? `${((c / total) * 100).toFixed(1)}%` : '0.0%' });
   });
   summaryRows.push({});
 
@@ -224,12 +224,12 @@ export function exportSurveyToExcelXlsx(
   summaryRows.push({ '統計維度': '【6. 將解答作為有償副業意願】', '分類項目': '', '人數/票數': '', '百分比': '' });
   const sideCounts: Record<string, number> = {};
   validUsers.forEach((u) => {
-    const sh = u.surveyData?.willingToBeSideHustle || 'considering';
-    sideCounts[sh] = (sideCounts[sh] || 0) + 1;
+    const sh = u.surveyData?.willingToBeSideHustle;
+    if (sh) sideCounts[sh] = (sideCounts[sh] || 0) + 1;
   });
   Object.entries(SIDE_HUSTLE_MAP).forEach(([key, label]) => {
     const c = sideCounts[key] || 0;
-    summaryRows.push({ '統計維度': '', '分類項目': label, '人數/票數': c, '百分比': `${((c / total) * 100).toFixed(1)}%` });
+    summaryRows.push({ '統計維度': '', '分類項目': label, '人數/票數': c, '百分比': total > 0 ? `${((c / total) * 100).toFixed(1)}%` : '0.0%' });
   });
   summaryRows.push({});
 
@@ -237,12 +237,12 @@ export function exportSurveyToExcelXlsx(
   summaryRows.push({ '統計維度': '【7. 解答者優惠方案付費意願】', '分類項目': '', '人數/票數': '', '百分比': '' });
   const subCounts: Record<string, number> = {};
   validUsers.forEach((u) => {
-    const sp = u.surveyData?.willingToSubscribeSolverPlan || 'depends_profit';
-    subCounts[sp] = (subCounts[sp] || 0) + 1;
+    const sp = u.surveyData?.willingToSubscribeSolverPlan;
+    if (sp) subCounts[sp] = (subCounts[sp] || 0) + 1;
   });
   Object.entries(SUBSCRIBE_MAP).forEach(([key, label]) => {
     const c = subCounts[key] || 0;
-    summaryRows.push({ '統計維度': '', '分類項目': label, '人數/票數': c, '百分比': `${((c / total) * 100).toFixed(1)}%` });
+    summaryRows.push({ '統計維度': '', '分類項目': label, '人數/票數': c, '百分比': total > 0 ? `${((c / total) * 100).toFixed(1)}%` : '0.0%' });
   });
 
   const wsSummary = XLSX.utils.json_to_sheet(summaryRows);

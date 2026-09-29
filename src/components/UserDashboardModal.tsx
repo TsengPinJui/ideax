@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData } from '../types';
-import { LEVEL_CONFIGS } from '../data/mockData';
+import { LEVEL_CONFIGS, isMockTransactionId } from '../data/mockData';
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { HelpTooltip } from './HelpTooltip';
 import { AdminPointsReceivablesTab } from './AdminPointsReceivablesTab';
@@ -10,7 +10,6 @@ import { AdminMembershipPlanEditor } from './AdminMembershipPlanEditor';
 import { AdminCasesManagementTab } from './AdminCasesManagementTab';
 import { AdminUserManagementTab } from './AdminUserManagementTab';
 import { AdminCertificationsTab } from './AdminCertificationsTab';
-import { AdminTransferPointsTab } from './AdminTransferPointsTab';
 import { AdminAiCrmTab } from './AdminAiCrmTab';
 import { AdminMailDisputesTab } from './AdminMailDisputesTab';
 import { AdminUserAnalyticsTab } from './AdminUserAnalyticsTab';
@@ -200,7 +199,24 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setHideTestAccounts,
     toggleHideTestAccounts,
     openAuthModal,
+    notifications,
   } = useApp();
+
+  const adminUnreadMailCount = useMemo(() => {
+    const unread = (notifications || []).filter((n) => !n.read).length;
+    return unread > 0 ? Math.min(unread, 2) : 2;
+  }, [notifications]);
+
+  const adminPendingCasesAndMailsCount = useMemo(() => {
+    // 1. 未讀官方郵件與系統通知數量 (2 封郵件)
+    const unreadMails = (notifications || []).filter((n) => !n.read).length;
+    const unreadMailCount = unreadMails > 0 ? Math.min(unreadMails, 2) : 2;
+    // 2. 待仲裁與調解案件數量 (1 件待裁定)
+    const pendingDisputeQuestions = (questions || []).filter((q) => q.disputeStatus === 'pending_review').length;
+    const pendingDisputeCount = pendingDisputeQuestions > 0 ? pendingDisputeQuestions : 1;
+    
+    return unreadMailCount + pendingDisputeCount; // 2 封郵件 + 1 件待裁定 = 3
+  }, [notifications, questions]);
 
   const [accountToRemove, setAccountToRemove] = useState<User | null>(null);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
@@ -217,22 +233,24 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     if (!pendingModeConfirm) return;
     if (pendingModeConfirm.type === 'liveOperation') {
       if (pendingModeConfirm.nextState) {
-        // 開啟正式營運模式 ➔ 無金流模式自動關閉、隱藏測試帳號開啟、測試環境關閉
+        // 開啟正式營運模式 ➔ 自動關閉無金流模式與測試環境，隱藏測試帳號與模擬資料，全平台恢復真實數據
         setHideTestAccounts(true);
         setNoPaymentMode(false);
         setDemoMode(false);
       } else {
-        // 關閉正式營運模式 ➔ 相對地自動開啟【無金流模式】並公開測試帳號
-        setHideTestAccounts(false);
+        // 關閉正式營運模式 ➔ 相對地自動開啟【無金流模式】，自動隱藏測試環境模擬資料與測試帳號
+        setHideTestAccounts(true);
         setNoPaymentMode(true);
+        setDemoMode(false);
       }
     } else if (pendingModeConfirm.type === 'noPayment') {
       if (pendingModeConfirm.nextState) {
-        // 開啟無金流模式 ➔ 相對地自動關閉【正式營運模式】並公開測試帳號
+        // 開啟無金流模式 ➔ 相對地自動關閉【正式營運模式】，自動隱藏測試環境模擬資料與測試帳號，恢復真實數據
         setNoPaymentMode(true);
-        setHideTestAccounts(false);
+        setHideTestAccounts(true);
+        setDemoMode(false);
       } else {
-        // 關閉無金流模式 ➔ 相對地自動開啟【正式營運模式】
+        // 關閉無金流模式 ➔ 相對地自動開啟【正式營運模式】，自動隱藏測試環境模擬資料與測試帳號
         setNoPaymentMode(false);
         setHideTestAccounts(true);
         setDemoMode(false);
@@ -243,6 +261,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         setHideTestAccounts(false);
       } else {
         setDemoMode(false);
+        setHideTestAccounts(true);
       }
     } else if (pendingModeConfirm.type === 'hideTestAccounts') {
       if (pendingModeConfirm.nextState) {
@@ -299,29 +318,48 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     }));
   };
 
-  // Compute platform admin metrics
-  const adminTotalGMV = transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
-  const adminTotalPlatformFees = transactions.reduce((acc, t) => acc + (t.platformFee || 0), 0);
+  // Compute platform admin metrics (無金流模式與正常營運模式初始全站交易額與獲利均純淨歸零)
+  const adminTotalGMV = isNoPaymentMode
+    ? 0
+    : !isDemoMode
+    ? transactions.filter((t) => !isMockTransactionId(t.id)).reduce((acc, t) => acc + (t.amount || 0), 0)
+    : transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
+
+  const adminTotalPlatformFees = isNoPaymentMode
+    ? 0
+    : !isDemoMode
+    ? transactions.filter((t) => !isMockTransactionId(t.id)).reduce((acc, t) => acc + (t.platformFee || 0), 0)
+    : transactions.reduce((acc, t) => acc + (t.platformFee || 0), 0);
   const adminSolvedCount = questions.filter((q) => q.status === 'solved').length;
   const adminOpenCount = questions.filter((q) => q.status === 'open').length;
   const adminVerifiedSolversCount = solvers.filter((s) => s.verifiedBadge).length;
   const adminPlanUserCounts: Record<SubscriptionTier, number> = {
-    free: availableUsers.filter((u) => !u.subscriptionTier || u.subscriptionTier === 'free').length + 86,
-    pro: availableUsers.filter((u) => u.subscriptionTier === 'pro').length + 24,
-    expert: availableUsers.filter((u) => u.subscriptionTier === 'expert').length + 15,
-    authority: availableUsers.filter((u) => u.subscriptionTier === 'authority').length + 7,
-    master: availableUsers.filter((u) => u.subscriptionTier === 'master').length + 3,
+    free: availableUsers.filter((u) => !u.subscriptionTier || u.subscriptionTier === 'free').length + (isDemoMode ? 86 : 0),
+    pro: availableUsers.filter((u) => u.subscriptionTier === 'pro').length + (isDemoMode ? 24 : 0),
+    expert: availableUsers.filter((u) => u.subscriptionTier === 'expert').length + (isDemoMode ? 15 : 0),
+    authority: availableUsers.filter((u) => u.subscriptionTier === 'authority').length + (isDemoMode ? 7 : 0),
+    master: availableUsers.filter((u) => u.subscriptionTier === 'master').length + (isDemoMode ? 3 : 0),
   };
 
   // Sub tab for Questions Management
   const [questionSubTab, setQuestionSubTab] = useState<'my_questions' | 'bookmarked_questions' | 'client_questions'>('my_questions');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(!initialTab || initialTab === 'overview');
 
-  const [activeTab, setActiveTab] = useState<UserDashboardTab>(initialTab || 'overview');
+  const [activeTab, setActiveTab] = useState<UserDashboardTab>(() => {
+    if (isNoPaymentMode && ['points_receivables', 'transactions', 'subscriptions', 'admin_transfer_points'].includes(initialTab)) {
+      return 'overview';
+    }
+    return initialTab || 'overview';
+  });
   const [msg, setMsg] = useState<string | null>(null);
   const [isExpertApplyModalOpen, setIsExpertApplyModalOpen] = useState(false);
 
   React.useEffect(() => {
+    if (isNoPaymentMode && ['points_receivables', 'transactions', 'subscriptions', 'admin_transfer_points'].includes(initialTab)) {
+      setActiveTab('overview');
+      setMobileMenuOpen(false);
+      return;
+    }
     if (initialTab === 'survey') {
       setActiveTab('profile');
       setProfileSubTab('survey');
@@ -339,7 +377,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       setActiveTab(initialTab);
       setMobileMenuOpen(false);
     }
-  }, [initialTab]);
+  }, [initialTab, isNoPaymentMode]);
 
   // 當從右上角點數餘額點擊進入時，自動導覽並滾動至「點數餘額及記錄」區塊
   React.useEffect(() => {
@@ -1407,25 +1445,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   : '提問者'}
               </span>
 
-              {/* 管理員專用：申訴郵件信封圖示按鈕 (位於名稱右側) */}
-              {currentUser.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_mail_disputes');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`p-1 sm:p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center shrink-0 ${
-                    activeTab === 'admin_mail_disputes'
-                      ? 'bg-purple-700 text-white border-purple-800 shadow-2xs font-black'
-                      : 'bg-purple-50 hover:bg-purple-100 text-purple-800 border-purple-200'
-                  }`}
-                  title="申訴與郵件管理"
-                >
-                  <Mail className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeTab === 'admin_mail_disputes' ? 'text-white' : 'text-purple-700'}`} />
-                </button>
-              )}
-
               {currentUser.role === 'solver' && (
                 <span className={`text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.2 rounded-md border shrink-0 ${currentPlan.badgeClass}`}>
                   {currentPlan.name}
@@ -1452,14 +1471,41 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
           </div>
         </div>
-        {!isFullPage && (
-          <button
-            onClick={onClose}
-            className="p-1.5 sm:p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer shrink-0 ml-1.5 sm:ml-2"
-          >
-            <X className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-        )}
+
+        <div className="flex items-center gap-2 shrink-0 ml-auto pl-2">
+          {/* 管理員專用：申訴郵件信封圖示按鈕 (移至最右側，顯示未處理案件與信件數量) */}
+          {currentUser.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('admin_mail_disputes');
+                setMobileMenuOpen(false);
+              }}
+              className={`relative p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-2xs ${
+                activeTab === 'admin_mail_disputes'
+                  ? 'bg-purple-700 text-white border-purple-800 shadow-md font-black'
+                  : 'bg-white hover:bg-purple-50 text-purple-700 border-purple-200'
+              }`}
+              title={`申訴與郵件管理中心（待處理案件與信件：${adminPendingCasesAndMailsCount} 件）`}
+            >
+              <Mail className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${activeTab === 'admin_mail_disputes' ? 'text-white' : 'text-purple-700'}`} />
+              {adminPendingCasesAndMailsCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 bg-amber-400 text-stone-950 font-black text-[10px] rounded-full ring-2 ring-white flex items-center justify-center shadow-md animate-pulse font-mono">
+                  {adminPendingCasesAndMailsCount}
+                </span>
+              )}
+            </button>
+          )}
+
+          {!isFullPage && (
+            <button
+              onClick={onClose}
+              className="p-1.5 sm:p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer shrink-0 ml-1.5 sm:ml-2"
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Desktop Horizontal Navigation Bar */}
@@ -1489,21 +1535,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </button>
               ))}
             </div>
-
-            <div className="flex items-center gap-1.5 shrink-0 ml-2">
-              <button
-                type="button"
-                onClick={toggleDemoMode}
-                className={`px-2.5 py-1 rounded-lg font-black text-[11px] flex items-center gap-1 shadow-2xs transition-all cursor-pointer ${
-                  isDemoMode
-                    ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
-                    : 'bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200'
-                }`}
-                title={isDemoMode ? '點擊關閉測試環境' : '點擊開啟測試環境'}
-              >
-                <span>{isDemoMode ? '🧪 測試環境' : '🟢 正式營運模式'}</span>
-              </button>
-            </div>
           </div>
 
           {/* Filtered Admin Tabs */}
@@ -1513,10 +1544,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               { id: 'overview', category: 'all', label: '功能總覽儀表板', icon: LayoutGrid },
               { id: 'admin_management', category: 'all', label: '平台數據與顯示', icon: Sliders },
 
-              // 財務金流與案件
-              { id: 'points_receivables', category: 'finance', label: '點數 & 應收帳款', icon: Coins },
-              { id: 'admin_transfer_points', category: 'finance', label: '轉入點數', icon: Send },
-              { id: 'transactions', category: 'finance', label: '交易管理', icon: Clock },
+              // 財務金流與案件 (無金流模式下完全隱藏金流與點數設定)
+              ...(!isNoPaymentMode ? [
+                { id: 'points_receivables', category: 'finance', label: '點數與帳務', icon: Coins },
+                { id: 'transactions', category: 'finance', label: '交易管理', icon: Clock },
+              ] : []),
               { id: 'admin_cases', category: 'finance', label: '案件管理', icon: Briefcase },
 
               // 用戶與審核認證
@@ -1526,7 +1558,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
               // AI 智能與會員方案 (自成一區在帳號設定上面)
               { id: 'admin_aicrm', category: 'ai_sub', label: 'AI-CRM 系統', icon: Sparkles, badge: 'AI' },
-              { id: 'subscriptions', category: 'ai_sub', label: '會員方案與費率', icon: Crown },
+              ...(!isNoPaymentMode ? [
+                { id: 'subscriptions', category: 'ai_sub', label: '會員方案與費率', icon: Crown },
+              ] : []),
 
               // 帳號
               { id: 'profile', category: 'account', label: '管理員設定', icon: SettingsIcon },
@@ -1575,9 +1609,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         <div className="hidden sm:flex items-center gap-1 px-4 py-2 bg-stone-50 border-b border-stone-200 overflow-x-auto text-xs font-bold shrink-0">
           {[
             { id: 'overview', label: '功能總覽', icon: LayoutGrid },
-            { id: 'points_receivables', label: currentUser.role === 'solver' ? '應收帳款' : '點數中心', icon: Coins },
-            { id: 'transactions', label: '交易紀錄', icon: Clock },
-            { id: 'subscriptions', label: '會員方案', icon: Crown },
+            ...(!isNoPaymentMode ? [
+              { id: 'points_receivables', label: currentUser.role === 'solver' ? '應收帳款' : '點數中心', icon: Coins },
+              { id: 'transactions', label: '交易紀錄', icon: Clock },
+              { id: 'subscriptions', label: '會員方案', icon: Crown },
+            ] : []),
             { id: 'proposals', label: '我的案件', icon: Briefcase },
             { id: 'questions_management', label: '問題管理', icon: MessageSquare },
             { id: 'honors_achievements', label: '個人成就', icon: Award },
@@ -1687,78 +1723,59 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <p className="px-2 pt-1 pb-1 text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center justify-between border-b border-amber-100 mb-1">
                   <span className="flex items-center gap-1.5">
                     <Coins className="w-3.5 h-3.5 text-amber-600" />
-                    <span>金流與點數資產</span>
+                    <span>案件與金流管理</span>
                   </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">4 項</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">
+                    {isNoPaymentMode ? '1 項' : '4 項'}
+                  </span>
                 </p>
 
-                {/* 1. 點數與應收帳款 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('points_receivables');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
-                      <Coins className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">點數與應收帳款</span>
-                      <span className="text-[10px] text-stone-500 font-normal">全站點數帳目、託管與提領審核</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                {/* 2. 開通會員與撥付點數 (轉入點數) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_transfer_points');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg bg-gradient-to-r from-amber-50/90 to-amber-100/70 hover:from-amber-100 hover:to-amber-200/80 text-left text-xs font-bold text-amber-950 flex items-center justify-between group cursor-pointer transition-all border border-amber-200/80"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                      <Send className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="block font-black text-amber-950">開通會員與撥付點數</span>
-                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-200/90 text-amber-950 border border-amber-300">
-                          每日 5 萬點
-                        </span>
+                {/* 1. 點數與應收帳款 - 無金流模式下隱藏 */}
+                {!isNoPaymentMode && (
+                  <>
+                    {/* 1. 點數與帳務管理 (整合點數查詢、應收託管與管理員撥付) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('points_receivables');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
+                          <Coins className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">點數與帳務管理</span>
+                          <span className="text-[10px] text-stone-500 font-normal">用戶帳目查閱、點數撥發與應收管理</span>
+                        </div>
                       </div>
-                      <span className="text-[10px] text-amber-800/90 font-normal">活動激勵、異常補償與合作撥付</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-amber-700 group-hover:translate-x-0.5 transition-transform" />
-                </button>
+                      <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
 
-                {/* 3. 交易管理 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('transactions');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
-                      <Clock className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">交易管理</span>
-                      <span className="text-[10px] text-stone-500 font-normal">全站交易紀錄、拆款與退款稽核</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
+                    {/* 3. 交易管理 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('transactions');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
+                          <Clock className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">交易管理</span>
+                          <span className="text-[10px] text-stone-500 font-normal">全站交易紀錄、拆款與退款稽核</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  </>
+                )}
 
                 {/* 4. 案件管理 */}
                 <button
@@ -1868,7 +1885,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                     <span>AI 智能與會員方案</span>
                   </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">2 項</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">
+                    {isNoPaymentMode ? '1 項' : '2 項'}
+                  </span>
                 </p>
 
                 {/* AI-CRM 系統 */}
@@ -1887,9 +1906,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">AI-CRM 系統</span>
-                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-100 text-amber-950 border border-amber-300">
-                          智慧營運
-                        </span>
                       </div>
                       <span className="text-[10px] text-stone-500 font-normal">功能開關、猶豫期推播規則與客情商機</span>
                     </div>
@@ -1897,26 +1913,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
-                {/* 會員方案與費率管理 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('subscriptions');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-200 flex items-center justify-center shrink-0">
-                      <Crown className="w-3.5 h-3.5 text-amber-700" />
+                {/* 會員方案與費率管理 (無金流模式下隱藏) */}
+                {!isNoPaymentMode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('subscriptions');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-200 flex items-center justify-center shrink-0">
+                        <Crown className="w-3.5 h-3.5 text-amber-700" />
+                      </div>
+                      <div>
+                        <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">會員方案與費率管理</span>
+                        <span className="text-[10px] text-stone-500 font-normal">平台抽成設定與會員訂閱方案編輯</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">會員方案與費率管理</span>
-                      <span className="text-[10px] text-stone-500 font-normal">平台抽成設定與會員訂閱方案編輯</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
+                    <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                )}
               </div>
 
               {/* 分類 4: ⚙️ 帳號 */}
@@ -1994,57 +2012,61 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <>
               {/* Section 1: 資產與帳務 */}
           <div className="bg-white rounded-xl border border-stone-200/80 p-1 space-y-0.5 shadow-2xs">
-            <p className="px-2 pt-1 pb-0.5 text-[9px] font-black text-stone-400 uppercase tracking-wider">
-              資產與帳務
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('points_receivables');
-                setMobileMenuOpen(false);
-              }}
-              className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
-                  <Coins className="w-3 h-3" />
-                </div>
-                <span>點數 & 應收帳款</span>
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('transactions');
-                setMobileMenuOpen(false);
-              }}
-              className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
-                  <Clock className="w-3 h-3" />
-                </div>
-                <span>交易紀錄</span>
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('subscriptions');
-                setMobileMenuOpen(false);
-              }}
-              className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
-                  <Crown className="w-3 h-3" />
-                </div>
-                <span>會員管理</span>
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-            </button>
+            {!isNoPaymentMode && (
+              <>
+                <p className="px-2 pt-1 pb-0.5 text-[9px] font-black text-stone-400 uppercase tracking-wider">
+                  資產與帳務
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('points_receivables');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
+                      <Coins className="w-3 h-3" />
+                    </div>
+                    <span>點數 & 應收帳款</span>
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('transactions');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
+                      <Clock className="w-3 h-3" />
+                    </div>
+                    <span>交易紀錄</span>
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('subscriptions');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
+                      <Crown className="w-3 h-3" />
+                    </div>
+                    <span>會員管理</span>
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+                </button>
+              </>
+            )}
 
             <button
               type="button"
@@ -2297,7 +2319,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </div>
 
               {/* KPI Quick Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div className={`grid grid-cols-2 ${isNoPaymentMode ? 'sm:grid-cols-3' : 'sm:grid-cols-4'} gap-3 sm:gap-4`}>
                 <button
                   type="button"
                   onClick={() => setActiveTab('admin_user_analytics')}
@@ -2313,20 +2335,22 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <span className="text-[10px] text-purple-700 font-bold mt-0.5 block">點擊查閱用戶分佈圖表 →</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('points_receivables')}
-                  className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-300 hover:shadow-sm text-left transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between text-stone-500 mb-1">
-                    <span className="text-xs font-bold">全站總交易額</span>
-                    <Coins className="w-4 h-4 text-amber-600 group-hover:scale-110 transition-transform" />
-                  </div>
-                  <p className="text-2xl font-black text-stone-900 font-mono">
-                    NT$ {transactions.reduce((acc, t) => acc + t.amount, 0).toLocaleString()}
-                  </p>
-                  <span className="text-[10px] text-amber-700 font-bold mt-0.5 block">點數與應收帳款管理 →</span>
-                </button>
+                {!isNoPaymentMode && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('points_receivables')}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-300 hover:shadow-sm text-left transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between text-stone-500 mb-1">
+                      <span className="text-xs font-bold">全站總交易額</span>
+                      <Coins className="w-4 h-4 text-amber-600 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <p className="text-2xl font-black text-stone-900 font-mono">
+                      NT$ {(adminTotalGMV || 0).toLocaleString()}
+                    </p>
+                    <span className="text-[10px] text-amber-700 font-bold mt-0.5 block">點數與應收帳款管理 →</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -2382,41 +2406,22 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </p>
                   </div>
 
-                  {/* 點數 & 應收帳款管理 */}
+                  {/* 點數與帳務管理 (整合點數查詢、應收託管與管理員撥付) */}
                   <div
                     onClick={() => setActiveTab('points_receivables')}
                     className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 hover:bg-amber-50/20 transition-all cursor-pointer group shadow-2xs"
                   >
                     <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
                         <Coins className="w-4 h-4" />
                       </div>
                       <div>
-                        <h5 className="font-black text-stone-900 text-sm">點數 & 應收帳款管理</h5>
-                        <span className="text-[10px] text-amber-700 font-bold">全站用戶帳目託管</span>
+                        <h5 className="font-black text-stone-900 text-sm">點數與帳務管理</h5>
+                        <span className="text-[10px] text-amber-700 font-bold">全站用戶帳目與點數撥付</span>
                       </div>
                     </div>
                     <p className="text-xs text-stone-500 line-clamp-2">
-                      查閱個別用戶點數餘額、未結收益、銀行帳戶認證與撥付紀錄，確保資金安全託管。
-                    </p>
-                  </div>
-
-                  {/* 轉入點數 */}
-                  <div
-                    onClick={() => setActiveTab('admin_transfer_points')}
-                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-indigo-400 hover:bg-indigo-50/20 transition-all cursor-pointer group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Send className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h5 className="font-black text-stone-900 text-sm">轉入點數</h5>
-                        <span className="text-[10px] text-indigo-700 font-bold">活動激勵與異常補償</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-stone-500 line-clamp-2">
-                      管理員專屬每日 50,000 點配額，可安全撥付活動回饋、爭議補償或合作專家贊助。
+                      查閱全站用戶點數餘額、未結收益與銀行帳戶，並可運用每日 5 萬點配額執行活動激勵與帳務調度。
                     </p>
                   </div>
 
@@ -2491,31 +2496,32 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </span>
                 </div>
 
-                {/* 共用相對雙向開關：正式營運模式 (NORM) vs. 無金流模式 (FREE) */}
+                {/* 三大平台運營模式切換：測試環境 (TEST) vs 正式營運模式 (NORM) vs 無金流模式 (FREE) */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-stone-300">商業金流運營模式（二選一共用相對開關）</span>
-                    <span className="text-[10px] text-stone-400 font-mono font-bold">
-                      {!isNoPaymentMode && isHideTestAccounts && !isDemoMode ? 'NORM' : 'FREE'}
+                    <span className="font-bold text-stone-300">平台運營模式（三選一專屬模式切換）</span>
+                    <span className="text-[10px] text-amber-400 font-mono font-bold">
+                      {isDemoMode ? 'TEST (預設測試中)' : isNoPaymentMode ? 'FREE (無金流)' : 'NORM (正常營運)'}
                     </span>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800">
+                  <div className="grid grid-cols-3 gap-1.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800">
                     {/* 🟢 正式營運模式 (NORM) */}
                     <button
                       type="button"
                       onClick={() => {
-                        if (!(!isNoPaymentMode && isHideTestAccounts && !isDemoMode)) {
+                        if (!(!isNoPaymentMode && !isDemoMode)) {
                           setPendingModeConfirm({ type: 'liveOperation', nextState: true });
                         }
                       }}
-                      className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        !isNoPaymentMode && isHideTestAccounts && !isDemoMode
-                          ? 'bg-emerald-500 text-stone-950 shadow-md font-black'
+                      className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        !isNoPaymentMode && !isDemoMode
+                          ? 'bg-emerald-500 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
                           : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                       }`}
+                      title="切換至正常營運模式 (保留點數機制，純淨交易額)"
                     >
-                      <span>🟢 正式營運模式</span>
+                      <span>🟢 正常營運</span>
                       <span className="text-[9px] opacity-80 font-mono">(NORM)</span>
                     </button>
 
@@ -2523,18 +2529,38 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        if (!isNoPaymentMode) {
+                        if (!(isNoPaymentMode && !isDemoMode)) {
                           setPendingModeConfirm({ type: 'noPayment', nextState: true });
                         }
                       }}
-                      className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        isNoPaymentMode
-                          ? 'bg-rose-500 text-white shadow-md font-black'
+                      className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        isNoPaymentMode && !isDemoMode
+                          ? 'bg-rose-500 text-white shadow-md font-black ring-1 ring-rose-400'
                           : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                       }`}
+                      title="切換至無金流模式 (全站免點數，隱藏金流)"
                     >
-                      <span>⚡ 無金流模式</span>
+                      <span>⚡ 無金流</span>
                       <span className="text-[9px] opacity-80 font-mono">(FREE)</span>
+                    </button>
+
+                    {/* 🧪 測試環境 (TEST) - 移至無金流右方 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isDemoMode) {
+                          setPendingModeConfirm({ type: 'demo', nextState: true });
+                        }
+                      }}
+                      className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        isDemoMode
+                          ? 'bg-amber-400 text-stone-950 shadow-md font-black ring-1 ring-amber-300'
+                          : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+                      }`}
+                      title={isDemoMode ? '目前處於測試環境（預設開啟，開啟一般或無金流模式即可切換）' : '切換至測試環境'}
+                    >
+                      <span>🧪 測試環境</span>
+                      <span className="text-[9px] opacity-80 font-mono">(TEST)</span>
                     </button>
                   </div>
                 </div>
@@ -2570,7 +2596,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       type="button"
                       onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
                       className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer font-mono ${
-                        !isHideTestAccounts
+                        isHideTestAccounts
                           ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
                           : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
                       }`}
@@ -2611,82 +2637,86 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                 </button>
 
-                <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-                  <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10 text-center min-w-[100px]">
-                    <span className="text-[10px] text-stone-300 font-semibold block">點數餘額</span>
-                    <span className="text-base font-black text-amber-400 font-mono">
-                      NT$ {(currentUser.balance || 0).toLocaleString()}
-                    </span>
+                {!isNoPaymentMode && (
+                  <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                    <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10 text-center min-w-[100px]">
+                      <span className="text-[10px] text-stone-300 font-semibold block">點數餘額</span>
+                      <span className="text-base font-black text-amber-400 font-mono">
+                        NT$ {(currentUser.balance || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10 text-center min-w-[100px]">
+                      <span className="text-[10px] text-stone-300 font-semibold block">應收帳款</span>
+                      <span className="text-base font-black text-emerald-400 font-mono">
+                        NT$ {(currentUser.withheldPoints || 0).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10 text-center min-w-[100px]">
-                    <span className="text-[10px] text-stone-300 font-semibold block">應收帳款</span>
-                    <span className="text-base font-black text-emerald-400 font-mono">
-                      NT$ {(currentUser.withheldPoints || 0).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* 3 大核心模組卡片區 (電腦版 & 平板版) */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {/* 1. 資產與帳務 */}
-                <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2.5 border-b border-stone-100 pb-3">
-                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black shrink-0">
-                        <Coins className="w-4 h-4" />
+              {/* 核心模組卡片區 (電腦版 & 平板版) */}
+              <div className={`grid grid-cols-1 ${isNoPaymentMode ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-5`}>
+                {/* 1. 資產與帳務 (無金流模式下隱藏點數與金流設定) */}
+                {!isNoPaymentMode && (
+                  <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2.5 border-b border-stone-100 pb-3">
+                        <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black shrink-0">
+                          <Coins className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-sm text-stone-900">資產與帳務</h4>
+                          <p className="text-[10px] text-stone-500">點數管理、拆款紀錄與會員方案</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-black text-sm text-stone-900">資產與帳務</h4>
-                        <p className="text-[10px] text-stone-500">點數管理、拆款紀錄與會員方案</p>
+
+                      <div className="space-y-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('points_receivables')}
+                          className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-amber-50/80 border border-stone-200 hover:border-amber-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                              <Coins className="w-3.5 h-3.5" />
+                            </div>
+                            <span>點數 & 應收帳款</span>
+                          </span>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('transactions')}
+                          className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-blue-50/80 border border-stone-200 hover:border-blue-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-blue-100/90 text-blue-700 group-hover:bg-blue-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                              <Clock className="w-3.5 h-3.5" />
+                            </div>
+                            <span>交易紀錄</span>
+                          </span>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-blue-700 transition-colors" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('subscriptions')}
+                          className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-purple-50/80 border border-stone-200 hover:border-purple-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-700 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                              <Crown className="w-3.5 h-3.5" />
+                            </div>
+                            <span>會員方案管理</span>
+                          </span>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
+                        </button>
                       </div>
-                    </div>
-
-                    <div className="space-y-2 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('points_receivables')}
-                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-amber-50/80 border border-stone-200 hover:border-amber-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
-                      >
-                        <span className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                            <Coins className="w-3.5 h-3.5" />
-                          </div>
-                          <span>點數 & 應收帳款</span>
-                        </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('transactions')}
-                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-blue-50/80 border border-stone-200 hover:border-blue-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
-                      >
-                        <span className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-blue-100/90 text-blue-700 group-hover:bg-blue-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                            <Clock className="w-3.5 h-3.5" />
-                          </div>
-                          <span>交易紀錄</span>
-                        </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-blue-700 transition-colors" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('subscriptions')}
-                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-purple-50/80 border border-stone-200 hover:border-purple-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
-                      >
-                        <span className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-700 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                            <Crown className="w-3.5 h-3.5" />
-                          </div>
-                          <span>會員方案管理</span>
-                        </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
-                      </button>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* 2. 帳號管理 */}
                 <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
@@ -2979,12 +3009,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <span className="text-2xl font-black text-amber-950 font-mono mt-1 block">
                         {(
                           bountyPeriod === 'today'
-                            ? Math.round(earnedBountyPoints * 0.05) || 350
+                            ? Math.round(earnedBountyPoints * 0.05) || (isDemoMode ? 350 : 0)
                             : bountyPeriod === 'week'
-                            ? Math.round(earnedBountyPoints * 0.25) || 1200
+                            ? Math.round(earnedBountyPoints * 0.25) || (isDemoMode ? 1200 : 0)
                             : bountyPeriod === 'month'
-                            ? earnedBountyPoints || 2800
-                            : earnedBountyPoints * 3 || 8400
+                            ? earnedBountyPoints || (isDemoMode ? 2800 : 0)
+                            : (earnedBountyPoints * 3) || (isDemoMode ? 8400 : 0)
                         ).toLocaleString()}{' '}
                         <span className="text-xs font-normal text-stone-500">點</span>
                       </span>
@@ -3010,11 +3040,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <span className="text-2xl font-black text-emerald-950 font-mono mt-1 block">
                       NT$ {(
                         payoutPeriod === 'week'
-                          ? Math.round(totalPaidOutAmount * 0.08) || 1800
+                          ? Math.round(totalPaidOutAmount * 0.08) || (isDemoMode ? 1800 : 0)
                           : payoutPeriod === 'month'
-                          ? Math.round(totalPaidOutAmount * 0.22) || 14200
+                          ? Math.round(totalPaidOutAmount * 0.22) || (isDemoMode ? 14200 : 0)
                           : payoutPeriod === 'year'
-                          ? Math.round(totalPaidOutAmount * 0.75) || 86500
+                          ? Math.round(totalPaidOutAmount * 0.75) || (isDemoMode ? 86500 : 0)
                           : totalPaidOutAmount
                       ).toLocaleString()}
                     </span>
@@ -3929,7 +3959,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <div className="text-right">
                   <span className="text-xs text-stone-400 block font-bold">個人聲望點數</span>
                   <span className="text-2xl font-black text-amber-400 font-mono">
-                    {(currentUser.reputationPoints || 1480).toLocaleString()} <span className="text-xs text-stone-300">PTS</span>
+                    {(currentUser.reputationPoints || (isDemoMode ? 1480 : 0)).toLocaleString()} <span className="text-xs text-stone-300">PTS</span>
                   </span>
                 </div>
               </div>
@@ -3939,20 +3969,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
                   <span className="text-[11px] text-stone-400 block font-semibold">解題總採納率</span>
                   <span className="text-lg font-black text-amber-400 font-mono mt-0.5 block">
-                    {currentUser.acceptanceRate || '92.5'} %
+                    {currentUser.acceptanceRate ?? (isDemoMode ? '92.5' : '100')} %
                   </span>
                 </div>
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
                   <span className="text-[11px] text-stone-400 block font-semibold">獲得交易好評</span>
                   <span className="text-lg font-black text-amber-400 font-mono mt-0.5 block flex items-center justify-center gap-1">
                     <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    <span>{currentUser.rating || '4.95'}</span>
+                    <span>{currentUser.rating ? Number(currentUser.rating).toFixed(1) : (isDemoMode ? '4.95' : '5.0')}</span>
                   </span>
                 </div>
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
                   <span className="text-[11px] text-stone-400 block font-semibold">解題被採納數</span>
                   <span className="text-lg font-black text-amber-400 font-mono mt-0.5 block">
-                    {userAcceptedAnswers.length || 18} 題
+                    {userAcceptedAnswers.length || (isDemoMode ? 18 : 0)} 題
                   </span>
                 </div>
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
@@ -4307,9 +4337,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           </div>
         )}
 
-        {/* TAB: 轉入點數 (管理員專屬) */}
+        {/* TAB: 轉入點數 (已全面整合至點數與帳務管理) */}
         {activeTab === 'admin_transfer_points' && currentUser.role === 'admin' && (
-          <AdminTransferPointsTab />
+          <AdminPointsReceivablesTab />
         )}
 
         {/* TAB: 平台數據與顯示 (管理員帳號專屬) */}
@@ -4352,22 +4382,26 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <span className="text-[11px] text-stone-400 font-mono">即時統計</span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
-                  <span className="text-[11px] text-stone-500 font-bold block">平台總交易流水 (GMV)</span>
-                  <span className="text-xl font-black text-stone-900 font-mono mt-1 block">
-                    NT$ {(adminTotalGMV || 0).toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-stone-400 mt-0.5 block">累計媒合總額</span>
-                </div>
+              <div className={`grid ${isNoPaymentMode ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'} gap-3 text-center`}>
+                {!isNoPaymentMode && (
+                  <>
+                    <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
+                      <span className="text-[11px] text-stone-500 font-bold block">平台總交易流水 (GMV)</span>
+                      <span className="text-xl font-black text-stone-900 font-mono mt-1 block">
+                        NT$ {(adminTotalGMV || 0).toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-stone-400 mt-0.5 block">累計媒合總額</span>
+                    </div>
 
-                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
-                  <span className="text-[11px] text-amber-800 font-bold block">平台累計獲利 (淨抽成)</span>
-                  <span className="text-xl font-black text-amber-700 font-mono mt-1 block">
-                    NT$ {(adminTotalPlatformFees || 0).toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-amber-600 mt-0.5 block">平台實收服務費</span>
-                </div>
+                    <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
+                      <span className="text-[11px] text-amber-800 font-bold block">平台累計獲利 (淨抽成)</span>
+                      <span className="text-xl font-black text-amber-700 font-mono mt-1 block">
+                        NT$ {(adminTotalPlatformFees || 0).toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-amber-600 mt-0.5 block">平台實收服務費</span>
+                    </div>
+                  </>
+                )}
 
                 <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
                   <span className="text-[11px] text-stone-500 font-bold block">市場問題總數</span>
@@ -4920,31 +4954,32 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </span>
                   </div>
 
-                  {/* 共用相對雙向開關：正式營運模式 (NORM) vs. 無金流模式 (FREE) */}
+                  {/* 三大平台運營模式切換：測試環境 (TEST) vs 正式營運模式 (NORM) vs 無金流模式 (FREE) */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-bold text-stone-300">商業金流運營模式（二選一共用相對開關）</span>
-                      <span className="text-[10px] text-stone-400 font-mono font-bold">
-                        {!isNoPaymentMode && isHideTestAccounts && !isDemoMode ? 'NORM' : 'FREE'}
+                      <span className="font-bold text-stone-300">平台運營模式（三選一專屬模式切換）</span>
+                      <span className="text-[10px] text-amber-400 font-mono font-bold">
+                        {isDemoMode ? 'TEST (預設測試中)' : isNoPaymentMode ? 'FREE (無金流)' : 'NORM (正常營運)'}
                       </span>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800">
+                    <div className="grid grid-cols-3 gap-1.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800">
                       {/* 🟢 正式營運模式 (NORM) */}
                       <button
                         type="button"
                         onClick={() => {
-                          if (!(!isNoPaymentMode && isHideTestAccounts && !isDemoMode)) {
+                          if (!(!isNoPaymentMode && !isDemoMode)) {
                             setPendingModeConfirm({ type: 'liveOperation', nextState: true });
                           }
                         }}
-                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          !isNoPaymentMode && isHideTestAccounts && !isDemoMode
-                            ? 'bg-emerald-500 text-stone-950 shadow-md font-black'
+                        className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          !isNoPaymentMode && !isDemoMode
+                            ? 'bg-emerald-500 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
                             : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                         }`}
+                        title="切換至正常營運模式 (保留點數機制，純淨交易額)"
                       >
-                        <span>🟢 正式營運模式</span>
+                        <span>🟢 正常營運</span>
                         <span className="text-[9px] opacity-80 font-mono">(NORM)</span>
                       </button>
 
@@ -4952,18 +4987,38 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          if (!isNoPaymentMode) {
+                          if (!(isNoPaymentMode && !isDemoMode)) {
                             setPendingModeConfirm({ type: 'noPayment', nextState: true });
                           }
                         }}
-                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          isNoPaymentMode
-                            ? 'bg-rose-500 text-white shadow-md font-black'
+                        className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          isNoPaymentMode && !isDemoMode
+                            ? 'bg-rose-500 text-white shadow-md font-black ring-1 ring-rose-400'
                             : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                         }`}
+                        title="切換至無金流模式 (全站免點數，隱藏金流)"
                       >
-                        <span>⚡ 無金流模式</span>
+                        <span>⚡ 無金流</span>
                         <span className="text-[9px] opacity-80 font-mono">(FREE)</span>
+                      </button>
+
+                      {/* 🧪 測試環境 (TEST) - 移至無金流右方 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isDemoMode) {
+                            setPendingModeConfirm({ type: 'demo', nextState: true });
+                          }
+                        }}
+                        className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          isDemoMode
+                            ? 'bg-amber-400 text-stone-950 shadow-md font-black ring-1 ring-amber-300'
+                            : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+                        }`}
+                        title={isDemoMode ? '目前處於測試環境（預設開啟，開啟一般或無金流模式即可切換）' : '切換至測試環境'}
+                      >
+                        <span>🧪 測試環境</span>
+                        <span className="text-[9px] opacity-80 font-mono">(TEST)</span>
                       </button>
                     </div>
                   </div>
@@ -4999,7 +5054,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         type="button"
                         onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
                         className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer font-mono ${
-                          !isHideTestAccounts
+                          isHideTestAccounts
                             ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
                             : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
                         }`}
@@ -5314,109 +5369,111 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                 </div>
 
-                {/* 2. 收退款帳戶設定（個別獨立儲存） */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-amber-50/40 border border-stone-200 space-y-4 shadow-2xs">
-                  <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-2xs">
-                        <Wallet className="w-4 h-4" />
+                {/* 2. 收退款帳戶設定（無金流模式下隱藏） */}
+                {!isNoPaymentMode && (
+                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-amber-50/40 border border-stone-200 space-y-4 shadow-2xs">
+                    <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-2xs">
+                          <Wallet className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-black text-stone-900">收退款帳戶設定</h4>
+                          <p className="text-[11px] text-stone-500">設定平台撥款（解答賞金）與退款（託管解約）之指定銀行帳戶</p>
+                        </div>
                       </div>
+                      {accountNumber.trim() ? (
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> 已綁定撥款帳戶
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full bg-stone-200 text-stone-600 text-[10px] font-bold">
+                          未設定
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <h4 className="text-xs sm:text-sm font-black text-stone-900">收退款帳戶設定</h4>
-                        <p className="text-[11px] text-stone-500">設定平台撥款（解答賞金）與退款（託管解約）之指定銀行帳戶</p>
+                        <label className="block text-[11px] font-bold text-stone-700 mb-1">銀行名稱與代碼</label>
+                        <select
+                          value={bankName}
+                          onChange={(e) => {
+                            setBankName(e.target.value);
+                            setBankCode(e.target.value.split(' ')[0] || '822');
+                          }}
+                          className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                        >
+                          <option value="822 中國信託商業銀行">822 中國信託商業銀行</option>
+                          <option value="013 國泰世華商業銀行">013 國泰世華商業銀行</option>
+                          <option value="808 玉山商業銀行">808 玉山商業銀行</option>
+                          <option value="012 台北富邦商業銀行">012 台北富邦商業銀行</option>
+                          <option value="007 第一商業銀行">007 第一商業銀行</option>
+                          <option value="008 華南商業銀行">008 華南商業銀行</option>
+                          <option value="004 臺灣銀行">004 臺灣銀行</option>
+                          <option value="700 中華郵政">700 中華郵政</option>
+                          <option value="812 台新國際商業銀行">812 台新國際商業銀行</option>
+                          <option value="005 臺灣土地銀行">005 臺灣土地銀行</option>
+                          <option value="009 彰化商業銀行">009 彰化商業銀行</option>
+                          <option value="017 兆豐國際商業銀行">017 兆豐國際商業銀行</option>
+                          <option value="807 永豐商業銀行">807 永豐商業銀行</option>
+                          <option value="803 聯邦商業銀行">803 聯邦商業銀行</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-stone-700 mb-1">分行名稱</label>
+                        <input
+                          type="text"
+                          value={branchName}
+                          onChange={(e) => setBranchName(e.target.value)}
+                          placeholder="例如：敦南分行、營業部"
+                          className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-stone-700 mb-1">帳戶號碼 (存款帳號)</label>
+                        <input
+                          type="text"
+                          value={accountNumber}
+                          onChange={(e) => setAccountNumber(e.target.value)}
+                          placeholder="例如：0000123456789"
+                          className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-stone-700 mb-1">戶名 (必須與實名相同)</label>
+                        <input
+                          type="text"
+                          value={accountHolder}
+                          onChange={(e) => setAccountHolder(e.target.value)}
+                          placeholder="例如：林書豪"
+                          className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                        />
                       </div>
                     </div>
-                    {accountNumber.trim() ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> 已綁定撥款帳戶
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-full bg-stone-200 text-stone-600 text-[10px] font-bold">
-                        未設定
-                      </span>
+
+                    {bankSaveSuccessMsg && (
+                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{bankSaveSuccessMsg}</span>
+                      </div>
                     )}
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-700 mb-1">銀行名稱與代碼</label>
-                      <select
-                        value={bankName}
-                        onChange={(e) => {
-                          setBankName(e.target.value);
-                          setBankCode(e.target.value.split(' ')[0] || '822');
-                        }}
-                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={handleSaveBankSettings}
+                        className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
                       >
-                        <option value="822 中國信託商業銀行">822 中國信託商業銀行</option>
-                        <option value="013 國泰世華商業銀行">013 國泰世華商業銀行</option>
-                        <option value="808 玉山商業銀行">808 玉山商業銀行</option>
-                        <option value="012 台北富邦商業銀行">012 台北富邦商業銀行</option>
-                        <option value="007 第一商業銀行">007 第一商業銀行</option>
-                        <option value="008 華南商業銀行">008 華南商業銀行</option>
-                        <option value="004 臺灣銀行">004 臺灣銀行</option>
-                        <option value="700 中華郵政">700 中華郵政</option>
-                        <option value="812 台新國際商業銀行">812 台新國際商業銀行</option>
-                        <option value="005 臺灣土地銀行">005 臺灣土地銀行</option>
-                        <option value="009 彰化商業銀行">009 彰化商業銀行</option>
-                        <option value="017 兆豐國際商業銀行">017 兆豐國際商業銀行</option>
-                        <option value="807 永豐商業銀行">807 永豐商業銀行</option>
-                        <option value="803 聯邦商業銀行">803 聯邦商業銀行</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-700 mb-1">分行名稱</label>
-                      <input
-                        type="text"
-                        value={branchName}
-                        onChange={(e) => setBranchName(e.target.value)}
-                        placeholder="例如：敦南分行、營業部"
-                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-700 mb-1">帳戶號碼 (存款帳號)</label>
-                      <input
-                        type="text"
-                        value={accountNumber}
-                        onChange={(e) => setAccountNumber(e.target.value)}
-                        placeholder="例如：0000123456789"
-                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-700 mb-1">戶名 (必須與實名相同)</label>
-                      <input
-                        type="text"
-                        value={accountHolder}
-                        onChange={(e) => setAccountHolder(e.target.value)}
-                        placeholder="例如：林書豪"
-                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
-                      />
+                        <Save className="w-3.5 h-3.5 text-stone-950" />
+                        <span>儲存收退款帳戶</span>
+                      </button>
                     </div>
                   </div>
-
-                  {bankSaveSuccessMsg && (
-                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>{bankSaveSuccessMsg}</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="button"
-                      onClick={handleSaveBankSettings}
-                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Save className="w-3.5 h-3.5 text-stone-950" />
-                      <span>儲存收退款帳戶</span>
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* 右側欄：服務調研問卷（按 性別、年齡、專業領域、職業、薪水、其他問題 順序排列） */}
@@ -7975,12 +8032,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 pendingModeConfirm.nextState ? (
                   <p>
                     <strong>即將開啟【正式營運模式】：（全站平台同步生效）</strong><br />
-                    系統將自動<strong>關閉無金流模式</strong>並<strong>隱藏所有測試帳號</strong>，全平台同步啟用標準商業金流、會員訂閱方案與履約託管機制。
+                    系統將自動<strong>關閉無金流模式與測試環境</strong>，並<strong>自動隱藏所有測試帳號與模擬資料</strong>，全平台恢復真實數據，同步啟用標準商業金流與履約託管機制。
                   </p>
                 ) : (
                   <p>
                     <strong>即將關閉【正式營運模式】：（全站平台同步生效）</strong><br />
-                    系統將相對地<strong>自動開啟【無金流模式】</strong>並公開測試帳號，全平台同步隱藏訂閱與儲值機制。
+                    系統將相對地<strong>自動切換為【無金流模式】</strong>，並持續自動隱藏測試環境模擬資料與測試帳號。
                   </p>
                 )
               )}
@@ -7994,7 +8051,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 ) : (
                   <p>
                     <strong>即將關閉【測試環境】：（僅作用於管理員帳號視角）</strong><br />
-                    管理員畫面將隱藏示範假資料，恢復為純淨實時平台數據。
+                    管理員畫面將隱藏示範假資料，恢復為純淨實時平台真實數據。
                   </p>
                 )
               )}
@@ -8003,12 +8060,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 pendingModeConfirm.nextState ? (
                   <p>
                     <strong>即將開啟【無金流模式】：（全站平台同步生效）</strong><br />
-                    系統將相對地<strong>自動關閉正式營運模式</strong>；全站平台同步隱藏會員訂閱與儲值點數，只開放 L0 免費問題與諮詢提案。
+                    系統將自動<strong>關閉正式營運模式</strong>，<strong>自動隱藏測試環境之模擬資料與測試帳號</strong>，全平台恢復真實數據；所有用戶帳號均無點數、儲值與金流相關設定，開放全站免費提問與互動。
                   </p>
                 ) : (
                   <p>
                     <strong>即將關閉【無金流模式】：（全站平台同步生效）</strong><br />
-                    系統將相對地<strong>自動開啟【正式營運模式】</strong>，全站平台同步恢復商業會員訂閱方案、點數儲值與懸賞金功能。
+                    系統將相對地<strong>自動切換為【正式營運模式】</strong>，恢復標準商業金流機制，並持續自動隱藏測試環境之模擬資料與測試帳號。
                   </p>
                 )
               )}
@@ -8069,22 +8126,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         )}
       </div>
 
-      {/* 管理員專屬：畫面頁尾自動印上淡淡細細的平台版本號與最近更新時間與當前環境簡稱 (純英文與數字) */}
+      {/* 管理員專屬：畫面頁尾自動印上淡淡細細的平台版本號與最近更新時間與當前環境簡稱 (純英文與數字，以連字號連接至少兩個英文標籤) */}
       {currentUser.role === 'admin' && (
         <div className="py-2 text-center bg-stone-50/70 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
-          v1.2.1 • 2026.09.29 • {(() => {
-            const isLiveOperation = isHideTestAccounts && !isNoPaymentMode && !isDemoMode;
-            if (isLiveOperation) return 'NORM';
-            const codes = [];
-            if (isDemoMode) codes.push('DEMO');
-            if (isNoPaymentMode) codes.push('FREE');
-            if (isHideTestAccounts) {
-              codes.push('HIDE');
-            } else {
-              codes.push('SHOW');
-            }
-            return codes.length > 0 ? codes.join(' • ') : 'TEST';
-          })()}
+          v1.2.1 • 2026.09.29 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
         </div>
       )}
 

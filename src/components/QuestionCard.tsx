@@ -21,19 +21,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   onSelectCategory,
   onSearchTag,
 }) => {
-  const { isQuestionBookmarked, toggleBookmarkQuestion, setSearchQuery } = useApp();
+  const { isQuestionBookmarked, toggleBookmarkQuestion, setSearchQuery, isNoPaymentMode } = useApp();
   const isBookmarked = isQuestionBookmarked(question.id);
 
-  const levelConfig = (question?.level && LEVEL_CONFIGS[question.level]) || LEVEL_CONFIGS.L2 || {
-    code: 'L2',
-    name: '進階懸賞',
-    description: '',
-    example: '',
-    rangeText: '',
-    minPrice: 301,
-    maxPrice: 899,
-    badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
-  };
+  const effectiveLevel = isNoPaymentMode ? 'L0' : (question?.level || 'L2');
+  const levelConfig = (effectiveLevel && LEVEL_CONFIGS[effectiveLevel]) || LEVEL_CONFIGS.L0;
   const isSolved = question.status === 'solved';
   const isPromoted = question.status === 'open' && question.isFeatured;
 
@@ -115,7 +107,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
           {/* Bounty Tag & Bookmark Button */}
           <div className="shrink-0 flex items-center gap-1.5">
-            {question.bounty > 0 ? (
+            {isNoPaymentMode ? (
+              <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
+                免費交流
+              </span>
+            ) : question.bounty > 0 ? (
               <div className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 shadow-2xs">
                 <span className="text-xs text-amber-700 font-medium">懸賞</span>
                 <span className="text-sm font-black font-mono">

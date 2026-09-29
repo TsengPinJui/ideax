@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
 
 export const MobilePwaDownloadWidget: React.FC = () => {
   const { currentUser, isDemoMode, openPwaInstallModal } = useApp();
@@ -53,23 +54,7 @@ export const MobilePwaDownloadWidget: React.FC = () => {
 
   // 點擊執行「直接下載/呼叫安裝請求」
   const handleDownloadClick = async () => {
-    // 1. 若有 PWA 原生 deferredPrompt，直接觸發系統安裝請求
-    if (deferredPrompt) {
-      try {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-          setIsStandalone(true);
-        }
-        setDeferredPrompt(null);
-        return;
-      } catch (err) {
-        console.error('PWA Install trigger error:', err);
-      }
-    }
-
-    // 2. 若瀏覽器未儲存 deferredPrompt 或處於預覽模式，彈出安裝引導彈窗
-    openPwaInstallModal();
+    triggerDirectAppDownloadOrInstall(openPwaInstallModal);
   };
 
   return (

@@ -23,10 +23,10 @@ import { AiCrmView } from './components/AiCrmView';
 import { ChatView } from './components/ChatView';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
-import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
 import { PwaInstallModal } from './components/PwaInstallModal';
 import { HelpTooltip } from './components/HelpTooltip';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab } from './types';
+import { isMockQuestionId } from './data/mockData';
 import { updateSEOForQuestion } from './services/seoService';
 import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert } from 'lucide-react';
 
@@ -63,6 +63,7 @@ function MainContent() {
     availableUsers,
     startDirectChat,
     openAuthModal,
+    isDemoMode,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<AppTab>('explore');
@@ -256,7 +257,11 @@ function MainContent() {
   const filteredQuestions = useMemo(() => {
     const qTerm = searchQuery.trim().toLowerCase();
 
-    return questions
+    const baseQuestions = isDemoMode
+      ? questions
+      : questions.filter((q) => !isMockQuestionId(q.id, q.authorId));
+
+    return baseQuestions
       .filter((q) => {
         const matchesCategory = selectedCategory === '全部' || q.category === selectedCategory;
         const matchesSubcategory =
@@ -1291,9 +1296,6 @@ function MainContent() {
         }}
         onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
       />
-
-      {/* 手機版極簡 PWA 下載組件 */}
-      <MobilePwaDownloadWidget />
 
       {/* PWA 安裝與下載指引彈窗 */}
       <PwaInstallModal

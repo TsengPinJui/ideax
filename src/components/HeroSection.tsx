@@ -27,7 +27,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onExploreClick,
   onLeaderboardClick,
 }) => {
-  const { questions, answers, solvers, transactions, publicMetricsConfig } = useApp();
+  const { questions, answers, solvers, transactions, publicMetricsConfig, isNoPaymentMode } = useApp();
 
   // 1. 累計解決難題 (依據真實狀況：全站標記已結案或已有被採納方案之問題總數)
   const solvedCountFormatted = useMemo(() => {
@@ -48,6 +48,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   // 2. 累計懸賞金額 (依據真實狀況：網站創立至今已經發出的問題懸賞總額 + 已完成交易方案的懸賞總額)
   const totalBountyFormatted = useMemo(() => {
+    if (isNoPaymentMode) {
+      return 'NT$ 0';
+    }
     // 1. 網站創立至今已經發出的所有問題懸賞總額
     const questionBounties = questions.reduce((acc, q) => acc + (Number(q.bounty) || 0), 0);
 
@@ -103,7 +106,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     });
 
     if (responseTimesInHours.length === 0) {
-      return '24 hrs';
+      return questions.length === 0 ? '-' : '24 hrs';
     }
 
     const avgHours = responseTimesInHours.reduce((a, b) => a + b, 0) / responseTimesInHours.length;
@@ -122,7 +125,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   // 4. 方案採納滿意度 (依據真實狀況：全站解答專家與方案真實綜合星級換算)
   const satisfactionRateFormatted = useMemo(() => {
     const ratedSolvers = solvers.filter((s) => typeof s.rating === 'number' && s.rating > 0);
-    if (ratedSolvers.length === 0) return '100%';
+    if (ratedSolvers.length === 0) return '-';
 
     let totalWeightedRating = 0;
     let totalWeight = 0;

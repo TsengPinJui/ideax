@@ -31,6 +31,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
     addSubscriptionPlan,
     deleteSubscriptionPlan,
     availableUsers,
+    isDemoMode,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'commission_and_plans' | 'copy_editor' | 'preview'>('commission_and_plans');
@@ -72,13 +73,15 @@ export const AdminMembershipPlanEditor: React.FC = () => {
     setEditablePlans({ ...subscriptionPlans });
   }, [subscriptionPlans]);
 
-  // 計算各方案訂閱人數
+  // 計算各方案訂閱人數（正式模式僅統計真實訂閱人數）
   const getSubscriberCount = (tierId: string) => {
     const directCount = availableUsers.filter((u) => u.subscriptionTier === tierId).length;
-    if (tierId === 'free') return directCount + 86;
-    if (tierId === 'pro' || tierId === 'expert') return directCount + 39;
-    if (tierId === 'authority') return directCount + 7;
-    if (tierId === 'master') return directCount + 3;
+    if (isDemoMode) {
+      if (tierId === 'free') return directCount + 86;
+      if (tierId === 'pro' || tierId === 'expert') return directCount + 39;
+      if (tierId === 'authority') return directCount + 7;
+      if (tierId === 'master') return directCount + 3;
+    }
     return directCount;
   };
 

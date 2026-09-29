@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { isMockTransactionId } from '../data/mockData';
 import {
   Clock,
   Search,
@@ -11,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export const AdminTransactionsTab: React.FC = () => {
-  const { transactions, availableUsers } = useApp();
+  const { transactions, availableUsers, isDemoMode, isNoPaymentMode } = useApp();
 
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -20,6 +21,9 @@ export const AdminTransactionsTab: React.FC = () => {
   const selectedUser = availableUsers.find((u) => u.id === selectedUserId);
 
   const filteredTransactions = transactions.filter((tx) => {
+    if ((isNoPaymentMode || !isDemoMode) && isMockTransactionId(tx.id)) {
+      return false;
+    }
     // 依個別用戶篩選
     if (selectedUserId !== 'all') {
       const matchParty =

@@ -33,7 +33,7 @@ import {
 import { loadAllDataFromFirestore } from '../services/firestoreSync';
 
 export const AdminUserAnalyticsTab: React.FC = () => {
-  const { availableUsers, setAvailableUsers } = useApp();
+  const { availableUsers, setAvailableUsers, isDemoMode } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -49,6 +49,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error(e);
+    }
+    // 非測試模式下（營運模式與無金流模式），未執行過 AI 分析時保持為空，不呈現模擬預算與數據
+    if (localStorage.getItem('ideax_demo_mode') !== 'true') {
+      return null;
     }
     return {
       cohortSummary:
@@ -83,10 +87,14 @@ export const AdminUserAnalyticsTab: React.FC = () => {
   const [isAnalyzingCustomer, setIsAnalyzingCustomer] = useState(false);
   const [isAiReportExpanded, setIsAiReportExpanded] = useState(false);
 
-  // Filter out guests
+  // Filter out guests and test accounts when in formal mode (營運模式或無金流模式)
   const validUsers = useMemo(() => {
+    const testAccountIds = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
+    if (!isDemoMode) {
+      return availableUsers.filter((u) => (!testAccountIds.includes(u.id) && !u.id.startsWith('solver-')) || u.id === 'user-admin');
+    }
     return availableUsers.filter((u) => u.id !== 'user-guest');
-  }, [availableUsers]);
+  }, [availableUsers, isDemoMode]);
 
   // 手動執行 AI 客群分析 (僅在點擊時發起 AI 請求並儲存快照)
   const runAiCustomerAnalytics = async () => {
@@ -140,10 +148,16 @@ export const AdminUserAnalyticsTab: React.FC = () => {
   useEffect(() => {
     loadAllDataFromFirestore().then((cloudData) => {
       if (cloudData && cloudData.users && cloudData.users.length > 0) {
-        setAvailableUsers(cloudData.users);
+        if (!isDemoMode) {
+          const testAccountIds = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
+          const cleanUsers = cloudData.users.filter((u) => !testAccountIds.includes(u.id) || u.id === 'user-admin');
+          setAvailableUsers(cleanUsers);
+        } else {
+          setAvailableUsers(cloudData.users);
+        }
       }
     }).catch((err) => console.error(err));
-  }, []);
+  }, [isDemoMode]);
 
   // 手動按需刷新用戶資料快照
   const handleRefresh = async () => {
@@ -151,7 +165,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     try {
       const cloudData = await loadAllDataFromFirestore();
       if (cloudData && cloudData.users && cloudData.users.length > 0) {
-        setAvailableUsers(cloudData.users);
+        if (!isDemoMode) {
+          const testAccountIds = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
+          const cleanUsers = cloudData.users.filter((u) => !testAccountIds.includes(u.id) || u.id === 'user-admin');
+          setAvailableUsers(cleanUsers);
+        } else {
+          setAvailableUsers(cloudData.users);
+        }
       }
       setLastRefreshedAt(
         new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -396,10 +416,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       const s = u.surveyData?.desiredServices;
       if (s && s.length > 0) {
         s.forEach((item) => {
-          counts[item] = (counts[item] || 0) + 1;
+          if (counts[item] !== undefined) counts[item] = counts[item] + 1;
         });
-      } else {
-        // Fallback default distribution based on role
+      } else if (isDemoMode) {
+        // Fallback default distribution based on role in demo mode only
         if (u.role === 'solver') {
           counts['提供解答賺取有償回饋'] += 1;
           counts['大師專家一對一私聊諮詢'] += 1;
@@ -414,7 +434,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       count,
       color: ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4'][idx % 6],
     }));
-  }, [validUsers]);
+  }, [validUsers, isDemoMode]);
 
   // 5. 領域別分佈
   const domainStats = useMemo(() => {
@@ -422,7 +442,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     validUsers.forEach((u) => {
       const domains = u.surveyData?.relatedDomains?.length
         ? u.surveyData.relatedDomains
-        : [u.domain || '創新創業'];
+        : (isDemoMode ? [u.domain || '創新創業'] : (u.domain ? [u.domain] : []));
       domains.forEach((d) => {
         counts[d] = (counts[d] || 0) + 1;
       });
@@ -431,7 +451,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
-  }, [validUsers]);
+  }, [validUsers, isDemoMode]);
 
   // 6. 解答預算
   const budgetStats = useMemo(() => {
@@ -444,8 +464,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       none: 0,
     };
     validUsers.forEach((u) => {
-      const b = u.surveyData?.willingQuestionBudget || (u.balance > 5000 ? '5000_20000' : '2000_5000');
-      counts[b] = (counts[b] || 0) + 1;
+      const b = u.surveyData?.willingQuestionBudget || (isDemoMode ? (u.balance > 5000 ? '5000_20000' : '2000_5000') : undefined);
+      if (b && counts[b] !== undefined) {
+        counts[b] = (counts[b] || 0) + 1;
+      }
     });
     return [
       { key: 'under_500', label: 'NT$ 500 以下', count: counts.under_500, color: '#94a3b8' },
@@ -455,7 +477,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       { key: 'above_20000', label: 'NT$ 20,000 以上', count: counts.above_20000, color: '#8b5cf6' },
       { key: 'none', label: '暫無付費意願', count: counts.none, color: '#cbd5e1' },
     ];
-  }, [validUsers]);
+  }, [validUsers, isDemoMode]);
 
   // 7. 使用習慣（多久打開一次 IdeaX）
   const freqStats = useMemo(() => {
@@ -467,8 +489,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       on_demand: 0,
     };
     validUsers.forEach((u) => {
-      const f = u.surveyData?.usageFrequency || (u.role === 'admin' ? 'multiple_daily' : 'few_times_weekly');
-      counts[f] = (counts[f] || 0) + 1;
+      const f = u.surveyData?.usageFrequency || (isDemoMode ? (u.role === 'admin' ? 'multiple_daily' : 'few_times_weekly') : undefined);
+      if (f && counts[f] !== undefined) {
+        counts[f] = (counts[f] || 0) + 1;
+      }
     });
     return [
       { key: 'multiple_daily', label: '每天數次', count: counts.multiple_daily, color: '#10b981' },
@@ -477,7 +501,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       { key: 'weekly', label: '每週 1 次', count: counts.weekly, color: '#f97316' },
       { key: 'on_demand', label: '偶爾或有特定需求才開', count: counts.on_demand, color: '#9ca3af' },
     ];
-  }, [validUsers]);
+  }, [validUsers, isDemoMode]);
 
   // 8. 作為副業意願
   const sideHustleStats = useMemo(() => {
@@ -488,8 +512,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       not_interested: 0,
     };
     validUsers.forEach((u) => {
-      const sh = u.surveyData?.willingToBeSideHustle || (u.role === 'solver' ? 'very_willing' : 'considering');
-      counts[sh] = (counts[sh] || 0) + 1;
+      const sh = u.surveyData?.willingToBeSideHustle || (isDemoMode ? (u.role === 'solver' ? 'very_willing' : 'considering') : undefined);
+      if (sh && counts[sh] !== undefined) {
+        counts[sh] = (counts[sh] || 0) + 1;
+      }
     });
     return [
       { key: 'very_willing', label: '非常願意（發展為主力副業）', count: counts.very_willing, color: '#10b981' },
@@ -497,7 +523,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       { key: 'open_minded', label: '不排斥但目前無規劃', count: counts.open_minded, color: '#f59e0b' },
       { key: 'not_interested', label: '目前不考慮', count: counts.not_interested, color: '#9ca3af' },
     ];
-  }, [validUsers]);
+  }, [validUsers, isDemoMode]);
 
   // 9. 使用狀況（有償為人解答意願）
   const willingSolveStats = useMemo(() => {
@@ -507,15 +533,17 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       not_willing: 0,
     };
     validUsers.forEach((u) => {
-      const w = u.surveyData?.willingToProvideSolutions || (u.role === 'solver' ? 'very_willing' : 'depends_bounty');
-      counts[w] = (counts[w] || 0) + 1;
+      const w = u.surveyData?.willingToProvideSolutions || (isDemoMode ? (u.role === 'solver' ? 'very_willing' : 'depends_bounty') : undefined);
+      if (w && counts[w] !== undefined) {
+        counts[w] = (counts[w] || 0) + 1;
+      }
     });
     return [
       { key: 'very_willing', label: '非常願意（積極解答接案）', count: counts.very_willing, color: '#10b981' },
       { key: 'depends_bounty', label: '視題目難度與報酬而定', count: counts.depends_bounty, color: '#f59e0b' },
       { key: 'not_willing', label: '暫無意願（目前僅想提問）', count: counts.not_willing, color: '#9ca3af' },
     ];
-  }, [validUsers]);
+  }, [validUsers, isDemoMode]);
 
   // 10. 會員方案付費訂閱意願
   const subscribeStats = useMemo(() => {
@@ -526,8 +554,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       not_willing: 0,
     };
     validUsers.forEach((u) => {
-      const s = u.surveyData?.willingToSubscribeSolverPlan || (u.subscriptionTier && u.subscriptionTier !== 'free' ? 'willing' : 'depends_profit');
-      counts[s] = (counts[s] || 0) + 1;
+      const s = u.surveyData?.willingToSubscribeSolverPlan || (isDemoMode ? (u.subscriptionTier && u.subscriptionTier !== 'free' ? 'willing' : 'depends_profit') : undefined);
+      if (s && counts[s] !== undefined) {
+        counts[s] = (counts[s] || 0) + 1;
+      }
     });
     return [
       { key: 'willing', label: '願意訂閱（降低抽成並取得功能）', count: counts.willing, color: '#8b5cf6' },
@@ -535,7 +565,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       { key: 'free_tier_first', label: '先體驗免費版', count: counts.free_tier_first, color: '#f59e0b' },
       { key: 'not_willing', label: '暫不考慮付費', count: counts.not_willing, color: '#9ca3af' },
     ];
-  }, [validUsers]);
+  }, [validUsers, isDemoMode]);
 
   // Filtered raw users list
   const filteredUsers = useMemo(() => {
@@ -555,8 +585,41 @@ export const AdminUserAnalyticsTab: React.FC = () => {
 
   // SVG Pie Chart Helper
   const renderPieChart = (items: { label: string; count: number; color: string }[]) => {
-    const total = items.reduce((sum, item) => sum + item.count, 0) || 1;
+    const rawTotal = items.reduce((sum, item) => sum + item.count, 0);
+    const hasData = rawTotal > 0;
+    const total = hasData ? rawTotal : 1;
     let accumulatedPercent = 0;
+
+    if (!hasData) {
+      return (
+        <div className="flex flex-col sm:flex-row items-center gap-4 py-2">
+          <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
+            <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#e7e5e4" strokeWidth="16" />
+              <circle cx="50" cy="50" r="22" fill="white" />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+              <span className="text-[10px] text-stone-400 font-bold">總計</span>
+              <span className="text-xs font-black text-stone-500">0 人</span>
+            </div>
+          </div>
+          <div className="flex-1 w-full space-y-1.5 text-xs">
+            {items.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-stone-600 truncate font-medium text-[11px]">{item.label}</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 font-mono">
+                  <span className="font-bold text-stone-400">0人</span>
+                  <span className="text-stone-400 text-[10px]">(0.0%)</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
 
     const slices = items.map((item) => {
       const percent = (item.count / total) * 100;
@@ -604,7 +667,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
             <span className="text-[10px] text-stone-400 font-bold">總計</span>
-            <span className="text-xs font-black text-stone-900">{total} 人</span>
+            <span className="text-xs font-black text-stone-900">{rawTotal} 人</span>
           </div>
         </div>
 
@@ -634,13 +697,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
 
   // Bar Chart Helper
   const renderBarChart = (items: { label: string; count: number; color?: string }[]) => {
-    const maxVal = Math.max(...items.map((i) => i.count), 1);
+    const maxVal = Math.max(...items.map((i) => i.count), 0);
 
     return (
       <div className="space-y-2 pt-1">
         {items.map((item, idx) => {
-          const widthPct = Math.max(Math.round((item.count / maxVal) * 100), 4);
-          const ratioPct = ((item.count / totalCount) * 100).toFixed(1);
+          const widthPct = maxVal > 0 && item.count > 0 ? Math.max(Math.round((item.count / maxVal) * 100), 4) : 0;
+          const ratioPct = totalCount > 0 && item.count > 0 ? ((item.count / totalCount) * 100).toFixed(1) : '0.0';
 
           return (
             <div key={idx} className="space-y-1">
@@ -801,14 +864,16 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                   <span>【客群總體畫像與戰略結論】</span>
                 </div>
                 <p className="text-xs sm:text-sm font-medium text-stone-100 leading-relaxed">
-                  {aiAnalytics?.cohortSummary || 'IdeaX 目前用戶畫像呈現高收入、高決策力、高接案意願之雙向智庫生態。主要集中於 25~44 歲之資訊科技工程師、創辦人與主管，具強勁懸賞預算且願意有償副業接案。'}
+                  {aiAnalytics?.cohortSummary || (isDemoMode
+                    ? 'IdeaX 目前用戶畫像呈現高收入、高決策力、高接案意願之雙向智庫生態。主要集中於 25~44 歲之資訊科技工程師、創辦人與主管，具強勁懸賞預算且願意有償副業接案。'
+                    : '目前尚無 AI 客群分析快照。請點擊右上角「重新產出 AI 分析」按鈕，即時分析目前平台註冊用戶與問卷數據。')}
                 </p>
               </div>
 
               <div className="px-4 py-3 rounded-2xl bg-purple-950/80 border border-purple-400/30 shrink-0 flex flex-col items-center justify-center text-center">
                 <span className="text-[10px] text-purple-300 font-bold">平台生態健康度</span>
                 <div className="text-2xl font-black text-emerald-400 flex items-baseline gap-0.5">
-                  <span>{aiAnalytics?.platformHealthScore || 94}</span>
+                  <span>{aiAnalytics?.platformHealthScore ?? (isDemoMode ? 94 : 0)}</span>
                   <span className="text-xs text-purple-300 font-normal">/ 100</span>
                 </div>
               </div>
@@ -824,11 +889,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                 </div>
                 <ul className="space-y-2 text-stone-200">
                   {(
-                    aiAnalytics?.demographicInsights || [
-                      '中高收入與高決策層佔比達 75%+：年薪超過 100 萬與企業 C-Level/主管級用戶為主要骨幹，痛點具高度商業價值。',
-                      '高供給彈性與副業潛力：超過 8 成用戶願意為他人解答或發展為主力副業，種子專家儲備充沛。',
-                      '預算集中於中高階懸賞：超過 65% 用戶願為單次高價值問題支付 NT$ 2,000 ~ 20,000 懸賞金。',
-                    ]
+                    aiAnalytics?.demographicInsights || (isDemoMode
+                      ? [
+                          '中高收入與高決策層佔比達 75%+：年薪超過 100 萬與企業 C-Level/主管級用戶為主要骨幹，痛點具高度商業價值。',
+                          '高供給彈性與副業潛力：超過 8 成用戶願意為他人解答或發展為主力副業，種子專家儲備充沛。',
+                          '預算集中於中高階懸賞：超過 65% 用戶願為單次高價值問題支付 NT$ 2,000 ~ 20,000 懸賞金。',
+                        ]
+                      : ['尚無真實用戶畫像數據，待用戶填寫問卷後即時生成。'])
                   ).map((item, idx) => (
                     <li key={idx} className="flex items-start gap-1.5 leading-relaxed">
                       <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0" />
@@ -846,11 +913,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                 </div>
                 <ul className="space-y-2 text-stone-200">
                   {(
-                    aiAnalytics?.growthOpportunities || [
-                      '推出「權威/大師方案」專家訂閱制：提供抽成減免與 AI CRM 客戶自動媒合功能。',
-                      '主打「高價值專案客製化落地」標籤：引導 C-Level 與創辦人發布 NT$ 5,000+ 的進階懸賞。',
-                      '社群裂變與企業合夥人計畫：透過「前 500 名免費體驗」機制誘發口碑擴散。',
-                    ]
+                    aiAnalytics?.growthOpportunities || (isDemoMode
+                      ? [
+                          '推出「權威/大師方案」專家訂閱制：提供抽成減免與 AI CRM 客戶自動媒合功能。',
+                          '主打「高價值專案客製化落地」標籤：引導 C-Level 與創辦人發布 NT$ 5,000+ 的進階懸賞。',
+                          '社群裂變與企業合夥人計畫：透過「前 500 名免費體驗」機制誘發口碑擴散。',
+                        ]
+                      : ['尚無營運商機數據，待問卷數據累積後自動分析。'])
                   ).map((item, idx) => (
                     <li key={idx} className="flex items-start gap-1.5 leading-relaxed">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
@@ -868,11 +937,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                 </div>
                 <ul className="space-y-2 text-stone-200">
                   {(
-                    aiAnalytics?.recommendedActionPlans || [
-                      '行動一：精準導流年薪 100 萬以上用戶試用「權威方案」，鎖定首批高價值解答專家。',
-                      '行動二：在問答首頁設置「企業創新與 AI 科技」高價值懸賞專區，對接最大宗用戶需求。',
-                      '行動三：建立智慧合約履約與 AI 仲裁保障，消除高金額懸賞的信任摩擦。',
-                    ]
+                    aiAnalytics?.recommendedActionPlans || (isDemoMode
+                      ? [
+                          '行動一：精準導流年薪 100 萬以上用戶試用「權威方案」，鎖定首批高價值解答專家。',
+                          '行動二：在問答首頁設置「企業創新與 AI 科技」高價值懸賞專區，對接最大宗用戶需求。',
+                          '行動三：建立智慧合約履約與 AI 仲裁保障，消除高金額懸賞的信任摩擦。',
+                        ]
+                      : ['尚無建議行動方案，待真實指標建立後產出。'])
                   ).map((item, idx) => (
                     <li key={idx} className="flex items-start gap-1.5 leading-relaxed">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
@@ -903,11 +974,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <DollarSign className="w-4 h-4 text-amber-600" />
           </div>
           <p className="text-2xl font-black text-amber-950">
-            {Math.round(
-              (validUsers.filter((u) => u.surveyData?.willingQuestionBudget && u.surveyData.willingQuestionBudget !== 'none').length /
-                totalCount) *
-                100
-            )}
+            {validUsers.length > 0
+              ? Math.round(
+                  (validUsers.filter((u) => u.surveyData?.willingQuestionBudget && u.surveyData.willingQuestionBudget !== 'none').length /
+                    validUsers.length) *
+                    100
+                )
+              : 0}
             %
           </p>
           <p className="text-[10px] text-stone-400 mt-0.5">具備直接懸賞消費意願</p>
@@ -919,16 +992,18 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <Briefcase className="w-4 h-4 text-blue-600" />
           </div>
           <p className="text-2xl font-black text-blue-950">
-            {Math.round(
-              (validUsers.filter(
-                (u) =>
-                  u.surveyData?.willingToBeSideHustle === 'very_willing' ||
-                  u.surveyData?.willingToBeSideHustle === 'considering' ||
-                  u.role === 'solver'
-              ).length /
-                totalCount) *
-                100
-            )}
+            {validUsers.length > 0
+              ? Math.round(
+                  (validUsers.filter(
+                    (u) =>
+                      u.surveyData?.willingToBeSideHustle === 'very_willing' ||
+                      u.surveyData?.willingToBeSideHustle === 'considering' ||
+                      (isDemoMode && u.role === 'solver')
+                  ).length /
+                    validUsers.length) *
+                    100
+                )
+              : 0}
             %
           </p>
           <p className="text-[10px] text-stone-400 mt-0.5">具備專家接案與解題意願</p>
@@ -940,16 +1015,18 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <Crown className="w-4 h-4 text-emerald-600" />
           </div>
           <p className="text-2xl font-black text-emerald-950">
-            {Math.round(
-              (validUsers.filter(
-                (u) =>
-                  u.surveyData?.willingToSubscribeSolverPlan === 'willing' ||
-                  u.surveyData?.willingToSubscribeSolverPlan === 'depends_profit' ||
-                  (u.subscriptionTier && u.subscriptionTier !== 'free')
-              ).length /
-                totalCount) *
-                100
-            )}
+            {validUsers.length > 0
+              ? Math.round(
+                  (validUsers.filter(
+                    (u) =>
+                      u.surveyData?.willingToSubscribeSolverPlan === 'willing' ||
+                      u.surveyData?.willingToSubscribeSolverPlan === 'depends_profit' ||
+                      (isDemoMode && u.subscriptionTier && u.subscriptionTier !== 'free')
+                  ).length /
+                    validUsers.length) *
+                    100
+                )
+              : 0}
             %
           </p>
           <p className="text-[10px] text-stone-400 mt-0.5">含視獲利付費訂閱者</p>
