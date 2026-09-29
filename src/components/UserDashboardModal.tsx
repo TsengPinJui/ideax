@@ -1391,7 +1391,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   : '提問者'}
               </span>
 
-              {/* 管理員專用：申訴郵件信封圖示按鈕 */}
+              {/* 管理員專用：申訴郵件信封圖示按鈕 (位於名稱右側) */}
               {currentUser.role === 'admin' && (
                 <button
                   type="button"
@@ -1399,15 +1399,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     setActiveTab('admin_mail_disputes');
                     setMobileMenuOpen(false);
                   }}
-                  className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  className={`p-1 sm:p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center shrink-0 ${
                     activeTab === 'admin_mail_disputes'
                       ? 'bg-purple-700 text-white border-purple-800 shadow-2xs font-black'
-                      : 'bg-purple-50 hover:bg-purple-100 text-purple-900 border-purple-200'
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-800 border-purple-200'
                   }`}
-                  title="前往申訴與郵件管理"
+                  title="申訴與郵件管理"
                 >
-                  <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-700 shrink-0" />
-                  <span className="text-[10px] sm:text-xs font-black">申訴郵件</span>
+                  <Mail className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeTab === 'admin_mail_disputes' ? 'text-white' : 'text-purple-700'}`} />
                 </button>
               )}
 
@@ -7948,7 +7947,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 pendingModeConfirm.nextState ? (
                   <p>
                     <strong>即將開啟測試環境：</strong><br />
-                    全站將載入預設示範問題、精選提案、模擬專家與測試交易數據，解封測試帳號，供功能探索與雙邊市場展示。
+                    全站將載入預設示範問題、精選提案、模擬專家與測試交易數據，同步<strong>公開測試帳號</strong>並<strong>自動關閉正式營運模式</strong>，供功能探索與雙邊市場展示。
                   </p>
                 ) : (
                   <p>
@@ -7962,7 +7961,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 pendingModeConfirm.nextState ? (
                   <p>
                     <strong>即將開啟無金流環境：</strong><br />
-                    全站將隱藏會員訂閱方案與儲值點數機制；只開放 L0 免費問題與交流，聊天室「詢價」改為「諮詢」、「報價」改為「提案」，金流運作說明一併隱藏。
+                    全站將隱藏會員訂閱方案與儲值點數機制，<strong>同時自動關閉正式營運模式</strong>；只開放 L0 免費問題與交流，聊天室「詢價」改為「諮詢」、「報價」改為「提案」，金流運作說明一併隱藏。
                   </p>
                 ) : (
                   <p>
@@ -7981,7 +7980,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 ) : (
                   <p>
                     <strong>即將執行【公開顯示 測試帳號】：</strong><br />
-                    重新顯示核心測試帳號（林書豪、陳怡君、訪客等），便於進行跨身分權限切換與情境測試。
+                    重新顯示核心測試帳號（林書豪、陳怡君、訪客等），<strong>同時自動關閉正式營運模式</strong>，便於進行跨身分權限切換與情境測試。
                   </p>
                 )
               )}

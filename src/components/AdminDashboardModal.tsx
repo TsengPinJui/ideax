@@ -1286,18 +1286,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               )}
               {pendingConfirm.type === 'demo' && (
                 pendingConfirm.nextState
-                  ? '即將解封所有測試帳號並載入預設示範問題、提案、專家與測試交易數據。'
+                  ? '即將開啟【測試環境】：同步公開測試帳號、載入預設示範問題與專家數據，並自動關閉正式營運模式。'
                   : '即將隱藏所有模擬示範貼文與假資料，切換為純淨正式營運模式。'
               )}
               {pendingConfirm.type === 'noPayment' && (
                 pendingConfirm.nextState
-                  ? '即將隱藏會員訂閱方案與儲值點數，全站開放免費提問、無償解答與諮詢提案。'
+                  ? '即將開啟【無金流環境】：全站隱藏會員訂閱方案與儲值點數，並自動關閉正式營運模式。'
                   : '即將關閉無金流環境，恢復標準商業會員訂閱方案與懸賞點數機制。'
               )}
               {pendingConfirm.type === 'hideTestAccounts' && (
                 pendingConfirm.nextState
                   ? '即將在全站用戶列表與切換帳號選單中隱藏林書豪、陳怡君與訪客等測試帳號，僅保留超級管理員與真實註冊用戶。'
-                  : '即將恢復顯示核心測試帳號（林書豪、陳怡君、訪客等），供測試雙向身分流程。'
+                  : '即將公開顯示測試帳號（林書豪、陳怡君、訪客等），並自動關閉正式營運模式。'
               )}
             </div>
 

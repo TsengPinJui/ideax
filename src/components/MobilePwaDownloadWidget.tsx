@@ -100,31 +100,31 @@ export const MobilePwaDownloadWidget: React.FC = () => {
         /* 收合狀態：靠右邊框的純跳動下載圖示標籤 */
         <button
           onClick={() => setIsCollapsed(false)}
-          className="flex items-center justify-center bg-gradient-to-l from-amber-500 via-amber-600 to-orange-500 text-white pl-3 pr-2 py-2.5 rounded-l-2xl shadow-xl border-y border-l border-white/80 active:scale-90 transition-transform cursor-pointer"
+          className="flex items-center justify-center bg-gradient-to-l from-amber-500 via-amber-600 to-orange-500 text-white pl-2.5 pr-1.5 py-1.5 rounded-l-xl shadow-lg border-y border-l border-white/80 active:scale-90 transition-transform cursor-pointer"
           title={isTestingAdmin ? '【管理員測試】點擊展開下載' : '點擊展開下載'}
         >
           <div className="animate-bounce">
-            <Download className="w-5 h-5 text-white" />
+            <Download className="w-4 h-4 text-white" />
           </div>
         </button>
       ) : (
-        /* 展開狀態：稍微放大組件，下載圖示與「先牢記/先不要」區分顏色底色 */
-        <div className="flex flex-col items-center gap-2 animate-in fade-in slide-in-from-right duration-300">
-          {/* 上下跳動的大圓形下載按鈕 */}
+        /* 展開狀態：縮小圓圈與字體規格 */
+        <div className="flex flex-col items-center gap-1.5 animate-in fade-in slide-in-from-right duration-300">
+          {/* 上下跳動的精簡小圓形下載按鈕 */}
           <button
             onClick={handleDownloadClick}
-            className="w-14 h-14 bg-gradient-to-tr from-amber-500 via-amber-600 to-orange-500 text-white rounded-full shadow-xl shadow-amber-500/40 border-2 border-white ring-2 ring-amber-400/30 flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+            className="w-7.5 h-7.5 bg-gradient-to-tr from-amber-500 via-amber-600 to-orange-500 text-white rounded-full shadow-md shadow-amber-500/25 border-1.5 border-white ring-2 ring-amber-400/30 flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
             title={isTestingAdmin ? '【管理員測試模式】直接發起下載請求' : '直接下載 App'}
           >
             <div className="animate-bounce">
-              <Download className="w-7 h-7 text-white drop-shadow-md" />
+              <Download className="w-3.5 h-3.5 text-white drop-shadow-xs" />
             </div>
           </button>
 
-          {/* 下方獨立先不要按鈕 (採用與下載圖示明顯區隔的深色極簡底色) */}
+          {/* 下方獨立先不要按鈕 */}
           <button
             onClick={() => setIsCollapsed(true)}
-            className="bg-stone-800 hover:bg-stone-900 active:scale-95 text-stone-100 text-[11px] font-bold py-1 px-3 rounded-full shadow-lg border border-stone-700 transition-all cursor-pointer whitespace-nowrap"
+            className="bg-stone-800 hover:bg-stone-900 active:scale-95 text-stone-100 text-[10px] font-bold py-0.5 px-2.5 rounded-full shadow-md border border-stone-700 transition-all cursor-pointer whitespace-nowrap"
           >
             先不要
           </button>
