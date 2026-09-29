@@ -27,9 +27,11 @@ export async function testFirestoreConnection(): Promise<boolean> {
     await getDocFromServer(doc(db, '_connection_test', 'status'));
     return true;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firestore is offline or check configuration:', error.message);
-      return false;
+    if (error instanceof Error) {
+      if (error.message.includes('the client is offline') || error.message.includes('unavailable') || error.message.includes('Could not reach')) {
+        console.warn('[Firestore] Backend currently unreachable/offline mode:', error.message);
+        return false;
+      }
     }
     return true;
   }

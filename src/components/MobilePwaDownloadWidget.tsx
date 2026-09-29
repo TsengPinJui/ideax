@@ -72,43 +72,34 @@ export const MobilePwaDownloadWidget: React.FC = () => {
           /* 點擊「先不要」後收合至右側邊框：顯示延伸邊框標籤 */
           <button
             onClick={() => setIsCollapsed(false)}
-            className="group flex items-center gap-1.5 bg-gradient-to-l from-amber-500 via-amber-600 to-amber-500 text-white pl-2.5 pr-1 py-2 rounded-l-full shadow-lg shadow-amber-500/30 border-y border-l border-amber-300/60 active:scale-95 transition-transform translate-x-1 hover:translate-x-0"
-            title="點擊展開 App 下載"
+            className="group flex items-center gap-1.5 bg-gradient-to-l from-amber-500 via-amber-600 to-amber-500 text-white pl-2.5 pr-1 py-1.5 rounded-l-full shadow-lg shadow-amber-500/30 border-y border-l border-amber-300/60 active:scale-95 transition-transform translate-x-1 hover:translate-x-0 cursor-pointer"
+            title="點擊展開 APP 下載"
           >
             <div className="bg-white/20 p-1 rounded-full animate-bounce">
               <Download className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-[11px] font-bold tracking-tight whitespace-nowrap pr-1">下載 App</span>
+            <span className="text-[11px] font-bold tracking-tight whitespace-nowrap pr-1">下載 APP</span>
           </button>
         ) : (
-          /* 展開狀態：位於標記位子的卡片與上下跳動圖示 */
-          <div className="relative bg-gradient-to-br from-amber-50 via-white to-orange-50 border-2 border-amber-400/80 rounded-2xl shadow-xl shadow-amber-500/20 p-2.5 max-w-[195px] backdrop-blur-md animate-in fade-in slide-in-from-right duration-300">
+          /* 展開狀態：精緻極窄卡片 (寬度 128px) */
+          <div className="relative bg-gradient-to-br from-amber-50 via-white to-orange-50 border-2 border-amber-400/80 rounded-2xl shadow-xl shadow-amber-500/20 p-2 w-[128px] backdrop-blur-md animate-in fade-in slide-in-from-right duration-300">
             {/* 上方跳動下載按鈕區塊 */}
-            <div className="flex items-start justify-between gap-1.5 mb-1.5">
-              <div
-                onClick={handleDownloadClick}
-                className="flex-1 flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2.5 py-1.5 rounded-xl shadow-md active:scale-95 transition-transform cursor-pointer"
-              >
-                {/* 上下跳動的下載圖示 */}
-                <div className="bg-white/20 p-1 rounded-lg animate-bounce shrink-0">
-                  <Download className="w-4 h-4 text-white" />
-                </div>
-                <div className="flex flex-col leading-tight min-w-0">
-                  <span className="text-[12px] font-black tracking-tight drop-shadow-xs truncate">下載 PWA App</span>
-                  <span className="text-[9px] text-amber-100 font-medium">免費安裝・免登入商店</span>
-                </div>
+            <div
+              onClick={handleDownloadClick}
+              className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2 py-1.5 rounded-xl shadow-md active:scale-95 transition-transform cursor-pointer mb-1.5"
+            >
+              {/* 上下跳動的下載圖示 */}
+              <div className="bg-white/20 p-1 rounded-md animate-bounce shrink-0">
+                <Download className="w-3.5 h-3.5 text-white" />
               </div>
+              <span className="text-[12px] font-black tracking-tight whitespace-nowrap drop-shadow-xs">下載APP</span>
             </div>
 
             {/* 底部先不要點擊按鈕 */}
-            <div className="flex items-center justify-between pt-1 border-t border-amber-200/60 text-[11px]">
-              <span className="text-[10px] text-stone-500 font-medium flex items-center gap-0.5">
-                <Sparkles className="w-2.5 h-2.5 text-amber-500" />
-                極速順暢體驗
-              </span>
+            <div className="flex items-center justify-end px-0.5 pt-0.5 border-t border-amber-200/60">
               <button
                 onClick={() => setIsCollapsed(true)}
-                className="text-[11px] font-bold text-stone-400 hover:text-stone-600 active:text-stone-700 px-1.5 py-0.5 rounded hover:bg-stone-100 transition-colors"
+                className="text-[10px] font-bold text-stone-400 hover:text-stone-600 active:text-stone-700 px-1 py-0.5 rounded transition-colors cursor-pointer"
               >
                 先不要
               </button>
@@ -151,7 +142,7 @@ export const MobilePwaDownloadWidget: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-amber-500 text-white font-bold text-[11px] flex items-center justify-center shrink-0">3</span>
-                <span>點擊右上角 <strong>「新增」</strong> 即可像原生 App 般使用！</span>
+                <span>點擊右上角 <strong>「新增」</strong> 即可使用！</span>
               </div>
             </div>
 
@@ -182,7 +173,7 @@ export const MobilePwaDownloadWidget: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-extrabold text-base text-stone-900">將 IdeaX 加至主畫面</h3>
-                <p className="text-xs text-stone-500">取得更快速、順暢的 App 體驗</p>
+                <p className="text-xs text-stone-500">安裝至手機主畫面方便隨時開啟</p>
               </div>
             </div>
 
