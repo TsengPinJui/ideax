@@ -209,6 +209,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [basicSaveSuccessMsg, setBasicSaveSuccessMsg] = useState<string | null>(null);
   const [bankSaveSuccessMsg, setBankSaveSuccessMsg] = useState<string | null>(null);
   const [surveySaveSuccessMsg, setSurveySaveSuccessMsg] = useState<string | null>(null);
+  const [surveyValidationMsg, setSurveyValidationMsg] = useState<string | null>(null);
+  const [surveyUnansweredErrors, setSurveyUnansweredErrors] = useState<Record<string, boolean>>({});
   const [previewContract, setPreviewContract] = useState<ContractData | null>(null);
 
   const handleConfirmModeToggle = () => {
@@ -222,7 +224,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         setHideTestAccounts(false);
       }
     } else if (pendingModeConfirm.type === 'demo') {
-      toggleDemoMode();
+      if (pendingModeConfirm.nextState) {
+        setDemoMode(true);
+        setHideTestAccounts(false);
+      } else {
+        setDemoMode(false);
+      }
     } else if (pendingModeConfirm.type === 'noPayment') {
       toggleNoPaymentMode();
     } else if (pendingModeConfirm.type === 'hideTestAccounts') {
@@ -303,6 +310,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       setActiveTab('profile');
       setProfileSubTab('survey');
       setMobileMenuOpen(false);
+      setTimeout(() => {
+        const el = document.getElementById('survey-questions-section');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 150);
     } else if (!initialTab || initialTab === 'overview') {
       setActiveTab('overview');
       setMobileMenuOpen(true);
@@ -371,11 +384,15 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
   // Basic Personal Profile & SubTab State
   const [profileSubTab, setProfileSubTab] = useState<'basic' | 'survey'>('basic');
-  const [userGender, setUserGender] = useState<'male' | 'female' | 'other' | 'undisclosed'>(currentUser.gender || 'male');
-  const [userAgeGroup, setUserAgeGroup] = useState<'under_18' | '18_24' | '25_34' | '35_44' | '45_54' | '55_above'>(currentUser.ageGroup || '25_34');
-  const [userIndustry, setUserIndustry] = useState(currentUser.industry || '資訊科技 / 軟體互聯網');
-  const [userAnnualSalary, setUserAnnualSalary] = useState<'under_500k' | '500k_1000k' | '1000k_2000k' | '2000k_3000k' | 'above_3000k' | 'undisclosed'>(
-    currentUser.annualSalary || 'undisclosed'
+  const [userGender, setUserGender] = useState<string>(
+    currentUser.surveyData?.completedAt ? (currentUser.gender || '') : ''
+  );
+  const [userAgeGroup, setUserAgeGroup] = useState<string>(
+    currentUser.surveyData?.completedAt ? (currentUser.ageGroup || '') : ''
+  );
+  const [userIndustry, setUserIndustry] = useState(currentUser.industry || '');
+  const [userAnnualSalary, setUserAnnualSalary] = useState<string>(
+    currentUser.surveyData?.completedAt ? (currentUser.annualSalary || '') : ''
   );
   const [userCompany, setUserCompany] = useState(currentUser.company || '');
   const [userPhone, setUserPhone] = useState(currentUser.phone || '');
@@ -390,30 +407,31 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
   // Survey Data State
   const [surveyDesiredServices, setSurveyDesiredServices] = useState<string[]>(
-    currentUser.surveyData?.desiredServices || ['發布懸賞徵求專家解方', '探索市場痛點與創新商機']
+    currentUser.surveyData?.desiredServices || []
   );
   const [surveyDesiredServicesCustom, setSurveyDesiredServicesCustom] = useState(currentUser.surveyData?.desiredServicesCustom || '');
   const [surveyRelatedDomains, setSurveyRelatedDomains] = useState<string[]>(
     currentUser.surveyData?.relatedDomains || [currentUser.domain || '創新創業']
   );
   const [surveyRelatedDomainsCustom, setSurveyRelatedDomainsCustom] = useState(currentUser.surveyData?.relatedDomainsCustom || '');
-  const [surveyWillingQuestionBudget, setSurveyWillingQuestionBudget] = useState(currentUser.surveyData?.willingQuestionBudget || '2000_5000');
+  const [surveyWillingQuestionBudget, setSurveyWillingQuestionBudget] = useState(currentUser.surveyData?.willingQuestionBudget || '');
   const [surveyWillingToProvideSolutions, setSurveyWillingToProvideSolutions] = useState(currentUser.surveyData?.willingToProvideSolutions || 'very_willing');
-  const [surveyUsageFrequency, setSurveyUsageFrequency] = useState(currentUser.surveyData?.usageFrequency || 'few_times_weekly');
-  const [surveyWillingToBeSideHustle, setSurveyWillingToBeSideHustle] = useState(currentUser.surveyData?.willingToBeSideHustle || 'considering');
-  const [surveyWillingToSubscribeSolverPlan, setSurveyWillingToSubscribeSolverPlan] = useState(currentUser.surveyData?.willingToSubscribeSolverPlan || 'depends_profit');
+  const [surveyUsageFrequency, setSurveyUsageFrequency] = useState(currentUser.surveyData?.usageFrequency || '');
+  const [surveyWillingToBeSideHustle, setSurveyWillingToBeSideHustle] = useState(currentUser.surveyData?.willingToBeSideHustle || '');
+  const [surveyWillingToSubscribeSolverPlan, setSurveyWillingToSubscribeSolverPlan] = useState(currentUser.surveyData?.willingToSubscribeSolverPlan || '');
   const [surveyFeedback, setSurveyFeedback] = useState(currentUser.surveyData?.feedbackSuggestions || '');
 
   // 當切換登入帳號或 currentUser 變更時，即時且同步更新表單各欄位為該當前用戶的資料
   React.useEffect(() => {
+    const hasCompletedSurvey = !!currentUser.surveyData?.completedAt;
     setName(currentUser.name || '');
-    setTitle(currentUser.title || '');
+    setTitle(hasCompletedSurvey ? (currentUser.title || '') : '');
     setBio(currentUser.bio || '');
     setAvatar(currentUser.avatar || '');
-    setUserGender(currentUser.gender || 'male');
-    setUserAgeGroup(currentUser.ageGroup || '25_34');
-    setUserIndustry(currentUser.industry || '資訊科技 / 軟體互聯網');
-    setUserAnnualSalary(currentUser.annualSalary || 'undisclosed');
+    setUserGender(hasCompletedSurvey ? (currentUser.gender || '') : '');
+    setUserAgeGroup(hasCompletedSurvey ? (currentUser.ageGroup || '') : '');
+    setUserIndustry(currentUser.industry || '');
+    setUserAnnualSalary(hasCompletedSurvey ? (currentUser.annualSalary || '') : '');
     setUserCompany(currentUser.company || '');
     setUserPhone(currentUser.phone || '');
     setUserEmail(currentUser.email || '');
@@ -422,17 +440,17 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setBranchName(currentUser.bankAccount?.branchName || '敦南分行');
     setAccountNumber(currentUser.bankAccount?.accountNumber || '');
     setAccountHolder(currentUser.bankAccount?.accountHolder || currentUser.name || '');
-    setSurveyDesiredServices(currentUser.surveyData?.desiredServices || ['發布懸賞徵求專家解方', '探索市場痛點與創新商機']);
+    setSurveyDesiredServices(currentUser.surveyData?.desiredServices || []);
     setSurveyDesiredServicesCustom(currentUser.surveyData?.desiredServicesCustom || '');
     setSurveyRelatedDomains(currentUser.surveyData?.relatedDomains || [currentUser.domain || '創新創業']);
     setSurveyRelatedDomainsCustom(currentUser.surveyData?.relatedDomainsCustom || '');
-    setSurveyWillingQuestionBudget(currentUser.surveyData?.willingQuestionBudget || '2000_5000');
+    setSurveyWillingQuestionBudget(currentUser.surveyData?.willingQuestionBudget || '');
     setSurveyWillingToProvideSolutions(currentUser.surveyData?.willingToProvideSolutions || 'very_willing');
-    setSurveyUsageFrequency(currentUser.surveyData?.usageFrequency || 'few_times_weekly');
-    setSurveyWillingToBeSideHustle(currentUser.surveyData?.willingToBeSideHustle || 'considering');
-    setSurveyWillingToSubscribeSolverPlan(currentUser.surveyData?.willingToSubscribeSolverPlan || 'depends_profit');
+    setSurveyUsageFrequency(currentUser.surveyData?.usageFrequency || '');
+    setSurveyWillingToBeSideHustle(currentUser.surveyData?.willingToBeSideHustle || '');
+    setSurveyWillingToSubscribeSolverPlan(currentUser.surveyData?.willingToSubscribeSolverPlan || '');
     setSurveyFeedback(currentUser.surveyData?.feedbackSuggestions || '');
-    setDomain(currentUser.domain || '創新創業');
+    setDomain((hasCompletedSurvey ? (currentUser.domain || '') : '') as any);
     setSkillsInput((currentUser.skills || ['創新創業', '商業模式']).map((s) => (s.startsWith('#') ? s : `#${s}`)).join(' '));
     setShowSubmittedCount(currentUser.showSubmittedCount ?? false);
     setShowAcceptanceRate(currentUser.showAcceptanceRate ?? false);
@@ -940,12 +958,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       avatar: newAvatar,
       title,
       bio,
-      domain,
-      gender: userGender,
-      ageGroup: userAgeGroup,
+      domain: (domain || prev.domain) as any,
+      gender: (userGender || prev.gender) as any,
+      ageGroup: (userAgeGroup || prev.ageGroup) as any,
       industry: userIndustry,
       jobTitle: title,
-      annualSalary: userAnnualSalary,
+      annualSalary: (userAnnualSalary || prev.annualSalary) as any,
       company: userCompany.trim() || undefined,
       phone: userPhone.trim(),
       email: userEmail.trim(),
@@ -983,9 +1001,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               avatar: newAvatar,
               title,
               bio,
-              domain,
-              gender: userGender,
-              ageGroup: userAgeGroup,
+              domain: (domain || u.domain) as any,
+              gender: (userGender || u.gender) as any,
+              ageGroup: (userAgeGroup || u.ageGroup) as any,
               industry: userIndustry,
               jobTitle: title,
               company: userCompany.trim() || undefined,
@@ -1018,12 +1036,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       avatar: newAvatar,
       title,
       bio,
-      domain,
-      gender: userGender,
-      ageGroup: userAgeGroup,
+      domain: (domain || prev.domain) as any,
+      gender: (userGender || prev.gender) as any,
+      ageGroup: (userAgeGroup || prev.ageGroup) as any,
       industry: userIndustry,
       jobTitle: title,
-      annualSalary: userAnnualSalary,
+      annualSalary: (userAnnualSalary || prev.annualSalary) as any,
       company: userCompany.trim() || undefined,
       phone: userPhone.trim(),
       email: userEmail.trim(),
@@ -1052,9 +1070,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               avatar: newAvatar,
               title,
               bio,
-              domain,
-              gender: userGender,
-              ageGroup: userAgeGroup,
+              domain: (domain || u.domain) as any,
+              gender: (userGender || u.gender) as any,
+              ageGroup: (userAgeGroup || u.ageGroup) as any,
               industry: userIndustry,
               jobTitle: title,
               company: userCompany.trim() || undefined,
@@ -1108,9 +1126,56 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setTimeout(() => setBankSaveSuccessMsg(null), 3500);
   };
 
-  // 2.5 獨立儲存服務調研問卷
+  // 1.~5. 一鍵套用帳號基本資料至問卷 1~5 題
+  const handleApplyProfileDataToSurvey = () => {
+    if (currentUser.gender) setUserGender(currentUser.gender as any);
+    if (currentUser.ageGroup) setUserAgeGroup(currentUser.ageGroup as any);
+    if (currentUser.domain) setDomain(currentUser.domain as any);
+    if (currentUser.title || currentUser.jobTitle) setTitle(currentUser.title || currentUser.jobTitle || '');
+    if (currentUser.annualSalary) setUserAnnualSalary(currentUser.annualSalary as any);
+    if (currentUser.industry) setUserIndustry(currentUser.industry);
+
+    setSurveyUnansweredErrors((prev) => ({
+      ...prev,
+      q1: false,
+      q2: false,
+      q3: false,
+      q4: false,
+      q5: false,
+    }));
+
+    setSurveySaveSuccessMsg('已成功套用帳號基本資料至第 1~5 題！');
+    setSurveyValidationMsg(null);
+    setTimeout(() => setSurveySaveSuccessMsg(null), 3000);
+  };
+
+  // 2.5 獨立送出服務調研問卷並發放會員體驗 (1~6.5 為必填)
   const handleSaveSurvey = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setSurveyValidationMsg(null);
+
+    const errors: Record<string, boolean> = {};
+
+    // 必填驗證 (1 ~ 6.5，值為空或選擇預設「-------」即視為未作答)
+    if (!userGender || userGender === '') errors['q1'] = true;
+    if (!userAgeGroup || userAgeGroup === '') errors['q2'] = true;
+    if (!domain || (domain as string) === '') errors['q3'] = true;
+    if (!title || !title.trim()) errors['q4'] = true;
+    if (!userAnnualSalary || userAnnualSalary === '') errors['q5'] = true;
+
+    if (!surveyDesiredServices || surveyDesiredServices.length === 0) errors['q6_1'] = true;
+    if (!surveyWillingQuestionBudget || surveyWillingQuestionBudget === '') errors['q6_2'] = true;
+    if (!surveyUsageFrequency || surveyUsageFrequency === '') errors['q6_3'] = true;
+    if (!surveyWillingToBeSideHustle || surveyWillingToBeSideHustle === '') errors['q6_4'] = true;
+    if (!surveyWillingToSubscribeSolverPlan || surveyWillingToSubscribeSolverPlan === '') errors['q6_5'] = true;
+
+    setSurveyUnansweredErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setSurveyValidationMsg('部分必填項目尚未作答，請完成題號旁有紅色 (請回答此題) 標註的項目！');
+      return;
+    }
+
     const updatedSurveyData: UserSurveyData = {
       ...currentUser.surveyData,
       desiredServices: surveyDesiredServices,
@@ -1127,16 +1192,55 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       updatedAt: new Date().toISOString(),
     };
 
+    // 依填寫順序計算（以前 500 名劃分）
+    const completedCount = availableUsers.filter(
+      (u) => u.surveyData?.completedAt && u.id !== currentUser.id
+    ).length;
+
+    // 前 500 名贈送一週權威方案，其餘贈送一週達人方案
+    const isTop500 = completedCount < 500;
+    const awardedTier: SubscriptionTier = isTop500 ? 'authority' : 'expert';
+    const awardedTierName = SUBSCRIPTION_PLANS[awardedTier]?.name || (isTop500 ? '權威方案' : '達人方案');
+
+    // 會員資格權重 (不高於現有資格就不變更)
+    const TIER_RANK: Record<string, number> = {
+      free: 0,
+      pro: 1,
+      expert: 1,
+      authority: 2,
+      master: 3,
+    };
+
+    const currentTier = currentUser.subscriptionTier || 'free';
+    const currentRank = TIER_RANK[currentTier] ?? 0;
+    const awardedRank = TIER_RANK[awardedTier] ?? 0;
+
+    const expiryStr = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    let newTier = currentTier;
+    let newExpiry = currentUser.subscriptionExpiresAt;
+    let successMsg = '';
+
+    if (awardedRank > currentRank) {
+      newTier = awardedTier;
+      newExpiry = expiryStr;
+      successMsg = `問卷已成功送出！您為第 ${completedCount + 1} 位填寫者，已自動晉升為「${awardedTierName}（1週體驗）」！`;
+    } else {
+      const currentTierName = SUBSCRIPTION_PLANS[currentTier]?.name || currentTier;
+      successMsg = `問卷已成功送出！您的現有會員資格（${currentTierName}）高於或等於贈送資格，已保留原高階權益！`;
+    }
+
     setCurrentUser((prev) => ({
       ...prev,
-      gender: userGender,
-      ageGroup: userAgeGroup,
-      domain,
-      industry: userIndustry,
-      jobTitle: title,
-      annualSalary: userAnnualSalary,
+      gender: userGender ? (userGender as any) : prev.gender,
+      ageGroup: userAgeGroup ? (userAgeGroup as any) : prev.ageGroup,
+      domain: domain ? (domain as any) : prev.domain,
+      industry: userIndustry || prev.industry,
+      jobTitle: title || prev.jobTitle,
+      annualSalary: userAnnualSalary ? (userAnnualSalary as any) : prev.annualSalary,
       surveyData: updatedSurveyData,
-      subscriptionTier: prev.subscriptionTier === 'free' ? 'pro' : prev.subscriptionTier,
+      subscriptionTier: newTier,
+      subscriptionExpiresAt: newExpiry,
     }));
 
     setAvailableUsers((users) =>
@@ -1144,21 +1248,22 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         u.id === currentUser.id
           ? {
               ...u,
-              gender: userGender,
-              ageGroup: userAgeGroup,
-              domain,
-              industry: userIndustry,
-              jobTitle: title,
-              annualSalary: userAnnualSalary,
+              gender: userGender ? (userGender as any) : u.gender,
+              ageGroup: userAgeGroup ? (userAgeGroup as any) : u.ageGroup,
+              domain: domain ? (domain as any) : u.domain,
+              industry: userIndustry || u.industry,
+              jobTitle: title || u.jobTitle,
+              annualSalary: userAnnualSalary ? (userAnnualSalary as any) : u.annualSalary,
               surveyData: updatedSurveyData,
-              subscriptionTier: u.subscriptionTier === 'free' ? 'pro' : u.subscriptionTier,
+              subscriptionTier: newTier,
+              subscriptionExpiresAt: newExpiry,
             }
           : u
       )
     );
 
-    setSurveySaveSuccessMsg('服務調研問卷已成功儲存！一週尊榮體驗已生效');
-    setTimeout(() => setSurveySaveSuccessMsg(null), 3500);
+    setSurveySaveSuccessMsg(successMsg);
+    setTimeout(() => setSurveySaveSuccessMsg(null), 5000);
   };
 
   // 3. 管理員專屬帳號設定儲存
@@ -1207,7 +1312,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     survey: '問卷(客戶調查)',
     switch_account: '切換帳號',
     admin_management: '平台數據與顯示',
-    admin_transfer_points: '轉入點數（每日配額 5 萬點）',
+    admin_transfer_points: '轉入點數',
     admin_cases: '案件管理',
     admin_user_management: '用戶管理',
     admin_user_analytics: '用戶分佈與習慣統計',
@@ -1286,6 +1391,26 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   : '提問者'}
               </span>
 
+              {/* 管理員專用：申訴郵件信封圖示按鈕 */}
+              {currentUser.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('admin_mail_disputes');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    activeTab === 'admin_mail_disputes'
+                      ? 'bg-purple-700 text-white border-purple-800 shadow-2xs font-black'
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-900 border-purple-200'
+                  }`}
+                  title="前往申訴與郵件管理"
+                >
+                  <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-700 shrink-0" />
+                  <span className="text-[10px] sm:text-xs font-black">申訴郵件</span>
+                </button>
+              )}
+
               {currentUser.role === 'solver' && (
                 <span className={`text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.2 rounded-md border shrink-0 ${currentPlan.badgeClass}`}>
                   {currentPlan.name}
@@ -1294,20 +1419,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
-              {currentUser.role === 'admin' ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_management');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-md bg-purple-100 hover:bg-purple-200 active:bg-purple-300 text-purple-950 border border-purple-300 text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
-                  title="進入平台數據與顯示後台"
-                >
-                  <Sliders className="w-2.5 h-2.5 text-purple-700" />
-                  <span>進入平台數據與顯示</span>
-                </button>
-              ) : (
+              {currentUser.role !== 'admin' && (
                 <button
                   type="button"
                   onClick={() => switchRole(currentUser.role === 'solver' ? 'questioner' : 'solver')}
@@ -1342,11 +1454,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           <div className="flex items-center justify-between px-4 py-1.5 border-b border-stone-200/70 bg-stone-100/70 text-xs">
             <div className="flex items-center gap-1.5 overflow-x-auto">
               {[
-                { key: 'all', label: '全部功能', count: 14 },
-                { key: 'finance', label: '💰 財務點數', count: 4 },
+                { key: 'all', label: '全部功能', count: 13 },
+                { key: 'finance', label: '💰 金流與案件', count: 4 },
                 { key: 'users', label: '👥 用戶審核', count: 3 },
-                { key: 'operations', label: '🚀 營運與 AI', count: 4 },
-                { key: 'system', label: '⚙️ 系統帳號', count: 3 },
+                { key: 'ai_sub', label: '🤖 AI與方案', count: 2 },
+                { key: 'account', label: '⚙️ 帳號', count: 2 },
               ].map((cat) => (
                 <button
                   key={cat.key}
@@ -1374,17 +1486,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 }`}
                 title={isDemoMode ? '點擊關閉測試環境' : '點擊開啟測試環境'}
               >
-                <span>{isDemoMode ? '🧪 測試環境' : '🟢 營運模式'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => exportSurveyToExcelXlsx(availableUsers)}
-                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-[11px] flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer shrink-0"
-                title="一鍵將全體用戶個資與調研問卷結果下載為 Excel (.xlsx)"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
-                <span>一鍵下載統計 Excel</span>
+                <span>{isDemoMode ? '🧪 測試環境' : '🟢 正式營運模式'}</span>
               </button>
             </div>
           </div>
@@ -1392,27 +1494,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           {/* Filtered Admin Tabs */}
           <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto text-xs font-bold">
             {[
-              // 財務與點數治理
+              // 總覽與平台數據 (置頂)
+              { id: 'overview', category: 'all', label: '功能總覽儀表板', icon: LayoutGrid },
+              { id: 'admin_management', category: 'all', label: '平台數據與顯示', icon: Sliders },
+
+              // 財務金流與案件
               { id: 'points_receivables', category: 'finance', label: '點數 & 應收帳款', icon: Coins },
-              { id: 'admin_transfer_points', category: 'finance', label: '轉入點數 (每日5萬)', icon: Send, badge: '每日5萬' },
+              { id: 'admin_transfer_points', category: 'finance', label: '轉入點數', icon: Send },
               { id: 'transactions', category: 'finance', label: '交易管理', icon: Clock },
-              { id: 'subscriptions', category: 'finance', label: '會員方案與費率', icon: Crown },
+              { id: 'admin_cases', category: 'finance', label: '案件管理', icon: Briefcase },
 
               // 用戶與審核認證
               { id: 'admin_user_management', category: 'users', label: '用戶管理', icon: UserCheck },
               { id: 'admin_certifications', category: 'users', label: '受理認證', icon: BadgeCheck },
               { id: 'admin_user_analytics', category: 'users', label: '用戶分佈與習慣統計', icon: BarChart3, badge: 'EXCEL' },
 
-              // 營運、案件與 AI
-              { id: 'admin_cases', category: 'operations', label: '案件管理', icon: Briefcase },
-              { id: 'admin_aicrm', category: 'operations', label: 'AI-CRM 系統', icon: Sparkles, badge: 'AI' },
-              { id: 'admin_mail_disputes', category: 'operations', label: '申訴與郵件', icon: Mail },
-              { id: 'admin_management', category: 'operations', label: '平台數據與顯示', icon: Sliders },
+              // AI 智能與會員方案 (自成一區在帳號設定上面)
+              { id: 'admin_aicrm', category: 'ai_sub', label: 'AI-CRM 系統', icon: Sparkles, badge: 'AI' },
+              { id: 'subscriptions', category: 'ai_sub', label: '會員方案與費率', icon: Crown },
 
-              // 系統核心與帳號
-              { id: 'overview', category: 'system', label: '功能總覽', icon: LayoutGrid },
-              { id: 'profile', category: 'system', label: '管理員設定', icon: SettingsIcon },
-              { id: 'switch_account', category: 'system', label: '切換帳號', icon: ArrowLeftRight },
+              // 帳號
+              { id: 'profile', category: 'account', label: '管理員設定', icon: SettingsIcon },
+              { id: 'switch_account', category: 'account', label: '切換帳號', icon: ArrowLeftRight },
             ]
               .filter((tab) => adminCategoryFilter === 'all' || tab.category === adminCategoryFilter)
               .map((tab) => {
@@ -1511,298 +1614,349 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       {mobileMenuOpen && (
         <div className="sm:hidden flex-1 overflow-y-auto bg-stone-50/90 p-2.5 space-y-2">
           {currentUser.role === 'admin' ? (
-            <div className="bg-white rounded-xl border border-stone-200/80 p-1 space-y-0.5 shadow-2xs">
-              <p className="px-2 pt-1 pb-0.5 text-[10px] font-black text-purple-700 uppercase tracking-wider">
-                管理員個人中心
-              </p>
+            <div className="space-y-3">
+              {/* 分類 0: 📊 總覽與平台數據 (置頂) */}
+              <div className="bg-white rounded-xl border border-purple-200 p-1.5 space-y-0.5 shadow-2xs">
+                <p className="px-2 pt-1 pb-1 text-[10px] font-black text-purple-900 uppercase tracking-wider flex items-center justify-between border-b border-purple-100/80 mb-1">
+                  <span className="flex items-center gap-1.5">
+                    <LayoutGrid className="w-3.5 h-3.5 text-purple-700" />
+                    <span>總覽與平台數據</span>
+                  </span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 font-bold border border-purple-200">2 項</span>
+                </p>
 
-              {/* 1. 點數&應收帳款管理 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('points_receivables');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg hover:bg-purple-50 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-800 flex items-center justify-center shrink-0">
-                    <Coins className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="block font-black text-stone-900">點數&應收帳款管理</span>
-                    <span className="text-[10px] text-stone-500 font-normal">查閱個別用戶的帳目</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              </button>
-
-              {/* 2. 交易管理 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('transactions');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg hover:bg-purple-50 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-800 flex items-center justify-center shrink-0">
-                    <Clock className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="block font-black text-stone-900">交易管理</span>
-                    <span className="text-[10px] text-stone-500 font-normal">查閱個別用戶的交易紀錄</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              </button>
-
-              {/* 3. 會員方案與費率管理 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('subscriptions');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg hover:bg-purple-50 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-800 flex items-center justify-center shrink-0">
-                    <Crown className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="block font-black text-stone-900">會員方案與費率管理</span>
-                    <span className="text-[10px] text-stone-500 font-normal">平台抽成設定與會員方案管理</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              </button>
-
-              {/* 4. 轉入點數（管理員專屬） */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('admin_transfer_points');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-left text-xs font-bold text-purple-950 flex items-center justify-between group cursor-pointer transition-colors border border-purple-200/80"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <Send className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="block font-black text-purple-950">轉入點數</span>
-                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-purple-200 text-purple-900">
-                        每日 5 萬點
-                      </span>
+                {/* 1. 功能總覽儀表板 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('overview');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg bg-purple-50/50 hover:bg-purple-100/70 active:bg-purple-100 text-left text-xs font-bold text-stone-900 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <LayoutGrid className="w-3.5 h-3.5" />
                     </div>
-                    <span className="text-[10px] text-purple-700/90 font-normal">活動激勵、異常補償與合作撥付</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-purple-700" />
-              </button>
-
-              {/* 5. 平台數據與顯示 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('admin_management');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg bg-purple-50/70 hover:bg-purple-100 active:bg-purple-200 text-left text-xs font-bold text-purple-950 flex items-center justify-between group cursor-pointer transition-colors border border-purple-200/60"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-purple-600 text-white flex items-center justify-center shrink-0">
-                    <Sliders className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="block font-black">平台數據與顯示</span>
-                    <span className="text-[10px] text-purple-800/80 font-normal">平台獲利統計與首頁看板公開指標</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-purple-600" />
-              </button>
-
-              {/* 5. 案件管理 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('admin_cases');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg hover:bg-purple-50 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-800 flex items-center justify-center shrink-0">
-                    <Briefcase className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="block font-black text-stone-900">案件管理</span>
-                    <span className="text-[10px] text-stone-500 font-normal">查閱案件詳細狀況和對話</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              </button>
-
-              {/* 6. 管理員帳號設定 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('profile');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg hover:bg-purple-50 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-800 flex items-center justify-center shrink-0">
-                    <SettingsIcon className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="block font-black text-stone-900">管理員帳號設定</span>
-                    <span className="text-[10px] text-stone-500 font-normal">管理員帳號相關設定</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              </button>
-
-              {/* 7. 受理認證 (實名、專家) */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('admin_certifications');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg hover:bg-purple-50 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                    <BadgeCheck className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="block font-black text-stone-900">受理認證 (實名、專家)</span>
-                    <span className="text-[10px] text-stone-500 font-normal">手動審核通過或移除實名/專家資格</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              </button>
-
-              {/* 8. 用戶管理 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('admin_user_management');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg hover:bg-rose-50 active:bg-rose-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                    <UserCheck className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="block font-black text-stone-900">用戶管理</span>
-                    <span className="text-[10px] text-stone-500 font-normal">封鎖/解封用戶、封鎖名單</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              </button>
-
-              {/* 9. 用戶分佈與習慣統計 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('admin_user_analytics');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg hover:bg-purple-50 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                    <BarChart3 className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="block font-black text-stone-900">用戶分佈與習慣統計</span>
-                    <span className="text-[10px] text-stone-500 font-normal">個資統計、問卷圖表、EXCEL 匯出</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              </button>
-
-              {/* 10. AI-CRM 系統 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('admin_aicrm');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg hover:bg-amber-50 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
-                    <Sparkles className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="block font-black text-stone-900">AI-CRM 系統</span>
-                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                        營運中心
-                      </span>
+                    <div>
+                      <span className="block font-black text-purple-950 group-hover:text-purple-700 transition-colors">功能總覽儀表板</span>
+                      <span className="text-[10px] text-purple-700/80 font-normal">管理員核心營運概覽</span>
                     </div>
-                    <span className="text-[10px] text-stone-500 font-normal">功能開關、猶豫期推播規則與客情商機</span>
                   </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              </button>
+                  <ChevronRight className="w-3.5 h-3.5 text-purple-500 group-hover:translate-x-0.5 transition-transform" />
+                </button>
 
-              {/* 10. 申訴與郵件 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('admin_mail_disputes');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-2 py-2 rounded-lg hover:bg-purple-50 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <Mail className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="block font-black text-stone-900">申訴與郵件</span>
-                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">
-                        官方內部中心
-                      </span>
+                {/* 2. 平台數據與顯示 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('admin_management');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg bg-purple-50/50 hover:bg-purple-100/70 active:bg-purple-100 text-left text-xs font-bold text-stone-900 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Sliders className="w-3.5 h-3.5" />
                     </div>
-                    <span className="text-[10px] text-stone-500 font-normal">申訴調解、違規裁定與全站內部郵件</span>
+                    <div>
+                      <span className="block font-black text-purple-950 group-hover:text-purple-700 transition-colors">平台數據與顯示</span>
+                      <span className="text-[10px] text-purple-700/80 font-normal">獲利統計與首頁看板公開指標設定</span>
+                    </div>
                   </div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-              </button>
+                  <ChevronRight className="w-3.5 h-3.5 text-purple-500 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+              {/* 分類 1: 💰 金流與點數資產 */}
+              <div className="bg-white rounded-xl border border-amber-200/90 p-1.5 space-y-0.5 shadow-2xs">
+                <p className="px-2 pt-1 pb-1 text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center justify-between border-b border-amber-100 mb-1">
+                  <span className="flex items-center gap-1.5">
+                    <Coins className="w-3.5 h-3.5 text-amber-600" />
+                    <span>金流與點數資產</span>
+                  </span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">4 項</span>
+                </p>
 
-              <div className="pt-1.5 border-t border-stone-100 space-y-0.5">
-                {/* 8. 切換帳號 */}
+                {/* 1. 點數與應收帳款 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('points_receivables');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
+                      <Coins className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">點數與應收帳款</span>
+                      <span className="text-[10px] text-stone-500 font-normal">全站點數帳目、託管與提領審核</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
+                {/* 2. 開通會員與撥付點數 (轉入點數) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('admin_transfer_points');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg bg-gradient-to-r from-amber-50/90 to-amber-100/70 hover:from-amber-100 hover:to-amber-200/80 text-left text-xs font-bold text-amber-950 flex items-center justify-between group cursor-pointer transition-all border border-amber-200/80"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Send className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="block font-black text-amber-950">開通會員與撥付點數</span>
+                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-200/90 text-amber-950 border border-amber-300">
+                          每日 5 萬點
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-amber-800/90 font-normal">活動激勵、異常補償與合作撥付</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-amber-700 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
+                {/* 3. 交易管理 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('transactions');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
+                      <Clock className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">交易管理</span>
+                      <span className="text-[10px] text-stone-500 font-normal">全站交易紀錄、拆款與退款稽核</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
+                {/* 4. 案件管理 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('admin_cases');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-purple-50/80 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-purple-100 text-purple-800 border border-purple-200 flex items-center justify-center shrink-0">
+                      <Briefcase className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900 group-hover:text-purple-800 transition-colors">案件管理</span>
+                      <span className="text-[10px] text-stone-500 font-normal">全站案件詳細狀況與私聊對話稽核</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+
+              {/* 分類 2: 👥 用戶管理與身分認證 */}
+              <div className="bg-white rounded-xl border border-blue-200/90 p-1.5 space-y-0.5 shadow-2xs">
+                <p className="px-2 pt-1 pb-1 text-[10px] font-black text-blue-900 uppercase tracking-wider flex items-center justify-between border-b border-blue-100 mb-1">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-blue-700" />
+                    <span>用戶管理與身分認證</span>
+                  </span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-900 font-bold border border-blue-200">3 項</span>
+                </p>
+
+                {/* 5. 用戶管理 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('admin_user_management');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-blue-50/80 active:bg-blue-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-blue-100 text-blue-800 border border-blue-200 flex items-center justify-center shrink-0">
+                      <UserCheck className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900 group-hover:text-blue-800 transition-colors">用戶管理</span>
+                      <span className="text-[10px] text-stone-500 font-normal">會員名冊、帳號停權/解封與黑名單</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
+                {/* 6. 受理認證 (實名、專家) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('admin_certifications');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-indigo-50/80 active:bg-indigo-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center justify-center shrink-0">
+                      <BadgeCheck className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900 group-hover:text-indigo-800 transition-colors">受理認證 (實名、專家)</span>
+                      <span className="text-[10px] text-stone-500 font-normal">審核通過或移除實名/專家大師身分</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
+                {/* 7. 用戶分佈與習慣統計 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('admin_user_analytics');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-emerald-50/80 active:bg-emerald-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center shrink-0">
+                      <BarChart3 className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="block font-black text-stone-900 group-hover:text-emerald-800 transition-colors">用戶分佈與習慣統計</span>
+                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
+                          個資與 Excel
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-stone-500 font-normal">個資統計、調研問卷圖表與檔案匯出</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+
+              {/* 分類 3: 🤖 AI 智能與會員方案 (自成一區在帳號設定上面) */}
+              <div className="bg-white rounded-xl border border-amber-200/90 p-1.5 space-y-0.5 shadow-2xs">
+                <p className="px-2 pt-1 pb-1 text-[10px] font-black text-amber-900 uppercase tracking-wider flex items-center justify-between border-b border-amber-100 mb-1">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>AI 智能與會員方案</span>
+                  </span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">2 項</span>
+                </p>
+
+                {/* AI-CRM 系統 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('admin_aicrm');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">AI-CRM 系統</span>
+                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-100 text-amber-950 border border-amber-300">
+                          智慧營運
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-stone-500 font-normal">功能開關、猶豫期推播規則與客情商機</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
+                {/* 會員方案與費率管理 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('subscriptions');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-200 flex items-center justify-center shrink-0">
+                      <Crown className="w-3.5 h-3.5 text-amber-700" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">會員方案與費率管理</span>
+                      <span className="text-[10px] text-stone-500 font-normal">平台抽成設定與會員訂閱方案編輯</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+
+              {/* 分類 4: ⚙️ 帳號 */}
+              <div className="bg-white rounded-xl border border-stone-200/80 p-1.5 space-y-0.5 shadow-2xs">
+                <p className="px-2 pt-1 pb-1 text-[10px] font-black text-stone-500 uppercase tracking-wider flex items-center justify-between border-b border-stone-100 mb-1">
+                  <span className="flex items-center gap-1">
+                    <SettingsIcon className="w-3 h-3 text-stone-500" />
+                    <span>帳號</span>
+                  </span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-bold">2 項</span>
+                </p>
+
+                {/* 13. 管理員帳號設定 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('profile');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-100 active:bg-stone-200 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-stone-100 text-stone-800 flex items-center justify-center shrink-0">
+                      <SettingsIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900">管理員帳號設定</span>
+                      <span className="text-[10px] text-stone-500 font-normal">管理員席位資料與安全維護</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+                </button>
+
+                {/* 14. 切換帳號 */}
                 <button
                   type="button"
                   onClick={() => {
                     openAuthModal('login');
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-purple-50 text-left text-xs font-bold text-stone-700 flex items-center justify-between group cursor-pointer transition-colors"
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-100 active:bg-stone-200 text-left text-xs font-bold text-stone-700 flex items-center justify-between group cursor-pointer transition-colors"
                 >
-                  <span className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-800 flex items-center justify-center shrink-0">
-                      <ArrowLeftRight className="w-3 h-3" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-amber-100/80 text-amber-800 flex items-center justify-center shrink-0">
+                      <ArrowLeftRight className="w-3.5 h-3.5" />
                     </div>
-                    <span>切換帳號</span>
-                  </span>
+                    <div>
+                      <span className="block font-black text-stone-900">切換帳號</span>
+                      <span className="text-[10px] text-stone-500 font-normal">本裝置已登錄身分快速切換</span>
+                    </div>
+                  </div>
                   <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
                 </button>
 
-                {/* 9. 登出帳號 */}
+                {/* 15. 登出管理員帳號 */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1812,13 +1966,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   }}
                   className="w-full px-2 py-1.5 rounded-lg hover:bg-rose-50 text-left text-xs font-bold text-rose-600 flex items-center justify-between group cursor-pointer transition-colors"
                 >
-                  <span className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-md bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
-                      <LogOut className="w-3 h-3" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                      <LogOut className="w-3.5 h-3.5" />
                     </div>
-                    <span>登出帳號</span>
-                  </span>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+                    <span className="font-black text-rose-600">登出管理員帳號</span>
+                  </div>
                 </button>
               </div>
             </div>
@@ -2012,12 +2165,15 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </span>
               <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
             </button>
-            <button
-              type="button"
+            <div
               onClick={() => {
                 setActiveTab('profile');
                 setProfileSubTab('survey');
                 setMobileMenuOpen(false);
+                setTimeout(() => {
+                  const el = document.getElementById('survey-questions-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
               }}
               className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
             >
@@ -2027,15 +2183,21 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
                 <span>問卷(客戶調查)</span>
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 {currentUser.surveyData?.completedAt ? (
                   <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-750 border border-purple-200">已填寫</span>
                 ) : (
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">得體驗</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">完成即送會員</span>
                 )}
-                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+                <span
+                  className="text-[9px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-0.5 transition-all cursor-pointer"
+                  title="查看活動"
+                >
+                  <span>查看活動</span>
+                  <ArrowRight className="w-2.5 h-2.5" />
+                </span>
               </div>
-            </button>
+            </div>
           </div>
 
           {/* Section 4: 帳號操作 */}
@@ -2112,48 +2274,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           currentUser.role === 'admin' ? (
             <div className="space-y-6 animate-in fade-in duration-200">
               {/* Admin Command Center Banner */}
-              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-stone-950 via-purple-950 to-stone-900 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className="px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-400/30 flex items-center gap-1.5">
-                      <Sliders className="w-3.5 h-3.5" />
-                      <span>官方管理指揮中心</span>
-                    </span>
-                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                      isDemoMode ? 'bg-amber-400 text-stone-950' : 'bg-emerald-500 text-white'
-                    }`}>
-                      {isDemoMode ? '🧪 測試環境 (解封測試帳號與假資料)' : '🟢 營運模式 (僅保留核心測試帳號)'}
-                    </span>
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-black text-white">創點子 IdeaX 運營管理後台</h3>
-                  <p className="text-xs text-stone-300 mt-1 max-w-2xl leading-relaxed">
-                    實時掌握全站用戶調研、點數託管、案件進展、認證審核與金流分潤。隨時可一鍵切換測試環境或匯出用戶統計 Excel。
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const el = document.getElementById('environment-controls-section');
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="px-3.5 py-2 rounded-xl bg-purple-700/80 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md border border-purple-500/50"
-                  >
-                    <Sliders className="w-3.5 h-3.5 text-purple-300" />
-                    <span>核心環境開關 (置底)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => exportSurveyToExcelXlsx(availableUsers)}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                    title="一鍵將全體用戶個資與調研問卷結果下載為 Excel (.xlsx)"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
-                    <span>下載統計 Excel</span>
-                  </button>
-                </div>
+              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-stone-950 via-purple-950 to-stone-900 text-white shadow-md">
+                <h3 className="text-xl sm:text-2xl font-black text-white">創點子 IdeaX 運營管理後台</h3>
+                <p className="text-xs text-stone-300 mt-1 max-w-2xl leading-relaxed">
+                  實時掌握全站用戶調研、點數託管、案件進展、認證審核與金流分潤。
+                </p>
               </div>
 
               {/* KPI Quick Stats */}
@@ -2271,7 +2396,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         <Send className="w-4 h-4" />
                       </div>
                       <div>
-                        <h5 className="font-black text-stone-900 text-sm">轉入點數 (每日5萬)</h5>
+                        <h5 className="font-black text-stone-900 text-sm">轉入點數</h5>
                         <span className="text-[10px] text-indigo-700 font-bold">活動激勵與異常補償</span>
                       </div>
                     </div>
@@ -2339,166 +2464,92 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
               </div>
 
-              {/* 平台營運與金流環境核心開關 (功能總覽儀表板最底層模塊) */}
-              <div id="environment-controls-section" className="p-5 sm:p-6 rounded-3xl bg-stone-950 text-white space-y-5 shadow-xl border border-stone-800">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800/80 pb-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
-                      <Sliders className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm sm:text-base font-black text-amber-400">
-                        平台營運與金流環境核心開關
-                      </h4>
-                      <p className="text-xs text-stone-400 mt-0.5">
-                        全域系統底層展示與交易模式控制。開啟或關閉測試環境與無金流環境均具備二次確認機制。
-                      </p>
-                    </div>
+              {/* 特殊環境開關 (精簡微型版) */}
+              <div id="environment-controls-section" className="p-3 rounded-xl bg-stone-900 border border-stone-800 text-stone-300 text-xs space-y-2">
+                <div className="flex items-center justify-between border-b border-stone-800/80 pb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-stone-400" />
+                    <span className="font-bold text-stone-200 text-xs">特殊環境開關</span>
                   </div>
-                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 self-start sm:self-auto">
-                    管理員全域控制中樞
+                  <span className="text-[10px] text-stone-500">
+                    {isHideTestAccounts && !isNoPaymentMode && !isDemoMode
+                      ? '已開啟正式營運模式（其餘測試設定已自動關閉並隱藏）'
+                      : '快速切換測試與金流模式'}
                   </span>
                 </div>
 
-                <div className="space-y-4">
-                  {/* 開關 1 (最首項): 營運模式 (正式上線環境) */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-stone-900 via-purple-950/80 to-stone-900 border border-purple-600/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
-                    <div className="space-y-1 max-w-2xl">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs sm:text-sm font-black text-purple-200 flex items-center gap-1.5">
-                          <Crown className="w-4 h-4 text-amber-400" />
-                          <span>營運模式 (正式上線環境)</span>
-                        </span>
-                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                          isHideTestAccounts && !isNoPaymentMode
-                            ? 'bg-emerald-500 text-stone-950 shadow-xs'
-                            : 'bg-stone-800 text-stone-400 border border-stone-700'
-                        }`}>
-                          {isHideTestAccounts && !isNoPaymentMode ? '已開啟 (正式營運)' : '未啟用 (測試/非營運)'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-purple-200/80 leading-relaxed">
-                        開啟營運模式將自動<strong>隱藏所有測試帳號</strong>（僅保留管理員與真實註冊會員），並且<strong>關閉無金流環境</strong>（啟用正式商業金流與第三方履約託管）。
-                      </p>
-                    </div>
-
-                    <div className="shrink-0 self-stretch sm:self-auto flex items-center justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setPendingModeConfirm({
-                          type: 'liveOperation',
-                          nextState: !(isHideTestAccounts && !isNoPaymentMode)
-                        })}
-                        className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md ${
-                          isHideTestAccounts && !isNoPaymentMode
-                            ? 'bg-amber-400 hover:bg-amber-300 text-stone-950'
-                            : 'bg-purple-600 hover:bg-purple-500 text-white'
-                        }`}
-                      >
-                        {isHideTestAccounts && !isNoPaymentMode ? '關閉【營運模式】' : '開啟【營運模式】'}
-                      </button>
-                    </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  {/* 1. 正式營運模式 */}
+                  <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                    <span className="font-medium text-stone-300 truncate">正式營運模式</span>
+                    <button
+                      type="button"
+                      onClick={() => setPendingModeConfirm({
+                        type: 'liveOperation',
+                        nextState: !(isHideTestAccounts && !isNoPaymentMode && !isDemoMode)
+                      })}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                        isHideTestAccounts && !isNoPaymentMode && !isDemoMode
+                          ? 'bg-emerald-500 text-stone-950 hover:bg-emerald-400'
+                          : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                      }`}
+                    >
+                      {isHideTestAccounts && !isNoPaymentMode && !isDemoMode ? '已開啟' : '開啟'}
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* 開關 2: 測試環境 (Demo & Test Data) */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-stone-800 flex flex-col justify-between gap-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-1.5">
-                            <FlaskConical className="w-4 h-4 text-amber-400" />
-                            <span>測試環境 (Demo & Test Data)</span>
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isDemoMode ? 'bg-amber-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-400'}`}>
-                            {isDemoMode ? '已開啟 (解封假資料)' : '已關閉 (純淨營運)'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-stone-300 leading-relaxed">
-                          <strong>開啟：</strong> 解封所有測試帳號並載入預設示範問題、提案、專家假資料。<br />
-                          <strong>關閉：</strong> 關閉測試環境，隱藏所有示範假資料，僅保留各身分測試帳號與真實註冊會員。
-                        </p>
-
-                        <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between">
-                          <span className="text-[10px] text-stone-500 font-mono">STATE: isDemoMode</span>
-                          <button
-                            type="button"
-                            onClick={() => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode })}
-                            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs ${
-                              isDemoMode
-                                ? 'bg-amber-500 hover:bg-amber-400 text-stone-950'
-                                : 'bg-stone-800 hover:bg-stone-700 text-white border border-stone-700'
-                            }`}
-                          >
-                            {isDemoMode ? '關閉【測試環境】' : '開啟【測試環境】'}
-                          </button>
-                        </div>
+                  {/* 當 正式營運模式 開啟時，同時關閉並隱藏其餘三個環境設定 */}
+                  {!(isHideTestAccounts && !isNoPaymentMode && !isDemoMode) && (
+                    <>
+                      {/* 2. 測試環境 */}
+                      <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                        <span className="font-medium text-stone-300 truncate">測試環境</span>
+                        <button
+                          type="button"
+                          onClick={() => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode })}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                            isDemoMode
+                              ? 'bg-amber-400 text-stone-950 hover:bg-amber-300'
+                              : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                          }`}
+                        >
+                          {isDemoMode ? '已開啟' : '開啟'}
+                        </button>
                       </div>
 
-                      {/* 測試環境開關下面再加一個開關：隱藏測試帳號（僅保留管理員） */}
-                      <div className="p-3.5 rounded-xl bg-stone-950/80 border border-stone-800 space-y-2 mt-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                            <Users className="w-3.5 h-3.5 text-purple-400" />
-                            <span>隱藏測試帳號（僅保留管理員）</span>
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isHideTestAccounts ? 'bg-purple-600 text-white font-black' : 'bg-stone-800 text-stone-400'}`}>
-                            {isHideTestAccounts ? '已隱藏(僅保留管理員)' : '已公開測試帳號'}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-stone-400 leading-relaxed">
-                          開啟後，全站切換帳號介面與用戶列表中將完全隱藏林書豪（提問者）、陳怡君（專家）及訪客等測試帳號，僅保留超級管理員與真實註冊用戶。
-                        </p>
-                        <div className="flex items-center justify-between pt-1.5 border-t border-stone-800">
-                          <span className="text-[10px] text-stone-500 font-mono">STATE: isHideTestAccounts</span>
-                          <button
-                            type="button"
-                            onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
-                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                              isHideTestAccounts
-                                ? 'bg-purple-600 hover:bg-purple-500 text-white font-black'
-                                : 'bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700'
-                            }`}
-                          >
-                            {isHideTestAccounts ? '公開顯示 測試帳號' : '隱藏測試帳號'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 開關 3: 無金流環境 (Pure Free Mode) */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-stone-800 flex flex-col justify-between gap-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs sm:text-sm font-black text-emerald-300 flex items-center gap-1.5">
-                            <Ban className="w-4 h-4 text-emerald-400" />
-                            <span>無金流環境 (全站免費諮詢模式)</span>
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isNoPaymentMode ? 'bg-emerald-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-400'}`}>
-                            {isNoPaymentMode ? '已開啟 (全站免金流)' : '已關閉 (標準金流)'}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-stone-300 leading-relaxed">
-                          <strong>開啟：</strong> 隱藏全站會員訂閱方案與點數儲值機制；僅開放 L0 免費問題與交流，聊天室「詢價」改為「諮詢」、「報價」改為「提案」，金流運作說明一併隱藏。<br />
-                          <strong>關閉：</strong> 恢復標準商業金流模式，重新開啟會員方案訂閱、點數儲值與懸賞金功能。
-                        </p>
+                      {/* 3. 隱藏測試帳號 */}
+                      <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                        <span className="font-medium text-stone-300 truncate">隱藏測試帳號</span>
+                        <button
+                          type="button"
+                          onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                            isHideTestAccounts
+                              ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
+                              : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                          }`}
+                        >
+                          {isHideTestAccounts ? '已隱藏' : '公開'}
+                        </button>
                       </div>
 
-                      <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between">
-                        <span className="text-[10px] text-stone-500 font-mono">STATE: isNoPaymentMode</span>
+                      {/* 4. 無金流模式 */}
+                      <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                        <span className="font-medium text-stone-300 truncate">無金流模式</span>
                         <button
                           type="button"
                           onClick={() => setPendingModeConfirm({ type: 'noPayment', nextState: !isNoPaymentMode })}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs ${
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
                             isNoPaymentMode
-                              ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
-                              : 'bg-stone-800 hover:bg-stone-700 text-white border border-stone-700'
+                              ? 'bg-rose-400 text-stone-950 hover:bg-rose-300'
+                              : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
                           }`}
                         >
-                          {isNoPaymentMode ? '關閉【無金流環境】' : '開啟【無金流環境】'}
+                          {isNoPaymentMode ? '已開啟' : '開啟'}
                         </button>
                       </div>
-                    </div>
-                  </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -2735,11 +2786,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         )}
                       </button>
 
-                      <button
-                        type="button"
+                      <div
                         onClick={() => {
                           setActiveTab('profile');
                           setProfileSubTab('survey');
+                          setTimeout(() => {
+                            const el = document.getElementById('survey-questions-section');
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }, 100);
                         }}
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-purple-50/80 border border-stone-200 hover:border-purple-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                       >
@@ -2752,9 +2806,18 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         {currentUser.surveyData?.completedAt ? (
                           <span className="text-[10px] text-purple-750 bg-purple-50 px-2 py-0.5 rounded-md font-bold border border-purple-200">已填寫</span>
                         ) : (
-                          <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md font-bold border border-amber-200">填寫送一週體驗</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-bold border border-amber-200">完成即送會員</span>
+                            <span
+                              className="text-[10px] font-bold text-amber-800 hover:text-amber-950 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-0.5 transition-all cursor-pointer"
+                              title="查看活動"
+                            >
+                              <span>查看活動</span>
+                              <ArrowRight className="w-2.5 h-2.5" />
+                            </span>
+                          </div>
                         )}
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -4640,180 +4703,269 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               /* 管理員專屬：席位與安全治理設定（無個人個資、無問卷、無專家審查、無條款簽署） */
               <div className="space-y-6 animate-in fade-in duration-150">
                 {/* 1. 管理員席位身份卡片 */}
-                <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-stone-900 via-purple-950 to-stone-950 text-white border border-purple-800/40 shadow-lg space-y-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
-                    <div className="flex items-center gap-3.5">
-                      <div className="relative">
+                <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-stone-900 via-purple-950 to-stone-950 text-white border border-purple-800/40 shadow-lg space-y-4">
+                  <div className="flex flex-row items-center justify-between gap-3 border-b border-white/10 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="relative shrink-0">
                         <img
                           src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                           alt={currentUser.name}
-                          className="w-16 h-16 rounded-2xl object-cover ring-2 ring-purple-400 shadow-md"
+                          className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl object-cover ring-2 ring-purple-400 shadow-md"
                         />
                         <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-purple-500 border-2 border-stone-900 flex items-center justify-center text-white text-[10px]">
                           <ShieldCheck className="w-3 h-3" />
                         </div>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-lg font-black text-white">{currentUser.name}</h3>
-                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-300 border border-purple-400/30">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="text-base sm:text-lg font-black text-white truncate">{currentUser.name}</h3>
+                          <span className="text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 border border-purple-400/30 shrink-0">
                             平台超級管理員席位
                           </span>
                         </div>
-                        <p className="text-xs text-purple-200/80 mt-0.5">
+                        <p className="text-[10px] sm:text-xs text-purple-200/80 mt-0.5 line-clamp-2">
                           最高系統權限 (Super Administrator) · 全站治理、仲裁調解、金流託管與風控中樞
                         </p>
                       </div>
                     </div>
 
-                    <div className="text-left sm:text-right">
-                      <span className="text-[10px] text-purple-300 font-mono block">席位安全識別號</span>
-                      <span className="text-xs font-mono font-black text-amber-400">ROOT-SEC-ADMIN-001</span>
+                    <div className="text-right shrink-0">
+                      <span className="text-[9px] sm:text-[10px] text-purple-300 font-mono block">席位安全識別號</span>
+                      <span className="text-[10px] sm:text-xs font-mono font-black text-amber-400 whitespace-nowrap">ROOT-SEC-ADMIN-001</span>
                     </div>
                   </div>
 
-                  {/* 席位特權與治理範圍 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <span className="text-[10px] text-purple-300 font-bold block flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                        <span>治理權限範圍</span>
+                  {/* 席位特權與治理範圍 (手機版與電腦版皆為 3 欄並排) */}
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-1">
+                    <div className="p-2.5 sm:p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[9px] sm:text-[10px] text-purple-300 font-bold block flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span className="truncate">治理權限範圍</span>
                       </span>
-                      <p className="text-xs font-bold text-white">全域覆蓋 (Full Access)</p>
-                      <span className="text-[10px] text-stone-400 block">題目稽核、用戶審查、全站營運與帳務</span>
+                      <p className="text-[11px] sm:text-xs font-bold text-white truncate">全域覆蓋</p>
+                      <span className="text-[9px] sm:text-[10px] text-stone-400 block line-clamp-2 leading-tight">題目稽核、用戶審查、全站營運</span>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <span className="text-[10px] text-purple-300 font-bold block flex items-center gap-1">
-                        <Shield className="w-3 h-3 text-purple-400" />
-                        <span>雙因子身分驗證 (2FA)</span>
+                    <div className="p-2.5 sm:p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[9px] sm:text-[10px] text-purple-300 font-bold block flex items-center gap-1">
+                        <Shield className="w-3 h-3 text-purple-400 shrink-0" />
+                        <span className="truncate">雙因子 (2FA)</span>
                       </span>
-                      <p className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                      <p className="text-[11px] sm:text-xs font-bold text-emerald-400 flex items-center gap-1 truncate">
                         <span>已強制啟用</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                       </p>
-                      <span className="text-[10px] text-stone-400 block">硬體憑證與內部受信任連線</span>
+                      <span className="text-[9px] sm:text-[10px] text-stone-400 block line-clamp-2 leading-tight">硬體憑證與受信任連線</span>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <span className="text-[10px] text-purple-300 font-bold block flex items-center gap-1">
-                        <Coins className="w-3 h-3 text-amber-400" />
-                        <span>每日治理配額</span>
+                    <div className="p-2.5 sm:p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[9px] sm:text-[10px] text-purple-300 font-bold block flex items-center gap-1">
+                        <Coins className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span className="truncate">每日治理配額</span>
                       </span>
-                      <p className="text-xs font-mono font-bold text-amber-300">50,000 點 / 日</p>
-                      <span className="text-[10px] text-stone-400 block">活動激勵、爭議補償與官方贊助專用</span>
+                      <p className="text-[11px] sm:text-xs font-mono font-bold text-amber-300 truncate">50,000 點 / 日</p>
+                      <span className="text-[9px] sm:text-[10px] text-stone-400 block line-clamp-2 leading-tight">活動激勵、爭議補償專用</span>
                     </div>
                   </div>
                 </div>
 
-                {/* 2. 系統安全與敏感操作防護狀態 */}
+                {/* 2. 系統安全與敏感操作防護狀態 (手機版與電腦版皆為 2 欄並排) */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-3 shadow-2xs">
                   <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-purple-700" />
+                      <ShieldCheck className="w-4 h-4 text-purple-700 shrink-0" />
                       <h4 className="text-xs sm:text-sm font-black text-stone-900">
                         管理員安全與底層運營防護機制
                       </h4>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 shrink-0">
                       安全狀態正常
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-start gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
-                        <Sliders className="w-3.5 h-3.5" />
+                  <div className="grid grid-cols-2 gap-2.5 sm:gap-3 text-xs">
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-start gap-2">
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+                        <Sliders className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </div>
-                      <div>
-                        <span className="font-bold text-stone-900 block">環境開關二次確認保護</span>
-                        <p className="text-[11px] text-stone-500 mt-0.5">
-                          開啟或關閉測試環境、無金流環境及隱藏測試帳號均受二次確認對話框保護，防止誤觸影響前台展示。
+                      <div className="min-w-0">
+                        <span className="font-bold text-stone-900 block text-[11px] sm:text-xs truncate">二次確認保護</span>
+                        <p className="text-[10px] sm:text-[11px] text-stone-500 mt-0.5 leading-snug">
+                          開啟關閉測試環境與隱藏測試帳號受二次確認保護。
                         </p>
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-start gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 mt-0.5">
-                        <Mail className="w-3.5 h-3.5" />
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-start gap-2">
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 mt-0.5">
+                        <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </div>
-                      <div>
-                        <span className="font-bold text-stone-900 block">爭議裁決自動派發官方郵件</span>
-                        <p className="text-[11px] text-stone-500 mt-0.5">
-                          案件裁決時自動生成標準罐頭式文字並派發至提問方與解答方信箱與通知中心，全程留痕可溯源。
+                      <div className="min-w-0">
+                        <span className="font-bold text-stone-900 block text-[11px] sm:text-xs truncate">裁決派發郵件</span>
+                        <p className="text-[10px] sm:text-[11px] text-stone-500 mt-0.5 leading-snug">
+                          案件裁決自動生成罐頭文字派發至信箱與通知中心。
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 3. 管理員功能中心快捷入口 */}
+                {/* 3. 管理員功能中心快捷入口 (手機版與電腦版皆為 3 欄 6 宮格並排) */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-3 shadow-2xs">
                   <h4 className="text-xs font-black text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <LayoutGrid className="w-3.5 h-3.5 text-purple-700" />
+                    <LayoutGrid className="w-3.5 h-3.5 text-purple-700 shrink-0" />
                     <span>管理員後台樞紐快捷入口</span>
                   </h4>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
                     <button
                       type="button"
                       onClick={() => setActiveTab('overview')}
-                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
                     >
                       <LayoutGrid className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-xs text-stone-900 block">功能總覽儀表板</span>
-                      <span className="text-[10px] text-stone-500">環境開關與營運概覽</span>
+                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">功能總覽儀表板</span>
+                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">環境開關與營運概覽</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setActiveTab('admin_mail_disputes')}
-                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
                     >
                       <Mail className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-xs text-stone-900 block">申訴與郵件</span>
-                      <span className="text-[10px] text-stone-500">案件仲裁與官方通知</span>
+                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">申訴與郵件</span>
+                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">案件仲裁與官方通知</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setActiveTab('admin_management')}
-                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
                     >
                       <Sliders className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-xs text-stone-900 block">平台數據與顯示</span>
-                      <span className="text-[10px] text-stone-500">抽成費率與前台指標</span>
+                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">平台數據與顯示</span>
+                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">抽成費率與前台指標</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setActiveTab('admin_user_analytics')}
-                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
                     >
                       <BarChart3 className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-xs text-stone-900 block">用戶習慣與調研</span>
-                      <span className="text-[10px] text-stone-500">圖表分析與 Excel 匯出</span>
+                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">用戶習慣與調研</span>
+                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">圖表分析與 Excel 匯出</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setActiveTab('points_receivables')}
-                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
                     >
                       <Coins className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-xs text-stone-900 block">點數與應收帳款</span>
-                      <span className="text-[10px] text-stone-500">帳目託管與提領審核</span>
+                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">點數與應收帳款</span>
+                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">帳目託管與提領審核</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setActiveTab('admin_certifications')}
-                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
                     >
                       <BadgeCheck className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-xs text-stone-900 block">受理認證審核</span>
-                      <span className="text-[10px] text-stone-500">實名與專家資格審批</span>
+                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">受理認證審核</span>
+                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">實名與專家資格審批</span>
                     </button>
+                  </div>
+                </div>
+
+                {/* 4. 特殊環境開關 (置底) */}
+                <div id="environment-controls-section-admin" className="p-3 rounded-xl bg-stone-900 border border-stone-800 text-stone-300 text-xs space-y-2">
+                  <div className="flex items-center justify-between border-b border-stone-800/80 pb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5 text-stone-400" />
+                      <span className="font-bold text-stone-200 text-xs">特殊環境開關</span>
+                    </div>
+                    <span className="text-[10px] text-stone-500">
+                      {isHideTestAccounts && !isNoPaymentMode && !isDemoMode
+                        ? '已開啟正式營運模式（其餘測試設定已自動關閉並隱藏）'
+                        : '快速切換測試與金流模式'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                    {/* 1. 正式營運模式 */}
+                    <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                      <span className="font-medium text-stone-300 truncate">正式營運模式</span>
+                      <button
+                        type="button"
+                        onClick={() => setPendingModeConfirm({
+                          type: 'liveOperation',
+                          nextState: !(isHideTestAccounts && !isNoPaymentMode && !isDemoMode)
+                        })}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                          isHideTestAccounts && !isNoPaymentMode && !isDemoMode
+                            ? 'bg-emerald-500 text-stone-950 hover:bg-emerald-400'
+                            : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                        }`}
+                      >
+                        {isHideTestAccounts && !isNoPaymentMode && !isDemoMode ? '已開啟' : '開啟'}
+                      </button>
+                    </div>
+
+                    {/* 當 正式營運模式 開啟時，同時關閉並隱藏其餘三個環境設定 */}
+                    {!(isHideTestAccounts && !isNoPaymentMode && !isDemoMode) && (
+                      <>
+                        {/* 2. 測試環境 */}
+                        <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                          <span className="font-medium text-stone-300 truncate">測試環境</span>
+                          <button
+                            type="button"
+                            onClick={() => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode })}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                              isDemoMode
+                                ? 'bg-amber-400 text-stone-950 hover:bg-amber-300'
+                                : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                            }`}
+                          >
+                            {isDemoMode ? '已開啟' : '開啟'}
+                          </button>
+                        </div>
+
+                        {/* 3. 隱藏測試帳號 */}
+                        <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                          <span className="font-medium text-stone-300 truncate">隱藏測試帳號</span>
+                          <button
+                            type="button"
+                            onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                              isHideTestAccounts
+                                ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
+                                : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                            }`}
+                          >
+                            {isHideTestAccounts ? '已隱藏' : '公開'}
+                          </button>
+                        </div>
+
+                        {/* 4. 無金流模式 */}
+                        <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                          <span className="font-medium text-stone-300 truncate">無金流模式</span>
+                          <button
+                            type="button"
+                            onClick={() => setPendingModeConfirm({ type: 'noPayment', nextState: !isNoPaymentMode })}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                              isNoPaymentMode
+                                ? 'bg-rose-400 text-stone-950 hover:bg-rose-300'
+                                : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                            }`}
+                          >
+                            {isNoPaymentMode ? '已開啟' : '開啟'}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -4883,7 +5035,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 }`}
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                <span>問卷(客戶調查)・得 1 週體驗</span>
+                <span>問卷(客戶調查)・完成即送會員</span>
               </button>
             </div>
 
@@ -5233,7 +5385,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
                     <h4 className="text-xs sm:text-sm font-black text-stone-900">
-                      🎁 填寫調研問卷，立即免費領取【一週達人方案體驗】！
+                      🎁 填寫調研問卷，完成即送會員【免費領取 1 週尊榮會員體驗】！
                     </h4>
                   </div>
                   <p className="text-xs text-stone-700 leading-relaxed font-medium">
@@ -5247,23 +5399,35 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   )}
                 </div>
 
-                <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4 shadow-2xs">
-                  <div className="flex items-center justify-between border-b border-stone-200/80 pb-2.5">
+                <div id="survey-questions-section" className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-stone-200/80 pb-2.5 flex-wrap gap-2">
                     <h3 className="text-xs font-black text-stone-900 uppercase tracking-wider flex items-center gap-2">
                       <FileSpreadsheet className="w-4 h-4 text-amber-600" />
                       <span>問卷 (客戶調查)</span>
                     </h3>
-                    <span className="text-[10px] text-stone-500 font-bold bg-stone-200/80 px-2 py-0.5 rounded-full">
-                      精準統計排序
-                    </span>
+                    <button
+                      type="button"
+                      onClick={handleApplyProfileDataToSurvey}
+                      className="text-[11px] font-bold text-amber-950 bg-amber-200 hover:bg-amber-300 active:scale-95 px-2.5 py-1 rounded-lg border border-amber-300 flex items-center gap-1 transition-all cursor-pointer shadow-2xs shrink-0"
+                      title="快速帶入您於帳號設定所填寫的資料"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-amber-900" />
+                      <span>套用帳號基本資料 (1~5題)</span>
+                    </button>
                   </div>
-
-                  {/* 嚴格按照：性別、年齡、專業領域、職業、薪水、其他問題 順序排 */}
 
                   {/* 1. 性別 */}
                   <div>
                     <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
-                      <span>1. 您的性別認同？</span>
+                      <span className="flex items-center gap-1 flex-wrap">
+                        <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                        <span>1. 您的性別認同？</span>
+                        {surveyUnansweredErrors['q1'] && (
+                          <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                            (請回答此題)
+                          </span>
+                        )}
+                      </span>
                       <span className="text-[10px] text-stone-400 font-normal">單選</span>
                     </label>
                     <div className="grid grid-cols-2 gap-2 text-xs">
@@ -5285,7 +5449,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                             type="radio"
                             name="survey_gender"
                             checked={userGender === item.key}
-                            onChange={() => setUserGender(item.key as any)}
+                            onChange={() => {
+                              setUserGender(item.key as any);
+                              setSurveyUnansweredErrors((prev) => ({ ...prev, q1: false }));
+                            }}
                             className="w-4 h-4 accent-amber-600"
                           />
                           <span>{item.label}</span>
@@ -5297,14 +5464,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {/* 2. 年齡 */}
                   <div>
                     <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
-                      <span>2. 您的年齡區間？</span>
+                      <span className="flex items-center gap-1 flex-wrap">
+                        <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                        <span>2. 您的年齡區間？</span>
+                        {surveyUnansweredErrors['q2'] && (
+                          <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                            (請回答此題)
+                          </span>
+                        )}
+                      </span>
                       <span className="text-[10px] text-stone-400 font-normal">單選</span>
                     </label>
                     <select
                       value={userAgeGroup}
-                      onChange={(e) => setUserAgeGroup(e.target.value as any)}
-                      className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                      onChange={(e) => {
+                        setUserAgeGroup(e.target.value as any);
+                        if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q2: false }));
+                      }}
+                      className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
+                        surveyUnansweredErrors['q2'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                      }`}
                     >
+                      <option value="">-------</option>
                       <option value="under_18">18 歲以下</option>
                       <option value="18_24">18 ~ 24 歲</option>
                       <option value="25_34">25 ~ 34 歲</option>
@@ -5317,14 +5498,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {/* 3. 專業領域 */}
                   <div>
                     <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
-                      <span>3. 您的主要相關專業領域？</span>
+                      <span className="flex items-center gap-1 flex-wrap">
+                        <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                        <span>3. 您的主要相關專業領域？</span>
+                        {surveyUnansweredErrors['q3'] && (
+                          <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                            (請回答此題)
+                          </span>
+                        )}
+                      </span>
                       <span className="text-[10px] text-stone-400 font-normal">單選/多選對應</span>
                     </label>
                     <select
                       value={domain}
-                      onChange={(e) => setDomain(e.target.value as any)}
-                      className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                      onChange={(e) => {
+                        setDomain(e.target.value as any);
+                        if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q3: false }));
+                      }}
+                      className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
+                        surveyUnansweredErrors['q3'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                      }`}
                     >
+                      <option value="">-------</option>
                       <option value="創新創業">創新創業 (商業模式、融資路演)</option>
                       <option value="資訊科技">資訊科技 (軟體系統、雲端AI架構)</option>
                       <option value="商業行銷">商業行銷 (品牌行銷、增長獲客)</option>
@@ -5339,22 +5534,38 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {/* 4. 職業 */}
                   <div>
                     <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
-                      <span>4. 您目前的職業 / 行業職稱？</span>
+                      <span className="flex items-center gap-1 flex-wrap">
+                        <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                        <span>4. 您目前的職業 / 行業職稱？</span>
+                        {surveyUnansweredErrors['q4'] && (
+                          <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                            (請回答此題)
+                          </span>
+                        )}
+                      </span>
                       <span className="text-[10px] text-stone-400 font-normal">填寫或選擇</span>
                     </label>
                     <input
                       type="text"
                       value={title}
-                      onChange={(e) => setTitle(e.target.value)}
+                      onChange={(e) => {
+                        setTitle(e.target.value);
+                        if (e.target.value.trim()) setSurveyUnansweredErrors((prev) => ({ ...prev, q4: false }));
+                      }}
                       placeholder="例如：軟體工程師、產品經理、行銷企劃、企業創辦人..."
-                      className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none mb-1.5"
+                      className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none mb-1.5 ${
+                        surveyUnansweredErrors['q4'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                      }`}
                     />
                     <div className="flex flex-wrap gap-1.5">
                       {['軟體工程師', '產品經理', '行銷主管', '創業者/負責人', '專業顧問', '自由接案者', '學生'].map((preset) => (
                         <button
                           key={preset}
                           type="button"
-                          onClick={() => setTitle(preset)}
+                          onClick={() => {
+                            setTitle(preset);
+                            setSurveyUnansweredErrors((prev) => ({ ...prev, q4: false }));
+                          }}
                           className="px-2 py-0.5 rounded-lg bg-stone-100 hover:bg-amber-100 hover:text-amber-900 border border-stone-200 text-[10px] font-medium transition-colors cursor-pointer"
                         >
                           +{preset}
@@ -5366,14 +5577,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {/* 5. 薪水 */}
                   <div>
                     <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
-                      <span>5. 您目前薪水 (年薪區間)？</span>
+                      <span className="flex items-center gap-1 flex-wrap">
+                        <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                        <span>5. 您目前薪水 (年薪區間)？</span>
+                        {surveyUnansweredErrors['q5'] && (
+                          <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                            (請回答此題)
+                          </span>
+                        )}
+                      </span>
                       <span className="text-[10px] text-stone-400 font-normal">單選</span>
                     </label>
                     <select
                       value={userAnnualSalary}
-                      onChange={(e) => setUserAnnualSalary(e.target.value as any)}
-                      className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                      onChange={(e) => {
+                        setUserAnnualSalary(e.target.value as any);
+                        if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q5: false }));
+                      }}
+                      className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
+                        surveyUnansweredErrors['q5'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                      }`}
                     >
+                      <option value="">-------</option>
                       <option value="under_500k">未滿 50 萬</option>
                       <option value="500k_1000k">50 萬 - 100 萬</option>
                       <option value="1000k_2000k">100 萬 - 200 萬</option>
@@ -5383,16 +5608,24 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </select>
                   </div>
 
-                  {/* 6. 其他深入調研問題 */}
+                  {/* 6. 其他客戶調查(僅供平台統計使用) */}
                   <div className="pt-2 border-t border-stone-200 space-y-3.5">
                     <h5 className="text-[11px] font-black text-amber-800 uppercase tracking-wider">
-                      6. 其他深入調研問題
+                      6. 其他客戶調查(僅供平台統計使用)
                     </h5>
 
                     {/* 6-1: 期望服務 */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
-                        6-1. 您最期望在 IdeaX 獲得什麼服務或體驗？(可多選)
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1 flex-wrap">
+                          <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                          <span>6-1. 您最期望在 IdeaX 獲得什麼服務或體驗？(可多選)</span>
+                          {surveyUnansweredErrors['q6_1'] && (
+                            <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                              (請至少勾選一項)
+                            </span>
+                          )}
+                        </span>
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
                         {[
@@ -5416,7 +5649,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                                 checked={checked}
                                 onChange={(e) => {
                                   if (e.target.checked) {
-                                    setSurveyDesiredServices((prev) => [...prev, service]);
+                                    setSurveyDesiredServices((prev) => {
+                                      const next = [...prev, service];
+                                      if (next.length > 0) setSurveyUnansweredErrors((p) => ({ ...p, q6_1: false }));
+                                      return next;
+                                    });
                                   } else {
                                     setSurveyDesiredServices((prev) => prev.filter((s) => s !== service));
                                   }
@@ -5432,14 +5669,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                     {/* 6-2: 提問預算 */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
-                        6-2. 若您遇到棘手問題，一次性尋求專家解答願支付多少預算？
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1 flex-wrap">
+                          <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                          <span>6-2. 若您遇到棘手問題，一次性尋求專家解答願支付多少預算？</span>
+                          {surveyUnansweredErrors['q6_2'] && (
+                            <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                              (請回答此題)
+                            </span>
+                          )}
+                        </span>
                       </label>
                       <select
                         value={surveyWillingQuestionBudget}
-                        onChange={(e) => setSurveyWillingQuestionBudget(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                        onChange={(e) => {
+                          setSurveyWillingQuestionBudget(e.target.value);
+                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_2: false }));
+                        }}
+                        className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
+                          surveyUnansweredErrors['q6_2'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                        }`}
                       >
+                        <option value="">-------</option>
                         <option value="under_500">NT$ 500 以下</option>
                         <option value="500_2000">NT$ 500 ~ 2,000</option>
                         <option value="2000_5000">NT$ 2,000 ~ 5,000</option>
@@ -5451,14 +5702,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                     {/* 6-3: 打開頻率 */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
-                        6-3. 您預計多久打開一次 IdeaX 平台？
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1 flex-wrap">
+                          <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                          <span>6-3. 您預計多久打開一次 IdeaX 平台？</span>
+                          {surveyUnansweredErrors['q6_3'] && (
+                            <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                              (請回答此題)
+                            </span>
+                          )}
+                        </span>
                       </label>
                       <select
                         value={surveyUsageFrequency}
-                        onChange={(e) => setSurveyUsageFrequency(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                        onChange={(e) => {
+                          setSurveyUsageFrequency(e.target.value);
+                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_3: false }));
+                        }}
+                        className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
+                          surveyUnansweredErrors['q6_3'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                        }`}
                       >
+                        <option value="">-------</option>
                         <option value="multiple_daily">每天數次</option>
                         <option value="daily">每天至少 1 次</option>
                         <option value="few_times_weekly">每週 2~3 次</option>
@@ -5469,14 +5734,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                     {/* 6-4: 發展副業 */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
-                        6-4. 您是否願意將在 IdeaX 提供解答發展為您的有償副業？
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1 flex-wrap">
+                          <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                          <span>6-4. 您是否願意將在 IdeaX 提供解答發展為您的有償副業？</span>
+                          {surveyUnansweredErrors['q6_4'] && (
+                            <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                              (請回答此題)
+                            </span>
+                          )}
+                        </span>
                       </label>
                       <select
                         value={surveyWillingToBeSideHustle}
-                        onChange={(e) => setSurveyWillingToBeSideHustle(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                        onChange={(e) => {
+                          setSurveyWillingToBeSideHustle(e.target.value);
+                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_4: false }));
+                        }}
+                        className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
+                          surveyUnansweredErrors['q6_4'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                        }`}
                       >
+                        <option value="">-------</option>
                         <option value="very_willing">非常願意（發展為主力副業）</option>
                         <option value="considering">考慮中（有空檔兼職嘗試）</option>
                         <option value="open_minded">不排斥但目前無規劃</option>
@@ -5486,14 +5765,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                     {/* 6-5: 解答者方案付費意願 */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
-                        6-5. 您是否願意花錢訂閱解答者的優惠方案？
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1 flex-wrap">
+                          <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                          <span>6-5. 您是否願意花錢訂閱解答者的優惠方案？</span>
+                          {surveyUnansweredErrors['q6_5'] && (
+                            <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                              (請回答此題)
+                            </span>
+                          )}
+                        </span>
                       </label>
                       <select
                         value={surveyWillingToSubscribeSolverPlan}
-                        onChange={(e) => setSurveyWillingToSubscribeSolverPlan(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                        onChange={(e) => {
+                          setSurveyWillingToSubscribeSolverPlan(e.target.value);
+                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_5: false }));
+                        }}
+                        className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
+                          surveyUnansweredErrors['q6_5'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                        }`}
                       >
+                        <option value="">-------</option>
                         <option value="willing">有意願訂閱（享有抽成減免與優先推薦）</option>
                         <option value="depends_profit">視平台接案獲利情況而定</option>
                         <option value="free_tier_first">先使用免費版，有高收益再考慮</option>
@@ -5501,11 +5794,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </select>
                     </div>
 
-                    {/* 6-6: 給我們的建議，自由填寫 */}
+                    {/* 6-6: 給我們的建議，自由填寫 (選填) */}
                     <div>
                       <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
                         <span>6-6. 給我們的建議（自由填寫）</span>
-                        <span className="text-[10px] text-stone-400 font-normal">自由選填</span>
+                        <span className="text-[10px] text-stone-400 font-normal">選填</span>
                       </label>
                       <textarea
                         rows={3}
@@ -5516,6 +5809,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       />
                     </div>
                   </div>
+
+                  {surveyValidationMsg && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-bold flex items-center gap-2 animate-in fade-in">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>{surveyValidationMsg}</span>
+                    </div>
+                  )}
 
                   {surveySaveSuccessMsg && (
                     <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in">
@@ -5531,7 +5831,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Sparkles className="w-4 h-4 text-stone-950" />
-                      <span>儲存問卷並領取一週尊榮方案體驗</span>
+                      <span>送出問卷並領取會員體驗</span>
                     </button>
                   </div>
                 </div>
@@ -7420,7 +7720,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             {pendingSwitchUser.role === 'admin' && (
               <div className="p-3 rounded-xl bg-purple-50 border border-purple-200 text-xs text-purple-950 flex items-start gap-2">
                 <ShieldAlert className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
-                <span>此為官方管理席位，為單一管理身份（不區分提問/解答端），可執行全站實名審核與風控治理。</span>
+                <span>此為官方管理員，為單一管理身份（不區分提問/解答端），可執行全站實名審核與風控治理。</span>
               </div>
             )}
 
@@ -7616,7 +7916,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <div>
                 <h3 className="text-base font-black text-stone-900">
                   {pendingModeConfirm.type === 'liveOperation'
-                    ? (pendingModeConfirm.nextState ? '確認開啟【營運模式】？' : '確認關閉【營運模式】？')
+                    ? (pendingModeConfirm.nextState ? '確認開啟【正式營運模式】？' : '確認關閉【正式營運模式】？')
                     : pendingModeConfirm.type === 'demo'
                     ? (pendingModeConfirm.nextState ? '確認開啟【測試環境】？' : '確認關閉【測試環境】？')
                     : pendingModeConfirm.type === 'noPayment'
@@ -7653,7 +7953,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 ) : (
                   <p>
                     <strong>即將關閉測試環境：</strong><br />
-                    系統將隱藏所有示範問題、假提案與模擬假用戶，切換為純淨營運模式，僅保留各身分核心測試帳號與真實註冊用戶。
+                    系統將隱藏所有示範問題、假提案與模擬假用戶，切換為純淨正式營運模式，僅保留各身分核心測試帳號與真實註冊用戶。
                   </p>
                 )
               )}

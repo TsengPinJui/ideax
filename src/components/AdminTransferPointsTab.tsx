@@ -131,19 +131,6 @@ export const AdminTransferPointsTab: React.FC = () => {
             </div>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            const res = adminResetDailyPoints();
-            setResultMsg({ text: res.message, isError: !res.success });
-          }}
-          className="px-3 py-2 rounded-xl border border-purple-200 hover:border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs shrink-0 self-start sm:self-auto"
-          title="系統每日自動歸零重製，亦可點此立即手動重置"
-        >
-          <RefreshCw className="w-3.5 h-3.5 text-purple-700" />
-          <span>立即歸零並重製配額</span>
-        </button>
       </div>
 
       {/* 每日配額看板 */}
@@ -194,7 +181,7 @@ export const AdminTransferPointsTab: React.FC = () => {
               <div className="min-w-0">
                 <div className="text-xs font-black text-stone-900 truncate">{currentUser.name}</div>
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 font-bold">
-                  官方管理席位（單一身份）
+                  官方管理員
                 </span>
               </div>
             </div>

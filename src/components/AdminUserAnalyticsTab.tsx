@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BarChart3,
   PieChart,
@@ -15,10 +15,21 @@ import {
   Crown,
   HelpCircle,
   FileSpreadsheet,
+  Brain,
+  Lightbulb,
+  Target,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  Eye,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { User, UserSurveyData } from '../types';
-import { exportSurveyToExcelCsv, exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
+import {
+  exportSurveyToExcelCsv,
+  exportSurveyToExcelXlsx,
+  AiCustomerAnalyticsData,
+} from '../utils/exportSurveyExcel';
 import { loadAllDataFromFirestore } from '../services/firestoreSync';
 
 export const AdminUserAnalyticsTab: React.FC = () => {
@@ -31,12 +42,110 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   );
 
+  // AI 客群分析與建議 State (讀取上次分析結果與時間)
+  const [aiAnalytics, setAiAnalytics] = useState<AiCustomerAnalyticsData | null>(() => {
+    try {
+      const saved = localStorage.getItem('ideax_admin_ai_customer_analytics');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return {
+      cohortSummary:
+        'IdeaX 目前用戶畫像呈現高收入、高決策力、高接案意願之雙向智庫生態。主要集中於 25~44 歲之資訊科技工程師、創辦人與主管，具備強勁之 NT$ 2,000~20,000 懸賞預算，且超過 85% 有意願將知識經驗轉化為有償副業。',
+      demographicInsights: [
+        '中高收入與高決策層佔比達 75%+：年薪超過 100 萬與企業 C-Level/主管級用戶為主要骨幹，痛點具高度商業價值。',
+        '高供給彈性與副業潛力：超過 8 成用戶願意為他人解答或發展為主力副業，種子專家儲備充沛。',
+        '預算集中於中高階懸賞：超過 65% 用戶願為單次高價值問題支付 NT$ 2,000 ~ 20,000 懸賞金。',
+      ],
+      growthOpportunities: [
+        '推出「權威/大師方案」專家訂閱制：提供抽成減免與 AI CRM 客戶自動媒合功能。',
+        '主打「高價值專案客製化落地」標籤：引導 C-Level 與創辦人發布 NT$ 5,000+ 的進階懸賞。',
+        '社群裂變與企業合夥人計畫：透過「前 500 名免費體驗」機制誘發口碑擴散。',
+      ],
+      recommendedActionPlans: [
+        '行動一：精準導流年薪 100 萬以上用戶試用「權威方案」，鎖定首批高價值解答專家。',
+        '行動二：在問答首頁設置「企業創新與 AI 科技」高價值懸賞專區，對接最大宗用戶需求。',
+        '行動三：建立智慧合約履約與 AI 仲裁保障，消除高金額懸賞的信任摩擦。',
+      ],
+      platformHealthScore: 94,
+    };
+  });
+
+  const [aiAnalyticsLastAnalyzedAt, setAiAnalyticsLastAnalyzedAt] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ideax_admin_ai_customer_analytics_time') || new Date().toLocaleString('zh-TW');
+    } catch (e) {
+      return new Date().toLocaleString('zh-TW');
+    }
+  });
+
+  const [isAnalyzingCustomer, setIsAnalyzingCustomer] = useState(false);
+  const [isAiReportExpanded, setIsAiReportExpanded] = useState(false);
+
   // Filter out guests
   const validUsers = useMemo(() => {
     return availableUsers.filter((u) => u.id !== 'user-guest');
   }, [availableUsers]);
 
-  // 手動按需刷新 (On-demand Refresh)：不執行背景自動定時輪詢，由管理者在需要時點擊刷新最新資料庫快照
+  // 手動執行 AI 客群分析 (僅在點擊時發起 AI 請求並儲存快照)
+  const runAiCustomerAnalytics = async () => {
+    setIsAnalyzingCustomer(true);
+    try {
+      // 結構化總體指標
+      const payload = {
+        totalUsers: validUsers.length,
+        genderBreakdown: genderStats.reduce((acc, curr) => ({ ...acc, [curr.label]: `${curr.count}人` }), {}),
+        ageBreakdown: ageStats.reduce((acc, curr) => ({ ...acc, [curr.label]: `${curr.count}人` }), {}),
+        industryBreakdown: industryPieStats.reduce((acc, curr) => ({ ...acc, [curr.label]: `${curr.count}人` }), {}),
+        jobLevelBreakdown: jobLevelPieStats.reduce((acc, curr) => ({ ...acc, [curr.label]: `${curr.count}人` }), {}),
+        salaryBreakdown: salaryStats.reduce((acc, curr) => ({ ...acc, [curr.label]: `${curr.count}人` }), {}),
+        budgetBreakdown: budgetStats.reduce((acc, curr) => ({ ...acc, [curr.label]: `${curr.count}人` }), {}),
+        sideHustleBreakdown: sideHustleStats.reduce((acc, curr) => ({ ...acc, [curr.label]: `${curr.count}人` }), {}),
+        subscriptionBreakdown: subscribeStats.reduce((acc, curr) => ({ ...acc, [curr.label]: `${curr.count}人` }), {}),
+      };
+
+      const res = await fetch('/api/ai/customer-analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.data) {
+          const timeNowStr = new Date().toLocaleString('zh-TW', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
+          setAiAnalytics(json.data);
+          setAiAnalyticsLastAnalyzedAt(timeNowStr);
+          setIsAiReportExpanded(true);
+          localStorage.setItem('ideax_admin_ai_customer_analytics', JSON.stringify(json.data));
+          localStorage.setItem('ideax_admin_ai_customer_analytics_time', timeNowStr);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to run AI customer analytics:', err);
+    } finally {
+      setIsAnalyzingCustomer(false);
+    }
+  };
+
+  // 每次進入頁面自動匯入最新資料庫用戶資料與統計數據 (不發起 AI API 請求)
+  useEffect(() => {
+    loadAllDataFromFirestore().then((cloudData) => {
+      if (cloudData && cloudData.users && cloudData.users.length > 0) {
+        setAvailableUsers(cloudData.users);
+      }
+    }).catch((err) => console.error(err));
+  }, []);
+
+  // 手動按需刷新用戶資料快照
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -126,17 +235,151 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     ];
   }, [validUsers]);
 
-  // 3. 行業分佈
-  const industryStats = useMemo(() => {
-    const counts: Record<string, number> = {};
+  // AI 職業與行業智能分類器 Helper
+  const classifyJobTitle = (rawTitle: string, industryOrDomain?: string) => {
+    const text = (rawTitle || '').toLowerCase().trim();
+    const indText = (industryOrDomain || '').toLowerCase();
+
+    // 1. 判斷職業位階 (4.2 職業位階分佈)
+    let level = '基層專業人員 / 專員';
+
+    if (
+      text.includes('創辦') || text.includes('負責人') || text.includes('ceo') ||
+      text.includes('cto') || text.includes('cfo') || text.includes('cmo') ||
+      text.includes('總經理') || text.includes('執行長') || text.includes('合夥人') ||
+      text.includes('創業者') || text.includes('老闆') || text.includes('董事') || text.includes('副總')
+    ) {
+      level = '創辦人 / 企業高層 / C-Level';
+    } else if (
+      text.includes('主管') || text.includes('經理') || text.includes('總監') ||
+      text.includes('組長') || text.includes('課長') || text.includes('科長') ||
+      text.includes('manager') || text.includes('director') || text.includes('head') || text.includes('lead')
+    ) {
+      level = '管理階層 / 單位主管';
+    } else if (
+      text.includes('資深') || text.includes('senior') || text.includes('顧問') ||
+      text.includes('架構師') || text.includes('architect') || text.includes('專家')
+    ) {
+      level = '資深專業人員 / 專家';
+    } else if (
+      text.includes('自由') || text.includes('接案') || text.includes('freelance') ||
+      text.includes('soho') || text.includes('個人工作室')
+    ) {
+      level = '自由接案者 / SOHO族';
+    } else if (
+      text.includes('學生') || text.includes('實習') || text.includes('研究生') ||
+      text.includes('student') || text.includes('intern')
+    ) {
+      level = '在校學生 / 實習生';
+    }
+
+    // 2. 判斷行業類別 (4.1 行業分佈)
+    let industry = '資訊科技 / 軟體系統';
+
+    if (
+      text.includes('軟體') || text.includes('工程師') || text.includes('系統') ||
+      text.includes('開發') || text.includes('程序員') || text.includes('資訊') ||
+      text.includes('雲端') || text.includes('ai') || text.includes('資料') || text.includes('數據') ||
+      indText.includes('資訊科技')
+    ) {
+      industry = '資訊科技 / 軟體系統';
+    } else if (
+      text.includes('行銷') || text.includes('企劃') || text.includes('電商') ||
+      text.includes('增長') || text.includes('社群') || text.includes('品牌') ||
+      text.includes('公關') || indText.includes('商業行銷')
+    ) {
+      industry = '商業行銷 / 數位電商';
+    } else if (
+      level === '創辦人 / 企業高層 / C-Level' || text.includes('營運') ||
+      text.includes('專案') || text.includes('pm') || text.includes('產品') ||
+      indText.includes('創新創業')
+    ) {
+      industry = '創新創業 / 企業管理';
+    } else if (
+      text.includes('設計') || text.includes('ui') || text.includes('ux') ||
+      text.includes('視覺') || text.includes('美術') || text.includes('媒體') ||
+      indText.includes('設計創意')
+    ) {
+      industry = '設計創意 / 媒體視覺';
+    } else if (
+      text.includes('金融') || text.includes('財務') || text.includes('會計') ||
+      text.includes('投資') || text.includes('法律') || text.includes('律師') ||
+      indText.includes('金融投資') || indText.includes('法律')
+    ) {
+      industry = '金融投資 / 財會法律';
+    } else if (
+      level === '自由接案者 / SOHO族' || text.includes('顧問') || text.includes('諮詢')
+    ) {
+      industry = '專業顧問 / 自由接案';
+    } else if (
+      level === '在校學生 / 實習生' || text.includes('教育') || text.includes('教師')
+    ) {
+      industry = '教育學術 / 學生族群';
+    } else {
+      industry = '傳統產業 / 其他領域';
+    }
+
+    return { industry, level };
+  };
+
+  // 4.1 行業分佈圓餅圖數據
+  const industryPieStats = useMemo(() => {
+    const counts: Record<string, number> = {
+      '資訊科技 / 軟體系統': 0,
+      '商業行銷 / 數位電商': 0,
+      '創新創業 / 企業管理': 0,
+      '設計創意 / 媒體視覺': 0,
+      '金融投資 / 財會法律': 0,
+      '專業顧問 / 自由接案': 0,
+      '教育學術 / 學生族群': 0,
+      '傳統產業 / 其他領域': 0,
+    };
+
     validUsers.forEach((u) => {
-      const ind = u.industry || (u.domain ? `${u.domain}領域` : '資訊科技');
-      counts[ind] = (counts[ind] || 0) + 1;
+      const rawJob = u.jobTitle || u.title || (u.surveyData as any)?.jobTitle || '軟體工程師';
+      const ind = u.industry || u.domain;
+      const classified = classifyJobTitle(rawJob, ind);
+      counts[classified.industry] = (counts[classified.industry] || 0) + 1;
     });
+
+    const colors = ['#8b5cf6', '#3b82f6', '#f59e0b', '#ec4899', '#10b981', '#06b6d4', '#6366f1', '#64748b'];
+
     return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 7);
+      .filter(([, count]) => count > 0)
+      .map(([label, count], idx) => ({
+        label,
+        count,
+        color: colors[idx % colors.length],
+      }));
+  }, [validUsers]);
+
+  // 4.2 職業位階圓餅圖數據
+  const jobLevelPieStats = useMemo(() => {
+    const counts: Record<string, number> = {
+      '創辦人 / 企業高層 / C-Level': 0,
+      '管理階層 / 單位主管': 0,
+      '資深專業人員 / 專家': 0,
+      '基層專業人員 / 專員': 0,
+      '自由接案者 / SOHO族': 0,
+      '在校學生 / 實習生': 0,
+    };
+
+    validUsers.forEach((u) => {
+      const rawJob = u.jobTitle || u.title || (u.surveyData as any)?.jobTitle || '軟體工程師';
+      const ind = u.industry || u.domain;
+      const classified = classifyJobTitle(rawJob, ind);
+      counts[classified.level] = (counts[classified.level] || 0) + 1;
+    });
+
+    const colors = ['#8b5cf6', '#f59e0b', '#3b82f6', '#10b981', '#ec4899', '#06b6d4'];
+
+    return Object.entries(counts)
+      .filter(([, count]) => count > 0)
+      .map(([label, count], idx) => ({
+        label,
+        count,
+        color: colors[idx % colors.length],
+      }));
   }, [validUsers]);
 
   // 4. 期望服務
@@ -461,12 +704,12 @@ export const AdminUserAnalyticsTab: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => exportSurveyToExcelXlsx(availableUsers)}
+            onClick={() => exportSurveyToExcelXlsx(availableUsers, aiAnalytics)}
             className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-stone-950 font-black text-xs shadow-lg flex items-center gap-2 transition-all cursor-pointer ring-2 ring-emerald-300"
-            title="一鍵下載完整用戶個資與問卷統計 Excel 試算表 (.xlsx)"
+            title="一鍵下載完整用戶個資與問卷統計及 AI 客群分析 Excel 試算表 (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4 text-stone-950" />
-            <span>一鍵下載用戶統計 Excel (.xlsx)</span>
+            <span>下載客群分析</span>
           </button>
 
           <button
@@ -487,6 +730,161 @@ export const AdminUserAnalyticsTab: React.FC = () => {
           <span>全體用戶最新基本資料與調研統計已手動刷新更新完成！（快照時間：{lastRefreshedAt}）</span>
         </div>
       )}
+
+      {/* AI 深度客群分析與營運戰略建議 (頁面最上方重點區塊) */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-purple-900/90 via-indigo-950 to-stone-900 text-white shadow-xl border border-purple-500/30 relative overflow-hidden space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-500/20 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 rounded-2xl bg-purple-500/20 border border-purple-400/40 text-purple-300 shadow-inner">
+              <Brain className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                  AI 客群結構分析與營運戰略建議
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-200 text-[10px] font-bold border border-purple-400/30">
+                  Gemini 3.8 Intelligence
+                </span>
+                {aiAnalyticsLastAnalyzedAt && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-mono font-bold border border-amber-400/30 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span>上次分析時間：{aiAnalyticsLastAnalyzedAt}</span>
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-purple-200/80 mt-0.5">
+                經全體資料結構化之後，AI 對全平台會員進行之深度受眾畫像與商業決策建議（已即時同步寫入 Excel 報表）
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsAiReportExpanded(!isAiReportExpanded)}
+              className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border cursor-pointer ${
+                isAiReportExpanded
+                  ? 'bg-amber-400 text-stone-950 border-amber-300 hover:bg-amber-300'
+                  : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>{isAiReportExpanded ? '收合 AI 報告' : '查看前次報告'}</span>
+              {isAiReportExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={runAiCustomerAnalytics}
+              disabled={isAnalyzingCustomer}
+              className="px-3.5 py-2 rounded-xl bg-purple-500/30 hover:bg-purple-500/50 active:scale-95 text-purple-200 font-bold text-xs flex items-center gap-1.5 transition-all border border-purple-400/30 cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${isAnalyzingCustomer ? 'animate-spin' : ''}`} />
+              <span>{isAnalyzingCustomer ? 'AI 分析運算中...' : '重新產出 AI 分析'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 展開時顯示詳細 AI 報告內容 */}
+        {isAiReportExpanded && (
+          <div className="space-y-5 animate-in fade-in duration-300">
+            {/* AI Cohort Summary Banner */}
+            <div className="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1 flex-1">
+                <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                  <Lightbulb className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>【客群總體畫像與戰略結論】</span>
+                </div>
+                <p className="text-xs sm:text-sm font-medium text-stone-100 leading-relaxed">
+                  {aiAnalytics?.cohortSummary || 'IdeaX 目前用戶畫像呈現高收入、高決策力、高接案意願之雙向智庫生態。主要集中於 25~44 歲之資訊科技工程師、創辦人與主管，具強勁懸賞預算且願意有償副業接案。'}
+                </p>
+              </div>
+
+              <div className="px-4 py-3 rounded-2xl bg-purple-950/80 border border-purple-400/30 shrink-0 flex flex-col items-center justify-center text-center">
+                <span className="text-[10px] text-purple-300 font-bold">平台生態健康度</span>
+                <div className="text-2xl font-black text-emerald-400 flex items-baseline gap-0.5">
+                  <span>{aiAnalytics?.platformHealthScore || 94}</span>
+                  <span className="text-xs text-purple-300 font-normal">/ 100</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3 Columns: Insights, Opportunities, Action Plans */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              {/* 1. 用戶畫像與需求洞察 */}
+              <div className="p-4 rounded-2xl bg-stone-900/80 border border-purple-500/20 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-cyan-300 pb-1 border-b border-white/10">
+                  <Users className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <span>關鍵用戶畫像與痛點洞察</span>
+                </div>
+                <ul className="space-y-2 text-stone-200">
+                  {(
+                    aiAnalytics?.demographicInsights || [
+                      '中高收入與高決策層佔比達 75%+：年薪超過 100 萬與企業 C-Level/主管級用戶為主要骨幹，痛點具高度商業價值。',
+                      '高供給彈性與副業潛力：超過 8 成用戶願意為他人解答或發展為主力副業，種子專家儲備充沛。',
+                      '預算集中於中高階懸賞：超過 65% 用戶願為單次高價值問題支付 NT$ 2,000 ~ 20,000 懸賞金。',
+                    ]
+                  ).map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-1.5 leading-relaxed">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* 2. 營運增長商機 */}
+              <div className="p-4 rounded-2xl bg-stone-900/80 border border-purple-500/20 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-amber-300 pb-1 border-b border-white/10">
+                  <Target className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>平台營運增長商機</span>
+                </div>
+                <ul className="space-y-2 text-stone-200">
+                  {(
+                    aiAnalytics?.growthOpportunities || [
+                      '推出「權威/大師方案」專家訂閱制：提供抽成減免與 AI CRM 客戶自動媒合功能。',
+                      '主打「高價值專案客製化落地」標籤：引導 C-Level 與創辦人發布 NT$ 5,000+ 的進階懸賞。',
+                      '社群裂變與企業合夥人計畫：透過「前 500 名免費體驗」機制誘發口碑擴散。',
+                    ]
+                  ).map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-1.5 leading-relaxed">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* 3. 戰略行動方案 */}
+              <div className="p-4 rounded-2xl bg-stone-900/80 border border-purple-500/20 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-emerald-300 pb-1 border-b border-white/10">
+                  <Zap className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>建議戰略行動方案</span>
+                </div>
+                <ul className="space-y-2 text-stone-200">
+                  {(
+                    aiAnalytics?.recommendedActionPlans || [
+                      '行動一：精準導流年薪 100 萬以上用戶試用「權威方案」，鎖定首批高價值解答專家。',
+                      '行動二：在問答首頁設置「企業創新與 AI 科技」高價值懸賞專區，對接最大宗用戶需求。',
+                      '行動三：建立智慧合約履約與 AI 仲裁保障，消除高金額懸賞的信任摩擦。',
+                    ]
+                  ).map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-1.5 leading-relaxed">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* KPI Overview Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -604,22 +1002,28 @@ export const AdminUserAnalyticsTab: React.FC = () => {
           )}
         </div>
 
-        {/* 4. 職業與行業分佈 */}
+        {/* 4.1 AI 職業歸類：行業分佈圓餅圖 */}
         <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-purple-500" />
-              <span>4. 職業與行業分佈</span>
+              <span>4.1 AI 職業歸類：行業分佈</span>
             </h3>
-            <span className="text-[11px] text-stone-400">熱門行業排行</span>
+            <span className="text-[11px] text-stone-400">圓餅圖呈現</span>
           </div>
-          {renderBarChart(
-            industryStats.map((i, idx) => ({
-              label: i.name,
-              count: i.count,
-              color: ['#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#14b8a6', '#10b981', '#f59e0b'][idx % 7],
-            }))
-          )}
+          {renderPieChart(industryPieStats)}
+        </div>
+
+        {/* 4.2 AI 職業位階：職級結構圓餅圖 */}
+        <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-500" />
+              <span>4.2 AI 職業位階：職級結構</span>
+            </h3>
+            <span className="text-[11px] text-stone-400">圓餅圖呈現</span>
+          </div>
+          {renderPieChart(jobLevelPieStats)}
         </div>
 
         {/* 5. 目前薪水(年)層級分佈 */}

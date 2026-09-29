@@ -3595,7 +3595,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    if (!enabled) {
+    if (enabled) {
+      // 開啟測試環境就同時公開測試帳號
+      setHideTestAccounts(false);
+      // 恢復示範模式：載入全站展示問題、精選解答、模擬專家與測試交易數據
+      setQuestions(MOCK_QUESTIONS);
+      setSolvers(MOCK_SOLVERS);
+      setAnswers(MOCK_ANSWERS);
+      setTransactions(MOCK_TRANSACTIONS);
+      setAvailableUsers((prev) => {
+        const merged = [...MOCK_USERS];
+        prev.forEach((u) => {
+          if (!merged.some((m) => m.id === u.id)) merged.push(u);
+        });
+        return merged;
+      });
+      addNotification('已啟用示範測試模式', '已恢復全站展示問題、精選解答、模擬專家與測試交易數據。', 'system');
+    } else {
       // 切換至純淨模式：過濾掉模擬假用戶與題目，保留核心測試帳號與真實用戶
       setAvailableUsers((prev) => {
         const mockBlacklist = ['solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
@@ -3630,21 +3646,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return cleanA.length > 0 ? cleanA : CLEAN_CORE_ANSWERS;
       });
 
-      addNotification('已切換至純淨營運模式', '已隱藏模擬假資料，僅保留管理員、測試提問者、測試解答者與真實註冊會員。', 'system');
-    } else {
-      // 恢復示範模式：載入全站展示問題、精選解答、模擬專家與測試交易數據
-      setQuestions(MOCK_QUESTIONS);
-      setSolvers(MOCK_SOLVERS);
-      setAnswers(MOCK_ANSWERS);
-      setTransactions(MOCK_TRANSACTIONS);
-      setAvailableUsers((prev) => {
-        const merged = [...MOCK_USERS];
-        prev.forEach((u) => {
-          if (!merged.some((m) => m.id === u.id)) merged.push(u);
-        });
-        return merged;
-      });
-      addNotification('已啟用示範測試模式', '已恢復全站展示問題、精選解答、模擬專家與測試交易數據。', 'system');
+      addNotification('已切換至純淨正式營運模式', '已隱藏模擬假資料，僅保留管理員、測試提問者、測試解答者與真實註冊會員。', 'system');
     }
   };
 
