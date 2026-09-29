@@ -217,11 +217,25 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     if (!pendingModeConfirm) return;
     if (pendingModeConfirm.type === 'liveOperation') {
       if (pendingModeConfirm.nextState) {
+        // 開啟正式營運模式 ➔ 無金流模式自動關閉、隱藏測試帳號開啟、測試環境關閉
         setHideTestAccounts(true);
         setNoPaymentMode(false);
         setDemoMode(false);
       } else {
+        // 關閉正式營運模式 ➔ 相對地自動開啟【無金流模式】並公開測試帳號
         setHideTestAccounts(false);
+        setNoPaymentMode(true);
+      }
+    } else if (pendingModeConfirm.type === 'noPayment') {
+      if (pendingModeConfirm.nextState) {
+        // 開啟無金流模式 ➔ 相對地自動關閉【正式營運模式】並公開測試帳號
+        setNoPaymentMode(true);
+        setHideTestAccounts(false);
+      } else {
+        // 關閉無金流模式 ➔ 相對地自動開啟【正式營運模式】
+        setNoPaymentMode(false);
+        setHideTestAccounts(true);
+        setDemoMode(false);
       }
     } else if (pendingModeConfirm.type === 'demo') {
       if (pendingModeConfirm.nextState) {
@@ -230,10 +244,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       } else {
         setDemoMode(false);
       }
-    } else if (pendingModeConfirm.type === 'noPayment') {
-      toggleNoPaymentMode();
     } else if (pendingModeConfirm.type === 'hideTestAccounts') {
-      toggleHideTestAccounts();
+      if (pendingModeConfirm.nextState) {
+        setHideTestAccounts(true);
+      } else {
+        setHideTestAccounts(false);
+      }
     }
     setPendingModeConfirm(null);
   };
@@ -2463,92 +2479,105 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
               </div>
 
-              {/* 特殊環境開關 (精簡微型版) */}
-              <div id="environment-controls-section" className="p-3 rounded-xl bg-stone-900 border border-stone-800 text-stone-300 text-xs space-y-2">
-                <div className="flex items-center justify-between border-b border-stone-800/80 pb-1.5">
+              {/* 特殊環境開關 (共用相對開關 + 權限範圍) */}
+              <div id="environment-controls-section" className="p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800 text-stone-300 text-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-stone-800/80 pb-2">
                   <div className="flex items-center gap-1.5">
-                    <Sliders className="w-3.5 h-3.5 text-stone-400" />
-                    <span className="font-bold text-stone-200 text-xs">特殊環境開關</span>
+                    <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="font-bold text-stone-200 text-xs">特殊環境開關控制</span>
                   </div>
-                  <span className="text-[10px] text-stone-500">
-                    {isHideTestAccounts && !isNoPaymentMode && !isDemoMode
-                      ? '已開啟正式營運模式（其餘測試設定已自動關閉並隱藏）'
-                      : '快速切換測試與金流模式'}
+                  <span className="text-[10px] text-stone-400">
+                    運營模式全站生效 • 測試環境僅管理員視角
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                  {/* 1. 正式營運模式 */}
-                  <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-                    <span className="font-medium text-stone-300 truncate">正式營運模式</span>
+                {/* 共用相對雙向開關：正式營運模式 (NORM) vs. 無金流模式 (FREE) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-stone-300">商業金流運營模式（二選一共用相對開關）</span>
+                    <span className="text-[10px] text-stone-400 font-mono font-bold">
+                      {!isNoPaymentMode && isHideTestAccounts && !isDemoMode ? 'NORM' : 'FREE'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800">
+                    {/* 🟢 正式營運模式 (NORM) */}
                     <button
                       type="button"
-                      onClick={() => setPendingModeConfirm({
-                        type: 'liveOperation',
-                        nextState: !(isHideTestAccounts && !isNoPaymentMode && !isDemoMode)
-                      })}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                        isHideTestAccounts && !isNoPaymentMode && !isDemoMode
-                          ? 'bg-emerald-500 text-stone-950 hover:bg-emerald-400'
+                      onClick={() => {
+                        if (!(!isNoPaymentMode && isHideTestAccounts && !isDemoMode)) {
+                          setPendingModeConfirm({ type: 'liveOperation', nextState: true });
+                        }
+                      }}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        !isNoPaymentMode && isHideTestAccounts && !isDemoMode
+                          ? 'bg-emerald-500 text-stone-950 shadow-md font-black'
+                          : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+                      }`}
+                    >
+                      <span>🟢 正式營運模式</span>
+                      <span className="text-[9px] opacity-80 font-mono">(NORM)</span>
+                    </button>
+
+                    {/* ⚡ 無金流模式 (FREE) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isNoPaymentMode) {
+                          setPendingModeConfirm({ type: 'noPayment', nextState: true });
+                        }
+                      }}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        isNoPaymentMode
+                          ? 'bg-rose-500 text-white shadow-md font-black'
+                          : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+                      }`}
+                    >
+                      <span>⚡ 無金流模式</span>
+                      <span className="text-[9px] opacity-80 font-mono">(FREE)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 輔助測試設定：測試環境 (DEMO) 與 隱藏測試帳號 (HIDE) */}
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-stone-800/60">
+                  {/* 測試環境（僅管理員畫面） */}
+                  <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-stone-200 truncate">測試環境 (DEMO)</span>
+                      <span className="text-[9px] text-stone-500">僅作用於管理員帳號</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode })}
+                      className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                        isDemoMode
+                          ? 'bg-amber-400 text-stone-950 hover:bg-amber-300'
                           : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
                       }`}
                     >
-                      {isHideTestAccounts && !isNoPaymentMode && !isDemoMode ? '已開啟' : '開啟'}
+                      {isDemoMode ? '已開啟' : '開啟'}
                     </button>
                   </div>
 
-                  {/* 當 正式營運模式 開啟時，同時關閉並隱藏其餘三個環境設定 */}
-                  {!(isHideTestAccounts && !isNoPaymentMode && !isDemoMode) && (
-                    <>
-                      {/* 2. 測試環境 */}
-                      <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-                        <span className="font-medium text-stone-300 truncate">測試環境</span>
-                        <button
-                          type="button"
-                          onClick={() => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode })}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                            isDemoMode
-                              ? 'bg-amber-400 text-stone-950 hover:bg-amber-300'
-                              : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
-                          }`}
-                        >
-                          {isDemoMode ? '已開啟' : '開啟'}
-                        </button>
-                      </div>
-
-                      {/* 3. 隱藏測試帳號 */}
-                      <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-                        <span className="font-medium text-stone-300 truncate">隱藏測試帳號</span>
-                        <button
-                          type="button"
-                          onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                            isHideTestAccounts
-                              ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
-                              : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
-                          }`}
-                        >
-                          {isHideTestAccounts ? '已隱藏' : '公開'}
-                        </button>
-                      </div>
-
-                      {/* 4. 無金流模式 */}
-                      <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-                        <span className="font-medium text-stone-300 truncate">無金流模式</span>
-                        <button
-                          type="button"
-                          onClick={() => setPendingModeConfirm({ type: 'noPayment', nextState: !isNoPaymentMode })}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                            isNoPaymentMode
-                              ? 'bg-rose-400 text-stone-950 hover:bg-rose-300'
-                              : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
-                          }`}
-                        >
-                          {isNoPaymentMode ? '已開啟' : '開啟'}
-                        </button>
-                      </div>
-                    </>
-                  )}
+                  {/* 隱藏測試帳號 */}
+                  <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-stone-200 truncate">測試帳號顯示</span>
+                      <span className="text-[9px] text-stone-500">全站平台同步</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
+                      className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer font-mono ${
+                        !isHideTestAccounts
+                          ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
+                          : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                      }`}
+                    >
+                      {isHideTestAccounts ? 'HIDE' : 'SHOW'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4879,92 +4908,105 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                 </div>
 
-                {/* 4. 特殊環境開關 (置底) */}
-                <div id="environment-controls-section-admin" className="p-3 rounded-xl bg-stone-900 border border-stone-800 text-stone-300 text-xs space-y-2">
-                  <div className="flex items-center justify-between border-b border-stone-800/80 pb-1.5">
+                {/* 4. 特殊環境開關 (共用相對開關 + 權限範圍) */}
+                <div id="environment-controls-section-admin" className="p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800 text-stone-300 text-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-stone-800/80 pb-2">
                     <div className="flex items-center gap-1.5">
-                      <Sliders className="w-3.5 h-3.5 text-stone-400" />
-                      <span className="font-bold text-stone-200 text-xs">特殊環境開關</span>
+                      <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="font-bold text-stone-200 text-xs">特殊環境開關控制</span>
                     </div>
-                    <span className="text-[10px] text-stone-500">
-                      {isHideTestAccounts && !isNoPaymentMode && !isDemoMode
-                        ? '已開啟正式營運模式（其餘測試設定已自動關閉並隱藏）'
-                        : '快速切換測試與金流模式'}
+                    <span className="text-[10px] text-stone-400">
+                      運營模式全站生效 • 測試環境僅管理員視角
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                    {/* 1. 正式營運模式 */}
-                    <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-                      <span className="font-medium text-stone-300 truncate">正式營運模式</span>
+                  {/* 共用相對雙向開關：正式營運模式 (NORM) vs. 無金流模式 (FREE) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-stone-300">商業金流運營模式（二選一共用相對開關）</span>
+                      <span className="text-[10px] text-stone-400 font-mono font-bold">
+                        {!isNoPaymentMode && isHideTestAccounts && !isDemoMode ? 'NORM' : 'FREE'}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800">
+                      {/* 🟢 正式營運模式 (NORM) */}
                       <button
                         type="button"
-                        onClick={() => setPendingModeConfirm({
-                          type: 'liveOperation',
-                          nextState: !(isHideTestAccounts && !isNoPaymentMode && !isDemoMode)
-                        })}
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                          isHideTestAccounts && !isNoPaymentMode && !isDemoMode
-                            ? 'bg-emerald-500 text-stone-950 hover:bg-emerald-400'
+                        onClick={() => {
+                          if (!(!isNoPaymentMode && isHideTestAccounts && !isDemoMode)) {
+                            setPendingModeConfirm({ type: 'liveOperation', nextState: true });
+                          }
+                        }}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          !isNoPaymentMode && isHideTestAccounts && !isDemoMode
+                            ? 'bg-emerald-500 text-stone-950 shadow-md font-black'
+                            : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+                        }`}
+                      >
+                        <span>🟢 正式營運模式</span>
+                        <span className="text-[9px] opacity-80 font-mono">(NORM)</span>
+                      </button>
+
+                      {/* ⚡ 無金流模式 (FREE) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isNoPaymentMode) {
+                            setPendingModeConfirm({ type: 'noPayment', nextState: true });
+                          }
+                        }}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isNoPaymentMode
+                            ? 'bg-rose-500 text-white shadow-md font-black'
+                            : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+                        }`}
+                      >
+                        <span>⚡ 無金流模式</span>
+                        <span className="text-[9px] opacity-80 font-mono">(FREE)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 輔助測試設定：測試環境 (DEMO) 與 隱藏測試帳號 (HIDE) */}
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-stone-800/60">
+                    {/* 測試環境（僅管理員畫面） */}
+                    <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-stone-200 truncate">測試環境 (DEMO)</span>
+                        <span className="text-[9px] text-stone-500">僅作用於管理員帳號</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode })}
+                        className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                          isDemoMode
+                            ? 'bg-amber-400 text-stone-950 hover:bg-amber-300'
                             : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
                         }`}
                       >
-                        {isHideTestAccounts && !isNoPaymentMode && !isDemoMode ? '已開啟' : '開啟'}
+                        {isDemoMode ? '已開啟' : '開啟'}
                       </button>
                     </div>
 
-                    {/* 當 正式營運模式 開啟時，同時關閉並隱藏其餘三個環境設定 */}
-                    {!(isHideTestAccounts && !isNoPaymentMode && !isDemoMode) && (
-                      <>
-                        {/* 2. 測試環境 */}
-                        <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-                          <span className="font-medium text-stone-300 truncate">測試環境</span>
-                          <button
-                            type="button"
-                            onClick={() => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode })}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                              isDemoMode
-                                ? 'bg-amber-400 text-stone-950 hover:bg-amber-300'
-                                : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
-                            }`}
-                          >
-                            {isDemoMode ? '已開啟' : '開啟'}
-                          </button>
-                        </div>
-
-                        {/* 3. 隱藏測試帳號 */}
-                        <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-                          <span className="font-medium text-stone-300 truncate">隱藏測試帳號</span>
-                          <button
-                            type="button"
-                            onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                              isHideTestAccounts
-                                ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
-                                : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
-                            }`}
-                          >
-                            {isHideTestAccounts ? '已隱藏' : '公開'}
-                          </button>
-                        </div>
-
-                        {/* 4. 無金流模式 */}
-                        <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-                          <span className="font-medium text-stone-300 truncate">無金流模式</span>
-                          <button
-                            type="button"
-                            onClick={() => setPendingModeConfirm({ type: 'noPayment', nextState: !isNoPaymentMode })}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                              isNoPaymentMode
-                                ? 'bg-rose-400 text-stone-950 hover:bg-rose-300'
-                                : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
-                            }`}
-                          >
-                            {isNoPaymentMode ? '已開啟' : '開啟'}
-                          </button>
-                        </div>
-                      </>
-                    )}
+                    {/* 隱藏測試帳號 */}
+                    <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-stone-200 truncate">測試帳號顯示</span>
+                        <span className="text-[9px] text-stone-500">全站平台同步</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
+                        className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer font-mono ${
+                          !isHideTestAccounts
+                            ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
+                            : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                        }`}
+                      >
+                        {isHideTestAccounts ? 'HIDE' : 'SHOW'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -7932,13 +7974,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               {pendingModeConfirm.type === 'liveOperation' && (
                 pendingModeConfirm.nextState ? (
                   <p>
-                    <strong>即將開啟【正式營運模式】：</strong><br />
-                    系統將自動<strong>隱藏所有測試帳號</strong>（林書豪、陳怡君、訪客等，僅保留管理員與真實註冊會員），並且<strong>關閉無金流環境</strong>（全面啟用正式商業金流、會員訂閱與履約託管機制）。
+                    <strong>即將開啟【正式營運模式】：（全站平台同步生效）</strong><br />
+                    系統將自動<strong>關閉無金流模式</strong>並<strong>隱藏所有測試帳號</strong>，全平台同步啟用標準商業金流、會員訂閱方案與履約託管機制。
                   </p>
                 ) : (
                   <p>
-                    <strong>即將關閉【正式營運模式】：</strong><br />
-                    系統將恢復顯示測試帳號供內部測試與驗收使用。
+                    <strong>即將關閉【正式營運模式】：（全站平台同步生效）</strong><br />
+                    系統將相對地<strong>自動開啟【無金流模式】</strong>並公開測試帳號，全平台同步隱藏訂閱與儲值機制。
                   </p>
                 )
               )}
@@ -7946,13 +7988,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               {pendingModeConfirm.type === 'demo' && (
                 pendingModeConfirm.nextState ? (
                   <p>
-                    <strong>即將開啟測試環境：</strong><br />
-                    全站將載入預設示範問題、精選提案、模擬專家與測試交易數據，同步<strong>公開測試帳號</strong>並<strong>自動關閉正式營運模式</strong>，供功能探索與雙邊市場展示。
+                    <strong>即將開啟【測試環境】：（僅作用於管理員帳號視角）</strong><br />
+                    管理員畫面將載入預設示範問題、精選提案、模擬專家與測試交易數據，<strong>不影響外部真實會員與訪客的畫面</strong>。
                   </p>
                 ) : (
                   <p>
-                    <strong>即將關閉測試環境：</strong><br />
-                    系統將隱藏所有示範問題、假提案與模擬假用戶，切換為純淨正式營運模式，僅保留各身分核心測試帳號與真實註冊用戶。
+                    <strong>即將關閉【測試環境】：（僅作用於管理員帳號視角）</strong><br />
+                    管理員畫面將隱藏示範假資料，恢復為純淨實時平台數據。
                   </p>
                 )
               )}
@@ -7960,13 +8002,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               {pendingModeConfirm.type === 'noPayment' && (
                 pendingModeConfirm.nextState ? (
                   <p>
-                    <strong>即將開啟無金流環境：</strong><br />
-                    全站將隱藏會員訂閱方案與儲值點數機制，<strong>同時自動關閉正式營運模式</strong>；只開放 L0 免費問題與交流，聊天室「詢價」改為「諮詢」、「報價」改為「提案」，金流運作說明一併隱藏。
+                    <strong>即將開啟【無金流模式】：（全站平台同步生效）</strong><br />
+                    系統將相對地<strong>自動關閉正式營運模式</strong>；全站平台同步隱藏會員訂閱與儲值點數，只開放 L0 免費問題與諮詢提案。
                   </p>
                 ) : (
                   <p>
-                    <strong>即將關閉無金流環境：</strong><br />
-                    恢復標準金流運營模式，重新開啟會員方案訂閱、點數儲值與懸賞金功能。
+                    <strong>即將關閉【無金流模式】：（全站平台同步生效）</strong><br />
+                    系統將相對地<strong>自動開啟【正式營運模式】</strong>，全站平台同步恢復商業會員訂閱方案、點數儲值與懸賞金功能。
                   </p>
                 )
               )}
@@ -8027,10 +8069,22 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         )}
       </div>
 
-      {/* 管理員專屬：畫面頁尾自動印上淡淡細細的平台版本號與最近更新時間 */}
+      {/* 管理員專屬：畫面頁尾自動印上淡淡細細的平台版本號與最近更新時間與當前環境簡稱 (純英文與數字) */}
       {currentUser.role === 'admin' && (
         <div className="py-2 text-center bg-stone-50/70 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
-          IdeaX 商業智庫管理平台 · 平台版本號：v2026.09.28-release · 最近更新時間：{new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })} {new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })} · 系統正常
+          v1.2.1 • 2026.09.29 • {(() => {
+            const isLiveOperation = isHideTestAccounts && !isNoPaymentMode && !isDemoMode;
+            if (isLiveOperation) return 'NORM';
+            const codes = [];
+            if (isDemoMode) codes.push('DEMO');
+            if (isNoPaymentMode) codes.push('FREE');
+            if (isHideTestAccounts) {
+              codes.push('HIDE');
+            } else {
+              codes.push('SHOW');
+            }
+            return codes.length > 0 ? codes.join(' • ') : 'TEST';
+          })()}
         </div>
       )}
 

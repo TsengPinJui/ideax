@@ -247,8 +247,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             <span>•</span>
             <span>讓創新想法化為真實商業價值。</span>
           </div>
-          <div className="flex items-center gap-1">
-            <span>Powered by AI 智能分析與媒合引擎</span>
+          <div className="flex items-center gap-2 flex-wrap text-stone-400 font-mono text-[10px]">
+            <span className="px-2 py-0.5 rounded-md bg-stone-900 border border-stone-800 text-amber-400 font-bold tracking-tight shadow-2xs">
+              v1.2.1 • Build 2026.09.29
+            </span>
+            <span className="text-stone-600 font-sans">Powered by AI Engine</span>
           </div>
         </div>
       </div>
