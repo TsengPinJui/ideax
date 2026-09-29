@@ -677,6 +677,24 @@ export interface AiCrmLead {
   suggestedMessage: string;
   hasSent: boolean;
   sentAt?: string;
+
+  // --- AICRM 定時主動關注與深度分析欄位 ---
+  clientStatus?: string; // 用戶當前評估狀態（如：猶豫評估中、迫切尋求交付、預算比對中）
+  clientNeedsAnalysis?: {
+    corePainPoints: string[]; // 用戶核心痛點拆解
+    budgetIntent: string; // 預算承受意向區間
+    decisionFactors: string[]; // 關鍵決策影響因子
+    interactionSignals: string[]; // 系統定時巡檢監測到的互動訊號
+  };
+  strategyBlueprint?: {
+    strategyName: string; // 策略名稱（如：雙里程碑低門檻破冰策略）
+    tacticalSteps: Array<{ step: number; title: string; desc: string }>; // 階段執行藍圖
+    suggestedOfferType: string; // 建議方案形式（如：階段交付專案、線上專家諮詢、急件客製）
+    suggestedPriceRange: string; // 建議報價與成交區間
+    dealProbability: number; // 預估成交率 %（如 88%）
+    bestContactTime: string; // 最佳跟進時間窗口
+    riskAssessment: string; // 避坑與風險防護提示
+  };
 }
 
 export interface AiCrmPushNotification {
@@ -688,16 +706,34 @@ export interface AiCrmPushNotification {
   clicksCount: number;
 }
 
+export interface TimeSlotConfig {
+  name: string; // 時段名稱
+  rangeText: string; // 區間標示 (如 09:00 - 18:00)
+  startHour: number;
+  startMinute: number;
+  endHour: number;
+  endMinute: number;
+  intervalHours: number; // 該時段巡航頻率 (小時)
+  badgeTheme: 'emerald' | 'amber' | 'purple' | 'blue';
+  focusSummary: string; // 核心監控重心
+}
+
 export interface AiCrmSystemConfig {
   isEnabled: boolean; // 系統總開關
   requiredTier: SubscriptionTier; // 最低資格方案（預設 master 大師方案）
   hesitationDaysThreshold: number; // 提問者猶豫期觸發天數（預設 3 天）
   highIntentBountyThreshold: number; // 高意向懸賞判定門檻（預設 3000 元）
   toneStyle: 'professional' | 'consultative' | 'friendly' | 'efficient'; // 預設 AI 語氣風格
-  autoScanIntervalHours: number; // 自動掃描頻率（小時）
+  autoScanIntervalHours: number; // 自動掃描頻率（固定模式小時數）
   allowCustomTone: boolean; // 是否允許專家自訂提示詞/語氣
   boardPushEnabled: boolean; // 主題看板主動推播擴散開關
   maxPushesPerDay: number; // 每日推播上限
+
+  // --- 時段動態自適應策略 ---
+  scheduleMode: 'smart_time_slots' | 'fixed_interval'; // 巡航模式：智慧時段動態 / 固定頻率
+  peakIntervalHours: number; // 日間尖峰 (09:00 - 18:00) 頻率（預設 1 小時）
+  eveningIntervalHours: number; // 晚間熱門 (18:00 - 23:30) 頻率（預設 2 小時）
+  offPeakIntervalHours: number; // 深夜離峰 (23:30 - 09:00) 頻率（預設 6 小時）
 }
 
 export type AnswerType = 'discussion' | 'solution'; // 討論（留言式無賞金）vs 方案（含免費預覽與付費解鎖內容）

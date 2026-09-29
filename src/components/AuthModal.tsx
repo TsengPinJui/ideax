@@ -931,7 +931,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            {u.avatar ? (
+                            {u.avatar && u.avatar.trim() !== '' ? (
                               <img
                                 src={u.avatar}
                                 alt={u.name}

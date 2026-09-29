@@ -699,7 +699,7 @@ export async function adaptAudienceComprehensionWithAI(params: {
 }
 
 /**
- * 3. 主動客戶關係管理系統 (AI-CRM)：系統主動追蹤解答者與提問者的狀態（大師方案以上才開放）
+ * 3. 主動客戶關係管理系統 (AI-CRM)：系統定時主動關注與分析用戶狀況和需求並制定策略給訂閱用戶
  * 實作動態關聯：依據平台上真實問題需求與潛在客戶互動即時運算！
  */
 export function getAiCrmLeadsForSolver(
@@ -718,6 +718,7 @@ export function getAiCrmLeadsForSolver(
         const isHighBounty = (q.bounty || 0) >= 3000;
         const urgency: 'high' | 'medium' | 'low' = isHighBounty ? 'high' : idx % 2 === 0 ? 'high' : 'medium';
         const clientName = q.authorName || '潛在委託客戶';
+        const bountyVal = q.bounty || 2500;
 
         return {
           id: `crm-lead-${q.id}`,
@@ -739,12 +740,52 @@ export function getAiCrmLeadsForSolver(
           aiRecommendedAction: `主動發起專屬問候，附上「${q.category} 落地實操避坑檢核表」迅速建立專業信任。`,
           suggestedMessage: `${clientName}您好！注意到您正在評估「${q.title}」的解決方案。我在${q.category}領域有豐富落地實戰經驗，針對您目前的痛點已初步整理出三階段執行清單，若您有需要很樂意為您提供專屬諮詢！`,
           hasSent: false,
+          clientStatus: idx === 0 ? '迫切尋求交付・即時在線' : idx === 1 ? '猶豫評估中・橫向比價' : '高意向探索・瀏覽案例',
+          clientNeedsAnalysis: {
+            corePainPoints: [
+              `對「${q.title}」缺乏標準落地流程與合規框架`,
+              `內部團隊資源有限，亟需具備成功案例之外部資深專家背書`,
+              `擔心執行時程延宕，需要精確之階段性交付驗收指標`,
+            ],
+            budgetIntent: `NT$ ${(bountyVal * 0.8).toLocaleString()} ～ NT$ ${(bountyVal * 2.2).toLocaleString()}`,
+            decisionFactors: ['時效與落地能力 40%', '專家專業公信力 35%', '報價合理性 25%'],
+            interactionSignals: [
+              `曾停留本題詳情頁 6 分鐘並下載閱讀預覽附件`,
+              `近 24 小時內橫向瀏覽了 2 位相關領域認證專家檔案`,
+              `標籤偏好高契合：${q.category}、實務落地、風險防護`,
+            ],
+          },
+          strategyBlueprint: {
+            strategyName: idx === 0 ? '⚡ 敏捷雙里程碑破冰策略' : idx === 1 ? '🎯 痛點拆解與降險報價策略' : '🤝 高信任權威展示策略',
+            tacticalSteps: [
+              {
+                step: 1,
+                title: '主動破冰與建立共識',
+                desc: `主動發送客製化問候，直接點出「${q.title}」的核心風險盲區，消除客戶陌生感。`,
+              },
+              {
+                step: 2,
+                title: '提供輕量自檢工具/初步綱要',
+                desc: `免費提供專屬「${q.category} 落地實操清單」，展現實戰深度與專業從容度。`,
+              },
+              {
+                step: 3,
+                title: '提出階梯式里程碑方案',
+                desc: `建議報價設定為階段驗收（第 1 階段診斷、第 2 階段成果交付），大幅降低客戶決策門檻。`,
+              },
+            ],
+            suggestedOfferType: idx === 0 ? '階段性里程碑交付方案' : '一對一專屬深度諮詢方案',
+            suggestedPriceRange: `NT$ ${Math.round(bountyVal * 0.9).toLocaleString()} ～ NT$ ${Math.round(bountyVal * 1.8).toLocaleString()}`,
+            dealProbability: idx === 0 ? 88 : idx === 1 ? 82 : 76,
+            bestContactTime: '今日 13:30 - 17:30 (提問者活躍高峰窗口)',
+            riskAssessment: '客戶對時效與產出成果極為敏銳，建議在首條訊息中明確標註交付天數與驗收準則。',
+          },
         };
       });
     }
   }
 
-  // Baseline fallback leads
+  // Baseline fallback leads with rich diagnostics
   return [
     {
       id: 'crm-lead-1',
@@ -762,6 +803,46 @@ export function getAiCrmLeadsForSolver(
       aiRecommendedAction: '建議發送補充資料與成功門市實操數據，展現主動關懷專業度。',
       suggestedMessage: '張先生您好！注意到您正在評估外送抽成與淨利提升方案。我特地為您整理了上個月協助連鎖門市「外送專用菜單降本 18%」的試算模型與操作清單，附上給您參考！若有任何想進一步探討的地方，我很樂意為您詳細說明。',
       hasSent: false,
+      clientStatus: '猶豫評估中・評估外送平台抽成與自營成本',
+      clientNeedsAnalysis: {
+        corePainPoints: [
+          '外送平台抽成高達 35%，侵蝕加盟門市獲利率',
+          '自建 D2C 官方外帶點餐系統缺乏行銷導流與會員沉澱閉環',
+          '擔心門市店員操作複雜造成出餐失誤與客訴增加',
+        ],
+        budgetIntent: 'NT$ 8,000 ～ NT$ 25,000 (重視能省下的抽成趴數)',
+        decisionFactors: ['回本週期 (ROI) 45%', '系統整合難易度 35%', '顧問實務輔導經驗 20%'],
+        interactionSignals: [
+          '3 天前完整閱讀您提交的提案報告（停留 8 分 20 秒）',
+          '在「連鎖餐飲」主題看板持續追蹤 3 篇外送降本解方',
+          '曾點擊查看您的過往客戶好評與驗收成果文件',
+        ],
+      },
+      strategyBlueprint: {
+        strategyName: '🍔 門市即時降本・雙階段成效切入策略',
+        tacticalSteps: [
+          {
+            step: 1,
+            title: '主動發送《外送專用菜單降本 18% 試算表》',
+            desc: '針對張先生最在意的抽成痛點，提供一目了然的直觀效益算式。',
+          },
+          {
+            step: 2,
+            title: '提供 1 家同量級門市的落地脫困案例',
+            desc: '分享 40 家分店在 45 天內拉升 30% 自營訂單的真實改版步驟。',
+          },
+          {
+            step: 3,
+            title: '提出輕量化諮詢＋客製菜單方案',
+            desc: '提供 NT$ 9,800 之啟動方案，先完成 3 家直營旗艦店改造，降低初期投入顧慮。',
+          },
+        ],
+        suggestedOfferType: '階段性門市改造實戰專案',
+        suggestedPriceRange: 'NT$ 9,800 ～ NT$ 28,000',
+        dealProbability: 86,
+        bestContactTime: '平日下午 14:00 - 16:30 (餐飲業者兩頭班休息空檔)',
+        riskAssessment: '創辦人決策風格務實，避免談論空泛理論，需聚焦「具體降了幾個百分點與省下多少平台抽成」。',
+      },
     },
     {
       id: 'crm-lead-2',
@@ -779,6 +860,46 @@ export function getAiCrmLeadsForSolver(
       aiRecommendedAction: '主動發送問候，提供「TFDA 送審 3 大隱形紅線檢查表」建立信任關係。',
       suggestedMessage: '陳副總您好，感謝關注我的生醫專利與法規顧問主頁！看到貴團隊在高分子材料領域的卓越突破。針對近期衛福部對送審資料的新規，我整理了一份「二期臨床常見 3 大補件紅線備忘錄」，隨時歡迎與您交流探討！',
       hasSent: false,
+      clientStatus: '高意向探索・審查專家執業背景與法規送件紀錄',
+      clientNeedsAnalysis: {
+        corePainPoints: [
+          '二期臨床試驗送件時程緊迫，補件往返恐延遲半年以上',
+          '專利迴避設計尚未完成，存在與國際大廠侵權訴訟風險',
+          '需要具備 TFDA 實戰經驗的獨立第三方出具專家合規性評估',
+        ],
+        budgetIntent: 'NT$ 30,000 ～ NT$ 80,000 (重視專業權威度與精確度)',
+        decisionFactors: ['法規與認證專精深度 50%', '過往案件成功率 30%', '諮詢響應敏捷度 20%'],
+        interactionSignals: [
+          '連續 2 天晚間查看您的生醫專利佈局認證徽章與資歷',
+          '在您發布的專家案例下載了《醫療器材查驗登記白皮書》',
+          '已收藏個人檔案並標記為備選外部專家顧問',
+        ],
+      },
+      strategyBlueprint: {
+        strategyName: '🔬 法規權威背書・零風險補件檢核策略',
+        tacticalSteps: [
+          {
+            step: 1,
+            title: '主動破冰並遞送《TFDA 送審 3 大隱形紅線備忘錄》',
+            desc: '針對生醫材料常遭衛福部要求補件的項目給予預警與應對範本。',
+          },
+          {
+            step: 2,
+            title: '提供線上 45 分鐘專案技術預審盤點會談',
+            desc: '先以短時間技術會議快速釐清高分子配方專利疑點，建立高度專業信賴。',
+          },
+          {
+            step: 3,
+            title: '制定全案法規送審伴跑合約',
+            desc: '分二階段簽署（送件前合規評估報告 ＋ 官方審查補件答辯全程指導）。',
+          },
+        ],
+        suggestedOfferType: '深度法規合規諮詢 ＋ 送件輔導專案',
+        suggestedPriceRange: 'NT$ 35,000 ～ NT$ 65,000',
+        dealProbability: 80,
+        bestContactTime: '平日晚間 20:30 - 22:00 或 上午 09:30 - 11:30',
+        riskAssessment: '企業客戶注重保密協定 (NDA) 與智慧財產權歸屬，建議在溝通中主動強調平台具備合法法律契約保障。',
+      },
     },
     {
       id: 'crm-lead-3',
@@ -796,6 +917,46 @@ export function getAiCrmLeadsForSolver(
       aiRecommendedAction: '立即搶先提案，並發送客製化初步解題策略！',
       suggestedMessage: '林總監您好！看到您發起的東南亞退貨與稅務合規懸賞。我過去曾主導過印尼與越南海外倉逆向物流重建，特別針對海關查驗與退件扣關有成熟 SOP。已為您送出初步提案，期待為您解憂！',
       hasSent: false,
+      clientStatus: '急迫需解方・新發布高額懸賞・等待精準專家提案',
+      clientNeedsAnalysis: {
+        corePainPoints: [
+          '印尼與泰國海外倉退貨率高達 18%，庫存積壓報廢損失龐大',
+          '當地海關新稅規對逆向退件徵收高額補稅，急需合規轉售路徑',
+          '缺乏具備在地清關資源與海外倉系統對接的整合專家',
+        ],
+        budgetIntent: 'NT$ 5,000 ～ NT$ 20,000 (懸賞 NT$ 5,000，可追加客製專案)',
+        decisionFactors: ['在地落地資源 40%', '時效性與響應速度 35%', '方案完整度 25%'],
+        interactionSignals: [
+          '發布 NT$ 5,000 懸賞後，正在在線等待首位專家提案',
+          '同時在尋求東南亞 TikTok Shop 認證海外倉對接清單',
+          '過去在平台有良好驗收紀錄與快速採納習慣',
+        ],
+      },
+      strategyBlueprint: {
+        strategyName: '🌏 搶先觸達・海外倉清關與退件止血策略',
+        tacticalSteps: [
+          {
+            step: 1,
+            title: '4 小時內極速提交結構化方案',
+            desc: '列出印尼、越南、泰國三大市場的逆向物流現況與常見 4 大海關扣關雷區。',
+          },
+          {
+            step: 2,
+            title: '附帶《東南亞 3 國合規清關自救 SOP》',
+            desc: '直接給予發問者可立即執行的應急方案，樹立壓倒性專業壁壘。',
+          },
+          {
+            step: 3,
+            title: '提供客製海外倉退件轉售系統建置報價',
+            desc: '以懸賞為起點，後續加值提案「跨國海外倉退件二次分揀與本地折扣轉售」客製方案。',
+          },
+        ],
+        suggestedOfferType: '懸賞提案採納 ＋ 後續海外倉整合顧問',
+        suggestedPriceRange: 'NT$ 5,000 ～ NT$ 18,000',
+        dealProbability: 92,
+        bestContactTime: '今日 14:00 - 18:00 (即刻發送搶佔首位優勢)',
+        riskAssessment: '跨境政策變動頻繁，交付成果時需附上最新 2026 季度的海關公告依據以增強公信力。',
+      },
     },
   ];
 }
@@ -819,4 +980,100 @@ export function getAiCrmPushesForSolver(solverId?: string): AiCrmPushNotificatio
       clicksCount: 19,
     },
   ];
+}
+
+export interface ActiveTimeSlotInfo {
+  slotId: 'peak' | 'evening' | 'offpeak';
+  slotName: string;
+  slotRange: string;
+  currentIntervalHours: number;
+  badgeTheme: 'emerald' | 'amber' | 'purple';
+  focusSummary: string;
+  nextScanEstimatedText: string;
+  activityLevelText: string;
+}
+
+export function getCurrentTimeSlotInfo(
+  config?: {
+    peakIntervalHours?: number;
+    eveningIntervalHours?: number;
+    offPeakIntervalHours?: number;
+    scheduleMode?: 'smart_time_slots' | 'fixed_interval';
+    autoScanIntervalHours?: number;
+  },
+  dateOverride?: Date
+): ActiveTimeSlotInfo {
+  const now = dateOverride || new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  const timeInMinutes = hours * 60 + minutes;
+
+  // 若為固定頻率模式
+  if (config?.scheduleMode === 'fixed_interval') {
+    const fixedHours = config.autoScanIntervalHours || 2;
+    return {
+      slotId: 'evening',
+      slotName: '固定間隔巡航',
+      slotRange: '全天 24 小時固定輪詢',
+      currentIntervalHours: fixedHours,
+      badgeTheme: 'amber',
+      focusSummary: `全天候每 ${fixedHours} 小時固定巡檢分析全站提問者與潛在商機`,
+      nextScanEstimatedText: '42 分鐘後',
+      activityLevelText: `固定每 ${fixedHours} 小時巡航`,
+    };
+  }
+
+  const peakInterval = config?.peakIntervalHours ?? 1;
+  const eveningInterval = config?.eveningIntervalHours ?? 2;
+  const offPeakInterval = config?.offPeakIntervalHours ?? 6;
+
+  // 1. 日間商務活躍期 (09:00 - 18:00)
+  if (timeInMinutes >= 540 && timeInMinutes < 1080) {
+    const minutesToNext = 60 - (minutes % 60);
+    return {
+      slotId: 'peak',
+      slotName: '日間商務活躍期',
+      slotRange: '09:00 - 18:00',
+      currentIntervalHours: peakInterval,
+      badgeTheme: 'emerald',
+      focusSummary: '⚡ 高敏捷度巡檢・鎖定新發高額懸賞、即時比價猶豫與在線破冰',
+      nextScanEstimatedText: `${minutesToNext} 分鐘後`,
+      activityLevelText: `活躍高峰（每 ${peakInterval} 小時動態巡航）`,
+    };
+  }
+
+  // 2. 晚間決策沉思期 (18:00 - 23:30)
+  if (timeInMinutes >= 1080 && timeInMinutes < 1410) {
+    const minutesToNext = 120 - ((minutes + (hours % 2) * 60) % 120);
+    return {
+      slotId: 'evening',
+      slotName: '晚間決策沉思期',
+      slotRange: '18:00 - 23:30',
+      currentIntervalHours: eveningInterval,
+      badgeTheme: 'amber',
+      focusSummary: '🌙 深度方案比對・下班深度審閱、信任里程碑與諮詢預約引導',
+      nextScanEstimatedText: `${minutesToNext > 0 ? minutesToNext : 35} 分鐘後`,
+      activityLevelText: `深度評估（每 ${eveningInterval} 小時動態巡航）`,
+    };
+  }
+
+  // 3. 深夜離峰統整期 (23:30 - 09:00)
+  let minutesToNext = 45;
+  if (timeInMinutes >= 1410) {
+    minutesToNext = (1440 - timeInMinutes) + 540;
+    minutesToNext = minutesToNext % 360 || 90;
+  } else {
+    minutesToNext = (540 - timeInMinutes) % 360 || 120;
+  }
+
+  return {
+    slotId: 'offpeak',
+    slotName: '深夜離峰統整期',
+    slotRange: '23:30 - 09:00',
+    currentIntervalHours: offPeakInterval,
+    badgeTheme: 'purple',
+    focusSummary: '💤 節能深層數據統整・全站未結案痛點關聯重算、預排次晨 09:15 黃金跟進名單',
+    nextScanEstimatedText: `${Math.min(minutesToNext, 180)} 分鐘後`,
+    activityLevelText: `離峰節能（每 ${offPeakInterval} 小時深層彙整）`,
+  };
 }

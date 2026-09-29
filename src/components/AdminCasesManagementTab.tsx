@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Question, Answer, ChatConversation } from '../types';
+import { ContractPreviewModal } from './ContractPreviewModal';
+import { 
+  ContractData, 
+  buildContractFromProposalItem, 
+  downloadContractFile 
+} from '../utils/contractGenerator';
 import {
   Briefcase,
   Search,
@@ -15,6 +21,8 @@ import {
   Send,
   Eye,
   Paperclip,
+  FileText,
+  Download,
 } from 'lucide-react';
 
 export const AdminCasesManagementTab: React.FC<{
@@ -33,6 +41,8 @@ export const AdminCasesManagementTab: React.FC<{
     solverName: string;
     conversation?: ChatConversation;
   } | null>(null);
+
+  const [previewContract, setPreviewContract] = useState<ContractData | null>(null);
 
   // 整理案件清單
   const casesList = questions.map((q) => {
@@ -215,7 +225,7 @@ export const AdminCasesManagementTab: React.FC<{
                 <div className="flex items-center gap-4 flex-wrap text-stone-600">
                   <div className="flex items-center gap-1.5">
                     <img
-                      src={item.questionerAvatar}
+                      src={item.questionerAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={item.questionerName}
                       className="w-5 h-5 rounded-full object-cover ring-1 ring-stone-200"
                     />
@@ -225,7 +235,7 @@ export const AdminCasesManagementTab: React.FC<{
                   <div className="flex items-center gap-1.5">
                     {item.solverAvatar && (
                       <img
-                        src={item.solverAvatar}
+                        src={item.solverAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                         alt={item.solverName}
                         className="w-5 h-5 rounded-full object-cover ring-1 ring-stone-200"
                       />
@@ -240,6 +250,35 @@ export const AdminCasesManagementTab: React.FC<{
 
                 {/* 動作按鈕 */}
                 <div className="flex items-center gap-2">
+                  {/* 下載契約檔案按鈕 (若已採納或進行中/結案) */}
+                  {(item.status === 'in_progress' || item.status === 'solved' || item.acceptedAnswer) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cData = buildContractFromProposalItem(
+                          {
+                            id: item.id,
+                            title: item.title,
+                            description: item.description,
+                            questionTitle: item.title,
+                            amount: item.bounty,
+                            role: 'buyer',
+                            partnerId: item.acceptedAnswer?.solverId || 'solver',
+                            partnerName: item.solverName,
+                            partnerTitle: '解答專家',
+                          },
+                          { id: item.questionerId, name: item.questionerName }
+                        );
+                        setPreviewContract(cData);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="檢視與下載此案件之商業契約檔案"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-amber-700" />
+                      <span>合約檔案</span>
+                    </button>
+                  )}
+
                   {/* 查閱對話紀錄按鈕 */}
                   <button
                     type="button"
@@ -306,7 +345,7 @@ export const AdminCasesManagementTab: React.FC<{
                   <div key={m.id} className="p-3 rounded-xl bg-white border border-stone-200 space-y-1 text-xs shadow-2xs">
                     <div className="flex items-center justify-between">
                       <span className="font-extrabold text-stone-900 flex items-center gap-1.5">
-                        <img src={m.senderAvatar} alt="" className="w-4 h-4 rounded-full" />
+                        <img src={m.senderAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt="" className="w-4 h-4 rounded-full" />
                         <span>{m.senderName}</span>
                       </span>
                       <span className="text-[10px] text-stone-400 font-mono">{m.createdAt.split('T')[0]}</span>
@@ -345,6 +384,14 @@ export const AdminCasesManagementTab: React.FC<{
             </div>
           </div>
         </div>
+      )}
+
+      {/* 商業契約與和解協議書檢視/下載 Modal */}
+      {previewContract && (
+        <ContractPreviewModal
+          contract={previewContract}
+          onClose={() => setPreviewContract(null)}
+        />
       )}
     </div>
   );

@@ -425,7 +425,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                             className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
                           >
                             <img
-                              src={user.avatar}
+                              src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                               alt={user.name}
                               className="w-9 h-9 rounded-full object-cover border border-stone-200 group-hover:scale-105 transition-transform shrink-0"
                             />

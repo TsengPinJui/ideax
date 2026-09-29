@@ -306,7 +306,7 @@ export const AdminCertificationsTab: React.FC = () => {
                 <div className="flex items-start sm:items-center gap-3 min-w-0">
                   <div className="relative shrink-0">
                     <img
-                      src={user.avatar}
+                      src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={user.name}
                       className="w-11 h-11 rounded-2xl object-cover border border-stone-200"
                     />
@@ -590,7 +590,7 @@ export const AdminCertificationsTab: React.FC = () => {
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <img
-                  src={inspectUser.avatar}
+                  src={inspectUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                   alt={inspectUser.name}
                   className="w-10 h-10 rounded-xl object-cover border border-stone-200"
                 />

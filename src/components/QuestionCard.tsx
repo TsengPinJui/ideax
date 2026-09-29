@@ -191,7 +191,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       <div className="mt-5 pt-3.5 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
         <div className="flex items-center gap-2">
           <img
-            src={question.authorAvatar}
+            src={question.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
             alt={question.authorName}
             className="w-5 h-5 rounded-full object-cover ring-1 ring-stone-200"
           />

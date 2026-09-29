@@ -102,7 +102,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }`}
         >
           <div className="relative">
-            {currentUser?.avatar ? (
+            {currentUser?.avatar && currentUser.avatar.trim() !== '' ? (
               <img
                 src={currentUser.avatar}
                 alt={currentUser.name}

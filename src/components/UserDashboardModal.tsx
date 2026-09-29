@@ -18,6 +18,12 @@ import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { ExpertCertificationApplyModal } from './ExpertCertificationApplyModal';
 import { RealNameAuthTab } from './RealNameAuthTab';
 import { ExpertCertificationTab } from './ExpertCertificationTab';
+import { ContractPreviewModal } from './ContractPreviewModal';
+import { 
+  ContractData, 
+  buildContractFromProposalItem, 
+  downloadContractFile 
+} from '../utils/contractGenerator';
 import {
   X,
   Wallet,
@@ -43,6 +49,7 @@ import {
   Settings as SettingsIcon,
   User as UserIcon,
   FileText,
+  Download,
   ShieldCheck,
   BadgeCheck,
   Star,
@@ -202,6 +209,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [basicSaveSuccessMsg, setBasicSaveSuccessMsg] = useState<string | null>(null);
   const [bankSaveSuccessMsg, setBankSaveSuccessMsg] = useState<string | null>(null);
   const [surveySaveSuccessMsg, setSurveySaveSuccessMsg] = useState<string | null>(null);
+  const [previewContract, setPreviewContract] = useState<ContractData | null>(null);
 
   const handleConfirmModeToggle = () => {
     if (!pendingModeConfirm) return;
@@ -1241,7 +1249,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             title="點擊前往帳號設定頁"
           >
             <img
-              src={currentUser.avatar}
+              src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
               alt={currentUser.name}
               className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl object-cover ring-2 ring-stone-200 shrink-0 group-hover:ring-amber-500 transition-all"
             />
@@ -2505,7 +2513,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   title="點擊前往帳號設定頁"
                 >
                   <img
-                    src={currentUser.avatar}
+                    src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                     alt={currentUser.name}
                     className="w-14 h-14 rounded-2xl object-cover ring-2 ring-amber-400/80 shrink-0 group-hover:ring-amber-300 transition-all"
                   />
@@ -3643,7 +3651,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <img src={q.authorAvatar} alt={q.authorName} className="w-6 h-6 rounded-full object-cover" />
+                          <img src={q.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={q.authorName} className="w-6 h-6 rounded-full object-cover" />
                           <span className="text-xs font-bold text-stone-800">{q.authorName}</span>
                           <button
                             type="button"
@@ -3719,7 +3727,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <img src={q.authorAvatar} alt={q.authorName} className="w-7 h-7 rounded-full object-cover ring-1 ring-amber-300" />
+                          <img src={q.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={q.authorName} className="w-7 h-7 rounded-full object-cover ring-1 ring-amber-300" />
                           <div>
                             <span className="text-xs font-extrabold text-stone-900 block">{q.authorName}（客戶需求）</span>
                             <span className="text-[10px] text-stone-500">{q.authorTitle || '提問委託方'}</span>
@@ -3812,7 +3820,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   title="點擊前往帳號設定頁"
                 >
                   <img
-                    src={currentUser.avatar}
+                    src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                     alt={currentUser.name}
                     className="w-14 h-14 rounded-2xl object-cover ring-2 ring-amber-400/80 shrink-0 group-hover:ring-amber-300 transition-all"
                   />
@@ -4004,7 +4012,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 className="flex items-center gap-3 text-left hover:opacity-85 transition-all cursor-pointer group"
                 title="點擊前往帳號設定頁"
               >
-                <img src={currentUser.avatar} alt={currentUser.name} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-amber-400 shrink-0 group-hover:ring-amber-500 transition-all" />
+                <img src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={currentUser.name} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-amber-400 shrink-0 group-hover:ring-amber-500 transition-all" />
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-black text-stone-900 group-hover:text-amber-600 transition-colors">{currentUser.name}</span>
@@ -4083,7 +4091,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <img src={u.avatar} alt={u.name} className="w-10 h-10 rounded-xl object-cover ring-1 ring-stone-200 shrink-0" />
+                        <img src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={u.name} className="w-10 h-10 rounded-xl object-cover ring-1 ring-stone-200 shrink-0" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
                             <span className="text-xs font-black text-stone-900 truncate">{u.name}</span>
@@ -4637,7 +4645,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div className="flex items-center gap-3.5">
                       <div className="relative">
                         <img
-                          src={currentUser.avatar}
+                          src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                           alt={currentUser.name}
                           className="w-16 h-16 rounded-2xl object-cover ring-2 ring-purple-400 shadow-md"
                         />
@@ -4905,7 +4913,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div className="flex items-center gap-3">
                       <div className="relative group shrink-0">
                         <img
-                          src={avatar || currentUser.avatar}
+                          src={avatar || currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                           alt={currentUser.name}
                           className="w-14 h-14 rounded-2xl object-cover ring-2 ring-stone-200 shadow-2xs"
                         />
@@ -5740,7 +5748,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {featuredCaseImages.map((img, idx) => (
                             <div key={idx} className="group relative rounded-xl overflow-hidden border border-amber-200 bg-white aspect-video shadow-2xs">
-                              <img src={img.url} alt={img.caption || `成果圖 ${idx + 1}`} className="w-full h-full object-cover" />
+                              {img.url ? (
+                                <img src={img.url} alt={img.caption || `成果圖 ${idx + 1}`} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400 text-xs">無圖片</div>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => setFeaturedCaseImages((prev) => prev.filter((_, i) => i !== idx))}
@@ -6395,7 +6407,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     >
                       <div className="flex items-start gap-3">
                         <img
-                          src={u.avatar}
+                          src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                           alt={u.name}
                           className="w-11 h-11 rounded-2xl object-cover ring-1 ring-stone-200 shrink-0"
                         />
@@ -6986,7 +6998,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-stone-100">
                       <div className="flex items-center gap-2.5">
                         <img
-                          src={item.partnerAvatar}
+                          src={item.partnerAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                           alt={item.partnerName}
                           className="w-7 h-7 rounded-xl object-cover ring-1 ring-stone-200"
                         />
@@ -7065,6 +7077,36 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                                 <span>為解答者評分</span>
                               </button>
                             )}
+                          </div>
+                        )}
+
+                        {/* 3. 下載商業契約檔案按鈕 (已成立之正式合約) */}
+                        {(item.isCompleted || item.status === 'in_progress') && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cData = buildContractFromProposalItem(item, currentUser);
+                                setPreviewContract(cData);
+                              }}
+                              className="px-3 py-1.5 rounded-xl border border-stone-300 hover:border-amber-400 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs"
+                              title="線上檢視正式商業契約與簽署認證章"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-amber-700" />
+                              <span>檢視契約</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cData = buildContractFromProposalItem(item, currentUser);
+                                downloadContractFile(cData);
+                              }}
+                              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all active:scale-95"
+                              title="下載正式商業契約存證檔案 (.html / PDF)"
+                            >
+                              <Download className="w-3.5 h-3.5 text-stone-950" />
+                              <span>下載契約檔案</span>
+                            </button>
                           </div>
                         )}
 
@@ -7215,7 +7257,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             {/* Target solver avatar and name */}
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50/70 border border-amber-200/80">
               <img
-                src={ratingTargetSolver.avatar}
+                src={ratingTargetSolver.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                 alt={ratingTargetSolver.name}
                 className="w-12 h-12 rounded-xl object-cover ring-2 ring-amber-300 shrink-0"
               />
@@ -7348,7 +7390,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
             <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center gap-3">
               <img
-                src={pendingSwitchUser.avatar}
+                src={pendingSwitchUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                 alt={pendingSwitchUser.name}
                 className="w-11 h-11 rounded-full object-cover ring-2 ring-stone-200 shrink-0"
               />
@@ -7435,7 +7477,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
             <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center gap-3">
               <img
-                src={accountToRemove.avatar}
+                src={accountToRemove.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                 alt={accountToRemove.name}
                 className="w-11 h-11 rounded-full object-cover ring-2 ring-stone-200 shrink-0"
               />
@@ -7513,7 +7555,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <img
-                        src={u.avatar}
+                        src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                         alt={u.name}
                         className="w-10 h-10 rounded-xl object-cover ring-1 ring-stone-200 shrink-0"
                       />
@@ -7691,6 +7733,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         <div className="py-2 text-center bg-stone-50/70 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
           IdeaX 商業智庫管理平台 · 平台版本號：v2026.09.28-release · 最近更新時間：{new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })} {new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })} · 系統正常
         </div>
+      )}
+
+      {/* 商業契約與和解協議書檢視/下載 Modal */}
+      {previewContract && (
+        <ContractPreviewModal
+          contract={previewContract}
+          onClose={() => setPreviewContract(null)}
+        />
       )}
     </div>
   );

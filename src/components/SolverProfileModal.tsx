@@ -67,7 +67,7 @@ export const SolverProfileModal: React.FC<SolverProfileModalProps> = ({
             </button>
           )}
           <img
-            src={solver.avatar}
+            src={solver.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
             alt={solver.name}
             className="w-14 h-14 rounded-2xl object-cover ring-2 ring-amber-400"
           />
@@ -237,7 +237,11 @@ export const SolverProfileModal: React.FC<SolverProfileModalProps> = ({
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {solver.featuredCase.images.map((img, idx) => (
                         <div key={idx} className="group relative rounded-xl overflow-hidden border border-amber-200 bg-stone-100 aspect-video shadow-2xs">
-                          <img src={img.url} alt={img.caption || `成果圖 ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          {img.url ? (
+                            <img src={img.url} alt={img.caption || `成果圖 ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400 text-xs">無圖片</div>
+                          )}
                           {img.caption && (
                             <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] text-white px-1.5 py-0.5 truncate">
                               {img.caption}

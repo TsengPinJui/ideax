@@ -216,7 +216,7 @@ export const AdminUserManagementTab: React.FC = () => {
                   {/* 用戶主視覺資訊 */}
                   <div className="flex items-center gap-3 min-w-0">
                     <img
-                      src={u.avatar}
+                      src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={u.name}
                       className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200 shrink-0"
                     />
@@ -336,7 +336,7 @@ export const AdminUserManagementTab: React.FC = () => {
             {/* 目標用戶簡要 */}
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-stone-50 border border-stone-200">
               <img
-                src={blockingTargetUser.avatar}
+                src={blockingTargetUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                 alt={blockingTargetUser.name}
                 className="w-10 h-10 rounded-xl object-cover"
               />

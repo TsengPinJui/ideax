@@ -758,7 +758,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <img
-                          src={u.avatar}
+                          src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                           alt={u.name}
                           className="w-8 h-8 rounded-lg object-cover ring-1 ring-stone-200 shrink-0"
                         />

@@ -516,7 +516,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-stone-500 pb-4 border-b border-stone-100">
           <div className="flex items-center gap-3">
             <img
-              src={question.authorAvatar}
+              src={question.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
               alt={question.authorName}
               className="w-10 h-10 rounded-full object-cover ring-1 ring-stone-200"
             />
@@ -1095,7 +1095,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                         className="flex items-center gap-2 cursor-pointer group"
                       >
                         <img
-                          src={match.solver.avatar}
+                          src={match.solver.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                           alt={match.solver.name || '專家'}
                           className="w-9 h-9 rounded-xl object-cover ring-1 ring-stone-200"
                         />
@@ -1234,7 +1234,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex items-center gap-3">
                           <img
-                            src={ans.solverAvatar}
+                            src={ans.solverAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                             alt={ans.solverName}
                             onClick={() => {
                               const found = solvers.find((s) => s.id === ans.solverId || s.name === ans.solverName);
@@ -1799,7 +1799,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2.5">
                           <img
-                            src={disc.solverAvatar}
+                            src={disc.solverAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                             alt={disc.solverName}
                             onClick={() => {
                               const found = solvers.find((s) => s.id === disc.solverId || s.name === disc.solverName);

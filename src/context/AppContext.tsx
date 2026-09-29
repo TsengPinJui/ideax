@@ -732,10 +732,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       hesitationDaysThreshold: 3,
       highIntentBountyThreshold: 3000,
       toneStyle: 'professional',
-      autoScanIntervalHours: 4,
+      autoScanIntervalHours: 2,
       allowCustomTone: true,
       boardPushEnabled: true,
       maxPushesPerDay: 5,
+      scheduleMode: 'smart_time_slots',
+      peakIntervalHours: 1,
+      eveningIntervalHours: 2,
+      offPeakIntervalHours: 6,
     };
   });
 

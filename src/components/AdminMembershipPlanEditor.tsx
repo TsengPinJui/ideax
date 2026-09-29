@@ -57,6 +57,13 @@ export const AdminMembershipPlanEditor: React.FC = () => {
   // 刪除確認彈窗
   const [deleteTargetPlan, setDeleteTargetPlan] = useState<SubscriptionPlan | null>(null);
 
+  // 儲存抽成/方案設定二次確認彈窗
+  const [confirmSaveModal, setConfirmSaveModal] = useState<{
+    isOpen: boolean;
+    type: 'commission_only' | 'all_plans' | 'copy_only';
+    targetRate?: number;
+  } | null>(null);
+
   useEffect(() => {
     setSliderRate(Math.round((commissionRate || 0.10) * 100));
   }, [commissionRate]);
@@ -91,8 +98,54 @@ export const AdminMembershipPlanEditor: React.FC = () => {
     }));
   };
 
-  // 儲存全站抽成與方案設定
+  const handleSaveCommissionOnly = () => {
+    setConfirmSaveModal({
+      isOpen: true,
+      type: 'commission_only',
+      targetRate: sliderRate,
+    });
+  };
+
   const handleSaveCommissionAndPlans = () => {
+    setConfirmSaveModal({
+      isOpen: true,
+      type: 'all_plans',
+    });
+  };
+
+  const handleSaveAllCopy = () => {
+    setConfirmSaveModal({
+      isOpen: true,
+      type: 'copy_only',
+    });
+  };
+
+  // 執行儲存基準抽成
+  const executeSaveCommissionOnly = () => {
+    const newBaseRate = sliderRate / 100;
+    setCommissionRate(newBaseRate);
+    try {
+      localStorage.setItem('ideax_mvp_v3_commission', JSON.stringify(newBaseRate));
+    } catch (e) {}
+
+    // 自動同步現有各方案之基準費率
+    Object.keys(editablePlans).forEach((tierKey) => {
+      const plan = editablePlans[tierKey];
+      if (plan) {
+        updateSubscriptionPlan(tierKey as SubscriptionTier, plan.monthlyPrice || 0, plan.rebatePercent || 0, newBaseRate);
+      }
+    });
+
+    setFeedbackMsg({
+      text: `🎉 平台基準抽成已成功儲存並生效！基準抽成率已更新為 ${sliderRate}%。`,
+      isError: false,
+    });
+    setConfirmSaveModal(null);
+    setTimeout(() => setFeedbackMsg(null), 4000);
+  };
+
+  // 執行儲存全站抽成與方案設定
+  const executeSaveCommissionAndPlans = () => {
     const newBaseRate = sliderRate / 100;
     setCommissionRate(newBaseRate);
     try {
@@ -108,13 +161,14 @@ export const AdminMembershipPlanEditor: React.FC = () => {
     });
 
     setFeedbackMsg({
-      text: `🎉 平台抽成與方案設定已成功儲存！基準抽成設定為 ${sliderRate}%，全站會員方案費率與價格已即時同步更新！`,
+      text: `🎉 平台抽成與方案價格設定已成功儲存！基準抽成設定為 ${sliderRate}%，全站會員方案費率與價格已即時同步更新！`,
       isError: false,
     });
+    setConfirmSaveModal(null);
     setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
-  const handleSaveAllCopy = () => {
+  const executeSaveAllCopy = () => {
     Object.keys(editablePlans).forEach((tierKey) => {
       if (editablePlans[tierKey]) {
         updateSubscriptionPlanFull(tierKey as SubscriptionTier, editablePlans[tierKey]);
@@ -124,6 +178,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
       text: '🎉 已成功儲存全體會員方案特權文案！全站即刻生效。',
       isError: false,
     });
+    setConfirmSaveModal(null);
     setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
@@ -709,7 +764,74 @@ export const AdminMembershipPlanEditor: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 刪除方案確認彈窗 */}
+      {/* 儲存確認彈窗 */}
+      {/* ========================================================================= */}
+      {confirmSaveModal && confirmSaveModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 text-stone-900">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-stone-900">
+                  {confirmSaveModal.type === 'commission_only'
+                    ? `確認儲存平台基準抽成為 ${confirmSaveModal.targetRate || sliderRate}%？`
+                    : confirmSaveModal.type === 'copy_only'
+                    ? '確認儲存所有方案特權文案？'
+                    : '確認儲存全站抽成與方案設定？'}
+                </h3>
+                <span className="text-[11px] text-stone-500 font-bold">
+                  平台營運會員設定二次確認
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-700 leading-relaxed">
+              {confirmSaveModal.type === 'commission_only' && (
+                <p>
+                  基準抽成將更新為 <strong>{confirmSaveModal.targetRate || sliderRate}%</strong>，並自動同步至全站所有未減免之方案及懸賞交易。
+                </p>
+              )}
+              {confirmSaveModal.type === 'all_plans' && (
+                <p>
+                  即將同步儲存基準抽成 <strong>{sliderRate}%</strong> 及各會員等級之月費價格、減免抽成率設定。全站即刻生效。
+                </p>
+              )}
+              {confirmSaveModal.type === 'copy_only' && (
+                <p>
+                  即將更新各會員方案的前台名稱、副標與權益特權文案，並同步呈現在前台訂閱卡片與會員升級中心。
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setConfirmSaveModal(null)}
+                className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirmSaveModal.type === 'commission_only') {
+                    executeSaveCommissionOnly();
+                  } else if (confirmSaveModal.type === 'copy_only') {
+                    executeSaveAllCopy();
+                  } else {
+                    executeSaveCommissionAndPlans();
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
+              >
+                確認儲存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* ========================================================================= */}
       {deleteTargetPlan && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">

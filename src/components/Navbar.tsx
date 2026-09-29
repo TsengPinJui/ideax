@@ -569,7 +569,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                               className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
                             >
                               <img
-                                src={user.avatar}
+                                src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                                 alt={user.name}
                                 className="w-9 h-9 rounded-full object-cover border border-stone-200 group-hover:scale-105 transition-transform shrink-0"
                               />
@@ -788,7 +788,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="w-full p-2.5 rounded-xl hover:bg-stone-50 transition-colors flex items-start gap-2.5 text-left cursor-pointer group border border-transparent hover:border-stone-200"
                 >
                   <img
-                    src={currentUser.avatar}
+                    src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                     alt={currentUser.name}
                     className="w-9 h-9 rounded-xl object-cover ring-1 ring-stone-200 shrink-0 mt-0.5"
                   />
@@ -980,7 +980,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="relative flex items-center gap-2 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-stone-200 hover:border-amber-300 hover:bg-stone-50 transition-all cursor-pointer"
               >
                 <img
-                  src={currentUser.avatar}
+                  src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                   alt={currentUser.name}
                   className="w-7 h-7 rounded-lg object-cover ring-1 ring-stone-200"
                 />
@@ -1027,7 +1027,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       title="點擊前往帳號設定頁"
                     >
                       <img
-                        src={currentUser.avatar}
+                        src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                         alt={currentUser.name}
                         className="w-8 h-8 rounded-xl object-cover ring-1 ring-stone-200 shrink-0 group-hover:ring-amber-500 transition-all"
                       />

@@ -5,6 +5,13 @@ import { mediateDisputeWithAI } from '../services/aiService';
 import { downloadMediationContractMarkdown } from '../services/proposalService';
 import { SubmitAnswerModal } from './SubmitAnswerModal';
 import { HelpTooltip } from './HelpTooltip';
+import { ContractPreviewModal } from './ContractPreviewModal';
+import { 
+  ContractData, 
+  buildContractFromOffer, 
+  buildContractFromMediation, 
+  downloadContractFile 
+} from '../utils/contractGenerator';
 import {
   MessageSquare,
   Send,
@@ -247,6 +254,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
   const [paymentTargetMessage, setPaymentTargetMessage] = useState<ChatMessage | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentAgreementAccepted, setPaymentAgreementAccepted] = useState(true);
+  const [previewContract, setPreviewContract] = useState<ContractData | null>(null);
 
   // 分離兩種身份各自面對的對話清單
   const questionerConversations = conversations.filter(
@@ -1142,7 +1150,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                   >
                     <div className="relative shrink-0">
                       <img
-                        src={other.avatar}
+                        src={other.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                         alt={other.name}
                         className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover ring-1 ring-stone-200"
                       />
@@ -1212,7 +1220,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                   </button>
 
                   <img
-                    src={otherParticipant.avatar}
+                    src={otherParticipant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                     alt={otherParticipant.name}
                     className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-1 ring-stone-200 shrink-0"
                   />
@@ -1289,7 +1297,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                       className={`flex gap-2.5 sm:gap-3 max-w-2xl ${isMe ? 'ml-auto flex-row-reverse' : ''}`}
                     >
                       <img
-                        src={msg.senderAvatar}
+                        src={msg.senderAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                         alt={msg.senderName}
                         className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover ring-1 ring-stone-200 shrink-0 self-end"
                       />
@@ -1353,11 +1361,15 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                               </div>
 
                               <div className="relative group overflow-hidden rounded-xl">
-                                <img
-                                  src={msg.attachment.url}
-                                  alt={msg.attachment.name}
-                                  className="w-full h-auto object-cover max-h-64"
-                                />
+                                {msg.attachment.url ? (
+                                  <img
+                                    src={msg.attachment.url}
+                                    alt={msg.attachment.name}
+                                    className="w-full h-auto object-cover max-h-64"
+                                  />
+                                ) : (
+                                  <div className="p-4 text-xs text-stone-400 bg-stone-100 text-center">圖片網址無效</div>
+                                )}
                                 {msg.attachment.url && (
                                   <a
                                     href={msg.attachment.url}
@@ -1716,31 +1728,59 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
                             {/* Section 5: Signature Status & Action Buttons */}
                             <div className="pt-2 border-t border-stone-100 space-y-2.5">
-                              {/* Contract Download Button when agreement is active and escrowed/completed */}
-                              {(msg.aiMediation.status === 'escrowed' || msg.aiMediation.status === 'completed') && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    downloadMediationContractMarkdown({
-                                      contractId: msg.id,
-                                      version: msg.aiMediation?.version || 1,
-                                      questionTitle: activeConversation?.relatedQuestionTitle || '私聊專案諮詢與客製和解',
-                                      questionerName: activeConversation?.participantDetails[0]?.name || '提問者（甲方）',
-                                      solverName: activeConversation?.participantDetails[1]?.name || '解答者（乙方）',
-                                      settlementAmount: msg.aiMediation?.settlementAmount || 1200,
-                                      estimatedDays: msg.aiMediation?.estimatedDays || 3,
-                                      recommendedAction: msg.aiMediation?.recommendedAction || '',
-                                      mediatorOpinion: msg.aiMediation?.mediatorOpinion || '',
-                                      fulfilledPoints: msg.aiMediation?.fulfilledPoints || [],
-                                      unfulfilledPoints: msg.aiMediation?.unfulfilledPoints || [],
-                                      escrowedAt: msg.aiMediation?.escrowedAt,
-                                    })
-                                  }
-                                  className="w-full py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs border border-stone-300 shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-                                >
-                                  <Download className="w-4 h-4 text-stone-700 shrink-0" />
-                                  <span>下載正式商務和解協議書 (.md)</span>
-                                </button>
+                              {/* Contract Download & Preview Buttons when agreement is formed */}
+                              {(msg.aiMediation.status === 'escrowed' || msg.aiMediation.status === 'completed' || (msg.aiMediation.agreedByBuyer && msg.aiMediation.agreedBySeller)) && (
+                                <div className="p-3 bg-purple-50/80 rounded-xl border border-purple-200 space-y-2">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-extrabold text-purple-950 flex items-center gap-1.5">
+                                      <Scale className="w-3.5 h-3.5 text-purple-700" />
+                                      <span>調解和解協議已依法成立</span>
+                                    </span>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-200/70 text-purple-900">
+                                      具法定民事和解效力
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const buyerUser = activeConversation?.participantDetails[0] || { id: 'buyer', name: '提問者（甲方）' };
+                                        const sellerUser = activeConversation?.participantDetails[1] || { id: 'seller', name: '解答者（乙方）' };
+                                        const cData = buildContractFromMediation(
+                                          msg.aiMediation!,
+                                          buyerUser,
+                                          sellerUser,
+                                          activeConversation?.relatedQuestionTitle,
+                                          msg.createdAt
+                                        );
+                                        setPreviewContract(cData);
+                                      }}
+                                      className="py-2 px-3 rounded-xl bg-white hover:bg-stone-50 border border-purple-300 text-purple-950 font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:border-purple-400"
+                                    >
+                                      <FileText className="w-3.5 h-3.5 text-purple-700" />
+                                      <span>檢視和解協議書</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const buyerUser = activeConversation?.participantDetails[0] || { id: 'buyer', name: '提問者（甲方）' };
+                                        const sellerUser = activeConversation?.participantDetails[1] || { id: 'seller', name: '解答者（乙方）' };
+                                        const cData = buildContractFromMediation(
+                                          msg.aiMediation!,
+                                          buyerUser,
+                                          sellerUser,
+                                          activeConversation?.relatedQuestionTitle,
+                                          msg.createdAt
+                                        );
+                                        downloadContractFile(cData);
+                                      }}
+                                      className="py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                    >
+                                      <Download className="w-3.5 h-3.5 text-stone-950" />
+                                      <span>下載商業契約檔案</span>
+                                    </button>
+                                  </div>
+                                </div>
                               )}
 
                               {msg.aiMediation.status === 'completed' ? (
@@ -1999,19 +2039,79 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                             )}
 
                             {/* Offer Status & Payment Actions */}
-                            {msg.offer.status === 'accepted' ? (
-                              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-950 space-y-2">
+                            {msg.offer.status === 'accepted' || msg.offer.status === 'completed' ? (
+                              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-950 space-y-2.5">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-1.5 font-black text-emerald-800">
                                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                                    <span>已完成簽約・第三方款項託管中</span>
+                                    <span>
+                                      {msg.offer.status === 'completed' ? '已完成結案・契約履行完畢' : '已完成簽約・第三方款項託管中'}
+                                    </span>
                                   </div>
                                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">
-                                    已解鎖交付
+                                    {msg.offer.status === 'completed' ? '已結案' : '已解鎖交付'}
                                   </span>
                                 </div>
                                 <div className="p-2.5 bg-white rounded-lg border border-emerald-200/80 font-mono text-[11px] leading-relaxed text-stone-800 whitespace-pre-line">
                                   {msg.offer.paywalledContent || '方案已完成託管簽約，雙方可直接透過本聊天室交付專案檔案、會議連結與成果確認。'}
+                                </div>
+
+                                {/* Formal Contract Download & Preview Button */}
+                                <div className="pt-2 border-t border-emerald-200/80 flex flex-wrap items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1 text-[11px] text-emerald-900 font-bold">
+                                    <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                                    <span>正式商業勞務委任契約（已生效）</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const otherParty = activeConversation.participantDetails.find((p) => p.id !== msg.offer?.creatorId);
+                                        const creatorUser = activeConversation.participantDetails.find((p) => p.id === msg.offer?.creatorId) || {
+                                          id: msg.offer!.creatorId,
+                                          name: msg.offer!.creatorName,
+                                        };
+                                        const buyerUser = msg.offer?.buyerId === currentUser.id ? currentUser : (otherParty || currentUser);
+                                        const sellerUser = msg.offer?.creatorId === currentUser.id ? currentUser : creatorUser;
+                                        const cData = buildContractFromOffer(
+                                          msg.offer!,
+                                          buyerUser,
+                                          sellerUser,
+                                          activeConversation.relatedQuestionTitle,
+                                          msg.createdAt
+                                        );
+                                        setPreviewContract(cData);
+                                      }}
+                                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-emerald-300 text-emerald-950 text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all hover:border-emerald-400"
+                                    >
+                                      <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                                      <span>檢視契約</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const otherParty = activeConversation.participantDetails.find((p) => p.id !== msg.offer?.creatorId);
+                                        const creatorUser = activeConversation.participantDetails.find((p) => p.id === msg.offer?.creatorId) || {
+                                          id: msg.offer!.creatorId,
+                                          name: msg.offer!.creatorName,
+                                        };
+                                        const buyerUser = msg.offer?.buyerId === currentUser.id ? currentUser : (otherParty || currentUser);
+                                        const sellerUser = msg.offer?.creatorId === currentUser.id ? currentUser : creatorUser;
+                                        const cData = buildContractFromOffer(
+                                          msg.offer!,
+                                          buyerUser,
+                                          sellerUser,
+                                          activeConversation.relatedQuestionTitle,
+                                          msg.createdAt
+                                        );
+                                        downloadContractFile(cData);
+                                      }}
+                                      className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+                                    >
+                                      <Download className="w-3.5 h-3.5 text-stone-950" />
+                                      <span>下載契約檔案</span>
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             ) : (
@@ -3168,7 +3268,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                         >
                           <div className="flex items-center gap-2.5">
                             <img
-                              src={u.avatar}
+                              src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                               alt={u.name}
                               className="w-8 h-8 rounded-full object-cover border"
                             />
@@ -3300,7 +3400,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <img
-                              src={u.avatar}
+                              src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                               alt={u.name}
                               className="w-7 h-7 rounded-full object-cover border shrink-0"
                             />
@@ -3671,6 +3771,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
             </div>
           </div>
         </div>
+      )}
+
+      {/* --- Modal 7: 商業契約與和解協議書檢視與下載 Modal --- */}
+      {previewContract && (
+        <ContractPreviewModal
+          contract={previewContract}
+          onClose={() => setPreviewContract(null)}
+        />
       )}
     </div>
   );

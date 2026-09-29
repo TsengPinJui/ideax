@@ -63,14 +63,78 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     isHideTestAccounts,
     setHideTestAccounts,
     toggleHideTestAccounts,
+    aiCrmConfig,
+    updateAiCrmConfig,
   } = useApp();
 
   const [pendingConfirm, setPendingConfirm] = useState<{
-    type: 'liveOperation' | 'demo' | 'noPayment' | 'hideTestAccounts';
-    nextState: boolean;
+    type: 'liveOperation' | 'demo' | 'noPayment' | 'hideTestAccounts' | 'clearMockData' | 'saveBaseCommission' | 'saveFullCommissionAndPlans' | 'savePublicMetrics' | 'saveAiCrmConfig';
+    nextState?: boolean;
+    data?: any;
   } | null>(null);
 
-  const handleConfirmToggle = () => {
+  const [sliderRate, setSliderRate] = useState<number>(Math.round(commissionRate * 100));
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  // Local state for public metrics
+  const [localPublicMetrics, setLocalPublicMetrics] = useState({ ...publicMetricsConfig });
+  const hasPublicMetricsChanges = JSON.stringify(localPublicMetrics) !== JSON.stringify(publicMetricsConfig);
+
+  // Local state for AI-CRM config
+  const [localAiCrmConfig, setLocalAiCrmConfig] = useState({ ...aiCrmConfig });
+  const hasAiCrmChanges = JSON.stringify(localAiCrmConfig) !== JSON.stringify(aiCrmConfig);
+
+  // Local state for editing plans
+  const [editablePlans, setEditablePlans] = useState(() => {
+    return Object.keys(subscriptionPlans).reduce((acc, key) => {
+      const tier = key as SubscriptionTier;
+      acc[tier] = {
+        monthlyPrice: subscriptionPlans[tier].monthlyPrice,
+        rebatePercent: subscriptionPlans[tier].rebatePercent,
+      };
+      return acc;
+    }, {} as Record<SubscriptionTier, { monthlyPrice: number; rebatePercent: number }>);
+  });
+
+  const isCommissionChanged = sliderRate !== Math.round(commissionRate * 100);
+
+  const executeSaveCommissionOnly = () => {
+    const newBaseRate = sliderRate / 100;
+    setCommissionRate(newBaseRate);
+    (Object.keys(editablePlans) as SubscriptionTier[]).forEach((tier) => {
+      updateSubscriptionPlan(tier, editablePlans[tier].monthlyPrice, editablePlans[tier].rebatePercent, newBaseRate);
+    });
+    setSaveMsg(`🎉 平台基準抽成設定已成功儲存！基準抽成率已更新為 ${sliderRate}%，即時套用於全站所有解鎖與懸賞清算。`);
+    setPendingConfirm(null);
+    setTimeout(() => setSaveMsg(null), 4000);
+  };
+
+  const executeSaveCommissionAndPlans = () => {
+    const newBaseRate = sliderRate / 100;
+    setCommissionRate(newBaseRate);
+    (Object.keys(editablePlans) as SubscriptionTier[]).forEach((tier) => {
+      updateSubscriptionPlan(tier, editablePlans[tier].monthlyPrice, editablePlans[tier].rebatePercent, newBaseRate);
+    });
+    setSaveMsg(`🎉 平台抽成與各方案價格設定已成功儲存！基準抽成 ${sliderRate}%，各方案月費與減免率已同步更新！`);
+    setPendingConfirm(null);
+    setTimeout(() => setSaveMsg(null), 4000);
+  };
+
+  const executeSavePublicMetrics = () => {
+    updatePublicMetricsConfig(localPublicMetrics);
+    setSaveMsg('🎉 首頁公開運營數據展示控制已成功儲存並同步至前台！');
+    setPendingConfirm(null);
+    setTimeout(() => setSaveMsg(null), 4000);
+  };
+
+  const executeSaveAiCrmConfig = () => {
+    updateAiCrmConfig(localAiCrmConfig);
+    setSaveMsg('🎉 AI-CRM 巡航排程與運營策略設定已成功儲存並生效！');
+    setPendingConfirm(null);
+    setTimeout(() => setSaveMsg(null), 4000);
+  };
+
+  const handleConfirmAction = () => {
     if (!pendingConfirm) return;
     if (pendingConfirm.type === 'liveOperation') {
       if (pendingConfirm.nextState) {
@@ -86,24 +150,25 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
       toggleNoPaymentMode();
     } else if (pendingConfirm.type === 'hideTestAccounts') {
       toggleHideTestAccounts();
+    } else if (pendingConfirm.type === 'clearMockData') {
+      clearMockData();
+      setSaveMsg('✨ 已成功重置並清除瀏覽器中的模擬資料！');
+      setTimeout(() => setSaveMsg(null), 4000);
+    } else if (pendingConfirm.type === 'saveBaseCommission') {
+      executeSaveCommissionOnly();
+      return;
+    } else if (pendingConfirm.type === 'saveFullCommissionAndPlans') {
+      executeSaveCommissionAndPlans();
+      return;
+    } else if (pendingConfirm.type === 'savePublicMetrics') {
+      executeSavePublicMetrics();
+      return;
+    } else if (pendingConfirm.type === 'saveAiCrmConfig') {
+      executeSaveAiCrmConfig();
+      return;
     }
     setPendingConfirm(null);
   };
-
-  const [sliderRate, setSliderRate] = useState<number>(Math.round(commissionRate * 100));
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
-
-  // Local state for editing plans
-  const [editablePlans, setEditablePlans] = useState(() => {
-    return Object.keys(subscriptionPlans).reduce((acc, key) => {
-      const tier = key as SubscriptionTier;
-      acc[tier] = {
-        monthlyPrice: subscriptionPlans[tier].monthlyPrice,
-        rebatePercent: subscriptionPlans[tier].rebatePercent,
-      };
-      return acc;
-    }, {} as Record<SubscriptionTier, { monthlyPrice: number; rebatePercent: number }>);
-  });
 
   // Compute platform metrics
   const totalGMV = transactions.reduce((acc, t) => acc + t.amount, 0);
@@ -232,7 +297,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             <div className="flex items-center gap-2 flex-wrap shrink-0">
               <button
                 type="button"
-                onClick={toggleDemoMode}
+                onClick={() => setPendingConfirm({ type: 'demo', nextState: !isDemoMode })}
                 className={`px-4 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md ${
                   isDemoMode
                     ? 'bg-amber-400 hover:bg-amber-300 text-stone-950 ring-2 ring-amber-300'
@@ -245,7 +310,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
               <button
                 type="button"
-                onClick={clearMockData}
+                onClick={() => setPendingConfirm({ type: 'clearMockData' })}
                 className="px-3.5 py-2.5 rounded-xl bg-rose-600/80 hover:bg-rose-600 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-rose-500/50"
                 title="一鍵清除瀏覽器暫存之模擬資料，強制回到純淨狀態"
               >
@@ -405,18 +470,33 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 <span>首頁公開運營數據展示控制（首頁看板開關）</span>
               </h4>
               <p className="text-xs text-amber-900/70 mt-0.5">
-                管理者可自由勾選決定在首頁對外公開呈現的平台真實統計指標，關閉項目將即時於首頁隱藏。
+                管理者可勾選決定在首頁對外公開呈現的平台真實統計指標，點擊儲存後將同步至全站首頁。
               </p>
             </div>
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300 w-fit">
-              已公開 {Object.values(publicMetricsConfig).filter(Boolean).length} / 5 項指標
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300 w-fit">
+                已公開 {Object.values(localPublicMetrics).filter(Boolean).length} / 5 項指標
+              </span>
+              <button
+                type="button"
+                onClick={() => setPendingConfirm({ type: 'savePublicMetrics' })}
+                disabled={!hasPublicMetricsChanges}
+                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                  hasPublicMetricsChanges
+                    ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-xs animate-pulse'
+                    : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                }`}
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{hasPublicMetricsChanges ? '儲存看板公開設定' : '已儲存'}</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {/* Metric 1: 累計解決難題 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-              publicMetricsConfig.showSolvedCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+              localPublicMetrics.showSolvedCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -427,21 +507,21 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </div>
               <button
                 type="button"
-                onClick={() => updatePublicMetricsConfig({ showSolvedCount: !publicMetricsConfig.showSolvedCount })}
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showSolvedCount: !prev.showSolvedCount }))}
                 className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                  publicMetricsConfig.showSolvedCount ? 'bg-amber-500' : 'bg-stone-300'
+                  localPublicMetrics.showSolvedCount ? 'bg-amber-500' : 'bg-stone-300'
                 }`}
-                title={publicMetricsConfig.showSolvedCount ? '點擊隱藏此指標' : '點擊公開此指標'}
+                title={localPublicMetrics.showSolvedCount ? '點擊關閉此指標' : '點擊開啟此指標'}
               >
                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                  publicMetricsConfig.showSolvedCount ? 'translate-x-5' : 'translate-x-0'
+                  localPublicMetrics.showSolvedCount ? 'translate-x-5' : 'translate-x-0'
                 }`} />
               </button>
             </div>
 
             {/* Metric 2: 累計懸賞金額 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-              publicMetricsConfig.showTotalBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+              localPublicMetrics.showTotalBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -452,21 +532,21 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </div>
               <button
                 type="button"
-                onClick={() => updatePublicMetricsConfig({ showTotalBounty: !publicMetricsConfig.showTotalBounty })}
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showTotalBounty: !prev.showTotalBounty }))}
                 className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                  publicMetricsConfig.showTotalBounty ? 'bg-amber-500' : 'bg-stone-300'
+                  localPublicMetrics.showTotalBounty ? 'bg-amber-500' : 'bg-stone-300'
                 }`}
-                title={publicMetricsConfig.showTotalBounty ? '點擊隱藏此指標' : '點擊公開此指標'}
+                title={localPublicMetrics.showTotalBounty ? '點擊關閉此指標' : '點擊開啟此指標'}
               >
                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                  publicMetricsConfig.showTotalBounty ? 'translate-x-5' : 'translate-x-0'
+                  localPublicMetrics.showTotalBounty ? 'translate-x-5' : 'translate-x-0'
                 }`} />
               </button>
             </div>
 
             {/* Metric 3: 平均回覆速度 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-              publicMetricsConfig.showAvgResponseSpeed ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+              localPublicMetrics.showAvgResponseSpeed ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -477,21 +557,21 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </div>
               <button
                 type="button"
-                onClick={() => updatePublicMetricsConfig({ showAvgResponseSpeed: !publicMetricsConfig.showAvgResponseSpeed })}
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showAvgResponseSpeed: !prev.showAvgResponseSpeed }))}
                 className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                  publicMetricsConfig.showAvgResponseSpeed ? 'bg-amber-500' : 'bg-stone-300'
+                  localPublicMetrics.showAvgResponseSpeed ? 'bg-amber-500' : 'bg-stone-300'
                 }`}
-                title={publicMetricsConfig.showAvgResponseSpeed ? '點擊隱藏此指標' : '點擊公開此指標'}
+                title={localPublicMetrics.showAvgResponseSpeed ? '點擊關閉此指標' : '點擊開啟此指標'}
               >
                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                  publicMetricsConfig.showAvgResponseSpeed ? 'translate-x-5' : 'translate-x-0'
+                  localPublicMetrics.showAvgResponseSpeed ? 'translate-x-5' : 'translate-x-0'
                 }`} />
               </button>
             </div>
 
             {/* Metric 4: 方案採納滿意度 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-              publicMetricsConfig.showSatisfactionRate ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+              localPublicMetrics.showSatisfactionRate ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -502,21 +582,21 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </div>
               <button
                 type="button"
-                onClick={() => updatePublicMetricsConfig({ showSatisfactionRate: !publicMetricsConfig.showSatisfactionRate })}
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showSatisfactionRate: !prev.showSatisfactionRate }))}
                 className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                  publicMetricsConfig.showSatisfactionRate ? 'bg-amber-500' : 'bg-stone-300'
+                  localPublicMetrics.showSatisfactionRate ? 'bg-amber-500' : 'bg-stone-300'
                 }`}
-                title={publicMetricsConfig.showSatisfactionRate ? '點擊隱藏此指標' : '點擊公開此指標'}
+                title={localPublicMetrics.showSatisfactionRate ? '點擊關閉此指標' : '點擊開啟此指標'}
               >
                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                  publicMetricsConfig.showSatisfactionRate ? 'translate-x-5' : 'translate-x-0'
+                  localPublicMetrics.showSatisfactionRate ? 'translate-x-5' : 'translate-x-0'
                 }`} />
               </button>
             </div>
 
             {/* Metric 5: 當前最高賞金 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-              publicMetricsConfig.showHighestBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+              localPublicMetrics.showHighestBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -527,14 +607,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </div>
               <button
                 type="button"
-                onClick={() => updatePublicMetricsConfig({ showHighestBounty: !publicMetricsConfig.showHighestBounty })}
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showHighestBounty: !prev.showHighestBounty }))}
                 className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                  publicMetricsConfig.showHighestBounty ? 'bg-amber-500' : 'bg-stone-300'
+                  localPublicMetrics.showHighestBounty ? 'bg-amber-500' : 'bg-stone-300'
                 }`}
-                title={publicMetricsConfig.showHighestBounty ? '點擊隱藏此指標' : '點擊公開此指標'}
+                title={localPublicMetrics.showHighestBounty ? '點擊關閉此指標' : '點擊開啟此指標'}
               >
                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                  publicMetricsConfig.showHighestBounty ? 'translate-x-5' : 'translate-x-0'
+                  localPublicMetrics.showHighestBounty ? 'translate-x-5' : 'translate-x-0'
                 }`} />
               </button>
             </div>
@@ -545,17 +625,39 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         <div className="p-5 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h4 className="font-extrabold text-sm sm:text-base text-purple-950 flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-purple-600" />
-                <span>平台基準抽成比例設定（目前：{sliderRate}%）</span>
-              </h4>
+              <div className="flex items-center gap-2">
+                <h4 className="font-extrabold text-sm sm:text-base text-purple-950 flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-purple-600" />
+                  <span>平台基準抽成比例設定（目前生效：{Math.round(commissionRate * 100)}%）</span>
+                </h4>
+                {isCommissionChanged && (
+                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-300 animate-pulse">
+                    待儲存 ➔ {sliderRate}%
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-purple-900/70 mt-0.5">
-                僅管理者可配置，支援 0% ～ 30% 動態調整，套用於全站方案解鎖與懸賞交易基礎清算。
+                僅管理者可配置，支援 0% ～ 30% 動態調整。需點擊「儲存基準抽成」並經過二次確認後正式套用。
               </p>
             </div>
 
-            <div className="text-right">
-              <span className="text-2xl font-black text-purple-900 font-mono">{sliderRate}%</span>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <span className="text-2xl font-black text-purple-900 font-mono">{sliderRate}%</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingConfirm({ type: 'saveBaseCommission' })}
+                disabled={!isCommissionChanged}
+                className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                  isCommissionChanged
+                    ? 'bg-purple-700 hover:bg-purple-600 text-white shadow-md active:scale-95'
+                    : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                }`}
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isCommissionChanged ? '儲存基準抽成設定' : '已儲存'}</span>
+              </button>
             </div>
           </div>
 
@@ -592,8 +694,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </p>
             </div>
             <button
-              onClick={handleSaveCommission}
-              className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer w-fit"
+              onClick={() => setPendingConfirm({ type: 'saveFullCommissionAndPlans' })}
+              className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer w-fit active:scale-95"
             >
               <Save className="w-3.5 h-3.5" />
               <span>儲存全站抽成與方案設定</span>
@@ -782,6 +884,218 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           </div>
         </div>
 
+        {/* 5. AI-CRM 巡航排程與客情策略控制 */}
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-50/70 via-orange-50/50 to-amber-50/70 border border-amber-200/80 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-extrabold text-sm sm:text-base text-stone-900 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>AI-CRM 定時巡航排程與客情策略控制</span>
+                </h4>
+                {hasAiCrmChanges && (
+                  <span className="px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 text-[10px] font-black border border-amber-300 animate-pulse">
+                    待儲存變更
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-stone-600 mt-0.5">
+                支援「按時段動態調整策略」與「固定間隔」巡航排程，依不同活躍時段自動調整掃描頻率，兼顧商機即時捕捉與算力成本。
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setPendingConfirm({ type: 'saveAiCrmConfig' })}
+              disabled={!hasAiCrmChanges}
+              className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                hasAiCrmChanges
+                  ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-md active:scale-95'
+                  : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+              }`}
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{hasAiCrmChanges ? '儲存巡航排程設定' : '已儲存'}</span>
+            </button>
+          </div>
+
+          {/* 巡航模式選擇：按時段動態調整 vs 固定間隔 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setLocalAiCrmConfig(prev => ({ ...prev, scheduleMode: 'smart_time_slots' }))}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                localAiCrmConfig.scheduleMode === 'smart_time_slots'
+                  ? 'bg-white border-amber-400 shadow-xs ring-2 ring-amber-300/40'
+                  : 'bg-white/60 border-stone-200 hover:bg-white opacity-80'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-xs text-stone-900 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-amber-600" />
+                  <span>按時段動態調整策略（推薦・黃金配置）</span>
+                </span>
+                {localAiCrmConfig.scheduleMode === 'smart_time_slots' && (
+                  <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                )}
+              </div>
+              <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">
+                尖峰 1h 敏捷巡航、晚間 2h 深度分析、深夜 6h 節能深層重整。
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLocalAiCrmConfig(prev => ({ ...prev, scheduleMode: 'fixed_interval' }))}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                localAiCrmConfig.scheduleMode === 'fixed_interval'
+                  ? 'bg-white border-amber-400 shadow-xs ring-2 ring-amber-300/40'
+                  : 'bg-white/60 border-stone-200 hover:bg-white opacity-80'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-xs text-stone-900 flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-stone-600" />
+                  <span>固定間隔巡航模式</span>
+                </span>
+                {localAiCrmConfig.scheduleMode === 'fixed_interval' && (
+                  <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                )}
+              </div>
+              <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">
+                全天 24 小時維持單一固定頻率進行全站掃描分析。
+              </p>
+            </button>
+          </div>
+
+          {/* 時段參數配置 */}
+          {localAiCrmConfig.scheduleMode === 'smart_time_slots' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* 日間尖峰 */}
+              <div className="p-3 rounded-xl bg-white border border-emerald-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-950 flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>日間商務活躍期</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800">
+                    09:00 - 18:00
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[11px] text-stone-500 shrink-0">巡航間隔:</label>
+                  <select
+                    value={localAiCrmConfig.peakIntervalHours || 1}
+                    onChange={(e) => setLocalAiCrmConfig(prev => ({ ...prev, peakIntervalHours: Number(e.target.value) }))}
+                    className="w-full px-2 py-1 bg-stone-50 border border-emerald-300 rounded-lg text-xs font-bold font-mono cursor-pointer"
+                  >
+                    <option value={1}>每 1 小時 (敏捷推薦)</option>
+                    <option value={2}>每 2 小時 (標準)</option>
+                    <option value={3}>每 3 小時 (適中)</option>
+                  </select>
+                </div>
+                <p className="text-[10px] text-stone-500">重心：即時鎖定新懸賞與比價猶豫</p>
+              </div>
+
+              {/* 晚間沉思 */}
+              <div className="p-3 rounded-xl bg-white border border-amber-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-950 flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span>晚間決策沉思期</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800">
+                    18:00 - 23:30
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[11px] text-stone-500 shrink-0">巡航間隔:</label>
+                  <select
+                    value={localAiCrmConfig.eveningIntervalHours || 2}
+                    onChange={(e) => setLocalAiCrmConfig(prev => ({ ...prev, eveningIntervalHours: Number(e.target.value) }))}
+                    className="w-full px-2 py-1 bg-stone-50 border border-amber-300 rounded-lg text-xs font-bold font-mono cursor-pointer"
+                  >
+                    <option value={1}>每 1 小時</option>
+                    <option value={2}>每 2 小時 (黃金推薦)</option>
+                    <option value={3}>每 3 小時</option>
+                    <option value={4}>每 4 小時</option>
+                  </select>
+                </div>
+                <p className="text-[10px] text-stone-500">重心：方案價值比對與預約諮詢引導</p>
+              </div>
+
+              {/* 深夜統整 */}
+              <div className="p-3 rounded-xl bg-white border border-purple-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-purple-950 flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-purple-500" />
+                    <span>深夜離峰統整期</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-800">
+                    23:30 - 09:00
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[11px] text-stone-500 shrink-0">巡航間隔:</label>
+                  <select
+                    value={localAiCrmConfig.offPeakIntervalHours || 6}
+                    onChange={(e) => setLocalAiCrmConfig(prev => ({ ...prev, offPeakIntervalHours: Number(e.target.value) }))}
+                    className="w-full px-2 py-1 bg-stone-50 border border-purple-300 rounded-lg text-xs font-bold font-mono cursor-pointer"
+                  >
+                    <option value={4}>每 4 小時</option>
+                    <option value={6}>每 6 小時 (節能推薦)</option>
+                    <option value={8}>每 8 小時</option>
+                  </select>
+                </div>
+                <p className="text-[10px] text-stone-500">重心：深層關聯重算與晨間名單預排</p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-xl bg-white border border-stone-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-stone-900">固定巡檢間隔</span>
+                <span className="text-xs font-bold font-mono text-amber-700">每 {localAiCrmConfig.autoScanIntervalHours || 2} 小時</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={12}
+                step={1}
+                value={localAiCrmConfig.autoScanIntervalHours || 2}
+                onChange={(e) => setLocalAiCrmConfig(prev => ({ ...prev, autoScanIntervalHours: Number(e.target.value) }))}
+                className="w-full accent-amber-600 cursor-pointer h-2 bg-stone-200 rounded-lg"
+              />
+            </div>
+          )}
+
+          {/* 商業門檻設定 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="p-3 rounded-xl bg-white border border-stone-200 space-y-1">
+              <span className="text-[11px] font-bold text-stone-700">提問者猶豫期判定門檻 (天數)</span>
+              <input
+                type="number"
+                min={1}
+                max={14}
+                value={localAiCrmConfig.hesitationDaysThreshold || 3}
+                onChange={(e) => setLocalAiCrmConfig(prev => ({ ...prev, hesitationDaysThreshold: Number(e.target.value) }))}
+                className="w-full px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-mono font-bold"
+              />
+            </div>
+
+            <div className="p-3 rounded-xl bg-white border border-stone-200 space-y-1">
+              <span className="text-[11px] font-bold text-stone-700">高意向懸賞金額門檻 (NT$)</span>
+              <input
+                type="number"
+                min={500}
+                step={500}
+                value={localAiCrmConfig.highIntentBountyThreshold || 3000}
+                onChange={(e) => setLocalAiCrmConfig(prev => ({ ...prev, highIntentBountyThreshold: Number(e.target.value) }))}
+                className="w-full px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-mono font-bold"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* 6. 平台核心環境控制 (營運模式、測試環境 & 無金流環境開關) */}
         <div className="p-5 rounded-2xl bg-stone-900 text-white border border-stone-800 space-y-4">
           <div className="flex items-center justify-between border-b border-stone-800 pb-3">
@@ -932,7 +1246,17 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </div>
               <div>
                 <h3 className="text-base font-black text-stone-900">
-                  {pendingConfirm.type === 'liveOperation'
+                  {pendingConfirm.type === 'saveBaseCommission'
+                    ? `確認儲存平台基準抽成比例為 ${sliderRate}%？`
+                    : pendingConfirm.type === 'saveFullCommissionAndPlans'
+                    ? '確認儲存全站抽成與方案設定？'
+                    : pendingConfirm.type === 'savePublicMetrics'
+                    ? '確認儲存首頁公開運營數據展示設定？'
+                    : pendingConfirm.type === 'saveAiCrmConfig'
+                    ? '確認儲存 AI-CRM 巡航排程與運營策略設定？'
+                    : pendingConfirm.type === 'clearMockData'
+                    ? '確認清除瀏覽器中的模擬示範資料？'
+                    : pendingConfirm.type === 'liveOperation'
                     ? (pendingConfirm.nextState ? '確認開啟【營運模式】？' : '確認關閉【營運模式】？')
                     : pendingConfirm.type === 'demo'
                     ? (pendingConfirm.nextState ? '確認開啟【測試環境】？' : '確認關閉【測試環境】？')
@@ -941,12 +1265,74 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     : (pendingConfirm.nextState ? '確認執行【隱藏測試帳號】？' : '確認執行【公開顯示 測試帳號】？')}
                 </h3>
                 <span className="text-[11px] text-stone-500 font-bold">
-                  系統運營底層模式變更二次確認
+                  {pendingConfirm.type.startsWith('save')
+                    ? '平台營運重要參數儲存二次確認'
+                    : '系統運營底層模式變更二次確認'}
                 </span>
               </div>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-700 leading-relaxed">
+              {pendingConfirm.type === 'saveBaseCommission' && (
+                <div>
+                  <p className="font-bold text-stone-900 mb-1">
+                    平台基準抽成率將從 {Math.round(commissionRate * 100)}% 調整為 {sliderRate}%：
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-stone-600 text-[11px]">
+                    <li>即時套用於全站所有解鎖、懸賞結算與專家客製報價清算。</li>
+                    <li>一般會員與未減免方案將統一按 {sliderRate}% 計算平台服務費。</li>
+                  </ul>
+                </div>
+              )}
+              {pendingConfirm.type === 'saveFullCommissionAndPlans' && (
+                <div>
+                  <p className="font-bold text-stone-900 mb-1">
+                    即將同步更新基準抽成（{sliderRate}%）及各等級會員月費與減免率：
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-stone-600 text-[11px]">
+                    <li>達人級 (Pro): 月費 NT$ {editablePlans.pro.monthlyPrice} / 減免 {editablePlans.pro.rebatePercent}%</li>
+                    <li>專家級 (Expert): 月費 NT$ {editablePlans.expert.monthlyPrice} / 減免 {editablePlans.expert.rebatePercent}%</li>
+                    <li>權威級 (Authority): 月費 NT$ {editablePlans.authority.monthlyPrice} / 減免 {editablePlans.authority.rebatePercent}%</li>
+                    <li>大師級 (Master): 月費 NT$ {editablePlans.master.monthlyPrice} / 減免 {editablePlans.master.rebatePercent}%</li>
+                  </ul>
+                </div>
+              )}
+              {pendingConfirm.type === 'savePublicMetrics' && (
+                <div>
+                  <p className="font-bold text-stone-900 mb-1">
+                    首頁公開指標展示將更新為目前勾選之 {Object.values(localPublicMetrics).filter(Boolean).length} 項指標：
+                  </p>
+                  <p className="text-stone-600 text-[11px]">
+                    設定儲存後將即時同步至首頁即時運營數據看板。
+                  </p>
+                </div>
+              )}
+              {pendingConfirm.type === 'saveAiCrmConfig' && (
+                <div>
+                  <p className="font-bold text-stone-900 mb-1">
+                    即將更新全站 AI-CRM 定時巡航排程與運營策略：
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-stone-600 text-[11px]">
+                    {localAiCrmConfig.scheduleMode === 'smart_time_slots' ? (
+                      <>
+                        <li>採用【按時段動態調整策略】（推薦黃金配置）</li>
+                        <li>日間商務活躍期 (09:00 - 18:00)：每 {localAiCrmConfig.peakIntervalHours || 1} 小時巡航</li>
+                        <li>晚間決策沉思期 (18:00 - 23:30)：每 {localAiCrmConfig.eveningIntervalHours || 2} 小時巡航</li>
+                        <li>深夜離峰統整期 (23:30 - 09:00)：每 {localAiCrmConfig.offPeakIntervalHours || 6} 小時深層運算</li>
+                      </>
+                    ) : (
+                      <li>採用【固定間隔巡航】：全天候每 {localAiCrmConfig.autoScanIntervalHours || 2} 小時固定巡檢</li>
+                    )}
+                    <li>提問者猶豫期判定：{localAiCrmConfig.hesitationDaysThreshold || 3} 天</li>
+                    <li>高意向懸賞門檻：NT$ {(localAiCrmConfig.highIntentBountyThreshold || 3000).toLocaleString()}</li>
+                  </ul>
+                </div>
+              )}
+              {pendingConfirm.type === 'clearMockData' && (
+                <p>
+                  即將清除目前瀏覽器快取的所有模擬示範題目、模擬對話與暫存測試數據，並重新載入系統乾淨初始狀態。此操作不可逆。
+                </p>
+              )}
               {pendingConfirm.type === 'liveOperation' && (
                 pendingConfirm.nextState
                   ? '即將開啟【正式營運模式】：系統將自動隱藏所有測試帳號（僅保留管理員與真實註冊會員），並且關閉無金流環境（全面啟用正式商業金流與履約託管機制）。'
@@ -979,14 +1365,22 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </button>
               <button
                 type="button"
-                onClick={handleConfirmToggle}
+                onClick={handleConfirmAction}
                 className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs ${
-                  pendingConfirm.nextState
+                  pendingConfirm.type === 'clearMockData'
+                    ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                    : pendingConfirm.type.startsWith('save')
+                    ? 'bg-purple-700 hover:bg-purple-600 text-white'
+                    : pendingConfirm.nextState
                     ? 'bg-amber-500 hover:bg-amber-400 text-stone-950'
                     : 'bg-stone-900 hover:bg-stone-800 text-white'
                 }`}
               >
-                確認{pendingConfirm.nextState ? (pendingConfirm.type === 'hideTestAccounts' ? '隱藏' : '開啟') : (pendingConfirm.type === 'hideTestAccounts' ? '公開' : '關閉')}
+                {pendingConfirm.type.startsWith('save')
+                  ? '確認儲存'
+                  : pendingConfirm.type === 'clearMockData'
+                  ? '確認清除'
+                  : `確認${pendingConfirm.nextState ? (pendingConfirm.type === 'hideTestAccounts' ? '隱藏' : '開啟') : (pendingConfirm.type === 'hideTestAccounts' ? '公開' : '關閉')}`}
               </button>
             </div>
           </div>

@@ -23,6 +23,7 @@ import {
   Flame,
   Plus,
   Zap,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface AdminAiCrmTabProps {
@@ -46,16 +47,21 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
     hesitationDaysThreshold: aiCrmConfig?.hesitationDaysThreshold ?? 3,
     highIntentBountyThreshold: aiCrmConfig?.highIntentBountyThreshold ?? 3000,
     toneStyle: aiCrmConfig?.toneStyle ?? 'professional',
-    autoScanIntervalHours: aiCrmConfig?.autoScanIntervalHours ?? 4,
+    autoScanIntervalHours: aiCrmConfig?.autoScanIntervalHours ?? 2,
     allowCustomTone: aiCrmConfig?.allowCustomTone ?? true,
     boardPushEnabled: aiCrmConfig?.boardPushEnabled ?? true,
     maxPushesPerDay: aiCrmConfig?.maxPushesPerDay ?? 5,
+    scheduleMode: aiCrmConfig?.scheduleMode ?? 'smart_time_slots',
+    peakIntervalHours: aiCrmConfig?.peakIntervalHours ?? 1,
+    eveningIntervalHours: aiCrmConfig?.eveningIntervalHours ?? 2,
+    offPeakIntervalHours: aiCrmConfig?.offPeakIntervalHours ?? 6,
   });
 
   const [activeSubTab, setActiveSubTab] = useState<'settings' | 'leads_pool' | 'broadcast_center'>('settings');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   // Active leads pool state
   const [leadsPool, setLeadsPool] = useState<AiCrmLead[]>(() =>
@@ -73,9 +79,10 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
   const [newBroadcastContent, setNewBroadcastContent] = useState('「您關注的主題看板剛新增了 2 則高質量解題方案，點擊立即預覽前沿思路！」');
   const [broadcastSuccessNotice, setBroadcastSuccessNotice] = useState<string | null>(null);
 
-  const handleSaveSettings = () => {
+  const executeSaveSettings = () => {
     updateAiCrmConfig(formData);
     setSaveSuccessMsg('AI-CRM 系統運營設定已成功儲存！所有規則與演算法即刻在全站生效。');
+    setIsConfirmModalOpen(false);
     setTimeout(() => setSaveSuccessMsg(null), 4000);
   };
 
@@ -300,14 +307,167 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               </div>
             </div>
 
-            {/* Section 2: Algorithm Parameters */}
+            {/* Section 2: Algorithm Parameters & Time-Slot Patrol Strategy */}
             <div className="space-y-4">
               <h3 className="font-extrabold text-sm sm:text-base text-stone-900 flex items-center gap-2 border-b border-stone-100 pb-2">
                 <Zap className="w-4 h-4 text-amber-600" />
-                <span>2. 客情偵測與猶豫期演算法參數</span>
+                <span>2. 定期巡航排程與各時段巡檢週期自訂</span>
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* 巡航策略模式切換 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, scheduleMode: 'smart_time_slots' }))}
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    formData.scheduleMode === 'smart_time_slots'
+                      ? 'bg-purple-50/80 border-purple-400 shadow-xs ring-2 ring-purple-300/40'
+                      : 'bg-white border-stone-200 hover:border-stone-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-stone-900 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-purple-600" />
+                      <span>按時段動態調整策略（推薦・黃金配置）</span>
+                    </span>
+                    {formData.scheduleMode === 'smart_time_slots' && (
+                      <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">
+                    尖峰 1h 敏捷巡航、晚間 2h 深度分析、深夜 6h 節能深層重整。
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, scheduleMode: 'fixed_interval' }))}
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    formData.scheduleMode === 'fixed_interval'
+                      ? 'bg-purple-50/80 border-purple-400 shadow-xs ring-2 ring-purple-300/40'
+                      : 'bg-white border-stone-200 hover:border-stone-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-stone-900 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-stone-600" />
+                      <span>固定間隔巡航模式</span>
+                    </span>
+                    {formData.scheduleMode === 'fixed_interval' && (
+                      <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">
+                    全天 24 小時維持單一固定頻率進行全站掃描分析。
+                  </p>
+                </button>
+              </div>
+
+              {/* 各時段自訂巡檢週期配置 */}
+              {formData.scheduleMode === 'smart_time_slots' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* 日間活躍期 */}
+                  <div className="p-3.5 rounded-xl bg-emerald-50/40 border border-emerald-200/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-950 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>日間商務活躍期</span>
+                      </span>
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                        09:00 - 18:00
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-[11px] text-stone-600 shrink-0 font-bold">巡檢週期:</label>
+                      <select
+                        value={formData.peakIntervalHours || 1}
+                        onChange={(e) => setFormData(prev => ({ ...prev, peakIntervalHours: Number(e.target.value) || 1 }))}
+                        className="w-full px-2 py-1.5 bg-white border border-emerald-300 rounded-lg text-xs font-bold font-mono cursor-pointer"
+                      >
+                        <option value={1}>每 1 小時 (敏捷推薦)</option>
+                        <option value={2}>每 2 小時 (標準)</option>
+                        <option value={3}>每 3 小時 (適中)</option>
+                        <option value={4}>每 4 小時</option>
+                      </select>
+                    </div>
+                    <p className="text-[10px] text-stone-500">重心：鎖定新發懸賞、即時比價與在線破冰</p>
+                  </div>
+
+                  {/* 晚間沉思期 */}
+                  <div className="p-3.5 rounded-xl bg-amber-50/40 border border-amber-200/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-950 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span>晚間決策沉思期</span>
+                      </span>
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                        18:00 - 23:30
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-[11px] text-stone-600 shrink-0 font-bold">巡檢週期:</label>
+                      <select
+                        value={formData.eveningIntervalHours || 2}
+                        onChange={(e) => setFormData(prev => ({ ...prev, eveningIntervalHours: Number(e.target.value) || 2 }))}
+                        className="w-full px-2 py-1.5 bg-white border border-amber-300 rounded-lg text-xs font-bold font-mono cursor-pointer"
+                      >
+                        <option value={1}>每 1 小時</option>
+                        <option value={2}>每 2 小時 (黃金推薦)</option>
+                        <option value={3}>每 3 小時</option>
+                        <option value={4}>每 4 小時</option>
+                      </select>
+                    </div>
+                    <p className="text-[10px] text-stone-500">重心：深度方案比對、信任里程碑與諮詢引導</p>
+                  </div>
+
+                  {/* 深夜統整期 */}
+                  <div className="p-3.5 rounded-xl bg-purple-50/40 border border-purple-200/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-purple-950 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-purple-500" />
+                        <span>深夜離峰統整期</span>
+                      </span>
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800">
+                        23:30 - 09:00
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-[11px] text-stone-600 shrink-0 font-bold">巡檢週期:</label>
+                      <select
+                        value={formData.offPeakIntervalHours || 6}
+                        onChange={(e) => setFormData(prev => ({ ...prev, offPeakIntervalHours: Number(e.target.value) || 6 }))}
+                        className="w-full px-2 py-1.5 bg-white border border-purple-300 rounded-lg text-xs font-bold font-mono cursor-pointer"
+                      >
+                        <option value={3}>每 3 小時</option>
+                        <option value={4}>每 4 小時</option>
+                        <option value={6}>每 6 小時 (節能推薦)</option>
+                        <option value={8}>每 8 小時</option>
+                        <option value={12}>每 12 小時</option>
+                      </select>
+                    </div>
+                    <p className="text-[10px] text-stone-500">重心：深層關聯重算、預排次晨黃金跟進名單</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-stone-900">固定全天巡檢週期</span>
+                    <span className="text-xs font-bold font-mono text-purple-700">每 {formData.autoScanIntervalHours || 2} 小時</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={12}
+                    step={1}
+                    value={formData.autoScanIntervalHours || 2}
+                    onChange={(e) => setFormData(prev => ({ ...prev, autoScanIntervalHours: Number(e.target.value) || 2 }))}
+                    className="w-full accent-purple-600 cursor-pointer h-2 bg-stone-200 rounded-lg"
+                  />
+                </div>
+              )}
+
+              {/* 門檻參數 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 {/* Hesitation Days */}
                 <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200 space-y-1.5">
                   <label className="text-xs font-bold text-amber-950 block">提問者猶豫期閾值 (天)</label>
@@ -347,24 +507,6 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     />
                     <span className="text-xs font-bold text-stone-700">元</span>
                   </div>
-                </div>
-
-                {/* Scan Interval */}
-                <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900 block">全站商機掃描頻率</label>
-                  <p className="text-[10px] text-stone-500">背景演算法定時排程重整全站客情標籤之週期</p>
-                  <select
-                    value={formData.autoScanIntervalHours}
-                    onChange={(e) =>
-                      setFormData({ ...formData, autoScanIntervalHours: Number(e.target.value) || 4 })
-                    }
-                    className="w-full mt-1 p-2 rounded-lg border border-stone-300 text-xs font-bold bg-white text-stone-900"
-                  >
-                    <option value={2}>每 2 小時（極度即時）</option>
-                    <option value={4}>每 4 小時（建議值）</option>
-                    <option value={8}>每 8 小時</option>
-                    <option value={24}>每 24 小時（每日一次）</option>
-                  </select>
                 </div>
               </div>
             </div>
@@ -454,15 +596,78 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               </div>
             </div>
 
+            {/* AI-CRM 法律與運營免責提醒 */}
+            <div className="p-3.5 rounded-xl bg-purple-50/50 border border-purple-200/70 text-[11px] text-purple-900 leading-relaxed flex items-start gap-2">
+              <ShieldAlert className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-bold">【運營規範與 AI 免責告知】</strong>
+                本設定調整之定時巡航週期與演算法參數，將直接影響系統向訂閱專家產出之客情分析與話術。各項分析與建議僅供溝通參考，不構成任何商業成交保證，請依平台《免責聲明》第八條嚴格遵循中立技術服務原則。
+              </div>
+            </div>
+
             {/* Save Button */}
             <div className="pt-3 border-t border-stone-100 flex items-center justify-end gap-3">
               <button
                 type="button"
-                onClick={handleSaveSettings}
+                onClick={() => setIsConfirmModalOpen(true)}
                 className="px-6 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white font-bold text-xs shadow-sm flex items-center gap-2 cursor-pointer transition-all"
               >
                 <Save className="w-4 h-4" />
                 <span>儲存 AI-CRM 設定</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 二次確認儲存彈窗 */}
+      {isConfirmModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200 text-stone-900">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                <Sliders className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-stone-900">確認儲存 AI-CRM 系統運營設定？</h3>
+                <span className="text-[11px] text-stone-500 font-bold">平台營運參數二次確認</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-700 space-y-1.5 leading-relaxed">
+              <p className="font-bold text-stone-900">即將生效之設定：</p>
+              <ul className="list-disc list-inside space-y-1 text-stone-600 text-[11px]">
+                <li>系統狀態：<strong>{formData.isEnabled ? '全面啟用' : '停用'}</strong></li>
+                <li>最低開放門檻：<strong>{formData.requiredTier} 方案專家</strong></li>
+                {formData.scheduleMode === 'smart_time_slots' ? (
+                  <>
+                    <li>巡航模式：<strong>按時段動態調整策略（推薦）</strong></li>
+                    <li>日間商務活躍期 (09:00 - 18:00)：<strong>每 {formData.peakIntervalHours || 1} 小時巡檢</strong></li>
+                    <li>晚間決策沉思期 (18:00 - 23:30)：<strong>每 {formData.eveningIntervalHours || 2} 小時巡檢</strong></li>
+                    <li>深夜離峰統整期 (23:30 - 09:00)：<strong>每 {formData.offPeakIntervalHours || 6} 小時深層重算</strong></li>
+                  </>
+                ) : (
+                  <li>巡航模式：<strong>固定間隔（每 {formData.autoScanIntervalHours || 2} 小時巡檢）</strong></li>
+                )}
+                <li>猶豫期判定：<strong>{formData.hesitationDaysThreshold} 天未回覆</strong></li>
+                <li>高意向懸賞門檻：<strong>NT$ {formData.highIntentBountyThreshold.toLocaleString()}</strong></li>
+              </ul>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setIsConfirmModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={executeSaveSettings}
+                className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
+              >
+                確認儲存設定
               </button>
             </div>
           </div>
@@ -509,7 +714,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-3">
                     <img
-                      src={lead.clientAvatar}
+                      src={lead.clientAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={lead.clientName}
                       className="w-10 h-10 rounded-full object-cover border border-amber-300"
                     />

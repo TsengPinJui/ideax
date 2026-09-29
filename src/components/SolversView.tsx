@@ -169,7 +169,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <img
-                      src={s.avatar}
+                      src={s.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={s.name}
                       className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200 group-hover:ring-amber-400 transition-all"
                     />

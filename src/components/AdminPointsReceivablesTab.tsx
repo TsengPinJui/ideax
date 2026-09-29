@@ -128,7 +128,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                     : 'bg-white text-stone-800 border-stone-200 hover:border-purple-300 hover:bg-white'
                 }`}
               >
-                <img src={u.avatar} alt="" className="w-7 h-7 rounded-lg object-cover ring-1 ring-white/50 shrink-0" />
+                <img src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt="" className="w-7 h-7 rounded-lg object-cover ring-1 ring-white/50 shrink-0" />
                 <div className="min-w-0">
                   <span className="block text-xs font-bold truncate">{u.name}</span>
                   <span className={`text-[10px] block truncate ${isSelected ? 'text-purple-200' : 'text-stone-400'}`}>
@@ -148,7 +148,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-3">
                 <img
-                  src={selectedUser.avatar}
+                  src={selectedUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                   alt={selectedUser.name}
                   className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200"
                 />

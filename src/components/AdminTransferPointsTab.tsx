@@ -187,7 +187,7 @@ export const AdminTransferPointsTab: React.FC = () => {
             <span className="text-xs font-bold text-stone-500">當前操作管理員</span>
             <div className="flex items-center gap-2.5">
               <img
-                src={currentUser.avatar}
+                src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                 alt={currentUser.name}
                 className="w-9 h-9 rounded-xl object-cover ring-1 ring-stone-200"
               />
@@ -263,7 +263,7 @@ export const AdminTransferPointsTab: React.FC = () => {
                   }`}
                 >
                   <img
-                    src={u.avatar}
+                    src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                     alt={u.name}
                     className="w-8 h-8 rounded-full object-cover ring-1 ring-stone-200 shrink-0"
                   />
