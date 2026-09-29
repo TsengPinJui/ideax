@@ -263,6 +263,11 @@ interface AppContextType {
   logoutAccount: (userId?: string) => void;
   removeDeviceAccount: (userId: string) => boolean;
   addDeviceAccount: (userId: string) => boolean;
+
+  // PWA Install Modal Global State
+  isPwaInstallModalOpen: boolean;
+  openPwaInstallModal: () => void;
+  closePwaInstallModal: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -301,7 +306,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsAuthModalOpen(false);
   };
 
-  // No Payment Mode State (無金流環境開關：預設 false)
+  // PWA Install Modal State
+  const [isPwaInstallModalOpen, setIsPwaInstallModalOpen] = useState(false);
+  const openPwaInstallModal = () => setIsPwaInstallModalOpen(true);
+  const closePwaInstallModal = () => setIsPwaInstallModalOpen(false);
   const [isNoPaymentMode, setIsNoPaymentMode] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}no_payment_mode`);
@@ -3806,6 +3814,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logoutAccount,
         removeDeviceAccount,
         addDeviceAccount,
+        isPwaInstallModalOpen,
+        openPwaInstallModal,
+        closePwaInstallModal,
       }}
     >
       {children}

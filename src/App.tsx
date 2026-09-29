@@ -24,6 +24,7 @@ import { ChatView } from './components/ChatView';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
+import { PwaInstallModal } from './components/PwaInstallModal';
 import { HelpTooltip } from './components/HelpTooltip';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab } from './types';
 import { updateSEOForQuestion } from './services/seoService';
@@ -52,6 +53,8 @@ function MainContent() {
     setTargetAnswerToUnlock,
     isAboutModalOpen,
     aboutModalInitialSection,
+    isPwaInstallModalOpen,
+    closePwaInstallModal,
     closeAboutModal,
     searchQuery,
     setSearchQuery,
@@ -1291,6 +1294,12 @@ function MainContent() {
 
       {/* 手機版極簡 PWA 下載組件 */}
       <MobilePwaDownloadWidget />
+
+      {/* PWA 安裝與下載指引彈窗 */}
+      <PwaInstallModal
+        isOpen={isPwaInstallModalOpen}
+        onClose={closePwaInstallModal}
+      />
     </div>
   );
 }
