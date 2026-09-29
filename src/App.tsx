@@ -23,7 +23,6 @@ import { AiCrmView } from './components/AiCrmView';
 import { ChatView } from './components/ChatView';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
-import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
 import { HelpTooltip } from './components/HelpTooltip';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab } from './types';
 import { updateSEOForQuestion } from './services/seoService';
@@ -1288,9 +1287,6 @@ function MainContent() {
         }}
         onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
       />
-
-      {/* 手機版 PWA 下載體驗組件 */}
-      <MobilePwaDownloadWidget />
     </div>
   );
 }
