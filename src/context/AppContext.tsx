@@ -23,9 +23,21 @@ import {
   SearchMode,
   DeviceAccount,
 } from '../types';
-import { MOCK_QUESTIONS, MOCK_SOLVERS, MOCK_ANSWERS, MOCK_TRANSACTIONS, MOCK_USERS, MOCK_CONVERSATIONS } from '../data/mockData';
+import {
+  MOCK_QUESTIONS,
+  MOCK_SOLVERS,
+  MOCK_ANSWERS,
+  MOCK_TRANSACTIONS,
+  MOCK_USERS,
+  MOCK_CONVERSATIONS,
+  CLEAN_CORE_USERS,
+  CLEAN_CORE_QUESTIONS,
+  CLEAN_CORE_ANSWERS,
+  CLEAN_CORE_SOLVERS,
+} from '../data/mockData';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { analyzeQuestionWithAI, AIAnalysisResult } from '../services/aiService';
+import { logoutFromFirebase } from '../services/firebaseAuth';
 import {
   testFirestoreConnection,
   syncUserToFirestore,
@@ -106,6 +118,13 @@ interface AppContextType {
   closeAboutModal: () => void;
   hasAgreedTerms: (type: 'general' | 'questioner' | 'solver') => boolean;
   recordTermsAgreement: (type: 'general' | 'questioner' | 'solver', version?: string) => void;
+
+  // Auth Modal Global Control
+  isAuthModalOpen: boolean;
+  authModalMode: 'login' | 'register';
+  authModalMethod: 'email' | 'phone' | 'switch';
+  openAuthModal: (mode?: 'login' | 'register', method?: 'email' | 'phone' | 'switch') => void;
+  closeAuthModal: () => void;
 
   // Identity Switcher & Solver Profile Preferences
   switchRole: (role: 'questioner' | 'solver' | 'admin') => void;
@@ -221,6 +240,23 @@ interface AppContextType {
   lastSyncTime: string | null;
   syncAllToCloud: () => Promise<CategorizedSyncResult>;
 
+  // Demo Mode & Mock Data Management (管理員示範資料與測試模式開關)
+  isDemoMode: boolean;
+  setDemoMode: (enabled: boolean) => void;
+  toggleDemoMode: () => void;
+  clearMockData: () => void;
+  resetDemoData: () => void;
+
+  // No Payment Mode (無金流環境開關：全站免付費，僅開放免費提問、無償解答與諮詢提案)
+  isNoPaymentMode: boolean;
+  setNoPaymentMode: (enabled: boolean) => void;
+  toggleNoPaymentMode: () => void;
+
+  // Hide Test Accounts (隱藏測試帳號開關：僅保留管理員與真實用戶)
+  isHideTestAccounts: boolean;
+  setHideTestAccounts: (enabled: boolean) => void;
+  toggleHideTestAccounts: () => void;
+
   // Device Logged-In Accounts Management (本裝置曾經登錄的帳號)
   deviceAccounts: DeviceAccount[];
   switchAccount: (userId: string) => boolean;
@@ -234,6 +270,122 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const STORAGE_KEY_PREFIX = 'ideax_mvp_v3_';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Demo Mode State (管理員示範資料與測試模式開關：true = 示範假資料模式，false = 純淨營運模式)
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`);
+      if (saved !== null) {
+        return saved === 'true';
+      }
+    } catch {
+      // ignore
+    }
+    return false; // 預設為純淨營運模式（僅保留各身分測試帳號與單則測試貼文）
+  });
+
+  // Auth Modal Global Control State
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [authModalMethod, setAuthModalMethod] = useState<'email' | 'phone' | 'switch'>('email');
+
+  const openAuthModal = (
+    mode: 'login' | 'register' = 'login',
+    method: 'email' | 'phone' | 'switch' = 'email'
+  ) => {
+    setAuthModalMode(mode);
+    setAuthModalMethod(method);
+    setIsAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => {
+    setIsAuthModalOpen(false);
+  };
+
+  // No Payment Mode State (無金流環境開關：預設 false)
+  const [isNoPaymentMode, setIsNoPaymentMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}no_payment_mode`);
+      if (saved !== null) {
+        return saved === 'true';
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  });
+
+  const setNoPaymentMode = (enabled: boolean) => {
+    setIsNoPaymentMode(enabled);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}no_payment_mode`, String(enabled));
+    } catch {
+      // ignore
+    }
+    if (enabled) {
+      addNotification('已啟用【無金流環境】', '已隱藏會員訂閱方案與儲值點數機制，全站開放免費提問、無償解答與諮詢提案。', 'system');
+    } else {
+      addNotification('已關閉【無金流環境】', '已關閉無金流環境，恢復會員訂閱方案與點數懸賞機制。', 'system');
+    }
+  };
+
+  const toggleNoPaymentMode = () => {
+    setNoPaymentMode(!isNoPaymentMode);
+  };
+
+  // Hide Test Accounts State (隱藏測試帳號：僅保留管理員與真實用戶，預設 false)
+  const [isHideTestAccounts, setIsHideTestAccounts] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}hide_test_accounts`);
+      if (saved !== null) {
+        return saved === 'true';
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  });
+
+  const setHideTestAccounts = (enabled: boolean) => {
+    setIsHideTestAccounts(enabled);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}hide_test_accounts`, String(enabled));
+    } catch {
+      // ignore
+    }
+    const testAccountIds = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
+    if (enabled) {
+      setAvailableUsers((prev) => {
+        const filtered = prev.filter((u) => !testAccountIds.includes(u.id) || u.id === 'user-admin');
+        if (!filtered.some((u) => u.id === 'user-admin')) {
+          filtered.unshift(CLEAN_CORE_USERS[0]);
+        }
+        return filtered;
+      });
+      setCurrentUser((curr) => {
+        if (testAccountIds.includes(curr.id) && curr.id !== 'user-admin') {
+          return CLEAN_CORE_USERS[0];
+        }
+        return curr;
+      });
+      addNotification('已啟用【隱藏測試帳號】', '全站已隱藏所有測試身分（林書豪、陳怡君、訪客等），僅保留管理員與真實註冊用戶。', 'system');
+    } else {
+      setAvailableUsers((prev) => {
+        const list = [...prev];
+        CLEAN_CORE_USERS.forEach((core) => {
+          if (!list.some((u) => u.id === core.id)) {
+            list.push(core);
+          }
+        });
+        return list;
+      });
+      addNotification('已恢復【顯示測試帳號】', '已恢復顯示核心測試帳號（林書豪、陳怡君、訪客），供測試雙向身分流程。', 'system');
+    }
+  };
+
+  const toggleHideTestAccounts = () => {
+    setHideTestAccounts(!isHideTestAccounts);
+  };
+
   // Load initial state with localStorage support
   const [currentUser, setCurrentUser] = useState<User>(() => {
     try {
@@ -243,11 +395,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (parsed && parsed.id && parsed.name) {
           const isAdmin = parsed.id === 'user-admin' || (typeof parsed.name === 'string' && (parsed.name.includes('IdeaX') || parsed.name.includes('管理') || parsed.name.includes('營運')));
           return {
-            ...MOCK_USERS[0],
+            ...CLEAN_CORE_USERS[0],
             ...parsed,
             name: isAdmin ? 'IdeaX 管理團隊' : parsed.name,
             role: isAdmin ? ('admin' as const) : (parsed.role || 'questioner'),
-            balance: typeof parsed.balance === 'number' ? parsed.balance : (MOCK_USERS[0].balance ?? 0),
+            balance: typeof parsed.balance === 'number' ? parsed.balance : 0,
             withheldPoints: typeof parsed.withheldPoints === 'number' ? parsed.withheldPoints : 0,
             pendingEarnings: typeof parsed.pendingEarnings === 'number' ? parsed.pendingEarnings : 0,
             reputation: typeof parsed.reputation === 'number' ? parsed.reputation : 100,
@@ -261,10 +413,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    return MOCK_USERS[0];
+    return CLEAN_CORE_USERS[0];
   });
 
   const [availableUsers, setAvailableUsers] = useState<User[]>(() => {
+    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}users`);
       if (saved) {
@@ -280,9 +433,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               withheldPoints: typeof u.withheldPoints === 'number' ? u.withheldPoints : 0,
             };
           });
+
+          if (!isDemo) {
+            // 純淨模式：只保留核心測試帳號與真實註冊用戶，過濾掉模擬假用戶
+            const mockBlacklist = ['solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
+            const cleanList = usersList.filter((u: any) => !mockBlacklist.includes(u.id));
+            CLEAN_CORE_USERS.forEach((core) => {
+              if (!cleanList.some((u: any) => u.id === core.id)) {
+                cleanList.push(core);
+              }
+            });
+            return cleanList;
+          }
+
           // Ensure user-admin exists in availableUsers
           if (!usersList.some((u: any) => u.id === 'user-admin')) {
-            const adminUser = MOCK_USERS.find((m) => m.id === 'user-admin');
+            const adminUser = MOCK_USERS.find((m) => m.id === 'user-admin') || CLEAN_CORE_USERS[0];
             if (adminUser) usersList.push(adminUser);
           }
           return usersList;
@@ -291,7 +457,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    return MOCK_USERS;
+    return isDemo ? MOCK_USERS : CLEAN_CORE_USERS;
   });
 
   const DEVICE_ACCOUNTS_KEY = `${STORAGE_KEY_PREFIX}device_accounts`;
@@ -309,9 +475,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
     return [
-      { userId: 'user-questioner', isLoggedIn: true, lastLoginAt: new Date().toISOString() },
-      { userId: 'user-1', isLoggedIn: true, lastLoginAt: new Date().toISOString() },
       { userId: 'user-admin', isLoggedIn: true, lastLoginAt: new Date().toISOString() },
+      { userId: 'user-questioner', isLoggedIn: true, lastLoginAt: new Date().toISOString() },
+      { userId: 'solver-2', isLoggedIn: true, lastLoginAt: new Date().toISOString() },
     ];
   });
 
@@ -356,53 +522,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [questions, setQuestions] = useState<Question[]>(() => {
+    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((q: any) => ({
+          const list = parsed.map((q: any) => ({
             ...q,
             bounty: typeof q.bounty === 'number' ? q.bounty : 0,
             withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
           }));
+          if (isDemo) return list;
+          // 純淨模式：只保留測試貼文 q-test-1 與真實用戶發布之題目
+          const mockQPrefixes = ['q-1', 'q-2', 'q-3', 'q-4', 'q-5', 'q-6', 'q-7', 'q-8', 'q-demo-', 'q-mock-'];
+          const cleanQ = list.filter((q: any) => q.id === 'q-test-1' || !mockQPrefixes.some((p) => q.id.startsWith(p)));
+          return cleanQ.length > 0 ? cleanQ : CLEAN_CORE_QUESTIONS;
         }
       }
     } catch {
       // ignore
     }
-    return MOCK_QUESTIONS;
+    return isDemo ? MOCK_QUESTIONS : CLEAN_CORE_QUESTIONS;
   });
 
   const [solvers, setSolvers] = useState<Solver[]>(() => {
+    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}solvers`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
+          if (isDemo) return parsed;
+          const mockBlacklist = ['solver-1', 'solver-3', 'solver-4', 'solver-5'];
+          const cleanSolvers = parsed.filter((s: any) => !mockBlacklist.includes(s.id));
+          return cleanSolvers.length > 0 ? cleanSolvers : CLEAN_CORE_SOLVERS;
+        }
       }
     } catch {
       // ignore
     }
-    return MOCK_SOLVERS;
+    return isDemo ? MOCK_SOLVERS : CLEAN_CORE_SOLVERS;
   });
 
   const [answers, setAnswers] = useState<Answer[]>(() => {
+    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}answers`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.map((a: any) => ({
+          const list = parsed.map((a: any) => ({
             ...a,
             price: typeof a.price === 'number' ? a.price : 0,
           }));
+          if (isDemo) return list;
+          const cleanA = list.filter((a: any) => a.id === 'ans-test-1' || (!a.id.startsWith('ans-') && !a.id.startsWith('ans-mock-')));
+          return cleanA.length > 0 ? cleanA : CLEAN_CORE_ANSWERS;
         }
       }
     } catch {
       // ignore
     }
-    return MOCK_ANSWERS;
+    return isDemo ? MOCK_ANSWERS : CLEAN_CORE_ANSWERS;
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -1507,22 +1689,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logoutAccount = (userId?: string) => {
     const targetId = userId || currentUser.id;
+    logoutFromFirebase().catch(() => {});
     setDeviceAccounts((prev) =>
       prev.map((a) => (a.userId === targetId ? { ...a, isLoggedIn: false } : a))
     );
     if (targetId === currentUser.id) {
       const guest = availableUsers.find((u) => u.id === 'user-guest') || {
         id: 'user-guest',
-        name: '訪客體驗用戶',
-        title: '未登入訪客',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        name: '未登入訪客',
+        title: '訪客身份 (未登入)',
+        avatar: '',
         role: 'questioner' as const,
         balance: 0,
         pendingEarnings: 0,
-        reputation: 60,
+        reputation: 0,
         joinedDate: '2026-01-01',
-        bio: '以訪客模式探索平台內容',
-        email: 'guest@ideax.io',
+        bio: '未登入訪客，僅限瀏覽內容。',
+        email: '',
         totalWithdrawn: 0,
         subscriptionTier: 'free' as const,
         domain: '日常疑難' as Category,
@@ -1618,7 +1801,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Action: Create question (當提問會自動切換至提問者身份)
   const createQuestion = (newQ: Partial<Question>): Question => {
     if (currentUser.isBlocked) {
-      alert(`⚠️ 您的帳號已被管理員停權處分（原因：${currentUser.blockedReason || '違反平台規範'}），在解封前無法發布新問題或痛點！如有疑問請聯繫客服。`);
+      addNotification('帳號停權警告', `⚠️ 您的帳號已被管理員停權處分（原因：${currentUser.blockedReason || '違反平台規範'}），在解封前無法發布新問題或痛點！如有疑問請聯繫客服。`, 'system');
       return null as any;
     }
     if (currentUser.role !== 'admin' && currentUser.role !== 'questioner') {
@@ -1716,7 +1899,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Action: Submit answer (當回答會自動切換至解答者身份，支持 討論留言 vs 專業方案)
   const submitAnswer = (newAns: Partial<Answer>): Answer => {
     if (currentUser.isBlocked) {
-      alert(`⚠️ 您的帳號已被管理員停權處分（原因：${currentUser.blockedReason || '違反平台規範'}），在解封前無法提交方案或留言！如有疑問請聯繫客服。`);
+      addNotification('帳號停權警告', `⚠️ 您的帳號已被管理員停權處分（原因：${currentUser.blockedReason || '違反平台規範'}），在解封前無法提交方案或留言！如有疑問請聯繫客服。`, 'system');
       return null as any;
     }
     if (currentUser.role !== 'admin' && currentUser.role !== 'solver') {
@@ -2815,7 +2998,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     userCard?: ChatUserCard
   ) => {
     if (currentUser.isBlocked) {
-      alert(`⚠️ 您的帳號已被管理員停權處分（原因：${currentUser.blockedReason || '違反平台規範'}），在解封前無法發送私聊！如有疑問請聯繫客服。`);
+      addNotification('帳號停權警告', `⚠️ 您的帳號已被管理員停權處分（原因：${currentUser.blockedReason || '違反平台規範'}），在解封前無法發送私聊！如有疑問請聯繫客服。`, 'system');
       return;
     }
     const newMsg = {
@@ -3396,9 +3579,108 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
+  // Demo Mode Switchers (管理員測試與示範模式開關)
+  const toggleDemoMode = () => {
+    setDemoMode(!isDemoMode);
+  };
+
+  const setDemoMode = (enabled: boolean) => {
+    setIsDemoMode(enabled);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}demo_mode`, String(enabled));
+    } catch {
+      // ignore
+    }
+    if (!enabled) {
+      // 切換至純淨模式：過濾掉模擬假用戶與題目，保留核心測試帳號與真實用戶
+      setAvailableUsers((prev) => {
+        const mockBlacklist = ['solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
+        const cleanList = prev.filter((u) => !mockBlacklist.includes(u.id));
+        CLEAN_CORE_USERS.forEach((core) => {
+          if (!cleanList.some((u) => u.id === core.id)) cleanList.push(core);
+        });
+        return cleanList;
+      });
+
+      setCurrentUser((curr) => {
+        if (['solver-1', 'solver-3', 'solver-4', 'solver-5'].includes(curr.id)) {
+          return CLEAN_CORE_USERS[0];
+        }
+        return curr;
+      });
+
+      setQuestions((prev) => {
+        const mockQPrefixes = ['q-1', 'q-2', 'q-3', 'q-4', 'q-5', 'q-6', 'q-7', 'q-8', 'q-demo-', 'q-mock-'];
+        const cleanQ = prev.filter((q) => q.id === 'q-test-1' || !mockQPrefixes.some((p) => q.id.startsWith(p)));
+        return cleanQ.length > 0 ? cleanQ : CLEAN_CORE_QUESTIONS;
+      });
+
+      setSolvers((prev) => {
+        const mockBlacklist = ['solver-1', 'solver-3', 'solver-4', 'solver-5'];
+        const cleanSolvers = prev.filter((s) => !mockBlacklist.includes(s.id));
+        return cleanSolvers.length > 0 ? cleanSolvers : CLEAN_CORE_SOLVERS;
+      });
+
+      setAnswers((prev) => {
+        const cleanA = prev.filter((a) => a.id === 'ans-test-1' || (!a.id.startsWith('ans-') && !a.id.startsWith('ans-mock-')));
+        return cleanA.length > 0 ? cleanA : CLEAN_CORE_ANSWERS;
+      });
+
+      addNotification('已切換至純淨營運模式', '已隱藏模擬假資料，僅保留管理員、測試提問者、測試解答者與真實註冊會員。', 'system');
+    } else {
+      // 恢復示範模式：載入全站展示問題、精選解答、模擬專家與測試交易數據
+      setQuestions(MOCK_QUESTIONS);
+      setSolvers(MOCK_SOLVERS);
+      setAnswers(MOCK_ANSWERS);
+      setTransactions(MOCK_TRANSACTIONS);
+      setAvailableUsers((prev) => {
+        const merged = [...MOCK_USERS];
+        prev.forEach((u) => {
+          if (!merged.some((m) => m.id === u.id)) merged.push(u);
+        });
+        return merged;
+      });
+      addNotification('已啟用示範測試模式', '已恢復全站展示問題、精選解答、模擬專家與測試交易數據。', 'system');
+    }
+  };
+
+  const clearMockData = () => {
+    setIsDemoMode(false);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}demo_mode`, 'false');
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}questions`);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}solvers`);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}answers`);
+    } catch {}
+    setQuestions(CLEAN_CORE_QUESTIONS);
+    setSolvers(CLEAN_CORE_SOLVERS);
+    setAnswers(CLEAN_CORE_ANSWERS);
+    setAvailableUsers((prev) => {
+      const realUsers = prev.filter((u) => !u.id.startsWith('solver-') && u.id !== 'user-questioner' && u.id !== 'user-guest' && u.id !== 'user-admin');
+      return [...CLEAN_CORE_USERS, ...realUsers];
+    });
+    setCurrentUser(CLEAN_CORE_USERS[0]);
+    addNotification('假資料已清除', '所有模擬假資料已清除！保留管理員、測試提問者、測試解答者及測試貼文。', 'system');
+  };
+
+  const resetDemoData = () => {
+    setDemoMode(true);
+  };
+
   return (
     <AppContext.Provider
       value={{
+        isDemoMode,
+        setDemoMode,
+        toggleDemoMode,
+        clearMockData,
+        resetDemoData,
+        isNoPaymentMode,
+        setNoPaymentMode,
+        toggleNoPaymentMode,
+        isHideTestAccounts,
+        setHideTestAccounts,
+        toggleHideTestAccounts,
         currentUser,
         setCurrentUser,
         availableUsers,
@@ -3454,6 +3736,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         closeAboutModal,
         hasAgreedTerms,
         recordTermsAgreement,
+        isAuthModalOpen,
+        authModalMode,
+        authModalMethod,
+        openAuthModal,
+        closeAuthModal,
         createQuestion,
         submitAnswer,
         unlockAnswer,

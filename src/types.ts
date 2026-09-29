@@ -69,6 +69,7 @@ export type UserDashboardTab =
   | 'admin_management'
   | 'admin_cases'
   | 'admin_user_management'
+  | 'admin_user_analytics'
   | 'admin_certifications'
   | 'admin_aicrm'
   | 'admin_mail_disputes'
@@ -80,6 +81,7 @@ export type UserDashboardTab =
   | 'subscriptions'
   | 'real_name_auth'
   | 'expert_certification'
+  | 'survey'
   | 'settings';
 
 export type QuestionSortOption = 
@@ -369,6 +371,21 @@ export interface BankAccountInfo {
   isVerified?: boolean;
 }
 
+export interface UserSurveyData {
+  desiredServices?: string[]; // 期望在IdeaX使用的服務 (可多選)
+  desiredServicesCustom?: string; // 期望在IdeaX使用的服務 (自填)
+  relatedDomains?: string[]; // 相關領域 (可多選)
+  relatedDomainsCustom?: string; // 相關領域 (自行輸入)
+  willingQuestionBudget?: string; // 願意一次花多少錢在尋求解答(自行提問)?
+  willingToProvideSolutions?: string; // 是否願意有償為其他提問提供解方(為人解答)?
+  usageFrequency?: string; // 您多久打開一次 IdeaX ?
+  willingToBeSideHustle?: string; // 您是否願意將解答作為您的副業(有償)?
+  willingToSubscribeSolverPlan?: string; // 您是否願意花錢訂閱解答者的優惠方案?
+  feedbackSuggestions?: string; // 給我們的建議，自由填寫
+  completedAt?: string;
+  updatedAt?: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -381,6 +398,18 @@ export interface User {
   joinedDate: string;
   bio?: string;
   email: string;
+
+  // 基本個資
+  gender?: 'male' | 'female' | 'other' | 'undisclosed'; // 性別
+  ageGroup?: 'under_18' | '18_24' | '25_34' | '35_44' | '45_54' | '55_above'; // 年齡層
+  industry?: string; // 行業
+  jobTitle?: string; // 職位
+  annualSalary?: 'under_500k' | '500k_1000k' | '1000k_2000k' | '2000k_3000k' | 'above_3000k' | 'undisclosed'; // 目前薪水(年)
+  company?: string; // 公司 (選填)
+  phone?: string; // 電話
+
+  // 調研問卷數據
+  surveyData?: UserSurveyData;
 
   // 解答者撥款銀行帳戶與第三方銷售
   bankAccount?: BankAccountInfo;

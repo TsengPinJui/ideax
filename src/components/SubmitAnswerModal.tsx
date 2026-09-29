@@ -224,13 +224,29 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
       return;
     }
 
-    // 提交落地方案條款驗證 (單純討論不需勾選條款，但需登入帳號即適用一般條款)
-    if (answerType === 'solution' && !hasAgreedSolver) {
-      if (!agreeSolverTerms) {
-        setTermsError('提出方案前，請先勾選確認已詳閱並同意接案會員服務條款與一般服務條款');
+    // 提交落地方案 (提案) 檢核：個人資料與實名認證為必要條件
+    if (answerType === 'solution') {
+      const isProfileComplete = Boolean(
+        currentUser.gender &&
+        currentUser.ageGroup &&
+        (currentUser.industry || currentUser.jobTitle || currentUser.title)
+      );
+      if (!isProfileComplete) {
+        setTermsError('⚠️ 個人資料為提案之必要條件！請先前往「帳號設定 → 基本資料」填寫完成個人資料。');
         return;
       }
-      recordTermsAgreement('solver');
+      if (currentUser.realNameAuthStatus !== 'verified') {
+        setTermsError('⚠️ 實名認證 (KYC) 為提案之必要條件！請先前往「帳號設定 → 實名認證」通過審核。');
+        return;
+      }
+
+      if (!hasAgreedSolver) {
+        if (!agreeSolverTerms) {
+          setTermsError('提出方案前，請先勾選確認已詳閱並同意接案會員服務條款與一般服務條款');
+          return;
+        }
+        recordTermsAgreement('solver');
+      }
     }
     setTermsError(null);
 

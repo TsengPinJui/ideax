@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocFromServer,
   getDocs,
   setDoc,
@@ -196,6 +197,21 @@ export async function syncUsersToFirestore(users: User[]): Promise<void> {
     await batch.commit();
   } catch (err) {
     console.error('[Firestore] Failed to batch sync users & certifications:', err);
+  }
+}
+
+export async function getUserFromFirestore(userId: string): Promise<User | null> {
+  if (!userId) return null;
+  try {
+    const userRef = doc(db, 'users', userId);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      return snap.data() as User;
+    }
+    return null;
+  } catch (err) {
+    console.warn(`[Firestore] Failed to get user ${userId}:`, err);
+    return null;
   }
 }
 

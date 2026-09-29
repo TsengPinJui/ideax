@@ -58,6 +58,7 @@ function MainContent() {
     setSearchMode,
     availableUsers,
     startDirectChat,
+    openAuthModal,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<AppTab>('explore');
@@ -175,6 +176,14 @@ function MainContent() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
+
+  // Guest intercept: if guest tries to view personal center or my projects, redirect to login
+  useEffect(() => {
+    if (currentUser.id === 'user-guest' && (activeTab === 'user_dashboard' || activeTab === 'my_projects')) {
+      setActiveTab('explore');
+      openAuthModal('login');
+    }
+  }, [currentUser.id, activeTab, openAuthModal]);
 
   // Read URL query parameter ?q= or ?questionId= or #q= on load/change to support direct links
   useEffect(() => {
@@ -1251,6 +1260,10 @@ function MainContent() {
         onNavigate={(tab) => {
           setSelectedQuestion(null);
           setSelectedSolver(null);
+          if (currentUser.id === 'user-guest' && (tab === 'user_dashboard' || tab === 'my_projects')) {
+            openAuthModal('login');
+            return;
+          }
           if (tab === 'user_dashboard') {
             setUserDashboardTab('overview');
             setActiveTab('user_dashboard');

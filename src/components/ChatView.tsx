@@ -1940,9 +1940,10 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                                   startDirectChat(target);
                                 }}
                                 className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+                                title="與此用戶聊聊"
                               >
                                 <MessageSquare className="w-3.5 h-3.5 fill-stone-950" />
-                                <span>與他聊聊</span>
+                                <span>與此用戶聊聊</span>
                               </button>
 
                               <button
@@ -3363,7 +3364,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                     </div>
 
                     <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-[11px] text-amber-300/90 font-medium">
-                      <span>✓ 接收對象可一鍵點擊捷徑直接私聊對話</span>
+                      <span>✓ 接收對象可點擊捷徑與此用戶聊聊</span>
                       <span>✓ 支援快速複製 ID</span>
                     </div>
                   </div>
@@ -3432,7 +3433,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                         title: '平台認證成員',
                         role: 'solver',
                         isVerified: true,
-                        bio: `用戶 ID: ${userCardSearchInput.trim()}，點擊名片可直接開啟私聊對話。`,
+                        bio: `用戶 ID: ${userCardSearchInput.trim()}，點擊捷徑與此用戶聊聊。`,
                       };
 
                   const textMsg =

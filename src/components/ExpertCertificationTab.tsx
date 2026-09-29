@@ -124,28 +124,33 @@ export const ExpertCertificationTab: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (currentUser.realNameAuthStatus !== 'verified') {
+      setMsg('⚠️ 申請專家認證前必須先完成【實名認證 (KYC)】！即使您接案已達 50 次亦須完成實名認證通過後方可成為認證專家。');
+      return;
+    }
+
     if (isWithinCooldown) {
-      alert(`依審核規範，未通過者每 7 日僅能申請一次，請於 ${remainingDays} 天後再次送出。`);
+      setMsg(`⚠️ 依審核規範，未通過者每 7 日僅能申請一次，請於 ${remainingDays} 天後再次送出。`);
       return;
     }
 
     if (!professionalTitle.trim()) {
-      alert('請填寫您的專業頭銜或職稱！');
+      setMsg('⚠️ 請填寫您的專業頭銜或職稱！');
       return;
     }
 
     if (credentialsFiles.length === 0) {
-      alert('請至少上傳一份專業相關證件或資歷佐證！');
+      setMsg('⚠️ 請至少上傳一份專業相關證件或資歷佐證！');
       return;
     }
 
     if (!proofDescription.trim() && proofFiles.length === 0 && !portfolioLink.trim()) {
-      alert('請填寫實戰案例說明或提供成果佐證連結！');
+      setMsg('⚠️ 請填寫實戰案例說明或提供成果佐證連結！');
       return;
     }
 
     if (!agreedPrivacy || !agreedHonesty) {
-      alert('請閱讀並勾選隱私權保護政策與真實性切結聲明！');
+      setMsg('⚠️ 請閱讀並勾選隱私權保護政策與真實性切結聲明！');
       return;
     }
 
@@ -231,9 +236,26 @@ export const ExpertCertificationTab: React.FC = () => {
 
         {/* Message notification */}
         {msg && (
-          <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>{msg}</span>
+          </div>
+        )}
+
+        {/* Real Name Verification Prerequisite Warning */}
+        {currentUser.realNameAuthStatus !== 'verified' && (
+          <div className="mt-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-950">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs sm:text-sm font-black text-rose-950">
+                  ⚠️ 申請專家認證前必須先完成實名認證 (KYC)
+                </h4>
+                <p className="text-[11px] text-rose-800 mt-0.5 leading-relaxed">
+                  依 IdeaX 平台合規規範，在申請專家認證前<strong>必須先完成實名認證</strong>！即使您已達到接案 ≥ 50 次標準，亦須先完成實名認證通過後，方可解鎖成為認證專家。
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

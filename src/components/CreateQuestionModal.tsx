@@ -161,7 +161,17 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     e.preventDefault();
 
     if (currentUser.id === 'user-guest') {
-      setTermsError('請先登入會員帳號以發布問題（登入帳號即代表同意全站一般服務條款）');
+      setTermsError('登錄帳號及個人資料為提問之必要條件，請先登入會員帳號（登入即代表同意全站一般服務條款）');
+      return;
+    }
+
+    const isProfileComplete = Boolean(
+      currentUser.gender &&
+      currentUser.ageGroup &&
+      (currentUser.industry || currentUser.jobTitle || currentUser.title)
+    );
+    if (!isProfileComplete) {
+      setTermsError('⚠️ 個人資料為提問之必要條件！請先前往「帳號設定 → 基本資料」填寫完成個人資料。');
       return;
     }
 

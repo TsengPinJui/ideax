@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User } from '../types';
+import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData } from '../types';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { HelpTooltip } from './HelpTooltip';
@@ -13,6 +13,8 @@ import { AdminCertificationsTab } from './AdminCertificationsTab';
 import { AdminTransferPointsTab } from './AdminTransferPointsTab';
 import { AdminAiCrmTab } from './AdminAiCrmTab';
 import { AdminMailDisputesTab } from './AdminMailDisputesTab';
+import { AdminUserAnalyticsTab } from './AdminUserAnalyticsTab';
+import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { ExpertCertificationApplyModal } from './ExpertCertificationApplyModal';
 import { RealNameAuthTab } from './RealNameAuthTab';
 import { ExpertCertificationTab } from './ExpertCertificationTab';
@@ -49,6 +51,7 @@ import {
   Users,
   Trophy,
   BarChart3,
+  FileSpreadsheet,
   Check,
   Building2,
   CreditCard,
@@ -85,6 +88,9 @@ import {
   Camera,
   Upload,
   AlertTriangle,
+  FlaskConical,
+  Ban,
+  ClipboardList,
 } from 'lucide-react';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 
@@ -94,11 +100,13 @@ export type UserDashboardTab =
   | 'profile'
   | 'real_name_auth'
   | 'expert_certification'
+  | 'survey'
   | 'switch_account'
   | 'admin_management'
   | 'admin_transfer_points'
   | 'admin_cases'
   | 'admin_user_management'
+  | 'admin_user_analytics'
   | 'admin_certifications'
   | 'admin_aicrm'
   | 'admin_mail_disputes'
@@ -174,10 +182,46 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     logoutAccount,
     removeDeviceAccount,
     addDeviceAccount,
+    isDemoMode,
+    setDemoMode,
+    toggleDemoMode,
+    clearMockData,
+    isNoPaymentMode,
+    setNoPaymentMode,
+    toggleNoPaymentMode,
+    isHideTestAccounts,
+    setHideTestAccounts,
+    toggleHideTestAccounts,
+    openAuthModal,
   } = useApp();
 
   const [accountToRemove, setAccountToRemove] = useState<User | null>(null);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
+  const [adminCategoryFilter, setAdminCategoryFilter] = useState<'all' | 'core' | 'users' | 'operations' | 'advanced' | 'system'>('all');
+  const [pendingModeConfirm, setPendingModeConfirm] = useState<{ type: 'liveOperation' | 'demo' | 'noPayment' | 'hideTestAccounts'; nextState: boolean } | null>(null);
+  const [basicSaveSuccessMsg, setBasicSaveSuccessMsg] = useState<string | null>(null);
+  const [bankSaveSuccessMsg, setBankSaveSuccessMsg] = useState<string | null>(null);
+  const [surveySaveSuccessMsg, setSurveySaveSuccessMsg] = useState<string | null>(null);
+
+  const handleConfirmModeToggle = () => {
+    if (!pendingModeConfirm) return;
+    if (pendingModeConfirm.type === 'liveOperation') {
+      if (pendingModeConfirm.nextState) {
+        setHideTestAccounts(true);
+        setNoPaymentMode(false);
+        setDemoMode(false);
+      } else {
+        setHideTestAccounts(false);
+      }
+    } else if (pendingModeConfirm.type === 'demo') {
+      toggleDemoMode();
+    } else if (pendingModeConfirm.type === 'noPayment') {
+      toggleNoPaymentMode();
+    } else if (pendingModeConfirm.type === 'hideTestAccounts') {
+      toggleHideTestAccounts();
+    }
+    setPendingModeConfirm(null);
+  };
 
   // Cloud Firestore Sync State
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -247,7 +291,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [isExpertApplyModalOpen, setIsExpertApplyModalOpen] = useState(false);
 
   React.useEffect(() => {
-    if (!initialTab || initialTab === 'overview') {
+    if (initialTab === 'survey') {
+      setActiveTab('profile');
+      setProfileSubTab('survey');
+      setMobileMenuOpen(false);
+    } else if (!initialTab || initialTab === 'overview') {
       setActiveTab('overview');
       setMobileMenuOpen(true);
     } else {
@@ -313,6 +361,79 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Basic Personal Profile & SubTab State
+  const [profileSubTab, setProfileSubTab] = useState<'basic' | 'survey'>('basic');
+  const [userGender, setUserGender] = useState<'male' | 'female' | 'other' | 'undisclosed'>(currentUser.gender || 'male');
+  const [userAgeGroup, setUserAgeGroup] = useState<'under_18' | '18_24' | '25_34' | '35_44' | '45_54' | '55_above'>(currentUser.ageGroup || '25_34');
+  const [userIndustry, setUserIndustry] = useState(currentUser.industry || '資訊科技 / 軟體互聯網');
+  const [userAnnualSalary, setUserAnnualSalary] = useState<'under_500k' | '500k_1000k' | '1000k_2000k' | '2000k_3000k' | 'above_3000k' | 'undisclosed'>(
+    currentUser.annualSalary || 'undisclosed'
+  );
+  const [userCompany, setUserCompany] = useState(currentUser.company || '');
+  const [userPhone, setUserPhone] = useState(currentUser.phone || '');
+  const [userEmail, setUserEmail] = useState(currentUser.email || '');
+
+  // Bank Account State (解答者與撥退款專用帳戶)
+  const [bankCode, setBankCode] = useState(currentUser.bankAccount?.bankCode || '822');
+  const [bankName, setBankName] = useState(currentUser.bankAccount?.bankName || '822 中國信託商業銀行');
+  const [branchName, setBranchName] = useState(currentUser.bankAccount?.branchName || '敦南分行');
+  const [accountNumber, setAccountNumber] = useState(currentUser.bankAccount?.accountNumber || '');
+  const [accountHolder, setAccountHolder] = useState(currentUser.bankAccount?.accountHolder || currentUser.name);
+
+  // Survey Data State
+  const [surveyDesiredServices, setSurveyDesiredServices] = useState<string[]>(
+    currentUser.surveyData?.desiredServices || ['發布懸賞徵求專家解方', '探索市場痛點與創新商機']
+  );
+  const [surveyDesiredServicesCustom, setSurveyDesiredServicesCustom] = useState(currentUser.surveyData?.desiredServicesCustom || '');
+  const [surveyRelatedDomains, setSurveyRelatedDomains] = useState<string[]>(
+    currentUser.surveyData?.relatedDomains || [currentUser.domain || '創新創業']
+  );
+  const [surveyRelatedDomainsCustom, setSurveyRelatedDomainsCustom] = useState(currentUser.surveyData?.relatedDomainsCustom || '');
+  const [surveyWillingQuestionBudget, setSurveyWillingQuestionBudget] = useState(currentUser.surveyData?.willingQuestionBudget || '2000_5000');
+  const [surveyWillingToProvideSolutions, setSurveyWillingToProvideSolutions] = useState(currentUser.surveyData?.willingToProvideSolutions || 'very_willing');
+  const [surveyUsageFrequency, setSurveyUsageFrequency] = useState(currentUser.surveyData?.usageFrequency || 'few_times_weekly');
+  const [surveyWillingToBeSideHustle, setSurveyWillingToBeSideHustle] = useState(currentUser.surveyData?.willingToBeSideHustle || 'considering');
+  const [surveyWillingToSubscribeSolverPlan, setSurveyWillingToSubscribeSolverPlan] = useState(currentUser.surveyData?.willingToSubscribeSolverPlan || 'depends_profit');
+  const [surveyFeedback, setSurveyFeedback] = useState(currentUser.surveyData?.feedbackSuggestions || '');
+
+  // 當切換登入帳號或 currentUser 變更時，即時且同步更新表單各欄位為該當前用戶的資料
+  React.useEffect(() => {
+    setName(currentUser.name || '');
+    setTitle(currentUser.title || '');
+    setBio(currentUser.bio || '');
+    setAvatar(currentUser.avatar || '');
+    setUserGender(currentUser.gender || 'male');
+    setUserAgeGroup(currentUser.ageGroup || '25_34');
+    setUserIndustry(currentUser.industry || '資訊科技 / 軟體互聯網');
+    setUserAnnualSalary(currentUser.annualSalary || 'undisclosed');
+    setUserCompany(currentUser.company || '');
+    setUserPhone(currentUser.phone || '');
+    setUserEmail(currentUser.email || '');
+    setBankCode(currentUser.bankAccount?.bankCode || '822');
+    setBankName(currentUser.bankAccount?.bankName || '822 中國信託商業銀行');
+    setBranchName(currentUser.bankAccount?.branchName || '敦南分行');
+    setAccountNumber(currentUser.bankAccount?.accountNumber || '');
+    setAccountHolder(currentUser.bankAccount?.accountHolder || currentUser.name || '');
+    setSurveyDesiredServices(currentUser.surveyData?.desiredServices || ['發布懸賞徵求專家解方', '探索市場痛點與創新商機']);
+    setSurveyDesiredServicesCustom(currentUser.surveyData?.desiredServicesCustom || '');
+    setSurveyRelatedDomains(currentUser.surveyData?.relatedDomains || [currentUser.domain || '創新創業']);
+    setSurveyRelatedDomainsCustom(currentUser.surveyData?.relatedDomainsCustom || '');
+    setSurveyWillingQuestionBudget(currentUser.surveyData?.willingQuestionBudget || '2000_5000');
+    setSurveyWillingToProvideSolutions(currentUser.surveyData?.willingToProvideSolutions || 'very_willing');
+    setSurveyUsageFrequency(currentUser.surveyData?.usageFrequency || 'few_times_weekly');
+    setSurveyWillingToBeSideHustle(currentUser.surveyData?.willingToBeSideHustle || 'considering');
+    setSurveyWillingToSubscribeSolverPlan(currentUser.surveyData?.willingToSubscribeSolverPlan || 'depends_profit');
+    setSurveyFeedback(currentUser.surveyData?.feedbackSuggestions || '');
+    setDomain(currentUser.domain || '創新創業');
+    setSkillsInput((currentUser.skills || ['創新創業', '商業模式']).map((s) => (s.startsWith('#') ? s : `#${s}`)).join(' '));
+    setShowSubmittedCount(currentUser.showSubmittedCount ?? false);
+    setShowAcceptanceRate(currentUser.showAcceptanceRate ?? false);
+    setShowAvgSolutionBounty(currentUser.showAvgSolutionBounty ?? false);
+    setShowQuestionerTitle(currentUser.showQuestionerTitle ?? false);
+    setShowQuestionerBio(currentUser.showQuestionerBio ?? false);
+    setShowRecentSolutions(currentUser.showRecentSolutions ?? true);
+  }, [currentUser.id]);
+
   // 處理用戶頭像上傳：限制 2MB 內，Canvas 壓縮為正方形 (一次只存一張)
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -370,12 +491,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [skillsInput, setSkillsInput] = useState(
     (currentUser.skills || ['創新創業', '商業模式']).map((s) => (s.startsWith('#') ? s : `#${s}`)).join(' ')
   );
-
-  // Bank account management local state
-  const [bankName, setBankName] = useState(currentUser.bankAccount?.bankName || '822 中國信託商業銀行');
-  const [bankCode, setBankCode] = useState(currentUser.bankAccount?.bankCode || '822');
-  const [accountNumber, setAccountNumber] = useState(currentUser.bankAccount?.accountNumber || '0000123456789');
-  const [accountHolder, setAccountHolder] = useState(currentUser.bankAccount?.accountHolder || currentUser.name);
   const [isEditingBank, setIsEditingBank] = useState(false);
 
   // New Account Registration local state
@@ -797,6 +912,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       .filter(Boolean);
 
     const newAvatar = avatar || currentUser.avatar;
+    const updatedSurveyData: UserSurveyData = {
+      ...currentUser.surveyData,
+      desiredServices: surveyDesiredServices,
+      desiredServicesCustom: surveyDesiredServicesCustom.trim() || undefined,
+      relatedDomains: surveyRelatedDomains,
+      relatedDomainsCustom: surveyRelatedDomainsCustom.trim() || undefined,
+      willingQuestionBudget: surveyWillingQuestionBudget,
+      willingToProvideSolutions: surveyWillingToProvideSolutions,
+      usageFrequency: surveyUsageFrequency,
+      willingToBeSideHustle: surveyWillingToBeSideHustle,
+      willingToSubscribeSolverPlan: surveyWillingToSubscribeSolverPlan,
+      updatedAt: new Date().toISOString(),
+    };
+
     setCurrentUser((prev) => ({
       ...prev,
       name,
@@ -804,6 +933,23 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       title,
       bio,
       domain,
+      gender: userGender,
+      ageGroup: userAgeGroup,
+      industry: userIndustry,
+      jobTitle: title,
+      annualSalary: userAnnualSalary,
+      company: userCompany.trim() || undefined,
+      phone: userPhone.trim(),
+      email: userEmail.trim(),
+      bankAccount: {
+        bankCode,
+        bankName,
+        branchName: branchName.trim() || undefined,
+        accountNumber: accountNumber.trim(),
+        accountHolder: accountHolder.trim(),
+        isVerified: Boolean(accountNumber.trim()),
+      },
+      surveyData: updatedSurveyData,
       skills: parsedSkills.slice(0, 10), // Limit skills/categories to 10
       showSubmittedCount,
       showAcceptanceRate,
@@ -830,6 +976,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               title,
               bio,
               domain,
+              gender: userGender,
+              ageGroup: userAgeGroup,
+              industry: userIndustry,
+              jobTitle: title,
+              company: userCompany.trim() || undefined,
+              phone: userPhone.trim(),
+              email: userEmail.trim(),
+              surveyData: updatedSurveyData,
               skills: parsedSkills.slice(0, 10),
             }
           : u
@@ -840,6 +994,197 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setTimeout(() => setMsg(null), 2500);
   };
 
+  // 1. 個別儲存個人基本資料
+  const handleSaveBasicProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedSkills = skillsInput
+      .split(/[#,\s]+/)
+      .map((s) => s.trim().replace(/^#/, ''))
+      .filter(Boolean);
+
+    const newAvatar = avatar || currentUser.avatar;
+
+    setCurrentUser((prev) => ({
+      ...prev,
+      name,
+      avatar: newAvatar,
+      title,
+      bio,
+      domain,
+      gender: userGender,
+      ageGroup: userAgeGroup,
+      industry: userIndustry,
+      jobTitle: title,
+      annualSalary: userAnnualSalary,
+      company: userCompany.trim() || undefined,
+      phone: userPhone.trim(),
+      email: userEmail.trim(),
+      skills: parsedSkills.slice(0, 10),
+      showSubmittedCount,
+      showAcceptanceRate,
+      showAvgSolutionBounty,
+      showQuestionerTitle,
+      showQuestionerBio,
+      featuredCase: {
+        title: featuredCaseTitle,
+        description: featuredCaseDescription,
+        outcome: prev.featuredCase?.outcome || '順利降低合作溝通摩擦並達成高效交付',
+        files: featuredCaseFiles,
+        images: featuredCaseImages,
+      },
+      showRecentSolutions,
+    }));
+
+    setAvailableUsers((users) =>
+      users.map((u) =>
+        u.id === currentUser.id
+          ? {
+              ...u,
+              name,
+              avatar: newAvatar,
+              title,
+              bio,
+              domain,
+              gender: userGender,
+              ageGroup: userAgeGroup,
+              industry: userIndustry,
+              jobTitle: title,
+              company: userCompany.trim() || undefined,
+              phone: userPhone.trim(),
+              email: userEmail.trim(),
+              skills: parsedSkills.slice(0, 10),
+            }
+          : u
+      )
+    );
+
+    setBasicSaveSuccessMsg('個人基本資料已成功儲存！');
+    setTimeout(() => setBasicSaveSuccessMsg(null), 3000);
+  };
+
+  // 2. 個別儲存收退款銀行帳戶
+  const handleSaveBankSettings = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!accountNumber.trim()) {
+      setMsg('請輸入銀行存款帳戶號碼');
+      setTimeout(() => setMsg(null), 3000);
+      return;
+    }
+
+    const updatedBankAccount = {
+      bankCode,
+      bankName,
+      branchName: branchName.trim() || undefined,
+      accountNumber: accountNumber.trim(),
+      accountHolder: accountHolder.trim() || name,
+      isVerified: Boolean(accountNumber.trim()),
+    };
+
+    setCurrentUser((prev) => ({
+      ...prev,
+      bankAccount: updatedBankAccount,
+    }));
+
+    setAvailableUsers((users) =>
+      users.map((u) =>
+        u.id === currentUser.id
+          ? {
+              ...u,
+              bankAccount: updatedBankAccount,
+            }
+          : u
+      )
+    );
+
+    setBankSaveSuccessMsg('收退款銀行帳戶設定已成功獨立儲存！');
+    setTimeout(() => setBankSaveSuccessMsg(null), 3500);
+  };
+
+  // 2.5 獨立儲存服務調研問卷
+  const handleSaveSurvey = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const updatedSurveyData: UserSurveyData = {
+      ...currentUser.surveyData,
+      desiredServices: surveyDesiredServices,
+      desiredServicesCustom: surveyDesiredServicesCustom.trim() || undefined,
+      relatedDomains: surveyRelatedDomains,
+      relatedDomainsCustom: surveyRelatedDomainsCustom.trim() || undefined,
+      willingQuestionBudget: surveyWillingQuestionBudget,
+      willingToProvideSolutions: surveyWillingToProvideSolutions,
+      usageFrequency: surveyUsageFrequency,
+      willingToBeSideHustle: surveyWillingToBeSideHustle,
+      willingToSubscribeSolverPlan: surveyWillingToSubscribeSolverPlan,
+      feedbackSuggestions: surveyFeedback.trim() || undefined,
+      completedAt: currentUser.surveyData?.completedAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setCurrentUser((prev) => ({
+      ...prev,
+      gender: userGender,
+      ageGroup: userAgeGroup,
+      domain,
+      industry: userIndustry,
+      jobTitle: title,
+      annualSalary: userAnnualSalary,
+      surveyData: updatedSurveyData,
+      subscriptionTier: prev.subscriptionTier === 'free' ? 'pro' : prev.subscriptionTier,
+    }));
+
+    setAvailableUsers((users) =>
+      users.map((u) =>
+        u.id === currentUser.id
+          ? {
+              ...u,
+              gender: userGender,
+              ageGroup: userAgeGroup,
+              domain,
+              industry: userIndustry,
+              jobTitle: title,
+              annualSalary: userAnnualSalary,
+              surveyData: updatedSurveyData,
+              subscriptionTier: u.subscriptionTier === 'free' ? 'pro' : u.subscriptionTier,
+            }
+          : u
+      )
+    );
+
+    setSurveySaveSuccessMsg('服務調研問卷已成功儲存！一週尊榮體驗已生效');
+    setTimeout(() => setSurveySaveSuccessMsg(null), 3500);
+  };
+
+  // 3. 管理員專屬帳號設定儲存
+  const handleSaveAdminProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newAvatar = avatar || currentUser.avatar;
+    setCurrentUser((prev) => ({
+      ...prev,
+      name,
+      avatar: newAvatar,
+      title: title || '平台管理員',
+      phone: userPhone.trim(),
+      email: userEmail.trim(),
+    }));
+
+    setAvailableUsers((users) =>
+      users.map((u) =>
+        u.id === currentUser.id
+          ? {
+              ...u,
+              name,
+              avatar: newAvatar,
+              title: title || '平台管理員',
+              phone: userPhone.trim(),
+              email: userEmail.trim(),
+            }
+          : u
+      )
+    );
+
+    setBasicSaveSuccessMsg('管理員帳號設定已成功儲存！');
+    setTimeout(() => setBasicSaveSuccessMsg(null), 3000);
+  };
+
   // 分頁名稱映射
   const TAB_NAME_MAP: Record<string, string> = {
     proposals: '我的案件',
@@ -848,18 +1193,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     overview: currentUser.role === 'admin' ? '點數 & 應收帳款管理' : '點數 & 應收帳款',
     transactions: currentUser.role === 'admin' ? '交易管理' : '交易紀錄',
     subscriptions: currentUser.role === 'admin' ? '會員方案與費率管理' : '會員方案',
-    profile: currentUser.role === 'admin' ? '管理員帳號設定' : '帳號設定',
+    profile: currentUser.role === 'admin' ? '管理員帳號設定' : '帳號與基本資料',
     real_name_auth: '實名認證',
     expert_certification: '專家認證',
+    survey: '問卷(客戶調查)',
     switch_account: '切換帳號',
     admin_management: '平台數據與顯示',
     admin_transfer_points: '轉入點數（每日配額 5 萬點）',
     admin_cases: '案件管理',
     admin_user_management: '用戶管理',
+    admin_user_analytics: '用戶分佈與習慣統計',
     admin_certifications: '受理認證 (實名、專家)',
     admin_aicrm: 'AI-CRM 系統',
     admin_mail_disputes: '申訴與郵件',
-    settings: '帳號設定',
+    settings: '帳號與基本資料',
     honors_achievements: '個人成就與榮譽',
   };
 
@@ -982,43 +1329,121 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
       {/* Desktop Horizontal Navigation Bar */}
       {currentUser.role === 'admin' ? (
-        <div className="hidden sm:flex items-center gap-1 px-4 py-2 bg-stone-50 border-b border-stone-200 overflow-x-auto text-xs font-bold shrink-0">
-          {[
-            { id: 'overview', label: '功能總覽', icon: LayoutGrid },
-            { id: 'points_receivables', label: '點數&應收帳款管理', icon: Coins },
-            { id: 'admin_transfer_points', label: '轉入點數 (每日5萬)', icon: Send },
-            { id: 'transactions', label: '交易管理', icon: Clock },
-            { id: 'subscriptions', label: '會員方案與費率管理', icon: Crown },
-            { id: 'admin_management', label: '平台數據與顯示', icon: Sliders },
-            { id: 'admin_cases', label: '案件管理', icon: Briefcase },
-            { id: 'admin_certifications', label: '受理認證 (實名、專家)', icon: BadgeCheck },
-            { id: 'admin_user_management', label: '用戶管理', icon: UserCheck },
-            { id: 'admin_aicrm', label: 'AI-CRM 系統', icon: Sparkles },
-            { id: 'admin_mail_disputes', label: '申訴與郵件', icon: Mail },
-            { id: 'profile', label: '管理員帳號設定', icon: SettingsIcon },
-            { id: 'switch_account', label: '切換帳號', icon: ArrowLeftRight },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
+        <div className="hidden sm:block bg-stone-50 border-b border-stone-200 shrink-0">
+          {/* Top Category Filter & Quick Excel Action */}
+          <div className="flex items-center justify-between px-4 py-1.5 border-b border-stone-200/70 bg-stone-100/70 text-xs">
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              {[
+                { key: 'all', label: '全部功能', count: 14 },
+                { key: 'finance', label: '💰 財務點數', count: 4 },
+                { key: 'users', label: '👥 用戶審核', count: 3 },
+                { key: 'operations', label: '🚀 營運與 AI', count: 4 },
+                { key: 'system', label: '⚙️ 系統帳號', count: 3 },
+              ].map((cat) => (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => setAdminCategoryFilter(cat.key as any)}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer whitespace-nowrap ${
+                    adminCategoryFilter === cat.key
+                      ? 'bg-purple-900 text-white shadow-2xs font-black'
+                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200'
+                  }`}
+                >
+                  <span>{cat.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0 ml-2">
               <button
-                key={tab.id}
                 type="button"
-                onClick={() => {
-                  setActiveTab(tab.id as any);
-                  setMobileMenuOpen(false);
-                }}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                  isActive
-                    ? 'bg-purple-700 text-white shadow-2xs font-black'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/70'
+                onClick={toggleDemoMode}
+                className={`px-2.5 py-1 rounded-lg font-black text-[11px] flex items-center gap-1 shadow-2xs transition-all cursor-pointer ${
+                  isDemoMode
+                    ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
+                    : 'bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200'
                 }`}
+                title={isDemoMode ? '點擊關閉測試環境' : '點擊開啟測試環境'}
               >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{tab.label}</span>
+                <span>{isDemoMode ? '🧪 測試環境' : '🟢 營運模式'}</span>
               </button>
-            );
-          })}
+
+              <button
+                type="button"
+                onClick={() => exportSurveyToExcelXlsx(availableUsers)}
+                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-[11px] flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer shrink-0"
+                title="一鍵將全體用戶個資與調研問卷結果下載為 Excel (.xlsx)"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
+                <span>一鍵下載統計 Excel</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Filtered Admin Tabs */}
+          <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto text-xs font-bold">
+            {[
+              // 財務與點數治理
+              { id: 'points_receivables', category: 'finance', label: '點數 & 應收帳款', icon: Coins },
+              { id: 'admin_transfer_points', category: 'finance', label: '轉入點數 (每日5萬)', icon: Send, badge: '每日5萬' },
+              { id: 'transactions', category: 'finance', label: '交易管理', icon: Clock },
+              { id: 'subscriptions', category: 'finance', label: '會員方案與費率', icon: Crown },
+
+              // 用戶與審核認證
+              { id: 'admin_user_management', category: 'users', label: '用戶管理', icon: UserCheck },
+              { id: 'admin_certifications', category: 'users', label: '受理認證', icon: BadgeCheck },
+              { id: 'admin_user_analytics', category: 'users', label: '用戶分佈與習慣統計', icon: BarChart3, badge: 'EXCEL' },
+
+              // 營運、案件與 AI
+              { id: 'admin_cases', category: 'operations', label: '案件管理', icon: Briefcase },
+              { id: 'admin_aicrm', category: 'operations', label: 'AI-CRM 系統', icon: Sparkles, badge: 'AI' },
+              { id: 'admin_mail_disputes', category: 'operations', label: '申訴與郵件', icon: Mail },
+              { id: 'admin_management', category: 'operations', label: '平台數據與顯示', icon: Sliders },
+
+              // 系統核心與帳號
+              { id: 'overview', category: 'system', label: '功能總覽', icon: LayoutGrid },
+              { id: 'profile', category: 'system', label: '管理員設定', icon: SettingsIcon },
+              { id: 'switch_account', category: 'system', label: '切換帳號', icon: ArrowLeftRight },
+            ]
+              .filter((tab) => adminCategoryFilter === 'all' || tab.category === adminCategoryFilter)
+              .map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      if (tab.id === 'switch_account') {
+                        openAuthModal('login');
+                        setMobileMenuOpen(false);
+                        return;
+                      }
+                      setActiveTab(tab.id as any);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                      isActive
+                        ? 'bg-purple-700 text-white shadow-2xs font-black'
+                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/70'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                    {tab.badge && (
+                      <span
+                        className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-900'
+                        }`}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+          </div>
         </div>
       ) : (
         <div className="hidden sm:flex items-center gap-1 px-4 py-2 bg-stone-50 border-b border-stone-200 overflow-x-auto text-xs font-bold shrink-0">
@@ -1030,18 +1455,33 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             { id: 'proposals', label: '我的案件', icon: Briefcase },
             { id: 'questions_management', label: '問題管理', icon: MessageSquare },
             { id: 'honors_achievements', label: '個人成就', icon: Award },
-            { id: 'profile', label: '帳號設定', icon: UserIcon },
+            { id: 'profile', label: '帳號與基本資料', icon: UserIcon },
             { id: 'real_name_auth', label: '實名認證', icon: UserCheck },
             { id: 'expert_certification', label: '專家認證', icon: ShieldCheck },
+            { id: 'survey', label: '問卷(客戶調查)', icon: ClipboardList },
             { id: 'switch_account', label: '切換帳號', icon: ArrowLeftRight },
           ].map((tab) => {
             const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+            const isActive = activeTab === tab.id || (tab.id === 'survey' && activeTab === 'profile' && profileSubTab === 'survey');
             return (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => {
+                  if (tab.id === 'switch_account') {
+                    openAuthModal('login');
+                    setMobileMenuOpen(false);
+                    return;
+                  }
+                  if (tab.id === 'survey') {
+                    setActiveTab('profile');
+                    setProfileSubTab('survey');
+                    setMobileMenuOpen(false);
+                    return;
+                  }
+                  if (tab.id === 'profile') {
+                    setProfileSubTab('basic');
+                  }
                   setActiveTab(tab.id as any);
                   setMobileMenuOpen(false);
                 }}
@@ -1262,7 +1702,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
               </button>
 
-              {/* 9. AI-CRM 系統 */}
+              {/* 9. 用戶分佈與習慣統計 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('admin_user_analytics');
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full px-2 py-2 rounded-lg hover:bg-purple-50 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                    <BarChart3 className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="block font-black text-stone-900">用戶分佈與習慣統計</span>
+                    <span className="text-[10px] text-stone-500 font-normal">個資統計、問卷圖表、EXCEL 匯出</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+              </button>
+
+              {/* 10. AI-CRM 系統 */}
               <button
                 type="button"
                 onClick={() => {
@@ -1319,7 +1780,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('switch_account');
+                    openAuthModal('login');
                     setMobileMenuOpen(false);
                   }}
                   className="w-full px-2 py-1.5 rounded-lg hover:bg-purple-50 text-left text-xs font-bold text-stone-700 flex items-center justify-between group cursor-pointer transition-colors"
@@ -1498,6 +1959,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               type="button"
               onClick={() => {
                 setActiveTab('profile');
+                setProfileSubTab('basic');
                 setMobileMenuOpen(false);
               }}
               className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
@@ -1506,7 +1968,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <div className="w-5 h-5 rounded-md bg-cyan-100/90 text-cyan-800 flex items-center justify-center shrink-0">
                   <UserCog className="w-3 h-3" />
                 </div>
-                <span>帳號設定</span>
+                <span>帳號與基本資料</span>
               </span>
               <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
             </button>
@@ -1542,6 +2004,30 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </span>
               <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('profile');
+                setProfileSubTab('survey');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-purple-100/90 text-purple-800 flex items-center justify-center shrink-0">
+                  <ClipboardList className="w-3 h-3" />
+                </div>
+                <span>問卷(客戶調查)</span>
+              </span>
+              <div className="flex items-center gap-1">
+                {currentUser.surveyData?.completedAt ? (
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-750 border border-purple-200">已填寫</span>
+                ) : (
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">得體驗</span>
+                )}
+                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+              </div>
+            </button>
           </div>
 
           {/* Section 4: 帳號操作 */}
@@ -1552,7 +2038,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                setActiveTab('switch_account');
+                openAuthModal('login');
                 setMobileMenuOpen(false);
               }}
               className="w-full px-2 py-1.5 rounded-lg hover:bg-violet-50 active:bg-violet-100 text-left text-xs font-bold text-violet-950 flex items-center justify-between group cursor-pointer transition-colors"
@@ -1616,7 +2102,398 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         {/* TAB: 功能總覽 (Overview Hub) */}
         {activeTab === 'overview' && (
           currentUser.role === 'admin' ? (
-            <AdminPointsReceivablesTab />
+            <div className="space-y-6 animate-in fade-in duration-200">
+              {/* Admin Command Center Banner */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-stone-950 via-purple-950 to-stone-900 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-400/30 flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5" />
+                      <span>官方管理指揮中心</span>
+                    </span>
+                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                      isDemoMode ? 'bg-amber-400 text-stone-950' : 'bg-emerald-500 text-white'
+                    }`}>
+                      {isDemoMode ? '🧪 測試環境 (解封測試帳號與假資料)' : '🟢 營運模式 (僅保留核心測試帳號)'}
+                    </span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-white">創點子 IdeaX 運營管理後台</h3>
+                  <p className="text-xs text-stone-300 mt-1 max-w-2xl leading-relaxed">
+                    實時掌握全站用戶調研、點數託管、案件進展、認證審核與金流分潤。隨時可一鍵切換測試環境或匯出用戶統計 Excel。
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById('environment-controls-section');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-purple-700/80 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md border border-purple-500/50"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-purple-300" />
+                    <span>核心環境開關 (置底)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => exportSurveyToExcelXlsx(availableUsers)}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                    title="一鍵將全體用戶個資與調研問卷結果下載為 Excel (.xlsx)"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
+                    <span>下載統計 Excel</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* KPI Quick Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('admin_user_analytics')}
+                  className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-300 hover:shadow-sm text-left transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between text-stone-500 mb-1">
+                    <span className="text-xs font-bold">總註冊用戶</span>
+                    <Users className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <p className="text-2xl font-black text-stone-900 font-mono">
+                    {availableUsers.filter((u) => u.id !== 'user-guest').length}
+                  </p>
+                  <span className="text-[10px] text-purple-700 font-bold mt-0.5 block">點擊查閱用戶分佈圖表 →</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('points_receivables')}
+                  className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-300 hover:shadow-sm text-left transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between text-stone-500 mb-1">
+                    <span className="text-xs font-bold">全站總交易額</span>
+                    <Coins className="w-4 h-4 text-amber-600 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <p className="text-2xl font-black text-stone-900 font-mono">
+                    NT$ {transactions.reduce((acc, t) => acc + t.amount, 0).toLocaleString()}
+                  </p>
+                  <span className="text-[10px] text-amber-700 font-bold mt-0.5 block">點數與應收帳款管理 →</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('admin_cases')}
+                  className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-blue-300 hover:shadow-sm text-left transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between text-stone-500 mb-1">
+                    <span className="text-xs font-bold">市場問題數</span>
+                    <Briefcase className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <p className="text-2xl font-black text-stone-900 font-mono">{questions.length} 題</p>
+                  <span className="text-[10px] text-blue-700 font-bold mt-0.5 block">案件詳細與對話稽核 →</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('admin_certifications')}
+                  className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-emerald-300 hover:shadow-sm text-left transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between text-stone-500 mb-1">
+                    <span className="text-xs font-bold">認證專家智庫</span>
+                    <BadgeCheck className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <p className="text-2xl font-black text-stone-900 font-mono">{solvers.length} 位</p>
+                  <span className="text-[10px] text-emerald-700 font-bold mt-0.5 block">受理實名與專家審核 →</span>
+                </button>
+              </div>
+
+              {/* Administrative Function Pillars */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <LayoutGrid className="w-3.5 h-3.5 text-purple-700" />
+                  <span>管理員功能模組快捷導覽</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {/* 用戶分佈與習慣統計 */}
+                  <div
+                    onClick={() => setActiveTab('admin_user_analytics')}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-400 hover:bg-purple-50/20 transition-all cursor-pointer group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <BarChart3 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="font-black text-stone-900 text-sm">用戶分佈與習慣統計</h5>
+                        <span className="text-[10px] text-purple-700 font-bold">支援 Excel 匯出與圖表</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-stone-500 line-clamp-2">
+                      彙整性別、年齡、職業、期望服務、專業領域、提問預算及付費意願，可一鍵下載標準 Excel 檔案。
+                    </p>
+                  </div>
+
+                  {/* 點數 & 應收帳款管理 */}
+                  <div
+                    onClick={() => setActiveTab('points_receivables')}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 hover:bg-amber-50/20 transition-all cursor-pointer group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Coins className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="font-black text-stone-900 text-sm">點數 & 應收帳款管理</h5>
+                        <span className="text-[10px] text-amber-700 font-bold">全站用戶帳目託管</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-stone-500 line-clamp-2">
+                      查閱個別用戶點數餘額、未結收益、銀行帳戶認證與撥付紀錄，確保資金安全託管。
+                    </p>
+                  </div>
+
+                  {/* 轉入點數 */}
+                  <div
+                    onClick={() => setActiveTab('admin_transfer_points')}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-indigo-400 hover:bg-indigo-50/20 transition-all cursor-pointer group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Send className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="font-black text-stone-900 text-sm">轉入點數 (每日5萬)</h5>
+                        <span className="text-[10px] text-indigo-700 font-bold">活動激勵與異常補償</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-stone-500 line-clamp-2">
+                      管理員專屬每日 50,000 點配額，可安全撥付活動回饋、爭議補償或合作專家贊助。
+                    </p>
+                  </div>
+
+                  {/* 案件管理 */}
+                  <div
+                    onClick={() => setActiveTab('admin_cases')}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-blue-400 hover:bg-blue-50/20 transition-all cursor-pointer group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Briefcase className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="font-black text-stone-900 text-sm">案件管理與私聊稽核</h5>
+                        <span className="text-[10px] text-blue-700 font-bold">全站案件與履約追蹤</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-stone-500 line-clamp-2">
+                      查閱懸賞問題、採納方案、階段交付交付成果與客製私聊進度，杜絕履約違規。
+                    </p>
+                  </div>
+
+                  {/* 受理認證 */}
+                  <div
+                    onClick={() => setActiveTab('admin_certifications')}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-emerald-400 hover:bg-emerald-50/20 transition-all cursor-pointer group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <BadgeCheck className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="font-black text-stone-900 text-sm">受理認證 (實名、專家)</h5>
+                        <span className="text-[10px] text-emerald-700 font-bold">證件資格審核批覆</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-stone-500 line-clamp-2">
+                      審核用戶送審之身分證明文件與專家頭銜佐證，一鍵批覆通過或核發平台大師徽章。
+                    </p>
+                  </div>
+
+                  {/* 切換帳號 */}
+                  <div
+                    onClick={() => openAuthModal('login')}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 hover:bg-amber-50/20 transition-all cursor-pointer group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <ArrowLeftRight className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="font-black text-stone-900 text-sm">切換帳號 (身分驗證)</h5>
+                        <span className="text-[10px] text-amber-700 font-bold">提問者 / 解答者 / 訪客</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-stone-500 line-clamp-2">
+                      快速切換至林書豪 (提問者)、陳怡君 (專家解答者) 或訪客探索身分，輕鬆測試雙向流程。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 平台營運與金流環境核心開關 (功能總覽儀表板最底層模塊) */}
+              <div id="environment-controls-section" className="p-5 sm:p-6 rounded-3xl bg-stone-950 text-white space-y-5 shadow-xl border border-stone-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800/80 pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                      <Sliders className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm sm:text-base font-black text-amber-400">
+                        平台營運與金流環境核心開關
+                      </h4>
+                      <p className="text-xs text-stone-400 mt-0.5">
+                        全域系統底層展示與交易模式控制。開啟或關閉測試環境與無金流環境均具備二次確認機制。
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 self-start sm:self-auto">
+                    管理員全域控制中樞
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {/* 開關 1 (最首項): 營運模式 (正式上線環境) */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-stone-900 via-purple-950/80 to-stone-900 border border-purple-600/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+                    <div className="space-y-1 max-w-2xl">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs sm:text-sm font-black text-purple-200 flex items-center gap-1.5">
+                          <Crown className="w-4 h-4 text-amber-400" />
+                          <span>營運模式 (正式上線環境)</span>
+                        </span>
+                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                          isHideTestAccounts && !isNoPaymentMode
+                            ? 'bg-emerald-500 text-stone-950 shadow-xs'
+                            : 'bg-stone-800 text-stone-400 border border-stone-700'
+                        }`}>
+                          {isHideTestAccounts && !isNoPaymentMode ? '已開啟 (正式營運)' : '未啟用 (測試/非營運)'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-purple-200/80 leading-relaxed">
+                        開啟營運模式將自動<strong>隱藏所有測試帳號</strong>（僅保留管理員與真實註冊會員），並且<strong>關閉無金流環境</strong>（啟用正式商業金流與第三方履約託管）。
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 self-stretch sm:self-auto flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setPendingModeConfirm({
+                          type: 'liveOperation',
+                          nextState: !(isHideTestAccounts && !isNoPaymentMode)
+                        })}
+                        className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md ${
+                          isHideTestAccounts && !isNoPaymentMode
+                            ? 'bg-amber-400 hover:bg-amber-300 text-stone-950'
+                            : 'bg-purple-600 hover:bg-purple-500 text-white'
+                        }`}
+                      >
+                        {isHideTestAccounts && !isNoPaymentMode ? '關閉【營運模式】' : '開啟【營運模式】'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 開關 2: 測試環境 (Demo & Test Data) */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-stone-800 flex flex-col justify-between gap-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-1.5">
+                            <FlaskConical className="w-4 h-4 text-amber-400" />
+                            <span>測試環境 (Demo & Test Data)</span>
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isDemoMode ? 'bg-amber-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-400'}`}>
+                            {isDemoMode ? '已開啟 (解封假資料)' : '已關閉 (純淨營運)'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-300 leading-relaxed">
+                          <strong>開啟：</strong> 解封所有測試帳號並載入預設示範問題、提案、專家假資料。<br />
+                          <strong>關閉：</strong> 關閉測試環境，隱藏所有示範假資料，僅保留各身分測試帳號與真實註冊會員。
+                        </p>
+
+                        <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between">
+                          <span className="text-[10px] text-stone-500 font-mono">STATE: isDemoMode</span>
+                          <button
+                            type="button"
+                            onClick={() => setPendingModeConfirm({ type: 'demo', nextState: !isDemoMode })}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs ${
+                              isDemoMode
+                                ? 'bg-amber-500 hover:bg-amber-400 text-stone-950'
+                                : 'bg-stone-800 hover:bg-stone-700 text-white border border-stone-700'
+                            }`}
+                          >
+                            {isDemoMode ? '關閉【測試環境】' : '開啟【測試環境】'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 測試環境開關下面再加一個開關：隱藏測試帳號（僅保留管理員） */}
+                      <div className="p-3.5 rounded-xl bg-stone-950/80 border border-stone-800 space-y-2 mt-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-purple-400" />
+                            <span>隱藏測試帳號（僅保留管理員）</span>
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isHideTestAccounts ? 'bg-purple-600 text-white font-black' : 'bg-stone-800 text-stone-400'}`}>
+                            {isHideTestAccounts ? '已隱藏(僅保留管理員)' : '已公開測試帳號'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-stone-400 leading-relaxed">
+                          開啟後，全站切換帳號介面與用戶列表中將完全隱藏林書豪（提問者）、陳怡君（專家）及訪客等測試帳號，僅保留超級管理員與真實註冊用戶。
+                        </p>
+                        <div className="flex items-center justify-between pt-1.5 border-t border-stone-800">
+                          <span className="text-[10px] text-stone-500 font-mono">STATE: isHideTestAccounts</span>
+                          <button
+                            type="button"
+                            onClick={() => setPendingModeConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              isHideTestAccounts
+                                ? 'bg-purple-600 hover:bg-purple-500 text-white font-black'
+                                : 'bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700'
+                            }`}
+                          >
+                            {isHideTestAccounts ? '公開顯示 測試帳號' : '隱藏測試帳號'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 開關 3: 無金流環境 (Pure Free Mode) */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-stone-900 border border-stone-800 flex flex-col justify-between gap-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs sm:text-sm font-black text-emerald-300 flex items-center gap-1.5">
+                            <Ban className="w-4 h-4 text-emerald-400" />
+                            <span>無金流環境 (全站免費諮詢模式)</span>
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isNoPaymentMode ? 'bg-emerald-500 text-stone-950 font-black' : 'bg-stone-800 text-stone-400'}`}>
+                            {isNoPaymentMode ? '已開啟 (全站免金流)' : '已關閉 (標準金流)'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-300 leading-relaxed">
+                          <strong>開啟：</strong> 隱藏全站會員訂閱方案與點數儲值機制；僅開放 L0 免費問題與交流，聊天室「詢價」改為「諮詢」、「報價」改為「提案」，金流運作說明一併隱藏。<br />
+                          <strong>關閉：</strong> 恢復標準商業金流模式，重新開啟會員方案訂閱、點數儲值與懸賞金功能。
+                        </p>
+                      </div>
+
+                      <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between">
+                        <span className="text-[10px] text-stone-500 font-mono">STATE: isNoPaymentMode</span>
+                        <button
+                          type="button"
+                          onClick={() => setPendingModeConfirm({ type: 'noPayment', nextState: !isNoPaymentMode })}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs ${
+                            isNoPaymentMode
+                              ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
+                              : 'bg-stone-800 hover:bg-stone-700 text-white border border-stone-700'
+                          }`}
+                        >
+                          {isNoPaymentMode ? '關閉【無金流環境】' : '開啟【無金流環境】'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="space-y-6 animate-in fade-in duration-200">
               {/* Header Hero */}
@@ -1799,14 +2676,17 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div className="space-y-2 text-xs">
                       <button
                         type="button"
-                        onClick={() => setActiveTab('profile')}
+                        onClick={() => {
+                          setActiveTab('profile');
+                          setProfileSubTab('basic');
+                        }}
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-cyan-50/80 border border-stone-200 hover:border-cyan-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                       >
                         <span className="flex items-center gap-2.5">
                           <div className="w-7 h-7 rounded-lg bg-cyan-100/90 text-cyan-800 group-hover:bg-cyan-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                             <UserCog className="w-3.5 h-3.5" />
                           </div>
-                          <span>帳號設定</span>
+                          <span>帳號與基本資料</span>
                         </span>
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-cyan-700 transition-colors" />
                       </button>
@@ -1844,6 +2724,27 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           <span className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md font-bold border border-emerald-200">認證專家</span>
                         ) : (
                           <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-emerald-700 transition-colors" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('profile');
+                          setProfileSubTab('survey');
+                        }}
+                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-purple-50/80 border border-stone-200 hover:border-purple-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <ClipboardList className="w-3.5 h-3.5" />
+                          </div>
+                          <span>問卷(客戶調查)</span>
+                        </span>
+                        {currentUser.surveyData?.completedAt ? (
+                          <span className="text-[10px] text-purple-750 bg-purple-50 px-2 py-0.5 rounded-md font-bold border border-purple-200">已填寫</span>
+                        ) : (
+                          <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md font-bold border border-amber-200">填寫送一週體驗</span>
                         )}
                       </button>
                     </div>
@@ -3062,6 +3963,39 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </div>
             </div>
 
+            {/* Google 1-Click Fast Login / Switch Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/90 via-white to-amber-50/50 border-2 border-stone-200 hover:border-blue-400 transition-all shadow-xs">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-white shadow-xs border border-stone-200 flex items-center justify-center shrink-0">
+                    <svg className="w-6 h-6" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-stone-900 flex items-center gap-1.5">
+                      <span>使用 Google 帳號一鍵快速登入</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">官方推薦</span>
+                    </h4>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      串接 Firebase Google 授權，免輸入密碼即可安全完成身分登入或切換
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('login')}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black text-xs transition-all shadow-xs cursor-pointer flex items-center gap-2 shrink-0"
+                >
+                  <span>開啟 Google 一鍵登入</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
             {/* Current Active Account Indicator */}
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 flex items-center justify-between gap-3 flex-wrap">
               <button
@@ -3503,30 +4437,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </div>
             </div>
 
-            {/* 3. 平台抽成與方案設定整合提示卡片 (引導至會員方案與費率管理) */}
-            <div className="p-5 rounded-2xl bg-purple-50/70 border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-purple-700" />
-                  <h4 className="font-extrabold text-sm sm:text-base text-purple-950">
-                    平台抽成比例與會員方案設定（已整合至會員方案與費率管理）
-                  </h4>
-                </div>
-                <p className="text-xs text-purple-900/80">
-                  全站基準平台抽成費率（預設 10%）、一般 / 達人 / 權威 / 大師等方案月費價格、減免抽成率與特權文案已全面集中於「會員方案與費率管理」統一配置。
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveTab('subscriptions')}
-                className="px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-              >
-                <Sliders className="w-4 h-4" />
-                <span>前往會員方案與費率管理</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
             {/* 4. Firebase Cloud Firestore 雲端資料庫狀態與一鍵備份 (位於頁面最下方，重新分類版) */}
             <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/80 via-white to-stone-50 border border-purple-200/90 shadow-2xs space-y-4 mt-2">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -3717,185 +4627,905 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
         {/* TAB 2: 個人中心 (帳號資訊、身份切換、解答者公開資料與隱私設定) */}
         {activeTab === 'profile' && (
-          <form onSubmit={handleSaveProfile} className="space-y-6">
-            {/* 管理員專屬：平台數據與顯示快捷橫幅 */}
-            {currentUser.role === 'admin' && (
-              <div className="p-4 rounded-2xl bg-purple-50 border border-purple-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <Sliders className="w-4 h-4" />
+          <div className="space-y-6">
+            {currentUser.role === 'admin' ? (
+              /* 管理員專屬：席位與安全治理設定（無個人個資、無問卷、無專家審查、無條款簽署） */
+              <div className="space-y-6 animate-in fade-in duration-150">
+                {/* 1. 管理員席位身份卡片 */}
+                <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-stone-900 via-purple-950 to-stone-950 text-white border border-purple-800/40 shadow-lg space-y-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="relative">
+                        <img
+                          src={currentUser.avatar}
+                          alt={currentUser.name}
+                          className="w-16 h-16 rounded-2xl object-cover ring-2 ring-purple-400 shadow-md"
+                        />
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-purple-500 border-2 border-stone-900 flex items-center justify-center text-white text-[10px]">
+                          <ShieldCheck className="w-3 h-3" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-lg font-black text-white">{currentUser.name}</h3>
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-300 border border-purple-400/30">
+                            平台超級管理員席位
+                          </span>
+                        </div>
+                        <p className="text-xs text-purple-200/80 mt-0.5">
+                          最高系統權限 (Super Administrator) · 全站治理、仲裁調解、金流託管與風控中樞
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-left sm:text-right">
+                      <span className="text-[10px] text-purple-300 font-mono block">席位安全識別號</span>
+                      <span className="text-xs font-mono font-black text-amber-400">ROOT-SEC-ADMIN-001</span>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-black text-purple-950">平台管理員功能</h4>
-                    <p className="text-[11px] text-purple-800">
-                      管理員後台已放在個人中心「平台數據與顯示」，可隨時前往監控營運流水、首頁公開數據開關及費率調整。
-                    </p>
+
+                  {/* 席位特權與治理範圍 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[10px] text-purple-300 font-bold block flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span>治理權限範圍</span>
+                      </span>
+                      <p className="text-xs font-bold text-white">全域覆蓋 (Full Access)</p>
+                      <span className="text-[10px] text-stone-400 block">題目稽核、用戶審查、全站營運與帳務</span>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[10px] text-purple-300 font-bold block flex items-center gap-1">
+                        <Shield className="w-3 h-3 text-purple-400" />
+                        <span>雙因子身分驗證 (2FA)</span>
+                      </span>
+                      <p className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                        <span>已強制啟用</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      </p>
+                      <span className="text-[10px] text-stone-400 block">硬體憑證與內部受信任連線</span>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[10px] text-purple-300 font-bold block flex items-center gap-1">
+                        <Coins className="w-3 h-3 text-amber-400" />
+                        <span>每日治理配額</span>
+                      </span>
+                      <p className="text-xs font-mono font-bold text-amber-300">50,000 點 / 日</p>
+                      <span className="text-[10px] text-stone-400 block">活動激勵、爭議補償與官方贊助專用</span>
+                    </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('admin_management')}
-                  className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white text-xs font-black transition-all cursor-pointer shadow-2xs shrink-0"
-                >
-                  前往平台數據與顯示 →
-                </button>
-              </div>
-            )}
 
-            {/* 身份切換區域 (僅非管理員顯示) */}
-            {currentUser.role !== 'admin' ? (
-              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4 text-amber-600" />
-                  <span className="font-bold text-sm text-amber-950">
-                    目前模式：{currentUser.role === 'solver' ? '解答者模式' : '提問者模式'}
-                  </span>
-                  <HelpTooltip
-                    title="身份切換說明"
-                    content="一般會員帳號可隨時在提問者與解答者身份間切換，無須額外註冊。提問發布與方案解題隨時無縫使用。"
-                  />
+                {/* 2. 系統安全與敏感操作防護狀態 */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-purple-700" />
+                      <h4 className="text-xs sm:text-sm font-black text-stone-900">
+                        管理員安全與底層運營防護機制
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      安全狀態正常
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-start gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+                        <Sliders className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-stone-900 block">環境開關二次確認保護</span>
+                        <p className="text-[11px] text-stone-500 mt-0.5">
+                          開啟或關閉測試環境、無金流環境及隱藏測試帳號均受二次確認對話框保護，防止誤觸影響前台展示。
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-start gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 mt-0.5">
+                        <Mail className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-stone-900 block">爭議裁決自動派發官方郵件</span>
+                        <p className="text-[11px] text-stone-500 mt-0.5">
+                          案件裁決時自動生成標準罐頭式文字並派發至提問方與解答方信箱與通知中心，全程留痕可溯源。
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => switchRole('questioner')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      currentUser.role === 'questioner'
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-50'
-                    }`}
-                  >
-                    提問者身份
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => switchRole('solver')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      currentUser.role === 'solver'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-50'
-                    }`}
-                  >
-                    解答者身份
-                  </button>
+                {/* 3. 管理員功能中心快捷入口 */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-3 shadow-2xs">
+                  <h4 className="text-xs font-black text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <LayoutGrid className="w-3.5 h-3.5 text-purple-700" />
+                    <span>管理員後台樞紐快捷入口</span>
+                  </h4>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('overview')}
+                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                    >
+                      <LayoutGrid className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+                      <span className="font-black text-xs text-stone-900 block">功能總覽儀表板</span>
+                      <span className="text-[10px] text-stone-500">環境開關與營運概覽</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('admin_mail_disputes')}
+                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                    >
+                      <Mail className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+                      <span className="font-black text-xs text-stone-900 block">申訴與郵件</span>
+                      <span className="text-[10px] text-stone-500">案件仲裁與官方通知</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('admin_management')}
+                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                    >
+                      <Sliders className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+                      <span className="font-black text-xs text-stone-900 block">平台數據與顯示</span>
+                      <span className="text-[10px] text-stone-500">抽成費率與前台指標</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('admin_user_analytics')}
+                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                    >
+                      <BarChart3 className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+                      <span className="font-black text-xs text-stone-900 block">用戶習慣與調研</span>
+                      <span className="text-[10px] text-stone-500">圖表分析與 Excel 匯出</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('points_receivables')}
+                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                    >
+                      <Coins className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+                      <span className="font-black text-xs text-stone-900 block">點數與應收帳款</span>
+                      <span className="text-[10px] text-stone-500">帳目託管與提領審核</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('admin_certifications')}
+                      className="p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                    >
+                      <BadgeCheck className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+                      <span className="font-black text-xs text-stone-900 block">受理認證審核</span>
+                      <span className="text-[10px] text-stone-500">實名與專家資格審批</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <Shield className="w-5 h-5 text-purple-700 shrink-0" />
-                  <div>
-                    <span className="font-black text-xs sm:text-sm text-purple-950 block">
-                      帳號身分：平台管理員（最高治理權限）
+              /* 一般會員（提問者 / 解答者）個人資料設定、問卷、專家審查與條款簽署 */
+              <div className="space-y-6">
+                {/* 身份切換區域 */}
+                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 text-amber-600" />
+                    <span className="font-bold text-sm text-amber-950">
+                      目前模式：{currentUser.role === 'solver' ? '解答者模式' : '提問者模式'}
                     </span>
-                    <span className="text-[11px] text-purple-800">
-                      管理員身分固定，不可變換為提問者或解答者身分。如需體驗一般會員流程，請至「切換帳號」選擇其他帳號。
-                    </span>
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 rounded-lg bg-purple-200 text-purple-950 border border-purple-300 text-[11px] font-black shrink-0">
-                  管理員身分不可變換
-                </span>
-              </div>
-            )}
-
-            {/* 基本帳號資訊 */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider">基本帳號資訊與頭像照片</h3>
-
-              {/* 個人頭像照片上傳 (一次保留1張・永久保存・限制2MB內) */}
-              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="relative group shrink-0">
-                    <img
-                      src={avatar || currentUser.avatar}
-                      alt={currentUser.name}
-                      className="w-16 h-16 rounded-2xl object-cover ring-2 ring-stone-200 shadow-2xs"
+                    <HelpTooltip
+                      title="身份切換說明"
+                      content="一般會員帳號可隨時在提問者與解答者身份間切換，無須額外註冊。提問發布與方案解題隨時無縫使用。"
                     />
+                  </div>
+
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => avatarInputRef.current?.click()}
-                      className="absolute inset-0 bg-stone-900/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white"
-                      title="點擊選取新頭像照片"
+                      onClick={() => switchRole('questioner')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        currentUser.role === 'questioner'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-50'
+                      }`}
                     >
-                      <Camera className="w-5 h-5" />
+                      提問者身份
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => switchRole('solver')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        currentUser.role === 'solver'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-50'
+                      }`}
+                    >
+                      解答者身份
                     </button>
                   </div>
+                </div>
 
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-xs font-bold text-stone-900">個人頭像照片</h4>
+            {/* 手機/平板端子分頁切換列 (大螢幕 xl 則雙欄並排：問卷在右側) */}
+            <div className="xl:hidden flex items-center gap-2 p-1.5 bg-stone-100/90 rounded-2xl border border-stone-200">
+              <button
+                type="button"
+                onClick={() => setProfileSubTab('basic')}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  profileSubTab === 'basic'
+                    ? 'bg-amber-500 text-stone-950 shadow-2xs'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                }`}
+              >
+                <UserIcon className="w-4 h-4" />
+                <span>基本資料與帳戶設定</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProfileSubTab('survey')}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  profileSubTab === 'survey'
+                    ? 'bg-amber-500 text-stone-950 shadow-2xs'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                }`}
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>問卷(客戶調查)・得 1 週體驗</span>
+              </button>
+            </div>
+
+            {/* 雙欄主容器：大螢幕時問卷位於基本資料右側 */}
+            <div className="xl:grid xl:grid-cols-12 xl:gap-6 items-start space-y-6 xl:space-y-0">
+              {/* 左側欄：個人基本資料與收退款帳戶（個別獨立儲存） */}
+              <div className={`xl:col-span-7 space-y-6 ${profileSubTab === 'basic' ? 'block' : 'hidden xl:block'}`}>
+                {/* 1. 基本帳號資訊 */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-2xs">
+                        <UserIcon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-black text-stone-900">個人基本資料</h4>
+                        <p className="text-[11px] text-stone-500">維持最新個人資訊以利商案對接與實名專家認證</p>
+                      </div>
                     </div>
-                    <p className="text-[11px] text-stone-500 leading-relaxed">
-                      支援常見圖片格式（上傳限制單檔 <strong>2MB 內</strong>），更換頭像時自動覆蓋原圖檔。
-                    </p>
+                    <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 text-[10px] font-bold border border-stone-200">
+                      個別獨立儲存
+                    </span>
+                  </div>
+
+                  {/* 個人頭像照片上傳 */}
+                  <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="relative group shrink-0">
+                        <img
+                          src={avatar || currentUser.avatar}
+                          alt={currentUser.name}
+                          className="w-14 h-14 rounded-2xl object-cover ring-2 ring-stone-200 shadow-2xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => avatarInputRef.current?.click()}
+                          className="absolute inset-0 bg-stone-900/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white"
+                          title="點擊選取新頭像照片"
+                        >
+                          <Camera className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <h5 className="text-xs font-bold text-stone-900">個人頭像照片</h5>
+                        <p className="text-[11px] text-stone-500">
+                          支援常見圖檔（單檔 2MB 內），更換時自動覆蓋原檔案。
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 self-stretch sm:self-auto">
+                      <input
+                        type="file"
+                        ref={avatarInputRef}
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-amber-600" />
+                        <span>更換頭像照片</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {avatarError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-bold flex items-center gap-1.5 animate-in fade-in">
+                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                      <span>{avatarError}</span>
+                    </div>
+                  )}
+
+                  {/* 姓名與專業頭銜 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">姓名 / 暱稱 <span className="text-rose-500">*</span></label>
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">專業頭銜 / 職位 <span className="text-rose-500">*</span></label>
+                      <input
+                        type="text"
+                        required
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="例如：資深全端工程師、品牌行銷顧問"
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 依序包含：性別、年齡、專業領域、薪水 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">性別認同 <span className="text-rose-500">*</span></label>
+                      <select
+                        value={userGender}
+                        onChange={(e) => setUserGender(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                      >
+                        <option value="male">男性 (Male)</option>
+                        <option value="female">女性 (Female)</option>
+                        <option value="other">其他多元性別 (Other)</option>
+                        <option value="undisclosed">不便透露 (Prefer not to say)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">年齡層級 <span className="text-rose-500">*</span></label>
+                      <select
+                        value={userAgeGroup}
+                        onChange={(e) => setUserAgeGroup(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                      >
+                        <option value="under_18">18 歲以下</option>
+                        <option value="18_24">18 ~ 24 歲</option>
+                        <option value="25_34">25 ~ 34 歲</option>
+                        <option value="35_44">35 ~ 44 歲</option>
+                        <option value="45_54">45 ~ 54 歲</option>
+                        <option value="55_above">55 歲以上</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">核心專業領域 <span className="text-rose-500">*</span></label>
+                      <select
+                        value={domain}
+                        onChange={(e) => setDomain(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                      >
+                        <option value="創新創業">創新創業 (Startup & Venture)</option>
+                        <option value="資訊科技">資訊科技 (Tech & Software)</option>
+                        <option value="商業行銷">商業行銷 (Marketing & Growth)</option>
+                        <option value="設計創意">設計創意 (Design & Creative)</option>
+                        <option value="法律合規">法律合規 (Legal & Compliance)</option>
+                        <option value="金融投資">金融投資 (Finance & Investment)</option>
+                        <option value="營運管理">營運管理 (Operations & Management)</option>
+                        <option value="日常綜合">日常綜合 (General & Others)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">目前薪水 (年薪區間) <span className="text-rose-500">*</span></label>
+                      <select
+                        value={userAnnualSalary}
+                        onChange={(e) => setUserAnnualSalary(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                      >
+                        <option value="under_500k">未滿 50 萬</option>
+                        <option value="500k_1000k">50 萬 - 100 萬</option>
+                        <option value="1000k_2000k">100 萬 - 200 萬</option>
+                        <option value="2000k_3000k">200 萬 - 300 萬</option>
+                        <option value="above_3000k">300 萬以上</option>
+                        <option value="undisclosed">不方便透露</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">行業細分 <span className="text-rose-500">*</span></label>
+                      <input
+                        type="text"
+                        required
+                        value={userIndustry}
+                        onChange={(e) => setUserIndustry(e.target.value)}
+                        placeholder="例如：資訊軟體、金融財務、生技醫療"
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">聯絡電話 <span className="text-rose-500">*</span></label>
+                      <input
+                        type="tel"
+                        required
+                        value={userPhone}
+                        onChange={(e) => setUserPhone(e.target.value)}
+                        placeholder="0912-345-678"
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">所屬機構 / 公司名稱 <span className="text-stone-400 font-normal">(選填)</span></label>
+                    <input
+                      type="text"
+                      value={userCompany}
+                      onChange={(e) => setUserCompany(e.target.value)}
+                      placeholder="公司、事務所或研究機構"
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">個人簡介 / 專業背景</label>
+                    <textarea
+                      rows={3}
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="簡述您的專業領域、實戰經驗與擅長解決之問題..."
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                    />
+                  </div>
+
+                  {basicSaveSuccessMsg && (
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{basicSaveSuccessMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={handleSaveBasicProfile}
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Save className="w-3.5 h-3.5 text-stone-950" />
+                      <span>儲存基本資料</span>
+                    </button>
                   </div>
                 </div>
 
-                <div className="shrink-0 self-stretch sm:self-auto flex items-center gap-2">
-                  <input
-                    type="file"
-                    ref={avatarInputRef}
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => avatarInputRef.current?.click()}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                  >
-                    <Upload className="w-3.5 h-3.5 text-amber-600" />
-                    <span>更換頭像照片</span>
-                  </button>
+                {/* 2. 收退款帳戶設定（個別獨立儲存） */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-amber-50/40 border border-stone-200 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-2xs">
+                        <Wallet className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-black text-stone-900">收退款帳戶設定</h4>
+                        <p className="text-[11px] text-stone-500">設定平台撥款（解答賞金）與退款（託管解約）之指定銀行帳戶</p>
+                      </div>
+                    </div>
+                    {accountNumber.trim() ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> 已綁定撥款帳戶
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-stone-200 text-stone-600 text-[10px] font-bold">
+                        未設定
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-700 mb-1">銀行名稱與代碼</label>
+                      <select
+                        value={bankName}
+                        onChange={(e) => {
+                          setBankName(e.target.value);
+                          setBankCode(e.target.value.split(' ')[0] || '822');
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                      >
+                        <option value="822 中國信託商業銀行">822 中國信託商業銀行</option>
+                        <option value="013 國泰世華商業銀行">013 國泰世華商業銀行</option>
+                        <option value="808 玉山商業銀行">808 玉山商業銀行</option>
+                        <option value="012 台北富邦商業銀行">012 台北富邦商業銀行</option>
+                        <option value="007 第一商業銀行">007 第一商業銀行</option>
+                        <option value="008 華南商業銀行">008 華南商業銀行</option>
+                        <option value="004 臺灣銀行">004 臺灣銀行</option>
+                        <option value="700 中華郵政">700 中華郵政</option>
+                        <option value="812 台新國際商業銀行">812 台新國際商業銀行</option>
+                        <option value="005 臺灣土地銀行">005 臺灣土地銀行</option>
+                        <option value="009 彰化商業銀行">009 彰化商業銀行</option>
+                        <option value="017 兆豐國際商業銀行">017 兆豐國際商業銀行</option>
+                        <option value="807 永豐商業銀行">807 永豐商業銀行</option>
+                        <option value="803 聯邦商業銀行">803 聯邦商業銀行</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-700 mb-1">分行名稱</label>
+                      <input
+                        type="text"
+                        value={branchName}
+                        onChange={(e) => setBranchName(e.target.value)}
+                        placeholder="例如：敦南分行、營業部"
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-700 mb-1">帳戶號碼 (存款帳號)</label>
+                      <input
+                        type="text"
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value)}
+                        placeholder="例如：0000123456789"
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-700 mb-1">戶名 (必須與實名相同)</label>
+                      <input
+                        type="text"
+                        value={accountHolder}
+                        onChange={(e) => setAccountHolder(e.target.value)}
+                        placeholder="例如：林書豪"
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {bankSaveSuccessMsg && (
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{bankSaveSuccessMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={handleSaveBankSettings}
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Save className="w-3.5 h-3.5 text-stone-950" />
+                      <span>儲存收退款帳戶</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {avatarError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-bold flex items-center gap-1.5 animate-in fade-in">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{avatarError}</span>
+              {/* 右側欄：服務調研問卷（按 性別、年齡、專業領域、職業、薪水、其他問題 順序排列） */}
+              <div className={`xl:col-span-5 space-y-4 ${profileSubTab === 'survey' ? 'block' : 'hidden xl:block'}`}>
+                {/* 填問卷得免費體驗尊榮橫幅 */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-purple-500/20 border border-amber-300 space-y-2 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
+                    <h4 className="text-xs sm:text-sm font-black text-stone-900">
+                      🎁 填寫調研問卷，立即免費領取【一週達人方案體驗】！
+                    </h4>
+                  </div>
+                  <p className="text-xs text-stone-700 leading-relaxed font-medium">
+                    填寫完畢獲得<strong>一週達人方案體驗（雙 AI 功能超值雙享）</strong>！前 500 名完成者更享有<strong>一週權威方案體驗（完全 0 服務費 + 高價值提案幫你優先推薦）</strong>！
+                  </p>
+                  {currentUser.surveyData?.completedAt && (
+                    <div className="pt-1 flex items-center gap-2 text-xs font-bold text-emerald-800">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>您已完成問卷並享有尊榮方案體驗！（更新時間：{new Date(currentUser.surveyData.completedAt).toLocaleDateString()}）</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">姓名 / 暱稱</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">專業頭銜 / 職位</label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white"
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">個人簡介 / 專業背景</label>
-                <textarea
-                  rows={3}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="簡述您的專業領域、實戰經驗與擅長解決之問題..."
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white"
-                />
-                <div className="mt-2.5 flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Save className="w-3.5 h-3.5 text-stone-950" />
-                    <span>儲存個人簡介與設定</span>
-                  </button>
+                <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-stone-200/80 pb-2.5">
+                    <h3 className="text-xs font-black text-stone-900 uppercase tracking-wider flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4 text-amber-600" />
+                      <span>問卷 (客戶調查)</span>
+                    </h3>
+                    <span className="text-[10px] text-stone-500 font-bold bg-stone-200/80 px-2 py-0.5 rounded-full">
+                      精準統計排序
+                    </span>
+                  </div>
+
+                  {/* 嚴格按照：性別、年齡、專業領域、職業、薪水、其他問題 順序排 */}
+
+                  {/* 1. 性別 */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                      <span>1. 您的性別認同？</span>
+                      <span className="text-[10px] text-stone-400 font-normal">單選</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {[
+                        { key: 'male', label: '男 (Male)' },
+                        { key: 'female', label: '女 (Female)' },
+                        { key: 'other', label: '其他多元性別' },
+                        { key: 'undisclosed', label: '不便透露' },
+                      ].map((item) => (
+                        <label
+                          key={item.key}
+                          className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                            userGender === item.key
+                              ? 'bg-amber-100/90 border-amber-400 font-bold text-amber-950'
+                              : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="survey_gender"
+                            checked={userGender === item.key}
+                            onChange={() => setUserGender(item.key as any)}
+                            className="w-4 h-4 accent-amber-600"
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. 年齡 */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                      <span>2. 您的年齡區間？</span>
+                      <span className="text-[10px] text-stone-400 font-normal">單選</span>
+                    </label>
+                    <select
+                      value={userAgeGroup}
+                      onChange={(e) => setUserAgeGroup(e.target.value as any)}
+                      className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                    >
+                      <option value="under_18">18 歲以下</option>
+                      <option value="18_24">18 ~ 24 歲</option>
+                      <option value="25_34">25 ~ 34 歲</option>
+                      <option value="35_44">35 ~ 44 歲</option>
+                      <option value="45_54">45 ~ 54 歲</option>
+                      <option value="55_above">55 歲以上</option>
+                    </select>
+                  </div>
+
+                  {/* 3. 專業領域 */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                      <span>3. 您的主要相關專業領域？</span>
+                      <span className="text-[10px] text-stone-400 font-normal">單選/多選對應</span>
+                    </label>
+                    <select
+                      value={domain}
+                      onChange={(e) => setDomain(e.target.value as any)}
+                      className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                    >
+                      <option value="創新創業">創新創業 (商業模式、融資路演)</option>
+                      <option value="資訊科技">資訊科技 (軟體系統、雲端AI架構)</option>
+                      <option value="商業行銷">商業行銷 (品牌行銷、增長獲客)</option>
+                      <option value="設計創意">設計創意 (UI/UX視覺、品牌形象)</option>
+                      <option value="法律合規">法律合規 (股權加盟、勞資合約)</option>
+                      <option value="金融投資">金融投資 (財務稅務、併購估值)</option>
+                      <option value="營運管理">營運管理 (敏捷流程、組織管理)</option>
+                      <option value="日常綜合">日常綜合 (跨界經驗、職涯諮詢)</option>
+                    </select>
+                  </div>
+
+                  {/* 4. 職業 */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                      <span>4. 您目前的職業 / 行業職稱？</span>
+                      <span className="text-[10px] text-stone-400 font-normal">填寫或選擇</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="例如：軟體工程師、產品經理、行銷企劃、企業創辦人..."
+                      className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none mb-1.5"
+                    />
+                    <div className="flex flex-wrap gap-1.5">
+                      {['軟體工程師', '產品經理', '行銷主管', '創業者/負責人', '專業顧問', '自由接案者', '學生'].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setTitle(preset)}
+                          className="px-2 py-0.5 rounded-lg bg-stone-100 hover:bg-amber-100 hover:text-amber-900 border border-stone-200 text-[10px] font-medium transition-colors cursor-pointer"
+                        >
+                          +{preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 5. 薪水 */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                      <span>5. 您目前薪水 (年薪區間)？</span>
+                      <span className="text-[10px] text-stone-400 font-normal">單選</span>
+                    </label>
+                    <select
+                      value={userAnnualSalary}
+                      onChange={(e) => setUserAnnualSalary(e.target.value as any)}
+                      className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                    >
+                      <option value="under_500k">未滿 50 萬</option>
+                      <option value="500k_1000k">50 萬 - 100 萬</option>
+                      <option value="1000k_2000k">100 萬 - 200 萬</option>
+                      <option value="2000k_3000k">200 萬 - 300 萬</option>
+                      <option value="above_3000k">300 萬以上</option>
+                      <option value="undisclosed">不方便透露</option>
+                    </select>
+                  </div>
+
+                  {/* 6. 其他深入調研問題 */}
+                  <div className="pt-2 border-t border-stone-200 space-y-3.5">
+                    <h5 className="text-[11px] font-black text-amber-800 uppercase tracking-wider">
+                      6. 其他深入調研問題
+                    </h5>
+
+                    {/* 6-1: 期望服務 */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
+                        6-1. 您最期望在 IdeaX 獲得什麼服務或體驗？(可多選)
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                        {[
+                          '發布懸賞徵求專家解方',
+                          '提供解答賺取有償回饋',
+                          '大師專家一對一私聊諮詢',
+                          '專案客製化落地驗收交付',
+                          '探索市場痛點與創新商機',
+                          '拓展跨界人脈網絡',
+                        ].map((service) => {
+                          const checked = surveyDesiredServices.includes(service);
+                          return (
+                            <label
+                              key={service}
+                              className={`p-2 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                                checked ? 'bg-amber-100/90 border-amber-400 font-bold text-amber-950' : 'bg-white border-stone-200 text-stone-700'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSurveyDesiredServices((prev) => [...prev, service]);
+                                  } else {
+                                    setSurveyDesiredServices((prev) => prev.filter((s) => s !== service));
+                                  }
+                                }}
+                                className="w-3.5 h-3.5 accent-amber-600 rounded"
+                              />
+                              <span className="text-[11px]">{service}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 6-2: 提問預算 */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
+                        6-2. 若您遇到棘手問題，一次性尋求專家解答願支付多少預算？
+                      </label>
+                      <select
+                        value={surveyWillingQuestionBudget}
+                        onChange={(e) => setSurveyWillingQuestionBudget(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                      >
+                        <option value="under_500">NT$ 500 以下</option>
+                        <option value="500_2000">NT$ 500 ~ 2,000</option>
+                        <option value="2000_5000">NT$ 2,000 ~ 5,000</option>
+                        <option value="5000_20000">NT$ 5,000 ~ 20,000</option>
+                        <option value="above_20000">NT$ 20,000 以上</option>
+                        <option value="none">尚未有付費意願</option>
+                      </select>
+                    </div>
+
+                    {/* 6-3: 打開頻率 */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
+                        6-3. 您預計多久打開一次 IdeaX 平台？
+                      </label>
+                      <select
+                        value={surveyUsageFrequency}
+                        onChange={(e) => setSurveyUsageFrequency(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                      >
+                        <option value="multiple_daily">每天數次</option>
+                        <option value="daily">每天至少 1 次</option>
+                        <option value="few_times_weekly">每週 2~3 次</option>
+                        <option value="weekly">每週 1 次</option>
+                        <option value="on_demand">偶爾或有特定需求才開</option>
+                      </select>
+                    </div>
+
+                    {/* 6-4: 發展副業 */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
+                        6-4. 您是否願意將在 IdeaX 提供解答發展為您的有償副業？
+                      </label>
+                      <select
+                        value={surveyWillingToBeSideHustle}
+                        onChange={(e) => setSurveyWillingToBeSideHustle(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                      >
+                        <option value="very_willing">非常願意（發展為主力副業）</option>
+                        <option value="considering">考慮中（有空檔兼職嘗試）</option>
+                        <option value="open_minded">不排斥但目前無規劃</option>
+                        <option value="not_interested">目前不考慮</option>
+                      </select>
+                    </div>
+
+                    {/* 6-5: 解答者方案付費意願 */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
+                        6-5. 您是否願意花錢訂閱解答者的優惠方案？
+                      </label>
+                      <select
+                        value={surveyWillingToSubscribeSolverPlan}
+                        onChange={(e) => setSurveyWillingToSubscribeSolverPlan(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
+                      >
+                        <option value="willing">有意願訂閱（享有抽成減免與優先推薦）</option>
+                        <option value="depends_profit">視平台接案獲利情況而定</option>
+                        <option value="free_tier_first">先使用免費版，有高收益再考慮</option>
+                        <option value="unwilling">目前無付費訂閱意願</option>
+                      </select>
+                    </div>
+
+                    {/* 6-6: 給我們的建議，自由填寫 */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                        <span>6-6. 給我們的建議（自由填寫）</span>
+                        <span className="text-[10px] text-stone-400 font-normal">自由選填</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={surveyFeedback}
+                        onChange={(e) => setSurveyFeedback(e.target.value)}
+                        placeholder="歡迎分享您對平台功能、合作機制、操作體驗或其他任何建議，我們非常重視您的回饋..."
+                        className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none leading-relaxed"
+                      />
+                    </div>
+                  </div>
+
+                  {surveySaveSuccessMsg && (
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{surveySaveSuccessMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleSaveSurvey}
+                      className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4 text-stone-950" />
+                      <span>儲存問卷並領取一週尊榮方案體驗</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4705,11 +6335,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
 
             <button
-              type="submit"
+              type="button"
+              onClick={handleSaveProfile}
               className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
             >
-              儲存個人檔案與設定
+              儲存全站個人檔案與隱私偏好
             </button>
+          </div>
+        )}
 
             {/* 本裝置已登錄帳號（快速切換與管理） */}
             <div id="account-switch-section" className="p-4 sm:p-5 rounded-3xl bg-amber-500/10 border border-amber-300 space-y-4">
@@ -5031,7 +6664,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <span>安全登出目前帳號</span>
               </button>
             </div>
-          </form>
+          </div>
         )}
 
         {/* TAB 3: 我的案件 */}
@@ -5540,6 +7173,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           <AdminUserManagementTab />
         )}
 
+        {/* 管理員專用：用戶分佈與習慣統計 */}
+        {activeTab === 'admin_user_analytics' && (
+          <AdminUserAnalyticsTab />
+        )}
+
         {/* 管理員專用：AI-CRM 系統功能設定和管理 */}
         {activeTab === 'admin_aicrm' && currentUser.role === 'admin' && (
           <AdminAiCrmTab
@@ -5923,10 +7561,120 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         </div>
       )}
 
+      {/* 平台環境開關二次確認視窗 */}
+      {pendingModeConfirm && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                pendingModeConfirm.nextState ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-700'
+              }`}>
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-stone-900">
+                  {pendingModeConfirm.type === 'liveOperation'
+                    ? (pendingModeConfirm.nextState ? '確認開啟【營運模式】？' : '確認關閉【營運模式】？')
+                    : pendingModeConfirm.type === 'demo'
+                    ? (pendingModeConfirm.nextState ? '確認開啟【測試環境】？' : '確認關閉【測試環境】？')
+                    : pendingModeConfirm.type === 'noPayment'
+                    ? (pendingModeConfirm.nextState ? '確認開啟【無金流環境】？' : '確認關閉【無金流環境】？')
+                    : (pendingModeConfirm.nextState ? '確認執行【隱藏測試帳號】？' : '確認執行【公開顯示 測試帳號】？')}
+                </h3>
+                <span className="text-[11px] text-stone-500 font-bold">
+                  系統運營底層模式變更安全確認
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-700 leading-relaxed space-y-2">
+              {pendingModeConfirm.type === 'liveOperation' && (
+                pendingModeConfirm.nextState ? (
+                  <p>
+                    <strong>即將開啟【正式營運模式】：</strong><br />
+                    系統將自動<strong>隱藏所有測試帳號</strong>（林書豪、陳怡君、訪客等，僅保留管理員與真實註冊會員），並且<strong>關閉無金流環境</strong>（全面啟用正式商業金流、會員訂閱與履約託管機制）。
+                  </p>
+                ) : (
+                  <p>
+                    <strong>即將關閉【正式營運模式】：</strong><br />
+                    系統將恢復顯示測試帳號供內部測試與驗收使用。
+                  </p>
+                )
+              )}
+
+              {pendingModeConfirm.type === 'demo' && (
+                pendingModeConfirm.nextState ? (
+                  <p>
+                    <strong>即將開啟測試環境：</strong><br />
+                    全站將載入預設示範問題、精選提案、模擬專家與測試交易數據，解封測試帳號，供功能探索與雙邊市場展示。
+                  </p>
+                ) : (
+                  <p>
+                    <strong>即將關閉測試環境：</strong><br />
+                    系統將隱藏所有示範問題、假提案與模擬假用戶，切換為純淨營運模式，僅保留各身分核心測試帳號與真實註冊用戶。
+                  </p>
+                )
+              )}
+
+              {pendingModeConfirm.type === 'noPayment' && (
+                pendingModeConfirm.nextState ? (
+                  <p>
+                    <strong>即將開啟無金流環境：</strong><br />
+                    全站將隱藏會員訂閱方案與儲值點數機制；只開放 L0 免費問題與交流，聊天室「詢價」改為「諮詢」、「報價」改為「提案」，金流運作說明一併隱藏。
+                  </p>
+                ) : (
+                  <p>
+                    <strong>即將關閉無金流環境：</strong><br />
+                    恢復標準金流運營模式，重新開啟會員方案訂閱、點數儲值與懸賞金功能。
+                  </p>
+                )
+              )}
+
+              {pendingModeConfirm.type === 'hideTestAccounts' && (
+                pendingModeConfirm.nextState ? (
+                  <p>
+                    <strong>即將執行【隱藏測試帳號】：</strong><br />
+                    全站切換帳號介面與用戶列表中將完全隱藏林書豪（提問者）、陳怡君（專家）及訪客等測試帳號，僅保留超級管理員與真實註冊用戶。
+                  </p>
+                ) : (
+                  <p>
+                    <strong>即將執行【公開顯示 測試帳號】：</strong><br />
+                    重新顯示核心測試帳號（林書豪、陳怡君、訪客等），便於進行跨身分權限切換與情境測試。
+                  </p>
+                )
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setPendingModeConfirm(null)}
+                className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmModeToggle}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs ${
+                  pendingModeConfirm.nextState
+                    ? 'bg-amber-500 hover:bg-amber-400 text-stone-950'
+                    : 'bg-stone-900 hover:bg-stone-800 text-white'
+                }`}
+              >
+                確認{pendingModeConfirm.nextState ? (pendingModeConfirm.type === 'hideTestAccounts' ? '隱藏' : '開啟') : (pendingModeConfirm.type === 'hideTestAccounts' ? '公開' : '關閉')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <div className="p-4 border-t border-stone-200 bg-stone-50 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-xs text-stone-500">創點子 IdeaX • 個人中心</span>
+          <span className="text-xs text-stone-500">
+            創點子 IdeaX • {currentUser.role === 'admin' ? '管理員控制台' : '個人中心'}
+          </span>
         </div>
         {!isFullPage && (
           <button
@@ -5937,6 +7685,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           </button>
         )}
       </div>
+
+      {/* 管理員專屬：畫面頁尾自動印上淡淡細細的平台版本號與最近更新時間 */}
+      {currentUser.role === 'admin' && (
+        <div className="py-2 text-center bg-stone-50/70 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
+          IdeaX 商業智庫管理平台 · 平台版本號：v2026.09.28-release · 最近更新時間：{new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })} {new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })} · 系統正常
+        </div>
+      )}
     </div>
   );
 

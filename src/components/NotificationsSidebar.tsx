@@ -124,7 +124,7 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                 </div>
                 <p className="text-xs text-stone-500">
                   {currentUser?.role === 'admin'
-                    ? '即時掌握案件申訴調解、違規回報與官方內部郵件'
+                    ? '即時掌握案件申訴調解、違規回報與平台官方郵件'
                     : '即時掌握提問解答、懸賞入帳與私聊進度'}
                 </p>
               </div>
