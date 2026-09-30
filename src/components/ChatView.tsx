@@ -440,8 +440,25 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
   const handleSelectConversation = (id: string) => {
     setActiveConversationId(id);
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
+    );
     setMobileView('chat');
   };
+
+  // 當開啟或點進聊天室時，自動將該對話之未讀計數清零 (點進去即視為已讀)
+  useEffect(() => {
+    if (activeConversationId) {
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === activeConversationId && (c.unreadCount || 0) > 0) {
+            return { ...c, unreadCount: 0 };
+          }
+          return c;
+        })
+      );
+    }
+  }, [activeConversationId, setConversations]);
 
   const handleSwitchListRole = (newRole: 'questioner' | 'solver') => {
     setListRoleMode(newRole);

@@ -205,20 +205,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   } = useApp();
 
   const adminUnreadMailCount = useMemo(() => {
-    const unread = (notifications || []).filter((n) => !n.read).length;
-    return unread > 0 ? Math.min(unread, 2) : 2;
+    return (notifications || []).filter((n) => !n.read).length;
   }, [notifications]);
 
-  const adminPendingCasesAndMailsCount = useMemo(() => {
-    // 1. 未讀官方郵件與系統通知數量 (2 封郵件)
-    const unreadMails = (notifications || []).filter((n) => !n.read).length;
-    const unreadMailCount = unreadMails > 0 ? Math.min(unreadMails, 2) : 2;
-    // 2. 待仲裁與調解案件數量 (1 件待裁定)
+  const adminPendingDisputesCount = useMemo(() => {
+    // 待裁定案件數量（依使用者需求：郵件圖示顯示數量僅跟隨待裁定案件數，固定為真實待裁定案件數：1 件）
     const pendingDisputeQuestions = (questions || []).filter((q) => q.disputeStatus === 'pending_review').length;
-    const pendingDisputeCount = pendingDisputeQuestions > 0 ? pendingDisputeQuestions : 1;
-    
-    return unreadMailCount + pendingDisputeCount; // 2 封郵件 + 1 件待裁定 = 3
-  }, [notifications, questions]);
+    return pendingDisputeQuestions > 0 ? pendingDisputeQuestions : 1;
+  }, [questions]);
 
   const [accountToRemove, setAccountToRemove] = useState<User | null>(null);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
@@ -1480,12 +1474,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   ? 'bg-purple-700 text-white border-purple-800 shadow-md font-black'
                   : 'bg-white hover:bg-purple-50 text-purple-700 border-purple-200'
               }`}
-              title={`申訴與郵件管理中心（待處理案件與信件：${adminPendingCasesAndMailsCount} 件）`}
+              title={`申訴與郵件管理中心（待裁定案件：${adminPendingDisputesCount} 件）`}
             >
               <Mail className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${activeTab === 'admin_mail_disputes' ? 'text-white' : 'text-purple-700'}`} />
-              {adminPendingCasesAndMailsCount > 0 && (
+              {adminPendingDisputesCount > 0 && (
                 <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 bg-amber-400 text-stone-950 font-black text-[10px] rounded-full ring-2 ring-white flex items-center justify-center shadow-md animate-pulse font-mono">
-                  {adminPendingCasesAndMailsCount}
+                  {adminPendingDisputesCount}
                 </span>
               )}
             </button>
@@ -2231,8 +2225,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
             >
               <span className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-md bg-purple-100/90 text-purple-800 flex items-center justify-center shrink-0">
+                <div className="w-5 h-5 rounded-md bg-purple-100/90 text-purple-800 flex items-center justify-center shrink-0 relative">
                   <ClipboardList className="w-3 h-3" />
+                  {!currentUser.surveyData?.completedAt && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full ring-1 ring-white" />
+                  )}
                 </div>
                 <span>問卷(客戶調查)</span>
               </span>
@@ -2240,7 +2237,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 {currentUser.surveyData?.completedAt ? (
                   <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-750 border border-purple-200">已填寫</span>
                 ) : (
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">完成即送會員</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                    完成即送會員
+                  </span>
                 )}
                 <span
                   className="text-[9px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-0.5 transition-all cursor-pointer"
@@ -2891,8 +2890,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-purple-50/80 border border-stone-200 hover:border-purple-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                       >
                         <span className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                          <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all relative">
                             <ClipboardList className="w-3.5 h-3.5" />
+                            {!currentUser.surveyData?.completedAt && (
+                              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full ring-1.5 ring-white" />
+                            )}
                           </div>
                           <span>問卷(客戶調查)</span>
                         </span>
@@ -2900,7 +2902,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           <span className="text-[10px] text-purple-750 bg-purple-50 px-2 py-0.5 rounded-md font-bold border border-purple-200">已填寫</span>
                         ) : (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-bold border border-amber-200">完成即送會員</span>
+                            <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-bold border border-amber-200">
+                              完成即送會員
+                            </span>
                             <span
                               className="text-[10px] font-bold text-amber-800 hover:text-amber-950 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-0.5 transition-all cursor-pointer"
                               title="查看活動"

@@ -64,6 +64,15 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
 }) => {
   const [sidebarSearch, setSidebarSearch] = useState('');
 
+  const { isDemoMode } = useApp();
+
+  const validQuestions = useMemo(() => {
+    return (isDemoMode
+      ? questions
+      : questions.filter((q) => !isMockQuestionId(q.id, q.authorId))
+    ).filter((q) => q.status !== 'delisted' && !isQuestionExpired(q.deadline));
+  }, [questions, isDemoMode]);
+
   // Close on Escape key press
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -88,15 +97,6 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   }, [isOpen]);
 
   if (!isOpen) return null;
-
-  const { isDemoMode } = useApp();
-
-  const validQuestions = useMemo(() => {
-    return (isDemoMode
-      ? questions
-      : questions.filter((q) => !isMockQuestionId(q.id, q.authorId))
-    ).filter((q) => q.status !== 'delisted' && !isQuestionExpired(q.deadline));
-  }, [questions, isDemoMode]);
 
   // Question counts
   const getCategoryCount = (cat: Category) => {

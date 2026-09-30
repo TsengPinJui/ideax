@@ -12,6 +12,7 @@ import {
   Award,
   Wallet,
   Sparkles,
+  Check,
   CheckCheck,
   Clock,
   ChevronRight,
@@ -19,6 +20,8 @@ import {
   Filter,
   Info,
   Crown,
+  User,
+  Megaphone,
 } from 'lucide-react';
 
 interface NotificationsSidebarProps {
@@ -41,14 +44,60 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
   const {
     currentUser,
     notifications,
+    personalNotifications,
+    systemNotifications,
+    unreadPersonalCount,
+    unreadSystemCount,
+    hasUnreadSystemNotifs,
     markNotificationRead,
     markAllNotificationsRead,
+    markAllPersonalNotificationsRead,
+    markAllSystemNotificationsRead,
     questions,
     setSelectedQuestion,
     startDirectChat,
+    availableUsers,
   } = useApp();
 
+  const [categoryTab, setCategoryTab] = useState<'personal' | 'system'>('personal');
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread'>('all');
+
+  // 高亮突顯訊息中的用戶名（藍色字體）
+  const highlightUserNames = (text: string) => {
+    if (!text) return null;
+    const knownNames = Array.from(
+      new Set([
+        '張先生',
+        '陳副總',
+        '林總監',
+        '柯育任',
+        '陳怡君',
+        '林書豪',
+        '王大明',
+        '黃專員',
+        '許顧問',
+        '劉創辦人',
+        ...(availableUsers || []).map((u) => u.name),
+      ])
+    ).filter(Boolean);
+
+    if (knownNames.length === 0) return text;
+
+    const pattern = new RegExp(`(${knownNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'g');
+    const parts = text.split(pattern);
+
+    if (parts.length === 1) return text;
+
+    return parts.map((part, i) =>
+      knownNames.includes(part) ? (
+        <span key={i} className="text-blue-600 font-bold">
+          {part}
+        </span>
+      ) : (
+        part
+      )
+    );
+  };
 
   // Close on Escape key press
   useEffect(() => {
@@ -73,10 +122,12 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
     };
   }, [isOpen]);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const currentCategoryList = categoryTab === 'personal' ? personalNotifications : systemNotifications;
+  const currentUnreadCount = categoryTab === 'personal' ? unreadPersonalCount : unreadSystemCount;
+  
   const filteredNotifications = activeFilter === 'unread'
-    ? notifications.filter((n) => !n.read)
-    : notifications;
+    ? currentCategoryList.filter((n) => !n.read)
+    : currentCategoryList;
 
   if (!isOpen) return null;
 
@@ -116,32 +167,21 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                   <h2 className="text-base sm:text-lg font-black text-stone-900 tracking-tight">
                     {currentUser?.role === 'admin' ? '管理員內部郵件與申訴中心' : '通知中心'}
                   </h2>
-                  {unreadCount > 0 && (
+                  {unreadPersonalCount > 0 && (
                     <span className="text-xs bg-amber-500 text-stone-950 font-black px-2 py-0.5 rounded-full shadow-2xs">
-                      {unreadCount} 未讀
+                      {unreadPersonalCount} 則個人未讀
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-stone-500">
                   {currentUser?.role === 'admin'
                     ? '即時掌握案件申訴調解、違規回報與平台官方郵件'
-                    : '即時掌握提問解答、懸賞入帳與私聊進度'}
+                    : '即時掌握個人提問解答、方案入帳、私聊進度與平台系統公告'}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => markAllNotificationsRead()}
-                  className="px-2.5 py-1.5 text-xs font-bold text-stone-600 hover:text-amber-900 hover:bg-amber-50 rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
-                  title="全部標為已讀"
-                >
-                  <CheckCheck className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="hidden sm:inline">全部已讀</span>
-                </button>
-              )}
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={onClose}
@@ -153,45 +193,118 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
             </div>
           </div>
 
-          {/* Filter Tabs */}
-          <div className="px-4 sm:px-5 pt-3 pb-2 border-b border-stone-100 bg-white flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
+          {/* 1. Category Switcher: 個人通知 vs 系統通知 (各有獨立未讀計數與一鍵已讀) */}
+          <div className="px-4 sm:px-5 pt-3 pb-2 bg-stone-50/50 border-b border-stone-200/80">
+            <div className="grid grid-cols-2 gap-2 p-1 bg-stone-200/60 rounded-2xl">
+              {/* Tab 1: 個人通知 */}
+              <button
+                type="button"
+                onClick={() => setCategoryTab('personal')}
+                className={`py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                  categoryTab === 'personal'
+                    ? 'bg-white text-stone-900 shadow-sm font-black'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-white/40'
+                }`}
+              >
+                <User className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span className="whitespace-nowrap">個人通知</span>
+                {unreadPersonalCount > 0 ? (
+                  <span className="min-w-[18px] h-[18px] px-1 bg-amber-500 text-stone-950 font-mono font-black text-[10px] rounded-full flex items-center justify-center shadow-2xs shrink-0">
+                    {unreadPersonalCount > 99 ? '99+' : unreadPersonalCount}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-stone-400 font-mono shrink-0">
+                    ({personalNotifications.length})
+                  </span>
+                )}
+              </button>
+
+              {/* Tab 2: 系統通知 (僅顯示未讀數字) */}
+              <button
+                type="button"
+                onClick={() => setCategoryTab('system')}
+                className={`py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                  categoryTab === 'system'
+                    ? 'bg-white text-stone-900 shadow-sm font-black'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-white/40'
+                }`}
+              >
+                <Megaphone className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="whitespace-nowrap">系統通知</span>
+                
+                {unreadSystemCount > 0 ? (
+                  <span className="min-w-[18px] h-[18px] px-1 bg-rose-500 text-white font-mono font-black text-[10px] rounded-full flex items-center justify-center shadow-2xs shrink-0">
+                    {unreadSystemCount > 99 ? '99+' : unreadSystemCount}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-stone-400 font-mono shrink-0">
+                    ({systemNotifications.length})
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* 2. Sub-filter: 全部 vs 未讀 */}
+          <div className="px-4 sm:px-5 py-2.5 border-b border-stone-100 bg-white flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-lg">
               <button
                 type="button"
                 onClick={() => setActiveFilter('all')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
                   activeFilter === 'all'
                     ? 'bg-white text-stone-900 shadow-2xs font-black'
-                    : 'text-stone-600 hover:text-stone-900'
+                    : 'text-stone-500 hover:text-stone-900'
                 }`}
               >
-                {currentUser?.role === 'admin' ? `全部郵件 (${notifications.length})` : `全部通知 (${notifications.length})`}
+                全部 ({currentCategoryList.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveFilter('unread')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                   activeFilter === 'unread'
                     ? 'bg-white text-stone-900 shadow-2xs font-black'
-                    : 'text-stone-600 hover:text-stone-900'
+                    : 'text-stone-500 hover:text-stone-900'
                 }`}
               >
-                <span>未讀</span>
-                {unreadCount > 0 && (
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                )}
+                <span>未讀 ({currentUnreadCount})</span>
               </button>
             </div>
 
-            <span className="text-[11px] text-stone-400 font-mono">
-              共 {filteredNotifications.length} 則
-            </span>
+            <div className="flex items-center gap-2">
+              {/* 快捷一鍵已讀按鈕 (雙鉤圖示不用文字) */}
+              {currentUnreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (categoryTab === 'personal') {
+                      markAllPersonalNotificationsRead();
+                    } else {
+                      markAllSystemNotificationsRead();
+                    }
+                  }}
+                  className={`p-1 rounded-md border transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center ${
+                    categoryTab === 'personal'
+                      ? 'text-amber-800 bg-amber-50 hover:bg-amber-100 border-amber-200'
+                      : 'text-blue-800 bg-blue-50 hover:bg-blue-100 border-blue-200'
+                  }`}
+                  title={`一鍵已讀當前${categoryTab === 'personal' ? '個人' : '系統'}所有未讀通知`}
+                  aria-label={`一鍵已讀當前${categoryTab === 'personal' ? '個人' : '系統'}所有未讀通知`}
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <span className="text-[11px] text-stone-400 font-mono">
+                顯示 {filteredNotifications.length} 則
+              </span>
+            </div>
           </div>
 
           {/* Notifications List */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5">
-            {/* AI-CRM Real-time Follow-up Alert Card: 僅針對非管理員（一般用戶/解答者）展示 */}
-            {currentUser?.role !== 'admin' && (
+            {/* AI-CRM Real-time Follow-up Alert Card: 僅針對非管理員且在個人通知分頁展示 */}
+            {currentUser?.role !== 'admin' && categoryTab === 'personal' && (
               <div
                 onClick={() => {
                   if (onOpenAiCrm) {
@@ -213,7 +326,7 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                 </div>
 
                 <p className="text-xs text-stone-200 leading-relaxed group-hover:text-white transition-colors">
-                  「提問者張先生 3 天前檢視了您的提案尚未回覆，AI 建議發送補充資料；關注『跨境電商』主題看板新增 2 則高品質解題方案。」
+                  「提問者<span className="text-blue-400 font-black">張先生</span> 3 天前檢視了您的提案尚未回覆，AI 建議發送補充資料；關注『跨境電商』主題看板新增 2 則高品質解題方案。」
                 </p>
 
                 {/* 卡片底部操作區：左側點擊提示，右下角直接連到該建議用戶的聊天室捷徑 */}
@@ -241,10 +354,10 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                       onClose();
                     }}
                     className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 font-black text-[11px] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer shrink-0"
-                    title="直接連到張先生的私聊聊天室"
+                    title="直接連到私聊聊天室"
                   >
                     <MessageSquare className="w-3 h-3 fill-stone-950" />
-                    <span>前往張先生聊天室</span>
+                    <span>前往此聊天室</span>
                   </button>
                 </div>
               </div>
@@ -256,15 +369,20 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                   <Inbox className="w-7 h-7 stroke-[1.5]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-stone-700">目前沒有{activeFilter === 'unread' ? '未讀' : ''}通知</h3>
+                  <h3 className="text-sm font-bold text-stone-700">
+                    目前沒有{activeFilter === 'unread' ? '未讀' : ''}{categoryTab === 'personal' ? '個人' : '系統'}通知
+                  </h3>
                   <p className="text-xs text-stone-400 mt-1 max-w-xs">
-                    當有解答專家回應您的提問、懸賞被採納或收到私聊訊息時，將第一時間通知您。
+                    {categoryTab === 'personal'
+                      ? '當有專家回應您的提問、懸賞被採納或收到私聊訊息時，將第一時間通知您。'
+                      : '平台公告、AI 智能媒合與系統升級資訊將在此發布。'}
                   </p>
                 </div>
               </div>
             ) : (
               filteredNotifications.map((n) => {
                 const isUnread = !n.read;
+                const isSystem = n.category === 'system' || n.type === 'system' || n.type === 'ai_match';
                 return (
                   <div
                     key={n.id}
@@ -288,17 +406,26 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                     }}
                     className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer relative group ${
                       isUnread
-                        ? 'bg-amber-50/50 hover:bg-amber-50 border-amber-200 shadow-2xs ring-1 ring-amber-200/50'
+                        ? isSystem
+                          ? 'bg-blue-50/40 hover:bg-blue-50/60 border-blue-200 shadow-2xs ring-1 ring-blue-200/50'
+                          : 'bg-amber-50/50 hover:bg-amber-50 border-amber-200 shadow-2xs ring-1 ring-amber-200/50'
                         : 'bg-white hover:bg-stone-50 border-stone-200/90 hover:border-stone-300'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2">
                         {isUnread && (
-                          <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${isSystem ? 'bg-rose-500' : 'bg-amber-500'}`} />
                         )}
-                        <h4 className={`text-xs sm:text-sm font-bold ${isUnread ? 'text-amber-950 font-black' : 'text-stone-900'}`}>
-                          {n.title}
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                          isSystem ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-900'
+                        }`}>
+                          {isSystem ? '系統' : '個人'}
+                        </span>
+                        <h4 className={`text-xs sm:text-sm font-bold ${
+                          isUnread ? (isSystem ? 'text-blue-950 font-black' : 'text-amber-950 font-black') : 'text-stone-900'
+                        }`}>
+                          {highlightUserNames(n.title)}
                         </h4>
                       </div>
                       <span className="text-[10px] text-stone-400 shrink-0 font-medium flex items-center gap-1">
@@ -308,7 +435,7 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                     </div>
 
                     <p className="text-xs text-stone-600 mt-1.5 leading-relaxed pl-0">
-                      {n.message}
+                      {highlightUserNames(n.message)}
                     </p>
 
                     <div className="mt-2.5 flex items-center justify-between text-[11px] font-semibold">
@@ -318,12 +445,22 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                           <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                         </span>
                       ) : (
-                        <span className="text-stone-400">點擊查看</span>
+                        <span className="inline-flex items-center gap-1 text-stone-500 font-bold">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>已讀</span>
+                        </span>
                       )}
 
-                      {isUnread && (
-                        <span className="text-[10px] text-amber-700 font-bold bg-amber-100/80 px-2 py-0.5 rounded-md">
+                      {isUnread ? (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          isSystem ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-amber-100/80 text-amber-700'
+                        }`}>
                           未讀
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-stone-500 font-bold bg-stone-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5 text-emerald-600" />
+                          <span>已讀</span>
                         </span>
                       )}
                     </div>

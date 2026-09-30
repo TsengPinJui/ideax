@@ -157,6 +157,9 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     setRulingModal(null);
   };
 
+  // Pending count of dispute cases
+  const pendingDisputesCount = disputeCasesList.filter((d) => d.status === 'pending_review').length;
+
   return (
     <div className="space-y-4 animate-in fade-in duration-150">
       {/* Top Header - Compact & Clean */}
@@ -183,7 +186,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
         <div className="flex items-center gap-1.5 text-xs font-bold shrink-0">
           <span className="text-[11px] text-stone-400">待裁定案件：</span>
           <span className="font-mono font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-            {disputeCasesList.filter((d) => d.status === 'pending_review').length} 件
+            {pendingDisputesCount} 件
           </span>
         </div>
       </div>
@@ -207,7 +210,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           }`}
         >
           <Scale className="w-3.5 h-3.5" />
-          <span>申訴調解 ({disputeCasesList.length})</span>
+          <span>申訴調解 ({pendingDisputesCount})</span>
         </button>
 
         <button

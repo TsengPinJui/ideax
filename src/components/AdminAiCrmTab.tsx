@@ -420,12 +420,12 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     <p className="text-[10px] text-stone-500">重心：深度方案比對、信任里程碑與諮詢引導</p>
                   </div>
 
-                  {/* 深夜統整期 */}
+                  {/* 深夜離峰 */}
                   <div className="p-3.5 rounded-xl bg-purple-50/40 border border-purple-200/80 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-purple-950 flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full bg-purple-500" />
-                        <span>深夜離峰統整期</span>
+                        <span>深夜離峰</span>
                       </span>
                       <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800">
                         23:30 - 09:00
@@ -445,7 +445,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         <option value={12}>每 12 小時</option>
                       </select>
                     </div>
-                    <p className="text-[10px] text-stone-500">重心：深層關聯重算、預排次晨黃金跟進名單</p>
+                    <p className="text-[10px] text-stone-500">重心：整理未解決問題，排定明早優先追蹤名單</p>
                   </div>
                 </div>
               ) : (
@@ -644,7 +644,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     <li>巡航模式：<strong>按時段動態調整策略（推薦）</strong></li>
                     <li>日間商務活躍期 (09:00 - 18:00)：<strong>每 {formData.peakIntervalHours || 1} 小時巡檢</strong></li>
                     <li>晚間決策沉思期 (18:00 - 23:30)：<strong>每 {formData.eveningIntervalHours || 2} 小時巡檢</strong></li>
-                    <li>深夜離峰統整期 (23:30 - 09:00)：<strong>每 {formData.offPeakIntervalHours || 6} 小時深層重算</strong></li>
+                    <li>深夜離峰 (23:30 - 09:00)：<strong>每 {formData.offPeakIntervalHours || 6} 小時深層重算</strong></li>
                   </>
                 ) : (
                   <li>巡航模式：<strong>固定間隔（每 {formData.autoScanIntervalHours || 2} 小時巡檢）</strong></li>

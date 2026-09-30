@@ -1045,7 +1045,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-purple-950 flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-purple-500" />
-                    <span>深夜離峰統整期</span>
+                    <span>深夜離峰</span>
                   </span>
                   <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-800">
                     23:30 - 09:00
@@ -1063,7 +1063,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     <option value={8}>每 8 小時</option>
                   </select>
                 </div>
-                <p className="text-[10px] text-stone-500">重心：深層關聯重算與晨間名單預排</p>
+                <p className="text-[10px] text-stone-500">重心：整理未解決問題，排定明早優先追蹤名單</p>
               </div>
             </div>
           ) : (
@@ -1297,7 +1297,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                         <li>採用【按時段動態調整策略】（推薦黃金配置）</li>
                         <li>日間商務活躍期 (09:00 - 18:00)：每 {localAiCrmConfig.peakIntervalHours || 1} 小時巡航</li>
                         <li>晚間決策沉思期 (18:00 - 23:30)：每 {localAiCrmConfig.eveningIntervalHours || 2} 小時巡航</li>
-                        <li>深夜離峰統整期 (23:30 - 09:00)：每 {localAiCrmConfig.offPeakIntervalHours || 6} 小時深層運算</li>
+                        <li>深夜離峰 (23:30 - 09:00)：每 {localAiCrmConfig.offPeakIntervalHours || 6} 小時深層運算</li>
                       </>
                     ) : (
                       <li>採用【固定間隔巡航】：全天候每 {localAiCrmConfig.autoScanIntervalHours || 2} 小時固定巡檢</li>

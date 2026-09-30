@@ -1023,6 +1023,8 @@ export interface LeaderboardEntry {
 
 export interface NotificationItem {
   id: string;
+  userId?: string; // 專屬目標用戶 ID (如 'user-1', 'admin' 等，若未指定則為通用廣播)
+  category?: 'personal' | 'system'; // 'personal': 個人通知 (計入郵件圖示角標) | 'system': 系統通知 (在系統通知區亮紅點，不計入郵件數字)
   title: string;
   message: string;
   type: 'ai_match' | 'new_answer' | 'new_discussion' | 'payment_unlocked' | 'solution_accepted' | 'chat_message' | 'system';

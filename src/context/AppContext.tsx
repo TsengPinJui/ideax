@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   Question,
   Solver,
@@ -82,7 +82,12 @@ interface AppContextType {
   answers: Answer[];
   transactions: Transaction[];
   notifications: NotificationItem[];
-  addNotification: (notifOrTitle: Partial<NotificationItem> | string, message?: string, type?: any) => void;
+  personalNotifications: NotificationItem[];
+  systemNotifications: NotificationItem[];
+  unreadPersonalCount: number;
+  unreadSystemCount: number;
+  hasUnreadSystemNotifs: boolean;
+  addNotification: (notifOrTitle: Partial<NotificationItem> | string, message?: string, type?: any, targetUserId?: string, category?: 'personal' | 'system') => void;
   conversations: ChatConversation[];
   setConversations: React.Dispatch<React.SetStateAction<ChatConversation[]>>;
   activeConversationId: string | null;
@@ -213,6 +218,8 @@ interface AppContextType {
   ) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  markAllPersonalNotificationsRead: () => void;
+  markAllSystemNotificationsRead: () => void;
 
   // Public Metrics Controls (Admin)
   publicMetricsConfig: PublicMetricsConfig;
@@ -377,12 +384,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return curr;
     });
-
-    if (enabled) {
-      addNotification('已開啟【無金流模式 (FREE)】', '已自動隱藏測試環境模擬資料與測試帳號，全平台恢復真實數據，並於介面隱藏點數與金流設定（原有點數安全保留）。', 'system');
-    } else {
-      addNotification('已開啟【正式營運模式 (NORM)】', '已恢復全平台真實數據與點數帳目，全站累計懸賞與交易流水純淨起跑。', 'system');
-    }
   };
 
   const toggleNoPaymentMode = () => {
@@ -446,8 +447,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // 8. 移除測試問題書籤
       setBookmarkedQuestionIds((prev) => prev.filter((id) => !isMockQuestionId(id)));
-
-      addNotification('已啟用【隱藏測試帳號】', '全站已隱藏所有測試身分（林書豪、陳怡君、訪客等）以及其關聯之專家、問題、案件、聊天室與交易紀錄。', 'system');
     } else {
       // 僅在測試環境 (isDemoMode) 下允許恢復測試帳號與示範問題、專家、解答、對話與交易；其他兩個模式絕不添加
       if (isDemoMode) {
@@ -496,8 +495,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
           return merged;
         });
-
-        addNotification('已恢復【顯示測試帳號】', '已恢復顯示核心測試帳號以及測試環境關聯之專家、問題、方案、對話與紀錄。', 'system');
       }
     }
   };
@@ -864,6 +861,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return [
       {
         id: 'notif-1',
+        userId: 'user-chen',
         title: 'AI 智慧專家媒合推薦',
         message: '您的問題「校園共享雨傘如何從租借轉向商家合作」已有 3 位推薦解答者，媒合度最高達 96%！',
         type: 'ai_match',
@@ -873,6 +871,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       {
         id: 'notif-2',
+        userId: 'user-chen',
         title: '新解答方案已提交',
         message: '柯育任 顧問已為您的懸賞問題提交「商業策略架構」深度方案，歡迎前往查看預覽與解鎖。',
         type: 'new_answer',
@@ -3083,6 +3082,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (existing) {
       setActiveConversationId(existing.id);
+      setConversations((prev) =>
+        prev.map((c) => (c.id === existing.id ? { ...c, unreadCount: 0 } : c))
+      );
       return existing.id;
     }
 
@@ -3765,24 +3767,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const isModeOrEnvNotification = (title?: string, message?: string) => {
+    const text = `${title || ''} ${message || ''}`;
+    return (
+      text.includes('無金流模式') ||
+      text.includes('正式營運模式') ||
+      text.includes('測試環境') ||
+      text.includes('隱藏測試帳號') ||
+      text.includes('顯示測試帳號') ||
+      text.includes('環境設定') ||
+      text.includes('模式設定') ||
+      text.includes('假資料已清除') ||
+      text.includes('測試環境 (TEST)') ||
+      text.includes('無金流模式 (FREE)') ||
+      text.includes('正式營運模式 (NORM)')
+    );
+  };
+
   const addNotification = (
     notifOrTitle: Partial<NotificationItem> | string,
     message?: string,
-    type: any = 'system'
+    type: any = 'system',
+    targetUserId?: string,
+    category?: 'personal' | 'system'
   ) => {
+    const titleStr = typeof notifOrTitle === 'string' ? notifOrTitle : notifOrTitle.title || '';
+    const msgStr = typeof notifOrTitle === 'string' ? message || '' : notifOrTitle.message || '';
+
+    // 依使用者需求：徹底刪除環境設定與模式設定通知，不再提醒此類變更通知
+    if (isModeOrEnvNotification(titleStr, msgStr)) {
+      return;
+    }
+
     if (typeof notifOrTitle === 'string') {
+      const detectedCategory: 'personal' | 'system' =
+        category || (type === 'system' || type === 'ai_match' ? 'system' : 'personal');
       const newNotif: NotificationItem = {
         id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        userId: targetUserId || currentUser.id,
+        category: detectedCategory,
         title: notifOrTitle,
         message: message || '',
         type: type || 'system',
         createdAt: '剛剛',
         read: false,
       };
-      setNotifications((prev) => [newNotif, ...prev].slice(0, 20));
+      setNotifications((prev) => [newNotif, ...prev].slice(0, 50));
     } else {
+      const detectedCategory: 'personal' | 'system' =
+        notifOrTitle.category ||
+        category ||
+        (notifOrTitle.type === 'system' || notifOrTitle.type === 'ai_match' ? 'system' : 'personal');
       const newNotif: NotificationItem = {
         id: notifOrTitle.id || `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        userId: notifOrTitle.userId || targetUserId || currentUser.id,
+        category: detectedCategory,
         title: notifOrTitle.title || '系統通知',
         message: notifOrTitle.message || '',
         type: notifOrTitle.type || 'system',
@@ -3790,7 +3829,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         read: false,
         ...notifOrTitle,
       };
-      setNotifications((prev) => [newNotif, ...prev].slice(0, 20));
+      setNotifications((prev) => [newNotif, ...prev].slice(0, 50));
     }
   };
 
@@ -3799,8 +3838,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markAllNotificationsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    // 僅標記當前用戶個人所屬之通知為已讀
+    setNotifications((prev) =>
+      prev.map((n) => {
+        if (!n.userId || n.userId === currentUser.id || (n.userId === 'admin' && currentUser.role === 'admin')) {
+          return { ...n, read: true };
+        }
+        return n;
+      })
+    );
   };
+
+  const markAllPersonalNotificationsRead = () => {
+    // 僅一鍵已讀個人通知
+    setNotifications((prev) =>
+      prev.map((n) => {
+        const cat = n.category || (n.type === 'system' || n.type === 'ai_match' ? 'system' : 'personal');
+        if (cat === 'personal' && (!n.userId || n.userId === currentUser.id || (n.userId === 'admin' && currentUser.role === 'admin'))) {
+          return { ...n, read: true };
+        }
+        return n;
+      })
+    );
+  };
+
+  const markAllSystemNotificationsRead = () => {
+    // 僅一鍵已讀系統通知
+    setNotifications((prev) =>
+      prev.map((n) => {
+        const cat = n.category || (n.type === 'system' || n.type === 'ai_match' ? 'system' : 'personal');
+        if (cat === 'system' && (!n.userId || n.userId === currentUser.id || (n.userId === 'admin' && currentUser.role === 'admin'))) {
+          return { ...n, read: true };
+        }
+        return n;
+      })
+    );
+  };
+
+  // 單一用戶個人通知過濾（非全站混雜，只呈現當前登入用戶之個人專屬通知與特定系統信件，且徹底排除模式與環境設定通知）
+  const userPersonalNotifications = useMemo(() => {
+    return notifications.filter((n) => {
+      if (isModeOrEnvNotification(n.title, n.message)) {
+        return false;
+      }
+      if (n.userId) {
+        if (n.userId === 'admin') {
+          return currentUser.role === 'admin';
+        }
+        return n.userId === currentUser.id;
+      }
+      return true;
+    });
+  }, [notifications, currentUser]);
+
+  // 1. 個人通知（互動、方案提交、得標、懸賞入帳、私聊，計入郵件圖示右上角數字）
+  const personalNotifications = useMemo(() => {
+    return userPersonalNotifications.filter((n) => {
+      const cat = n.category || (n.type === 'system' || n.type === 'ai_match' ? 'system' : 'personal');
+      return cat === 'personal';
+    });
+  }, [userPersonalNotifications]);
+
+  // 2. 系統通知（平台廣播、AI推薦、系統升級，在系統通知區亮紅點，不計入郵件記數）
+  const systemNotifications = useMemo(() => {
+    return userPersonalNotifications.filter((n) => {
+      const cat = n.category || (n.type === 'system' || n.type === 'ai_match' ? 'system' : 'personal');
+      return cat === 'system';
+    });
+  }, [userPersonalNotifications]);
+
+  const unreadPersonalCount = useMemo(() => {
+    return personalNotifications.filter((n) => !n.read).length;
+  }, [personalNotifications]);
+
+  const unreadSystemCount = useMemo(() => {
+    return systemNotifications.filter((n) => !n.read).length;
+  }, [systemNotifications]);
+
+  const hasUnreadSystemNotifs = unreadSystemCount > 0;
 
   // Demo Mode Switchers (管理員測試與示範模式開關)
   const toggleDemoMode = () => {
@@ -3859,7 +3974,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         return merged;
       });
-      addNotification('已開啟【測試環境 (TEST)】', '已加回全站所有模擬資料（題目、專家、方案、對話、紀錄與測試帳號）。', 'system');
     } else {
       // 關閉測試環境 ➔ 若目前不是無金流模式，則切換至正式營運模式 (NORM)
       if (!isNoPaymentMode) {
@@ -3891,7 +4005,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return [CLEAN_CORE_USERS[0], ...realUsers];
     });
     setCurrentUser(CLEAN_CORE_USERS[0]);
-    addNotification('假資料已清除', '所有模擬假資料已清除，已恢復為純淨初始數據狀態！', 'system');
   };
 
   const resetDemoData = () => {
@@ -3927,7 +4040,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         solvers,
         answers,
         transactions,
-        notifications,
+        notifications: userPersonalNotifications,
+        personalNotifications,
+        systemNotifications,
+        unreadPersonalCount,
+        unreadSystemCount,
+        hasUnreadSystemNotifs,
         addNotification,
         conversations,
         setConversations,
@@ -4008,6 +4126,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         submitPhaseDeliverable,
         markNotificationRead,
         markAllNotificationsRead,
+        markAllPersonalNotificationsRead,
+        markAllSystemNotificationsRead,
         publicMetricsConfig,
         updatePublicMetricsConfig,
         aiCrmConfig,

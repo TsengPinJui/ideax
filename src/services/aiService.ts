@@ -1057,7 +1057,7 @@ export function getCurrentTimeSlotInfo(
     };
   }
 
-  // 3. 深夜離峰統整期 (23:30 - 09:00)
+  // 3. 深夜離峰 (23:30 - 09:00)
   let minutesToNext = 45;
   if (timeInMinutes >= 1410) {
     minutesToNext = (1440 - timeInMinutes) + 540;
@@ -1068,11 +1068,11 @@ export function getCurrentTimeSlotInfo(
 
   return {
     slotId: 'offpeak',
-    slotName: '深夜離峰統整期',
+    slotName: '深夜離峰',
     slotRange: '23:30 - 09:00',
     currentIntervalHours: offPeakInterval,
     badgeTheme: 'purple',
-    focusSummary: '💤 節能深層數據統整・全站未結案痛點關聯重算、預排次晨 09:15 黃金跟進名單',
+    focusSummary: '💤 整理未解決問題，排定明早優先追蹤名單',
     nextScanEstimatedText: `${Math.min(minutesToNext, 180)} 分鐘後`,
     activityLevelText: `離峰節能（每 ${offPeakInterval} 小時深層彙整）`,
   };

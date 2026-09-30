@@ -448,7 +448,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                             />
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="font-black text-base text-stone-900">{lead.clientName}</h4>
+                                <h4 className="font-black text-base text-blue-600">{lead.clientName}</h4>
                                 <span className="text-xs text-stone-500">{lead.clientRole}</span>
                                 <span
                                   className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
@@ -760,7 +760,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                                   className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                                 >
                                   <MessageSquare className="w-3.5 h-3.5" />
-                                  <span>進入聊天室對話</span>
+                                  <span>前往此聊天室</span>
                                 </button>
                               </div>
                             ) : (
@@ -974,7 +974,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                     AI-CRM 專屬客戶作戰藍圖
                   </span>
                   <h3 className="text-lg font-black text-stone-900 mt-1">
-                    針對「{selectedStrategyLead.clientName}」的促成策略
+                    針對「<span className="text-blue-600">{selectedStrategyLead.clientName}</span>」的促成策略
                   </h3>
                 </div>
               </div>

@@ -16,8 +16,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onNavigate,
   onOpenCreateQuestion,
 }) => {
-  const { notifications, currentUser } = useApp();
-  const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
+  const { notifications, currentUser, unreadPersonalCount, questions } = useApp();
+  
+  const pendingDisputesCount = React.useMemo(() => {
+    const fromQuestions = (questions || []).filter((q) => q.disputeStatus === 'pending_review').length;
+    return fromQuestions > 0 ? fromQuestions : 1;
+  }, [questions]);
+
+  // 問卷未填寫提示紅點 (一般用戶未完成問卷或有待處理通知時顯示紅點)
+  const isSurveyPending = !currentUser?.surveyData?.completedAt && currentUser?.role !== 'admin' && currentUser?.id !== 'user-guest';
+  const showPersonalCenterRedDot = currentUser?.role === 'admin' ? pendingDisputesCount > 0 : (isSurveyPending || unreadPersonalCount > 0);
 
   const isExploreActive = activeTab === 'explore' || activeTab === 'question_detail';
   const isSolversActive = activeTab === 'solvers' || activeTab === 'solver_profile';
@@ -113,8 +121,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             ) : (
               <User className={`w-5 h-5 transition-transform ${isDashboardActive ? 'scale-110' : ''}`} />
             )}
-            {unreadNotificationsCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full ring-1 ring-white" />
+            {showPersonalCenterRedDot && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white shadow-xs" />
             )}
           </div>
           <span className="text-[10px] mt-0.5 tracking-tight">個人中心</span>

@@ -115,6 +115,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     authModalMethod,
     openAuthModal,
     closeAuthModal,
+    unreadPersonalCount,
+    hasUnreadSystemNotifs,
   } = useApp();
 
   const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
@@ -130,27 +132,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
   const unreadChatCount = useMemo(() => {
     return (conversations || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0);
   }, [conversations]);
 
   const pendingDisputesCount = useMemo(() => {
     const fromQuestions = (questions || []).filter((q) => q.disputeStatus === 'pending_review').length;
-    return fromQuestions > 0 ? fromQuestions : 1; // 連結真實待裁定數量：1 件
+    return fromQuestions > 0 ? fromQuestions : 1; // 待裁定案件數：1 件
   }, [questions]);
 
-  const unreadMailsCount = useMemo(() => {
-    const unread = (notifications || []).filter((n) => !n.read).length;
-    return unread > 0 ? Math.min(unread, 2) : 2; // 未讀重要官方郵件：2 封
-  }, [notifications]);
-
-  const adminPendingCount = useMemo(() => {
-    return pendingDisputesCount + unreadMailsCount; // 1 件待裁定 + 2 封未處理郵件 = 3
-  }, [pendingDisputesCount, unreadMailsCount]);
-
-  const displayBadgeCount = currentUser.role === 'admin' ? adminPendingCount : unreadCount;
+  // 管理員身分：郵件圖示顯示數量直接等於「待裁定」案件數量！一般用戶：僅根據「個人通知」未讀數量（系統通知不計入郵件數字）
+  const displayBadgeCount = currentUser.role === 'admin' ? pendingDisputesCount : unreadPersonalCount;
 
   // Close menus on outside click
   useEffect(() => {
@@ -858,7 +850,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* 2. 訊息 (手機畫面隱藏，於右側選單中提供) */}
+          {/* 2. 訊息 (電腦版 - 僅保留圖示，數字徽章移至右上角) */}
           <button
             onClick={() => {
               setActiveTab('chat');
@@ -866,18 +858,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               setSelectedSolver(null);
               setActiveConversationId(null);
             }}
-            className={`hidden sm:flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+            className={`hidden sm:flex relative p-2 rounded-xl transition-colors cursor-pointer border ${
               activeTab === 'chat'
-                ? 'bg-amber-100/90 text-amber-950 ring-2 ring-amber-300'
-                : 'bg-stone-100 hover:bg-stone-200 text-stone-800'
+                ? 'bg-amber-100/90 text-amber-950 border-amber-300 ring-2 ring-amber-300'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:bg-amber-50 border-stone-200/80'
             }`}
             title={`開啟訊息${unreadChatCount > 0 ? `（${unreadChatCount} 則未讀訊息）` : ''}`}
+            aria-label="開啟訊息"
           >
-            <MessageCircle className="w-4 h-4 text-amber-600" />
-            <span>訊息</span>
+            <MessageCircle className={`w-5 h-5 ${activeTab === 'chat' ? 'text-amber-700' : 'text-stone-700'}`} />
             {unreadChatCount > 0 && (
-              <span className="min-w-[17px] h-[17px] px-1 bg-amber-500 text-stone-950 font-black text-[10px] rounded-full flex items-center justify-center shadow-2xs font-mono ml-0.5">
-                {unreadChatCount}
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-amber-500 text-stone-950 font-black text-[10px] rounded-full ring-2 ring-white flex items-center justify-center shadow-2xs font-mono">
+                {unreadChatCount > 99 ? '99+' : unreadChatCount}
               </span>
             )}
           </button>
@@ -894,7 +886,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }}
             className="hidden sm:flex relative p-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:bg-amber-50 transition-colors cursor-pointer border border-stone-200/80"
             aria-label={currentUser.role === 'admin' ? "申訴與郵件管理中心" : "開啟通知中心右側欄"}
-            title={currentUser.role === 'admin' ? `申訴與郵件管理中心（待處理案件與信件：${adminPendingCount} 件）` : "開啟通知中心右側欄"}
+            title={currentUser.role === 'admin' ? `申訴與郵件管理中心（待裁定案件：${pendingDisputesCount} 件）` : "開啟通知中心右側欄"}
           >
             {currentUser.role === 'admin' ? (
               <Mail className="w-5 h-5 text-purple-700" />
@@ -1597,8 +1589,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                       className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-purple-50/80 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                        <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all relative">
                           <ClipboardList className="w-3.5 h-3.5" />
+                          {!currentUser.surveyData?.completedAt && (
+                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full ring-1.5 ring-white" />
+                          )}
                         </div>
                         <span>問卷(客戶調查)</span>
                       </div>
@@ -1606,7 +1601,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="text-[10px] font-bold text-purple-750 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">已填寫</span>
                       ) : (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">完成即送會員</span>
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                            完成即送會員
+                          </span>
                           <span
                             className="text-[10px] font-bold text-amber-800 hover:text-amber-950 bg-amber-100/90 hover:bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-0.5 transition-all shadow-2xs cursor-pointer"
                             title="查看會員活動"
@@ -1637,9 +1634,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </div>
                         <span>通知中心</span>
                       </div>
-                      {unreadCount > 0 && (
+                      {unreadPersonalCount > 0 && (
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 shadow-2xs">
-                          {unreadCount}
+                          {unreadPersonalCount}
                         </span>
                       )}
                     </button>
