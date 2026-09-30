@@ -25,6 +25,7 @@ import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
 import { PwaInstallModal } from './components/PwaInstallModal';
+import { SplashScreen } from './components/SplashScreen';
 import { HelpTooltip } from './components/HelpTooltip';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab } from './types';
 import { isMockQuestionId } from './data/mockData';
@@ -644,6 +645,9 @@ function MainContent() {
 
   return (
     <div className="min-h-screen bg-stone-50/50 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
+      {/* App 開啟淡入淡出畫面 (Splash Screen) */}
+      <SplashScreen minDurationMs={1600} />
+
       {/* Navigation */}
       <Navbar
         activeTab={activeTab}
