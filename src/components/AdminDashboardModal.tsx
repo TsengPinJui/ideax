@@ -139,34 +139,25 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     if (!pendingConfirm) return;
     if (pendingConfirm.type === 'liveOperation') {
       if (pendingConfirm.nextState) {
-        // 開啟正式營運模式 ➔ 自動關閉無金流模式與測試環境，隱藏測試帳號與模擬資料，全平台恢復真實數據
-        setHideTestAccounts(true);
+        // 開啟正式營運模式 (NORM) ➔ 自動關閉無金流模式與測試環境，全平台恢復真實數據
         setNoPaymentMode(false);
-        setDemoMode(false);
       } else {
-        // 關閉正式營運模式 ➔ 相對地自動切換為【無金流模式】，自動隱藏測試環境模擬資料與測試帳號
-        setHideTestAccounts(true);
+        // 關閉正式營運模式 ➔ 相對地自動切換為【無金流模式】
         setNoPaymentMode(true);
-        setDemoMode(false);
       }
     } else if (pendingConfirm.type === 'noPayment') {
       if (pendingConfirm.nextState) {
-        // 開啟無金流模式 ➔ 相對地自動關閉【正式營運模式】，自動隱藏測試環境模擬資料與測試帳號，恢復真實數據
+        // 開啟無金流模式 (FREE) ➔ 自動關閉正式營運模式與測試環境，全平台恢復真實數據並隱藏金流
         setNoPaymentMode(true);
-        setHideTestAccounts(true);
-        setDemoMode(false);
       } else {
-        // 關閉無金流模式 ➔ 相對地自動切換為【正式營運模式】，自動隱藏測試環境模擬資料與測試帳號
+        // 關閉無金流模式 ➔ 相對地自動切換為【正式營運模式】
         setNoPaymentMode(false);
-        setHideTestAccounts(true);
-        setDemoMode(false);
       }
     } else if (pendingConfirm.type === 'demo') {
       if (pendingConfirm.nextState) {
         setDemoMode(true);
-        setHideTestAccounts(false);
       } else {
-        setDemoMode(false);
+        setNoPaymentMode(false);
       }
     } else if (pendingConfirm.type === 'hideTestAccounts') {
       if (pendingConfirm.nextState) {
@@ -194,20 +185,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     setPendingConfirm(null);
   };
 
-  // Compute platform metrics (營運模式 NORM 與無金流模式 FREE 下，初始全站交易額與獲利均純淨歸零)
-  const totalGMV = isNoPaymentMode
+  // Compute platform metrics (正式營運模式 NORM 與無金流模式 FREE 下，累計懸賞金額與全站總交易額均純淨歸零 0)
+  const totalGMV = isNoPaymentMode || !isDemoMode
     ? 0
-    : !isDemoMode
-    ? (transactions.filter((t) => !isMockTransactionId(t.id)).reduce((acc, t) => acc + (t.amount || 0), 0))
     : transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
-  const totalPlatformFees = isNoPaymentMode
+  const totalPlatformFees = isNoPaymentMode || !isDemoMode
     ? 0
-    : !isDemoMode
-    ? (transactions.filter((t) => !isMockTransactionId(t.id)).reduce((acc, t) => acc + (t.platformFee || 0), 0))
     : transactions.reduce((acc, t) => acc + (t.platformFee || 0), 0);
-  const totalBountyPool = isNoPaymentMode
+  const totalBountyPool = isNoPaymentMode || !isDemoMode
     ? 0
-    : questions.filter((q) => q.status === 'open' && !isMockQuestionId(q.id, q.authorId)).reduce((acc, q) => acc + (q.bounty || 0), 0);
+    : questions.filter((q) => q.status === 'open').reduce((acc, q) => acc + (q.bounty || 0), 0);
   const solvedQuestionsCount = questions.filter((q) => q.status === 'solved').length;
   const openQuestionsCount = questions.filter((q) => q.status === 'open').length;
 

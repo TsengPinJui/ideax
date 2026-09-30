@@ -64,6 +64,7 @@ function MainContent() {
     startDirectChat,
     openAuthModal,
     isDemoMode,
+    isNoPaymentMode,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<AppTab>('explore');
@@ -884,7 +885,7 @@ function MainContent() {
                     category={selectedCategory}
                     subcategory={selectedSubcategory}
                     totalQuestionsCount={filteredQuestions.length}
-                    totalBountyAmount={filteredQuestions.reduce((acc, q) => acc + q.bounty, 0)}
+                    totalBountyAmount={isNoPaymentMode || !isDemoMode ? 0 : filteredQuestions.reduce((acc, q) => acc + q.bounty, 0)}
                     onOpenCreateQuestion={() => setActiveTab('create_question')}
                     onSelectCategory={(cat, sub = '全部') => {
                       handleSelectCategory(cat);

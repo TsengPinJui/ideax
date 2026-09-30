@@ -281,20 +281,33 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEY_PREFIX = 'ideax_mvp_v3_';
 
+// 檢測當前運營模式 (FREE: 無金流模式, NORM: 正式營運模式, TEST: 測試環境)
+type PlatformMode = 'TEST' | 'NORM' | 'FREE';
+
+const getInitialPlatformMode = (): PlatformMode => {
+  try {
+    const isFree = localStorage.getItem(`${STORAGE_KEY_PREFIX}no_payment_mode`) === 'true';
+    if (isFree) return 'FREE';
+
+    const isNorm = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_norm_mode`) === 'true';
+    if (isNorm) return 'NORM';
+
+    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+    if (isDemo) return 'TEST';
+  } catch {
+    // ignore
+  }
+  // 默認規則：如果一般模式和無金流模式都沒開的話就默認開啟測試環境
+  return 'TEST';
+};
+
+const getInitialIsDemoMode = (): boolean => {
+  return getInitialPlatformMode() === 'TEST';
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Demo Mode State (管理員示範資料與測試模式開關：默認開啟測試環境，除非開啟正式營運模式或無金流模式)
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
-    try {
-      const isNorm = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_norm_mode`) === 'true';
-      const isFree = localStorage.getItem(`${STORAGE_KEY_PREFIX}no_payment_mode`) === 'true';
-      if (isNorm || isFree) {
-        return false; // 已明確開啟一般營運模式或無金流模式
-      }
-    } catch {
-      // ignore
-    }
-    return true; // 預設默認開啟測試環境，且無法單獨關閉（需切換至一般或無金流模式）
-  });
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => getInitialPlatformMode() === 'TEST');
 
   // Auth Modal Global Control State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -318,17 +331,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isPwaInstallModalOpen, setIsPwaInstallModalOpen] = useState(false);
   const openPwaInstallModal = () => setIsPwaInstallModalOpen(true);
   const closePwaInstallModal = () => setIsPwaInstallModalOpen(false);
-  const [isNoPaymentMode, setIsNoPaymentMode] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}no_payment_mode`);
-      if (saved !== null) {
-        return saved === 'true';
-      }
-    } catch {
-      // ignore
-    }
-    return false;
-  });
+  const [isNoPaymentMode, setIsNoPaymentMode] = useState<boolean>(() => getInitialPlatformMode() === 'FREE');
 
   const setNoPaymentMode = (enabled: boolean) => {
     setIsNoPaymentMode(enabled);
@@ -386,13 +389,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNoPaymentMode(!isNoPaymentMode);
   };
 
-  // Hide Test Accounts State (隱藏測試帳號：僅保留管理員與真實用戶，預設 false)
+  // Hide Test Accounts State (隱藏測試帳號：測試環境預設 false，其他兩個模式預設 true)
   const [isHideTestAccounts, setIsHideTestAccounts] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}hide_test_accounts`);
-      if (saved !== null) {
-        return saved === 'true';
+      const isDemo = getInitialIsDemoMode();
+      if (isDemo) {
+        return false;
       }
+      return true; // 其他兩個模式預設隱藏測試帳號
     } catch {
       // ignore
     }
@@ -445,19 +449,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       addNotification('已啟用【隱藏測試帳號】', '全站已隱藏所有測試身分（林書豪、陳怡君、訪客等）以及其關聯之專家、問題、案件、聊天室與交易紀錄。', 'system');
     } else {
-      // 恢復顯示測試帳號
-      setAvailableUsers((prev) => {
-        const list = [...prev];
-        DEMO_CORE_TEST_USERS.forEach((core) => {
-          if (!list.some((u) => u.id === core.id)) {
-            list.push(core);
-          }
-        });
-        return list;
-      });
-
-      // 若處於測試環境 (isDemoMode)，同時恢復示範問題、專家、解答、對話與交易
+      // 僅在測試環境 (isDemoMode) 下允許恢復測試帳號與示範問題、專家、解答、對話與交易；其他兩個模式絕不添加
       if (isDemoMode) {
+        setAvailableUsers((prev) => {
+          const list = [...prev];
+          DEMO_CORE_TEST_USERS.forEach((core) => {
+            if (!list.some((u) => u.id === core.id)) {
+              list.push(core);
+            }
+          });
+          return list;
+        });
+
         setQuestions((prev) => {
           const merged = [...prev];
           MOCK_QUESTIONS.forEach((q) => {
@@ -493,9 +496,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
           return merged;
         });
-      }
 
-      addNotification('已恢復【顯示測試帳號】', '已恢復顯示核心測試帳號以及測試環境關聯之專家、問題、方案、對話與紀錄。', 'system');
+        addNotification('已恢復【顯示測試帳號】', '已恢復顯示核心測試帳號以及測試環境關聯之專家、問題、方案、對話與紀錄。', 'system');
+      }
     }
   };
 
@@ -534,7 +537,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [availableUsers, setAvailableUsers] = useState<User[]>(() => {
-    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+    const isDemo = getInitialIsDemoMode();
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}users`);
       if (saved) {
@@ -552,21 +555,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
 
           if (!isDemo) {
-            // 正式模式（營運模式與無金流模式）：自動隱藏所有模擬與測試帳號，恢復真實用戶
+            // 正式模式（營運模式與無金流模式）：絕不添加模擬帳號，僅保留真實用戶
             const testBlacklist = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
-            const cleanList = usersList.filter((u: any) => (!testBlacklist.includes(u.id) && !u.id.startsWith('solver-')) || u.id === 'user-admin');
+            const cleanList = usersList.filter((u: any) => (!testBlacklist.includes(u.id) && !u.id.startsWith('solver-') && !isTestAccountUserId(u.id)) || u.id === 'user-admin');
             if (!cleanList.some((u: any) => u.id === 'user-admin')) {
               cleanList.unshift(CLEAN_CORE_USERS[0]);
             }
             return cleanList;
           }
 
-          // Ensure user-admin exists in availableUsers
-          if (!usersList.some((u: any) => u.id === 'user-admin')) {
-            const adminUser = MOCK_USERS.find((m) => m.id === 'user-admin') || CLEAN_CORE_USERS[0];
-            if (adminUser) usersList.push(adminUser);
-          }
-          return usersList;
+          // 測試環境 (TEST)：加回所有模擬用戶與測試帳號，並保留自訂用戶
+          const customUsers = usersList.filter((u: any) => !isTestAccountUserId(u.id) && !u.id.startsWith('solver-') && u.id !== 'user-admin');
+          return [...MOCK_USERS, ...customUsers];
         }
       }
     } catch {
@@ -637,9 +637,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [questions, setQuestions] = useState<Question[]>(() => {
-    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+    const isDemo = getInitialIsDemoMode();
     if (!isDemo) {
-      // 非測試環境（營運模式、無金流模式）：絕不保留任何預留模擬題目
+      // 非測試環境（營運模式、無金流模式）：絕不添加任何模擬題目
       try {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
         if (saved) {
@@ -659,13 +659,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [];
     }
-    // 測試環境 (DEMO)
+    // 測試環境 (TEST / DEMO)：加回所有模擬題目，並保留自訂發布題目
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((q: any) => ({
+          const customQuestions = parsed.filter((q: any) => !isMockQuestionId(q.id, q.authorId));
+          return [...MOCK_QUESTIONS, ...customQuestions].map((q: any) => ({
             ...q,
             bounty: typeof q.bounty === 'number' ? q.bounty : 0,
             withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
@@ -679,7 +680,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [solvers, setSolvers] = useState<Solver[]>(() => {
-    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+    const isDemo = getInitialIsDemoMode();
     if (!isDemo) {
       // 非測試環境：不保留任何模擬專家資料
       try {
@@ -687,7 +688,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            return parsed.filter((s: any) => !isMockSolverId(s.id));
+            return parsed.filter((s: any) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id));
           }
         }
       } catch {
@@ -695,13 +696,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [];
     }
-    // 測試環境 (DEMO)
+    // 測試環境 (TEST / DEMO)：加回所有模擬專家資料
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}solvers`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
-          return parsed;
+          const customSolvers = parsed.filter((s: any) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id));
+          return [...MOCK_SOLVERS, ...customSolvers];
         }
       }
     } catch {
@@ -711,7 +713,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [answers, setAnswers] = useState<Answer[]>(() => {
-    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+    const isDemo = getInitialIsDemoMode();
     if (!isDemo) {
       // 非測試環境：不保留任何模擬解答方案
       try {
@@ -732,13 +734,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [];
     }
-    // 測試環境 (DEMO)
+    // 測試環境 (TEST / DEMO)：加回所有模擬解答方案
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}answers`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.map((a: any) => ({
+          const customAnswers = parsed.filter((a: any) => !isMockAnswerId(a.id));
+          return [...MOCK_ANSWERS, ...customAnswers].map((a: any) => ({
             ...a,
             price: typeof a.price === 'number' ? a.price : 0,
           }));
@@ -751,7 +754,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+    const isDemo = getInitialIsDemoMode();
     if (!isDemo) {
       // 非測試環境：不保留任何模擬交易帳目
       try {
@@ -767,11 +770,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [];
     }
+    // 測試環境 (TEST / DEMO)：加回所有模擬交易紀錄
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}transactions`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          const customTx = parsed.filter((t: any) => !isMockTransactionId(t.id));
+          return [...MOCK_TRANSACTIONS, ...customTx];
+        }
       }
     } catch {
       // ignore
@@ -780,7 +787,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [conversations, setConversations] = useState<ChatConversation[]>(() => {
-    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+    const isDemo = getInitialIsDemoMode();
     if (!isDemo) {
       // 非測試環境：不保留任何模擬對話
       try {
@@ -796,11 +803,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [];
     }
+    // 測試環境 (TEST / DEMO)：加回所有模擬聊天室對話
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}conversations`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          const customConv = parsed.filter((c: any) => !isMockConversationId(c.id));
+          return [...MOCK_CONVERSATIONS, ...customConv];
+        }
       }
     } catch {
       // ignore
@@ -814,7 +825,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 收藏問題狀態清單 (Bookmarked Questions)
   const [bookmarkedQuestionIds, setBookmarkedQuestionIds] = useState<string[]>(() => {
-    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+    const isDemo = getInitialIsDemoMode();
     if (!isDemo) {
       try {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}bookmarks`);
@@ -833,7 +844,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}bookmarks`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          const merged = [...parsed];
+          ['q-1', 'q-3'].forEach((id) => {
+            if (!merged.includes(id)) merged.push(id);
+          });
+          return merged;
+        }
       }
     } catch {
       // ignore
@@ -842,7 +859,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
-    const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+    const isDemo = getInitialIsDemoMode();
     if (!isDemo) return [];
     return [
       {
@@ -3803,28 +3820,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem(`${STORAGE_KEY_PREFIX}demo_mode`, 'true');
         localStorage.setItem(`${STORAGE_KEY_PREFIX}is_norm_mode`, 'false');
         localStorage.setItem(`${STORAGE_KEY_PREFIX}no_payment_mode`, 'false');
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}hide_test_accounts`, 'false');
       } catch {
         // ignore
       }
       // 開啟測試環境就同時公開測試帳號
-      setHideTestAccounts(false);
-      // 恢復示範模式：載入全站展示問題、精選解答、模擬專家與測試交易數據
-      setQuestions(MOCK_QUESTIONS);
-      setSolvers(MOCK_SOLVERS);
-      setAnswers(MOCK_ANSWERS);
-      setTransactions(MOCK_TRANSACTIONS);
-      setConversations(MOCK_CONVERSATIONS);
+      setIsHideTestAccounts(false);
+      // 測試環境加回所有模擬資料（題目、專家、方案、交易、對話與測試帳號），並保留用戶自訂資料
+      setQuestions((prev) => {
+        const custom = prev.filter((q) => !isMockQuestionId(q.id, q.authorId));
+        return [...MOCK_QUESTIONS, ...custom];
+      });
+      setSolvers((prev) => {
+        const custom = prev.filter((s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id));
+        return [...MOCK_SOLVERS, ...custom];
+      });
+      setAnswers((prev) => {
+        const custom = prev.filter((a) => !isMockAnswerId(a.id));
+        return [...MOCK_ANSWERS, ...custom];
+      });
+      setTransactions((prev) => {
+        const custom = prev.filter((t) => !isMockTransactionId(t.id));
+        return [...MOCK_TRANSACTIONS, ...custom];
+      });
+      setConversations((prev) => {
+        const custom = prev.filter((c) => !isMockConversationId(c.id));
+        return [...MOCK_CONVERSATIONS, ...custom];
+      });
       setAvailableUsers((prev) => {
-        const merged = [...MOCK_USERS];
-        prev.forEach((u) => {
-          if (!merged.some((m) => m.id === u.id)) merged.push(u);
+        const custom = prev.filter((u) => !isTestAccountUserId(u.id) && !u.id.startsWith('solver-') && u.id !== 'user-admin');
+        return [...MOCK_USERS, ...custom];
+      });
+      setBookmarkedQuestionIds((prev) => {
+        const mockBookmarks = ['q-1', 'q-3'];
+        const merged = [...prev];
+        mockBookmarks.forEach((id) => {
+          if (!merged.includes(id)) merged.push(id);
         });
         return merged;
       });
-      addNotification('已開啟【測試環境 (TEST)】', '已載入全站展示問題、精選解答、模擬專家、對話與測試交易數據。', 'system');
+      addNotification('已開啟【測試環境 (TEST)】', '已加回全站所有模擬資料（題目、專家、方案、對話、紀錄與測試帳號）。', 'system');
     } else {
-      // 關閉測試環境 ➔ 必須切換為正式營運模式 (NORM) 或無金流模式 (FREE)
-      setNoPaymentMode(false);
+      // 關閉測試環境 ➔ 若目前不是無金流模式，則切換至正式營運模式 (NORM)
+      if (!isNoPaymentMode) {
+        setNoPaymentMode(false);
+      }
     }
   };
 

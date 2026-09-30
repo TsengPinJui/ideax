@@ -27,7 +27,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onExploreClick,
   onLeaderboardClick,
 }) => {
-  const { questions, answers, solvers, transactions, publicMetricsConfig, isNoPaymentMode } = useApp();
+  const { questions, answers, solvers, transactions, publicMetricsConfig, isNoPaymentMode, isDemoMode } = useApp();
 
   // 1. 累計解決難題 (依據真實狀況：全站標記已結案或已有被採納方案之問題總數)
   const solvedCountFormatted = useMemo(() => {
@@ -46,15 +46,16 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     return total >= 1000 ? `${total.toLocaleString()}+` : `${total}`;
   }, [questions, answers]);
 
-  // 2. 累計懸賞金額 (依據真實狀況：網站創立至今已經發出的問題懸賞總額 + 已完成交易方案的懸賞總額)
+  // 2. 累計懸賞金額 (正式模式與無金流模式歸零；測試環境依據發出之懸賞與成交方案計算)
   const totalBountyFormatted = useMemo(() => {
-    if (isNoPaymentMode) {
+    if (isNoPaymentMode || !isDemoMode) {
       return 'NT$ 0';
     }
-    // 1. 網站創立至今已經發出的所有問題懸賞總額
+    // 測試環境 (isDemoMode) 下計算
+    // 1. 網站發出的所有問題懸賞總額
     const questionBounties = questions.reduce((acc, q) => acc + (Number(q.bounty) || 0), 0);
 
-    // 2. 網站創立至今已完成交易方案的懸賞/成交總額（排除會員訂閱與點數儲值等純儲值流水）
+    // 2. 網站已完成交易方案的懸賞/成交總額（排除會員訂閱與點數儲值等純儲值流水）
     const completedTransactions = transactions
       .filter(
         (t) =>
@@ -74,7 +75,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       return `NT$ ${(total / 1000000).toFixed(1)}M+`;
     }
     return `NT$ ${total.toLocaleString()}`;
-  }, [questions, transactions]);
+  }, [questions, transactions, isNoPaymentMode, isDemoMode]);
 
   // 3. 平均回覆速度 (依據真實狀況：各問題發布時間至第一筆回覆方案之真實平均時間差)
   const avgResponseSpeedFormatted = useMemo(() => {
@@ -141,11 +142,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     return `${percentage.toFixed(1)}%`;
   }, [solvers]);
 
-  // 5. 當前全站最高懸賞題目金額 (即時從真實問題列表抓取最高值)
+  // 5. 當前全站最高懸賞題目金額 (即時從真實問題列表抓取最高值，正式模式與無金流模式歸零)
   const currentHighestBounty = useMemo(() => {
+    if (isNoPaymentMode || !isDemoMode) return 0;
     if (!questions || questions.length === 0) return 0;
     return Math.max(...questions.map((q) => Number(q.bounty) || 0), 0);
-  }, [questions]);
+  }, [questions, isNoPaymentMode, isDemoMode]);
 
   // 計算目前管理者開啟公開展示的指標數量
   const activeMetricsCount = useMemo(() => {
