@@ -3729,7 +3729,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                                 : 'bg-amber-100 text-amber-900'
                             }`}
                           >
-                            {q.status === 'delisted' ? '⚠️ 已違規下架' : q.status === 'solved' ? '✓ 已採納結案' : '💬 解答招募中'}
+                            {q.status === 'delisted' ? '⚠️ 已違規下架' : q.status === 'solved' ? '✓ 已採納結案' : '💬 招募中'}
                           </span>
                         </div>
                         <span className="text-[11px] text-stone-400">{q.createdAt}</span>
@@ -6440,9 +6440,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <span className="text-xs font-bold text-stone-800">認證專家資格審查</span>
                 </div>
                 <p className="text-[11px] text-stone-500 leading-relaxed">
-                  成為認證專家可享有全站優先推薦與專屬標章。達成條件：(1) 提交專業證照審核通過官方認證，或 (2) 在平台累計採納落地方案達 50 份以上。
+                  成為認證專家可享有全站優先推薦與專屬標章。達成條件：(1) 提交專業證照審核通過官方認證，或 (2) 在平台累計採納落地方案達 50 份以上且評分 ≥ 4 星。
                 </p>
-                {!(currentUser.verifiedExpert || (userAcceptedAnswers.length >= 50) || currentUser.verifiedBadge) ? (
+                {!(currentUser.verifiedExpert || (userAcceptedAnswers.length >= 50 && (currentUser.rating || 5.0) >= 4.0) || currentUser.verifiedBadge) ? (
                   <button
                     type="button"
                     onClick={() => setActiveTab('expert_certification')}
@@ -6460,7 +6460,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
                       <span>
-                        您已具備「IdeaX 認證專家」資格（{currentUser.verifiedExpert || currentUser.verifiedBadge ? '已通過平台官方認證' : '採納方案已達 50 份'}）
+                        您已具備「IdeaX 認證專家」資格（{currentUser.verifiedExpert || currentUser.verifiedBadge ? '已通過平台官方認證' : '採納方案達 50 份以上且評分 ≥ 4 星'}）
                       </span>
                     </div>
                   </div>

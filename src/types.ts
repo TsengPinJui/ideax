@@ -579,11 +579,12 @@ export interface Solver {
  * 認證專家判定標準：通過平台認證，或 採納方案 ≥ 50
  */
 export const isCertifiedExpert = (solver?: {
-  verifiedBadge?: boolean;
+  verifiedBadge?: boolean | string;
   verifiedExpert?: boolean;
   answerCount?: number;
   acceptedRate?: number;
   acceptedSolutionsCount?: number;
+  rating?: number;
   tier?: string;
 } | null): boolean => {
   if (!solver) return false;
@@ -591,14 +592,16 @@ export const isCertifiedExpert = (solver?: {
   if (solver.verifiedBadge || solver.verifiedExpert) return true;
   if (solver.tier === '認證專家' || solver.tier === '特邀顧問') return true;
 
-  // 2. 或 採納方案 ≥ 50 份
+  // 2. 或 採納方案 ≥ 50 份 且 評分 ≥ 4.0 星
   const acceptedCount = solver.acceptedSolutionsCount !== undefined
     ? solver.acceptedSolutionsCount
     : (solver.answerCount !== undefined && solver.acceptedRate !== undefined)
       ? Math.round(solver.answerCount * (solver.acceptedRate / 100))
       : (solver.answerCount || 0);
 
-  return acceptedCount >= 50;
+  const currentRating = solver.rating !== undefined ? solver.rating : 5.0;
+
+  return acceptedCount >= 50 && currentRating >= 4.0;
 };
 
 export interface Question {

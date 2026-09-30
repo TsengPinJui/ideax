@@ -23,7 +23,8 @@ export const ExpertCertificationTab: React.FC = () => {
   const { currentUser, setCurrentUser, addNotification, openAboutModal, answers } = useApp();
 
   const userAcceptedAnswers = answers.filter((a) => a.solverId === currentUser.id && a.isAccepted);
-  const isAcceptedOver50 = userAcceptedAnswers.length >= 50;
+  const userRating = currentUser.rating || 5.0;
+  const isAutoQualified = userAcceptedAnswers.length >= 50 && userRating >= 4.0;
 
   // 7-day cooldown calculation
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -44,8 +45,8 @@ export const ExpertCertificationTab: React.FC = () => {
 
   const isApproved =
     currentUser.verifiedExpert ||
-    currentUser.verifiedBadge ||
-    isAcceptedOver50 ||
+    Boolean(currentUser.verifiedBadge) ||
+    isAutoQualified ||
     currentUser.expertApplicationStatus === 'approved';
 
   const isPending = currentUser.expertApplicationStatus === 'pending';
@@ -125,7 +126,7 @@ export const ExpertCertificationTab: React.FC = () => {
     e.preventDefault();
 
     if (currentUser.realNameAuthStatus !== 'verified') {
-      setMsg('⚠️ 申請專家認證前必須先完成【實名認證 (KYC)】！即使您接案已達 50 次亦須完成實名認證通過後方可成為認證專家。');
+      setMsg('⚠️ 申請專家認證前必須先完成【實名認證 (KYC)】！即使您已達到採納方案數 ≥ 50 且平均評分 ≥ 4.0 星，亦須先完成實名認證通過後，方可解鎖成為認證專家。');
       return;
     }
 
@@ -222,7 +223,7 @@ export const ExpertCertificationTab: React.FC = () => {
                 )}
               </div>
               <p className="text-xs text-stone-500 mt-0.5">
-                認證標準：(1) 通過平台官方實名審核與專業證件核驗，或 (2) 在平台累計採納方案數達 50 份以上
+                認證標準：(1) 通過平台官方<strong className="font-black text-stone-800">實名審核</strong>與<strong className="font-black text-stone-800">專業證明核驗</strong>，或 (2) 在平台累計<strong className="font-black text-stone-800">採納方案數達 50 份以上且評分 ≥ 4 星</strong>
               </p>
             </div>
           </div>
@@ -252,7 +253,7 @@ export const ExpertCertificationTab: React.FC = () => {
                   ⚠️ 申請專家認證前必須先完成實名認證 (KYC)
                 </h4>
                 <p className="text-[11px] text-rose-800 mt-0.5 leading-relaxed">
-                  依 IdeaX 平台合規規範，在申請專家認證前<strong>必須先完成實名認證</strong>！即使您已達到接案 ≥ 50 次標準，亦須先完成實名認證通過後，方可解鎖成為認證專家。
+                  依 IdeaX 平台合規規範，在申請專家認證前<strong>必須先完成實名認證</strong>！即使您已達到採納方案數 ≥ 50 且平均評分 ≥ 4.0 星，亦須先完成實名認證通過後，方可解鎖成為認證專家。
                 </p>
               </div>
             </div>
@@ -270,7 +271,7 @@ export const ExpertCertificationTab: React.FC = () => {
               <p className="text-emerald-800">
                 {currentUser.verifiedExpert || currentUser.verifiedBadge
                   ? '您的專業資歷與實名證件已通過官方認證。'
-                  : '您在平台累計採納之落地方案已達 50 份以上，系統已自動為您解鎖認證專家標章。'}
+                  : '您在平台累計採納之落地方案已達 50 份以上且評分 ≥ 4 星，系統已自動為您解鎖認證專家標章。'}
                 全站問題頁將享有 AI 優先推薦與首頁專家智庫曝光權益。
               </p>
             </div>

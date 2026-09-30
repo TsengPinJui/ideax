@@ -213,11 +213,11 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
   // 其他說明章節
   const OTHER_CHAPTERS = [
     {
-      id: 'other_1',
+      id: 'other_4',
       num: '一',
-      title: '五級問題分級體系（L0 ~ L4）',
-      summary: '由 L0 免費閒聊激盪到 L4 深度商業顧問方案之各級定位與懸賞建議範圍。',
-      badge: '問題分級',
+      title: '平台用戶與社群規範',
+      summary: '企業機構、提問者、平台管理、解答者、認證專家與一般討論之身分定位、權能規範與各角色專屬守則。',
+      badge: '用戶角色與社群',
     },
     {
       id: 'other_2',
@@ -227,18 +227,25 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       badge: '痛點機制',
     },
     {
-      id: 'other_3',
+      id: 'other_1',
       num: '三',
+      title: '五級問題分級體系（L0 ~ L4）',
+      summary: '由 L0 免費閒聊激盪到 L4 深度商業顧問方案之各級定位與懸賞建議範圍。',
+      badge: '問題分級',
+    },
+    {
+      id: 'other_3',
+      num: '四',
       title: '會員訂閱方案與服務費減免',
       summary: '達人方案（5% 半價）、權威方案（0% 免手續費）與大師方案（最高實收 102%）。',
       badge: '會員權益',
     },
     {
-      id: 'other_4',
-      num: '四',
-      title: '平台用戶角色與社群',
-      summary: '企業機構、提問者、平台管理、解答者、認證專家與一般討論之身分定位、權能規範與各角色專屬守則。',
-      badge: '用戶角色與社群',
+      id: 'other_5',
+      num: '五',
+      title: 'AI 功能介紹與智慧賦能',
+      summary: 'AI 題目自動標籤與建議、AI 專家智慧媒合推播、AI-CRM 客戶作戰藍圖、AI 爭議調解報告與商業企劃書生成。',
+      badge: 'AI 智慧功能',
     },
   ];
 
@@ -998,6 +1005,54 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                       setSelectedTermKey('community_guidelines');
                     }}
                   />
+                </div>
+              )}
+
+              {/* 其他說明 5: AI 功能介紹與智慧賦能 */}
+              {selectedOtherChapterId === 'other_5' && (
+                <div className="p-6 sm:p-7 space-y-4 bg-purple-50/40">
+                  <div className="border-b border-purple-100 pb-3 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-md border border-purple-200">
+                        說明五 • AI 智慧功能
+                      </span>
+                      <h3 className="text-lg sm:text-xl font-black text-stone-900 mt-1.5 flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-purple-600" />
+                        <span>AI 智慧引擎賦能與高效溝通工具</span>
+                      </h3>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    IdeaX 整合最前沿 AI 語意與專家大語言模型，全面賦能提問者、解答者與平台營運管理：
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                    <div className="p-3.5 bg-white rounded-xl border border-purple-200 space-y-1">
+                      <span className="font-extrabold text-purple-900 block">1. AI 題目自動標籤與建議</span>
+                      <p className="text-stone-500">自動分析痛點語意，生成 Hashtag 與推薦懸賞級別。</p>
+                    </div>
+
+                    <div className="p-3.5 bg-white rounded-xl border border-purple-200 space-y-1">
+                      <span className="font-extrabold text-purple-900 block">2. AI 專家智慧媒合推播</span>
+                      <p className="text-stone-500">主動將高適配度問題推播給專屬專家。</p>
+                    </div>
+
+                    <div className="p-3.5 bg-white rounded-xl border border-purple-200 space-y-1">
+                      <span className="font-extrabold text-purple-900 block">3. AI-CRM 客戶作戰藍圖</span>
+                      <p className="text-stone-500">為專家拆解潛在客戶痛點與 3 階段促成策略。</p>
+                    </div>
+
+                    <div className="p-3.5 bg-white rounded-xl border border-purple-200 space-y-1">
+                      <span className="font-extrabold text-purple-900 block">4. AI 智慧爭議調解報告</span>
+                      <p className="text-stone-500">調閱對話與交付紀錄，生成中立調解報告與和解協議。</p>
+                    </div>
+
+                    <div className="p-3.5 bg-white rounded-xl border border-purple-200 space-y-1">
+                      <span className="font-extrabold text-purple-900 block">5. AI 商業企劃與合規生成</span>
+                      <p className="text-stone-500">一鍵產出正規商業企劃書、電子協議與進度試算。</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

@@ -104,12 +104,12 @@ export const MechanismView: React.FC = () => {
   // 章節定義列表（其他說明條列式目錄）
   const OTHER_CHAPTERS = [
     {
-      id: 'ch_other_1',
+      id: 'ch_other_4',
       num: '一',
-      title: '五級問題分級體系（L0 ~ L4）',
+      title: '平台用戶與社群規範',
       summary:
-        '從 L0 免費閒聊經驗分享、L1 小問題輕量破局，到 L4 企業級深度顧問方案之五級題型規格與懸賞金額範圍。',
-      badge: '問題分級體系',
+        '企業機構、提問者、平台管理、解答者、認證專家與一般討論之身分定位、權能規範與各角色專屬守則。',
+      badge: '用戶角色與社群',
     },
     {
       id: 'ch_other_2',
@@ -120,20 +120,28 @@ export const MechanismView: React.FC = () => {
       badge: '痛點與解鎖',
     },
     {
-      id: 'ch_other_3',
+      id: 'ch_other_1',
       num: '三',
+      title: '五級問題分級體系（L0 ~ L4）',
+      summary:
+        '從 L0 免費閒聊經驗分享、L1 小問題輕量破局，到 L4 企業級深度顧問方案之五級題型規格與懸賞金額範圍。',
+      badge: '問題分級體系',
+    },
+    {
+      id: 'ch_other_3',
+      num: '四',
       title: '會員訂閱方案與服務費減免（最高實收 102%）',
       summary:
         '達人方案、權威方案與大師方案之服務費減免優惠，解答者享免服務費甚至額外 2% 平台補貼回饋。',
       badge: '會員與費率',
     },
     {
-      id: 'ch_other_4',
-      num: '四',
-      title: '平台用戶角色與社群',
+      id: 'ch_other_5',
+      num: '五',
+      title: 'AI 功能介紹與智慧賦能',
       summary:
-        '企業機構、提問者、平台管理、解答者、認證專家與一般討論之身分定位、權能規範與各角色專屬守則。',
-      badge: '用戶角色與社群',
+        'AI 題目自動標籤與建議、AI 專家智慧媒合推播、AI-CRM 客戶作戰藍圖、AI 爭議調解報告與商業企劃書生成。',
+      badge: 'AI 智慧功能',
     },
   ];
 
@@ -934,6 +942,74 @@ export const MechanismView: React.FC = () => {
                       setActiveContractSubTab('community_guidelines');
                     }}
                   />
+                </div>
+              )}
+
+              {/* OTHER CHAPTER 5: AI 功能介紹與智慧賦能 */}
+              {selectedOtherChapterId === 'ch_other_5' && (
+                <div className="p-6 sm:p-8 rounded-3xl bg-purple-50/60 border border-purple-200 space-y-6 animate-in fade-in">
+                  <div className="flex items-center gap-2.5 border-b border-purple-200 pb-4">
+                    <Sparkles className="w-6 h-6 text-purple-700" />
+                    <h2 className="text-xl font-black text-stone-900">
+                      AI 智慧引擎賦能與高效溝通工具
+                    </h2>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+                    IdeaX 整合最前沿 AI 語意與專家大語言模型，全面賦能提問者、解答者與平台營運管理，打造無縫高效的知識與解決方案交易生態：
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
+                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
+                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-purple-600" />
+                        <span>AI 題目自動標籤與建議</span>
+                      </span>
+                      <p className="text-stone-600 leading-relaxed">
+                        提問發布時，系統自動分析痛點語意，生成精準主題 Hashtag 與推薦懸賞級別。
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
+                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-purple-600" />
+                        <span>AI 專家智慧媒合推播</span>
+                      </span>
+                      <p className="text-stone-600 leading-relaxed">
+                        即時分析專家領域、認證資歷與歷史評價，主動推播高適配度問題給專屬專家。
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
+                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-purple-600" />
+                        <span>AI-CRM 客戶作戰藍圖</span>
+                      </span>
+                      <p className="text-stone-600 leading-relaxed">
+                        為專家拆解潛在客戶痛點、決策因子與跟進時機，生成 3 階段促成策略與對話建議。
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
+                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
+                        <Scale className="w-4 h-4 text-purple-600" />
+                        <span>AI 智慧爭議調解報告</span>
+                      </span>
+                      <p className="text-stone-600 leading-relaxed">
+                        爭議發生時，調閱聊天室對話與交付紀錄，生成中立客觀的調解報告與和解協議。
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
+                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
+                        <FileText className="w-4 h-4 text-purple-600" />
+                        <span>AI 商業企劃與合規生成</span>
+                      </span>
+                      <p className="text-stone-600 leading-relaxed">
+                        一鍵自動產出正規商業企劃書、電子和解協議與專案進度試算，提升履約保障。
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

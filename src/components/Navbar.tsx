@@ -1029,7 +1029,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         ? 'bg-purple-100 text-purple-800'
                         : currentUser.role === 'solver'
                         ? 'bg-blue-100 text-blue-800'
-                        : 'bg-stone-100 text-stone-700'
+                        : 'bg-amber-100 text-amber-900'
                     }`}
                   >
                     {currentUser.role === 'admin'

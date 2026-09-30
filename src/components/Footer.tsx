@@ -86,7 +86,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   onClick={() => onNavClick('solvers')}
                   className="hover:text-amber-400 transition-colors cursor-pointer text-left"
                 >
-                  認證專家
+                  專家智庫
                 </button>
               </li>
               <li>
@@ -95,6 +95,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   className="hover:text-amber-400 transition-colors cursor-pointer text-left"
                 >
                   交易榮譽榜
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => onNavClick('about', 'tiers')}
+                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
+                >
+                  功能說明
                 </button>
               </li>
             </ul>
