@@ -24,6 +24,20 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   minDurationMs = 1400,
 }) => {
   const { questions, solvers, answers } = useApp();
+
+  // 電腦版偵測：電腦版/桌面瀏覽器不顯示開啟動畫
+  const [isDesktop] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isWideScreen = window.innerWidth >= 1024;
+      // 若為非行動裝置 UA 且螢幕寬度 >= 768px，或螢幕寬度 >= 1024px，皆判定為電腦版
+      if (!isMobileUA && window.innerWidth >= 768) return true;
+      if (isWideScreen && navigator.maxTouchPoints <= 1) return true;
+    } catch {}
+    return false;
+  });
+
   const [mounted, setMounted] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isRendered, setIsRendered] = useState(true);
@@ -40,6 +54,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   };
 
   useEffect(() => {
+    if (isDesktop) return;
+
     // 進入時平滑淡入
     const enterTimer = setTimeout(() => {
       setMounted(true);
@@ -92,12 +108,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     }
   }, [questions.length, solvers.length, answers.length, progress]);
 
-  if (!isRendered) return null;
+  if (isDesktop || !isRendered) return null;
 
   return (
     <div
       onClick={handleDismiss}
-      className={`fixed inset-0 z-[99999] flex flex-col items-center justify-center select-none bg-white transition-all duration-700 ease-out cursor-pointer ${
+      className={`fixed inset-0 z-[99999] lg:hidden flex flex-col items-center justify-center select-none bg-white transition-all duration-700 ease-out cursor-pointer ${
         mounted && !isFadingOut
           ? 'opacity-100 scale-100'
           : isFadingOut
