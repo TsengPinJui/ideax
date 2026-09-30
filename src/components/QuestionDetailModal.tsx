@@ -39,6 +39,7 @@ import {
   Layers,
   Flag,
   ShieldAlert,
+  AlertTriangle,
   Bookmark,
   Loader2,
   Tag,
@@ -393,7 +394,11 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${levelConfig.badgeClass}`}>
               {question.level} · {levelConfig.name}
             </span>
-            {question.status === 'solved' ? (
+            {question.status === 'delisted' ? (
+              <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> 已被管理員下架
+              </span>
+            ) : question.status === 'solved' ? (
               <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" /> 已採納方案・已結算
               </span>
@@ -403,6 +408,24 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               </span>
             )}
           </div>
+
+          {/* 違規下架官方處置說明 */}
+          {question.status === 'delisted' && (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs space-y-1.5 shadow-2xs">
+              <div className="flex items-center gap-2 text-rose-900 font-extrabold text-sm">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>此提問因違反平台規範已被管理員強制下架</span>
+              </div>
+              {question.delistedReason && (
+                <p className="text-rose-800 font-medium">違規原因：{question.delistedReason}</p>
+              )}
+              {question.delistedFeedback && (
+                <p className="text-stone-700 bg-white/90 p-2.5 rounded-xl border border-rose-100 mt-1 leading-relaxed">
+                  官方處置反饋：{question.delistedFeedback}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center gap-3 justify-between flex-wrap">
             <div className="flex-1 min-w-[240px]">

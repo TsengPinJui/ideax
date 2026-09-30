@@ -257,9 +257,10 @@ function MainContent() {
   const filteredQuestions = useMemo(() => {
     const qTerm = searchQuery.trim().toLowerCase();
 
-    const baseQuestions = isDemoMode
+    const baseQuestions = (isDemoMode
       ? questions
-      : questions.filter((q) => !isMockQuestionId(q.id, q.authorId));
+      : questions.filter((q) => !isMockQuestionId(q.id, q.authorId))
+    ).filter((q) => q.status !== 'delisted');
 
     return baseQuestions
       .filter((q) => {

@@ -68,6 +68,7 @@ export type UserDashboardTab =
   | 'switch_account'
   | 'admin_management'
   | 'admin_cases'
+  | 'admin_questions'
   | 'admin_user_management'
   | 'admin_user_analytics'
   | 'admin_certifications'
@@ -609,7 +610,10 @@ export interface Question {
   tags: string[];
   level: ProblemLevel;
   bounty: number; // 懸賞金額 NT$
-  status: 'open' | 'solved' | 'closed';
+  status: 'open' | 'solved' | 'closed' | 'delisted';
+  delistedReason?: string; // 違規下架事由
+  delistedFeedback?: string; // 管理員給予提問者之處置說明與改善指引
+  delistedAt?: string; // 下架時間
   authorId: string;
   authorName: string;
   authorAvatar: string;

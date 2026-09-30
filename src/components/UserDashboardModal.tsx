@@ -8,6 +8,7 @@ import { AdminPointsReceivablesTab } from './AdminPointsReceivablesTab';
 import { AdminTransactionsTab } from './AdminTransactionsTab';
 import { AdminMembershipPlanEditor } from './AdminMembershipPlanEditor';
 import { AdminCasesManagementTab } from './AdminCasesManagementTab';
+import { AdminQuestionsManagementTab } from './AdminQuestionsManagementTab';
 import { AdminUserManagementTab } from './AdminUserManagementTab';
 import { AdminCertificationsTab } from './AdminCertificationsTab';
 import { AdminAiCrmTab } from './AdminAiCrmTab';
@@ -111,6 +112,7 @@ export type UserDashboardTab =
   | 'admin_management'
   | 'admin_transfer_points'
   | 'admin_cases'
+  | 'admin_questions'
   | 'admin_user_management'
   | 'admin_user_analytics'
   | 'admin_certifications'
@@ -1355,9 +1357,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   // 分頁名稱映射
   const TAB_NAME_MAP: Record<string, string> = {
     proposals: '我的案件',
-    questions_management: '問題管理',
-    points_receivables: currentUser.role === 'admin' ? '點數 & 應收帳款管理' : '點數 & 應收帳款',
-    overview: currentUser.role === 'admin' ? '點數 & 應收帳款管理' : '點數 & 應收帳款',
+    questions_management: '提問管理',
+    points_receivables: currentUser.role === 'admin' ? '點數與帳務管理' : '點數 & 應收帳款',
+    overview: '功能總覽儀表板',
     transactions: currentUser.role === 'admin' ? '交易管理' : '交易紀錄',
     subscriptions: currentUser.role === 'admin' ? '會員方案與費率管理' : '會員方案',
     profile: currentUser.role === 'admin' ? '管理員帳號設定' : '帳號與基本資料',
@@ -1366,8 +1368,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     survey: '問卷(客戶調查)',
     switch_account: '切換帳號',
     admin_management: '平台數據與顯示',
-    admin_transfer_points: '轉入點數',
     admin_cases: '案件管理',
+    admin_questions: '問題管理',
     admin_user_management: '用戶管理',
     admin_user_analytics: '用戶分佈與習慣統計',
     admin_certifications: '受理認證 (實名、專家)',
@@ -1515,10 +1517,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           <div className="flex items-center justify-between px-4 py-1.5 border-b border-stone-200/70 bg-stone-100/70 text-xs">
             <div className="flex items-center gap-1.5 overflow-x-auto">
               {[
-                { key: 'all', label: '全部功能', count: 13 },
-                { key: 'finance', label: '💰 金流與案件', count: 4 },
+                { key: 'all', label: '全部功能', count: isNoPaymentMode ? 11 : 13 },
+                { key: 'finance', label: '💰 金流與案件', count: isNoPaymentMode ? 2 : 4 },
                 { key: 'users', label: '👥 用戶審核', count: 3 },
-                { key: 'ai_sub', label: '🤖 AI與方案', count: 2 },
+                { key: 'ai_sub', label: '🤖 AI與方案', count: isNoPaymentMode ? 1 : 2 },
                 { key: 'account', label: '⚙️ 帳號', count: 2 },
               ].map((cat) => (
                 <button
@@ -1550,6 +1552,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 { id: 'transactions', category: 'finance', label: '交易管理', icon: Clock },
               ] : []),
               { id: 'admin_cases', category: 'finance', label: '案件管理', icon: Briefcase },
+              { id: 'admin_questions', category: 'finance', label: '問題管理', icon: HelpCircle },
 
               // 用戶與審核認證
               { id: 'admin_user_management', category: 'users', label: '用戶管理', icon: UserCheck },
@@ -1723,10 +1726,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <p className="px-2 pt-1 pb-1 text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center justify-between border-b border-amber-100 mb-1">
                   <span className="flex items-center gap-1.5">
                     <Coins className="w-3.5 h-3.5 text-amber-600" />
-                    <span>案件與金流管理</span>
+                    <span>金流與點數資產</span>
                   </span>
                   <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">
-                    {isNoPaymentMode ? '1 項' : '4 項'}
+                    {isNoPaymentMode ? '2 項' : '4 項'}
                   </span>
                 </p>
 
@@ -1777,7 +1780,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </>
                 )}
 
-                {/* 4. 案件管理 */}
+                {/* 3. 案件管理 */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1793,6 +1796,27 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div>
                       <span className="block font-black text-stone-900 group-hover:text-purple-800 transition-colors">案件管理</span>
                       <span className="text-[10px] text-stone-500 font-normal">全站案件詳細狀況與私聊對話稽核</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
+                {/* 4. 問題管理 (新增於案件管理下方) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('admin_questions');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-purple-50/80 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-purple-100 text-purple-800 border border-purple-200 flex items-center justify-center shrink-0">
+                      <HelpCircle className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900 group-hover:text-purple-800 transition-colors">問題管理</span>
+                      <span className="text-[10px] text-stone-500 font-normal">各類問題分佈圓餅圖、下架審查與違規反饋</span>
                     </div>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
@@ -2441,6 +2465,25 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                     <p className="text-xs text-stone-500 line-clamp-2">
                       查閱懸賞問題、採納方案、階段交付交付成果與客製私聊進度，杜絕履約違規。
+                    </p>
+                  </div>
+
+                  {/* 問題管理 (新增於案件管理下方) */}
+                  <div
+                    onClick={() => setActiveTab('admin_questions')}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-400 hover:bg-purple-50/20 transition-all cursor-pointer group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <HelpCircle className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="font-black text-stone-900 text-sm">問題管理</h5>
+                        <span className="text-[10px] text-purple-700 font-bold">圓餅圖分析與違規下架</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-stone-500 line-clamp-2">
+                      查閱各類問題數量分佈圓餅圖，執行違規問題審核下架並即時發送處置反饋通知。
                     </p>
                   </div>
 
@@ -3683,12 +3726,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           )}
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                              q.status === 'solved'
+                              q.status === 'delisted'
+                                ? 'bg-rose-100 text-rose-800'
+                                : q.status === 'solved'
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : 'bg-amber-100 text-amber-900'
                             }`}
                           >
-                            {q.status === 'solved' ? '✓ 已採納結案' : '💬 解答招募中'}
+                            {q.status === 'delisted' ? '⚠️ 已違規下架' : q.status === 'solved' ? '✓ 已採納結案' : '💬 解答招募中'}
                           </span>
                         </div>
                         <span className="text-[11px] text-stone-400">{q.createdAt}</span>
@@ -3704,6 +3749,24 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         {q.title}
                       </h4>
                       <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">{q.description}</p>
+
+                      {/* 違規下架反饋說明 */}
+                      {q.status === 'delisted' && (
+                        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs space-y-1 my-1">
+                          <div className="flex items-center gap-1.5 text-rose-800 font-bold">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                            <span>此問題已被管理員判定違規下架</span>
+                          </div>
+                          {q.delistedReason && (
+                            <p className="text-rose-700 text-[11px]">違規原因：{q.delistedReason}</p>
+                          )}
+                          {q.delistedFeedback && (
+                            <p className="text-stone-600 text-[11px] bg-white/80 p-2 rounded border border-rose-100 mt-1">
+                              官方處置反饋：{q.delistedFeedback}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       {/* Tags list */}
                       <div className="flex items-center gap-1.5 flex-wrap pt-1">
@@ -7601,6 +7664,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         {/* 管理員專用：案件管理 */}
         {activeTab === 'admin_cases' && (
           <AdminCasesManagementTab onOpenQuestion={onOpenQuestion} />
+        )}
+
+        {/* 管理員專用：問題管理 (各類問題數量圓餅圖、違規審查與下架反饋) */}
+        {activeTab === 'admin_questions' && (
+          <AdminQuestionsManagementTab />
         )}
 
         {/* 管理員專用：受理認證 (實名、專家) */}

@@ -1212,7 +1212,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </div>
                     )}
 
-                    {/* 案件管理 (獨立一組) */}
+                    {/* 案件管理與問題管理 (業務與內容審核) */}
                     <div className="py-1.5 px-1.5 space-y-0.5">
                       <button
                         onClick={() => handleOpenDashboard('admin_cases')}
@@ -1225,6 +1225,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <div>
                             <span className="block font-black text-stone-900">案件管理</span>
                             <span className="text-[10px] text-stone-500 font-normal">全站案件詳細狀況與私聊對話稽核</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
+                      </button>
+
+                      {/* 問題管理 (新增於案件管理下方) */}
+                      <button
+                        onClick={() => handleOpenDashboard('admin_questions')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-50 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 shadow-2xs">
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <span className="block font-black text-stone-900">問題管理</span>
+                            <span className="text-[10px] text-stone-500 font-normal">各類問題分佈圓餅圖、違規下架與用戶反饋</span>
                           </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
