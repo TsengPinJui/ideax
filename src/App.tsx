@@ -29,6 +29,16 @@ import { HelpTooltip } from './components/HelpTooltip';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { updateSEOForQuestion } from './services/seoService';
+import {
+  recordUserSearchKeyword,
+  recordUserBoard,
+  recordUserSpecialZone,
+  recordUserViewedQuestion,
+  getUserInterestProfile,
+  computeQuestionRecommendationScore,
+  isUserInterestedInQuestionTopic,
+  isQuestionExpired,
+} from './services/recommendationService';
 import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert } from 'lucide-react';
 
 const CATEGORIES: Category[] = [
@@ -78,6 +88,19 @@ function MainContent() {
   const [initialPostType, setInitialPostType] = useState<PostType>('seek_solution');
   const [initialPublishIdentity, setInitialPublishIdentity] = useState<'admin' | 'platform'>('admin');
   const [sortBy, setSortBy] = useState<QuestionSortOption>('recruiting_promoted');
+  const [userProfileVersion, setUserProfileVersion] = useState(0);
+
+  // 監聽並自動記錄個別用戶最近搜尋的關鍵字（防抖 600ms）
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed.length >= 2) {
+      const timer = setTimeout(() => {
+        recordUserSearchKeyword(currentUser.id, trimmed);
+        setUserProfileVersion((v) => v + 1);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [searchQuery, currentUser.id]);
 
   const [pinnedBoard, setPinnedBoard] = useState<{ type: 'special_zone' | 'subcategory'; id: string; categoryName?: string } | null>(null);
   const [unpinConfirmOpen, setUnpinConfirmOpen] = useState(false);
@@ -90,6 +113,8 @@ function MainContent() {
     setSelectedCategory('全部');
     setSelectedSubcategory('全部');
     setSpecialZone('all');
+    recordUserSearchKeyword(currentUser.id, tag);
+    setUserProfileVersion((v) => v + 1);
     setTimeout(() => {
       const el = document.getElementById('market-grid');
       if (el) {
@@ -139,26 +164,44 @@ function MainContent() {
       if (type === 'special_zone') {
         setSpecialZone(id as SpecialZone);
         setSelectedSubcategory('全部');
+        recordUserSpecialZone(currentUser.id, id);
       } else {
         setSelectedCategory((categoryName as Category) || '全部');
         setSelectedSubcategory(id);
         setSpecialZone('all');
+        recordUserBoard(currentUser.id, categoryName || '', id);
       }
+      setUserProfileVersion((v) => v + 1);
     }
   };
 
-  // 點選看板就要先關閉既有已經開啟的主題專區
+  // 點選看板就要先關閉既有已經開啟的主題專區，並記錄至該用戶之看板瀏覽偏好
   const handleSelectCategory = (cat: Category | '全部') => {
     setSelectedCategory(cat);
     if (cat === '全部') {
       setSelectedSubcategory('全部');
+    } else {
+      recordUserBoard(currentUser.id, cat, '全部');
+      setUserProfileVersion((v) => v + 1);
     }
     setSpecialZone('all');
   };
 
   const handleSelectSubcategory = (sub: string | '全部') => {
     setSelectedSubcategory(sub);
+    if (sub !== '全部') {
+      recordUserBoard(currentUser.id, selectedCategory, sub);
+      setUserProfileVersion((v) => v + 1);
+    }
     setSpecialZone('all');
+  };
+
+  const handleSelectSpecialZone = (zone: SpecialZone) => {
+    setSpecialZone(zone);
+    if (zone !== 'all') {
+      recordUserSpecialZone(currentUser.id, zone);
+      setUserProfileVersion((v) => v + 1);
+    }
   };
 
   // 手機app模式，開啟後會自動滾動到探索市場位置
@@ -256,13 +299,43 @@ function MainContent() {
   // - 標題 (Question title, proposal titles)
   // - 問題 (Categories, subcategories, tags, problem levels, postTypes: 痛點/討論/解答, status)
   // - 人物帳號 (Author name, author ID/account, author title, answer solver name, solver ID, solver title, solvers directory)
-  const filteredQuestions = useMemo(() => {
-    const qTerm = searchQuery.trim().toLowerCase();
-
-    const baseQuestions = (isDemoMode
+  // 基礎有效問題池：已排除管理員下架、已過期之案件；若非測試環境（正式營運模式）則排除模擬數據
+  const baseQuestions = useMemo(() => {
+    return (isDemoMode
       ? questions
       : questions.filter((q) => !isMockQuestionId(q.id, q.authorId))
-    ).filter((q) => q.status !== 'delisted');
+    ).filter((q) => {
+      // 1. 排除已被管理員下架的問題
+      if (q.status === 'delisted') return false;
+
+      // 2. 顯示出來的問題不包含過期的（以截止日當日 23:59:59 為最終截止線，過期不顯示）
+      if (isQuestionExpired(q.deadline)) {
+        return false;
+      }
+
+      // 3. 已有人提案或接案的問題，只要期限還沒過一樣顯示
+      return true;
+    });
+  }, [questions, isDemoMode]);
+
+  // 各主分類看板之真實問題總數計算（解決非測試環境總題數是零但個別看板錯誤顯示數字之問題）
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      創新創業: 0,
+      專業問題: 0,
+      學術探討: 0,
+      日常疑難: 0,
+    };
+    baseQuestions.forEach((q) => {
+      if (counts[q.category] !== undefined) {
+        counts[q.category]++;
+      }
+    });
+    return counts;
+  }, [baseQuestions]);
+
+  const filteredQuestions = useMemo(() => {
+    const qTerm = searchQuery.trim().toLowerCase();
 
     return baseQuestions
       .filter((q) => {
@@ -291,6 +364,25 @@ function MainContent() {
         }
 
         if (!matchesSpecialZone) return false;
+
+        // 核心規則：推播的問題必須在其對應的主題出現，如果某位用戶不關注這個推播問題的主題那就不要把這個問題放在這位用戶的推薦推播名單
+        const isPromoted = q.status === 'open' && q.isFeatured;
+        if (sortBy === 'recruiting_promoted' && isPromoted) {
+          const profile = getUserInterestProfile(currentUser.id);
+          const hasInterestHistory =
+            profile.categories.length > 0 ||
+            profile.subcategories.length > 0 ||
+            profile.keywords.length > 0 ||
+            profile.tags.length > 0 ||
+            profile.specialZones.length > 0;
+
+          if (hasInterestHistory) {
+            const isInterested = isUserInterestedInQuestionTopic(q, profile);
+            if (!isInterested) {
+              return false;
+            }
+          }
+        }
 
         if (!qTerm) {
           return matchesCategory && matchesSubcategory && matchesLevel;
@@ -395,23 +487,26 @@ function MainContent() {
         return matchesCategory && matchesSubcategory && matchesLevel && matchesSearch;
       })
       .sort((a, b) => {
-        // 1. 招募中（付費推播）放在最前面，默認排序
+        // 1. 推薦（推播問題置頂並注明「招募中」，推播問題與其餘問題一律嚴格按照時間由新到舊排序）
         if (sortBy === 'recruiting_promoted') {
-          const getPriorityScore = (q: Question) => {
-            if (q.status === 'open') {
-              return q.isFeatured ? 3 : 2; // 推播招募中 = 3，一般招募中 = 2
-            }
-            return 1; // 已採納/已結案 = 1
-          };
+          const isPromotedA = a.status === 'open' && a.isFeatured;
+          const isPromotedB = b.status === 'open' && b.isFeatured;
 
-          const scoreA = getPriorityScore(a);
-          const scoreB = getPriorityScore(b);
-
-          if (scoreB !== scoreA) {
-            return scoreB - scoreA;
+          // 1. 推播問題優先排在推薦的最上面
+          if (isPromotedA && !isPromotedB) {
+            return -1;
           }
-          // 同優先級下，依發布時間由新到舊排序
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          if (!isPromotedA && isPromotedB) {
+            return 1;
+          }
+
+          // 2. 若皆為推播問題（推播問題群內部），或皆為其餘問題，一律按照時間由新到舊（最新發布排最前）排序
+          const timeA = new Date(a.createdAt).getTime();
+          const timeB = new Date(b.createdAt).getTime();
+          if (timeB !== timeA) {
+            return timeB - timeA;
+          }
+          return b.id.localeCompare(a.id);
         }
 
         // 2. 最多解答（方案數最多）
@@ -444,7 +539,20 @@ function MainContent() {
 
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [questions, answers, solvers, selectedCategory, selectedSubcategory, selectedLevel, specialZone, sortBy, searchQuery]);
+  }, [
+    questions,
+    answers,
+    solvers,
+    selectedCategory,
+    selectedSubcategory,
+    selectedLevel,
+    specialZone,
+    sortBy,
+    searchQuery,
+    currentUser.id,
+    userProfileVersion,
+    isDemoMode,
+  ]);
 
   // 搜尋專用：匹配專家智庫與全站人物帳號清單 (支援 ID 與姓名搜尋)
   const matchingSolvers = useMemo(() => {
@@ -545,7 +653,7 @@ function MainContent() {
         selectedSubcategory={selectedSubcategory}
         setSelectedSubcategory={handleSelectSubcategory}
         specialZone={specialZone}
-        setSpecialZone={setSpecialZone}
+        setSpecialZone={handleSelectSpecialZone}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onSelectSort={setSortBy}
@@ -774,6 +882,7 @@ function MainContent() {
                       sortBy={sortBy}
                       setSortBy={setSortBy}
                       totalCount={filteredQuestions.length}
+                      categoryCounts={categoryCounts}
                     />
                   </>
                 )}
@@ -941,6 +1050,8 @@ function MainContent() {
                           onSearchTag={handleSearchTag}
                           onClick={() => {
                             incrementQuestionViews(q.id, 1);
+                            recordUserViewedQuestion(currentUser.id, q);
+                            setUserProfileVersion((v) => v + 1);
                             setSelectedQuestion(q);
                             setActiveTab('question_detail');
                           }}

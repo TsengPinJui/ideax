@@ -867,7 +867,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                   </span>
                   <HelpTooltip
                     title="置頂推播說明"
-                    content="放入「招募中」排序置頂並加上廣播大聲公符號 📢，大幅提升曝光與專家方案解答率。"
+                    content="放入首頁「✨推薦」最頂端優先置頂並標記「招募中」，大幅提升曝光與專家方案解答率。"
                   />
                 </div>
               </div>

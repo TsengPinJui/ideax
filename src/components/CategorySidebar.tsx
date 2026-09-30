@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Category, CATEGORY_HIERARCHY, Question, QuestionSortOption, SpecialZone, AppTab } from '../types';
+import { useApp } from '../context/AppContext';
+import { isMockQuestionId } from '../data/mockData';
+import { isQuestionExpired } from '../services/recommendationService';
 import {
   X,
   Layers,
@@ -86,18 +89,27 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
 
   if (!isOpen) return null;
 
+  const { isDemoMode } = useApp();
+
+  const validQuestions = useMemo(() => {
+    return (isDemoMode
+      ? questions
+      : questions.filter((q) => !isMockQuestionId(q.id, q.authorId))
+    ).filter((q) => q.status !== 'delisted' && !isQuestionExpired(q.deadline));
+  }, [questions, isDemoMode]);
+
   // Question counts
   const getCategoryCount = (cat: Category) => {
-    return questions.filter((q) => q.category === cat).length;
+    return validQuestions.filter((q) => q.category === cat).length;
   };
 
   const getSubcategoryCount = (cat: Category, sub: string) => {
-    return questions.filter((q) => q.category === cat && (q.subcategory === sub || q.tags.includes(sub))).length;
+    return validQuestions.filter((q) => q.category === cat && (q.subcategory === sub || q.tags.includes(sub))).length;
   };
 
   // 專區數量統計
   // 1. 創點子/痛點專區：透過提出痛點提出的問題與標註痛點的問題
-  const painPointsCount = questions.filter(
+  const painPointsCount = validQuestions.filter(
     (q) =>
       q.postType === 'pain_point' ||
       q.tags.some((t) => t.includes('痛點') || t.includes('創點子')) ||
@@ -106,7 +118,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   ).length;
 
   // 2. L0問題討論專區：所有 L0 問題和點選閒聊討論提出的問題
-  const l0DiscussionCount = questions.filter(
+  const l0DiscussionCount = validQuestions.filter(
     (q) =>
       q.level === 'L0' ||
       q.postType === 'chat_discussion' ||

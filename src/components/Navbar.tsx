@@ -109,6 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     setActiveConversationId,
     logoutAccount,
     isNoPaymentMode,
+    isDemoMode,
     isAuthModalOpen,
     authModalMode,
     authModalMethod,

@@ -17,6 +17,7 @@ interface CategoryFilterProps {
   sortBy: QuestionSortOption;
   setSortBy: (sort: QuestionSortOption) => void;
   totalCount: number;
+  categoryCounts?: Record<string, number>;
 }
 
 export const CategoryFilter: React.FC<CategoryFilterProps> = ({
@@ -32,6 +33,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   sortBy,
   setSortBy,
   totalCount,
+  categoryCounts,
 }) => {
   const {
     searchMode,
@@ -194,7 +196,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                   selectedCategory === cat ? 'bg-amber-600/30 text-stone-950 font-black' : 'bg-stone-100 text-stone-500 font-semibold'
                 }`}
               >
-                {CATEGORY_HIERARCHY[cat]?.length || 0}
+                {categoryCounts ? (categoryCounts[cat] ?? 0) : 0}
               </span>
             </button>
           ))}
@@ -644,18 +646,18 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
           </span>
 
           <div className="inline-flex rounded-xl bg-stone-100 p-0.5 border border-stone-200 flex-wrap">
-            {/* 1. 招募中 (移除付費推播括弧) */}
+            {/* 1. 推薦 (黃色星星圖示，依用戶最近搜尋關鍵字、主題、看板智能推薦) */}
             <button
               onClick={() => setSortBy('recruiting_promoted')}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
                 sortBy === 'recruiting_promoted'
                   ? 'bg-amber-500 text-stone-950 shadow-2xs font-bold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
-              title="優先顯示招募中問題"
+              title="依您最近搜尋的關鍵字、看板與瀏覽主題為您智能推薦"
             >
-              <Sparkles className="w-3 h-3 text-stone-950" />
-              <span>招募中</span>
+              <Sparkles className={`w-3.5 h-3.5 shrink-0 ${sortBy === 'recruiting_promoted' ? 'text-yellow-200 fill-yellow-300' : 'text-amber-500 fill-amber-400'}`} />
+              <span>推薦</span>
             </button>
 
             {/* 2. 最多解答 (移除方案數括弧) */}

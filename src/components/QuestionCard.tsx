@@ -53,7 +53,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       onClick={onClick}
       className={`group bg-white rounded-2xl border p-5 transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between relative ${
         isPromoted
-          ? 'border-amber-300 ring-1 ring-amber-300/60 bg-gradient-to-b from-amber-50/20 to-white'
+          ? 'border-purple-300 ring-1 ring-purple-300/40 bg-gradient-to-b from-purple-50/15 via-white to-white'
           : 'border-stone-200 hover:border-amber-400'
       }`}
     >
@@ -61,11 +61,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         {/* Top Header: Category, Level & Bounty */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Promoted badge */}
+            {/* Promoted badge: 以尊貴紫色為主體的「招募中」高質感提示標籤 */}
             {isPromoted && (
-              <span className="text-[11px] font-black px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 text-stone-950 border border-amber-400 shadow-2xs flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-stone-950 fill-stone-950" />
-                <span>付費推播</span>
+              <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-800 text-white border border-purple-400/60 shadow-sm shadow-purple-950/25 flex items-center gap-1.5 tracking-wider" title="置頂推播 · 積極招募最佳解答中">
+                <Sparkles className="w-3.5 h-3.5 text-purple-200 fill-purple-300 drop-shadow-xs animate-pulse" />
+                <span className="font-extrabold tracking-wide text-white">招募中</span>
               </span>
             )}
 

@@ -403,8 +403,15 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 <CheckCircle2 className="w-3.5 h-3.5" /> 已採納方案・已結算
               </span>
             ) : (
-              <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-200">
-                招募方案中
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1.5 ${
+                question.isFeatured
+                  ? 'bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-800 text-white border-purple-400/60 shadow-xs'
+                  : 'bg-amber-100 text-amber-900 border-amber-200'
+              }`}>
+                {question.isFeatured && (
+                  <Sparkles className="w-3.5 h-3.5 text-purple-200 fill-purple-300 drop-shadow-xs animate-pulse" />
+                )}
+                <span className={question.isFeatured ? 'font-black text-white' : ''}>招募中</span>
               </span>
             )}
           </div>

@@ -334,7 +334,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(!initialTab || initialTab === 'overview');
 
   const [activeTab, setActiveTab] = useState<UserDashboardTab>(() => {
-    if (isNoPaymentMode && ['points_receivables', 'transactions', 'subscriptions', 'admin_transfer_points'].includes(initialTab)) {
+    if (
+      (isNoPaymentMode && ['points_receivables', 'transactions', 'subscriptions', 'admin_transfer_points'].includes(initialTab)) ||
+      ((isNoPaymentMode || !isDemoMode) && initialTab === 'admin_mail_disputes')
+    ) {
       return 'overview';
     }
     return initialTab || 'overview';
@@ -343,7 +346,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [isExpertApplyModalOpen, setIsExpertApplyModalOpen] = useState(false);
 
   React.useEffect(() => {
-    if (isNoPaymentMode && ['points_receivables', 'transactions', 'subscriptions', 'admin_transfer_points'].includes(initialTab)) {
+    if (
+      (isNoPaymentMode && ['points_receivables', 'transactions', 'subscriptions', 'admin_transfer_points'].includes(initialTab)) ||
+      ((isNoPaymentMode || !isDemoMode) && initialTab === 'admin_mail_disputes')
+    ) {
       setActiveTab('overview');
       setMobileMenuOpen(false);
       return;
@@ -1461,8 +1467,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 ml-auto pl-2">
-          {/* 管理員專用：申訴郵件信封圖示按鈕 (移至最右側，顯示未處理案件與信件數量) */}
-          {currentUser.role === 'admin' && (
+          {/* 管理員專用：申訴郵件信封圖示按鈕 (移至最右側，顯示未處理案件與信件數量) - 僅非無金流且測試環境顯示 */}
+          {currentUser.role === 'admin' && !isNoPaymentMode && isDemoMode && (
             <button
               type="button"
               onClick={() => {
@@ -4939,15 +4945,17 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">環境開關與營運概覽</span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('admin_mail_disputes')}
-                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
-                    >
-                      <Mail className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">申訴與郵件</span>
-                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">案件仲裁與官方通知</span>
-                    </button>
+                    {!isNoPaymentMode && isDemoMode && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('admin_mail_disputes')}
+                        className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                      >
+                        <Mail className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+                        <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">申訴與郵件</span>
+                        <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">案件仲裁與官方通知</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -7683,7 +7691,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         )}
 
         {/* 管理員專用：申訴與郵件 */}
-        {activeTab === 'admin_mail_disputes' && currentUser.role === 'admin' && (
+        {activeTab === 'admin_mail_disputes' && currentUser.role === 'admin' && !isNoPaymentMode && isDemoMode && (
           <AdminMailDisputesTab onOpenQuestion={onOpenQuestion} />
         )}
       </div>
