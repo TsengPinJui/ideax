@@ -87,7 +87,7 @@ export const MobilePwaDownloadWidget: React.FC = () => {
           <button
             onClick={handleDownloadClick}
             className="w-11 h-11 sm:w-12 sm:h-12 bg-gradient-to-tr from-amber-500 via-amber-600 to-orange-500 text-white rounded-full shadow-lg shadow-amber-500/35 border-2 border-white ring-2 ring-amber-400/40 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-            title={isTestingAdmin ? '【管理員測試模式】直接發起下載請求' : '直接下載 App'}
+            title={isTestingAdmin ? '【管理員測試模式】直接發起下載安裝' : '下載安裝 IdeaX創點子 App'}
           >
             <div className="animate-bounce">
               <Download className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-xs" />
