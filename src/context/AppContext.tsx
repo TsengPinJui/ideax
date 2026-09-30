@@ -288,6 +288,38 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEY_PREFIX = 'ideax_mvp_v3_';
 
+// 判斷是否為環境設定或模式變更相關之通知，此類通知全面刪除不再儲存或展示
+const isModeOrEnvNotification = (title?: string, message?: string) => {
+  const text = `${title || ''} ${message || ''}`;
+  if (!text.trim()) return false;
+
+  return (
+    text.includes('無金流模式') ||
+    text.includes('正式營運模式') ||
+    text.includes('示範測試模式') ||
+    text.includes('純淨營運模式') ||
+    text.includes('示範測試') ||
+    text.includes('純淨營運') ||
+    text.includes('測試環境') ||
+    text.includes('隱藏測試帳號') ||
+    text.includes('顯示測試帳號') ||
+    text.includes('環境設定') ||
+    text.includes('模式設定') ||
+    text.includes('假資料已清除') ||
+    text.includes('模擬假資料') ||
+    text.includes('展示問題') ||
+    text.includes('模擬專家') ||
+    text.includes('測試交易數據') ||
+    text.includes('已切換至') ||
+    text.includes('已啟用示範') ||
+    text.includes('測試環境 (TEST)') ||
+    text.includes('無金流模式 (FREE)') ||
+    text.includes('正式營運模式 (NORM)') ||
+    (text.includes('模式') && (text.includes('啟用') || text.includes('切換') || text.includes('開啟') || text.includes('關閉') || text.includes('恢復') || text.includes('隱藏') || text.includes('純淨') || text.includes('示範') || text.includes('營運') || text.includes('測試'))) ||
+    (text.includes('環境') && (text.includes('啟用') || text.includes('切換') || text.includes('開啟') || text.includes('關閉') || text.includes('恢復') || text.includes('測試')))
+  );
+};
+
 // 檢測當前運營模式 (FREE: 無金流模式, NORM: 正式營運模式, TEST: 測試環境)
 type PlatformMode = 'TEST' | 'NORM' | 'FREE';
 
@@ -856,6 +888,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}notifications`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((n) => !isModeOrEnvNotification(n.title, n.message));
+        }
+      }
+    } catch {}
     const isDemo = getInitialIsDemoMode();
     if (!isDemo) return [];
     return [
@@ -1125,8 +1166,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [bookmarkedQuestionIds]);
 
   useEffect(() => {
-    // Solvers / Notifications state tracking
-  }, [solvers, notifications]);
+    const cleanNotifications = notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message));
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}notifications`, JSON.stringify(cleanNotifications));
+  }, [notifications]);
+
+  // 掛載時自動清空既有資料庫/localStorage 中殘留的環境與模式變更通知
+  useEffect(() => {
+    setNotifications((prev) => {
+      const clean = prev.filter((n) => !isModeOrEnvNotification(n.title, n.message));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}notifications`, JSON.stringify(clean));
+      } catch {}
+      return clean;
+    });
+  }, []);
 
   // Initial check & hydration / initial seed to Firestore
   useEffect(() => {
@@ -1181,7 +1234,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           }
           if (cloudData.notifications && cloudData.notifications.length > 0) {
-            setNotifications(cloudData.notifications);
+            setNotifications(cloudData.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message)));
           }
           if (cloudData.solvers && cloudData.solvers.length > 0) {
             if (!isDemo) {

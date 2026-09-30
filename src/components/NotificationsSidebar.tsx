@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import {
@@ -32,6 +32,37 @@ interface NotificationsSidebarProps {
   onNavigateToAbout?: () => void;
   onOpenAiCrm?: () => void;
 }
+
+const isModeOrEnvNotification = (title?: string, message?: string) => {
+  const text = `${title || ''} ${message || ''}`;
+  if (!text.trim()) return false;
+
+  return (
+    text.includes('無金流模式') ||
+    text.includes('正式營運模式') ||
+    text.includes('示範測試模式') ||
+    text.includes('純淨營運模式') ||
+    text.includes('示範測試') ||
+    text.includes('純淨營運') ||
+    text.includes('測試環境') ||
+    text.includes('隱藏測試帳號') ||
+    text.includes('顯示測試帳號') ||
+    text.includes('環境設定') ||
+    text.includes('模式設定') ||
+    text.includes('假資料已清除') ||
+    text.includes('模擬假資料') ||
+    text.includes('展示問題') ||
+    text.includes('模擬專家') ||
+    text.includes('測試交易數據') ||
+    text.includes('已切換至') ||
+    text.includes('已啟用示範') ||
+    text.includes('測試環境 (TEST)') ||
+    text.includes('無金流模式 (FREE)') ||
+    text.includes('正式營運模式 (NORM)') ||
+    (text.includes('模式') && (text.includes('啟用') || text.includes('切換') || text.includes('開啟') || text.includes('關閉') || text.includes('恢復') || text.includes('隱藏') || text.includes('純淨') || text.includes('示範') || text.includes('營運') || text.includes('測試'))) ||
+    (text.includes('環境') && (text.includes('啟用') || text.includes('切換') || text.includes('開啟') || text.includes('關閉') || text.includes('恢復') || text.includes('測試')))
+  );
+};
 
 export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
   isOpen,
@@ -122,12 +153,42 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
     };
   }, [isOpen]);
 
-  const currentCategoryList = categoryTab === 'personal' ? personalNotifications : systemNotifications;
-  const currentUnreadCount = categoryTab === 'personal' ? unreadPersonalCount : unreadSystemCount;
-  
-  const filteredNotifications = activeFilter === 'unread'
-    ? currentCategoryList.filter((n) => !n.read)
-    : currentCategoryList;
+  const cleanPersonalNotifications = useMemo(() => {
+    return personalNotifications.filter((n: any) => {
+      if (isModeOrEnvNotification(n.title, n.message)) return false;
+      if (n.userId && n.userId !== currentUser?.id && (n.userId === 'admin' ? currentUser?.role !== 'admin' : true)) {
+        return false;
+      }
+      return true;
+    });
+  }, [personalNotifications, currentUser]);
+
+  const cleanSystemNotifications = useMemo(() => {
+    return systemNotifications.filter((n: any) => {
+      if (isModeOrEnvNotification(n.title, n.message)) return false;
+      if (n.userId && n.userId !== currentUser?.id && (n.userId === 'admin' ? currentUser?.role !== 'admin' : true)) {
+        return false;
+      }
+      return true;
+    });
+  }, [systemNotifications, currentUser]);
+
+  const cleanUnreadPersonalCount = useMemo(() => {
+    return cleanPersonalNotifications.filter((n: any) => !n.read).length;
+  }, [cleanPersonalNotifications]);
+
+  const cleanUnreadSystemCount = useMemo(() => {
+    return cleanSystemNotifications.filter((n: any) => !n.read).length;
+  }, [cleanSystemNotifications]);
+
+  const currentCategoryList = categoryTab === 'personal' ? cleanPersonalNotifications : cleanSystemNotifications;
+  const currentUnreadCount = categoryTab === 'personal' ? cleanUnreadPersonalCount : cleanUnreadSystemCount;
+
+  const filteredNotifications = useMemo(() => {
+    return activeFilter === 'unread'
+      ? currentCategoryList.filter((n: any) => !n.read)
+      : currentCategoryList;
+  }, [activeFilter, currentCategoryList]);
 
   if (!isOpen) return null;
 
@@ -167,9 +228,9 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                   <h2 className="text-base sm:text-lg font-black text-stone-900 tracking-tight">
                     {currentUser?.role === 'admin' ? '管理員內部郵件與申訴中心' : '通知中心'}
                   </h2>
-                  {unreadPersonalCount > 0 && (
+                  {cleanUnreadPersonalCount > 0 && (
                     <span className="text-xs bg-amber-500 text-stone-950 font-black px-2 py-0.5 rounded-full shadow-2xs">
-                      {unreadPersonalCount} 則個人未讀
+                      {cleanUnreadPersonalCount} 則個人未讀
                     </span>
                   )}
                 </div>
@@ -208,13 +269,13 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
               >
                 <User className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <span className="whitespace-nowrap">個人通知</span>
-                {unreadPersonalCount > 0 ? (
+                {cleanUnreadPersonalCount > 0 ? (
                   <span className="min-w-[18px] h-[18px] px-1 bg-amber-500 text-stone-950 font-mono font-black text-[10px] rounded-full flex items-center justify-center shadow-2xs shrink-0">
-                    {unreadPersonalCount > 99 ? '99+' : unreadPersonalCount}
+                    {cleanUnreadPersonalCount > 99 ? '99+' : cleanUnreadPersonalCount}
                   </span>
                 ) : (
                   <span className="text-[10px] text-stone-400 font-mono shrink-0">
-                    ({personalNotifications.length})
+                    ({cleanPersonalNotifications.length})
                   </span>
                 )}
               </button>
@@ -232,13 +293,13 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                 <Megaphone className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                 <span className="whitespace-nowrap">系統通知</span>
                 
-                {unreadSystemCount > 0 ? (
+                {cleanUnreadSystemCount > 0 ? (
                   <span className="min-w-[18px] h-[18px] px-1 bg-rose-500 text-white font-mono font-black text-[10px] rounded-full flex items-center justify-center shadow-2xs shrink-0">
-                    {unreadSystemCount > 99 ? '99+' : unreadSystemCount}
+                    {cleanUnreadSystemCount > 99 ? '99+' : cleanUnreadSystemCount}
                   </span>
                 ) : (
                   <span className="text-[10px] text-stone-400 font-mono shrink-0">
-                    ({systemNotifications.length})
+                    ({cleanSystemNotifications.length})
                   </span>
                 )}
               </button>
@@ -380,7 +441,7 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                 </div>
               </div>
             ) : (
-              filteredNotifications.map((n) => {
+              filteredNotifications.map((n: any) => {
                 const isUnread = !n.read;
                 const isSystem = n.category === 'system' || n.type === 'system' || n.type === 'ai_match';
                 return (

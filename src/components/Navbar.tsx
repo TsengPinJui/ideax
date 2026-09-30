@@ -132,9 +132,20 @@ export const Navbar: React.FC<NavbarProps> = ({
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const userConversations = useMemo(() => {
+    return (conversations || []).filter((c) => {
+      if (!c) return false;
+      if (c.isGroup) return true;
+      if (c.participantDetails) {
+        return c.participantDetails.some((p) => p.id === currentUser?.id);
+      }
+      return true;
+    });
+  }, [conversations, currentUser]);
+
   const unreadChatCount = useMemo(() => {
-    return (conversations || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0);
-  }, [conversations]);
+    return userConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+  }, [userConversations]);
 
   const pendingDisputesCount = useMemo(() => {
     const fromQuestions = (questions || []).filter((q) => q.disputeStatus === 'pending_review').length;
