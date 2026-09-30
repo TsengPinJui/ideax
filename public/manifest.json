@@ -3,7 +3,7 @@
   "name": "IdeaX創點子 — 讓想法發光",
   "short_name": "IdeaX創點子",
   "description": "IdeaX 創點子 — 高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

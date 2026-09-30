@@ -4,36 +4,73 @@ import { useApp } from '../context/AppContext';
 import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
 
 export const MobilePwaDownloadWidget: React.FC = () => {
-  const { currentUser, isDemoMode, openPwaInstallModal } = useApp();
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.id === 'user-admin';
-  const isTestingAdmin = isAdmin && isDemoMode; // 開啟測試模式的管理員
+  const { openPwaInstallModal } = useApp();
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(
     () => (typeof window !== 'undefined' ? (window as any).deferredPwaPrompt || null : null)
   );
-  const [isStandalone, setIsStandalone] = useState<boolean>(false);
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
-  // 讀取瀏覽器 LocalStorage 暫存記號：若已下載過則預設不再提示
-  const [hasDownloaded, setHasDownloaded] = useState<boolean>(() => {
+  // 判斷是否為既有 App 開啟 (PWA / Standalone / WebAPK / iOS Home Screen / source=pwa)
+  const [isAppMode, setIsAppMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
     try {
-      return localStorage.getItem('ideax_pwa_downloaded') === 'true';
-    } catch {
-      return false;
-    }
+      const matchStandalone = window.matchMedia('(display-mode: standalone)').matches;
+      const matchFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
+      const matchMinimalUi = window.matchMedia('(display-mode: minimal-ui)').matches;
+      const navStandalone = (window.navigator as any).standalone === true;
+      const isAndroidApp = document.referrer.includes('android-app://');
+      const isSourcePwa = window.location.search.includes('source=pwa') || window.location.search.includes('source=app');
+      const sessionApp = sessionStorage.getItem('ideax_is_app') === 'true';
+
+      if (matchStandalone || matchFullscreen || matchMinimalUi || navStandalone || isAndroidApp || isSourcePwa || sessionApp) {
+        sessionStorage.setItem('ideax_is_app', 'true');
+        return true;
+      }
+    } catch {}
+    return false;
   });
 
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+
   useEffect(() => {
-    // 判斷是否已為 App 模式 (Standalone)
-    const checkStandalone = () => {
-      const standalone =
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true ||
-        document.referrer.includes('android-app://');
-      setIsStandalone(standalone);
+    // 即時檢測是否處於既有 App 模式
+    const checkAppMode = () => {
+      try {
+        const matchStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        const matchFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
+        const navStandalone = (window.navigator as any).standalone === true;
+        const isAndroidApp = document.referrer.includes('android-app://');
+        const isSourcePwa = window.location.search.includes('source=pwa') || window.location.search.includes('source=app');
+        const sessionApp = sessionStorage.getItem('ideax_is_app') === 'true';
+
+        if (matchStandalone || matchFullscreen || navStandalone || isAndroidApp || isSourcePwa || sessionApp) {
+          sessionStorage.setItem('ideax_is_app', 'true');
+          setIsAppMode(true);
+        }
+      } catch {}
     };
 
-    checkStandalone();
+    checkAppMode();
+
+    // 監聽模式動態切換
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleMediaChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        sessionStorage.setItem('ideax_is_app', 'true');
+        setIsAppMode(true);
+      }
+    };
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleMediaChange);
+    }
+
+    // 監聽已成功安裝事件 (一旦安裝成功，立即停止提示)
+    const handleAppInstalled = () => {
+      sessionStorage.setItem('ideax_is_app', 'true');
+      localStorage.setItem('ideax_pwa_installed', 'true');
+      setIsAppMode(true);
+    };
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     // 監聽 PWA 原生安裝事件
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -52,17 +89,21 @@ export const MobilePwaDownloadWidget: React.FC = () => {
     window.addEventListener('pwa-prompt-ready', handlePromptReady);
 
     return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleMediaChange);
+      }
+      window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('pwa-prompt-ready', handlePromptReady);
     };
   }, []);
 
-  // 如果已處於 App 模式 (Standalone) 預設隱藏；但處於一般瀏覽器模式或開啟測試模式，恆常可見供使用！
-  if (isStandalone && !isTestingAdmin) {
+  // 核心規則：如果是從既有已安裝的 App 開啟，全面隱藏下載提示！
+  if (isAppMode) {
     return null;
   }
 
-  // 點擊執行「直接下載/呼叫安裝請求」
+  // 點擊執行「直接呼叫瀏覽器原生安裝 / 或提供指引」
   const handleDownloadClick = async () => {
     triggerDirectAppDownloadOrInstall(openPwaInstallModal);
   };
@@ -74,7 +115,7 @@ export const MobilePwaDownloadWidget: React.FC = () => {
         <button
           onClick={() => setIsCollapsed(false)}
           className="flex items-center justify-center bg-gradient-to-l from-amber-500 via-amber-600 to-orange-500 text-white pl-2.5 pr-1.5 py-1.5 rounded-l-xl shadow-lg border-y border-l border-white/80 active:scale-90 transition-transform cursor-pointer"
-          title={isTestingAdmin ? '【管理員測試】點擊展開下載' : '點擊展開下載'}
+          title="點擊展開下載安裝"
         >
           <div className="animate-bounce">
             <Download className="w-4 h-4 text-white" />
@@ -87,7 +128,7 @@ export const MobilePwaDownloadWidget: React.FC = () => {
           <button
             onClick={handleDownloadClick}
             className="w-11 h-11 sm:w-12 sm:h-12 bg-gradient-to-tr from-amber-500 via-amber-600 to-orange-500 text-white rounded-full shadow-lg shadow-amber-500/35 border-2 border-white ring-2 ring-amber-400/40 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-            title={isTestingAdmin ? '【管理員測試模式】直接發起下載安裝' : '下載安裝 IdeaX創點子 App'}
+            title="下載安裝 IdeaX創點子 App"
           >
             <div className="animate-bounce">
               <Download className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-xs" />
