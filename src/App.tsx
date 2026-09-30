@@ -643,10 +643,38 @@ function MainContent() {
     setActiveTab('create_question');
   };
 
+  // 手機版起始自動平滑滾動至「當前最高賞金」卡片（頂部完整貼齊導覽列下方，其餘數據在上方上滑可見）
+  const scrollToHighestBounty = (smooth = true) => {
+    if (typeof window === 'undefined') return;
+    const isMobile = window.innerWidth < 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isMobile) return;
+
+    const el = document.getElementById('highest-bounty-section');
+    if (el) {
+      const navEl = document.querySelector('header') || document.querySelector('nav');
+      const navHeight = navEl ? navEl.offsetHeight : 54;
+      const elementPosition = el.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - navHeight - 6;
+      window.scrollTo({
+        top: Math.max(0, offsetPosition),
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    }
+  };
+
+  useEffect(() => {
+    const timer1 = setTimeout(() => scrollToHighestBounty(true), 250);
+    const timer2 = setTimeout(() => scrollToHighestBounty(true), 600);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-stone-50/50 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
       {/* App 開啟淡入淡出畫面 (Splash Screen) */}
-      <SplashScreen minDurationMs={1600} />
+      <SplashScreen minDurationMs={1400} onDismiss={scrollToHighestBounty} />
 
       {/* Navigation */}
       <Navbar
@@ -740,8 +768,8 @@ function MainContent() {
             />
 
             {/* Questions Market Grid Section */}
-            <div id="market-grid" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-              <div className="space-y-6">
+            <div id="market-grid" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-8 sm:py-10">
+              <div className="space-y-3 sm:space-y-6">
                 {/* Special Zone Banners */}
                 {specialZone === 'pain_points' && (
                   <div className="p-4 rounded-3xl bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 border border-rose-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-200">
@@ -848,11 +876,11 @@ function MainContent() {
                 {/* Section Header & Filters */}
                 {!(specialZone !== 'all' || (selectedCategory !== '全部' && selectedSubcategory !== '全部')) && (
                   <>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-2.5">
-                        <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
+                    <div className="flex sm:flex-row items-center justify-between gap-1.5 sm:gap-4 mb-1.5 sm:mb-3">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 sm:gap-2">
                           <span>探索問題市場</span>
-                          <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200 font-mono">
+                          <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 font-mono">
                             {filteredQuestions.length} 則待解
                           </span>
                         </h2>
@@ -865,7 +893,7 @@ function MainContent() {
 
                       <button
                         onClick={() => handleOpenCreateWithType('seek_solution')}
-                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-bold text-xs sm:text-sm shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+                        className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-bold text-xs sm:text-sm shadow-sm transition-all cursor-pointer"
                       >
                         <MessageSquarePlus className="w-4 h-4" />
                         <span>我有新難題，立即發布</span>

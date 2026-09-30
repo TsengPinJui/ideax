@@ -160,13 +160,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     return count;
   }, [publicMetricsConfig]);
   return (
-    <section className="relative overflow-hidden bg-white border-b border-stone-200 pt-8 pb-12 sm:pt-12 sm:pb-16">
+    <section className="relative overflow-hidden bg-white border-b border-stone-200 pt-4 pb-2 sm:pt-12 sm:pb-12">
       {/* Radiant ambient glow matching the IdeaX yellow/gold brand aura */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-amber-200/35 via-yellow-100/20 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="absolute top-28 right-10 w-80 h-80 bg-amber-100/30 rounded-full blur-2xl pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Hero Visual Spotlight with IdeaX - 中上大板塊放創點子+IdeaX */}
+        {/* Hero Visual Spotlight with IdeaX - 創點子+IdeaX品牌焦點與關鍵字 */}
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* Official IdeaX Brand Display */}
           <div className="relative mb-6 group max-w-lg w-full px-4">
@@ -244,9 +244,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
         </div>
 
-        {/* Real Metrics Banner (管理者自訂公開展示之全站即時數據) */}
+        {/* Real Metrics Banner (連結管理員後台設定，手機與電腦版皆完整支援展示) */}
         {activeMetricsCount > 0 && (
-          <div className={`mt-8 sm:mt-10 pt-4 sm:pt-6 border-t border-stone-200/90 grid gap-2.5 sm:gap-3 max-w-5xl mx-auto text-center ${
+          <div
+            className={`mt-4 sm:mt-10 pt-3 sm:pt-6 border-t border-stone-200/90 grid gap-2 sm:gap-3 max-w-5xl mx-auto text-center ${
             activeMetricsCount === 5 
               ? 'grid-cols-2 md:grid-cols-5' 
               : activeMetricsCount === 4 
@@ -258,107 +259,66 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               : 'grid-cols-1 max-w-md'
           }`}>
             {publicMetricsConfig.showSolvedCount && (
-              <div className="p-3 rounded-2xl bg-stone-50/50 border border-stone-100 hover:border-amber-200 transition-colors">
-                <div className="text-xl sm:text-2xl font-extrabold text-stone-900 font-mono">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-stone-50/50 border border-stone-100 hover:border-amber-200 transition-colors">
+                <div className="text-lg sm:text-2xl font-extrabold text-stone-900 font-mono">
                   {solvedCountFormatted}
                 </div>
-                <div className="text-xs text-stone-500 mt-1 font-medium">累計解決難題</div>
+                <div className="text-[11px] sm:text-xs text-stone-500 mt-0.5 font-medium">累計解決難題</div>
               </div>
             )}
 
             {publicMetricsConfig.showTotalBounty && (
-              <div className="p-3 rounded-2xl bg-stone-50/50 border border-stone-100 hover:border-amber-200 transition-colors">
-                <div className="text-xl sm:text-2xl font-extrabold text-amber-600 font-mono">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-stone-50/50 border border-stone-100 hover:border-amber-200 transition-colors">
+                <div className="text-lg sm:text-2xl font-extrabold text-amber-600 font-mono">
                   {totalBountyFormatted}
                 </div>
-                <div className="text-xs text-stone-500 mt-1 font-medium">累計懸賞金額</div>
+                <div className="text-[11px] sm:text-xs text-stone-500 mt-0.5 font-medium">累計懸賞金額</div>
               </div>
             )}
 
             {publicMetricsConfig.showAvgResponseSpeed && (
-              <div className="p-3 rounded-2xl bg-stone-50/50 border border-stone-100 hover:border-amber-200 transition-colors">
-                <div className="text-xl sm:text-2xl font-extrabold text-stone-900 font-mono">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-stone-50/50 border border-stone-100 hover:border-amber-200 transition-colors">
+                <div className="text-lg sm:text-2xl font-extrabold text-stone-900 font-mono">
                   {avgResponseSpeedFormatted}
                 </div>
-                <div className="text-xs text-stone-500 mt-1 font-medium">平均回覆速度</div>
+                <div className="text-[11px] sm:text-xs text-stone-500 mt-0.5 font-medium">平均回覆速度</div>
               </div>
             )}
 
             {publicMetricsConfig.showSatisfactionRate && (
-              <div className="p-3 rounded-2xl bg-stone-50/50 border border-stone-100 hover:border-amber-200 transition-colors">
-                <div className="text-xl sm:text-2xl font-extrabold text-emerald-600 font-mono">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-stone-50/50 border border-stone-100 hover:border-amber-200 transition-colors">
+                <div className="text-lg sm:text-2xl font-extrabold text-emerald-600 font-mono">
                   {satisfactionRateFormatted}
                 </div>
-                <div className="text-xs text-stone-500 mt-1 font-medium">方案採納滿意度</div>
+                <div className="text-[11px] sm:text-xs text-stone-500 mt-0.5 font-medium">方案採納滿意度</div>
               </div>
             )}
 
-            {/* Panel: 當前最高賞金 + 連結到最高懸賞排行榜 */}
+            {/* Panel: 當前最高賞金 + 連結到最高懸賞排行榜 (手機端起始滾動錨點) */}
             {publicMetricsConfig.showHighestBounty && (
               <button
+                id="highest-bounty-section"
                 onClick={onLeaderboardClick}
-                className={`p-3 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-300/80 hover:border-amber-500 hover:shadow-xs transition-all text-center flex flex-col items-center justify-center cursor-pointer group ${
+                className={`scroll-mt-14 sm:scroll-mt-20 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-300/80 hover:border-amber-500 hover:shadow-xs transition-all text-center flex flex-col items-center justify-center cursor-pointer group ${
                   activeMetricsCount === 5 ? 'col-span-2 md:col-span-1' : ''
                 }`}
                 title="點擊查看全平台最高懸賞排行榜"
               >
                 <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-0.5">
-                  <Sparkles className="w-3 h-3 text-amber-600" />
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                   <span>當前最高賞金</span>
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-amber-600 font-mono group-hover:scale-105 transition-transform">
                   NT$ {currentHighestBounty.toLocaleString()}
                 </div>
-                <div className="text-[11px] text-stone-600 mt-1 font-semibold flex items-center gap-0.5 group-hover:text-amber-800">
+                <div className="text-[11px] text-stone-600 mt-0.5 font-semibold flex items-center gap-0.5 group-hover:text-amber-800">
                   <span>前往最高懸賞排行</span>
-                  <ArrowRight className="w-3 h-3 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowRight className="w-3.5 h-3.5 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </button>
             )}
           </div>
         )}
-
-        {/* 3 Core Value Pillars (分級提問 ~ 自動拆款) */}
-        <div className="mt-4 sm:mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-3.5 max-w-4xl mx-auto">
-          <div className="p-3.5 rounded-2xl bg-stone-50/80 border border-stone-200/90 flex items-center justify-between gap-3 hover:border-amber-200 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center shrink-0 border border-amber-200/60 shadow-2xs">
-                <Zap className="w-4 h-4 text-amber-700" />
-              </div>
-              <h3 className="font-extrabold text-xs sm:text-sm text-stone-900">分級提問 (L0 ~ L4)</h3>
-            </div>
-            <HelpTooltip
-              title="分級提問機制說明"
-              content="自由設定免費交流或 100 ~ 100,000 點自訂懸賞，吸引具備實戰背景的產業老手為你解題。"
-            />
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-stone-50/80 border border-stone-200/90 flex items-center justify-between gap-3 hover:border-amber-200 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center shrink-0 border border-amber-200/60 shadow-2xs">
-                <Sparkles className="w-4 h-4 text-amber-700" />
-              </div>
-              <h3 className="font-extrabold text-xs sm:text-sm text-stone-900">AI 智能分析媒合</h3>
-            </div>
-            <HelpTooltip
-              title="AI 智能媒合說明"
-              content="自動結構化萃取核心痛點與解題維度，即時精準推薦 3 ~ 5 位適配的認證解答專家。"
-            />
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-stone-50/80 border border-stone-200/90 flex items-center justify-between gap-3 hover:border-amber-200 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center shrink-0 border border-amber-200/60 shadow-2xs">
-                <ShieldCheck className="w-4 h-4 text-amber-700" />
-              </div>
-              <h3 className="font-extrabold text-xs sm:text-sm text-stone-900">痛點免費＋自動拆款</h3>
-            </div>
-            <HelpTooltip
-              title="交易託管安全說明"
-              content="痛點 0 元提出＋深度方案自訂解鎖；買賣雙方由第三方支付託管，平台確認後自動拆款撥付至專家帳戶。"
-            />
-          </div>
-        </div>
       </div>
     </section>
   );

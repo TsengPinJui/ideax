@@ -155,20 +155,20 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   const currentSubcategories = selectedCategory !== '全部' ? CATEGORY_HIERARCHY[selectedCategory] || [] : [];
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-2 sm:space-y-3.5">
       {/* 1. Main Category Horizontal Bar (問題分類) */}
       <div>
-        <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+        <div className="hidden sm:flex text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-1.5 items-center gap-1.5">
           <Layers className="w-3.5 h-3.5 text-amber-600" />
           <span>問題分類</span>
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 sm:pb-1 scrollbar-none">
           <button
             onClick={() => {
               setSelectedCategory('全部');
               setSelectedSubcategory('全部');
             }}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
               selectedCategory === '全部'
                 ? 'bg-stone-900 text-white shadow-xs'
                 : 'bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200'
@@ -184,7 +184,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                 setSelectedCategory(cat);
                 setSelectedSubcategory('全部');
               }}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                 selectedCategory === cat
                   ? 'bg-amber-500 text-stone-950 shadow-xs font-black'
                   : 'bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200'
@@ -282,7 +282,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                   : '搜尋關鍵字（問題、方案、討論、內文）...'
                 : '搜尋用戶或專家（輸入 ID 如 user-chen 或姓名）...'
             }
-            className="w-full pl-28 sm:pl-32 pr-24 py-2.5 rounded-xl bg-white border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 text-stone-900 text-xs sm:text-sm shadow-2xs outline-none transition-all placeholder:text-stone-400 font-medium"
+            className="w-full pl-28 sm:pl-32 pr-24 py-2 sm:py-2.5 rounded-xl bg-white border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 text-stone-900 text-xs sm:text-sm shadow-2xs outline-none transition-all placeholder:text-stone-400 font-medium"
           />
           {searchQuery && (
             <button
@@ -536,10 +536,11 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
       </div>
 
       {/* 2.5 Quick Topic Tags: 快速點擊篩選該主題問題 */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+      <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 sm:pb-1 scrollbar-none text-xs">
         <span className="text-[11px] font-bold text-stone-500 shrink-0 flex items-center gap-1 mr-0.5">
-          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-          <span>熱門話題標籤：</span>
+          <Sparkles className="w-3 h-3 text-amber-600" />
+          <span className="hidden sm:inline">熱門話題標籤：</span>
+          <span className="sm:hidden">話題：</span>
         </span>
         {[
           '商業模式',
@@ -564,7 +565,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                   setSearchQuery(tag);
                 }
               }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                 isActive
                   ? 'bg-amber-500 text-stone-950 font-black shadow-2xs ring-1 ring-amber-400'
                   : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
@@ -579,16 +580,16 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
       </div>
 
       {/* 3. Third row: Levels & Sorting */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-stone-200/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pt-1.5 sm:pt-2 border-t border-stone-200/80">
         {/* Level pills (L0 ~ L4) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 flex-wrap">
-          <span className="text-xs font-bold text-stone-400 mr-1 flex items-center gap-1">
-            <Layers className="w-3.5 h-3.5" /> 等級:
+        <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 sm:pb-0 flex-wrap">
+          <span className="text-[11px] sm:text-xs font-bold text-stone-400 mr-0.5 flex items-center gap-1">
+            <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> 等級:
           </span>
 
           <button
             onClick={() => setSelectedLevel('全部')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+            className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
               selectedLevel === '全部'
                 ? 'bg-stone-800 text-white'
                 : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -615,7 +616,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
               <button
                 key={lvl}
                 onClick={() => setSelectedLevel(lvl)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                   isSelected
                     ? 'bg-amber-500 text-stone-950 font-black shadow-2xs'
                     : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
@@ -631,7 +632,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
           })}
 
           {selectedLevel !== '全部' && LEVEL_CONFIGS[selectedLevel] && (
-            <span className="text-xs font-bold text-amber-900 bg-amber-100/90 px-2.5 py-0.5 rounded-lg border border-amber-300 font-mono whitespace-nowrap ml-1 shadow-2xs flex items-center gap-1">
+            <span className="text-[11px] sm:text-xs font-bold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-lg border border-amber-300 font-mono whitespace-nowrap ml-0.5 shadow-2xs flex items-center gap-1">
               <span>{LEVEL_CONFIGS[selectedLevel].name}</span>
               <span>·</span>
               <strong className="text-stone-950">{LEVEL_CONFIGS[selectedLevel].rangeText}</strong>
@@ -639,17 +640,17 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
           )}
         </div>
 
-        {/* Sort selector (括弧已移除) */}
-        <div className="flex items-center gap-2 text-xs self-end sm:self-auto flex-wrap">
+        {/* Sort selector */}
+        <div className="flex items-center gap-1.5 text-xs self-start sm:self-auto flex-wrap">
           <span className="text-stone-400 font-mono hidden lg:inline">
             共 {totalCount} 則難題
           </span>
 
           <div className="inline-flex rounded-xl bg-stone-100 p-0.5 border border-stone-200 flex-wrap">
-            {/* 1. 推薦 (黃色星星圖示，依用戶最近搜尋關鍵字、主題、看板智能推薦) */}
+            {/* 1. 推薦 */}
             <button
               onClick={() => setSortBy('recruiting_promoted')}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
                 sortBy === 'recruiting_promoted'
                   ? 'bg-amber-500 text-stone-950 shadow-2xs font-bold'
                   : 'text-stone-600 hover:text-stone-900'
@@ -660,10 +661,10 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
               <span>推薦</span>
             </button>
 
-            {/* 2. 最多解答 (移除方案數括弧) */}
+            {/* 2. 最多解答 */}
             <button
               onClick={() => setSortBy('most_solutions')}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
                 sortBy === 'most_solutions'
                   ? 'bg-white text-stone-900 shadow-2xs font-bold'
                   : 'text-stone-600 hover:text-stone-900'
@@ -674,31 +675,31 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
               <span>最多解答</span>
             </button>
 
-            {/* 3. 熱烈討論 (移除討論數括弧) */}
+            {/* 3. 熱烈討論 */}
             <button
               onClick={() => setSortBy('most_discussions')}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
                 sortBy === 'most_discussions'
                   ? 'bg-white text-stone-900 shadow-2xs font-bold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
               title="依留言討論熱度排序"
             >
-              <MessageCircle className="w-3 h-3 text-blue-600" />
+              <Flame className="w-3 h-3 text-orange-500" />
               <span>熱烈討論</span>
             </button>
 
             {/* 4. 最高懸賞 */}
             <button
               onClick={() => setSortBy('highest_bounty')}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
                 sortBy === 'highest_bounty'
-                  ? 'bg-white text-amber-800 shadow-2xs font-bold'
+                  ? 'bg-white text-stone-900 shadow-2xs font-bold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
-              title="依懸賞方案金額排序"
+              title="依懸賞金額高低排序"
             >
-              <Award className="w-3 h-3 text-amber-600" />
+              <Award className="w-3 h-3 text-amber-500" />
               <span>最高懸賞</span>
             </button>
           </div>
