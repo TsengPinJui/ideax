@@ -38,9 +38,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
   return (
     <footer className="bg-stone-950 text-stone-300 border-t border-stone-800 pt-12 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-10 border-b border-stone-800 text-xs">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pb-10 border-b border-stone-800 text-xs">
           {/* Brand info - 頁尾 IdeaX 左側去背燈泡 + IdeaX 品牌識別 */}
-          <div className="space-y-3.5 sm:col-span-2 lg:col-span-1">
+          <div className="col-span-2 lg:col-span-1 space-y-3.5">
             <button
               type="button"
               onClick={() => onNavClick('explore')}
@@ -163,7 +163,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           </div>
 
           {/* Categories / Hashtags: 點擊直接搜尋題目分類 */}
-          <div className="space-y-2.5 sm:col-span-2 lg:col-span-1">
+          <div className="col-span-2 lg:col-span-1 space-y-2.5">
             <div className="flex items-center justify-between">
               <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">熱門題目分類標籤</h4>
               <span className="text-[10px] text-amber-500 font-semibold">點擊直接搜尋</span>
@@ -226,9 +226,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             <span>讓創新想法化為真實商業價值。</span>
           </div>
           <div className="flex items-center gap-2 flex-wrap text-stone-400 font-mono text-[10px]">
-            <span className="px-2 py-0.5 rounded-md bg-stone-900 border border-stone-800 text-amber-400 font-bold tracking-tight shadow-2xs">
-              v1.2.1 • Build 2026.09.29
-            </span>
             <span className="text-stone-600 font-sans">Powered by AI Engine</span>
           </div>
         </div>

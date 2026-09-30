@@ -610,7 +610,7 @@ export const MechanismView: React.FC = () => {
                 條款與聲明
               </h2>
               <p className="text-xs text-stone-500 mt-1">
-                版本號：2026-v2.1（閉路預付點數與代理收付架構版） • 最近更新日：2026 年 9 月
+                版本號：2026-v3.0（AI-CRM 專屬巡航與智能溝通升級版） • 最近更新日：2026 年 10 月
               </p>
             </div>
 

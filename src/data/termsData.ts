@@ -1,10 +1,10 @@
 /**
  * 創點子 IdeaX - 平台定型化契約與服務條款規範庫
- * 版本：2026-v2.2
- * 最近修訂日期：2026 年 9 月
+ * 版本：2026-v3.0
+ * 最近修訂日期：2026 年 10 月
  */
 
-export const CURRENT_TERMS_VERSION = '2026-v2.2';
+export const CURRENT_TERMS_VERSION = '2026-v3.0';
 
 export interface TermItem {
   id: string;

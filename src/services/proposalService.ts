@@ -4,8 +4,8 @@
  */
 import { copyToClipboard } from '../utils/clipboard';
 
-export const PROPOSAL_VERSION = 'v2.4 (2026 全面發布版)';
-export const PROPOSAL_UPDATED_AT = '2026 年 9 月';
+export const PROPOSAL_VERSION = 'v3.0 (2026 AI-CRM 與多階巡航發布版)';
+export const PROPOSAL_UPDATED_AT = '2026 年 10 月';
 
 export const FULL_PROPOSAL_MARKDOWN = `# 創點子 IdeaX — 商業企劃書暨全系統規格說明書
 **Ideas Connect Possibilities ｜ 讓想法發光・高價值問題與解決方案交易市場**
