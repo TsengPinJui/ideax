@@ -135,7 +135,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 <button
                   onClick={() => triggerDirectAppDownloadOrInstall(openPwaInstallModal)}
                   className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 active:scale-95"
-                  title="直接下載或安裝 IdeaX 行動與桌面版 App"
+                  title="下載或安裝 IdeaX創點子 App"
                 >
                   <Download className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-bounce" />
                   <span>下載 APP</span>

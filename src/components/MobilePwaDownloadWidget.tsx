@@ -8,7 +8,9 @@ export const MobilePwaDownloadWidget: React.FC = () => {
   const isAdmin = currentUser?.role === 'admin' || currentUser?.id === 'user-admin';
   const isTestingAdmin = isAdmin && isDemoMode; // 開啟測試模式的管理員
 
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(
+    () => (typeof window !== 'undefined' ? (window as any).deferredPwaPrompt || null : null)
+  );
   const [isStandalone, setIsStandalone] = useState<boolean>(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
@@ -40,10 +42,18 @@ export const MobilePwaDownloadWidget: React.FC = () => {
       (window as any).deferredPwaPrompt = e;
     };
 
+    const handlePromptReady = () => {
+      if ((window as any).deferredPwaPrompt) {
+        setDeferredPrompt((window as any).deferredPwaPrompt);
+      }
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('pwa-prompt-ready', handlePromptReady);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-prompt-ready', handlePromptReady);
     };
   }, []);
 

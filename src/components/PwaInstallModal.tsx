@@ -53,9 +53,17 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
       win.deferredPwaPrompt = e;
     };
 
+    const handlePromptReady = () => {
+      if (win.deferredPwaPrompt) {
+        setDeferredPrompt(win.deferredPwaPrompt);
+      }
+    };
+
     window.addEventListener('beforeinstallprompt', handlePrompt);
+    window.addEventListener('pwa-prompt-ready', handlePromptReady);
     return () => {
       window.removeEventListener('beforeinstallprompt', handlePrompt);
+      window.removeEventListener('pwa-prompt-ready', handlePromptReady);
     };
   }, [isOpen]);
 
@@ -68,7 +76,7 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
     if (promptObj) {
       try {
         setIsInstalling(true);
-        promptObj.prompt();
+        await promptObj.prompt();
         const { outcome } = await promptObj.userChoice;
         if (outcome === 'accepted') {
           setInstallSuccess(true);
@@ -78,7 +86,7 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
           setTimeout(() => {
             onClose();
             setInstallSuccess(false);
-          }, 2000);
+          }, 1500);
         }
         win.deferredPwaPrompt = null;
         setDeferredPrompt(null);
@@ -119,11 +127,11 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
           </button>
 
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center shrink-0 shadow-inner">
+            <div className="w-12 h-12 rounded-2xl overflow-hidden border border-amber-400/40 flex items-center justify-center shrink-0 shadow-md">
               <img
-                src="/logo-topleft-3.png"
-                alt="IdeaX"
-                className="w-8 h-8 object-contain drop-shadow-xs"
+                src="/pwa-192x192.png"
+                alt="IdeaX創點子"
+                className="w-full h-full object-cover"
               />
             </div>
             <div>
@@ -137,9 +145,9 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
             </div>
           </div>
 
-          <h3 className="text-lg font-black text-white">安裝 IdeaX App 到主畫面</h3>
+          <h3 className="text-lg font-black text-white">安裝 IdeaX創點子 App 到主畫面</h3>
           <p className="text-xs text-stone-300/90 leading-relaxed mt-1">
-            享受獨立全螢幕視窗、秒速開啟、無廣告列干擾的桌面 App 原生體驗！
+            享受獨立全螢幕視窗、秒速開啟、無廣告列干擾的原生 App 體驗！
           </p>
         </div>
 
@@ -163,7 +171,7 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
                 ) : (
                   <>
                     <Download className="w-5 h-5 text-stone-950" />
-                    <span>一鍵新增安裝 IdeaX App</span>
+                    <span>一鍵新增安裝 IdeaX創點子 App</span>
                   </>
                 )}
               </button>
@@ -223,7 +231,7 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
                     <li>
                       選擇 <strong className="text-amber-950 bg-amber-200/80 px-1.5 py-0.5 rounded font-black">「安裝應用程式」</strong> 或 <strong className="text-amber-950 bg-amber-200/80 px-1.5 py-0.5 rounded font-black">「新增至主畫面」</strong>。
                     </li>
-                    <li>點擊確認即可在手機桌面建立獨立 IdeaX App 圖示！</li>
+                    <li>點擊確認即可在手機桌面建立獨立 IdeaX創點子 App 圖示！</li>
                   </ol>
                 </div>
               )}
@@ -242,7 +250,7 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
                     <li>
                       在選單中向下滑動，選擇 <strong className="text-blue-950 bg-blue-200/80 px-1.5 py-0.5 rounded font-black inline-flex items-center gap-0.5"><PlusSquare className="w-3.5 h-3.5 text-blue-700" /> 加入主畫面</strong>。
                     </li>
-                    <li>點擊右上角「新增」，即可從手機桌面一鍵啟動使用！</li>
+                    <li>點擊右上角「新增」，即可從手機桌面一鍵啟動 IdeaX創點子 App！</li>
                   </ol>
                 </div>
               )}
@@ -259,7 +267,7 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
                       點擊網址列右側出現的 <strong className="text-purple-950 bg-purple-200/80 px-1.5 py-0.5 rounded font-black">⊕ 安裝圖示</strong> 或右上角選單 <strong className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-purple-200/80 text-stone-950"><MoreVertical className="w-3 h-3" /> 選單</strong>。
                     </li>
                     <li>
-                      點擊 <strong className="text-purple-950 bg-purple-200/80 px-1.5 py-0.5 rounded font-black">「安裝 IdeaX...」</strong>。
+                      點擊 <strong className="text-purple-950 bg-purple-200/80 px-1.5 py-0.5 rounded font-black">「安裝 IdeaX創點子...」</strong>。
                     </li>
                     <li>安裝後即可直接從電腦桌面或工作列獨立視窗啟動！</li>
                   </ol>
@@ -281,7 +289,7 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
                   <span>{installSuccess ? '✅ App 啟動檔已成功下載！' : '📥 一鍵直接下載 App 啟動捷徑檔'}</span>
                 </button>
                 <p className="text-[10px] text-center text-stone-400 mt-1">
-                  支援全平台：下載後雙擊即可秒速全螢幕啟動 IdeaX App
+                  支援全平台：下載後雙擊即可秒速全螢幕啟動 IdeaX創點子 App
                 </p>
               </div>
 
