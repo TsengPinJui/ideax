@@ -666,6 +666,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [questions, setQuestions] = useState<Question[]>(() => {
+    const getRealClicks = (): Record<string, number> => {
+      try {
+        const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
+        return raw ? JSON.parse(raw) : {};
+      } catch {
+        return {};
+      }
+    };
+    const realClicks = getRealClicks();
     const isDemo = getInitialIsDemoMode();
     if (!isDemo) {
       // 非測試環境（營運模式、無金流模式）：絕不添加任何模擬題目
@@ -676,11 +685,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (Array.isArray(parsed)) {
             return parsed
               .filter((q: any) => !isMockQuestionId(q.id, q.authorId))
-              .map((q: any) => ({
-                ...q,
-                bounty: typeof q.bounty === 'number' ? q.bounty : 0,
-                withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
-              }));
+              .map((q: any) => {
+                const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0;
+                return {
+                  ...q,
+                  bounty: typeof q.bounty === 'number' ? q.bounty : 0,
+                  withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
+                  views: count,
+                  viewsCount: count,
+                };
+              });
           }
         }
       } catch {
@@ -695,17 +709,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const customQuestions = parsed.filter((q: any) => !isMockQuestionId(q.id, q.authorId));
-          return [...MOCK_QUESTIONS, ...customQuestions].map((q: any) => ({
-            ...q,
-            bounty: typeof q.bounty === 'number' ? q.bounty : 0,
-            withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
-          }));
+          return [...MOCK_QUESTIONS, ...customQuestions].map((q: any) => {
+            const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0;
+            return {
+              ...q,
+              bounty: typeof q.bounty === 'number' ? q.bounty : 0,
+              withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
+              views: count,
+              viewsCount: count,
+            };
+          });
         }
       }
     } catch {
       // ignore
     }
-    return MOCK_QUESTIONS;
+    return MOCK_QUESTIONS.map((q) => {
+      const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0;
+      return {
+        ...q,
+        views: count,
+        viewsCount: count,
+      };
+    });
   });
 
   const [solvers, setSolvers] = useState<Solver[]>(() => {
@@ -2105,7 +2131,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isFeatured: newQ.isFeatured,
       createdAt: new Date().toISOString(),
       deadline: newQ.deadline || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-      views: 1,
+      views: 0,
+      viewsCount: 0,
       answersCount: 0,
       aiAnalysis: newQ.aiAnalysis,
       withheldBounty: newQ.bounty ?? 1000,
@@ -3648,13 +3675,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  // Action: Increment real views count (tracks views seamlessly across web & mobile app)
+  // Action: Increment real views count (tracks views strictly according to real clicks)
   const incrementQuestionViews = (questionId: string, amount: number = 1) => {
+    let nextViews = 1;
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
+      const map: Record<string, number> = saved ? JSON.parse(saved) : {};
+      const current = typeof map[questionId] === 'number' ? map[questionId] : 0;
+      nextViews = current + amount;
+      map[questionId] = nextViews;
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}question_real_clicks`, JSON.stringify(map));
+    } catch {
+      // ignore
+    }
+
     setQuestions((prev) => {
       const updated = prev.map((item) => {
         if (item.id === questionId) {
-          const currentViews = typeof item.views === 'number' ? item.views : (item.viewsCount || 0);
-          const nextViews = currentViews + amount;
           return {
             ...item,
             views: nextViews,
@@ -3673,8 +3710,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setSelectedQuestion((prev) => {
       if (prev && prev.id === questionId) {
-        const currentViews = typeof prev.views === 'number' ? prev.views : (prev.viewsCount || 0);
-        const nextViews = currentViews + amount;
         return {
           ...prev,
           views: nextViews,

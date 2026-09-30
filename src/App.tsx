@@ -1081,7 +1081,6 @@ function MainContent() {
                           }}
                           onSearchTag={handleSearchTag}
                           onClick={() => {
-                            incrementQuestionViews(q.id, 1);
                             recordUserViewedQuestion(currentUser.id, q);
                             setUserProfileVersion((v) => v + 1);
                             setSelectedQuestion(q);

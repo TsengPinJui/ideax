@@ -1414,6 +1414,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 title="點擊前往帳號設定頁"
               >
                 {currentUser.name}
+                {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title
+                  ? ` · ${currentUser.title}`
+                  : ''}
               </button>
 
               {/* 身份標籤 */}
@@ -3832,7 +3835,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <img src={q.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={q.authorName} className="w-6 h-6 rounded-full object-cover" />
-                          <span className="text-xs font-bold text-stone-800">{q.authorName}</span>
+                          <span className="text-xs font-bold text-stone-800">
+                            {q.authorName}
+                            {q.authorTitle ? ` · ${q.authorTitle}` : ''}
+                          </span>
                           <button
                             type="button"
                             onClick={() => {
@@ -5271,6 +5277,17 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   )}
 
                   {/* 姓名與專業頭銜 */}
+                  <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/90 text-xs text-amber-950 font-medium space-y-1">
+                    <p className="font-bold flex items-center gap-1.5 text-amber-900">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>用戶名稱顯示規則：</span>
+                    </p>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      • <strong>解答者身分</strong>：為建立專業信譽與智庫形象，全站一律公開顯示<strong>「姓名/暱稱 · 專業頭銜/職位」</strong>。<br />
+                      • <strong>提問者身分</strong>：為保護提問商業隱私，系統預設<strong>隱藏頭銜</strong>（僅顯示姓名/暱稱）；您可於下方「提問者隱私設定」自由開啟顯示<strong>「姓名/暱稱 · 專業頭銜」</strong>。
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
                       <label className="block text-xs font-bold text-stone-700 mb-1">姓名 / 暱稱 <span className="text-rose-500">*</span></label>
@@ -6012,19 +6029,35 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
 
                 <div className="space-y-2 pt-1">
-                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-stone-200 cursor-pointer">
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-white border border-stone-200 cursor-pointer hover:border-amber-300 transition-all">
                     <div>
-                      <span className="text-xs font-semibold text-stone-800">
-                        公開顯示「頭銜或職位」
-                      </span>
-                      <p className="text-[11px] text-stone-400">
-                        {showQuestionerTitle ? `開啟中：提問時將顯示「${title || '未設定'}」` : '關閉中：提問時僅顯示姓名/暱稱，保護隱私'}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-stone-900">
+                          公開顯示「頭銜或職位」
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                          showQuestionerTitle ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'
+                        }`}>
+                          {showQuestionerTitle ? '已開啟顯示' : '預設隱藏中'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        {showQuestionerTitle
+                          ? `目前開啟中：您在提問時將公開顯示「${name} · ${title || '未設定頭銜'}」`
+                          : '目前關閉中（系統預設）：提問時僅公開顯示姓名/暱稱，完整保護商業隱私'}
                       </p>
                     </div>
                     <input
                       type="checkbox"
                       checked={showQuestionerTitle}
-                      onChange={(e) => setShowQuestionerTitle(e.target.checked)}
+                      onChange={(e) => {
+                        const newVal = e.target.checked;
+                        setShowQuestionerTitle(newVal);
+                        setCurrentUser((prev) => ({ ...prev, showQuestionerTitle: newVal }));
+                        setAvailableUsers((users) =>
+                          users.map((u) => (u.id === currentUser.id ? { ...u, showQuestionerTitle: newVal } : u))
+                        );
+                      }}
                       className="w-4 h-4 accent-amber-600 rounded cursor-pointer"
                     />
                   </label>

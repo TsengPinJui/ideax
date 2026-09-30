@@ -176,7 +176,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <h3 className="font-extrabold text-base text-stone-900 group-hover:text-amber-600 transition-colors">
-                          {s.name}
+                          {s.name}{s.title ? ` · ${s.title}` : ''}
                         </h3>
                         {isCertifiedExpert(s) && (
                           <span

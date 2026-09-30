@@ -191,8 +191,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             alt={question.authorName}
             className="w-5 h-5 rounded-full object-cover ring-1 ring-stone-200"
           />
-          <span className="font-medium text-stone-700 truncate max-w-[120px]">
+          <span className="font-medium text-stone-700 truncate max-w-[150px] sm:max-w-[200px]" title={`${question.authorName}${question.authorTitle ? ` · ${question.authorTitle}` : ''}`}>
             {question.authorName}
+            {question.authorTitle ? ` · ${question.authorTitle}` : ''}
           </span>
         </div>
 

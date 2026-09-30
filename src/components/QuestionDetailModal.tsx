@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Question, Answer, Solver, Category, AIPreliminaryReport } from '../types';
 import { useApp } from '../context/AppContext';
 import { LEVEL_CONFIGS } from '../data/mockData';
@@ -101,11 +101,14 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     isNoPaymentMode,
   } = useApp();
 
+  const viewCountedIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (question?.id) {
+    if (question?.id && viewCountedIdRef.current !== question.id) {
+      viewCountedIdRef.current = question.id;
       incrementQuestionViews(question.id, 1);
     }
-  }, [question?.id]);
+  }, [question?.id, incrementQuestionViews]);
 
   const isBookmarked = isQuestionBookmarked(question.id);
 
@@ -560,7 +563,10 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-stone-800 text-sm">{question.authorName}</span>
+                <span className="font-bold text-stone-800 text-sm">
+                  {question.authorName}
+                  {question.authorTitle ? ` · ${question.authorTitle}` : ''}
+                </span>
                 {/* 私聊按鈕 */}
                 {!isAuthor && (
                   <button
@@ -1338,6 +1344,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                 title={`點擊查看 ${ans.solverName} 詳細檔案`}
                               >
                                 {ans.solverName}
+                                {ans.solverTitle ? ` · ${ans.solverTitle}` : ''}
                               </h4>
                               
                               {/* Delivery Format Badge */}
@@ -1903,8 +1910,8 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                 title={`點擊查看 ${disc.solverName} 詳細檔案`}
                               >
                                 {disc.solverName}
+                                {disc.solverTitle ? ` · ${disc.solverTitle}` : ''}
                               </span>
-                              <span className="text-[10px] text-stone-400">{disc.solverTitle}</span>
                             </div>
                             <span className="text-[10px] text-stone-400">{disc.createdAt.split('T')[0]}</span>
                           </div>

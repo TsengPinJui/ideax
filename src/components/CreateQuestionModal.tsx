@@ -254,7 +254,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       const authorAvatar = isPlatformOfficial
         ? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150'
         : currentUser.avatar;
-      const authorTitle = isPlatformOfficial ? 'IdeaX 官方營運團隊' : (currentUser.title || '平台管理員');
+      const authorTitle = isPlatformOfficial
+        ? 'IdeaX 官方營運團隊'
+        : (currentUser.role === 'questioner' && !currentUser.showQuestionerTitle)
+        ? undefined
+        : (currentUser.title || (currentUser.role === 'admin' ? '平台管理員' : undefined));
 
       const finalDescription = externalLink.trim()
         ? `${description.trim()}\n\n【外部雲端參考資料 (Google Drive / Dropbox / Figma)】\n${externalLink.trim()}`

@@ -483,7 +483,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-18T10:30:00Z',
     deadline: '2026-09-30',
-    views: 842,
+    views: 0,
     answersCount: 6,
     isFeatured: true,
     aiAnalysis: {
@@ -512,7 +512,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-19T08:15:00Z',
     deadline: '2026-10-05',
-    views: 615,
+    views: 0,
     answersCount: 4,
     isFeatured: true,
     aiAnalysis: {
@@ -541,7 +541,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-17T14:20:00Z',
     deadline: '2026-09-28',
-    views: 1240,
+    views: 0,
     answersCount: 5,
     isFeatured: true,
     aiAnalysis: {
@@ -570,7 +570,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-20T11:00:00Z',
     deadline: '2026-10-02',
-    views: 480,
+    views: 0,
     answersCount: 7,
     isFeatured: false,
     aiAnalysis: {
@@ -598,7 +598,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-15T09:40:00Z',
     deadline: '2026-10-10',
-    views: 980,
+    views: 0,
     answersCount: 3,
     isFeatured: false,
     aiAnalysis: {
@@ -626,7 +626,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-21T16:00:00Z',
     deadline: '2026-10-01',
-    views: 350,
+    views: 0,
     answersCount: 5,
     isFeatured: false,
     aiAnalysis: {
@@ -654,7 +654,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-18T18:40:00Z',
     deadline: '2026-10-08',
-    views: 520,
+    views: 0,
     answersCount: 4,
     isFeatured: false,
     aiAnalysis: {
@@ -682,7 +682,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-16T12:00:00Z',
     deadline: '2026-10-06',
-    views: 710,
+    views: 0,
     answersCount: 3,
     isFeatured: false,
     aiAnalysis: {
@@ -710,7 +710,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-19T20:30:00Z',
     deadline: '2026-10-03',
-    views: 890,
+    views: 0,
     answersCount: 5,
     isFeatured: false,
     aiAnalysis: {
@@ -738,7 +738,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-17T09:10:00Z',
     deadline: '2026-09-29',
-    views: 670,
+    views: 0,
     answersCount: 3,
     isFeatured: false,
     aiAnalysis: {
@@ -766,7 +766,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-20T14:15:00Z',
     deadline: '2026-10-09',
-    views: 430,
+    views: 0,
     answersCount: 3,
     isFeatured: false,
     aiAnalysis: {
@@ -794,7 +794,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-19T22:00:00Z',
     deadline: '2026-10-05',
-    views: 1100,
+    views: 0,
     answersCount: 4,
     isFeatured: true,
     aiAnalysis: {
@@ -823,7 +823,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-22T08:00:00Z',
     deadline: '2026-10-15',
-    views: 310,
+    views: 0,
     answersCount: 4,
     isFeatured: false,
     aiAnalysis: {
@@ -852,7 +852,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-22T14:00:00Z',
     deadline: '2026-10-20',
-    views: 890,
+    views: 0,
     answersCount: 2,
     isFeatured: true,
     aiAnalysis: {
@@ -882,7 +882,7 @@ export const MOCK_QUESTIONS: Question[] = [
     authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-09-23T04:00:00Z',
     deadline: '2026-11-30',
-    views: 3420,
+    views: 0,
     answersCount: 6,
     isFeatured: true,
     aiAnalysis: {

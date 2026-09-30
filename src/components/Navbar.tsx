@@ -742,7 +742,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                               <div className="flex items-center gap-1.5 text-[10px] text-stone-500 mt-0.5">
                                 <span className="font-semibold text-amber-700">NT$ {q.bounty.toLocaleString()}</span>
                                 <span>· {q.category}</span>
-                                <span>· {q.authorName}</span>
+                                <span>· {q.authorName}{q.authorTitle ? ` · ${q.authorTitle}` : ''}</span>
                               </div>
                             </div>
                             <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 shrink-0" />
@@ -1021,25 +1021,30 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="w-7 h-7 rounded-lg object-cover ring-1 ring-stone-200"
                 />
                 <div className="text-left hidden sm:block">
-                <div className="text-xs font-bold text-stone-900 flex items-center gap-1">
-                  <span>{currentUser.name}</span>
-                  <span
-                    className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                      currentUser.role === 'admin'
-                        ? 'bg-purple-100 text-purple-800'
+                  <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5 flex-wrap">
+                    <span>
+                      {currentUser.name}
+                      {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title
+                        ? ` · ${currentUser.title}`
+                        : ''}
+                    </span>
+                    <span
+                      className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                        currentUser.role === 'admin'
+                          ? 'bg-purple-100 text-purple-800'
+                          : currentUser.role === 'solver'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-amber-100 text-amber-900'
+                      }`}
+                    >
+                      {currentUser.role === 'admin'
+                        ? '管理員'
                         : currentUser.role === 'solver'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-amber-100 text-amber-900'
-                    }`}
-                  >
-                    {currentUser.role === 'admin'
-                      ? '管理員'
-                      : currentUser.role === 'solver'
-                      ? '解答者'
-                      : '提問者'}
-                  </span>
+                        ? '解答者'
+                        : '提問者'}
+                    </span>
+                  </div>
                 </div>
-              </div>
               <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
             </button>
 
@@ -1064,7 +1069,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-xs font-black text-stone-900 truncate group-hover:text-amber-600 transition-colors">{currentUser.name}</p>
+                          <p className="text-xs font-black text-stone-900 truncate group-hover:text-amber-600 transition-colors">
+                            {currentUser.name}
+                            {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title
+                              ? ` · ${currentUser.title}`
+                              : ''}
+                          </p>
                           <span
                             className={`text-[9px] px-1.5 py-0.2 rounded font-bold shrink-0 ${
                               currentUser.role === 'admin'
