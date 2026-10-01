@@ -197,11 +197,11 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
       activeRing: 'ring-rose-500 border-rose-400',
       lineAccent: 'border-rose-300 bg-rose-50/70 text-rose-950',
       icon: Settings2,
-      tagline: '專家實名 KYC 審核・異常交易風控・爭議中立仲裁',
+      tagline: '專家實名審核・異常交易風控・爭議中立仲裁',
       coreDefinition:
-        '創點子 IdeaX 官方營運與風控仲裁團隊，負責系統維運、專家實名審核 (KYC)、金流風控監控、交易爭議調解仲裁與內容合規治理。',
+        '創點子 IdeaX 官方營運與風控仲裁團隊，負責系統維運、專家實名審核、金流風控監控、交易爭議調解仲裁與內容合規治理。',
       keyPowers: [
-        '解答者與認證專家實名 KYC 審核與資歷核驗',
+        '解答者與認證專家實名審核與資歷核驗',
         '全天候金流風控監控與洗錢防制監理申報',
         '中立介入交易驗收爭議，依證據裁決放款或退還點數',
         '侵權檢舉快速下架 (Notice & Takedown) 與違禁治理',
@@ -212,7 +212,7 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
         '資安：SSL 加密傳輸，敏感撥款資料雜湊防護',
       ],
       communityRules: [
-        '恪守中立、客觀與公平原則，嚴格落實實名審查 (KYC) 與爭議調解仲裁，嚴禁圖利任何一方。',
+        '恪守中立、客觀與公平原則，嚴格落實實名審查與爭議調解仲裁，嚴禁圖利任何一方。',
         '落實個人資料保護與機密防護，除司法警察機關依法調閱外，絕不洩漏會員隱私。',
         '接獲侵權或違法通報時，恪遵法定程序迅速調查下架，維護全站合規秩序。',
       ],

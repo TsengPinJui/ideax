@@ -590,7 +590,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs font-medium">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs font-medium">
             <span className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-stone-400" />
               <span>截止日：{question.deadline}</span>

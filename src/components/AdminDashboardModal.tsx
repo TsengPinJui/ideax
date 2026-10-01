@@ -347,7 +347,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             <span className="text-[11px] font-bold text-purple-300 block mb-2">
               📌 系統固定保留之各身分測試帳號（點擊可快速切換身分進行功能驗證）：
             </span>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
               {[
                 {
                   id: 'user-admin',

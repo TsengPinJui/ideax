@@ -421,6 +421,8 @@ export interface User {
   // 解答者公開展示資訊
   domain?: Category; // 專業領域
   domains?: Category[]; // 複選認證領域 (1~5個)
+  subdomain?: string; // 子領域
+  subdomains?: string[]; // 複選認證子領域 (1~5個)
   skills?: string[]; // 專長標籤
   verifiedExpert?: boolean; // 是否為認證專家
   verifiedBadge?: string; // 專家認證徽章稱號
@@ -525,8 +527,9 @@ export interface User {
   expertApplicationRejectReason?: string;
   expertApplicationData?: {
     domain: string;
-    domains?: string[]; // 申請之複選領域 (1~5個)
+    domains?: string[]; // 申請之複選主領域 (1~5個)
     subdomain?: string;
+    subdomains?: string[]; // 申請之複選子領域 (1~5個)
     professionalTitle: string;
     yearsOfExperience?: string;
     credentialsFiles: Array<{ name: string; size?: string; url?: string }>;

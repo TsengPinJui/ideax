@@ -4675,7 +4675,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         setCloudSyncReport(
                           `同步成功！全站四大類別已完整寫入 Firestore：\n` +
                           `• 業務核心交易：${coreTransactions.questions} 道問題、${coreTransactions.answers} 份提案、${coreTransactions.transactions} 筆交易流水、${coreTransactions.conversations} 組私聊對話\n` +
-                          `• 身分審核治理：${identityGovernance.users} 位用戶、${identityGovernance.certifications} 筆專家與 KYC 審核、${identityGovernance.auditLogs} 筆稽核日誌\n` +
+                          `• 身分審核治理：${identityGovernance.users} 位用戶、${identityGovernance.certifications} 筆專家與實名審核、${identityGovernance.auditLogs} 筆稽核日誌\n` +
                           `• 互動通知評價：${engagementSocial.notifications} 則通知、${engagementSocial.bookmarks} 筆收藏、${engagementSocial.solvers} 位專家評鑑庫\n` +
                           `• 法律合規設定：${complianceSettings.termsAgreements} 筆條款簽署存證、全站抽成與方案設定`
                         );
@@ -4751,7 +4751,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </li>
                     <li className="flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>certifications</strong>：實名KYC與專家證書審查</span>
+                      <span><strong>certifications</strong>：實名認證與專家證書審查</span>
                     </li>
                     <li className="flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />

@@ -646,7 +646,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             共 {totalCount} 則難題
           </span>
 
-          <div className="inline-flex rounded-xl bg-stone-100 p-0.5 border border-stone-200 flex-wrap">
+          <div className="inline-flex rounded-xl bg-stone-100 p-0.5 border border-stone-200 overflow-x-auto max-w-full">
             {/* 1. 推薦 */}
             <button
               onClick={() => setSortBy('recruiting_promoted')}

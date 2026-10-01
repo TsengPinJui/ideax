@@ -15,6 +15,7 @@ import {
   Briefcase,
   Star,
   Layers,
+  Tag,
 } from 'lucide-react';
 import { User, Category, CATEGORY_HIERARCHY } from '../types';
 import { useApp } from '../context/AppContext';
@@ -61,9 +62,12 @@ export const ExpertCertificationTab: React.FC = () => {
     if (currentUser.domain) return [currentUser.domain];
     return ['創新創業'];
   });
-  const [subcategory, setSubcategory] = useState<string>(
-    initialData?.subdomain || ''
-  );
+  const [selectedSubdomains, setSelectedSubdomains] = useState<string[]>(() => {
+    if (initialData?.subdomains && initialData.subdomains.length > 0) return initialData.subdomains;
+    if (initialData?.subdomain) return [initialData.subdomain];
+    if (currentUser.subdomains && currentUser.subdomains.length > 0) return currentUser.subdomains;
+    return ['資訊科技'];
+  });
   const [professionalTitle, setProfessionalTitle] = useState(
     initialData?.professionalTitle || currentUser.title || '資深架構師 / 商業顧問'
   );
@@ -71,21 +75,33 @@ export const ExpertCertificationTab: React.FC = () => {
     initialData?.yearsOfExperience || '5-8 年'
   );
 
-  const toggleDomain = (domName: string) => {
-    if (selectedDomains.includes(domName)) {
-      if (selectedDomains.length > 1) {
-        setSelectedDomains(selectedDomains.filter((d) => d !== domName));
+  const toggleSubdomain = (sub: string, parentCat: Category) => {
+    if (selectedSubdomains.includes(sub)) {
+      if (selectedSubdomains.length > 1) {
+        setSelectedSubdomains(selectedSubdomains.filter((s) => s !== sub));
       } else {
-        setMsg('⚠️ 至少須保留 1 個申請領域！');
+        setMsg('⚠️ 至少須保留 1 個專長子領域！');
         setTimeout(() => setMsg(null), 3000);
       }
     } else {
-      if (selectedDomains.length < 5) {
-        setSelectedDomains([...selectedDomains, domName]);
+      if (selectedSubdomains.length < 5) {
+        setSelectedSubdomains([...selectedSubdomains, sub]);
+        if (!selectedDomains.includes(parentCat)) {
+          setSelectedDomains([...selectedDomains, parentCat]);
+        }
       } else {
-        setMsg('⚠️ 申請專家領域至多可複選 5 個領域！');
+        setMsg('⚠️ 專家專長子領域至多可複選 5 個！');
         setTimeout(() => setMsg(null), 3000);
       }
+    }
+  };
+
+  const removeSubdomain = (sub: string) => {
+    if (selectedSubdomains.length > 1) {
+      setSelectedSubdomains(selectedSubdomains.filter((s) => s !== sub));
+    } else {
+      setMsg('⚠️ 至少須保留 1 個專長子領域！');
+      setTimeout(() => setMsg(null), 3000);
     }
   };
 
@@ -158,6 +174,11 @@ export const ExpertCertificationTab: React.FC = () => {
       return;
     }
 
+    if (selectedSubdomains.length === 0) {
+      setMsg('⚠️ 請至少選擇 1 個專長子領域（至多 5 個）！');
+      return;
+    }
+
     if (!professionalTitle.trim()) {
       setMsg('⚠️ 請填寫您的專業頭銜或職稱！');
       return;
@@ -185,7 +206,8 @@ export const ExpertCertificationTab: React.FC = () => {
     const payload = {
       domain: finalDomains[0],
       domains: finalDomains,
-      subdomain: subcategory,
+      subdomain: selectedSubdomains[0] || '',
+      subdomains: selectedSubdomains,
       professionalTitle: professionalTitle.trim(),
       yearsOfExperience,
       credentialsFiles,
@@ -201,6 +223,7 @@ export const ExpertCertificationTab: React.FC = () => {
         ...prev,
         domain: (finalDomains[0] || prev.domain) as Category,
         domains: finalDomains as Category[],
+        subdomains: selectedSubdomains,
         title: professionalTitle.trim(),
         expertApplicationStatus: 'pending',
         lastExpertAppliedAt: appliedAt,
@@ -337,91 +360,119 @@ export const ExpertCertificationTab: React.FC = () => {
 
       {/* Expert Application Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* 1. 專業領域與頭銜 */}
-        <div className="p-5 rounded-3xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+        {/* 1. 專業領域與子領域看板 */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-white border border-stone-200 space-y-4 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-3 gap-2">
             <div className="flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-black flex items-center justify-center">
                 1
               </span>
               <h4 className="font-extrabold text-sm text-stone-900">
-                申請專家領域與公開職銜
+                申請專家領域與子領域看板
               </h4>
             </div>
             <span className="text-[10px] text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full font-bold border border-amber-200">
-              可複選 1~5 個領域（已選 {selectedDomains.length} / 5 個）
+              可複選 1~5 個子領域（已選 {selectedSubdomains.length} / 5 個）
             </span>
           </div>
 
           <div className="space-y-3.5 text-xs">
-            {/* 複選 1~5 個申請領域 */}
+            {/* 已選清單 Chips 快速檢視 */}
+            <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-stone-700 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-amber-600" />
+                  <span>已選擇的專家專長子領域（點擊 ✕ 移除）：</span>
+                </span>
+                <span className="text-[10px] font-mono font-bold text-amber-900">
+                  {selectedSubdomains.length} / 5 項
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 min-h-7 items-center">
+                {selectedSubdomains.map((sub) => (
+                  <span
+                    key={sub}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500 text-stone-950 text-xs font-black shadow-2xs"
+                  >
+                    <span>✓ {sub}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeSubdomain(sub)}
+                      className="w-3.5 h-3.5 rounded-full hover:bg-amber-600 flex items-center justify-center text-[10px] cursor-pointer ml-0.5"
+                      title="移除此子領域"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* 四大主領域與子領域勾選網格 */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-2">
                 <label className="text-[11px] font-bold text-stone-800">
-                  申請專家主領域（點擊勾選 1~5 個專長領域） <span className="text-rose-500">*</span>
+                  點選下方看板子領域標籤（可跨領域複選 1~5 個專長）：
                 </label>
                 <span className="text-[10px] text-stone-400">管理員審核時可擇優通過或指派</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                {[
-                  { id: '創新創業', name: '創新創業', desc: '商模 / 融資 / 股權 / 跨境出海' },
-                  { id: '專業問題', name: '專業問題', desc: '軟硬體 / 技術 / 法律 / 財務' },
-                  { id: '學術探討', name: '學術探討', desc: '科研 / 文史 / 哲學 / 統計論文' },
-                  { id: '日常疑難', name: '日常疑難', desc: '職涯規劃 / 個人成長 / 諮詢顧問' },
-                ].map((cat) => {
-                  const isChecked = selectedDomains.includes(cat.id);
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {(['創新創業', '專業問題', '學術探討', '日常疑難'] as Category[]).map((catName) => {
+                  const subList = CATEGORY_HIERARCHY[catName] || [];
+                  const catSelectedCount = subList.filter((s) => selectedSubdomains.includes(s)).length;
+
                   return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => toggleDomain(cat.id)}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
-                        isChecked
-                          ? 'bg-amber-500/15 border-amber-400 text-amber-950 shadow-2xs ring-1 ring-amber-400'
-                          : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-700'
-                      }`}
+                    <div
+                      key={catName}
+                      className="p-3.5 rounded-2xl bg-white border border-stone-200/90 shadow-2xs space-y-2.5 hover:border-amber-300 transition-colors"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-black text-xs text-stone-900">{cat.name}</span>
-                        <div
-                          className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] ${
-                            isChecked
-                              ? 'bg-amber-500 text-stone-950 font-bold'
-                              : 'border border-stone-300 bg-white'
-                          }`}
-                        >
-                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              catName === '創新創業'
+                                ? 'bg-amber-500'
+                                : catName === '專業問題'
+                                ? 'bg-blue-500'
+                                : catName === '學術探討'
+                                ? 'bg-purple-500'
+                                : 'bg-emerald-500'
+                            }`}
+                          />
+                          <span className="font-black text-xs text-stone-900">{catName}</span>
                         </div>
+                        {catSelectedCount > 0 && (
+                          <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                            已選 {catSelectedCount} 項
+                          </span>
+                        )}
                       </div>
-                      <span className="text-[10px] text-stone-500 leading-tight">{cat.desc}</span>
-                    </button>
+
+                      {/* 子領域標籤 Chips */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {subList.map((sub) => {
+                          const isChecked = selectedSubdomains.includes(sub);
+                          return (
+                            <button
+                              key={sub}
+                              type="button"
+                              onClick={() => toggleSubdomain(sub, catName)}
+                              className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                                isChecked
+                                  ? 'bg-amber-500 text-stone-950 font-black shadow-2xs ring-1 ring-amber-400'
+                                  : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200'
+                              }`}
+                            >
+                              <span>{isChecked ? '✓' : '+'}</span>
+                              <span>{sub}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })}
-              </div>
-
-              {/* 常用細分專長標籤（亦可點擊加入複選清單） */}
-              <div className="mt-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-100 space-y-1.5">
-                <span className="text-[10px] font-bold text-stone-400 block">亦可快速點選細分領域：</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {['商業模式', '資訊科技', '軟體架構', '法律合規', '財務會計', '醫療生技', '跨境出海', '職涯輔導'].map((tag) => {
-                    const isTagged = selectedDomains.includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => toggleDomain(tag)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                          isTagged
-                            ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
-                            : 'bg-white hover:bg-stone-200 text-stone-600 border border-stone-200'
-                        }`}
-                      >
-                        {isTagged ? `✓ ${tag}` : `+ ${tag}`}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             </div>
 

@@ -140,7 +140,7 @@ export const AdminCertificationsTab: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-stone-500 mt-0.5">
-                審批核准實名認證 (KYC) 與專家資格授權，亦可隨時撤銷或移除違規資格，異動即時同步雲端資料庫。
+                審批核准實名認證與專家資格授權，亦可隨時撤銷或移除違規資格，異動即時同步雲端資料庫。
               </p>
             </div>
           </div>
@@ -348,10 +348,10 @@ export const AdminCertificationsTab: React.FC = () => {
 
                 {/* 雙認證狀態與操作區 */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
-                  {/* 1. 實名認證 (KYC) 區塊 */}
+                  {/* 1. 實名認證 區塊 */}
                   <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between sm:justify-start gap-2.5">
                     <div>
-                      <div className="text-[10px] font-bold text-stone-400">實名認證 (KYC)</div>
+                      <div className="text-[10px] font-bold text-stone-400">實名認證</div>
                       <div className="flex items-center gap-1 mt-0.5">
                         {isKycVerified ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
@@ -371,7 +371,7 @@ export const AdminCertificationsTab: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* KYC 操作按鈕 */}
+                    {/* 實名操作按鈕 */}
                     <div>
                       {isKycVerified ? (
                         <button
@@ -527,7 +527,7 @@ export const AdminCertificationsTab: React.FC = () => {
                 <span>
                   您即將手動核准該用戶的
                   <strong className="text-purple-700">
-                    【{actionModal.type === 'real_name' ? '實名認證 (KYC)' : '官方專家認證'}】
+                    【{actionModal.type === 'real_name' ? '實名認證' : '官方專家認證'}】
                   </strong>
                   。通過後系統將自動發送平台站內通知，並授予對應認證徽章與價金結算/高階接案特權。
                 </span>
@@ -626,7 +626,7 @@ export const AdminCertificationsTab: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="font-black text-xs text-stone-900 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>實名認證 (KYC) 資料</span>
+                  <span>實名認證資料</span>
                 </span>
                 <span
                   className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
@@ -693,11 +693,31 @@ export const AdminCertificationsTab: React.FC = () => {
               </div>
               <div className="space-y-1.5 text-xs">
                 <div>
-                  <span className="text-stone-400 block text-[10px]">專業領域 / 頭銜</span>
+                  <span className="text-stone-400 block text-[10px]">申請主領域 / 頭銜</span>
                   <span className="font-bold text-stone-800">
-                    {inspectUser.domain || '全領域'} · {inspectUser.title || '專業顧問'}
+                    {inspectUser.domains?.join('、') || inspectUser.domain || '全領域'} · {inspectUser.title || '專業顧問'}
                   </span>
                 </div>
+                {((inspectUser.expertApplicationData?.subdomains && inspectUser.expertApplicationData.subdomains.length > 0) ||
+                  (inspectUser.subdomains && inspectUser.subdomains.length > 0)) && (
+                  <div>
+                    <span className="text-stone-400 block text-[10px]">指定專長子領域</span>
+                    <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                      {(
+                        (inspectUser.expertApplicationData?.subdomains ||
+                        inspectUser.subdomains ||
+                        []) as string[]
+                      ).map((sub: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300"
+                        >
+                          ✓ {sub}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <span className="text-stone-400 block text-[10px]">專長標籤</span>
                   <div className="flex items-center gap-1 flex-wrap mt-0.5">

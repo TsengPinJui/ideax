@@ -62,9 +62,12 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
     if (currentUser.domain) return [currentUser.domain];
     return ['創新創業'];
   });
-  const [subcategory, setSubcategory] = useState<string>(
-    currentUser.expertApplicationData?.subdomain || ''
-  );
+  const [selectedSubdomains, setSelectedSubdomains] = useState<string[]>(() => {
+    if (initialData?.subdomains && initialData.subdomains.length > 0) return initialData.subdomains;
+    if (initialData?.subdomain) return [initialData.subdomain];
+    if (currentUser.subdomains && currentUser.subdomains.length > 0) return currentUser.subdomains;
+    return ['資訊科技'];
+  });
   const [professionalTitle, setProfessionalTitle] = useState(
     currentUser.expertApplicationData?.professionalTitle || currentUser.title || ''
   );
@@ -72,15 +75,24 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
     currentUser.expertApplicationData?.yearsOfExperience || '5-8 年'
   );
 
-  const toggleDomain = (domName: string) => {
-    if (selectedDomains.includes(domName)) {
-      if (selectedDomains.length > 1) {
-        setSelectedDomains(selectedDomains.filter((d) => d !== domName));
+  const toggleSubdomain = (sub: string, parentCat: Category) => {
+    if (selectedSubdomains.includes(sub)) {
+      if (selectedSubdomains.length > 1) {
+        setSelectedSubdomains(selectedSubdomains.filter((s) => s !== sub));
       }
     } else {
-      if (selectedDomains.length < 5) {
-        setSelectedDomains([...selectedDomains, domName]);
+      if (selectedSubdomains.length < 5) {
+        setSelectedSubdomains([...selectedSubdomains, sub]);
+        if (!selectedDomains.includes(parentCat)) {
+          setSelectedDomains([...selectedDomains, parentCat]);
+        }
       }
+    }
+  };
+
+  const removeSubdomain = (sub: string) => {
+    if (selectedSubdomains.length > 1) {
+      setSelectedSubdomains(selectedSubdomains.filter((s) => s !== sub));
     }
   };
 
@@ -173,7 +185,8 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
     const applicationPayload = {
       domain: finalDomains[0],
       domains: finalDomains,
-      subdomain: subcategory,
+      subdomain: selectedSubdomains[0] || '',
+      subdomains: selectedSubdomains,
       professionalTitle: professionalTitle.trim(),
       yearsOfExperience,
       credentialsFiles,
@@ -189,6 +202,7 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
         ...prev,
         domain: (finalDomains[0] || prev.domain) as Category,
         domains: finalDomains as Category[],
+        subdomains: selectedSubdomains,
         title: professionalTitle.trim(),
         expertApplicationStatus: 'pending',
         lastExpertAppliedAt: appliedAt,
@@ -315,89 +329,103 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* 1. 專業領域與頭銜 */}
+              {/* 1. 專業領域與子領域看板 */}
               <div className="space-y-3 p-4 rounded-2xl bg-stone-50 border border-stone-200">
                 <div className="flex items-center justify-between border-b border-stone-200 pb-2">
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-black flex items-center justify-center">
                       1
                     </span>
-                    <h3 className="text-xs font-black text-stone-900">申請專家領域與公開職銜</h3>
+                    <h3 className="text-xs font-black text-stone-900">申請專家領域與子領域看板</h3>
                   </div>
                   <span className="text-[10px] text-amber-900 font-bold bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
-                    可複選 1~5 個領域（已選 {selectedDomains.length} / 5 個）
+                    可複選 1~5 個子領域（已選 {selectedSubdomains.length} / 5 個）
                   </span>
                 </div>
 
                 <div className="space-y-2.5 text-xs">
-                  {/* 複選 1~5 個領域 */}
+                  {/* 已選清單 Chips 快速檢視 */}
+                  <div className="p-2.5 rounded-xl bg-white border border-stone-200 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-stone-600">
+                        已選擇的專家子領域（點擊 ✕ 移除）：
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-amber-900">
+                        {selectedSubdomains.length} / 5 項
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 min-h-6 items-center">
+                      {selectedSubdomains.map((sub) => (
+                        <span
+                          key={sub}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500 text-stone-950 text-[11px] font-black shadow-2xs"
+                        >
+                          <span>✓ {sub}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeSubdomain(sub)}
+                            className="w-3 h-3 rounded-full hover:bg-amber-600 flex items-center justify-center text-[9px] cursor-pointer ml-0.5"
+                            title="移除此子領域"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 四大主領域與子領域勾選網格 */}
                   <div>
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between mb-1.5">
                       <label className="text-[11px] font-bold text-stone-700">
-                        申請專家主領域（可複選 1~5 個領域） <span className="text-rose-500">*</span>
+                        點選專長子領域標籤（可複選 1~5 個）：
                       </label>
                       <span className="text-[10px] text-stone-400">管理員審核時可擇優通過或指派</span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                      {[
-                        { id: '創新創業', name: '創新創業', desc: '商模/融資/出海' },
-                        { id: '專業問題', name: '專業問題', desc: '技術/法律/財務' },
-                        { id: '學術探討', name: '學術探討', desc: '科研/哲學/論文' },
-                        { id: '日常疑難', name: '日常疑難', desc: '職涯/生活/諮詢' },
-                      ].map((cat) => {
-                        const isChecked = selectedDomains.includes(cat.id);
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {(['創新創業', '專業問題', '學術探討', '日常疑難'] as Category[]).map((catName) => {
+                        const subList = CATEGORY_HIERARCHY[catName] || [];
+                        const catSelectedCount = subList.filter((s) => selectedSubdomains.includes(s)).length;
+
                         return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => toggleDomain(cat.id)}
-                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 ${
-                              isChecked
-                                ? 'bg-amber-500/15 border-amber-400 text-amber-950 font-bold shadow-2xs ring-1 ring-amber-400'
-                                : 'bg-white hover:bg-stone-100 border-stone-200 text-stone-700'
-                            }`}
+                          <div
+                            key={catName}
+                            className="p-2.5 rounded-xl bg-white border border-stone-200 space-y-1.5"
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="font-black text-xs text-stone-900">{cat.name}</span>
-                              <div
-                                className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] ${
-                                  isChecked
-                                    ? 'bg-amber-500 text-stone-950 font-black'
-                                    : 'border border-stone-300 bg-white'
-                                }`}
-                              >
-                                {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                              </div>
+                            <div className="flex items-center justify-between border-b border-stone-100 pb-1">
+                              <span className="font-black text-xs text-stone-900">{catName}</span>
+                              {catSelectedCount > 0 && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900">
+                                  已選 {catSelectedCount} 項
+                                </span>
+                              )}
                             </div>
-                            <span className="text-[9px] text-stone-500">{cat.desc}</span>
-                          </button>
+
+                            {/* 子領域 Chips */}
+                            <div className="flex flex-wrap gap-1">
+                              {subList.map((sub) => {
+                                const isChecked = selectedSubdomains.includes(sub);
+                                return (
+                                  <button
+                                    key={sub}
+                                    type="button"
+                                    onClick={() => toggleSubdomain(sub, catName)}
+                                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-0.5 ${
+                                      isChecked
+                                        ? 'bg-amber-500 text-stone-950 font-black shadow-2xs ring-1 ring-amber-400'
+                                        : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200'
+                                    }`}
+                                  >
+                                    <span>{isChecked ? '✓' : '+'}</span>
+                                    <span>{sub}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         );
                       })}
-                    </div>
-
-                    {/* 常用細分標籤 */}
-                    <div className="mt-2 p-2 rounded-xl bg-white border border-stone-200/80 space-y-1">
-                      <span className="text-[9px] font-bold text-stone-400 block">細分領域標籤：</span>
-                      <div className="flex flex-wrap gap-1">
-                        {['商業模式', '資訊科技', '軟體架構', '法律合規', '財務會計', '醫療生技', '跨境出海', '職涯輔導'].map((tag) => {
-                          const isTagged = selectedDomains.includes(tag);
-                          return (
-                            <button
-                              key={tag}
-                              type="button"
-                              onClick={() => toggleDomain(tag)}
-                              className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                                isTagged
-                                  ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
-                                  : 'bg-stone-50 hover:bg-stone-100 text-stone-600 border border-stone-200'
-                              }`}
-                            >
-                              {isTagged ? `✓ ${tag}` : `+ ${tag}`}
-                            </button>
-                          );
-                        })}
-                      </div>
                     </div>
                   </div>
 
