@@ -1,5 +1,11 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, initializeFirestore, Firestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  Firestore
+} from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import firebaseConfigJson from '../../firebase-applet-config.json';
 
@@ -16,25 +22,36 @@ export const firebaseConfig = {
 // Initialize Firebase App instance safely
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Firestore safely with forced long-polling for iframe & preview environments
+// Initialize Firestore safely with direct long-polling for iframe, web & preview environments
 let firestoreDb: Firestore;
 
 try {
   const dbId = firebaseConfigJson.firestoreDatabaseId || undefined;
-  const settings = {
-    experimentalForceLongPolling: true,
-    ignoreUndefinedProperties: true,
-  };
-  
-  if (dbId) {
-    firestoreDb = initializeFirestore(app, settings, dbId);
-  } else {
-    firestoreDb = initializeFirestore(app, settings);
+  firestoreDb = initializeFirestore(
+    app,
+    {
+      experimentalForceLongPolling: true,
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    },
+    dbId
+  );
+} catch {
+  try {
+    const dbId = firebaseConfigJson.firestoreDatabaseId || undefined;
+    firestoreDb = initializeFirestore(
+      app,
+      {
+        experimentalForceLongPolling: true,
+      },
+      dbId
+    );
+  } catch {
+    firestoreDb = firebaseConfigJson.firestoreDatabaseId
+      ? getFirestore(app, firebaseConfigJson.firestoreDatabaseId)
+      : getFirestore(app);
   }
-} catch (e) {
-  firestoreDb = firebaseConfigJson.firestoreDatabaseId
-    ? getFirestore(app, firebaseConfigJson.firestoreDatabaseId)
-    : getFirestore(app);
 }
 
 export const db = firestoreDb;
