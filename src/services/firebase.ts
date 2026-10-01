@@ -16,19 +16,20 @@ export const firebaseConfig = {
 // Initialize Firebase App instance safely
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Firestore safely with long-polling auto-detect for iframe & preview environments
+// Initialize Firestore safely with forced long-polling for iframe & preview environments
 let firestoreDb: Firestore;
 
 try {
   const dbId = firebaseConfigJson.firestoreDatabaseId || undefined;
+  const settings = {
+    experimentalForceLongPolling: true,
+    ignoreUndefinedProperties: true,
+  };
+  
   if (dbId) {
-    firestoreDb = initializeFirestore(app, {
-      experimentalAutoDetectLongPolling: true,
-    }, dbId);
+    firestoreDb = initializeFirestore(app, settings, dbId);
   } else {
-    firestoreDb = initializeFirestore(app, {
-      experimentalAutoDetectLongPolling: true,
-    });
+    firestoreDb = initializeFirestore(app, settings);
   }
 } catch (e) {
   firestoreDb = firebaseConfigJson.firestoreDatabaseId
