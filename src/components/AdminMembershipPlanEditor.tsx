@@ -53,7 +53,7 @@ export const AdminMembershipPlanEditor: React.FC = () => {
   const [newPlanRebate, setNewPlanRebate] = useState(5);
   const [newPlanTagline, setNewPlanTagline] = useState('');
   const [newPlanBadgeColor, setNewPlanBadgeColor] = useState<'blue' | 'purple' | 'amber' | 'emerald' | 'stone'>('emerald');
-  const [newPlanBenefits, setNewPlanBenefits] = useState<string>('全站發問與解答提案\n享專屬平台手續費減免折扣\n第三方安全交易拆款保障');
+  const [newPlanBenefits, setNewPlanBenefits] = useState<string>('全站發問與解答提案\n享專屬平台服務費減免折扣\n第三方安全交易拆款保障');
 
   // 刪除確認彈窗
   const [deleteTargetPlan, setDeleteTargetPlan] = useState<SubscriptionPlan | null>(null);

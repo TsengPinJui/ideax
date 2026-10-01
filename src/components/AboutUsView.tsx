@@ -226,8 +226,8 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
     {
       id: 'fin_3',
       num: '三',
-      title: '懸賞生命週期與撥款時間軸',
-      summary: '從 T+0 發布懸賞、D0 採納核銷、7 日猶豫期到每週批次撥款（最長不超過 D0+21 日）。',
+      title: '懸賞與自訂專案生命週期與每月撥款時間軸',
+      summary: '從 T+0 託管預扣、D0 採納核銷、7 日猶豫期到每月 5 號合併定期撥款。',
       badge: '時間軸',
     },
     {
@@ -273,7 +273,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       id: 'other_3',
       num: '四',
       title: '會員訂閱方案與服務費減免',
-      summary: '達人方案（5% 半價）、權威方案（0% 免手續費）與大師方案（最高實收 102%）。',
+      summary: '達人方案（5% 半價）、權威方案（0% 免服務費）與大師方案（最高實收 102%）。',
       badge: '會員權益',
     },
     {
@@ -720,8 +720,8 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                       { step: 4, title: '猶豫期', time: 'D0 ~ +7', desc: '提問者異議' },
                       { step: 5, title: '核算緩衝', time: 'D0+7 ~ +9', desc: '系統覆核' },
                       { step: 6, title: '進入排程', time: 'D0+9 起', desc: '撥款排程' },
-                      { step: 7, title: '批次撥款', time: '每週一', desc: '遇假日順延' },
-                      { step: 8, title: '實際入帳', time: '≤ D0+21日', desc: '轉入銀行' },
+                      { step: 7, title: '定期撥款', time: '每月 5 號', desc: '固定結算' },
+                      { step: 8, title: '實際入帳', time: '每月 5 號', desc: '電匯轉入銀行' },
                     ].map((item) => (
                       <div
                         key={item.step}
@@ -768,7 +768,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                     <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1">
                       <span className="font-bold text-amber-950 block">2. 平台應撥款</span>
                       <p className="text-stone-600">
-                        已核算之應付服務報酬帳款，排程於每週批次撥出。
+                        已核算之應付服務報酬帳款，排程於每月 5 號合併定期撥出。
                       </p>
                     </div>
 

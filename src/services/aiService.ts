@@ -710,7 +710,7 @@ export function getAiCrmLeadsForSolver(
   // If real questions exist in platform, map them dynamically to generate live CRM leads
   if (platformQuestions && platformQuestions.length > 0) {
     const candidateQuestions = platformQuestions
-      .filter((q) => q.status === 'open' || q.bounty > 0)
+      .filter((q) => q.status !== 'delisted' && (q.status === 'open' || q.bounty > 0))
       .slice(0, 5);
 
     if (candidateQuestions.length > 0) {

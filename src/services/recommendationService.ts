@@ -199,8 +199,8 @@ export function computeQuestionRecommendationScore(
   profile: UserInterestProfile,
   answers: Answer[] = []
 ): number {
-  // 過期問題不推薦
-  if (isQuestionExpired(q.deadline)) {
+  // 過期或已被管理員下架問題不推薦
+  if (isQuestionExpired(q.deadline) || q.status === 'delisted') {
     return -9999;
   }
 

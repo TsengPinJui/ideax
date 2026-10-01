@@ -24,7 +24,6 @@ export const AdminPointsReceivablesTab: React.FC = () => {
     adminDailyQuota,
     getAdminRemainingDailyQuota,
     adminTransferPoints,
-    adjustUserBalance,
     transactions,
   } = useApp();
 
@@ -36,9 +35,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
     availableUsers.find((u) => u.id !== currentUser.id)?.id || availableUsers[0]?.id || ''
   );
   const [searchUserQuery, setSearchUserQuery] = useState('');
-  const [actionType, setActionType] = useState<'transfer' | 'adjust'>('transfer');
   const [amount, setAmount] = useState<number>(1000);
-  const [isAdding, setIsAdding] = useState<boolean>(true); // for adjust mode: add or deduct
   const [reasonCategory, setReasonCategory] = useState<string>('活動獎勵發放');
   const [customReasonNote, setCustomReasonNote] = useState<string>('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError?: boolean } | null>(null);
@@ -65,10 +62,9 @@ export const AdminPointsReceivablesTab: React.FC = () => {
     '優質解答激勵',
     '系統維護補償',
     '合作贊助撥付',
-    '業務審計微調',
   ];
 
-  // Transfer & adjustment history
+  // Transfer history
   const historyTransactions = transactions.filter(
     (tx) =>
       tx.type === '管理員轉入點數' ||
@@ -91,33 +87,19 @@ export const AdminPointsReceivablesTab: React.FC = () => {
       ? `${reasonCategory} - ${customReasonNote.trim()}`
       : reasonCategory;
 
-    if (actionType === 'transfer') {
-      if (amount > remainingQuota) {
-        setFeedbackMsg({
-          text: `轉入點數 (${amount.toLocaleString()}) 超出今日剩餘配額 (${remainingQuota.toLocaleString()})！`,
-          isError: true,
-        });
-        return;
-      }
-      const res = adminTransferPoints(selectedUser.id, amount, fullReason);
-      if (res.success) {
-        setFeedbackMsg({ text: res.message, isError: false });
-        setCustomReasonNote('');
-      } else {
-        setFeedbackMsg({ text: res.message, isError: true });
-      }
+    if (amount > remainingQuota) {
+      setFeedbackMsg({
+        text: `轉入點數 (${amount.toLocaleString()}) 超出今日剩餘配額 (${remainingQuota.toLocaleString()})！`,
+        isError: true,
+      });
+      return;
+    }
+    const res = adminTransferPoints(selectedUser.id, amount, fullReason);
+    if (res.success) {
+      setFeedbackMsg({ text: res.message, isError: false });
+      setCustomReasonNote('');
     } else {
-      const finalDelta = isAdding ? amount : -amount;
-      const success = adjustUserBalance(selectedUser.id, finalDelta, fullReason);
-      if (success) {
-        setFeedbackMsg({
-          text: `🎉 已成功為「${selectedUser.name}」${isAdding ? '增加' : '扣除'} ${amount.toLocaleString()} 點！系統已寫入審計帳本。`,
-          isError: false,
-        });
-        setCustomReasonNote('');
-      } else {
-        setFeedbackMsg({ text: '調整點數失敗，請確認該用戶點數餘額足夠。', isError: true });
-      }
+      setFeedbackMsg({ text: res.message, isError: true });
     }
 
     setIsConfirming(false);
@@ -155,7 +137,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
             </span>
           </h3>
           <p className="text-xs text-stone-500 mt-1">
-            查閱全站用戶帳目、點數餘額與應收撥款，並執行管理員點數撥發、活動激勵與帳務調度。
+            查閱全站用戶帳目、點數餘額與應收撥款，並執行管理員點數轉入與活動激勵發放。
           </p>
         </div>
         <div className="text-right shrink-0">
@@ -304,77 +286,25 @@ export const AdminPointsReceivablesTab: React.FC = () => {
               </div>
             </div>
 
-            {/* 點數調度操作區 */}
+            {/* 點數轉入操作區 */}
             <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-stone-900 to-stone-950 text-white space-y-4 shadow-sm">
-              <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+              <div className="flex items-center justify-between border-b border-stone-800 pb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <Send className="w-4 h-4 text-amber-400" />
-                  <span className="font-bold text-sm text-stone-100">執行點數撥發與帳務調度</span>
+                  <span className="font-bold text-sm text-stone-100">點數轉入</span>
                 </div>
-                {/* 模式切換 (轉入撥發 vs 手動調整) */}
-                <div className="flex items-center p-1 bg-stone-800 rounded-xl text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setActionType('transfer')}
-                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      actionType === 'transfer'
-                        ? 'bg-amber-400 text-stone-950 shadow-2xs'
-                        : 'text-stone-400 hover:text-stone-200'
-                    }`}
-                  >
-                    點數轉入 (每日配額)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActionType('adjust')}
-                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      actionType === 'adjust'
-                        ? 'bg-purple-600 text-white shadow-2xs'
-                        : 'text-stone-400 hover:text-stone-200'
-                    }`}
-                  >
-                    帳務微調 (加點/扣點)
-                  </button>
+                <div className="text-xs text-amber-400 font-mono bg-stone-850 px-2.5 py-1 rounded-lg border border-stone-800">
+                  今日剩餘配額：{remainingQuota.toLocaleString()} 點
                 </div>
               </div>
-
-              {actionType === 'adjust' && (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-stone-300 font-bold">微調動作：</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsAdding(true)}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
-                        isAdding ? 'bg-emerald-600 text-white' : 'bg-stone-800 text-stone-400'
-                      }`}
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>增加點數</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsAdding(false)}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
-                        !isAdding ? 'bg-rose-600 text-white' : 'bg-stone-800 text-stone-400'
-                      }`}
-                    >
-                      <Minus className="w-3 h-3" />
-                      <span>扣除點數</span>
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {/* 點數金額快選與自訂 */}
               <div className="space-y-2">
                 <label className="text-xs text-stone-300 font-bold flex items-center justify-between">
-                  <span>點數金額：</span>
-                  {actionType === 'transfer' && (
-                    <span className="text-[11px] text-amber-400 font-mono">
-                      今日上限剩餘：{remainingQuota.toLocaleString()} 點
-                    </span>
-                  )}
+                  <span>轉入點數金額：</span>
+                  <span className="text-[11px] text-stone-400 font-mono">
+                    上限：{remainingQuota.toLocaleString()} 點
+                  </span>
                 </label>
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   {PRESET_AMOUNTS.map((val) => (
@@ -407,7 +337,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
 
               {/* 原因選擇與備註 */}
               <div className="space-y-2">
-                <label className="text-xs text-stone-300 font-bold">調度原因分類與備註：</label>
+                <label className="text-xs text-stone-300 font-bold">轉入原因分類與備註：</label>
                 <div className="flex flex-wrap gap-1.5">
                   {PRESET_REASONS.map((r) => (
                     <button
@@ -434,22 +364,21 @@ export const AdminPointsReceivablesTab: React.FC = () => {
               </div>
 
               {/* 執行按鈕 */}
-              <div className="pt-2 flex items-center justify-between border-t border-stone-800">
+              <div className="pt-2 flex items-center justify-between border-t border-stone-800 flex-wrap gap-2">
                 <div className="text-xs text-stone-400">
-                  受款對象：<strong className="text-white">{selectedUser.name}</strong> • 異動：
-                  <strong className={actionType === 'adjust' && !isAdding ? 'text-rose-400' : 'text-amber-400'}>
-                    {actionType === 'adjust' && !isAdding ? '-' : '+'}
-                    {amount.toLocaleString()} 點
+                  受款對象：<strong className="text-white">{selectedUser.name}</strong> • 轉入點數：
+                  <strong className="text-amber-400">
+                    +{amount.toLocaleString()} 點
                   </strong>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsConfirming(true)}
-                  disabled={amount <= 0 || (actionType === 'transfer' && amount > remainingQuota)}
+                  disabled={amount <= 0 || amount > remainingQuota}
                   className="px-5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-stone-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
                 >
                   <Send className="w-3.5 h-3.5 text-stone-950" />
-                  <span>確認執行調度</span>
+                  <span>確認轉入點數</span>
                 </button>
               </div>
             </div>
@@ -457,18 +386,18 @@ export const AdminPointsReceivablesTab: React.FC = () => {
         </div>
       )}
 
-      {/* 最近點數調度審計歷史 */}
+      {/* 最近點數轉入紀錄 */}
       <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-xs space-y-3">
         <div className="flex items-center justify-between border-b border-stone-100 pb-3">
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-purple-600" />
-            <h4 className="font-extrabold text-sm text-stone-900">最近點數撥發與調度紀錄</h4>
+            <h4 className="font-extrabold text-sm text-stone-900">最近點數轉入紀錄</h4>
           </div>
           <span className="text-[11px] text-stone-400 font-mono">共 {historyTransactions.length} 筆</span>
         </div>
 
         {historyTransactions.length === 0 ? (
-          <div className="py-8 text-center text-xs text-stone-400">尚無點數調度紀錄</div>
+          <div className="py-8 text-center text-xs text-stone-400">尚無點數轉入紀錄</div>
         ) : (
           <div className="divide-y divide-stone-100">
             {historyTransactions.slice(0, 6).map((tx) => (
@@ -502,12 +431,11 @@ export const AdminPointsReceivablesTab: React.FC = () => {
           <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-stone-200">
             <div className="flex items-center gap-2.5 text-amber-700">
               <ShieldCheck className="w-5 h-5 text-amber-600" />
-              <h4 className="font-black text-sm text-stone-900">確認執行點數調度？</h4>
+              <h4 className="font-black text-sm text-stone-900">確認轉入點數？</h4>
             </div>
             <p className="text-xs text-stone-600 leading-relaxed">
-              即將為「<strong>{selectedUser?.name}</strong>」
-              {actionType === 'adjust' && !isAdding ? '扣除 ' : '撥入 '}
-              <strong className="text-amber-700 text-sm font-mono">{amount.toLocaleString()} 點</strong>。
+              即將為「<strong>{selectedUser?.name}</strong>」轉入
+              <strong className="text-amber-700 text-sm font-mono"> +{amount.toLocaleString()} 點</strong>。
               <br />
               原因備註：{customReasonNote.trim() ? `${reasonCategory} - ${customReasonNote.trim()}` : reasonCategory}。
             </p>
@@ -524,7 +452,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                 onClick={handleExecute}
                 className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black cursor-pointer shadow-xs"
               >
-                確定執行
+                確定轉入
               </button>
             </div>
           </div>

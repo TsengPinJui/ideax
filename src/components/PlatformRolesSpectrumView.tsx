@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   HelpCircle,
   Building2,
@@ -15,6 +15,16 @@ import {
   Layers,
   ShieldAlert,
   ArrowUpRight,
+  Rocket,
+  GraduationCap,
+  Lightbulb,
+  Coins,
+  TrendingUp,
+  HeartHandshake,
+  UserCheck,
+  Users,
+  Flame,
+  Check,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -63,6 +73,9 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
   // 預設選中左側企業機構
   const [selectedRoleId, setSelectedRoleId] = useState<string>('enterprise');
   const [activeZone, setActiveZone] = useState<ZoneType>('all');
+  const [highlightedRoleIds, setHighlightedRoleIds] = useState<string[]>([]);
+  const [activePersona, setActivePersona] = useState<string | null>(null);
+  const spectrumRef = useRef<HTMLDivElement>(null);
 
   const handleOpenGuidelines = () => {
     if (onOpenCommunityGuidelines) {
@@ -270,10 +283,10 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
         '針對懸賞問題或痛點提交付費落地方案與原創成果',
         '支援多種交付形式：付費全文、檔案交付 (50MB)、線上會談',
         '痛點自訂解鎖金額，創造長期多元被動知識收益',
-        '自由選訂會員方案，享手續費減免至 0% 甚至 +2% 補貼',
+        '自由選訂會員方案，享服務費減免至 0% 甚至 +2% 補貼',
       ],
       financialAndLegal: [
-        '金流：實名認證後，由第三方金流每週批次電匯至銀行帳戶',
+        '金流：實名認證後，由平台於每月固定結算日（每月 5 號）批次電匯至銀行帳戶',
         '授權：方案一旦被採納付費，即視為授權發案方落地商用與改作',
         '原創：保證交付成果原創合法，杜絕抄襲剽竊並負擔保責任',
       ],
@@ -325,22 +338,30 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
 
   const handleSelectZone = (zone: ZoneType) => {
     setActiveZone(zone);
+    setActivePersona(null);
     if (zone === 'left') {
+      setHighlightedRoleIds(['enterprise', 'questioner', 'discussion_asker']);
       if (!['enterprise', 'questioner', 'discussion_asker'].includes(selectedRoleId)) {
         setSelectedRoleId('enterprise');
       }
     } else if (zone === 'center') {
+      setHighlightedRoleIds(['platform_admin']);
       setSelectedRoleId('platform_admin');
     } else if (zone === 'right') {
+      setHighlightedRoleIds(['solver', 'certified_expert', 'discussion_solver']);
       if (!['discussion_solver', 'solver', 'certified_expert'].includes(selectedRoleId)) {
         setSelectedRoleId('solver');
       }
+    } else {
+      setHighlightedRoleIds([]);
     }
   };
 
   const handleSelectRole = (role: RoleNode) => {
     setSelectedRoleId(role.id);
     setActiveZone(role.zone);
+    setHighlightedRoleIds([role.id]);
+    setActivePersona(null);
   };
 
   return (
@@ -411,8 +432,415 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
         </div>
       </div>
 
+      {/* 什麼人適合使用IdeaX？身分場景對照與即時點亮引導模組 */}
+      <div id="suitable-personas-section" className="space-y-6 animate-in fade-in duration-200 scroll-mt-24 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-950 border border-amber-300 text-xs font-black mb-2 shadow-2xs">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>身分場景對照・智慧引導</span>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+              什麼人適合使用IdeaX？
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-500 mt-1">
+              點擊下方符合您的身分或情境，系統將自動為您點亮對應的平台角色、端別定位與專屬權能！
+            </p>
+          </div>
+
+          {activePersona && (
+            <div className="flex items-center gap-2 self-start sm:self-auto bg-amber-50 text-amber-950 border border-amber-300 px-3.5 py-1.5 rounded-2xl text-xs font-bold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              <span>已點亮身分：<strong>{activePersona}</strong></span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActivePersona(null);
+                  setHighlightedRoleIds([]);
+                }}
+                className="ml-1 text-[11px] text-stone-400 hover:text-stone-700 underline cursor-pointer"
+              >
+                重置
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 三大類別互動卡片 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+          {/* 第 1 組：提問端、企業機構、提問者 */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-amber-50/70 via-white to-amber-50/30 border-2 border-amber-200/90 shadow-sm flex flex-col justify-between space-y-4 hover:border-amber-300 transition-all">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-black px-2.5 py-0.5 rounded-full bg-amber-500 text-stone-950 border border-amber-600 shadow-2xs">
+                  提問端・發案需求
+                </span>
+                <span className="text-[11px] font-bold text-amber-800">
+                  4 種典型身分
+                </span>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-black text-stone-900 flex items-center gap-2">
+                  <span>如果你是：</span>
+                </h4>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  尋求實戰解法、跨界破局與團隊方案
+                </p>
+              </div>
+
+              {/* 身份按鈕列表 */}
+              <div className="space-y-2 pt-1">
+                {[
+                  {
+                    name: '創業者 & 競賽參賽者',
+                    targetRole: 'questioner',
+                    icon: Rocket,
+                    desc: '找技術架構破局、商業模式與關鍵評審視角',
+                  },
+                  {
+                    name: '學生 & 學者',
+                    targetRole: 'questioner',
+                    icon: GraduationCap,
+                    desc: '論文突破、跨領域實務探討與研究論點驗證',
+                  },
+                  {
+                    name: '各方面問題諮詢',
+                    targetRole: 'questioner',
+                    icon: HelpCircle,
+                    desc: '職涯難題、實務經營與疑難雜症找對專家解惑',
+                  },
+                  {
+                    name: '企業機構管理者',
+                    targetRole: 'enterprise',
+                    icon: Building2,
+                    desc: '統編報帳核銷、多成員協作、簽訂 NDA 顧問專案',
+                  },
+                ].map((item) => {
+                  const isActive = activePersona === item.name;
+                  const IconComp = item.icon;
+                  return (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => {
+                        setActivePersona(item.name);
+                        setActiveZone('left');
+                        setHighlightedRoleIds(['enterprise', 'questioner']);
+                        setSelectedRoleId(item.targetRole);
+                        if (spectrumRef.current) {
+                          spectrumRef.current.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                          });
+                        }
+                      }}
+                      className={`w-full p-2.5 rounded-2xl text-left transition-all border flex items-center justify-between gap-2.5 cursor-pointer group ${
+                        isActive
+                          ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-md ring-2 ring-amber-400/60 scale-[1.02]'
+                          : 'bg-white hover:bg-amber-50/80 text-stone-800 border-amber-100 hover:border-amber-300 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                            isActive
+                              ? 'bg-stone-950 text-amber-400'
+                              : 'bg-amber-100 text-amber-800 group-hover:bg-amber-200'
+                          }`}
+                        >
+                          <IconComp className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-black block truncate">
+                            {item.name}
+                          </span>
+                          <span
+                            className={`text-[10px] block truncate ${
+                              isActive ? 'text-stone-900/90 font-medium' : 'text-stone-500'
+                            }`}
+                          >
+                            {item.desc}
+                          </span>
+                        </div>
+                      </div>
+                      {isActive ? (
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-stone-950 text-amber-300 shrink-0">
+                          已點亮
+                        </span>
+                      ) : (
+                        <span className="text-amber-500 group-hover:translate-x-0.5 transition-transform text-xs shrink-0">
+                          →
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 互動點亮指示 */}
+            <div className="pt-3 border-t border-amber-200/80">
+              <p className="text-[11px] font-bold text-amber-900 leading-relaxed text-center bg-amber-100/70 py-1.5 px-2 rounded-xl">
+                （點擊以上身份會自動點亮該頁的提問端、企業機構、提問者）
+              </p>
+            </div>
+          </div>
+
+          {/* 第 2 組：答題端 */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-blue-50/70 via-white to-blue-50/30 border-2 border-blue-200/90 shadow-sm flex flex-col justify-between space-y-4 hover:border-blue-300 transition-all">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white border border-blue-700 shadow-2xs">
+                  答題端・專業變現
+                </span>
+                <span className="text-[11px] font-bold text-blue-800">
+                  6 種實戰好手
+                </span>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-black text-stone-900 flex items-center gap-2">
+                  <span>如果你是：</span>
+                </h4>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  知識變現、方案交付與建立實戰權威
+                </p>
+              </div>
+
+              {/* 身份按鈕列表 */}
+              <div className="space-y-2 pt-1">
+                {[
+                  {
+                    name: '各領域專家',
+                    targetRole: 'certified_expert',
+                    icon: ShieldCheck,
+                    desc: '官方實名認證徽章，開通高價顧問與一對一預約',
+                  },
+                  {
+                    name: '有好的想法',
+                    targetRole: 'solver',
+                    icon: Lightbulb,
+                    desc: '將原創思路轉化為付費落地方案，賺取解鎖收益',
+                  },
+                  {
+                    name: '喜歡腦力激盪',
+                    targetRole: 'solver',
+                    icon: Sparkles,
+                    desc: '挑戰各界棘手痛點，跨界探索未知解題快感',
+                  },
+                  {
+                    name: '想賺外快、副業斜槓',
+                    targetRole: 'solver',
+                    icon: Coins,
+                    desc: '專業經驗靈活變現，享高達 100%~102% 實收撥款',
+                  },
+                  {
+                    name: '樂於助人及分享想法',
+                    targetRole: 'solver',
+                    icon: HeartHandshake,
+                    desc: '以自身經驗啟發他人跨越瓶頸，累積專業聲望',
+                  },
+                  {
+                    name: '找專家 & 尋人才',
+                    targetRole: 'solver',
+                    icon: UserCheck,
+                    desc: '透過提案成果反向發掘優秀顧問、合夥人與高手',
+                  },
+                ].map((item) => {
+                  const isActive = activePersona === item.name;
+                  const IconComp = item.icon;
+                  return (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => {
+                        setActivePersona(item.name);
+                        setActiveZone('right');
+                        setHighlightedRoleIds(['solver', 'certified_expert', 'discussion_solver']);
+                        setSelectedRoleId(item.targetRole);
+                        if (spectrumRef.current) {
+                          spectrumRef.current.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                          });
+                        }
+                      }}
+                      className={`w-full p-2.5 rounded-2xl text-left transition-all border flex items-center justify-between gap-2.5 cursor-pointer group ${
+                        isActive
+                          ? 'bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-400/60 scale-[1.02]'
+                          : 'bg-white hover:bg-blue-50/80 text-stone-800 border-blue-100 hover:border-blue-300 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                            isActive
+                              ? 'bg-white text-blue-700'
+                              : 'bg-blue-100 text-blue-800 group-hover:bg-blue-200'
+                          }`}
+                        >
+                          <IconComp className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-black block truncate">
+                            {item.name}
+                          </span>
+                          <span
+                            className={`text-[10px] block truncate ${
+                              isActive ? 'text-blue-100 font-medium' : 'text-stone-500'
+                            }`}
+                          >
+                            {item.desc}
+                          </span>
+                        </div>
+                      </div>
+                      {isActive ? (
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-white text-blue-900 shrink-0">
+                          已點亮
+                        </span>
+                      ) : (
+                        <span className="text-blue-500 group-hover:translate-x-0.5 transition-transform text-xs shrink-0">
+                          →
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 互動點亮指示 */}
+            <div className="pt-3 border-t border-blue-200/80">
+              <p className="text-[11px] font-bold text-blue-900 leading-relaxed text-center bg-blue-100/70 py-1.5 px-2 rounded-xl">
+                （點擊以上身份會點亮答題端）
+              </p>
+            </div>
+          </div>
+
+          {/* 第 3 組：一般討論 */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-emerald-50/70 via-white to-emerald-50/30 border-2 border-emerald-200/90 shadow-sm flex flex-col justify-between space-y-4 hover:border-emerald-300 transition-all">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white border border-emerald-700 shadow-2xs">
+                  社群討論・思路交流
+                </span>
+                <span className="text-[11px] font-bold text-emerald-800">
+                  4 種交流場景
+                </span>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-black text-stone-900 flex items-center gap-2">
+                  <span>如果你是：</span>
+                </h4>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  靈感激盪、跨界交流與掌握前沿趨勢
+                </p>
+              </div>
+
+              {/* 身份按鈕列表 */}
+              <div className="space-y-2 pt-1">
+                {[
+                  {
+                    name: '正在找靈感',
+                    targetRole: 'discussion_asker',
+                    icon: Flame,
+                    desc: '瀏覽各領域真實懸賞痛點，汲取前沿思維火花',
+                  },
+                  {
+                    name: '想把握最新產業方向',
+                    targetRole: 'discussion_asker',
+                    icon: TrendingUp,
+                    desc: '從第一線真實提問洞察市場未被滿足的真實需求',
+                  },
+                  {
+                    name: '喜歡腦力激盪、喜歡與聰明人交流',
+                    targetRole: 'discussion_solver',
+                    icon: Users,
+                    desc: '零門檻自由留言探討，與各界高認知人才思想碰撞',
+                  },
+                  {
+                    name: '找專家 & 尋人才',
+                    targetRole: 'discussion_solver',
+                    icon: UserCheck,
+                    desc: '在開放討論區中觀察各路好手的解題維度與實力',
+                  },
+                ].map((item) => {
+                  const isActive = activePersona === item.name;
+                  const IconComp = item.icon;
+                  return (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => {
+                        setActivePersona(item.name);
+                        setActiveZone('all');
+                        setHighlightedRoleIds(['discussion_asker', 'discussion_solver']);
+                        setSelectedRoleId(item.targetRole);
+                        if (spectrumRef.current) {
+                          spectrumRef.current.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                          });
+                        }
+                      }}
+                      className={`w-full p-2.5 rounded-2xl text-left transition-all border flex items-center justify-between gap-2.5 cursor-pointer group ${
+                        isActive
+                          ? 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-400/60 scale-[1.02]'
+                          : 'bg-white hover:bg-emerald-50/80 text-stone-800 border-emerald-100 hover:border-emerald-300 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                            isActive
+                              ? 'bg-white text-emerald-700'
+                              : 'bg-emerald-100 text-emerald-800 group-hover:bg-emerald-200'
+                          }`}
+                        >
+                          <IconComp className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-black block truncate">
+                            {item.name}
+                          </span>
+                          <span
+                            className={`text-[10px] block truncate ${
+                              isActive ? 'text-emerald-100 font-medium' : 'text-stone-500'
+                            }`}
+                          >
+                            {item.desc}
+                          </span>
+                        </div>
+                      </div>
+                      {isActive ? (
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-white text-emerald-900 shrink-0">
+                          已點亮
+                        </span>
+                      ) : (
+                        <span className="text-emerald-500 group-hover:translate-x-0.5 transition-transform text-xs shrink-0">
+                          →
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 互動點亮指示 */}
+            <div className="pt-3 border-t border-emerald-200/80">
+              <p className="text-[11px] font-bold text-emerald-900 leading-relaxed text-center bg-emerald-100/70 py-1.5 px-2 rounded-xl">
+                （點亮一般討論）
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 核心佈局：左側數線軸 + 右上角即時角色說明面板 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      <div ref={spectrumRef} className="pt-6 mt-6 border-t border-stone-200 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start scroll-mt-20">
         {/* 左側：橫向數線軸 (7 個節點) */}
         <div className="lg:col-span-7 space-y-3.5">
           <div className="p-4 sm:p-5 rounded-3xl bg-stone-900 text-white shadow-md border border-stone-800 space-y-4">
@@ -422,6 +850,12 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
                 <span className="text-xs font-black tracking-wider text-stone-300">
                   點擊角色 點亮/說明
                 </span>
+                {activePersona && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                    <span>已依「{activePersona}」點亮</span>
+                  </span>
+                )}
               </div>
               <span className="text-[11px] text-amber-300/90 font-mono font-bold">
                 當前選中：{activeRole.name} (#{activeRole.positionIndex})
@@ -430,44 +864,74 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
 
             {/* 提問端・平台・答題端 三大分區按鈕（點擊點亮對應角色） */}
             <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => handleSelectZone('left')}
-                className={`p-2.5 rounded-xl border transition-all text-left cursor-pointer ${
-                  activeZone === 'left' || (activeZone === 'all' && activeRole.zone === 'left')
-                    ? 'bg-amber-500/20 border-amber-400 text-amber-300 ring-1 ring-amber-400/50'
-                    : 'bg-stone-800/60 border-stone-700 text-stone-400 hover:text-stone-200'
-                }`}
-              >
-                <span className="text-[10px] font-mono text-amber-400 font-bold block">提問端</span>
-                <span className="text-xs font-black block mt-0.5">提問、需求、委託方</span>
-              </button>
+              {(() => {
+                const isLeftLit =
+                  activeZone === 'left' ||
+                  (activeZone === 'all' && activeRole.zone === 'left') ||
+                  highlightedRoleIds.some((id) => ['enterprise', 'questioner'].includes(id));
+                const isCenterLit =
+                  activeZone === 'center' ||
+                  (activeZone === 'all' && activeRole.zone === 'center') ||
+                  highlightedRoleIds.includes('platform_admin');
+                const isRightLit =
+                  activeZone === 'right' ||
+                  (activeZone === 'all' && activeRole.zone === 'right') ||
+                  highlightedRoleIds.some((id) =>
+                    ['solver', 'certified_expert', 'discussion_solver'].includes(id)
+                  );
 
-              <button
-                type="button"
-                onClick={() => handleSelectZone('center')}
-                className={`p-2.5 rounded-xl border transition-all text-center cursor-pointer ${
-                  activeZone === 'center' || (activeZone === 'all' && activeRole.zone === 'center')
-                    ? 'bg-rose-500/20 border-rose-400 text-rose-300 ring-1 ring-rose-400/50'
-                    : 'bg-stone-800/60 border-stone-700 text-stone-400 hover:text-stone-200'
-                }`}
-              >
-                <span className="text-[10px] font-mono text-rose-400 font-bold block">平台</span>
-                <span className="text-xs font-black block mt-0.5">媒合、認證、管理方</span>
-              </button>
+                return (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectZone('left')}
+                      className={`p-2.5 rounded-xl border transition-all text-left cursor-pointer ${
+                        isLeftLit
+                          ? 'bg-amber-500/25 border-amber-400 text-amber-300 ring-2 ring-amber-400/60 shadow-xs'
+                          : 'bg-stone-800/60 border-stone-700 text-stone-400 hover:text-stone-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-amber-400 font-bold block">提問端</span>
+                        {isLeftLit && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+                      </div>
+                      <span className="text-xs font-black block mt-0.5">提問、需求、委託方</span>
+                    </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelectZone('right')}
-                className={`p-2.5 rounded-xl border transition-all text-right cursor-pointer ${
-                  activeZone === 'right' || (activeZone === 'all' && activeRole.zone === 'right')
-                    ? 'bg-blue-500/20 border-blue-400 text-blue-300 ring-1 ring-blue-400/50'
-                    : 'bg-stone-800/60 border-stone-700 text-stone-400 hover:text-stone-200'
-                }`}
-              >
-                <span className="text-[10px] font-mono text-blue-400 font-bold block">答題端</span>
-                <span className="text-xs font-black block mt-0.5">解答、提案、接案方</span>
-              </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectZone('center')}
+                      className={`p-2.5 rounded-xl border transition-all text-center cursor-pointer ${
+                        isCenterLit
+                          ? 'bg-rose-500/25 border-rose-400 text-rose-300 ring-2 ring-rose-400/60 shadow-xs'
+                          : 'bg-stone-800/60 border-stone-700 text-stone-400 hover:text-stone-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-rose-400 font-bold block">平台</span>
+                        {isCenterLit && <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />}
+                      </div>
+                      <span className="text-xs font-black block mt-0.5">媒合、認證、管理方</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectZone('right')}
+                      className={`p-2.5 rounded-xl border transition-all text-right cursor-pointer ${
+                        isRightLit
+                          ? 'bg-blue-500/25 border-blue-400 text-blue-300 ring-2 ring-blue-400/60 shadow-xs'
+                          : 'bg-stone-800/60 border-stone-700 text-stone-400 hover:text-stone-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        {isRightLit && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />}
+                        <span className="text-[10px] font-mono text-blue-400 font-bold block ml-auto">答題端</span>
+                      </div>
+                      <span className="text-xs font-black block mt-0.5">解答、提案、接案方</span>
+                    </button>
+                  </>
+                );
+              })()}
             </div>
 
             {/* 橫向數線主軌道 */}
@@ -478,8 +942,9 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
               <div className="relative grid grid-cols-7 gap-1 items-center">
                 {SPECTRUM_NODES.map((role) => {
                   const isSelected = selectedRoleId === role.id;
+                  const isHighlighted = highlightedRoleIds.includes(role.id);
                   const isZoneActive =
-                    activeZone === 'all' || activeZone === role.zone;
+                    activeZone === 'all' || activeZone === role.zone || isHighlighted;
                   const IconComp = role.icon;
 
                   return (
@@ -489,7 +954,9 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
                       onClick={() => handleSelectRole(role)}
                       className={`group relative flex flex-col items-center text-center transition-all p-1.5 rounded-2xl cursor-pointer ${
                         isSelected
-                          ? 'bg-white/15 ring-2 ring-amber-400 scale-105 z-10'
+                          ? 'bg-white/20 ring-2 ring-amber-400 scale-105 z-10 shadow-lg'
+                          : isHighlighted
+                          ? 'bg-amber-400/20 ring-2 ring-amber-400 scale-105 z-5 shadow-md'
                           : isZoneActive
                           ? 'hover:bg-white/10 hover:scale-102 opacity-100'
                           : 'opacity-35 hover:opacity-75'
@@ -499,6 +966,8 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
                         className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-black text-xs shadow-md transition-all border-2 ${
                           isSelected
                             ? `${role.dotColor} text-white border-white scale-110 shadow-lg`
+                            : isHighlighted
+                            ? `${role.dotColor} text-white border-amber-300 ring-2 ring-amber-400/80 scale-105 shadow-md`
                             : isZoneActive
                             ? `${role.dotColor} text-white border-stone-800 group-hover:border-amber-300`
                             : 'bg-stone-800 text-stone-400 border-stone-700'
@@ -515,6 +984,8 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
                           className={`text-[11px] font-black block truncate transition-colors ${
                             isSelected
                               ? 'text-amber-300 font-extrabold'
+                              : isHighlighted
+                              ? 'text-amber-300 font-extrabold underline decoration-amber-400 underline-offset-2'
                               : 'text-stone-200 group-hover:text-white'
                           }`}
                           title={role.name}
@@ -532,6 +1003,9 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
 
                       {isSelected && (
                         <div className="absolute -bottom-2 w-2 h-2 bg-amber-400 rotate-45"></div>
+                      )}
+                      {!isSelected && isHighlighted && (
+                        <div className="absolute -bottom-1.5 w-1.5 h-1.5 bg-amber-300 rounded-full animate-ping"></div>
                       )}
                     </button>
                   );
@@ -557,6 +1031,7 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
             <div className="flex flex-wrap gap-1.5">
               {SPECTRUM_NODES.map((role) => {
                 const isSelected = selectedRoleId === role.id;
+                const isHighlighted = highlightedRoleIds.includes(role.id);
                 const IconComp = role.icon;
                 return (
                   <button
@@ -566,6 +1041,8 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
                     className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                       isSelected
                         ? `${role.dotColor} text-white shadow-xs`
+                        : isHighlighted
+                        ? 'bg-amber-100 text-amber-950 border-2 border-amber-400 ring-1 ring-amber-300 shadow-xs'
                         : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
                     }`}
                   >
@@ -578,6 +1055,9 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
                         ? '（解答）'
                         : ''}
                     </span>
+                    {isHighlighted && !isSelected && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                    )}
                   </button>
                 );
               })}

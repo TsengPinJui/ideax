@@ -19,7 +19,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearchTag }) => {
-  const { openCustomerService, openPwaInstallModal } = useApp();
+  const { openCustomerService, openPwaInstallModal, isDemoMode, isNoPaymentMode, isHideTestAccounts } = useApp();
 
   const handleTagClick = (tagWithHash: string) => {
     const rawTag = tagWithHash.replace('#', '').trim();
@@ -36,7 +36,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
   };
 
   return (
-    <footer className="bg-stone-950 text-stone-300 border-t border-stone-800 pt-12 pb-8">
+    <footer className="bg-stone-950 text-stone-300 border-t border-stone-800 pt-12 pb-24 lg:pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pb-10 border-b border-stone-800 text-xs">
           {/* Brand info - 頁尾 IdeaX 左側去背燈泡 + IdeaX 品牌識別 */}
@@ -103,6 +103,22 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   className="hover:text-amber-400 transition-colors cursor-pointer text-left"
                 >
                   功能說明
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => {
+                    onNavClick('about', 'other_4');
+                    setTimeout(() => {
+                      const el = document.getElementById('suitable-personas-section');
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }, 120);
+                  }}
+                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
+                >
+                  什麼人適合使用IdeaX？
                 </button>
               </li>
             </ul>
@@ -206,8 +222,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           </div>
         </div>
 
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-stone-500">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-stone-500">
+          <div className="flex items-center gap-2 flex-wrap text-center md:text-left justify-center md:justify-start">
             <span>© {new Date().getFullYear()} 創點子 IdeaX. All rights reserved.</span>
             <span>•</span>
             <button
@@ -233,8 +249,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             <span>•</span>
             <span>讓創新想法化為真實商業價值。</span>
           </div>
-          <div className="flex items-center gap-2 flex-wrap text-stone-400 font-mono text-[10px]">
+
+          <div className="flex items-center gap-2.5 flex-wrap text-stone-500 font-mono text-[10px] sm:text-[11px] select-none tracking-tight shrink-0 justify-center md:justify-end">
             <span className="text-stone-600 font-sans">Powered by AI Engine</span>
+            <span>•</span>
+            <span className="text-stone-500">
+              v1.4.0 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+            </span>
           </div>
         </div>
       </div>

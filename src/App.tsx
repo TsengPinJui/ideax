@@ -768,7 +768,7 @@ function MainContent() {
             />
 
             {/* Questions Market Grid Section */}
-            <div id="market-grid" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-8 sm:py-10">
+            <div id="market-grid" className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 pb-8 sm:py-10">
               <div className="space-y-3 sm:space-y-6">
                 {/* Special Zone Banners */}
                 {specialZone === 'pain_points' && (
@@ -1089,9 +1089,11 @@ function MainContent() {
                           }}
                           onSearchTag={handleSearchTag}
                           onClick={() => {
+                            incrementQuestionViews(q.id, 1);
                             recordUserViewedQuestion(currentUser.id, q);
                             setUserProfileVersion((v) => v + 1);
-                            setSelectedQuestion(q);
+                            const nextV = (q.views || 0) + 1;
+                            setSelectedQuestion({ ...q, views: nextV, viewsCount: nextV });
                             setActiveTab('question_detail');
                           }}
                         />
@@ -1106,7 +1108,7 @@ function MainContent() {
 
         {/* 2. Solvers Tab: Certified Experts */}
         {activeTab === 'solvers' && (
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-2 sm:pt-6 pb-8 sm:pb-10">
+          <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 sm:pt-6 pb-8 sm:pb-10">
             <SolversView
               onSelectSolver={(solver) => {
                 setSelectedSolver(solver);
@@ -1129,14 +1131,14 @@ function MainContent() {
 
         {/* 3. Mechanism Tab (轉向關於我們金流運作) */}
         {activeTab === 'mechanism' && (
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-5xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
             <AboutUsView onBack={() => setActiveTab('explore')} initialSection="finance" />
           </div>
         )}
 
         {/* 3.1 Leaderboard Tab: 交易榮譽榜 & 數據化激勵 */}
         {activeTab === 'leaderboard' && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-6 sm:py-10">
             <LeaderboardView
               onSelectSolver={(solver) => {
                 setSelectedSolver(solver);
@@ -1145,7 +1147,9 @@ function MainContent() {
               onSelectQuestion={(qId: string) => {
                 const found = questions.find((q) => q.id === qId);
                 if (found) {
-                  setSelectedQuestion(found);
+                  incrementQuestionViews(found.id, 1);
+                  const nextV = (found.views || 0) + 1;
+                  setSelectedQuestion({ ...found, views: nextV, viewsCount: nextV });
                   setActiveTab('question_detail');
                 }
               }}
@@ -1160,19 +1164,21 @@ function MainContent() {
 
         {/* 3.2 About Us Tab: 關於我們與條款三大項 */}
         {activeTab === 'about' && (
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-5xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
             <AboutUsView key={aboutPageSection} initialSection={aboutPageSection} onBack={() => setActiveTab('explore')} />
           </div>
         )}
 
         {/* 3.3 My Projects Tab: 我的案件專屬獨立頁面 */}
         {activeTab === 'my_projects' && (
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-3.5 sm:pt-6 pb-6 sm:py-8">
+          <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 sm:pt-6 pb-6 sm:py-8">
             <MyProjectsView
               onOpenQuestion={(qId: string) => {
                 const found = questions.find((q) => q.id === qId);
                 if (found) {
-                  setSelectedQuestion(found);
+                  incrementQuestionViews(found.id, 1);
+                  const nextV = (found.views || 0) + 1;
+                  setSelectedQuestion({ ...found, views: nextV, viewsCount: nextV });
                   setActiveTab('question_detail');
                 }
               }}

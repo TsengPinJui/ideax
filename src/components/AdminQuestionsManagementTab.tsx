@@ -22,6 +22,11 @@ import {
   X,
   ExternalLink,
   ChevronDown,
+  RefreshCw,
+  UploadCloud,
+  DownloadCloud,
+  Database,
+  Loader2,
 } from 'lucide-react';
 
 const CATEGORY_COLORS: Record<Category, { fill: string; hex: string; bg: string; text: string; border: string }> = {
@@ -41,7 +46,20 @@ const PRESET_VIOLATIONS = [
 ];
 
 export const AdminQuestionsManagementTab: React.FC = () => {
-  const { questions, setQuestions, addNotification, isNoPaymentMode, setSelectedQuestion } = useApp();
+  const {
+    questions,
+    addNotification,
+    isNoPaymentMode,
+    setSelectedQuestion,
+    delistQuestion,
+    relistQuestion,
+    deleteQuestionPermanently,
+    purgeExpiredDelistedQuestions,
+    pullAllDataFromFirestore,
+    syncAllToCloud,
+    isFirestoreConnected,
+    lastSyncTime,
+  } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -51,7 +69,29 @@ export const AdminQuestionsManagementTab: React.FC = () => {
   const [delistingQuestion, setDelistingQuestion] = useState<Question | null>(null);
   const [violationReason, setViolationReason] = useState<string>(PRESET_VIOLATIONS[0]);
   const [adminFeedback, setAdminFeedback] = useState<string>('');
+  
+  // Permanent Delete Modal State
+  const [deletingQuestion, setDeletingQuestion] = useState<Question | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const [feedbackToast, setFeedbackToast] = useState<{ text: string; isError?: boolean } | null>(null);
+
+  // 計算下架保留剩餘天數 (30日倒數)
+  const getRetentionDaysLeft = (delistedAt?: string) => {
+    if (!delistedAt) return 30;
+    const elapsedDays = Math.floor((Date.now() - new Date(delistedAt).getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(0, 30 - elapsedDays);
+  };
+
+  // 統計已逾30日之過期下架項目
+  const expiredDelistedCount = useMemo(() => {
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    return questions.filter(
+      (q) => q.status === 'delisted' && q.delistedAt && now - new Date(q.delistedAt).getTime() >= THIRTY_DAYS_MS
+    ).length;
+  }, [questions]);
 
   // Filtered Questions
   const filteredQuestions = useMemo(() => {
@@ -113,36 +153,20 @@ export const AdminQuestionsManagementTab: React.FC = () => {
   const handleConfirmDelist = () => {
     if (!delistingQuestion) return;
 
-    const fullReason = adminFeedback.trim()
-      ? `${violationReason}。管理員補充反饋：${adminFeedback.trim()}`
-      : violationReason;
-
-    setQuestions((prev) =>
-      prev.map((q) => {
-        if (q.id === delistingQuestion.id) {
-          return {
-            ...q,
-            status: 'delisted' as const,
-            delistedReason: violationReason,
-            delistedFeedback: adminFeedback.trim() || undefined,
-            delistedAt: new Date().toISOString(),
-          };
-        }
-        return q;
-      })
-    );
+    // 執行全站持久化下架與雲端 Firestore 同步
+    delistQuestion(delistingQuestion.id, violationReason, adminFeedback.trim() || undefined);
 
     // Send notification to author
     addNotification({
       title: '⚠️ 提問內容違規下架通知',
-      message: `您發布的問題《${delistingQuestion.title.slice(0, 24)}...》因「${violationReason}」已被平台管理員強制下架。處置反饋說明：${
+      message: `您發布的問題《${delistingQuestion.title.slice(0, 24)}...》因「${violationReason}」已被平台管理員強制下架（下架保留 30 日，逾期將自動從資料庫永久刪除）。處置反饋說明：${
         adminFeedback.trim() || '請恪守 IdeaX 社群規範，如有疑義請聯繫官方團隊。'
       }`,
       type: 'system',
     });
 
     setFeedbackToast({
-      text: `已成功將問題《${delistingQuestion.title.slice(0, 16)}...》違規下架，並向提問者發送處置反饋通知！`,
+      text: `已成功將問題《${delistingQuestion.title.slice(0, 16)}...》違規下架，保留期 30 日，並同步至雲端資料庫！`,
       isError: false,
     });
 
@@ -153,20 +177,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
 
   // Handle Relisting
   const handleRelistQuestion = (q: Question) => {
-    setQuestions((prev) =>
-      prev.map((item) => {
-        if (item.id === q.id) {
-          return {
-            ...item,
-            status: 'open' as const,
-            delistedReason: undefined,
-            delistedFeedback: undefined,
-            delistedAt: undefined,
-          };
-        }
-        return item;
-      })
-    );
+    relistQuestion(q.id);
 
     addNotification({
       title: '🟢 提問已恢復重新上架',
@@ -179,6 +190,68 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       isError: false,
     });
     setTimeout(() => setFeedbackToast(null), 4000);
+  };
+
+  // Handle Permanent Delete
+  const handleConfirmDelete = async () => {
+    if (!deletingQuestion) return;
+    setIsDeleting(true);
+    try {
+      await deleteQuestionPermanently(deletingQuestion.id);
+      setFeedbackToast({
+        text: `已徹底永久刪除問題《${deletingQuestion.title.slice(0, 16)}...》並自雲端資料庫永久抹除！`,
+        isError: false,
+      });
+      setDeletingQuestion(null);
+    } catch (e: any) {
+      setFeedbackToast({
+        text: `刪除失敗: ${e?.message || '未知錯誤'}`,
+        isError: true,
+      });
+    } finally {
+      setIsDeleting(false);
+      setTimeout(() => setFeedbackToast(null), 4000);
+    }
+  };
+
+  // Handle Purge Expired
+  const handlePurgeExpired = async () => {
+    setIsSyncing(true);
+    try {
+      const count = await purgeExpiredDelistedQuestions();
+      setFeedbackToast({
+        text: count > 0 ? `已自動永久清理 ${count} 筆逾 30 日之下架問題！` : '目前無逾 30 日之過期下架項目。',
+        isError: false,
+      });
+    } catch (e: any) {
+      setFeedbackToast({
+        text: `清理失敗: ${e?.message || '未知錯誤'}`,
+        isError: true,
+      });
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setFeedbackToast(null), 4000);
+    }
+  };
+
+  // Handle Cloud Sync
+  const handleCloudSync = async () => {
+    setIsSyncing(true);
+    try {
+      await pullAllDataFromFirestore();
+      setFeedbackToast({
+        text: '已成功自 Firebase Cloud Firestore 資料庫拉取最新資料並完成即時雙向校驗！',
+        isError: false,
+      });
+    } catch (e: any) {
+      setFeedbackToast({
+        text: `同步失敗: ${e?.message || '請檢查網路連線'}`,
+        isError: true,
+      });
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setFeedbackToast(null), 4000);
+    }
   };
 
   return (
@@ -201,7 +274,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
         </div>
       )}
 
-      {/* 頂部標題 */}
+      {/* 頂部標題與雲端資料庫狀態 / 快速排程工具列 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3.5">
         <div>
           <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2 flex-wrap">
@@ -210,10 +283,52 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
               全站共 {totalCount} 題
             </span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+              下架保留 {delistedCount} 題 (30日保留期)
+            </span>
           </h3>
           <p className="text-xs text-stone-500 mt-1">
-            全站問題分類統計分析、違規檢舉下架審查與處置反饋通知中樞。
+            全站問題分類統計、違規審查下架（保留 30 日後自動自資料庫永久刪除）、即時雲端同步治理中樞。
           </p>
+        </div>
+
+        {/* 雲端資料庫狀態與工具按鈕 */}
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-stone-100 border border-stone-200 text-[11px] font-bold text-stone-700">
+            <Database className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{isFirestoreConnected ? '雲端即時連線' : '本機快取'}</span>
+            {lastSyncTime && <span className="text-stone-400 font-mono text-[10px]">({lastSyncTime})</span>}
+          </div>
+
+          {/* 一鍵清理逾30日項目 */}
+          {expiredDelistedCount > 0 && (
+            <button
+              type="button"
+              disabled={isSyncing}
+              onClick={handlePurgeExpired}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="一鍵永久清除所有下架已滿30日之項目"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>清理過期下架 ({expiredDelistedCount})</span>
+            </button>
+          )}
+
+          {/* 雲端雙向同步 */}
+          <button
+            type="button"
+            disabled={isSyncing}
+            onClick={handleCloudSync}
+            className="px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            title="自 Firebase Firestore 即時拉取最新題庫與狀態"
+          >
+            {isSyncing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5 text-purple-600" />
+            )}
+            <span>即時同步資料庫</span>
+          </button>
         </div>
       </div>
 
@@ -233,7 +348,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             {/* SVG Donut / Pie Chart */}
             <div className="relative w-40 h-40 shrink-0">
               <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                {categoryStats.slices.map((slice, idx) => {
+                {categoryStats.slices.map((slice) => {
                   if (slice.count === 0) return null;
                   const strokeDasharray = `${(slice.percentage * 2 * Math.PI * 35) / 100} ${2 * Math.PI * 35}`;
                   const strokeDashoffset = -((slice.startAngle * 2 * Math.PI * 35) / 360);
@@ -276,20 +391,17 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                     onClick={() => setSelectedCategory(isSelected ? 'all' : s.category)}
                     className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       isSelected
-                        ? 'border-purple-600 bg-purple-50/50 shadow-2xs ring-1 ring-purple-500'
-                        : `${s.color.bg} ${s.color.border} hover:opacity-90`
+                        ? 'border-purple-600 bg-purple-50/60 ring-2 ring-purple-200'
+                        : 'border-stone-100 hover:border-stone-200 bg-stone-50/50'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color.hex }} />
-                        <span className="text-xs font-black text-stone-800">{s.category}</span>
-                      </div>
-                      <span className="text-[10px] font-mono font-bold text-stone-400">{s.percentage}%</span>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color.hex }} />
+                      <span className="text-xs font-bold text-stone-800 truncate">{s.category}</span>
                     </div>
-                    <div className="flex items-center justify-between text-xs mt-1">
-                      <span className="font-extrabold font-mono text-stone-900 text-sm">{s.count} 題</span>
-                      <span className="text-[9px] text-stone-400">點擊篩選</span>
+                    <div className="flex items-baseline justify-between text-[11px] text-stone-500 font-mono">
+                      <span className="font-extrabold text-stone-900">{s.count} 題</span>
+                      <span>{s.percentage}%</span>
                     </div>
                   </button>
                 );
@@ -298,80 +410,90 @@ export const AdminQuestionsManagementTab: React.FC = () => {
           </div>
         </div>
 
-        {/* 2. 狀態指標卡片 */}
+        {/* 2. 狀態指標卡 */}
         <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-2xs flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-            <h4 className="font-extrabold text-sm text-stone-900">問題狀態概況</h4>
-            <span className="text-[11px] text-stone-400 font-mono">監控指標</span>
+            <h4 className="font-extrabold text-sm text-stone-900">狀態總覽與下架保留</h4>
+            <span className="text-[10px] text-stone-400 font-mono">30日自動清除機制</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
-            <div
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <button
+              type="button"
               onClick={() => setSelectedStatus(selectedStatus === 'open' ? 'all' : 'open')}
-              className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
-                selectedStatus === 'open' ? 'bg-emerald-100/70 border-emerald-400' : 'bg-emerald-50/60 border-emerald-200 hover:bg-emerald-100/50'
+              className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                selectedStatus === 'open'
+                  ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200'
+                  : 'border-stone-100 bg-stone-50/50 hover:bg-stone-100/70'
               }`}
             >
-              <span className="text-[10px] font-bold text-emerald-800 block">上架招募中</span>
-              <span className="text-xl font-black text-emerald-900 font-mono mt-0.5 block">{openCount} 題</span>
-              <span className="text-[9px] text-emerald-700/80 mt-0.5 block">徵求解答中</span>
-            </div>
+              <span className="text-[10px] text-stone-500 font-bold block">招募中</span>
+              <span className="text-lg font-black text-emerald-700 font-mono">{openCount}</span>
+            </button>
 
-            <div
+            <button
+              type="button"
               onClick={() => setSelectedStatus(selectedStatus === 'solved' ? 'all' : 'solved')}
-              className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
-                selectedStatus === 'solved' ? 'bg-blue-100/70 border-blue-400' : 'bg-blue-50/60 border-blue-200 hover:bg-blue-100/50'
+              className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                selectedStatus === 'solved'
+                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                  : 'border-stone-100 bg-stone-50/50 hover:bg-stone-100/70'
               }`}
             >
-              <span className="text-[10px] font-bold text-blue-800 block">已採納結案</span>
-              <span className="text-xl font-black text-blue-900 font-mono mt-0.5 block">{solvedCount} 題</span>
-              <span className="text-[9px] text-blue-700/80 mt-0.5 block">方案已完成</span>
-            </div>
+              <span className="text-[10px] text-stone-500 font-bold block">已結案</span>
+              <span className="text-lg font-black text-blue-700 font-mono">{solvedCount}</span>
+            </button>
 
-            <div
+            <button
+              type="button"
               onClick={() => setSelectedStatus(selectedStatus === 'delisted' ? 'all' : 'delisted')}
-              className={`p-3 rounded-2xl border text-left cursor-pointer transition-all col-span-2 ${
-                selectedStatus === 'delisted' ? 'bg-rose-100/80 border-rose-400' : 'bg-rose-50/60 border-rose-200 hover:bg-rose-100/50'
+              className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                selectedStatus === 'delisted'
+                  ? 'border-rose-500 bg-rose-50 ring-2 ring-rose-200'
+                  : 'border-rose-100 bg-rose-50/40 hover:bg-rose-100/60'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-rose-800 block">違規已下架</span>
-                  <span className="text-xl font-black text-rose-900 font-mono mt-0.5 block">{delistedCount} 題</span>
-                </div>
-                <div className="w-8 h-8 rounded-xl bg-rose-200 text-rose-800 flex items-center justify-center font-bold">
-                  <ShieldAlert className="w-4 h-4" />
-                </div>
-              </div>
-              <span className="text-[9px] text-rose-700/80 mt-0.5 block">管理員介入處置並已反饋用戶</span>
-            </div>
+              <span className="text-[10px] text-rose-600 font-bold block">違規下架</span>
+              <span className="text-lg font-black text-rose-700 font-mono">{delistedCount}</span>
+            </button>
           </div>
 
-          <div className="text-[11px] text-stone-400 text-center pt-1">
-            點擊上方卡片即可快速過濾問題列表
+          <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed">
+            <span className="font-bold block mb-0.5">📌 平台下架保留與永久刪除守則：</span>
+            被管理員強制違規下架之問題，將保留於本管理專區 <strong>30 日</strong>。滿 30 日後系統自動執行永久刪除並自資料庫徹底抹除。管理員亦可於下方手動提前執行「立即永久刪除」。
           </div>
         </div>
       </div>
 
-      {/* 搜尋與分類過濾列 */}
-      <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-72">
-          <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* 搜尋與篩選列 */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-stone-50 p-4 rounded-3xl border border-stone-200">
+        {/* 關鍵字搜尋 */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="搜尋問題標題、內文、提問者姓名..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs focus:outline-none focus:border-purple-600"
+            placeholder="搜尋問題標題、內文、提問者姓名或問題 ID..."
+            className="w-full pl-9 pr-4 py-2 bg-white border border-stone-200 rounded-2xl text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-purple-600 shadow-2xs"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+        {/* 分類與狀態篩選 */}
+        <div className="flex items-center gap-2 flex-wrap">
           {/* 分類下拉 */}
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-bold text-stone-700 focus:outline-none cursor-pointer"
+            className="px-3 py-2 bg-white border border-stone-200 rounded-2xl text-xs text-stone-700 font-bold focus:outline-none focus:border-purple-600 shadow-2xs cursor-pointer"
           >
             <option value="all">全部分類</option>
             <option value="創新創業">創新創業</option>
@@ -384,12 +506,12 @@ export const AdminQuestionsManagementTab: React.FC = () => {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-bold text-stone-700 focus:outline-none cursor-pointer"
+            className="px-3 py-2 bg-white border border-stone-200 rounded-2xl text-xs text-stone-700 font-bold focus:outline-none focus:border-purple-600 shadow-2xs cursor-pointer"
           >
             <option value="all">全部狀態</option>
-            <option value="open">上架招募中</option>
-            <option value="solved">已解決</option>
-            <option value="delisted">違規已下架</option>
+            <option value="open">招募中</option>
+            <option value="solved">已結案</option>
+            <option value="delisted">違規下架 (保留30日)</option>
           </select>
 
           {(searchQuery || selectedCategory !== 'all' || selectedStatus !== 'all') && (
@@ -426,6 +548,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             {filteredQuestions.map((q) => {
               const catColor = CATEGORY_COLORS[q.category] || { hex: '#888', bg: 'bg-stone-100', text: 'text-stone-700', border: 'border-stone-200' };
               const isDelisted = q.status === 'delisted';
+              const daysLeft = isDelisted ? getRetentionDaysLeft(q.delistedAt) : 30;
 
               return (
                 <div
@@ -497,12 +620,17 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                         <span>{q.views || 0} 次瀏覽</span>
                       </div>
 
-                      {/* 違規下架事由與管理員反饋提示 */}
+                      {/* 違規下架事由與 30 日保留倒數 */}
                       {isDelisted && (
-                        <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1">
-                          <div className="flex items-center gap-1.5 font-bold text-rose-950">
-                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                            <span>下架事由：{q.delistedReason || '違反平台內容審核守則'}</span>
+                        <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1.5">
+                          <div className="flex items-center justify-between flex-wrap gap-1">
+                            <div className="flex items-center gap-1.5 font-bold text-rose-950">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                              <span>下架事由：{q.delistedReason || '違反平台內容審核守則'}</span>
+                            </div>
+                            <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded-full bg-rose-200/80 text-rose-950 border border-rose-300">
+                              ⏳ 保留剩餘 {daysLeft} 天（30日後自動自資料庫永久刪除）
+                            </span>
                           </div>
                           {q.delistedFeedback && (
                             <p className="text-[11px] text-rose-800 pl-5">
@@ -514,7 +642,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                     </div>
 
                     {/* 操作按鈕群 */}
-                    <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
+                    <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100 flex-wrap">
                       {/* 預覽問題 */}
                       <button
                         type="button"
@@ -526,31 +654,54 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                         <span>檢視</span>
                       </button>
 
-                      {/* 下架 / 恢復上架 */}
+                      {/* 下架 / 恢復上架 / 永久刪除 */}
                       {isDelisted ? (
-                        <button
-                          type="button"
-                          onClick={() => handleRelistQuestion(q)}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
-                          title="撤銷違規標記並恢復上架"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>恢復上架</span>
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleRelistQuestion(q)}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                            title="撤銷違規標記並恢復上架"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>恢復上架</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setDeletingQuestion(q)}
+                            className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-rose-700 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                            title="強制自雲端 Firestore 與全站永久刪除"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-300" />
+                            <span>永久刪除</span>
+                          </button>
+                        </>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDelistingQuestion(q);
-                            setViolationReason(PRESET_VIOLATIONS[0]);
-                            setAdminFeedback('');
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
-                          title="違規下架該問題並發送反饋通知"
-                        >
-                          <ShieldAlert className="w-3.5 h-3.5" />
-                          <span>違規下架</span>
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDelistingQuestion(q);
+                              setViolationReason(PRESET_VIOLATIONS[0]);
+                              setAdminFeedback('');
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                            title="違規下架該問題並發送反饋通知（保留30日）"
+                          >
+                            <ShieldAlert className="w-3.5 h-3.5" />
+                            <span>違規下架</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setDeletingQuestion(q)}
+                            className="p-1.5 rounded-xl text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                            title="永久刪除"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -629,6 +780,10 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               />
             </div>
 
+            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
+              ℹ️ <strong>下架保留政策：</strong>下架後將保留 30 日於管理員問題管理專區供追蹤申訴，滿 30 日將自動從資料庫永久刪除。
+            </div>
+
             {/* 底部按鈕 */}
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
               <button
@@ -645,6 +800,65 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               >
                 <ShieldAlert className="w-3.5 h-3.5" />
                 <span>確認下架並發送反饋通知</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 永久刪除確認 Modal */}
+      {deletingQuestion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-rose-200">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600">
+                <Trash2 className="w-5 h-5" />
+                <h4 className="font-black text-base text-stone-900">永久刪除問題確認</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingQuestion(null)}
+                className="p-1 rounded-lg text-stone-400 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1.5">
+              <p className="font-extrabold line-clamp-2">{deletingQuestion.title}</p>
+              <span className="text-[10px] text-rose-700 font-mono block">ID: {deletingQuestion.id} · 提問者: {deletingQuestion.authorName}</span>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed">
+              ⚠️ <strong>警告：</strong>此操作將從平台與 <strong>Firebase Cloud Firestore 雲端資料庫</strong> 同步<strong>永久抹除</strong>此問題及其關聯提案，<strong>此操作不可逆</strong>，該問題將永不再出現。
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeletingQuestion(null)}
+                className="px-4 py-2 rounded-xl border border-stone-200 text-stone-700 text-xs font-bold hover:bg-stone-100 cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="px-5 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-white text-xs font-black transition-all cursor-pointer shadow-md flex items-center gap-1.5 disabled:opacity-60"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>抹除中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>確認永久刪除</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

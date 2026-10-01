@@ -24,10 +24,10 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({ cont
   const isMediation = contract.contractType === 'dispute_settlement';
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150">
-      <div className="bg-stone-50 rounded-3xl border border-stone-200 shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-1.5 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-stone-50 rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl max-w-3xl w-full max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 bg-white border-b border-stone-200 flex items-center justify-between gap-3 shrink-0">
+        <div className="p-3.5 sm:p-5 bg-white border-b border-stone-200 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 ${
               isMediation ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800'
@@ -80,8 +80,8 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({ cont
         </div>
 
         {/* Contract Preview Document Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
-          <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-8 shadow-xs space-y-6 text-stone-800 text-xs sm:text-sm leading-relaxed relative">
+        <div className="p-2.5 sm:p-6 overflow-y-auto flex-1 space-y-4">
+          <div className="bg-white rounded-2xl border border-stone-200 p-3.5 sm:p-8 shadow-xs space-y-6 text-stone-800 text-xs sm:text-sm leading-relaxed relative">
             {/* Watermark in Preview */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-30 text-4xl sm:text-6xl font-black text-amber-500/5 select-none pointer-events-none whitespace-nowrap">
               IDEAX VERIFIED

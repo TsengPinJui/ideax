@@ -347,9 +347,9 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
   const netEarnings = answerType === 'solution' && isPaid ? price : 0;
 
   const content = (
-    <div className={`bg-white rounded-3xl border border-stone-200 shadow-sm w-full ${isFullPage ? 'max-w-3xl mx-auto my-2' : 'max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150'}`}>
+    <div className={`bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-sm w-full ${isFullPage ? 'max-w-3xl mx-auto my-2' : 'max-w-2xl max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150'}`}>
       {/* Header */}
-      <div className="p-4 sm:p-6 border-b border-stone-200 flex items-center justify-between bg-white sticky top-0 z-10">
+      <div className="p-3 sm:p-6 border-b border-stone-200 flex items-center justify-between bg-white sticky top-0 z-10">
         <div className="flex items-center gap-2.5">
           {isFullPage && (
             <button
@@ -382,7 +382,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className={`p-4 sm:p-6 space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
+      <form onSubmit={handleSubmit} className={`p-2.5 sm:p-6 space-y-4 sm:space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
         {/* Answer Type Selector: 討論 vs 方案 */}
         <div className="p-1 rounded-2xl bg-stone-100 border border-stone-200 grid grid-cols-2 gap-1">
           <button
@@ -1219,7 +1219,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
       {content}
     </div>
   );

@@ -51,8 +51,14 @@ import {
   syncUsersToFirestore,
   syncQuestionToFirestore,
   syncQuestionsToFirestore,
+  deleteQuestionFromFirestore,
+  deleteQuestionsFromFirestore,
+  deleteQuestionAndRelatedDataFromFirestore,
+  deleteUserAndAllRelatedDataFromFirestore,
+  subscribeToQuestions,
   syncAnswerToFirestore,
   syncAnswersToFirestore,
+  deleteAnswerFromFirestore,
   syncTransactionToFirestore,
   syncTransactionsToFirestore,
   syncConversationToFirestore,
@@ -79,15 +85,22 @@ interface AppContextType {
   questions: Question[];
   setQuestions: React.Dispatch<React.SetStateAction<Question[]>>;
   solvers: Solver[];
+  setSolvers: React.Dispatch<React.SetStateAction<Solver[]>>;
   answers: Answer[];
+  setAnswers: React.Dispatch<React.SetStateAction<Answer[]>>;
   transactions: Transaction[];
+  setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
   notifications: NotificationItem[];
+  allNotifications: NotificationItem[];
   personalNotifications: NotificationItem[];
   systemNotifications: NotificationItem[];
   unreadPersonalCount: number;
   unreadSystemCount: number;
   hasUnreadSystemNotifs: boolean;
   addNotification: (notifOrTitle: Partial<NotificationItem> | string, message?: string, type?: any, targetUserId?: string, category?: 'personal' | 'system') => void;
+  deleteNotification: (id: string) => void;
+  clearAllNotifications: () => void;
+  updateNotification: (id: string, updates: Partial<NotificationItem>) => void;
   conversations: ChatConversation[];
   setConversations: React.Dispatch<React.SetStateAction<ChatConversation[]>>;
   activeConversationId: string | null;
@@ -172,6 +185,7 @@ interface AppContextType {
   ) => { success: boolean; message: string };
   triggerMonthEndRebate: () => { success: boolean; amount: number; message: string };
   updateBankAccount: (bankInfo: import('../types').BankAccountInfo) => void;
+  updateTransactionNote: (transactionId: string, note: string) => void;
   calculateSplitPayout: (amount: number, solverId?: string) => {
     tier: SubscriptionTier;
     planName: string;
@@ -191,6 +205,33 @@ interface AppContextType {
   isQuestionBookmarked: (questionId: string) => boolean;
   promoteQuestion: (questionId: string) => boolean;
   incrementQuestionViews: (questionId: string, amount?: number) => void;
+  resolvedDisputeIds: string[];
+  markDisputeResolved: (disputeId: string, questionId?: string) => void;
+  pendingDisputesCount: number;
+  delistQuestion: (questionId: string, reason: string, feedback?: string) => void;
+  relistQuestion: (questionId: string) => void;
+  deleteQuestionPermanently: (questionId: string) => Promise<void>;
+  deleteAnswerPermanently: (answerId: string) => Promise<void>;
+  purgeExpiredDelistedQuestions: () => Promise<number>;
+  requestAccountDeactivation: (reason?: string) => Promise<void>;
+  cancelAccountDeactivation: (targetUser?: User) => Promise<User>;
+  checkUserDeactivationStatus: (target: User) => {
+    canLogin: boolean;
+    restoredUser?: User;
+    wasInGracePeriod: boolean;
+    errorReason?: string;
+  };
+  purgeAccountPermanently: (userId: string) => Promise<void>;
+  purgeExpiredDeactivatedAccounts: () => Promise<number>;
+  addTestAccount: (options?: {
+    name?: string;
+    role?: 'questioner' | 'solver' | 'admin';
+    title?: string;
+    balance?: number;
+    verifiedExpert?: boolean;
+    autoSwitch?: boolean;
+  }) => User;
+  pullAllDataFromFirestore: () => Promise<boolean>;
 
   // AI Auto-Tagging & Categorization
   autoTagQuestionWithAI: (questionId: string) => Promise<{ success: boolean; data?: AIAnalysisResult }>;
@@ -295,6 +336,8 @@ const isModeOrEnvNotification = (title?: string, message?: string) => {
   if (!text.trim()) return false;
 
   return (
+    text.includes('捷徑描述檔') ||
+    text.includes('已為您下載 IdeaX App') ||
     text.includes('無金流模式') ||
     text.includes('正式營運模式') ||
     text.includes('示範測試模式') ||
@@ -666,6 +709,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return 0.10; // 預設 10%
   });
 
+  const getDeletedQuestionIds = (): Set<string> => {
+    try {
+      const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}permanently_deleted_question_ids`);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+
+  const getDeletedAnswerIds = (): Set<string> => {
+    try {
+      const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}permanently_deleted_answer_ids`);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+
   const [questions, setQuestions] = useState<Question[]>(() => {
     const getRealClicks = (): Record<string, number> => {
       try {
@@ -676,26 +737,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
     const realClicks = getRealClicks();
+    const deletedIds = getDeletedQuestionIds();
     const isDemo = getInitialIsDemoMode();
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    const sanitizeQuestion = (q: any): Question => {
+      const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (q.views || 0);
+      return {
+        ...q,
+        bounty: typeof q.bounty === 'number' ? q.bounty : 0,
+        withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
+        views: count,
+        viewsCount: count,
+      };
+    };
+
+    const isDelistedExpired = (q: any): boolean => {
+      if (q.status === 'delisted' && q.delistedAt) {
+        return now - new Date(q.delistedAt).getTime() >= THIRTY_DAYS_MS;
+      }
+      return false;
+    };
+
     if (!isDemo) {
-      // 非測試環境（營運模式、無金流模式）：絕不添加任何模擬題目
+      // 非測試環境（營運模式、無金流模式）：絕不添加任何模擬題目，徹底排除永久刪除與過期下架項目
       try {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
             return parsed
-              .filter((q: any) => !isMockQuestionId(q.id, q.authorId))
-              .map((q: any) => {
-                const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0;
-                return {
-                  ...q,
-                  bounty: typeof q.bounty === 'number' ? q.bounty : 0,
-                  withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
-                  views: count,
-                  viewsCount: count,
-                };
-              });
+              .filter((q: any) => !deletedIds.has(q.id) && !isMockQuestionId(q.id, q.authorId) && !isDelistedExpired(q))
+              .map(sanitizeQuestion);
           }
         }
       } catch {
@@ -703,36 +777,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [];
     }
-    // 測試環境 (TEST / DEMO)：加回所有模擬題目，並保留自訂發布題目
+    // 測試環境 (TEST / DEMO)：加回所有題目，優先採用本地已儲存之完整狀態，嚴格過濾黑名單（永久刪除與逾30日下架）
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const customQuestions = parsed.filter((q: any) => !isMockQuestionId(q.id, q.authorId));
-          return [...MOCK_QUESTIONS, ...customQuestions].map((q: any) => {
-            const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0;
-            return {
-              ...q,
-              bounty: typeof q.bounty === 'number' ? q.bounty : 0,
-              withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
-              views: count,
-              viewsCount: count,
-            };
-          });
+          const parsedIdMap = new Set(parsed.map((q: any) => q.id));
+          const missingMock = MOCK_QUESTIONS.filter((mq) => !parsedIdMap.has(mq.id) && !deletedIds.has(mq.id));
+          return [...parsed, ...missingMock]
+            .filter((q: any) => !deletedIds.has(q.id) && !isDelistedExpired(q))
+            .map(sanitizeQuestion);
         }
       }
     } catch {
       // ignore
     }
-    return MOCK_QUESTIONS.map((q) => {
-      const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0;
-      return {
-        ...q,
-        views: count,
-        viewsCount: count,
-      };
-    });
+    return MOCK_QUESTIONS
+      .filter((q) => !deletedIds.has(q.id) && !isDelistedExpired(q))
+      .map(sanitizeQuestion);
   });
 
   const [solvers, setSolvers] = useState<Solver[]>(() => {
@@ -770,6 +833,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [answers, setAnswers] = useState<Answer[]>(() => {
     const isDemo = getInitialIsDemoMode();
+    const deletedAnsIds = getDeletedAnswerIds();
+    const deletedQIds = getDeletedQuestionIds();
+
+    const isAnswerValid = (a: any) => {
+      if (!a || !a.id) return false;
+      if (deletedAnsIds.has(a.id)) return false;
+      if (a.questionId && deletedQIds.has(a.questionId)) return false;
+      return true;
+    };
+
     if (!isDemo) {
       // 非測試環境：不保留任何模擬解答方案
       try {
@@ -778,7 +851,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
             return parsed
-              .filter((a: any) => !isMockAnswerId(a.id))
+              .filter((a: any) => !isMockAnswerId(a.id) && isAnswerValid(a))
               .map((a: any) => ({
                 ...a,
                 price: typeof a.price === 'number' ? a.price : 0,
@@ -790,14 +863,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [];
     }
-    // 測試環境 (TEST / DEMO)：加回所有模擬解答方案
+    // 測試環境 (TEST / DEMO)：加回模擬解答方案（需過濾已刪除黑名單）
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}answers`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const customAnswers = parsed.filter((a: any) => !isMockAnswerId(a.id));
-          return [...MOCK_ANSWERS, ...customAnswers].map((a: any) => ({
+          const customAnswers = parsed.filter((a: any) => !isMockAnswerId(a.id) && isAnswerValid(a));
+          const validMocks = MOCK_ANSWERS.filter(isAnswerValid);
+          return [...validMocks, ...customAnswers].map((a: any) => ({
             ...a,
             price: typeof a.price === 'number' ? a.price : 0,
           }));
@@ -806,7 +880,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    return MOCK_ANSWERS;
+    return MOCK_ANSWERS.filter(isAnswerValid);
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -1208,20 +1282,147 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
-  // Initial check & hydration / initial seed to Firestore
+  // Pull all data fresh from Firestore into local state & storage
+  const pullAllDataFromFirestore = async (): Promise<boolean> => {
+    try {
+      const cloudData = await loadAllDataFromFirestore();
+      if (!cloudData) return false;
+      const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+      const deletedIds = getDeletedQuestionIds();
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+
+      if (cloudData.questions && cloudData.questions.length > 0) {
+        const expiredIds: string[] = [];
+        const filteredQ = cloudData.questions
+          .filter((q) => !deletedIds.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
+          .filter((q) => {
+            if (q.status === 'delisted' && q.delistedAt) {
+              if (now - new Date(q.delistedAt).getTime() >= THIRTY_DAYS_MS) {
+                expiredIds.push(q.id);
+                return false;
+              }
+            }
+            return true;
+          });
+
+        if (expiredIds.length > 0) {
+          deleteQuestionsFromFirestore(expiredIds);
+          try {
+            const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}permanently_deleted_question_ids`);
+            const list: string[] = raw ? JSON.parse(raw) : [];
+            expiredIds.forEach((id) => {
+              if (!list.includes(id)) list.push(id);
+            });
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}permanently_deleted_question_ids`, JSON.stringify(list));
+          } catch {}
+        }
+
+        setQuestions(filteredQ);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(filteredQ));
+        } catch {}
+      }
+
+      if (cloudData.users && cloudData.users.length > 0) {
+        const cleanUsers = !isDemo ? cloudData.users.filter((u) => !isTestAccountUserId(u.id)) : cloudData.users;
+        setAvailableUsers(cleanUsers.length > 0 ? cleanUsers : CLEAN_CORE_USERS);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(cleanUsers));
+        } catch {}
+        const found = cloudData.users.find((u) => u.id === currentUser.id);
+        if (found) setCurrentUser(found);
+      }
+
+      if (cloudData.answers && cloudData.answers.length > 0) {
+        const cleanAns = !isDemo ? cloudData.answers.filter((a) => !isMockAnswerId(a.id)) : cloudData.answers;
+        setAnswers(cleanAns);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(cleanAns));
+        } catch {}
+      }
+
+      if (cloudData.transactions && cloudData.transactions.length > 0) {
+        const cleanTx = !isDemo ? cloudData.transactions.filter((t) => !isMockTransactionId(t.id)) : cloudData.transactions;
+        setTransactions(cleanTx);
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}transactions`, JSON.stringify(cleanTx));
+        } catch {}
+      }
+
+      if (cloudData.conversations && cloudData.conversations.length > 0) {
+        const cleanConv = !isDemo ? cloudData.conversations.filter((c) => !isMockConversationId(c.id)) : cloudData.conversations;
+        setConversations(cleanConv);
+      }
+
+      if (cloudData.notifications && cloudData.notifications.length > 0) {
+        setNotifications(cloudData.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message)));
+      }
+
+      if (cloudData.solvers && cloudData.solvers.length > 0) {
+        const cleanSolvers = !isDemo ? cloudData.solvers.filter((s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id)) : cloudData.solvers;
+        setSolvers(cleanSolvers);
+      }
+
+      if (cloudData.settings && typeof cloudData.settings.commissionRate === 'number') {
+        setCommissionRate(cloudData.settings.commissionRate);
+      }
+
+      setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
+      return true;
+    } catch (err) {
+      console.warn('pullAllDataFromFirestore error:', err);
+      return false;
+    }
+  };
+
+  // Initial check & hydration / initial seed to Firestore + real-time listeners
   useEffect(() => {
     let mounted = true;
+    let unsubQuestions: (() => void) | null = null;
+
     (async () => {
       try {
         const connected = await testFirestoreConnection();
         if (mounted) setIsFirestoreConnected(connected);
 
+        // Auto purge expired 30-day delisted questions on startup
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+        const deletedIds = getDeletedQuestionIds();
+        const expiredIdsOnBoot: string[] = [];
+
+        setQuestions((prev) => {
+          const remaining = prev.filter((q) => {
+            if (deletedIds.has(q.id)) return false;
+            if (q.status === 'delisted' && q.delistedAt) {
+              if (now - new Date(q.delistedAt).getTime() >= THIRTY_DAYS_MS) {
+                expiredIdsOnBoot.push(q.id);
+                return false;
+              }
+            }
+            return true;
+          });
+          if (expiredIdsOnBoot.length > 0) {
+            deleteQuestionsFromFirestore(expiredIdsOnBoot);
+            try {
+              const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}permanently_deleted_question_ids`);
+              const list: string[] = raw ? JSON.parse(raw) : [];
+              expiredIdsOnBoot.forEach((id) => {
+                if (!list.includes(id)) list.push(id);
+              });
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}permanently_deleted_question_ids`, JSON.stringify(list));
+            } catch {}
+          }
+          return remaining;
+        });
+
         const cloudData = await loadAllDataFromFirestore();
         if (!mounted) return;
 
-        if (cloudData && ((cloudData.questions && cloudData.questions.length > 0) || (cloudData.users && cloudData.users.length > 0))) {
-          const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+        const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
 
+        if (cloudData && ((cloudData.questions && cloudData.questions.length > 0) || (cloudData.users && cloudData.users.length > 0))) {
           if (cloudData.users && cloudData.users.length > 0) {
             if (!isDemo) {
               const cleanUsers = cloudData.users.filter((u) => !isTestAccountUserId(u.id));
@@ -1233,10 +1434,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (foundUser) setCurrentUser(foundUser);
           }
           if (cloudData.questions && cloudData.questions.length > 0) {
-            if (!isDemo) {
-              setQuestions(cloudData.questions.filter((q) => !isMockQuestionId(q.id, q.authorId)));
-            } else {
-              setQuestions(cloudData.questions);
+            const currentDeleted = getDeletedQuestionIds();
+            const filteredQ = cloudData.questions
+              .filter((q) => !currentDeleted.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
+              .filter((q) => {
+                if (q.status === 'delisted' && q.delistedAt) {
+                  return now - new Date(q.delistedAt).getTime() < THIRTY_DAYS_MS;
+                }
+                return true;
+              });
+            setQuestions(filteredQ);
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(filteredQ));
+            } catch {
+              // ignore
             }
           }
           if (cloudData.answers && cloudData.answers.length > 0) {
@@ -1276,13 +1487,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           }
           if (mounted) setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
+        } else if (connected) {
+          // 若雲端為空，自動執行初次全量雙向種子寫入
+          await pushAllDataToFirestore({
+            users: availableUsers,
+            questions,
+            answers,
+            transactions,
+            conversations,
+            notifications,
+            bookmarks: { userId: currentUser.id, questionIds: bookmarkedQuestionIds },
+            solvers,
+            commissionRate,
+            plans: Object.values(subscriptionPlans),
+            adminDailyGrants,
+          });
+          if (mounted) setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
         }
+
+        // Attach real-time snapshot listener for questions
+        unsubQuestions = subscribeToQuestions((updatedCloudQuestions) => {
+          if (!mounted || !updatedCloudQuestions) return;
+          const currentDeleted = getDeletedQuestionIds();
+          const isCurrentDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+          const valid = updatedCloudQuestions
+            .filter((q) => !currentDeleted.has(q.id) && (isCurrentDemo || !isMockQuestionId(q.id, q.authorId)))
+            .filter((q) => {
+              if (q.status === 'delisted' && q.delistedAt) {
+                return Date.now() - new Date(q.delistedAt).getTime() < THIRTY_DAYS_MS;
+              }
+              return true;
+            });
+          setQuestions(valid);
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(valid));
+          } catch {}
+          setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
+        });
       } catch (err) {
         console.warn('Firestore initial boot load:', err);
       }
     })();
+
     return () => {
       mounted = false;
+      if (unsubQuestions) unsubQuestions();
     };
   }, []);
 
@@ -1982,8 +2231,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const switchAccount = (userId: string): boolean => {
     const target = availableUsers.find((u) => u.id === userId);
     if (!target) return false;
-    setCurrentUser(target);
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(target));
+
+    // 檢查是否有註銷猶豫期狀態：只要這 7 日內有再登入這個帳號，就自動視為取消註銷！
+    const { canLogin, restoredUser, wasInGracePeriod, errorReason } = checkUserDeactivationStatus(target);
+    if (!canLogin || !restoredUser) {
+      alert(errorReason || '此帳號已超過 7 日反悔猶豫期並已註銷，無法登入。');
+      return false;
+    }
+
+    const effectiveUser = restoredUser;
+    setCurrentUser(effectiveUser);
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(effectiveUser));
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(effectiveUser));
+
+    if (wasInGracePeriod) {
+      setAvailableUsers((prev) =>
+        prev.map((u) => (u.id === effectiveUser.id ? effectiveUser : u))
+      );
+      try {
+        localStorage.setItem(
+          `${STORAGE_KEY_PREFIX}available_users`,
+          JSON.stringify(availableUsers.map((u) => (u.id === effectiveUser.id ? effectiveUser : u)))
+        );
+      } catch {}
+      syncUserToFirestore(effectiveUser);
+      setNotifications((prev) => [
+        {
+          id: `notif-cancel-deact-${Date.now()}`,
+          title: '已自動取消帳號註銷！',
+          message: `歡迎回來！您於 7 日反悔猶豫期內再次登入「${effectiveUser.name}」，系統已自動視為取消註銷，帳號所有資料與功能已全面恢復正常。`,
+          type: 'system',
+          createdAt: '剛剛',
+          read: false,
+        },
+        ...prev,
+      ]);
+      syncAuditLogsToFirestore([
+        {
+          id: `audit-cancel-deact-${Date.now()}`,
+          adminId: effectiveUser.id,
+          action: `用戶登入自動取消帳號註銷：${effectiveUser.id}`,
+          details: { timestamp: new Date().toISOString() },
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    }
+
     setDeviceAccounts((prev) => {
       const idx = prev.findIndex((a) => a.userId === userId);
       const now = new Date().toISOString();
@@ -2159,24 +2452,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           [q.level]: ((prev.levelQuestionCounts?.[q.level]) || 0) + 1,
         },
       }));
-
-      const tx: Transaction = {
-        id: `tx-escrow-${Date.now()}`,
-        type: '第三方懸賞託管',
-        amount: q.bounty,
-        platformFee: 0,
-        feeRate: 0,
-        netAmount: q.bounty,
-        paymentMethod: '信用卡 / 第三方金流',
-        payoutStatus: '第三方安全託管中',
-        relatedQuestionTitle: q.title,
-        relatedQuestionId: q.id,
-        fromUserName: currentUser.name,
-        status: '成功',
-        createdAt: new Date().toISOString(),
-        note: `提問者透過第三方支付預付託管 NT$ ${q.bounty.toLocaleString()} 元。採納確認後將自動拆款：標準抽取 10% 服務費（由賣家吸收，依解答者會員方案最高實收 102%）。`,
-      };
-      setTransactions((prev) => [tx, ...prev]);
+      // 提案懸賞扣的是點數（由點數帳本/預扣額管理），不記入現金交易紀錄
     } else {
       // L0 free question stats update
       setCurrentUser((prev) => ({
@@ -2195,7 +2471,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-${Date.now()}`,
         title: '問題發布成功',
-        message: `您的懸賞問題「${q.title}」已成功上架問題市場${q.bounty > 0 ? `（款項 NT$ ${q.bounty.toLocaleString()} 元已安全進入第三方託管）` : ''}，AI 正在自動媒合對應領域的認證專家！`,
+        message: `您的懸賞問題「${q.title}」已成功上架問題市場${q.bounty > 0 ? `（款項 NT$ ${q.bounty.toLocaleString()} 元已安全進入履約託管）` : ''}，AI 正在自動媒合對應領域的認證專家！`,
         type: 'system',
         createdAt: '剛剛',
         read: false,
@@ -2346,7 +2622,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Record Transaction for third-party unlock & split
     const tx: Transaction = {
       id: `tx-${Date.now()}`,
-      type: '第三方方案解鎖',
+      type: '方案解鎖',
       amount: price,
       platformFee: split.platformFee,
       feeRate: split.feeRate,
@@ -2361,7 +2637,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toUserName: target.solverName,
       status: '已完成',
       createdAt: new Date().toISOString(),
-      note: `買家透過第三方支付（${paymentMethod}）支付 NT$ ${price.toLocaleString()} 元。系統自動拆款：解答者實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText} 由解答者吸收）＋ IdeaX 服務費 NT$ ${split.platformFee.toLocaleString()} 元。款項已直撥入 ${split.bankAccountSnapshot}。`,
+      note: `買家透過線上支付（${paymentMethod}）支付 NT$ ${price.toLocaleString()} 元。系統自動結算：解答者實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText} 由解答者吸收）＋ IdeaX 服務費 NT$ ${split.platformFee.toLocaleString()} 元。款項已直撥入 ${split.bankAccountSnapshot}。`,
     };
     setTransactions((prev) => [tx, ...prev]);
 
@@ -2370,7 +2646,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-${Date.now()}`,
         title: '方案成功解鎖！',
-        message: `您已透過第三方支付（${paymentMethod}）成功付款 NT$ ${price.toLocaleString()} 元解鎖「${target.solverName}」的深度解決方案，完整內容現已開放閱讀。`,
+        message: `您已透過線上支付（${paymentMethod}）成功付款 NT$ ${price.toLocaleString()} 元解鎖「${target.solverName}」的深度解決方案，完整內容現已開放閱讀。`,
         type: 'payment_unlocked',
         createdAt: '剛剛',
         read: false,
@@ -2383,8 +2659,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications((prev) => [
       {
         id: `notif-solver-${Date.now()}`,
-        title: '第三方款項已拆分撥款入帳！',
-        message: `買家已透過第三方支付解鎖您的方案（定價 NT$ ${price.toLocaleString()} 元），系統已自動拆款：實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText}）已成功撥款至您的 ${split.bankAccountSnapshot}！`,
+        title: '方案解鎖收益已撥款入帳！',
+        message: `買家已透過線上支付解鎖您的方案（定價 NT$ ${price.toLocaleString()} 元），系統已自動結算：實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText}）已成功撥款至您的 ${split.bankAccountSnapshot}！`,
         type: 'payment_unlocked',
         createdAt: '剛剛',
         read: false,
@@ -2483,13 +2759,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Record Transaction for third-party split payout
     const tx: Transaction = {
       id: `tx-${Date.now()}`,
-      type: '第三方採納拆款撥付',
+      type: '解答採納撥付',
       amount: bounty,
       platformFee: split.platformFee,
       feeRate: split.feeRate,
       bonusAmount: split.bonusAmount,
       netAmount: split.netPayout,
-      paymentMethod: '第三方託管自動拆款',
+      paymentMethod: '安全託管結算撥付',
       payoutStatus: '已撥款至銀行帳戶',
       bankAccountSnapshot: split.bankAccountSnapshot,
       relatedQuestionTitle: targetQ?.title,
@@ -2498,15 +2774,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toUserName: targetAns.solverName,
       status: '已完成',
       createdAt: new Date().toISOString(),
-      note: `提問者採納確認！第三方託管懸賞款項 NT$ ${bounty.toLocaleString()} 元自動拆款：解答者實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText} 由解答者吸收）＋ IdeaX 服務費 NT$ ${split.platformFee.toLocaleString()} 元。款項已成功撥入 ${split.bankAccountSnapshot}。`,
+      note: `提問者採納確認！安全託管懸賞款項 NT$ ${bounty.toLocaleString()} 元結算撥付：解答者實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText} 由解答者吸收）＋ IdeaX 服務費 NT$ ${split.platformFee.toLocaleString()} 元。款項已成功撥入 ${split.bankAccountSnapshot}。`,
     };
     setTransactions((prev) => [tx, ...prev]);
 
     setNotifications((prev) => [
       {
         id: `notif-${Date.now()}`,
-        title: '方案採納確認・第三方自動拆款完成',
-        message: `您已採納 ${targetAns.solverName} 的方案，第三方安全託管之 NT$ ${bounty.toLocaleString()} 元已自動拆款完成，解答者實收 NT$ ${split.netPayout.toLocaleString()} 元已撥付至其指定帳戶。`,
+        title: '方案採納確認・款項結算完成',
+        message: `您已採納 ${targetAns.solverName} 的方案，安全託管之 NT$ ${bounty.toLocaleString()} 元已結算完成，解答者實收 NT$ ${split.netPayout.toLocaleString()} 元已撥付至其指定帳戶。`,
         type: 'solution_accepted',
         createdAt: '剛剛',
         read: false,
@@ -2519,7 +2795,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-solver-accept-${Date.now()}`,
         title: '🎉 方案已被提問者採納！款項已撥入銀行帳戶',
-        message: `恭喜！您的方案已獲得提問者採納，第三方支付託管款項 NT$ ${bounty.toLocaleString()} 元已自動拆款：實收 NT$ ${split.netPayout.toLocaleString()} 元已全數撥款至您的 ${split.bankAccountSnapshot}！`,
+        message: `恭喜！您的方案已獲得提問者採納，託管款項 NT$ ${bounty.toLocaleString()} 元已結算完成：實收 NT$ ${split.netPayout.toLocaleString()} 元已全數撥款至您的 ${split.bankAccountSnapshot}！`,
         type: 'solution_accepted',
         createdAt: '剛剛',
         read: false,
@@ -2671,7 +2947,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
   };
 
-  // Action: deposit via package ($299=250點, $599=480點贈30點, $999=800點贈70點, $2999=2400點贈300點)
+  // Action: deposit via package
   const depositPackage = (packageId: string) => {
     const pkg = RECHARGE_PACKAGES.find((p) => p.id === packageId);
     if (!pkg) return;
@@ -2683,14 +2959,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const tx: Transaction = {
       id: `tx-${Date.now()}`,
-      type: '錢包儲值',
+      type: '點數儲值',
       amount: pkg.price,
-      platformFee: pkg.commissionAmount,
+      platformFee: 0,
       netAmount: pkg.totalPoints,
+      relatedQuestionTitle: `$${pkg.price} 點數儲值方案`,
       fromUserName: currentUser.name,
+      toUserName: '創點子 IdeaX 點數金流中心',
       status: '已完成',
       createdAt: new Date().toISOString(),
-      note: `儲值方案：$${pkg.price} 實得 ${pkg.totalPoints} 點（平台抽成 $${pkg.commissionAmount}）`,
+      note: '',
     };
     setTransactions((prev) => [tx, ...prev]);
 
@@ -2698,7 +2976,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-${Date.now()}`,
         title: '點數儲值成功！',
-        message: `您已成功支付 NT$ ${pkg.price} 儲值，平台服務費於儲值時直接扣除，實得 ${pkg.totalPoints} 點已存入帳戶可用餘額！`,
+        message: `您已成功支付 NT$ ${pkg.price} 購買點數方案，${pkg.totalPoints.toLocaleString()} 點已存入您的帳戶可用餘額！`,
         type: 'system',
         createdAt: '剛剛',
         read: false,
@@ -2728,7 +3006,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fromUserName: currentUser.name,
       status: '已完成',
       createdAt: new Date().toISOString(),
-      note: `提現申請扣除平台 5% 結算手續費 (NT$ ${fee})，實到 NT$ ${netAmount.toLocaleString()}`,
+      note: `提現申請扣除平台 5% 結算服務費 (NT$ ${fee})，實到 NT$ ${netAmount.toLocaleString()}`,
     };
     setTransactions((prev) => [tx, ...prev]);
     return true;
@@ -2830,6 +3108,670 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       ...prev,
     ]);
+  };
+
+  // Action: Delist a question (強制違規下架處置，全站永久持久化並同步至雲端 Firestore 與日誌)
+  const delistQuestion = (questionId: string, reason: string, feedback?: string) => {
+    let targetQ: Question | null = null;
+    setQuestions((prev) => {
+      const updated = prev.map((q) => {
+        if (q.id === questionId) {
+          targetQ = {
+            ...q,
+            status: 'delisted' as const,
+            delistedReason: reason,
+            delistedFeedback: feedback || undefined,
+            delistedAt: new Date().toISOString(),
+          };
+          return targetQ;
+        }
+        return q;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+
+    if (targetQ) {
+      syncQuestionToFirestore(targetQ);
+    } else {
+      const existingQ = questions.find((q) => q.id === questionId);
+      if (existingQ) {
+        syncQuestionToFirestore({
+          ...existingQ,
+          status: 'delisted' as const,
+          delistedReason: reason,
+          delistedFeedback: feedback || undefined,
+          delistedAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    // 寫入管理員治理稽核日誌
+    syncAuditLogsToFirestore([
+      {
+        id: `audit-delist-${Date.now()}`,
+        adminId: currentUser.id,
+        action: `強制違規下架問題：${questionId}`,
+        details: { reason, feedback, timestamp: new Date().toISOString() },
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  };
+
+  // Action: Relist a question (恢復正常上架，全站同步雲端)
+  const relistQuestion = (questionId: string) => {
+    let targetQ: Question | null = null;
+    setQuestions((prev) => {
+      const updated = prev.map((q) => {
+        if (q.id === questionId) {
+          targetQ = {
+            ...q,
+            status: 'open' as const,
+            delistedReason: undefined,
+            delistedFeedback: undefined,
+            delistedAt: undefined,
+          };
+          return targetQ;
+        }
+        return q;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+
+    if (targetQ) {
+      syncQuestionToFirestore(targetQ);
+    }
+  };
+
+  // Action: Delete question permanently (強制永久刪除，徹底抹除資料庫、提問端、管理端、平台端與接案端紀錄，並自動全額退還提問預扣款，已完成交易不受影響)
+  const deleteQuestionPermanently = async (questionId: string): Promise<void> => {
+    const targetQ = questions.find((q) => q.id === questionId);
+
+    // 1. 若該問題為未完成交易（非 solved 且未結案發放）且有保留/預扣懸賞金，自動全額退還給提問者（已完成交易則不受影響）
+    if (targetQ && targetQ.status !== 'solved') {
+      const refundAmount = targetQ.withheldBounty || (targetQ.status === 'open' ? targetQ.bounty : 0) || 0;
+      if (refundAmount > 0) {
+        // 退還至提問者帳戶
+        if (currentUser.id === targetQ.authorId) {
+          setCurrentUser((prev) => ({
+            ...prev,
+            balance: prev.balance + refundAmount,
+            withheldPoints: Math.max(0, (prev.withheldPoints || 0) - refundAmount),
+          }));
+        }
+
+        setAvailableUsers((prev) =>
+          prev.map((u) => {
+            if (u.id === targetQ.authorId) {
+              const updated = {
+                ...u,
+                balance: (u.balance || 0) + refundAmount,
+                withheldPoints: Math.max(0, (u.withheldPoints || 0) - refundAmount),
+              };
+              syncUserToFirestore(updated);
+              return updated;
+            }
+            return u;
+          })
+        );
+
+        // 生成系統退款交易流水
+        const tx: Transaction = {
+          id: `tx-del-refund-${Date.now()}`,
+          type: '問題下架/刪除退還預扣',
+          amount: refundAmount,
+          platformFee: 0,
+          netAmount: refundAmount,
+          relatedQuestionTitle: targetQ.title,
+          relatedQuestionId: targetQ.id,
+          fromUserName: 'IdeaX 平台治理中心',
+          toUserName: targetQ.authorName,
+          status: '已完成',
+          createdAt: new Date().toISOString(),
+          note: `問題已永久刪除，系統自動全額退還提問預扣懸賞金 NT$ ${refundAmount} 點至提問者可用餘額。`,
+        };
+        setTransactions((prev) => [tx, ...prev]);
+        syncTransactionToFirestore(tx);
+
+        // 發送系統退款通知給提問者
+        setNotifications((prev) => [
+          {
+            id: `notif-del-refund-${Date.now()}`,
+            title: '問題刪除・預扣懸賞金已全額退還',
+            message: `您發布之問題《${targetQ.title.slice(0, 20)}...》已自全站永久刪除，原預扣之 NT$ ${refundAmount} 點數已全數退回您的可用餘額。`,
+            type: 'system',
+            createdAt: '剛剛',
+            read: false,
+          },
+          ...prev,
+        ]);
+      }
+    }
+
+    // 2. 登記至永久刪除黑名單（阻絕 mock 或舊快取重新注入）
+    try {
+      const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}permanently_deleted_question_ids`);
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      if (!list.includes(questionId)) {
+        list.push(questionId);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}permanently_deleted_question_ids`, JSON.stringify(list));
+      }
+    } catch {}
+
+    // 3. 從提問端、管理端、平台端完全抹除 (questions state & localStorage)
+    setQuestions((prev) => {
+      const remaining = prev.filter((q) => q.id !== questionId);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(remaining));
+      } catch {}
+      return remaining;
+    });
+
+    // 4. 從接案端完全抹除關聯提案與紀錄 (answers state & localStorage)
+    setAnswers((prev) => {
+      const remaining = prev.filter((a) => a.questionId !== questionId);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(remaining));
+      } catch {}
+      return remaining;
+    });
+
+    // 5. 從對話室與意向完全抹除 (conversations state & localStorage)
+    setConversations((prev) => {
+      const remaining = prev.filter((c) => c.questionId !== questionId);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}conversations`, JSON.stringify(remaining));
+      } catch {}
+      return remaining;
+    });
+
+    // 6. 從收藏清單移除
+    setBookmarkedQuestionIds((prev) => prev.filter((id) => id !== questionId));
+
+    // 7. 自 Firebase Firestore 雲端資料庫永久刪除 Document 及關聯提案/對話
+    await deleteQuestionAndRelatedDataFromFirestore(questionId);
+
+    // 8. 寫入管理員稽核日誌
+    syncAuditLogsToFirestore([
+      {
+        id: `audit-delete-perm-${Date.now()}`,
+        adminId: currentUser.id || 'system-admin',
+        action: `永久刪除問題並全站抹除紀錄（含資料庫、提問端、管理端、接案端）：${questionId}`,
+        details: { questionId, timestamp: new Date().toISOString() },
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  };
+
+  // Action: Purge all delisted questions older than 30 days (下架貼文保留30日自動或手動清理，自動退還未完成預扣款)
+  const purgeExpiredDelistedQuestions = async (): Promise<number> => {
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const expiredQuestions = questions.filter(
+      (q) => q.status === 'delisted' && q.delistedAt && now - new Date(q.delistedAt).getTime() >= THIRTY_DAYS_MS
+    );
+
+    if (expiredQuestions.length === 0) return 0;
+
+    for (const eq of expiredQuestions) {
+      await deleteQuestionPermanently(eq.id);
+    }
+
+    return expiredQuestions.length;
+  };
+
+  // Action: Delete answer/proposal permanently (永久刪除提案/回覆，自全站與雲端資料庫徹底抹除)
+  const deleteAnswerPermanently = async (answerId: string): Promise<void> => {
+    const targetAns = answers.find((a) => a.id === answerId);
+    if (!targetAns) return;
+
+    if (targetAns.isAccepted) {
+      alert('此方案已正式獲採納並完成驗收結案，依合約規範無法刪除。');
+      return;
+    }
+
+    // 1. 登記至永久刪除黑名單
+    try {
+      const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}permanently_deleted_answer_ids`);
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      if (!list.includes(answerId)) {
+        list.push(answerId);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}permanently_deleted_answer_ids`, JSON.stringify(list));
+      }
+    } catch {}
+
+    // 2. 從 answers state & localStorage 移除
+    setAnswers((prev) => {
+      const remaining = prev.filter((a) => a.id !== answerId);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(remaining));
+      } catch {}
+      return remaining;
+    });
+
+    // 3. 更新母問題之 answersCount
+    setQuestions((prev) => {
+      const updated = prev.map((q) => {
+        if (q.id === targetAns.questionId) {
+          const newQ = { ...q, answersCount: Math.max(0, (q.answersCount || 1) - 1) };
+          syncQuestionToFirestore(newQ);
+          return newQ;
+        }
+        return q;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 4. 自 Firebase Firestore 永久物理刪除
+    await deleteAnswerFromFirestore(answerId);
+
+    // 5. 寫入稽核日誌
+    syncAuditLogsToFirestore([
+      {
+        id: `audit-delete-answer-${Date.now()}`,
+        adminId: currentUser.id,
+        action: `永久刪除提案/回覆：${answerId}`,
+        details: { answerId, questionId: targetAns.questionId, timestamp: new Date().toISOString() },
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  };
+
+  // 檢查使用者之註銷狀態（「只要這七天內有再登入這個帳號那就視為取消註銷」）
+  const checkUserDeactivationStatus = (target: User): {
+    canLogin: boolean;
+    restoredUser?: User;
+    wasInGracePeriod: boolean;
+    errorReason?: string;
+  } => {
+    if (target.deactivationStatus === 'deactivated') {
+      return {
+        canLogin: false,
+        wasInGracePeriod: false,
+        errorReason: '此帳號已超過 7 日反悔猶豫期並已正式註銷完成，無法再登入。',
+      };
+    }
+
+    const isGracePending =
+      target.isDeactivated ||
+      target.deactivationStatus === 'pending_grace' ||
+      Boolean(target.deactivationRequestedAt);
+
+    if (!isGracePending) {
+      return { canLogin: true, restoredUser: target, wasInGracePeriod: false };
+    }
+
+    const purgeTime = target.deactivationScheduledPurgeAt
+      ? new Date(target.deactivationScheduledPurgeAt).getTime()
+      : 0;
+    const now = Date.now();
+
+    if (purgeTime > 0 && now >= purgeTime) {
+      return {
+        canLogin: false,
+        wasInGracePeriod: true,
+        errorReason: '此帳號已超過 7 日反悔猶豫期，已排程正式註銷完成，無法再登入。',
+      };
+    }
+
+    // 只要這七天內有再登入這個帳號那就視為取消註銷
+    const restoredUser: User = {
+      ...target,
+      isDeactivated: false,
+      deactivationStatus: undefined,
+      deactivationRequestedAt: undefined,
+      deactivationScheduledPurgeAt: undefined,
+      deactivationReason: undefined,
+    };
+
+    return {
+      canLogin: true,
+      restoredUser,
+      wasInGracePeriod: true,
+    };
+  };
+
+  // Action: Request account deactivation (申請註銷帳號，進入 7 日反悔期並自動安全登出)
+  const requestAccountDeactivation = async (reason?: string): Promise<void> => {
+    const targetUserId = currentUser.id;
+    const targetUserName = currentUser.name;
+    const now = new Date();
+    const purgeDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const updatedUser: User = {
+      ...currentUser,
+      isDeactivated: true,
+      deactivationStatus: 'pending_grace',
+      deactivationRequestedAt: now.toISOString(),
+      deactivationScheduledPurgeAt: purgeDate.toISOString(),
+      deactivationReason: reason || '用戶自行申請註銷',
+    };
+
+    setAvailableUsers((prev) =>
+      prev.map((u) => (u.id === targetUserId ? updatedUser : u))
+    );
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(
+        availableUsers.map((u) => (u.id === targetUserId ? updatedUser : u))
+      ));
+    } catch {}
+
+    await syncUserToFirestore(updatedUser);
+
+    setNotifications((prev) => [
+      {
+        id: `notif-deact-${Date.now()}`,
+        title: '帳號註銷申請已生效・7日反悔猶豫期',
+        message: `您的帳號「${targetUserName}」已進入 7 日註銷猶豫期。系統將於 7 日後（${purgeDate.toLocaleDateString('zh-TW')}）正式完成註銷並清空私密個資。在此 7 日期間內，只要您再次登入此帳號，系統即視為您取消註銷並自動全面恢復帳號！`,
+        type: 'system',
+        createdAt: '剛剛',
+        read: false,
+      },
+      ...prev,
+    ]);
+
+    syncAuditLogsToFirestore([
+      {
+        id: `audit-deact-req-${Date.now()}`,
+        adminId: targetUserId,
+        action: `用戶申請註銷帳號（7日反悔期，再登入即自動取消註銷）：${targetUserId}`,
+        details: { reason, purgeAt: purgeDate.toISOString(), timestamp: now.toISOString() },
+        createdAt: now.toISOString(),
+      },
+    ]);
+
+    // 依使用者規範：申請註銷後安全登出當前帳號
+    logoutAccount(targetUserId);
+  };
+
+  // Action: Cancel account deactivation (撤銷註銷帳號，恢復正常狀態)
+  const cancelAccountDeactivation = async (targetUser?: User): Promise<User> => {
+    const userToRestore = targetUser || currentUser;
+    const updatedUser: User = {
+      ...userToRestore,
+      isDeactivated: false,
+      deactivationStatus: undefined,
+      deactivationRequestedAt: undefined,
+      deactivationScheduledPurgeAt: undefined,
+      deactivationReason: undefined,
+    };
+
+    setCurrentUser(updatedUser);
+    setAvailableUsers((prev) =>
+      prev.map((u) => (u.id === userToRestore.id ? updatedUser : u))
+    );
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updatedUser));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedUser));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(
+        availableUsers.map((u) => (u.id === userToRestore.id ? updatedUser : u))
+      ));
+    } catch {}
+
+    await syncUserToFirestore(updatedUser);
+
+    setNotifications((prev) => [
+      {
+        id: `notif-cancel-deact-${Date.now()}`,
+        title: '已自動取消帳號註銷！',
+        message: `歡迎回來！您於 7 日反悔猶豫期內登入「${updatedUser.name}」，系統已自動視為取消註銷，所有資料與發案提案均完整保留並正常運作。`,
+        type: 'system',
+        createdAt: '剛剛',
+        read: false,
+      },
+      ...prev,
+    ]);
+
+    return updatedUser;
+  };
+
+  // Action: Purge/finalize account deactivation (7日屆滿後正式註銷帳號：清空個人敏感身分，保留公開問題/提案/討論/交易並匿名化為「此帳號已註銷」與灰色頭像)
+  const purgeAccountPermanently = async (userId: string): Promise<void> => {
+    if (!userId) return;
+
+    // 1. 匿名化並標記該用戶為已正式註銷
+    const GRAY_AVATAR =
+      'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239ca3af"%3E%3Cpath d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/%3E%3C/svg%3E';
+
+    let anonymizedUser: User | null = null;
+
+    setAvailableUsers((prev) => {
+      const updated = prev.map((u) => {
+        if (u.id === userId) {
+          anonymizedUser = {
+            ...u,
+            name: '此帳號已註銷',
+            title: '已註銷帳號',
+            bio: '此帳號已於 7 日反悔期屆滿後完成註銷。',
+            avatar: GRAY_AVATAR,
+            isDeactivated: true,
+            deactivationStatus: 'deactivated',
+            realNameAuthStatus: 'none',
+            realNameAuthData: undefined,
+            realNameData: undefined,
+            balance: 0,
+            withheldPoints: 0,
+          };
+          return anonymizedUser;
+        }
+        return u;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 2. 更新 Solvers 列表中的匿名狀態
+    setSolvers((prev) => {
+      const updated = prev.map((s) => {
+        if (s.id === userId) {
+          return {
+            ...s,
+            name: '此帳號已註銷',
+            title: '已註銷專家',
+            avatar: GRAY_AVATAR,
+            bio: '此專家帳號已完成註銷。',
+          };
+        }
+        return s;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}solvers`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 3. 同步至 Firebase Cloud Firestore
+    if (anonymizedUser) {
+      await syncUserToFirestore(anonymizedUser);
+    }
+
+    // 4. 若當前登入者為被註銷者，登出並切換至預設帳號
+    if (currentUser.id === userId) {
+      const fallbackUser = CLEAN_CORE_USERS[0] || {
+        id: 'user_guest',
+        name: '訪客用戶',
+        email: 'guest@ideax.tw',
+        role: 'user',
+        balance: 0,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        title: '平台訪客',
+        bio: '尚未登入',
+      };
+      setCurrentUser(fallbackUser as User);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(fallbackUser));
+      } catch {}
+    }
+
+    // 5. 寫入稽核日誌
+    syncAuditLogsToFirestore([
+      {
+        id: `audit-purge-user-${Date.now()}`,
+        adminId: 'system-governance',
+        action: `帳號7日反悔期屆滿，已正式註銷（歷史問題/提案/討論/交易完整保留並匿名化為灰色頭像）：${userId}`,
+        details: { userId, timestamp: new Date().toISOString() },
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  };
+
+  // Action: Purge all expired deactivated accounts (7日反悔期屆滿之註銷帳號自動統一批次清除)
+  const purgeExpiredDeactivatedAccounts = async (): Promise<number> => {
+    const now = Date.now();
+    const expiredUsers = availableUsers.filter(
+      (u) => u.isDeactivated && u.deactivationScheduledPurgeAt && now >= new Date(u.deactivationScheduledPurgeAt).getTime()
+    );
+
+    if (expiredUsers.length === 0) return 0;
+
+    for (const eu of expiredUsers) {
+      await purgeAccountPermanently(eu.id);
+    }
+
+    return expiredUsers.length;
+  };
+
+  // Action: Add test account in demo/test mode (測試模式免註冊免登入一鍵添加測試帳號)
+  const addTestAccount = (options?: {
+    name?: string;
+    role?: 'questioner' | 'solver' | 'admin';
+    title?: string;
+    balance?: number;
+    verifiedExpert?: boolean;
+    autoSwitch?: boolean;
+  }): User => {
+    const role = options?.role || 'solver';
+    const randomNum = Math.floor(Math.random() * 900 + 100);
+    const id = `test_${role}_${Date.now().toString(36)}_${randomNum}`;
+    const name =
+      options?.name ||
+      (role === 'admin'
+        ? `測試管理員 ${randomNum}`
+        : role === 'solver'
+        ? `測試專家顧問 ${randomNum}`
+        : `測試提問者 ${randomNum}`);
+    const title =
+      options?.title ||
+      (role === 'admin'
+        ? '平台運營風控測試員'
+        : role === 'solver'
+        ? 'AI 商業策略與技術架構專家'
+        : '新創專案產品負責人');
+    const balance =
+      typeof options?.balance === 'number'
+        ? options.balance
+        : role === 'solver'
+        ? 8000
+        : 15000;
+
+    const avatarList = [
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
+    ];
+    const avatar = avatarList[Math.floor(Math.random() * avatarList.length)];
+
+    const newUser: User = {
+      id,
+      name,
+      email: `${id}@test.ideax.tw`,
+      role,
+      title,
+      bio: `【測試環境一鍵生成帳號】專為免註冊、免登入快速驗證各項功能而建立。`,
+      avatar,
+      balance,
+      pendingEarnings: 0,
+      reputation: 100,
+      joinedDate: new Date().toISOString().split('T')[0],
+      withheldPoints: 0,
+      verifiedBadge: (options?.verifiedExpert ?? (role === 'solver')) ? 'AI 專家顧問' : undefined,
+      verifiedExpert: options?.verifiedExpert ?? (role === 'solver'),
+      reputationPoints: 120,
+      submittedSolutionsCount: role === 'solver' ? 6 : 0,
+      acceptanceRate: role === 'solver' ? 96 : undefined,
+      hasAgreedGeneralTerms: true,
+      hasAgreedQuestionerTerms: true,
+      hasAgreedSolverTerms: true,
+    };
+
+    setAvailableUsers((prev) => {
+      const updated = [newUser, ...prev];
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    if (role === 'solver') {
+      const newSolver: Solver = {
+        id,
+        name,
+        title,
+        avatar,
+        domain: '創新創業',
+        skills: ['商業模式', '市場驗證', '落地方案'],
+        rating: 4.9,
+        reviewCount: 9,
+        answerCount: 6,
+        acceptedRate: 96,
+        tier: '認證專家',
+        bio: newUser.bio || 'AI 商業策略專家',
+        earnings: 18000,
+        verifiedBadge: true,
+        featuredCase: {
+          title: 'AI 商業化落地方案',
+          description: '協助企業落地 AI 策略顧問與系統對接',
+          outcome: '成功提升 3 倍營運效能並縮短 40% 決策週期',
+        },
+      };
+      setSolvers((prev) => {
+        const updated = [newSolver, ...prev];
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}solvers`, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+      syncSolversToFirestore([newSolver]);
+    }
+
+    syncUserToFirestore(newUser);
+
+    if (options?.autoSwitch !== false) {
+      setCurrentUser(newUser);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(newUser));
+      } catch {}
+    }
+
+    setNotifications((prev) => [
+      {
+        id: `notif-test-acc-${Date.now()}`,
+        title: '🧪 測試帳號已成功建立！',
+        message: `已免註冊免登入一鍵生成測試帳號【${name}】（${role === 'solver' ? '專家解答者' : role === 'admin' ? '管理員' : '提問者'}，初始點數 NT$ ${balance.toLocaleString()}），並已切換為當前使用帳號。`,
+        type: 'system',
+        createdAt: '剛剛',
+        read: false,
+      },
+      ...prev,
+    ]);
+
+    return newUser;
   };
 
   // Action: accept phase delivery
@@ -2943,7 +3885,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       feeRate: split.feeRate,
       bonusAmount: split.bonusAmount,
       netAmount: split.netPayout,
-      paymentMethod: '第三方託管自動拆款',
+      paymentMethod: '履約託管結算撥付',
       payoutStatus: '已撥款至銀行帳戶',
       bankAccountSnapshot: split.bankAccountSnapshot,
       relatedQuestionTitle: questions.find((q) => q.id === questionId)?.title,
@@ -2952,7 +3894,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toUserName: ans.solverName,
       status: '已完成',
       createdAt: new Date().toISOString(),
-      note: `「${phase.title}」階段交付驗收通過，第三方託管款項 NT$ ${pointsToRelease.toLocaleString()} 元自動拆款：解答者實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText}），平台服務費 NT$ ${split.platformFee.toLocaleString()} 元。已直撥 ${split.bankAccountSnapshot}。`,
+      note: `「${phase.title}」階段交付驗收通過，履約託管款項 NT$ ${pointsToRelease.toLocaleString()} 元結算撥付：解答者實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText}），平台服務費 NT$ ${split.platformFee.toLocaleString()} 元。已直撥 ${split.bankAccountSnapshot}。`,
     };
     setTransactions((prev) => [tx, ...prev]);
   };
@@ -2995,11 +3937,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       payoutStatus: '已原路退款',
       relatedQuestionTitle: questions.find((q) => q.id === questionId)?.title,
       relatedQuestionId: questionId,
-      fromUserName: 'IdeaX 第三方託管金流',
+      fromUserName: 'IdeaX 履約託管中心',
       toUserName: currentUser.name,
       status: '已完成',
       createdAt: new Date().toISOString(),
-      note: `「${phase.title}」階段未達成驗收，第三方安全託管 NT$ ${pointsToRefund.toLocaleString()} 元已原路退回付款帳戶。`,
+      note: `「${phase.title}」階段未達成驗收，履約託管 NT$ ${pointsToRefund.toLocaleString()} 元已原路退回付款帳戶。`,
     };
     setTransactions((prev) => [tx, ...prev]);
   };
@@ -3051,20 +3993,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
 
+    const cycleDisplay = selectedCycle.label || `月繳 $${price.toLocaleString()}`;
+    const cleanSubTitle = `訂閱會員方案「${plan.name}（${cycleDisplay}）」`;
+
     const tx: Transaction = {
       id: `tx-sub-${Date.now()}`,
-      type: '會員方案訂閱',
+      type: '會員訂閱',
       amount: price,
       platformFee: 0,
       feeRate: 0,
       netAmount: price,
       paymentMethod,
-      payoutStatus: '已撥款至銀行帳戶',
+      payoutStatus: '已完成',
+      relatedQuestionTitle: cleanSubTitle,
       fromUserName: currentUser.name,
       toUserName: '創點子 IdeaX 平台',
       status: '已完成',
       createdAt: new Date().toISOString(),
-      note: `透過第三方支付（${paymentMethod}）成功付款 NT$ ${price.toLocaleString()} 元，開通「${plan.name}（${selectedCycle.label}）」，即日起交易服務費享有「${plan.feeDiscountText}」！`,
+      note: cleanSubTitle,
     };
     setTransactions((prev) => [tx, ...prev]);
 
@@ -3103,7 +4049,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const userEarnedTxs = transactions.filter(
       (t) =>
         (t.toUserName === currentUser.name || t.fromUserName === currentUser.name) &&
-        (t.type === '解答者收益發放' || t.type === '付費解鎖方案' || t.type === '私聊自訂方案交易')
+        (t.type === '解答者收益' || t.type === '解答者收益發放' || t.type === '解答採納撥付' || t.type === '自訂提案收入' || t.type === '付費解鎖方案' || t.type === '私聊自訂方案交易')
     );
 
     // Sum of amounts received by this solver
@@ -3684,13 +4630,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
+  // Action: Update transaction note
+  const updateTransactionNote = (transactionId: string, note: string) => {
+    setTransactions((prev) => {
+      const updated = prev.map((t) => (t.id === transactionId ? { ...t, note } : t));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}transactions`, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+  };
+
+  // 爭議審理與申訴結案管理（全站跨元件統一單一真相來源，永久留存已結案 ID）
+  const [resolvedDisputeIds, setResolvedDisputeIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}resolved_dispute_ids`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const markDisputeResolved = (disputeId: string, questionId?: string) => {
+    setResolvedDisputeIds((prev) => {
+      const next = prev.includes(disputeId) ? prev : [...prev, disputeId];
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}resolved_dispute_ids`, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    if (questionId) {
+      resolveDisputeRefund(questionId);
+    }
+  };
+
+  // 全站統一計算待裁定案件數量：包含 demo 案件與真實問題檢舉，結案後即時歸零並永久同步
+  const pendingDisputesCount = useMemo(() => {
+    const demoPending = resolvedDisputeIds.includes('dispute-demo-1') ? 0 : 1;
+    const questionsPending = (questions || []).filter(
+      (q) =>
+        q.disputeStatus === 'pending_review' &&
+        !resolvedDisputeIds.includes(q.id) &&
+        !resolvedDisputeIds.includes(`dispute-${q.id}`)
+    ).length;
+    return demoPending + questionsPending;
+  }, [questions, resolvedDisputeIds]);
+
   // Action: Increment real views count (tracks views strictly according to real clicks)
   const incrementQuestionViews = (questionId: string, amount: number = 1) => {
     let nextViews = 1;
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
       const map: Record<string, number> = saved ? JSON.parse(saved) : {};
-      const current = typeof map[questionId] === 'number' ? map[questionId] : 0;
+      const targetQ = questions.find((item) => item.id === questionId);
+      const current = typeof map[questionId] === 'number'
+        ? map[questionId]
+        : (targetQ?.views || targetQ?.viewsCount || 0);
       nextViews = current + amount;
       map[questionId] = nextViews;
       localStorage.setItem(`${STORAGE_KEY_PREFIX}question_real_clicks`, JSON.stringify(map));
@@ -3867,6 +4866,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isModeOrEnvNotification = (title?: string, message?: string) => {
     const text = `${title || ''} ${message || ''}`;
     return (
+      text.includes('捷徑描述檔') ||
+      text.includes('已為您下載 IdeaX App') ||
       text.includes('無金流模式') ||
       text.includes('正式營運模式') ||
       text.includes('測試環境') ||
@@ -3930,6 +4931,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const deleteNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+  };
+
+  const updateNotification = (id: string, updates: Partial<NotificationItem>) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, ...updates } : n))
+    );
+  };
+
   const markNotificationRead = (id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
@@ -3981,6 +4996,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (n.userId) {
         if (n.userId === 'admin') {
           return currentUser.role === 'admin';
+        }
+        if (n.userId === 'all') {
+          return true;
         }
         return n.userId === currentUser.id;
       }
@@ -4135,15 +5153,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         questions,
         setQuestions,
         solvers,
+        setSolvers,
         answers,
+        setAnswers,
         transactions,
+        setTransactions,
         notifications: userPersonalNotifications,
+        allNotifications: notifications,
         personalNotifications,
         systemNotifications,
         unreadPersonalCount,
         unreadSystemCount,
         hasUnreadSystemNotifs,
         addNotification,
+        deleteNotification,
+        clearAllNotifications,
+        updateNotification,
         conversations,
         setConversations,
         activeConversationId,
@@ -4199,6 +5224,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         spendPoints,
         reportQuestionDispute,
         resolveDisputeRefund,
+        resolvedDisputeIds,
+        markDisputeResolved,
+        pendingDisputesCount,
+        delistQuestion,
+        relistQuestion,
+        deleteQuestionPermanently,
+        deleteAnswerPermanently,
+        purgeExpiredDelistedQuestions,
+        requestAccountDeactivation,
+        cancelAccountDeactivation,
+        checkUserDeactivationStatus,
+        purgeAccountPermanently,
+        purgeExpiredDeactivatedAccounts,
+        addTestAccount,
+        pullAllDataFromFirestore,
         acceptPhaseDelivery,
         releasePhasePayout,
         refundPhasePayout,
@@ -4206,6 +5246,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         subscribePlan,
         triggerMonthEndRebate,
         updateBankAccount,
+        updateTransactionNote,
         calculateSplitPayout,
         bookmarkedQuestionIds,
         toggleBookmarkQuestion,

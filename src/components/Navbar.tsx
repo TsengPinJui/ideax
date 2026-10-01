@@ -117,6 +117,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     closeAuthModal,
     unreadPersonalCount,
     hasUnreadSystemNotifs,
+    pendingDisputesCount,
+    addTestAccount,
   } = useApp();
 
   const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
@@ -146,11 +148,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const unreadChatCount = useMemo(() => {
     return userConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
   }, [userConversations]);
-
-  const pendingDisputesCount = useMemo(() => {
-    const fromQuestions = (questions || []).filter((q) => q.disputeStatus === 'pending_review').length;
-    return fromQuestions > 0 ? fromQuestions : 1; // 待裁定案件數：1 件
-  }, [questions]);
 
   // 管理員身分：郵件圖示顯示數量直接等於「待裁定」案件數量！一般用戶：僅根據「個人通知」未讀數量（系統通知不計入郵件數字）
   const displayBadgeCount = currentUser.role === 'admin' ? pendingDisputesCount : unreadPersonalCount;
@@ -1350,9 +1347,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="block font-black text-stone-900">AI-CRM 系統</span>
+                              <span className="block font-black text-stone-900">AI-CRM與通知設定</span>
                             </div>
-                            <span className="text-[10px] text-stone-500 font-normal">功能開關、猶豫期推播規則與客情商機</span>
+                            <span className="text-[10px] text-stone-500 font-normal">功能開關、客情商機、推播與通知管理</span>
                           </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
@@ -1403,11 +1400,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-700 transition-colors" />
                       </button>
 
-                      {/* 14. 切換帳號 */}
+                      {/* 14. 切換帳號 / 添加測試帳號 */}
                       <button
                         onClick={() => {
                           setIsUserMenuOpen(false);
-                          openAuthModal('login');
+                          openAuthModal('login', 'switch');
                         }}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-700 hover:bg-stone-100 flex items-center justify-between cursor-pointer group transition-all"
                       >
@@ -1416,12 +1413,53 @@ export const Navbar: React.FC<NavbarProps> = ({
                             <ArrowLeftRight className="w-3.5 h-3.5" />
                           </div>
                           <div>
-                            <span className="block font-black text-stone-900">切換帳號</span>
-                            <span className="text-[10px] text-stone-500 font-normal">本裝置已登錄身分快速切換</span>
+                            <span className="block font-black text-stone-900">
+                              切換 / 添加測試帳號
+                            </span>
+                            <span className="text-[10px] text-stone-500 font-normal">
+                              快速切換或免註冊新增身分
+                            </span>
                           </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
                       </button>
+
+                      {/* 只有管理員帳號才可以新增測試帳號 */}
+                      <div className="px-2 pt-1 pb-1 grid grid-cols-3 gap-1 bg-stone-50/80 rounded-xl border border-stone-200/80 my-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addTestAccount({ role: 'solver', autoSwitch: true });
+                            setIsUserMenuOpen(false);
+                          }}
+                          className="px-1.5 py-1 rounded-lg bg-white hover:bg-blue-50 text-blue-900 font-bold text-[10px] text-center border border-blue-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                          title="免註冊一鍵建立測試解答者並切換"
+                        >
+                          + 測試解答者
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addTestAccount({ role: 'questioner', autoSwitch: true });
+                            setIsUserMenuOpen(false);
+                          }}
+                          className="px-1.5 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-900 font-bold text-[10px] text-center border border-amber-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                          title="免註冊一鍵建立測試提問者並切換"
+                        >
+                          + 測試提問者
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addTestAccount({ role: 'admin', autoSwitch: true });
+                            setIsUserMenuOpen(false);
+                          }}
+                          className="px-1.5 py-1 rounded-lg bg-white hover:bg-purple-50 text-purple-900 font-bold text-[10px] text-center border border-purple-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                          title="免註冊一鍵建立測試管理員並切換"
+                        >
+                          + 測試管理員
+                        </button>
+                      </div>
 
                       {/* 15. 登出帳號 */}
                       <button
@@ -1468,7 +1506,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                                 <Coins className="w-3.5 h-3.5" />
                               )}
                             </div>
-                            <span>{currentUser.role === 'solver' ? '應收帳款 & 點數' : '點數 & 應收帳款'}</span>
+                            <span>點數 & 收支</span>
                           </div>
                           <span className={`font-mono font-black text-xs ${
                             currentUser.role === 'solver' ? 'text-blue-950' : 'text-amber-900'
@@ -1480,7 +1518,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </button>
 
                         <button
-                          onClick={() => handleOpenDashboard('transactions')}
+                          onClick={() => handleOpenDashboard('points_receivables', 'transactions-section')}
                           className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-orange-50/80 hover:text-orange-950 flex items-center gap-2.5 cursor-pointer group transition-all"
                         >
                           <div className="w-7 h-7 rounded-lg bg-orange-100/80 text-orange-800 group-hover:bg-orange-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
@@ -1697,7 +1735,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <button
                       onClick={() => {
                         setIsUserMenuOpen(false);
-                        openAuthModal('login');
+                        openAuthModal('login', 'switch');
                       }}
                       className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-violet-50/80 hover:text-violet-950 flex items-center justify-between cursor-pointer group transition-all"
                     >
@@ -1706,12 +1744,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <ArrowLeftRight className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <span className="block font-black text-stone-900">切換帳號</span>
-                          <span className="text-[10px] text-stone-500 font-normal">本裝置已登錄帳號</span>
+                          <span className="block font-black text-stone-900">
+                            切換帳號
+                          </span>
+                          <span className="text-[10px] text-stone-500 font-normal">
+                            快速切換或登入其他身分
+                          </span>
                         </div>
                       </div>
                       <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-violet-700 transition-colors" />
                     </button>
+
                     <button
                       onClick={() => {
                         setIsUserMenuOpen(false);

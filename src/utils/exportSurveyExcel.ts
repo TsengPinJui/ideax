@@ -57,7 +57,7 @@ export const SALARY_MAP: Record<string, string> = {
 };
 
 export const SUBSCRIBE_MAP: Record<string, string> = {
-  willing: '願意（年繳或月繳訂閱以降低手續費）',
+  willing: '願意（年繳或月繳訂閱以降低服務費）',
   depends_profit: '視接案獲利情況而定',
   free_tier_first: '先體驗免費版',
   not_willing: '暫不考慮',

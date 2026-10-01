@@ -158,8 +158,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
     },
   ].map((entry, idx) => ({ ...entry, rank: idx + 1 }));
 
-  // 3. 本週熱門問題討論榜 (Top 10 Discussions)
+  // 3. 本週熱門問題討論榜 (Top 10 Discussions) - 嚴格過濾已被下架之題目
   const topDiscussionQuestions = [...questions]
+    .filter((q) => q.status !== 'delisted')
     .map((q) => {
       const qAnswers = answers.filter((a) => a.questionId === q.id);
       const discCount = qAnswers.filter((a) => a.type === 'discussion').length;
@@ -176,8 +177,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
     .slice(0, 10)
     .map((item, index) => ({ ...item, rank: index + 1 }));
 
-  // 4. 本週熱門方案榜 (Top 10 Solutions)
+  // 4. 本週熱門方案榜 (Top 10 Solutions) - 嚴格過濾已被下架之題目
   const topSolutionQuestions = [...questions]
+    .filter((q) => q.status !== 'delisted')
     .map((q) => {
       const qAnswers = answers.filter((a) => a.questionId === q.id);
       const solCount = qAnswers.filter((a) => a.type === 'solution').length;

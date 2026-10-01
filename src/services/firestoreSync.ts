@@ -5,7 +5,10 @@ import {
   getDocFromServer,
   getDocs,
   setDoc,
+  deleteDoc,
   writeBatch,
+  onSnapshot,
+  Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import {
@@ -91,6 +94,195 @@ export async function syncQuestionToFirestore(question: Question): Promise<void>
   }
 }
 
+export async function deleteQuestionFromFirestore(questionId: string): Promise<void> {
+  if (!questionId || isQuotaExhausted) return;
+  try {
+    const qRef = doc(db, 'questions', questionId);
+    await deleteDoc(qRef);
+  } catch (err) {
+    handleFirestoreError(`Failed to delete question ${questionId}`, err);
+  }
+}
+
+export async function deleteQuestionsFromFirestore(questionIds: string[]): Promise<void> {
+  if (!questionIds || questionIds.length === 0 || isQuotaExhausted) return;
+  try {
+    const batch = writeBatch(db);
+    questionIds.forEach((id) => {
+      const qRef = doc(db, 'questions', id);
+      batch.delete(qRef);
+    });
+    await batch.commit();
+  } catch (err) {
+    handleFirestoreError(`Failed to batch delete questions`, err);
+  }
+}
+
+export async function deleteQuestionAndRelatedDataFromFirestore(questionId: string): Promise<void> {
+  if (!questionId || isQuotaExhausted) return;
+  try {
+    const batch = writeBatch(db);
+    
+    // 1. Delete question doc
+    const qRef = doc(db, 'questions', questionId);
+    batch.delete(qRef);
+
+    // 2. Find and delete related answers
+    try {
+      const answersSnap = await getDocs(collection(db, 'answers'));
+      answersSnap.docs.forEach((d) => {
+        const data = d.data();
+        if (data.questionId === questionId) {
+          batch.delete(d.ref);
+        }
+      });
+    } catch {}
+
+    // 3. Find and delete related conversations
+    try {
+      const convsSnap = await getDocs(collection(db, 'conversations'));
+      convsSnap.docs.forEach((d) => {
+        const data = d.data();
+        if (data.questionId === questionId) {
+          batch.delete(d.ref);
+        }
+      });
+    } catch {}
+
+    await batch.commit();
+  } catch (err) {
+    handleFirestoreError(`Failed to delete question and related data for ${questionId}`, err);
+  }
+}
+
+export async function deleteUserAndAllRelatedDataFromFirestore(userId: string): Promise<void> {
+  if (!userId || isQuotaExhausted) return;
+  try {
+    const batch = writeBatch(db);
+
+    // 1. Delete user document
+    const userRef = doc(db, 'users', userId);
+    batch.delete(userRef);
+
+    // 2. Delete solver document if exists
+    const solverRef = doc(db, 'solvers', userId);
+    batch.delete(solverRef);
+
+    // 3. Delete bookmark document if exists
+    const bookmarkRef = doc(db, 'bookmarks', userId);
+    batch.delete(bookmarkRef);
+
+    // 4. Delete questions authored by this user
+    try {
+      const qSnap = await getDocs(collection(db, 'questions'));
+      qSnap.docs.forEach((d) => {
+        const q = d.data();
+        if (q.authorId === userId) {
+          batch.delete(d.ref);
+        }
+      });
+    } catch {}
+
+    // 5. Delete answers submitted by this user
+    try {
+      const aSnap = await getDocs(collection(db, 'answers'));
+      aSnap.docs.forEach((d) => {
+        const a = d.data();
+        if (a.solverId === userId) {
+          batch.delete(d.ref);
+        }
+      });
+    } catch {}
+
+    // 6. Delete conversations involving this user
+    try {
+      const cSnap = await getDocs(collection(db, 'conversations'));
+      cSnap.docs.forEach((d) => {
+        const c = d.data();
+        if (
+          c.user1Id === userId ||
+          c.user2Id === userId ||
+          (Array.isArray(c.participants) && c.participants.includes(userId))
+        ) {
+          batch.delete(d.ref);
+        }
+      });
+    } catch {}
+
+    // 7. Delete certifications
+    try {
+      const certSnap = await getDocs(collection(db, 'certifications'));
+      certSnap.docs.forEach((d) => {
+        const cert = d.data();
+        if (cert.userId === userId) {
+          batch.delete(d.ref);
+        }
+      });
+    } catch {}
+
+    // 8. Delete notifications
+    try {
+      const notifSnap = await getDocs(collection(db, 'notifications'));
+      notifSnap.docs.forEach((d) => {
+        const n = d.data();
+        if (n.userId === userId) {
+          batch.delete(d.ref);
+        }
+      });
+    } catch {}
+
+    await batch.commit();
+  } catch (err) {
+    handleFirestoreError(`Failed to delete user and all related data for ${userId}`, err);
+  }
+}
+
+/**
+ * Real-time listener for questions collection
+ */
+export function subscribeToQuestions(onUpdate: (questions: Question[]) => void): Unsubscribe {
+  try {
+    return onSnapshot(
+      collection(db, 'questions'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list = snapshot.docs.map((d) => d.data() as Question);
+          onUpdate(list);
+        }
+      },
+      (error) => {
+        handleFirestoreError('Real-time questions sync error', error);
+      }
+    );
+  } catch (err) {
+    handleFirestoreError('Failed to attach questions listener', err);
+    return () => {};
+  }
+}
+
+/**
+ * Real-time listener for answers collection
+ */
+export function subscribeToAnswers(onUpdate: (answers: Answer[]) => void): Unsubscribe {
+  try {
+    return onSnapshot(
+      collection(db, 'answers'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list = snapshot.docs.map((d) => d.data() as Answer);
+          onUpdate(list);
+        }
+      },
+      (error) => {
+        handleFirestoreError('Real-time answers sync error', error);
+      }
+    );
+  } catch (err) {
+    handleFirestoreError('Failed to attach answers listener', err);
+    return () => {};
+  }
+}
+
 export async function syncQuestionsToFirestore(questions: Question[]): Promise<void> {
   if (!questions || questions.length === 0 || isQuotaExhausted) return;
   try {
@@ -131,6 +323,16 @@ export async function syncAnswersToFirestore(answers: Answer[]): Promise<void> {
     await batch.commit();
   } catch (err) {
     handleFirestoreError('Failed to batch sync answers', err);
+  }
+}
+
+export async function deleteAnswerFromFirestore(answerId: string): Promise<void> {
+  if (!answerId || isQuotaExhausted) return;
+  try {
+    const aRef = doc(db, 'answers', answerId);
+    await deleteDoc(aRef);
+  } catch (err) {
+    handleFirestoreError(`Failed to delete answer ${answerId}`, err);
   }
 }
 

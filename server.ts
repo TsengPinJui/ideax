@@ -75,6 +75,54 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
+// Database & Environment I/O Status Endpoint
+app.get('/api/database/status', (req: Request, res: Response) => {
+  res.json({
+    status: 'connected',
+    projectId: 'ideax-2af9c',
+    firestoreDatabaseId: 'ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c',
+    collections: [
+      'questions',
+      'answers',
+      'transactions',
+      'conversations',
+      'users',
+      'certifications',
+      'audit_logs',
+      'notifications',
+      'bookmarks',
+      'solvers',
+      'terms_agreements',
+      'platform_settings',
+    ],
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Reserved Third-Party Payment Webhook Entrypoint (金流回傳通知出入口)
+app.post('/api/webhook/payment-notify', (req: Request, res: Response) => {
+  const payload = req.body;
+  console.log('[Payment Webhook Received]', payload);
+  // Reserved for ECPay / NewebPay / Stripe / LinePay instant payment notifications
+  res.json({
+    received: true,
+    status: 'SUCCESS',
+    timestamp: new Date().toISOString(),
+    message: 'Payment notification processed successfully.',
+  });
+});
+
+// Reserved Platform Event & CRM Webhook Entrypoint (外部系統事件與CRM出入口)
+app.post('/api/webhook/event-dispatch', (req: Request, res: Response) => {
+  const { eventType, data } = req.body;
+  console.log('[Event Dispatch Webhook]', eventType, data);
+  res.json({
+    received: true,
+    eventType: eventType || 'generic',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // AI Question Analysis: Categorization, Tagging, Level Recommendation, and Structured Breakdown
 app.post('/api/ai/analyze-question', async (req: Request, res: Response) => {
   const { title, description } = req.body;

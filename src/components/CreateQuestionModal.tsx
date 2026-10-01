@@ -306,9 +306,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const levelConfig = LEVEL_CONFIGS[level] || LEVEL_CONFIGS.L2;
 
   const content = (
-    <div className={`bg-white rounded-3xl border border-stone-200 shadow-sm w-full ${isFullPage ? 'max-w-3xl mx-auto my-2' : 'max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150'}`}>
+    <div className={`bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-sm w-full ${isFullPage ? 'max-w-3xl mx-auto my-2' : 'max-w-2xl max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150'}`}>
       {/* Header */}
-      <div className="p-4 sm:p-6 border-b border-stone-200 flex items-center justify-between bg-white sticky top-0 z-10">
+      <div className="p-3 sm:p-6 border-b border-stone-200 flex items-center justify-between bg-white sticky top-0 z-10">
         <div className="flex items-center gap-3">
           {isFullPage && (
             <button
@@ -339,7 +339,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className={`p-4 sm:p-6 space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
+      <form onSubmit={handleSubmit} className={`p-2.5 sm:p-6 space-y-4 sm:space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
         {/* 管理員專用：發布身分切換（管理員身分 vs 平台身分） */}
         {currentUser.role === 'admin' && (
           <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-amber-50/60 to-purple-50 border border-purple-200 shadow-2xs space-y-2.5">
@@ -496,11 +496,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             <div className="px-3.5 py-2 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-950 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Gift className="w-4 h-4 text-rose-600 shrink-0" />
-                <span className="font-extrabold text-rose-900 text-xs">痛點免手續費 0 元發布</span>
+                <span className="font-extrabold text-rose-900 text-xs">痛點免服務費 0 元發布</span>
               </div>
               <HelpTooltip
                 title="痛點免費提出機制"
-                content="發布痛點完全免手續費、免付懸賞金額（NT$ 0 免費上架）。各領域專家可在下方提交落地解決方案並自訂解鎖金額，提問者或其他人需透過第三方支付解鎖後查閱。"
+                content="發布痛點完全免服務費、免付懸賞金額（NT$ 0 免費上架）。各領域專家可在下方提交落地解決方案並自訂解鎖金額，提問者或其他人需透過第三方支付解鎖後查閱。"
               />
             </div>
           )}
@@ -769,7 +769,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 </span>
                 <HelpTooltip
                   title="懸賞資金託管說明"
-                  content="買方透過第三方支付安全託管，採納時自動拆款撥付至解答者帳戶（服務費由解答者吸收，提問者不另加收手續費）。"
+                  content="買方透過第三方支付安全託管，採納時自動拆款撥付至解答者帳戶（服務費由解答者吸收，提問者不另加收服務費）。"
                 />
               </div>
               <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -946,7 +946,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             <span className="font-extrabold text-amber-950">平台第三方支付與拆款機制說明：</span>
             {currentBounty > 0 ? (
               <span>
-                提問者發布時透過第三方支付完成託管。當您採納解答並在平台確認後，系統將自動拆款撥付至解答者銀行帳戶（標準抽取 10% 服務費由解答者吸收，依最新《會員方案與費率標準表》享手續費減免與加成）。未採納或爭議案件經審查屬實將由第三方支付原路退款。
+                提問者發布時透過第三方支付完成託管。當您採納解答並在平台確認後，系統將自動拆款撥付至解答者銀行帳戶（標準抽取 10% 服務費由解答者吸收，依最新《會員方案與費率標準表》享服務費減免與加成）。未採納或爭議案件經審查屬實將由第三方支付原路退款。
               </span>
             ) : (
               <span>
@@ -1057,11 +1057,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   );
 
   if (isFullPage) {
-    return <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{content}</div>;
+    return <div className="max-w-4xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">{content}</div>;
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-1.5 sm:p-4 overflow-y-auto">
       {content}
     </div>
   );

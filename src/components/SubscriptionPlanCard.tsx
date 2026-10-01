@@ -445,7 +445,7 @@ export const SubscriptionPlanCard: React.FC = () => {
               <span>解答者會員方案對比</span>
             </h4>
             <p className="text-xs text-stone-500 mt-0.5">
-              第三方支付在平台確認採納後自動拆款撥付，手續費由賣家吸收
+              第三方支付在平台確認採納後自動拆款撥付，服務費由賣家吸收
             </p>
           </div>
 
@@ -818,7 +818,7 @@ export const SubscriptionPlanCard: React.FC = () => {
             <span>取消會員訂閱</span>
           </h5>
           <p className="text-[11px] text-rose-900/80 mt-0.5">
-            若暫時不需要手續費減免與專屬特權，可點選取消訂閱。取消後身分將於到期後降為一般會員。
+            若暫時不需要服務費減免與專屬特權，可點選取消訂閱。取消後身分將於到期後降為一般會員。
           </p>
         </div>
 

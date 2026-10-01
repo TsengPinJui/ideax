@@ -15,14 +15,32 @@ import {
   Calendar,
   Lock,
   Unlock,
+  Sparkles,
+  UserPlus,
+  RefreshCw,
 } from 'lucide-react';
 
 export const AdminUserManagementTab: React.FC = () => {
-  const { availableUsers, blockUser, unblockUser, currentUser } = useApp();
+  const {
+    availableUsers,
+    blockUser,
+    unblockUser,
+    currentUser,
+    addTestAccount,
+    purgeExpiredDeactivatedAccounts,
+  } = useApp();
 
-  const [activeFilter, setActiveFilter] = useState<'all' | 'normal' | 'blocked'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'normal' | 'blocked' | 'deactivated'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError?: boolean } | null>(null);
+
+  // 一鍵生成測試帳號彈窗狀態
+  const [isTestUserModalOpen, setIsTestUserModalOpen] = useState(false);
+  const [testUserRole, setTestUserRole] = useState<'solver' | 'questioner' | 'admin'>('solver');
+  const [testUserName, setTestUserName] = useState('');
+  const [testUserTitle, setTestUserTitle] = useState('');
+  const [testUserBalance, setTestUserBalance] = useState<number>(10000);
+  const [testUserVerifiedExpert, setTestUserVerifiedExpert] = useState(true);
 
   // 封鎖彈窗狀態
   const [blockingTargetUser, setBlockingTargetUser] = useState<User | null>(null);
@@ -33,11 +51,13 @@ export const AdminUserManagementTab: React.FC = () => {
   const [unblockingTargetUser, setUnblockingTargetUser] = useState<User | null>(null);
 
   const blockedUsers = availableUsers.filter((u) => u.isBlocked);
-  const normalUsers = availableUsers.filter((u) => !u.isBlocked);
+  const normalUsers = availableUsers.filter((u) => !u.isBlocked && !u.isDeactivated);
+  const deactivatedUsers = availableUsers.filter((u) => u.isDeactivated || u.deactivationStatus === 'deactivated');
 
   const filteredUsers = availableUsers.filter((u) => {
-    if (activeFilter === 'normal' && u.isBlocked) return false;
+    if (activeFilter === 'normal' && (u.isBlocked || u.isDeactivated)) return false;
     if (activeFilter === 'blocked' && !u.isBlocked) return false;
+    if (activeFilter === 'deactivated' && !u.isDeactivated && u.deactivationStatus !== 'deactivated') return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -125,15 +145,45 @@ export const AdminUserManagementTab: React.FC = () => {
           </p>
         </div>
 
-        {/* 封鎖名單快速統計 Badge */}
-        <div className="flex items-center gap-2">
+        {/* 操作與統計群組 */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 測試模式一鍵生成測試帳號按鈕 */}
+          <button
+            type="button"
+            onClick={() => setIsTestUserModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 active:scale-95 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            title="免註冊、免登入一鍵生成測試帳號"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>＋ 添加測試帳號</span>
+          </button>
+
+          {/* 清理到期註銷帳號 */}
+          <button
+            type="button"
+            onClick={async () => {
+              const purged = await purgeExpiredDeactivatedAccounts();
+              setFeedbackMsg({
+                text: purged > 0 ? `已成功正式註銷並清理 ${purged} 位屆滿 7 日之帳號！` : '目前無滿 7 日待正式註銷之帳號。',
+                isError: false,
+              });
+              setTimeout(() => setFeedbackMsg(null), 4000);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs border border-stone-200 transition-all flex items-center gap-1 cursor-pointer"
+            title="檢查並批次執行滿 7 日反悔期之帳號正式註銷"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>到期註銷批次處理</span>
+          </button>
+
+          {/* 封鎖名單快速統計 Badge */}
           <span className={`text-xs font-black px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
             blockedUsers.length > 0
               ? 'bg-rose-50 text-rose-900 border-rose-300'
               : 'bg-stone-50 text-stone-600 border-stone-200'
           }`}>
             <ShieldAlert className="w-4 h-4 text-rose-600" />
-            <span>目前停權封鎖：<strong>{blockedUsers.length}</strong> 人</span>
+            <span>停權封鎖：<strong>{blockedUsers.length}</strong></span>
           </span>
         </div>
       </div>
@@ -141,7 +191,7 @@ export const AdminUserManagementTab: React.FC = () => {
       {/* 篩選與搜尋列 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* 狀態切換按鈕 */}
-        <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-2xl border border-stone-200">
+        <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-2xl border border-stone-200 flex-wrap">
           <button
             type="button"
             onClick={() => setActiveFilter('all')}
@@ -175,6 +225,18 @@ export const AdminUserManagementTab: React.FC = () => {
           >
             <ShieldAlert className="w-3.5 h-3.5" />
             <span>封鎖名單 ({blockedUsers.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter('deactivated')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              activeFilter === 'deactivated'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'text-amber-800 hover:bg-amber-50'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>註銷/反悔期 ({deactivatedUsers.length})</span>
           </button>
         </div>
 
@@ -239,6 +301,14 @@ export const AdminUserManagementTab: React.FC = () => {
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-600 text-white flex items-center gap-1 shadow-2xs">
                             <Lock className="w-3 h-3" />
                             <span>已停權封鎖</span>
+                          </span>
+                        ) : u.deactivationStatus === 'deactivated' ? (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 border border-stone-300">
+                            此帳號已註銷
+                          </span>
+                        ) : u.isDeactivated ? (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                            7日反悔猶豫期中
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
@@ -432,6 +502,145 @@ export const AdminUserManagementTab: React.FC = () => {
         </div>
       )}
 
+      {/* 一鍵生成測試帳號彈窗 */}
+      {isTestUserModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2 text-amber-600">
+                <Sparkles className="w-5 h-5" />
+                <h4 className="font-black text-base text-stone-900">一鍵添加測試帳號（免註冊免登入）</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTestUserModalOpen(false)}
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  1. 選擇測試身分角色
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['solver', 'questioner', 'admin'] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setTestUserRole(r)}
+                      className={`py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+                        testUserRole === r
+                          ? r === 'admin'
+                            ? 'bg-purple-700 text-white shadow-2xs font-black'
+                            : r === 'solver'
+                            ? 'bg-blue-600 text-white shadow-2xs font-black'
+                            : 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                          : 'bg-stone-50 border border-stone-200 text-stone-700 hover:bg-stone-100'
+                      }`}
+                    >
+                      {r === 'admin' ? '👑 管理員' : r === 'solver' ? '💼 解答專家' : '🙋 提問者'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  2. 測試名稱（選填，留空自動亂數產生）
+                </label>
+                <input
+                  type="text"
+                  value={testUserName}
+                  onChange={(e) => setTestUserName(e.target.value)}
+                  placeholder="例如：AI產品策略總監 測試帳號"
+                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  3. 專業職稱 / 簡述（選填）
+                </label>
+                <input
+                  type="text"
+                  value={testUserTitle}
+                  onChange={(e) => setTestUserTitle(e.target.value)}
+                  placeholder="例如：資深架構師 / 新創連續創業者"
+                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-amber-500 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    4. 初始點數 / 餘額
+                  </label>
+                  <input
+                    type="number"
+                    value={testUserBalance}
+                    onChange={(e) => setTestUserBalance(Number(e.target.value) || 0)}
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-mono font-bold focus:bg-white focus:border-amber-500 outline-none"
+                  />
+                </div>
+
+                <div className="flex flex-col justify-end">
+                  <label className="flex items-center gap-2 p-2 bg-stone-50 border border-stone-200 rounded-xl cursor-pointer text-xs font-bold text-stone-800">
+                    <input
+                      type="checkbox"
+                      checked={testUserVerifiedExpert}
+                      onChange={(e) => setTestUserVerifiedExpert(e.target.checked)}
+                      className="rounded text-amber-600 focus:ring-amber-500"
+                    />
+                    <span>具認證專家標章</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-relaxed font-medium">
+                💡 測試環境特權：此帳號免註冊、免密碼、免信箱驗證，建立後將直接加載至系統並可於全站快速切換使用！
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setIsTestUserModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const created = addTestAccount({
+                    role: testUserRole,
+                    name: testUserName.trim() || undefined,
+                    title: testUserTitle.trim() || undefined,
+                    balance: testUserBalance,
+                    verifiedExpert: testUserVerifiedExpert,
+                    autoSwitch: false,
+                  });
+                  setIsTestUserModalOpen(false);
+                  setTestUserName('');
+                  setTestUserTitle('');
+                  setFeedbackMsg({
+                    text: `已成功生成測試帳號「${created.name}」(${created.role === 'admin' ? '管理員' : created.role === 'solver' ? '專家' : '提問者'})！`,
+                    isError: false,
+                  });
+                  setTimeout(() => setFeedbackMsg(null), 4000);
+                }}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>立即建立測試帳號</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* 解除封鎖二次確認彈窗 */}
       {unblockingTargetUser && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">

@@ -36,13 +36,14 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     addNotification,
     notifications,
     currentUser,
+    resolvedDisputeIds,
+    markDisputeResolved,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'disputes' | 'reports'>('disputes');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'resolved'>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [resolvedIds, setResolvedIds] = useState<string[]>([]);
 
   // 爭議裁決確認視窗（顯示系統即將依照裁定結果自動發布的罐頭式官方文字）
   const [rulingModal, setRulingModal] = useState<{
@@ -72,7 +73,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
       bounty: q.bounty,
       category: q.category,
       reason: q.disputeReason || '解答內容與原需求預期交付項目差距甚大，且未按時補充說明。',
-      status: resolvedIds.includes(`dispute-${q.id}`) ? 'resolved' : (q.disputeStatus || 'pending_review'),
+      status: resolvedDisputeIds.includes(`dispute-${q.id}`) || resolvedDisputeIds.includes(q.id) ? 'resolved' : (q.disputeStatus || 'pending_review'),
       createdAt: '2 小時前',
       aiSuggestedResolution: '建議退還 70% 懸賞點數予提問方，30% 劃撥予解答方作為前期溝通工時補償。',
     })),
@@ -86,7 +87,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
       bounty: 6000,
       category: '專業問題',
       reason: '解答方提供的第二階段送審補件清單未包含今年度衛福部最新格式，提問方申請裁定和解退款。',
-      status: resolvedIds.includes('dispute-demo-1') ? 'resolved' : 'pending_review',
+      status: resolvedDisputeIds.includes('dispute-demo-1') ? 'resolved' : 'pending_review',
       createdAt: '4 小時前',
       aiSuggestedResolution: 'AI 分析雙方往來紀錄：解答方已交付第一階段架構，建議雙方簽署 50% / 50% 和解劃撥。',
     },
@@ -138,20 +139,17 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     const { item, type } = rulingModal;
     const canned = getCannedRulingText(item, type);
 
-    // 1. 執行款項劃撥與退款
-    resolveDisputeRefund(item.questionId);
+    // 1. 執行款項劃撥與退款 + 永久全站同步結案
+    markDisputeResolved(item.id, item.questionId);
 
     // 2. 依照裁定結果自動發布罐頭式官方通知給相關用戶
     if (addNotification) {
       addNotification(canned.subject, canned.body, 'system');
     }
 
-    // 3. 本地標記已結案
-    setResolvedIds((prev) => [...prev, item.id]);
-
-    // 4. Toast 反饋
+    // 3. Toast 反饋
     showToast(
-      `裁定已生效！系統已依照裁定結果自動發布平台官方郵件與罐頭式文字給相關用戶（${item.questionerName}、${item.solverName}）。`
+      `裁定已生效！系統已依照裁定結果自動發布平台官方郵件與罐頭式文字給相關用戶（${item.questionerName}、${item.solverName}）。待處理案件數已同步歸零。`
     );
 
     setRulingModal(null);

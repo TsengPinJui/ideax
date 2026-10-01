@@ -1,6 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { isMockTransactionId } from '../data/mockData';
+import { Transaction } from '../types';
+import { TransactionCertificateModal } from './TransactionCertificateModal';
+import { ConsolidatedStatementModal } from './ConsolidatedStatementModal';
+import { resolveUserDisplayName } from '../utils/userDisplay';
 import {
   Clock,
   Search,
@@ -9,6 +13,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   FileText,
+  FileEdit,
   Layers,
   Coins,
   ShieldCheck,
@@ -32,54 +37,84 @@ export interface TransactionCategoryDef {
 
 export const TRANSACTION_CATEGORIES: TransactionCategoryDef[] = [
   {
+    key: 'custom_payment',
+    label: '💼 自訂提案支付',
+    shortLabel: '提案支付',
+    badge: {
+      bg: 'bg-blue-100 text-blue-900 border-blue-300',
+      text: '自訂提案支付',
+    },
+    types: ['自訂提案支付', '自訂專案支付', '私聊專案支付', '自訂方案支付', '委託提案付款'],
+  },
+  {
+    key: 'custom_income',
+    label: '🎉 自訂提案收入',
+    shortLabel: '提案收入',
+    badge: {
+      bg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+      text: '自訂提案收入',
+    },
+    types: ['自訂提案收入', '自訂專案收入', '自訂接案收入', '私聊專案收益', '階段交付驗收收益'],
+  },
+  {
+    key: 'payout',
+    label: '💰 解答採納與拆款收入',
+    shortLabel: '採納收入',
+    badge: {
+      bg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+      text: '解答者收益',
+    },
+    types: ['第三方採納拆款撥付', '階段交付拆款撥付', '解答者收益', '解答採納撥付', '解答採納收益', '解答採納收入', '階段交付收入', '解答收益'],
+  },
+  {
     key: 'escrow',
-    label: '📋 懸賞託管與預扣',
+    label: '📋 階段方案預扣與託管',
     shortLabel: '託管預扣',
     badge: {
       bg: 'bg-amber-100 text-amber-900 border-amber-300',
       text: '託管預扣',
     },
-    types: ['第三方懸賞託管', '階段方案預扣', '懸賞託管'],
+    types: ['階段方案預扣', '階段履約預扣', '第三方階段託管', '委託問題懸賞金託管'],
   },
   {
-    key: 'payout',
-    label: '💰 解答採納與拆款撥付',
-    shortLabel: '採納拆款',
+    key: 'refund',
+    label: '🔄 款項退款返還',
+    shortLabel: '交易退款',
     badge: {
-      bg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
-      text: '收益拆款',
+      bg: 'bg-rose-100 text-rose-900 border-rose-300',
+      text: '款項退款',
     },
-    types: ['第三方採納拆款撥付', '階段交付拆款撥付', '解答者收益發放', '階段款項結算'],
+    types: [
+      '退款',
+      '懸賞逾期退款',
+      '階段專案退款',
+      '自訂提案退款',
+      '爭議調解退款',
+      '點數儲值退款',
+      '解鎖未成案退款',
+      '爭議審查退款',
+      '爭議申訴退還預扣',
+    ],
   },
   {
     key: 'unlock',
     label: '🔓 方案解鎖與私聊交易',
     shortLabel: '方案解鎖',
     badge: {
-      bg: 'bg-blue-100 text-blue-900 border-blue-300',
+      bg: 'bg-indigo-100 text-indigo-900 border-indigo-300',
       text: '方案解鎖',
     },
-    types: ['第三方方案解鎖', '私聊自訂方案交易', '付費解鎖方案'],
+    types: ['方案解鎖', '第三方方案解鎖', '私聊自訂方案交易', '付費解鎖方案'],
   },
   {
     key: 'subscription',
-    label: '👑 會員方案訂閱',
+    label: '👑 會員訂閱',
     shortLabel: '會員訂閱',
     badge: {
       bg: 'bg-purple-100 text-purple-900 border-purple-300',
       text: '會員訂閱',
     },
-    types: ['會員方案訂閱', '訂閱會員方案'],
-  },
-  {
-    key: 'dispute',
-    label: '⚖️ 爭議審查與退款',
-    shortLabel: '爭議退款',
-    badge: {
-      bg: 'bg-rose-100 text-rose-900 border-rose-300',
-      text: '爭議退款',
-    },
-    types: ['爭議審查退款', '爭議申訴退還預扣', '託管退款'],
+    types: ['會員訂閱', '會員方案訂閱', '訂閱會員方案'],
   },
   {
     key: 'deposit',
@@ -89,7 +124,7 @@ export const TRANSACTION_CATEGORIES: TransactionCategoryDef[] = [
       bg: 'bg-teal-100 text-teal-900 border-teal-300',
       text: '點數儲值',
     },
-    types: ['錢包儲值', '點數儲值', '儲值'],
+    types: ['點數儲值', '錢包儲值', '儲值'],
   },
   {
     key: 'deduction',
@@ -102,16 +137,6 @@ export const TRANSACTION_CATEGORIES: TransactionCategoryDef[] = [
     types: ['點數扣抵', '預扣額折抵解鎖'],
   },
   {
-    key: 'admin_transfer',
-    label: '🛡️ 管理員調度轉入',
-    shortLabel: '管理調度',
-    badge: {
-      bg: 'bg-indigo-100 text-indigo-900 border-indigo-300',
-      text: '管理調度',
-    },
-    types: ['管理員轉入點數', '管理員手動調整'],
-  },
-  {
     key: 'withdrawal',
     label: '🏦 銀行提領出金',
     shortLabel: '銀行提領',
@@ -120,36 +145,6 @@ export const TRANSACTION_CATEGORIES: TransactionCategoryDef[] = [
       text: '帳戶提領',
     },
     types: ['提領申請', '提現申請'],
-  },
-  {
-    key: 'rebate',
-    label: '🔄 平台抽成與月底返還',
-    shortLabel: '抽成返還',
-    badge: {
-      bg: 'bg-lime-100 text-lime-900 border-lime-300',
-      text: '抽成返還',
-    },
-    types: ['月底抽成返還', '平台抽成'],
-  },
-  {
-    key: 'promotion',
-    label: '📣 付費推播與廣告活動',
-    shortLabel: '付費推播',
-    badge: {
-      bg: 'bg-pink-100 text-pink-900 border-pink-300',
-      text: '推播方案',
-    },
-    types: ['付費推播方案'],
-  },
-  {
-    key: 'other',
-    label: '📑 其他自訂帳務標註',
-    shortLabel: '其他帳務',
-    badge: {
-      bg: 'bg-stone-100 text-stone-800 border-stone-200',
-      text: '其他帳務',
-    },
-    types: ['系統資金移轉', '平台帳務操作', '帳戶資金異動'],
   },
 ];
 
@@ -170,9 +165,15 @@ export const getTransactionCategory = (rawType: string): TransactionCategoryDef 
     }
   }
 
-  // 2. 關鍵字優先級比對（順序極關鍵：退款/爭議優先於託管/預扣）
+  // 2. 關鍵字優先級比對（順序極關鍵：退款/自訂提案優先於一般收支）
+  if (type.includes('自訂提案支付') || type.includes('自訂專案支付') || type.includes('私聊專案支付') || type.includes('委託提案付款')) {
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'custom_payment')!;
+  }
+  if (type.includes('自訂提案收入') || type.includes('自訂專案收入') || type.includes('自訂接案收入') || type.includes('私聊專案收益') || type.includes('階段交付驗收收益')) {
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'custom_income')!;
+  }
   if (type.includes('退款') || type.includes('退還') || type.includes('爭議')) {
-    return TRANSACTION_CATEGORIES.find((c) => c.key === 'dispute')!;
+    return TRANSACTION_CATEGORIES.find((c) => c.key === 'refund')!;
   }
   if (type.includes('託管') || type.includes('懸賞') || (type.includes('預扣') && !type.includes('折抵'))) {
     return TRANSACTION_CATEGORIES.find((c) => c.key === 'escrow')!;
@@ -218,12 +219,197 @@ export const getTransactionBadge = (type: string) => {
   };
 };
 
+export interface FormattedTransactionItem {
+  isIncome: boolean;
+  flowType: '收入' | '支出';
+  categoryLabel: string;
+  cleanTitle: string;
+  displayAmount: number;
+  amountFormatted: string;
+  feeFormatted?: string;
+  flowBadgeClass: string;
+  categoryBadgeClass: string;
+}
+
+export const formatTransactionItem = (tx: Transaction, viewerName?: string): FormattedTransactionItem => {
+  const type = (tx.type || '').trim();
+  let isIncome = false;
+  let categoryLabel = '帳務操作';
+  let cleanTitle = tx.relatedQuestionTitle || tx.note || '平台帳務款項';
+  let displayAmount = tx.amount || 0;
+  let feeFormatted = tx.platformFee > 0 ? `平台服務費 NT$ ${tx.platformFee.toLocaleString()}` : undefined;
+
+  // 1. 判斷收入 vs 支出
+  if (type.includes('自訂提案支付') || type.includes('自訂專案支付') || type.includes('私聊專案支付') || type.includes('委託提案付款')) {
+    isIncome = false;
+    displayAmount = tx.amount || 0;
+  } else if (type.includes('自訂提案收入') || type.includes('自訂專案收入') || type.includes('自訂接案收入') || type.includes('私聊專案收益') || type.includes('階段交付驗收收益')) {
+    isIncome = true;
+    displayAmount = tx.netAmount && tx.netAmount > 0 ? tx.netAmount : Math.max(0, tx.amount - (tx.platformFee || 0));
+  } else if (type.includes('儲值')) {
+    // 點數儲值是用戶支付現金購買點數，屬於現金支出 (-)
+    isIncome = false;
+    displayAmount = tx.amount || 0;
+  } else if (
+    type.includes('退款') ||
+    type.includes('退還') ||
+    type.includes('轉入') ||
+    type.includes('返還')
+  ) {
+    isIncome = true;
+    displayAmount = tx.netAmount && tx.netAmount > 0 ? tx.netAmount : tx.amount;
+  } else if (
+    type.includes('採納') ||
+    type.includes('拆款') ||
+    type.includes('收益') ||
+    type.includes('結算')
+  ) {
+    isIncome = true;
+    displayAmount = tx.netAmount && tx.netAmount > 0 ? tx.netAmount : Math.max(0, tx.amount - (tx.platformFee || 0));
+  } else if (type.includes('方案解鎖') || type.includes('解鎖') || type.includes('自訂方案')) {
+    if (viewerName && tx.toUserName === viewerName) {
+      isIncome = true;
+      displayAmount = tx.netAmount && tx.netAmount > 0 ? tx.netAmount : Math.max(0, tx.amount - (tx.platformFee || 0));
+    } else {
+      isIncome = false;
+      displayAmount = tx.amount;
+    }
+  } else {
+    isIncome = false;
+    displayAmount = tx.amount;
+  }
+
+  // 2. 項目名稱標準化 (去蕪存菁、階段明確化與退款前綴清晰化)
+  const isStaged =
+    type.includes('階段') ||
+    (tx.relatedQuestionTitle && (tx.relatedQuestionTitle.includes('階段') || tx.relatedQuestionTitle.includes('期') || tx.relatedQuestionTitle.includes('里程碑'))) ||
+    (tx.note && (tx.note.includes('階段') || tx.note.includes('期') || tx.note.includes('里程碑')));
+
+  const extractStageInfo = (): string => {
+    const rawAll = `${type} ${tx.relatedQuestionTitle || ''} ${tx.note || ''}`;
+    const match = rawAll.match(/(第\s*[0-9一二三四五六七八九十]+\s*[期階段步次]|階段\s*[0-9一二三四五六七八九十]+|里程碑\s*[0-9一二三四五六七八九十]+|首期款|中期款|尾款|結案款)/i);
+    return match ? match[0].replace(/\s+/g, '') : '分階段';
+  };
+
+  if (type.includes('自訂提案支付') || type.includes('自訂專案支付') || type.includes('私聊專案支付') || type.includes('委託提案付款')) {
+    categoryLabel = '自訂提案支付';
+    const stageTag = isStaged ? `【${extractStageInfo()}支付】` : '支付';
+    cleanTitle = tx.relatedQuestionTitle ? `自訂提案${stageTag}：「${tx.relatedQuestionTitle}」` : (tx.note || `委託自訂專案提案${stageTag}`);
+  } else if (type.includes('自訂提案收入') || type.includes('自訂專案收入') || type.includes('自訂接案收入') || type.includes('私聊專案收益') || type.includes('階段交付驗收收益')) {
+    categoryLabel = '自訂提案收入';
+    const stageTag = isStaged ? `【${extractStageInfo()}驗收收入】` : '驗收收益';
+    cleanTitle = tx.relatedQuestionTitle ? `自訂提案${stageTag}：「${tx.relatedQuestionTitle}」` : (tx.note || `自訂專案${stageTag}`);
+  } else if (type.includes('階段方案預扣') || type.includes('階段履約預扣') || type.includes('第三方階段託管')) {
+    categoryLabel = '階段預扣';
+    const stageTag = `【${extractStageInfo()}預扣託管】`;
+    cleanTitle = tx.relatedQuestionTitle ? `階段專案${stageTag}：「${tx.relatedQuestionTitle}」` : '階段專案履約預扣款項';
+  } else if (type.includes('階段交付') || type.includes('階段款項結算')) {
+    categoryLabel = '階段收入';
+    const stageTag = `【${extractStageInfo()}交付收入】`;
+    cleanTitle = tx.relatedQuestionTitle ? `階段專案${stageTag}：「${tx.relatedQuestionTitle}」` : '階段專案驗收交付收入';
+  } else if (type.includes('退款') || type.includes('退還') || type.includes('爭議')) {
+    categoryLabel = '款項退款';
+    const rawContext = `${type} ${tx.relatedQuestionTitle || ''} ${tx.note || ''}`;
+    let refundPrefix = '【交易退款】';
+    if (rawContext.includes('懸賞') || rawContext.includes('逾期') || rawContext.includes('未採納') || rawContext.includes('痛點')) {
+      refundPrefix = '【懸賞逾期退款】';
+      categoryLabel = '懸賞逾期退款';
+    } else if (rawContext.includes('自訂') || rawContext.includes('私聊') || rawContext.includes('客製') || rawContext.includes('提案')) {
+      refundPrefix = '【自訂提案退款】';
+      categoryLabel = '自訂提案退款';
+    } else if (rawContext.includes('階段') || rawContext.includes('履約') || rawContext.includes('里程碑')) {
+      refundPrefix = `【${extractStageInfo()}專案退款】`;
+      categoryLabel = '階段專案退款';
+    } else if (rawContext.includes('儲值') || rawContext.includes('點數') || rawContext.includes('錢包')) {
+      refundPrefix = '【點數儲值退款】';
+      categoryLabel = '點數儲值退款';
+    } else if (rawContext.includes('爭議') || rawContext.includes('調解') || rawContext.includes('仲裁') || rawContext.includes('和解')) {
+      refundPrefix = '【爭議調解退款】';
+      categoryLabel = '爭議調解退款';
+    } else if (rawContext.includes('解鎖') || rawContext.includes('未成案')) {
+      refundPrefix = '【解鎖未成案退款】';
+      categoryLabel = '解鎖未成案退款';
+    }
+
+    const rawTitle = (tx.relatedQuestionTitle || tx.note || '款項原路返還').replace(/^【[^】]+】\s*/, '');
+    cleanTitle = `${refundPrefix} ${rawTitle}`;
+  } else if (type.includes('儲值')) {
+    categoryLabel = '點數儲值';
+    const matchedPrice = (tx.note || tx.relatedQuestionTitle || '').match(/\$(\d+)/);
+    const price = matchedPrice ? matchedPrice[1] : tx.amount;
+    cleanTitle = `$${price} 點數儲值方案`;
+  } else if (type.includes('會員訂閱') || type.includes('會員方案') || type === '會員訂閱' || type === '會員方案訂閱') {
+    categoryLabel = '會員訂閱';
+    const raw = tx.relatedQuestionTitle || tx.note || '';
+    const matchPlan = raw.match(/「([^」]+)」/);
+    if (matchPlan) {
+      const inner = matchPlan[1].replace(/NT\$\s*/g, '$').replace(/\/月/g, '');
+      cleanTitle = `訂閱會員方案「${inner}」`;
+    } else {
+      cleanTitle = '訂閱會員方案';
+    }
+  } else if (type.includes('提案懸賞') || type.includes('懸賞託管') || type.includes('懸賞')) {
+    categoryLabel = '提案懸賞';
+    cleanTitle = tx.relatedQuestionTitle ? `懸賞委託：「${tx.relatedQuestionTitle}」` : '委託問題懸賞金託管';
+  } else if (type.includes('採納') || type.includes('拆款') || type.includes('收益')) {
+    categoryLabel = '解答收益';
+    cleanTitle = tx.relatedQuestionTitle ? `解答採納收益：「${tx.relatedQuestionTitle}」` : '專業解答採納收益拆款';
+  } else if (type.includes('解鎖')) {
+    if (isIncome) {
+      categoryLabel = '方案收益';
+      cleanTitle = tx.relatedQuestionTitle ? `方案解鎖收益：「${tx.relatedQuestionTitle}」` : '專案方案解鎖收益';
+    } else {
+      categoryLabel = '方案解鎖';
+      cleanTitle = tx.relatedQuestionTitle ? `購買解鎖方案：「${tx.relatedQuestionTitle}」` : '付費解鎖專案方案';
+    }
+  } else if (type.includes('提領') || type.includes('提現')) {
+    categoryLabel = '銀行提領';
+    cleanTitle = tx.bankAccountSnapshot ? `提領至銀行帳戶 (${tx.bankAccountSnapshot})` : '申請提領至銀行帳戶';
+  } else if (type.includes('扣抵') || type.includes('折抵')) {
+    categoryLabel = '點數扣抵';
+    cleanTitle = tx.relatedQuestionTitle ? `點數折抵：「${tx.relatedQuestionTitle}」` : '點數折抵消費';
+  } else if (type.includes('轉入')) {
+    categoryLabel = '獎勵轉入';
+    cleanTitle = tx.note || '管理員獎勵點數轉入';
+  } else if (type.includes('返還')) {
+    categoryLabel = '抽成返還';
+    cleanTitle = tx.note || '平台服務費月底減免返還';
+  }
+
+  const amountFormatted = isIncome
+    ? `+ NT$ ${(displayAmount || 0).toLocaleString()}`
+    : `- NT$ ${(displayAmount || 0).toLocaleString()}`;
+
+  const flowBadgeClass = isIncome
+    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+    : 'bg-rose-100 text-rose-800 border-rose-300';
+
+  const categoryBadgeClass = isIncome
+    ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+    : 'bg-rose-50 text-rose-900 border-rose-200';
+
+  return {
+    isIncome,
+    flowType: isIncome ? '收入' : '支出',
+    categoryLabel,
+    cleanTitle,
+    displayAmount,
+    amountFormatted,
+    feeFormatted,
+    flowBadgeClass,
+    categoryBadgeClass,
+  };
+};
+
 export const AdminTransactionsTab: React.FC = () => {
-  const { transactions, availableUsers, isDemoMode, isNoPaymentMode } = useApp();
+  const { transactions, availableUsers, currentUser, isDemoMode, isNoPaymentMode, updateTransactionNote } = useApp();
 
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
+  const [isStatementSelectMode, setIsStatementSelectMode] = useState(false);
+  const [isConsolidatedModalOpen, setIsConsolidatedModalOpen] = useState(false);
 
   const selectedUser = availableUsers.find((u) => u.id === selectedUserId);
 
@@ -326,11 +512,38 @@ export const AdminTransactionsTab: React.FC = () => {
       }
 
       return true;
+    }).sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
     });
   }, [transactions, selectedUserId, selectedUser, selectedType, searchQuery, isNoPaymentMode, isDemoMode]);
 
   const totalFilteredVolume = filteredTransactions.reduce((acc, t) => acc + (t.amount || 0), 0);
-  const totalFilteredFees = filteredTransactions.reduce((acc, t) => acc + (t.platformFee || 0), 0);
+  
+  // 計算平台收入（平台服務費 + 其他該用戶支付給平台的費用，如會員訂閱、點數儲值等）
+  const totalPlatformRevenue = useMemo(() => {
+    return filteredTransactions.reduce((acc, t) => {
+      // 1. 若該筆交易是直接支付給平台（如會員訂閱、點數儲值、付費推播等）
+      const isDirectToPlatform =
+        t.type.includes('會員訂閱') ||
+        t.type.includes('會員方案') ||
+        t.type.includes('儲值') ||
+        t.type.includes('推播') ||
+        (t.toUserName && (t.toUserName.includes('平台') || t.toUserName.includes('IdeaX') || t.toUserName.includes('金流中心')));
+
+      if (isDirectToPlatform) {
+        return acc + (t.amount || 0);
+      }
+
+      // 2. 一般懸賞/解答/階段交易中的平台抽成服務費
+      if (t.platformFee && t.platformFee > 0) {
+        return acc + t.platformFee;
+      }
+
+      return acc;
+    }, 0);
+  }, [filteredTransactions]);
 
   // 取得目前選取的分類標籤文字
   const currentFilterLabel = useMemo(() => {
@@ -355,7 +568,7 @@ export const AdminTransactionsTab: React.FC = () => {
             </span>
           </h3>
           <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-            全站各單交易金流稽核紀錄（含懸賞託管、階段拆款、方案解鎖、會員訂閱、點數儲值扣抵、爭議退款與手續費明細），所有已標註類型均按標準大類嚴格歸類，支援一鍵點擊穿透篩選。
+            全站各單交易金流稽核紀錄（含懸賞託管、階段拆款、方案解鎖、會員訂閱、點數儲值扣抵、爭議退款與服務費明細），所有已標註類型均按標準大類嚴格歸類，支援一鍵點擊穿透篩選。
           </p>
         </div>
 
@@ -515,10 +728,85 @@ export const AdminTransactionsTab: React.FC = () => {
           </div>
           <div className="flex flex-wrap items-center gap-3 font-mono font-bold">
             <span>流水總額：<strong className="text-purple-950 font-black">NT$ {totalFilteredVolume.toLocaleString()}</strong></span>
-            <span>平台手續費：<strong className="text-amber-800 font-black">NT$ {totalFilteredFees.toLocaleString()}</strong></span>
+            <span title="平台收入 = 平台抽成服務費 + 該用戶支付給平台的會員訂閱/點數儲值等費用">
+              平台收入：<strong className="text-amber-800 font-black">NT$ {totalPlatformRevenue.toLocaleString()}</strong>
+            </span>
+            {!isStatementSelectMode && (
+              <button
+                type="button"
+                onClick={() => setIsStatementSelectMode(true)}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0 ml-1 font-sans"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>整合產出對帳單</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* 4. 多選數筆交易對帳單操作列 (僅在點擊整合產出對帳單後展開) */}
+      {isStatementSelectMode && (
+        <div className="p-3.5 bg-stone-900 text-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md border border-stone-800 animate-in fade-in duration-150">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shrink-0">
+              <Layers className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm text-stone-100">多選交易對帳單模式</span>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30">
+                  已勾選 {selectedTxIds.size} / {filteredTransactions.length} 筆
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-400 mt-0.5">勾選下方交易，即可一鍵匯出彙總統計、報稅抬頭與官方審計章的統一對帳單</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedTxIds.size === filteredTransactions.length && filteredTransactions.length > 0) {
+                  setSelectedTxIds(new Set());
+                } else {
+                  setSelectedTxIds(new Set(filteredTransactions.map((t) => t.id)));
+                }
+              }}
+              className="px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs transition-colors cursor-pointer border border-stone-700 active:scale-95"
+            >
+              {selectedTxIds.size === filteredTransactions.length && filteredTransactions.length > 0
+                ? '取消全選'
+                : '全選目前交易'}
+            </button>
+
+            <button
+              type="button"
+              disabled={selectedTxIds.size === 0}
+              onClick={() => setIsConsolidatedModalOpen(true)}
+              className={`px-4 py-2 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all shadow-sm ${
+                selectedTxIds.size > 0
+                  ? 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 cursor-pointer active:scale-95'
+                  : 'bg-stone-800 text-stone-500 cursor-not-allowed border border-stone-700 opacity-60'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>整合產出對帳單 {selectedTxIds.size > 0 ? `(${selectedTxIds.size} 筆)` : ''}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsStatementSelectMode(false);
+                setSelectedTxIds(new Set());
+              }}
+              className="px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-xs transition-colors cursor-pointer border border-stone-700"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 交易紀錄清單 */}
       <div className="space-y-2.5">
@@ -530,27 +818,74 @@ export const AdminTransactionsTab: React.FC = () => {
           </div>
         ) : (
           filteredTransactions.map((tx) => {
+            const isSelected = selectedTxIds.has(tx.id);
             const badge = getTransactionBadge(tx.type);
             const isTypeActive = selectedType === tx.type;
             const isGroupActive = selectedType === `group:${badge.groupKey}`;
+            const itemInfo = formatTransactionItem(tx, currentUser?.name);
 
             return (
               <div
                 key={tx.id}
-                className="p-3.5 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-300 shadow-2xs transition-all space-y-2"
+                onClick={() => {
+                  if (isStatementSelectMode) {
+                    setSelectedTxIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(tx.id)) next.delete(tx.id);
+                      else next.add(tx.id);
+                      return next;
+                    });
+                  }
+                }}
+                className={`p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border transition-all space-y-2 ${
+                  isStatementSelectMode && isSelected
+                    ? 'border-amber-400 ring-2 ring-amber-300 shadow-xs bg-amber-50/20 cursor-pointer'
+                    : isStatementSelectMode
+                    ? 'border-stone-200 hover:border-amber-300 cursor-pointer shadow-2xs'
+                    : 'border-stone-200 hover:border-purple-300 shadow-2xs'
+                }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* 交易類型精確標籤（點擊可快速依此精準標籤篩選） */}
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {/* 多選勾選框 (僅在對帳模式開啟時顯示) */}
+                    {isStatementSelectMode && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setSelectedTxIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(tx.id)) next.delete(tx.id);
+                            else next.add(tx.id);
+                            return next;
+                          });
+                        }}
+                        title="勾選此筆交易納入統一對帳單"
+                        className="w-4 h-4 text-amber-600 rounded border-stone-300 focus:ring-amber-500 cursor-pointer shrink-0"
+                      />
+                    )}
+
+                    {/* 左上角項目分類標籤（依收入綠色、支出紅色區分） */}
                     <button
                       type="button"
                       onClick={() => setSelectedType(isTypeActive ? 'all' : tx.type)}
                       title="點擊依此交易類型篩選"
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all cursor-pointer ${badge.bg} ${
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                        itemInfo.isIncome
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : 'bg-rose-100 text-rose-800 border-rose-300'
+                      } ${
                         isTypeActive ? 'ring-2 ring-purple-600 font-black' : 'hover:opacity-80'
                       }`}
                     >
-                      {tx.type}
+                      {tx.type === '錢包儲值'
+                        ? '點數儲值'
+                        : tx.type === '會員方案訂閱' || tx.type === '訂閱會員方案'
+                        ? '會員訂閱'
+                        : tx.type.includes('第三方') || tx.type.includes('拆款') || tx.type.includes('撥付') || tx.type.includes('撥款')
+                        ? itemInfo.categoryLabel
+                        : tx.type}
                     </button>
 
                     {/* 所屬大類徽章（點擊可快速依該大類群組篩選） */}
@@ -567,30 +902,34 @@ export const AdminTransactionsTab: React.FC = () => {
                       {badge.category}
                     </button>
 
-                    <span className="font-extrabold text-stone-900">
-                      {tx.relatedQuestionTitle || '平台帳務操作'}
+                    <span className="font-extrabold text-stone-900" title={itemInfo.cleanTitle}>
+                      <span className="sm:hidden">
+                        {itemInfo.cleanTitle.length > 24
+                          ? `${itemInfo.cleanTitle.slice(0, 24)}...`
+                          : itemInfo.cleanTitle}
+                      </span>
+                      <span className="hidden sm:inline">
+                        {itemInfo.cleanTitle}
+                      </span>
                     </span>
                     <span className="text-[10px] font-mono text-stone-400">ID: {tx.id}</span>
                   </div>
 
-                  <div className="text-left sm:text-right">
-                    <span className="text-base font-black text-stone-900 font-mono">
-                      NT$ {(tx.amount || 0).toLocaleString()}
-                    </span>
-                    {tx.platformFee > 0 && (
-                      <span className="text-[10px] text-amber-800 font-semibold block">
-                        抽成手續費 NT$ {tx.platformFee.toLocaleString()}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-left sm:text-right">
+                      <span className={`text-base font-black font-mono block ${itemInfo.isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {itemInfo.amountFormatted}
                       </span>
-                    )}
+                    </div>
                   </div>
                 </div>
 
                 {/* 交易對手方與狀態 */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-stone-500 pt-1.5 border-t border-stone-100">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span>付款方：<strong className="text-stone-700">{tx.fromUserName || '委託提問者'}</strong></span>
+                    <span>付款方：<strong className="text-stone-700">{resolveUserDisplayName(tx.fromUserId, tx.fromUserName, availableUsers) || '委託提問者'}</strong></span>
                     <span>➔</span>
-                    <span>收款方：<strong className="text-stone-700">{tx.toUserName || '受款專家'}</strong></span>
+                    <span>收款方：<strong className="text-stone-700">{resolveUserDisplayName(tx.toUserId, tx.toUserName, availableUsers) || '受款專家'}</strong></span>
                     {tx.paymentMethod && <span className="text-stone-400">· 方式：{tx.paymentMethod}</span>}
                     {tx.bankAccountSnapshot && (
                       <span className="text-stone-400 font-mono text-[10px]">· 帳戶：{tx.bankAccountSnapshot}</span>
@@ -610,16 +949,34 @@ export const AdminTransactionsTab: React.FC = () => {
                   </div>
                 </div>
 
-                {tx.note && (
-                  <p className="text-[11px] text-stone-600 bg-stone-50/80 border border-stone-100 p-2 rounded-xl leading-relaxed">
-                    <strong className="text-stone-700">明細備註：</strong>{tx.note}
-                  </p>
-                )}
+                {/* 管理員專屬明細備註欄位（可隨時填寫/修改，並可透過上方搜尋框即時搜尋） */}
+                <div className="pt-2 border-t border-stone-100 flex items-center gap-2 text-xs">
+                  <span className="text-[11px] font-bold text-stone-500 shrink-0 flex items-center gap-1">
+                    <FileEdit className="w-3.5 h-3.5 text-purple-600" />
+                    <span>明細備註：</span>
+                  </span>
+                  <input
+                    type="text"
+                    value={tx.note || ''}
+                    onChange={(e) => updateTransactionNote(tx.id, e.target.value)}
+                    placeholder="點擊填寫管理員明細備註（填寫後可直接在上方搜尋框搜尋）..."
+                    className="w-full bg-stone-50 hover:bg-white focus:bg-white border border-stone-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 outline-none transition-all shadow-2xs"
+                  />
+                </div>
               </div>
             );
           })
         )}
       </div>
+
+      {/* 多筆交易統一對帳單 Modal */}
+      {isConsolidatedModalOpen && currentUser && (
+        <ConsolidatedStatementModal
+          transactions={transactions.filter((t) => selectedTxIds.has(t.id))}
+          currentUser={currentUser}
+          onClose={() => setIsConsolidatedModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

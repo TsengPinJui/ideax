@@ -16,13 +16,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onNavigate,
   onOpenCreateQuestion,
 }) => {
-  const { notifications, currentUser, unreadPersonalCount, questions } = useApp();
+  const {
+    notifications,
+    currentUser,
+    unreadPersonalCount,
+    pendingDisputesCount,
+    isDemoMode,
+    isNoPaymentMode,
+    isHideTestAccounts,
+  } = useApp();
   
-  const pendingDisputesCount = React.useMemo(() => {
-    const fromQuestions = (questions || []).filter((q) => q.disputeStatus === 'pending_review').length;
-    return fromQuestions > 0 ? fromQuestions : 1;
-  }, [questions]);
-
   // 問卷未填寫提示紅點 (一般用戶未完成問卷或有待處理通知時顯示紅點)
   const isSurveyPending = !currentUser?.surveyData?.completedAt && currentUser?.role !== 'admin' && currentUser?.id !== 'user-guest';
   const showPersonalCenterRedDot = currentUser?.role === 'admin' ? pendingDisputesCount > 0 : (isSurveyPending || unreadPersonalCount > 0);
@@ -127,6 +130,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           </div>
           <span className="text-[10px] mt-0.5 tracking-tight">個人中心</span>
         </button>
+      </div>
+
+      {/* 行動端頁尾版本號與日記模式 */}
+      <div className="pt-1 mt-0.5 border-t border-stone-100 text-center font-mono text-[9.5px] text-stone-400 select-none tracking-tight">
+        v1.4.0 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
     </nav>
   );

@@ -10,13 +10,13 @@ import { getAuth } from 'firebase/auth';
 import firebaseConfigJson from '../../firebase-applet-config.json';
 
 export const firebaseConfig = {
-  apiKey: firebaseConfigJson.apiKey || "AIzaSyCZYTHffdGT1AYwNDk_RRZ1mMMWLfoQocE",
-  authDomain: firebaseConfigJson.authDomain || "ideax-2af9c.firebaseapp.com",
-  projectId: firebaseConfigJson.projectId || "ideax-2af9c",
-  storageBucket: firebaseConfigJson.storageBucket || "ideax-2af9c.firebasestorage.app",
-  messagingSenderId: firebaseConfigJson.messagingSenderId || "901207969430",
-  appId: firebaseConfigJson.appId || "1:901207969430:web:305bdbefe95bd920b17cb7",
-  measurementId: firebaseConfigJson.measurementId || "G-RFFS9WG51K"
+  apiKey: firebaseConfigJson.apiKey,
+  authDomain: firebaseConfigJson.authDomain,
+  projectId: firebaseConfigJson.projectId,
+  storageBucket: firebaseConfigJson.storageBucket,
+  messagingSenderId: firebaseConfigJson.messagingSenderId,
+  appId: firebaseConfigJson.appId,
+  measurementId: firebaseConfigJson.measurementId || undefined,
 };
 
 // Initialize Firebase App instance safely

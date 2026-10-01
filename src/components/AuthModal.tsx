@@ -63,10 +63,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     recordTermsAgreement,
     openAboutModal,
     subscriptionPlans,
+    addTestAccount,
+    checkUserDeactivationStatus,
   } = useApp();
 
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone' | 'switch'>(initialMethod);
+
+  // Quick Test Account creation state in switch panel
+  const [isCreatingTestAcc, setIsCreatingTestAcc] = useState(false);
+  const [testAccRole, setTestAccRole] = useState<'questioner' | 'solver' | 'admin'>('solver');
+  const [testAccName, setTestAccName] = useState('');
+  const [testAccTitle, setTestAccTitle] = useState('');
 
   // Sync mode and method when opened
   useEffect(() => {
@@ -249,8 +257,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const firestoreUser = await getUserFromFirestore(googleUser.uid);
       const existing = firestoreUser || availableUsers.find((u) => u.id === googleUser.uid || u.email?.toLowerCase() === googleUser.email?.toLowerCase());
       if (existing) {
-        setCurrentUser(existing);
-        setSuccessMsg(`歡迎回來，${existing.name}！已成功使用 Google 登入。`);
+        const checkRes = checkUserDeactivationStatus(existing);
+        if (!checkRes.canLogin) {
+          setErrorMsg(checkRes.errorReason || '此帳號已超過 7 日猶豫期並已註銷完成，無法再登入。');
+          return;
+        }
+        const effectiveUser = checkRes.restoredUser || existing;
+        setCurrentUser(effectiveUser);
+        if (checkRes.wasInGracePeriod) {
+          setAvailableUsers((prev) => prev.map((u) => (u.id === effectiveUser.id ? effectiveUser : u)));
+          setSuccessMsg(`歡迎回來，${effectiveUser.name}！您於 7 日反悔期內再次登入，系統已自動取消註銷並全面恢復帳號！`);
+        } else {
+          setSuccessMsg(`歡迎回來，${effectiveUser.name}！已成功使用 Google 登入。`);
+        }
         setTimeout(() => onClose(), 1000);
       } else {
         // Pre-fill email and name from Google account, record authUid, then advance to step 2 survey
@@ -304,14 +323,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         joinedDate: new Date().toISOString().split('T')[0],
         email: loginEmail.trim(),
       };
-      setCurrentUser(matched);
+      const checkRes = checkUserDeactivationStatus(matched);
+      if (!checkRes.canLogin) {
+        setErrorMsg(checkRes.errorReason || '此帳號已超過 7 日反悔猶豫期並已註銷完成，無法再登入。');
+        setIsLoading(false);
+        return;
+      }
+      const effectiveUser = checkRes.restoredUser || matched;
+      setCurrentUser(effectiveUser);
       setAvailableUsers((prev) => {
-        if (!prev.some((u) => u.id === matched.id)) {
-          return [matched, ...prev];
+        if (!prev.some((u) => u.id === effectiveUser.id)) {
+          return [effectiveUser, ...prev];
         }
-        return prev.map((u) => (u.id === matched.id ? { ...u, ...matched } : u));
+        return prev.map((u) => (u.id === effectiveUser.id ? { ...u, ...effectiveUser } : u));
       });
-      setSuccessMsg(`登入成功！歡迎回來，${matched.name}。`);
+      if (checkRes.wasInGracePeriod) {
+        setSuccessMsg(`歡迎回來，${effectiveUser.name}！您於 7 日反悔期內再次登入，系統已自動取消註銷並全面恢復帳號！`);
+      } else {
+        setSuccessMsg(`登入成功！歡迎回來，${effectiveUser.name}。`);
+      }
       setTimeout(() => onClose(), 1000);
     } catch (err: any) {
       // If user exists in local mock list, allow login as fallback
@@ -319,8 +349,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         (u) => u.email?.toLowerCase() === loginEmail.trim().toLowerCase()
       );
       if (localMatched) {
-        setCurrentUser(localMatched);
-        setSuccessMsg(`登入成功！歡迎回來，${localMatched.name}。`);
+        const checkRes = checkUserDeactivationStatus(localMatched);
+        if (!checkRes.canLogin) {
+          setErrorMsg(checkRes.errorReason || '此帳號已超過 7 日反悔猶豫期並已註銷完成，無法再登入。');
+          return;
+        }
+        const effectiveUser = checkRes.restoredUser || localMatched;
+        setCurrentUser(effectiveUser);
+        if (checkRes.wasInGracePeriod) {
+          setAvailableUsers((prev) => prev.map((u) => (u.id === effectiveUser.id ? effectiveUser : u)));
+          setSuccessMsg(`歡迎回來，${effectiveUser.name}！您於 7 日反悔期內再次登入，系統已自動取消註銷並全面恢復帳號！`);
+        } else {
+          setSuccessMsg(`登入成功！歡迎回來，${effectiveUser.name}。`);
+        }
         setTimeout(() => onClose(), 1000);
       } else {
         setErrorMsg(err.message || '登入失敗，請確認帳號密碼。');
@@ -576,8 +617,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   const handleSwitchAccount = (u: UserType) => {
-    setCurrentUser(u);
-    setSuccessMsg(`已成功切換為「${u.name}」！`);
+    const checkRes = checkUserDeactivationStatus(u);
+    if (!checkRes.canLogin) {
+      setErrorMsg(checkRes.errorReason || '此帳號已超過 7 日猶豫期並已註銷完成，無法切換登入。');
+      return;
+    }
+    const effectiveUser = checkRes.restoredUser || u;
+    setCurrentUser(effectiveUser);
+    if (checkRes.wasInGracePeriod) {
+      setAvailableUsers((prev) => prev.map((usr) => (usr.id === effectiveUser.id ? effectiveUser : usr)));
+      setSuccessMsg(`已成功切換為「${effectiveUser.name}」（7日猶豫期內登入已自動取消註銷）！`);
+    } else {
+      setSuccessMsg(`已成功切換為「${effectiveUser.name}」！`);
+    }
     setTimeout(() => onClose(), 800);
   };
 
@@ -883,63 +935,150 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               {/* 切換帳號清單面板 */}
               {loginMethod === 'switch' && (
-                <div className="space-y-2.5 pt-1 max-h-64 overflow-y-auto pr-1">
-                  {availableUsers
-                    .filter((u) => u.id !== 'user-guest')
-                    .map((u) => {
-                      const isCurrent = currentUser.id === u.id;
-                      return (
+                <div className="space-y-3 pt-1">
+                  {/* 測試模式免註冊免登入一鍵添加測試帳號 (僅管理員帳號有權限新增) */}
+                  {currentUser.role === 'admin' && (
+                    <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50 to-purple-50 border border-amber-200/90 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-amber-600 animate-pulse" />
+                          <span className="text-xs font-black text-stone-900">測試環境一鍵添加測試帳號（管理員專屬）</span>
+                        </div>
                         <button
-                          key={u.id}
                           type="button"
-                          onClick={() => handleSwitchAccount(u)}
-                          className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
-                            isCurrent
-                              ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-200'
-                              : 'bg-stone-50 hover:bg-stone-100 border-stone-200'
-                          }`}
+                          onClick={() => setIsCreatingTestAcc(!isCreatingTestAcc)}
+                          className="text-[11px] font-bold text-amber-800 bg-amber-200/70 hover:bg-amber-300 px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            {u.avatar && u.avatar.trim() !== '' ? (
-                              <img
-                                src={u.avatar}
-                                alt={u.name}
-                                className="w-8 h-8 rounded-lg object-cover ring-1 ring-stone-200 shrink-0"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-lg bg-stone-200 text-stone-600 flex items-center justify-center font-bold text-xs shrink-0">
-                                {u.name.slice(0, 1)}
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold text-stone-900 truncate">{u.name}</span>
-                                <span
-                                  className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                                    u.role === 'admin'
-                                      ? 'bg-purple-100 text-purple-800'
-                                      : u.role === 'solver'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : 'bg-amber-100 text-amber-800'
-                                  }`}
-                                >
-                                  {u.role === 'admin' ? '管理員' : u.role === 'solver' ? '解答者' : '提問者'}
-                                </span>
-                                {isCurrent && (
-                                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                                    當前
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[10px] text-stone-400 truncate">{u.title || u.email || '平台會員'}</p>
-                            </div>
-                          </div>
-                          <span className="text-[11px] font-bold text-amber-700 shrink-0">
-                            {isCurrent ? '使用中' : '切換 →'}
-                          </span>
+                          {isCreatingTestAcc ? '收合表單' : '＋ 新增測試帳號'}
                         </button>
-                      );
-                    })}
+                      </div>
+
+                      {isCreatingTestAcc ? (
+                        <div className="pt-2 border-t border-amber-200/60 space-y-2.5 animate-in fade-in duration-150">
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {(['solver', 'questioner', 'admin'] as const).map((r) => (
+                              <button
+                                key={r}
+                                type="button"
+                                onClick={() => setTestAccRole(r)}
+                                className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+                                  testAccRole === r
+                                    ? r === 'admin'
+                                      ? 'bg-purple-700 text-white shadow-2xs font-black'
+                                      : r === 'solver'
+                                      ? 'bg-blue-600 text-white shadow-2xs font-black'
+                                      : 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                                    : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-50'
+                                }`}
+                              >
+                                {r === 'admin' ? '管理員' : r === 'solver' ? '解答專家' : '提問者'}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <input
+                              type="text"
+                              value={testAccName}
+                              onChange={(e) => setTestAccName(e.target.value)}
+                              placeholder={`測試帳號名稱（留空隨機生成）`}
+                              className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-xl text-xs outline-none focus:border-amber-500"
+                            />
+                            <input
+                              type="text"
+                              value={testAccTitle}
+                              onChange={(e) => setTestAccTitle(e.target.value)}
+                              placeholder="自訂專業職稱 / 標籤（選填）"
+                              className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-xl text-xs outline-none focus:border-amber-500"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const created = addTestAccount({
+                                role: testAccRole,
+                                name: testAccName.trim() || undefined,
+                                title: testAccTitle.trim() || undefined,
+                                autoSwitch: true,
+                              });
+                              setIsCreatingTestAcc(false);
+                              setTestAccName('');
+                              setTestAccTitle('');
+                              onClose();
+                            }}
+                            className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>一鍵建立並立即切換身份（免註冊免登入）</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-stone-500 leading-relaxed">
+                          不用註冊、不用信箱驗證或密碼，點擊即可一鍵產生並切換測試帳號進行各項功能驗證。
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {availableUsers
+                      .filter((u) => u.id !== 'user-guest')
+                      .map((u) => {
+                        const isCurrent = currentUser.id === u.id;
+                        return (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => handleSwitchAccount(u)}
+                            className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                              isCurrent
+                                ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-200'
+                                : 'bg-stone-50 hover:bg-stone-100 border-stone-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {u.avatar && u.avatar.trim() !== '' ? (
+                                <img
+                                  src={u.avatar}
+                                  alt={u.name}
+                                  className="w-8 h-8 rounded-lg object-cover ring-1 ring-stone-200 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-stone-200 text-stone-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                  {u.name.slice(0, 1)}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-stone-900 truncate">{u.name}</span>
+                                  <span
+                                    className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                                      u.role === 'admin'
+                                        ? 'bg-purple-100 text-purple-800'
+                                        : u.role === 'solver'
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : 'bg-amber-100 text-amber-800'
+                                    }`}
+                                  >
+                                    {u.role === 'admin' ? '管理員' : u.role === 'solver' ? '解答者' : '提問者'}
+                                  </span>
+                                  {isCurrent && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                                      當前
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-stone-400 truncate">{u.title || u.email || '平台會員'}</p>
+                              </div>
+                            </div>
+                            <span className="text-[11px] font-bold text-amber-700 shrink-0">
+                              {isCurrent ? '使用中' : '切換 →'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                  </div>
                 </div>
               )}
 
@@ -1533,7 +1672,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             <p className="text-xs text-stone-600 leading-relaxed">
-              IdeaX 提供 4 級階梯制會員方案，越高等級方案享有<strong>更低平台手續費拆款比率</strong>與<strong>更多首頁大師專屬曝光席位</strong>。查看後點擊關閉，您的問卷作答內容將完整保留！
+              IdeaX 提供 4 級階梯制會員方案，越高等級方案享有<strong>更低平台服務費拆款比率</strong>與<strong>更多首頁大師專屬曝光席位</strong>。查看後點擊關閉，您的問卷作答內容將完整保留！
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">

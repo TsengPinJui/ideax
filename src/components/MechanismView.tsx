@@ -78,9 +78,9 @@ export const MechanismView: React.FC = () => {
     {
       id: 'ch_3',
       num: '三',
-      title: '懸賞生命週期與撥款時間軸（最長不超過 D0+21 日）',
+      title: '懸賞與自訂專案生命週期與每月撥款時間軸',
       summary:
-        '從發布懸賞預扣點數、提交解答、D0採納核銷、7日猶豫期、核算緩衝到每週批次撥款實際入帳之完整 8 步驟時間軸與規則。',
+        '從發布懸賞預扣點數、自訂專案交付、D0採納核銷、7日猶豫期到每月 5 號合併定期撥款實際入帳之完整流程。',
       badge: '生命週期與時間軸',
     },
     {
@@ -434,8 +434,8 @@ export const MechanismView: React.FC = () => {
                       { step: 4, title: '猶豫期', time: 'D0 ~ D0+7', desc: '提問者異議' },
                       { step: 5, title: '核算緩衝', time: 'D0+7 ~ +9', desc: '內部覆核' },
                       { step: 6, title: '可撥款', time: 'D0+9 起', desc: '入排程' },
-                      { step: 7, title: '批次撥款', time: '每週一', desc: '遇假日順延' },
-                      { step: 8, title: '實際入帳', time: '≤ D0+21日', desc: '轉入解答者銀行', highlight: true },
+                      { step: 7, title: '定期撥款', time: '每月 5 號', desc: '固定結算' },
+                      { step: 8, title: '實際入帳', time: '每月 5 號', desc: '轉入解答者銀行', highlight: true },
                     ].map((item) => (
                       <div
                         key={item.step}
@@ -499,7 +499,7 @@ export const MechanismView: React.FC = () => {
                         <span className="font-mono text-[10px] text-amber-600 block">欄位 2</span>
                         <h5 className="font-black text-amber-950 text-sm">平台應撥款</h5>
                         <p className="text-stone-600 leading-relaxed">
-                          已核算、尚未撥出的應付服務報酬。性質為平台對解答者的應付帳款，排程於每週批次撥出。
+                          已核算、尚未撥出的應付服務報酬。性質為平台對解答者的應付帳款，排程於每月 5 號合併定期撥出。
                         </p>
                       </div>
 

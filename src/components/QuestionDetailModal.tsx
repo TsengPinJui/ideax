@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { matchSolversWithAI, AISolverMatch, generatePreliminaryReportWithAI, getInitialPreliminaryReport } from '../services/aiService';
 import { HelpTooltip } from './HelpTooltip';
+import { CopyableUserId } from './CopyableUserId';
 import {
   X,
   Sparkles,
@@ -54,6 +55,7 @@ import {
 import { SeoPreviewModal } from './SeoPreviewModal';
 import { getQuestionShareUrl } from '../services/seoService';
 import { copyToClipboard } from '../utils/clipboard';
+import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated } from '../utils/userDisplay';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -99,7 +101,14 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     subscribePlan,
     incrementQuestionViews,
     isNoPaymentMode,
+    questions,
+    selectedQuestion,
+    deleteQuestionPermanently,
+    deleteAnswerPermanently,
+    availableUsers,
   } = useApp();
+
+  const liveQuestion = questions.find((item) => item.id === question.id) || selectedQuestion || question;
 
   const viewCountedIdRef = useRef<string | null>(null);
 
@@ -116,6 +125,11 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(question.title);
   const [editDesc, setEditDesc] = useState(question.description);
+
+  // Deletion Confirmation States
+  const [isConfirmDeleteQuestionOpen, setIsConfirmDeleteQuestionOpen] = useState(false);
+  const [deletingAnswerTarget, setDeletingAnswerTarget] = useState<{ id: string; type: 'solution' | 'discussion'; title?: string } | null>(null);
+  const [isDeletingProcessing, setIsDeletingProcessing] = useState(false);
 
   const [aiMatches, setAiMatches] = useState<AISolverMatch[]>([]);
   const [isMatching, setIsMatching] = useState(false);
@@ -244,7 +258,10 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
     maxPrice: 899,
     badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
   };
-  const isAuthor = currentUser.id === question.authorId;
+  const isAuthor = currentUser.id === question.authorId || currentUser.role === 'admin';
+  const isAuthorDeactivated = isUserAccountDeactivated(question.authorId, availableUsers);
+  const authorDisplayName = resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
+  const authorDisplayAvatar = resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
 
   // Load AI matches
   useEffect(() => {
@@ -279,10 +296,29 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
     setIsEditing(false);
   };
 
-  const handleDelete = () => {
-    if (confirm('確定要永久刪除此痛點/問題/討論嗎？此操作無法還原。')) {
-      setQuestions((prev) => prev.filter((q) => q.id !== question.id));
+  const handleConfirmDeleteQuestion = async () => {
+    setIsDeletingProcessing(true);
+    try {
+      await deleteQuestionPermanently(question.id);
+      setIsConfirmDeleteQuestionOpen(false);
       onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsDeletingProcessing(false);
+    }
+  };
+
+  const handleConfirmDeleteAnswer = async () => {
+    if (!deletingAnswerTarget) return;
+    setIsDeletingProcessing(true);
+    try {
+      await deleteAnswerPermanently(deletingAnswerTarget.id);
+      setDeletingAnswerTarget(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsDeletingProcessing(false);
     }
   };
 
@@ -343,9 +379,9 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
   };
 
   const content = (
-    <div className={`bg-white rounded-3xl border border-stone-200 shadow-sm w-full ${isFullPage ? 'max-w-4xl mx-auto my-2' : 'max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150'}`}>
+    <div className={`bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-sm w-full ${isFullPage ? 'max-w-4xl mx-auto my-2' : 'max-w-4xl max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150'}`}>
       {/* Header */}
-      <div className="p-4 sm:p-6 border-b border-stone-200 flex items-start justify-between gap-4 bg-white/95 sticky top-0 z-20">
+      <div className="p-3 sm:p-6 border-b border-stone-200 flex items-start justify-between gap-4 bg-white/95 sticky top-0 z-20">
         <div className="space-y-2">
           {isFullPage && (
             <button
@@ -488,11 +524,12 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     </button>
                     <button
                       type="button"
-                      onClick={handleDelete}
+                      onClick={() => setIsConfirmDeleteQuestionOpen(true)}
                       className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all cursor-pointer flex items-center gap-1"
+                      title="永久刪除此問題（自動退還未結案預扣款，全站徹底抹除）"
                     >
                       <Trash className="w-3 h-3" />
-                      刪除
+                      刪除問題
                     </button>
                   </>
                 )}
@@ -552,29 +589,35 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
       </div>
 
       {/* Body */}
-      <div className={`p-4 sm:p-6 space-y-6 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
+      <div className={`p-2.5 sm:p-6 space-y-4 sm:space-y-6 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
         {/* Author info & metadata bar + 私聊按鈕 */}
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-stone-500 pb-4 border-b border-stone-100">
           <div className="flex items-center gap-3">
             <img
-              src={question.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-              alt={question.authorName}
+              src={authorDisplayAvatar}
+              alt={authorDisplayName}
               className="w-10 h-10 rounded-full object-cover ring-1 ring-stone-200"
             />
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-bold text-stone-800 text-sm">
-                  {question.authorName}
-                  {question.authorTitle ? ` · ${question.authorTitle}` : ''}
+                  {authorDisplayName}
+                  {authorDisplayName !== '此帳號已註銷' && question.authorTitle ? ` · ${question.authorTitle}` : ''}
                 </span>
+                <CopyableUserId userId={question.authorId} />
+                {isAuthorDeactivated && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200">
+                    帳號已註銷
+                  </span>
+                )}
                 {/* 私聊按鈕 */}
-                {!isAuthor && (
+                {!isAuthor && !isAuthorDeactivated && (
                   <button
                     onClick={() =>
                       handlePrivateChat({
                         id: question.authorId,
-                        name: question.authorName,
-                        avatar: question.authorAvatar,
+                        name: authorDisplayName,
+                        avatar: authorDisplayAvatar,
                         title: '提問發起人',
                       })
                     }
@@ -597,7 +640,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </span>
             <span className="flex items-center gap-1">
               <Eye className="w-3.5 h-3.5 text-stone-400" />
-              <span>{(question.views || 0).toLocaleString()} 次瀏覽</span>
+              <span>{(liveQuestion.views || liveQuestion.viewsCount || question.views || 0).toLocaleString()} 次瀏覽</span>
             </span>
             <span className="flex items-center gap-1 text-amber-700 font-bold">
               <Award className="w-3.5 h-3.5" />
@@ -1265,6 +1308,10 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   const isAccepted = ans.isAccepted;
                   const isExpanded = expandedAnswers[ans.id] ?? false;
 
+                  const solverDisplayName = resolveUserDisplayName(ans.solverId, ans.solverName, availableUsers);
+                  const solverDisplayAvatar = resolveUserAvatar(ans.solverId, ans.solverAvatar, availableUsers);
+                  const isSolverDeactivated = isUserAccountDeactivated(ans.solverId, availableUsers);
+
                   return (
                     <div
                       key={ans.id}
@@ -1278,18 +1325,19 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex items-center gap-3">
                           <img
-                            src={ans.solverAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                            alt={ans.solverName}
+                            src={solverDisplayAvatar}
+                            alt={solverDisplayName}
                             onClick={() => {
+                              if (isSolverDeactivated) return;
                               const found = solvers.find((s) => s.id === ans.solverId || s.name === ans.solverName);
                               if (found) {
                                 onSelectSolver(found);
                               } else {
                                 onSelectSolver({
                                   id: ans.solverId,
-                                  name: ans.solverName,
+                                  name: solverDisplayName,
                                   title: ans.solverTitle || '專業解答顧問',
-                                  avatar: ans.solverAvatar,
+                                  avatar: solverDisplayAvatar,
                                   domain: question.category,
                                   skills: question.tags || [],
                                   rating: 4.9,
@@ -1307,22 +1355,25 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                 });
                               }
                             }}
-                            className="w-10 h-10 rounded-xl object-cover ring-1 ring-stone-200 cursor-pointer hover:scale-105 hover:ring-2 hover:ring-amber-400 transition-all shadow-2xs"
-                            title={`點擊查看 ${ans.solverName} 詳細檔案`}
+                            className={`w-10 h-10 rounded-xl object-cover ring-1 ring-stone-200 shadow-2xs ${
+                              isSolverDeactivated ? 'opacity-80' : 'cursor-pointer hover:scale-105 hover:ring-2 hover:ring-amber-400 transition-all'
+                            }`}
+                            title={isSolverDeactivated ? '此帳號已註銷' : `點擊查看 ${solverDisplayName} 詳細檔案`}
                           />
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <h4
                                 onClick={() => {
+                                  if (isSolverDeactivated) return;
                                   const found = solvers.find((s) => s.id === ans.solverId || s.name === ans.solverName);
                                   if (found) {
                                     onSelectSolver(found);
                                   } else {
                                     onSelectSolver({
                                       id: ans.solverId,
-                                      name: ans.solverName,
+                                      name: solverDisplayName,
                                       title: ans.solverTitle || '專業解答顧問',
-                                      avatar: ans.solverAvatar,
+                                      avatar: solverDisplayAvatar,
                                       domain: question.category,
                                       skills: question.tags || [],
                                       rating: 4.9,
@@ -1340,12 +1391,21 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                     });
                                   }
                                 }}
-                                className="font-bold text-sm text-stone-900 hover:text-amber-600 cursor-pointer transition-colors"
-                                title={`點擊查看 ${ans.solverName} 詳細檔案`}
+                                className={`font-bold text-sm ${
+                                  isSolverDeactivated ? 'text-stone-500' : 'text-stone-900 hover:text-amber-600 cursor-pointer transition-colors'
+                                }`}
+                                title={isSolverDeactivated ? '此帳號已註銷' : `點擊查看 ${solverDisplayName} 詳細檔案`}
                               >
-                                {ans.solverName}
-                                {ans.solverTitle ? ` · ${ans.solverTitle}` : ''}
+                                {solverDisplayName}
+                                {solverDisplayName !== '此帳號已註銷' && ans.solverTitle ? ` · ${ans.solverTitle}` : ''}
                               </h4>
+                              <CopyableUserId userId={ans.solverId} />
+
+                              {isSolverDeactivated && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200">
+                                  帳號已註銷
+                                </span>
+                              )}
                               
                               {/* Delivery Format Badge */}
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-800 flex items-center gap-1 border border-stone-200">
@@ -1377,28 +1437,52 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-stone-500 line-clamp-1">{ans.solverTitle}</p>
+                            {solverDisplayName !== '此帳號已註銷' && (
+                              <p className="text-xs text-stone-500 line-clamp-1">{ans.solverTitle}</p>
+                            )}
                           </div>
                         </div>
 
-                        {/* Actions: 私聊回答者 + Pricing / Access Tag + Quick Expand Button */}
+                        {/* Actions: 私聊回答者 + 刪除提案按鈕 + Pricing / Access Tag + Quick Expand Button */}
                         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                          <button
-                            onClick={() =>
-                              handlePrivateChat({
-                                id: ans.solverId,
-                                name: ans.solverName,
-                                avatar: ans.solverAvatar,
-                                title: ans.solverTitle,
-                              })
-                            }
-                            className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
-                            title="與回答者私密溝通客製方案"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5 text-amber-600" />
-                            <span className="hidden sm:inline">私聊回答者</span>
-                            <span className="sm:hidden">私聊</span>
-                          </button>
+                          {!isSolverDeactivated && (
+                            <button
+                              onClick={() =>
+                                handlePrivateChat({
+                                  id: ans.solverId,
+                                  name: solverDisplayName,
+                                  avatar: solverDisplayAvatar,
+                                  title: ans.solverTitle,
+                                })
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                              title="與回答者私密溝通客製方案"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 text-amber-600" />
+                              <span className="hidden sm:inline">私聊回答者</span>
+                              <span className="sm:hidden">私聊</span>
+                            </button>
+                          )}
+
+                          {/* 刪除提案按鈕 (提案者本人或管理員且未被採納結案) */}
+                          {(isSolver || currentUser.role === 'admin') && !ans.isAccepted && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDeletingAnswerTarget({
+                                  id: ans.id,
+                                  type: 'solution',
+                                  title: ans.freePreview ? ans.freePreview.slice(0, 30) : '此提案方案',
+                                })
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-900 font-bold text-xs flex items-center gap-1 border border-rose-200 transition-colors cursor-pointer"
+                              title="永久刪除此提案（直接刪除且不再存在）"
+                            >
+                              <Trash className="w-3.5 h-3.5 text-rose-600" />
+                              <span className="hidden sm:inline">刪除提案</span>
+                              <span className="sm:hidden">刪除</span>
+                            </button>
+                          )}
 
                           <div>
                             {ans.isPaid ? (
@@ -1839,108 +1923,147 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {discussionAnswers.map((disc) => (
-                    <div key={disc.id} className="p-4 rounded-2xl bg-white border border-stone-200 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <img
-                            src={disc.solverAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                            alt={disc.solverName}
-                            onClick={() => {
-                              const found = solvers.find((s) => s.id === disc.solverId || s.name === disc.solverName);
-                              if (found) {
-                                onSelectSolver(found);
-                              } else {
-                                onSelectSolver({
-                                  id: disc.solverId,
-                                  name: disc.solverName,
-                                  title: disc.solverTitle || '社群探索會員',
-                                  avatar: disc.solverAvatar,
-                                  domain: question.category,
-                                  skills: question.tags || [],
-                                  rating: 4.8,
-                                  reviewCount: 6,
-                                  answerCount: 4,
-                                  acceptedRate: 85,
-                                  tier: '一般解答者',
-                                  bio: '積極參與問題討論與專業想法交流。',
-                                  earnings: 3000,
-                                  verifiedBadge: false,
-                                  featuredCase: {
-                                    title: `${question.category}相關實務交流`,
-                                    outcome: '提供多維度思考觀點'
-                                  }
-                                });
-                              }
-                            }}
-                            className="w-8 h-8 rounded-full object-cover ring-1 ring-stone-200 cursor-pointer hover:scale-105 hover:ring-2 hover:ring-amber-400 transition-all shadow-2xs"
-                            title={`點擊查看 ${disc.solverName} 詳細檔案`}
-                          />
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span
-                                onClick={() => {
-                                  const found = solvers.find((s) => s.id === disc.solverId || s.name === disc.solverName);
-                                  if (found) {
-                                    onSelectSolver(found);
-                                  } else {
-                                    onSelectSolver({
-                                      id: disc.solverId,
-                                      name: disc.solverName,
-                                      title: disc.solverTitle || '社群探索會員',
-                                      avatar: disc.solverAvatar,
-                                      domain: question.category,
-                                      skills: question.tags || [],
-                                      rating: 4.8,
-                                      reviewCount: 6,
-                                      answerCount: 4,
-                                      acceptedRate: 85,
-                                      tier: '一般解答者',
-                                      bio: '積極參與問題討論與專業想法交流。',
-                                      earnings: 3000,
-                                      verifiedBadge: false,
-                                      featuredCase: {
-                                        title: `${question.category}相關實務交流`,
-                                        outcome: '提供多維度思考觀點'
-                                      }
-                                    });
-                                  }
-                                }}
-                                className="font-bold text-xs text-stone-900 hover:text-amber-600 cursor-pointer transition-colors"
-                                title={`點擊查看 ${disc.solverName} 詳細檔案`}
-                              >
-                                {disc.solverName}
-                                {disc.solverTitle ? ` · ${disc.solverTitle}` : ''}
-                              </span>
+                  {discussionAnswers.map((disc) => {
+                    const discDisplayName = resolveUserDisplayName(disc.solverId, disc.solverName, availableUsers);
+                    const discDisplayAvatar = resolveUserAvatar(disc.solverId, disc.solverAvatar, availableUsers);
+                    const isDiscDeactivated = isUserAccountDeactivated(disc.solverId, availableUsers);
+                    const canDeleteDisc = currentUser.id === disc.solverId || currentUser.role === 'admin';
+
+                    return (
+                      <div key={disc.id} className="p-4 rounded-2xl bg-white border border-stone-200 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={discDisplayAvatar}
+                              alt={discDisplayName}
+                              onClick={() => {
+                                if (isDiscDeactivated) return;
+                                const found = solvers.find((s) => s.id === disc.solverId || s.name === disc.solverName);
+                                if (found) {
+                                  onSelectSolver(found);
+                                } else {
+                                  onSelectSolver({
+                                    id: disc.solverId,
+                                    name: discDisplayName,
+                                    title: disc.solverTitle || '社群探索會員',
+                                    avatar: discDisplayAvatar,
+                                    domain: question.category,
+                                    skills: question.tags || [],
+                                    rating: 4.8,
+                                    reviewCount: 6,
+                                    answerCount: 4,
+                                    acceptedRate: 85,
+                                    tier: '一般解答者',
+                                    bio: '積極參與問題討論與專業想法交流。',
+                                    earnings: 3000,
+                                    verifiedBadge: false,
+                                    featuredCase: {
+                                      title: `${question.category}相關實務交流`,
+                                      outcome: '提供多維度思考觀點'
+                                    }
+                                  });
+                                }
+                              }}
+                              className={`w-8 h-8 rounded-full object-cover ring-1 ring-stone-200 shadow-2xs ${
+                                isDiscDeactivated ? 'opacity-80' : 'cursor-pointer hover:scale-105 hover:ring-2 hover:ring-amber-400 transition-all'
+                              }`}
+                              title={isDiscDeactivated ? '此帳號已註銷' : `點擊查看 ${discDisplayName} 詳細檔案`}
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  onClick={() => {
+                                    if (isDiscDeactivated) return;
+                                    const found = solvers.find((s) => s.id === disc.solverId || s.name === disc.solverName);
+                                    if (found) {
+                                      onSelectSolver(found);
+                                    } else {
+                                      onSelectSolver({
+                                        id: disc.solverId,
+                                        name: discDisplayName,
+                                        title: disc.solverTitle || '社群探索會員',
+                                        avatar: discDisplayAvatar,
+                                        domain: question.category,
+                                        skills: question.tags || [],
+                                        rating: 4.8,
+                                        reviewCount: 6,
+                                        answerCount: 4,
+                                        acceptedRate: 85,
+                                        tier: '一般解答者',
+                                        bio: '積極參與問題討論與專業想法交流。',
+                                        earnings: 3000,
+                                        verifiedBadge: false,
+                                        featuredCase: {
+                                          title: `${question.category}相關實務交流`,
+                                          outcome: '提供多維度思考觀點'
+                                        }
+                                      });
+                                    }
+                                  }}
+                                  className={`font-bold text-xs ${
+                                    isDiscDeactivated ? 'text-stone-500' : 'text-stone-900 hover:text-amber-600 cursor-pointer transition-colors'
+                                  }`}
+                                  title={isDiscDeactivated ? '此帳號已註銷' : `點擊查看 ${discDisplayName} 詳細檔案`}
+                                >
+                                  {discDisplayName}
+                                  {discDisplayName !== '此帳號已註銷' && disc.solverTitle ? ` · ${disc.solverTitle}` : ''}
+                                </span>
+                                {isDiscDeactivated && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600 border border-stone-200">
+                                    已註銷
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-stone-400">{disc.createdAt.split('T')[0]}</span>
                             </div>
-                            <span className="text-[10px] text-stone-400">{disc.createdAt.split('T')[0]}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {/* 私聊該留言者 */}
+                            {!isDiscDeactivated && currentUser.id !== disc.solverId && (
+                              <button
+                                onClick={() =>
+                                  handlePrivateChat({
+                                    id: disc.solverId,
+                                    name: discDisplayName,
+                                    avatar: discDisplayAvatar,
+                                    title: disc.solverTitle,
+                                  })
+                                }
+                                className="px-2 py-0.5 rounded-lg text-[11px] font-semibold text-stone-600 hover:text-amber-800 hover:bg-amber-50 flex items-center gap-1 transition-colors cursor-pointer"
+                              >
+                                <MessageCircle className="w-3 h-3 text-amber-600" />
+                                <span>私聊</span>
+                              </button>
+                            )}
+
+                            {/* 刪除討論留言按鈕 (發布者本人或管理員) */}
+                            {canDeleteDisc && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDeletingAnswerTarget({
+                                    id: disc.id,
+                                    type: 'discussion',
+                                    title: disc.freePreview ? disc.freePreview.slice(0, 30) : '此討論留言',
+                                  })
+                                }
+                                className="px-2 py-0.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-900 font-bold text-[11px] flex items-center gap-1 border border-rose-200 transition-colors cursor-pointer"
+                                title="永久刪除此討論（直接刪除且不再存在）"
+                              >
+                                <Trash className="w-3 h-3 text-rose-600" />
+                                <span>刪除</span>
+                              </button>
+                            )}
                           </div>
                         </div>
 
-                        {/* 私聊該留言者 */}
-                        {currentUser.id !== disc.solverId && (
-                          <button
-                            onClick={() =>
-                              handlePrivateChat({
-                                id: disc.solverId,
-                                name: disc.solverName,
-                                avatar: disc.solverAvatar,
-                                title: disc.solverTitle,
-                              })
-                            }
-                            className="px-2 py-0.5 rounded-lg text-[11px] font-semibold text-stone-600 hover:text-amber-800 hover:bg-amber-50 flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <MessageCircle className="w-3 h-3 text-amber-600" />
-                            <span>私聊</span>
-                          </button>
-                        )}
+                        <div className="text-xs sm:text-sm text-stone-700 leading-relaxed whitespace-pre-line pl-10 font-normal">
+                          {disc.freePreview}
+                        </div>
                       </div>
-
-                      <div className="text-xs sm:text-sm text-stone-700 leading-relaxed whitespace-pre-line pl-10 font-normal">
-                        {disc.freePreview}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1996,7 +2119,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-1.5 sm:p-4 overflow-y-auto">
         {content}
       </div>
 
@@ -2089,6 +2212,130 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 active:bg-purple-800 text-white font-bold text-xs cursor-pointer shadow-2xs disabled:opacity-50"
               >
                 確認送出檢舉審查
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1. 刪除問題二次確認 Modal */}
+      {isConfirmDeleteQuestionOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="font-black text-base text-stone-900">永久刪除此問題確認</h3>
+                <p className="text-xs text-rose-600 font-bold">直接刪除且不再存在・資料庫同步全端抹除</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-50/80 border border-rose-200 text-xs text-stone-700 space-y-2">
+              <p className="font-bold text-rose-950">您即將永久刪除以下問題：</p>
+              <p className="font-extrabold text-stone-900 bg-white p-2.5 rounded-xl border border-rose-100 line-clamp-2">
+                {question.title}
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-stone-600 pt-1 text-[11px] leading-relaxed">
+                <li>此問題將自全站、前台市場、個人中心與雲端資料庫（Firestore）徹底永久抹除。</li>
+                {(question.bounty || 0) > 0 && question.status !== 'solved' && (
+                  <li className="font-bold text-emerald-800">
+                    系統將自動將原發案預扣之懸賞金 <strong>NT$ {(question.bounty || 0).toLocaleString()}</strong> 點 100% 全額原路退還至您的帳戶可用餘額。
+                  </li>
+                )}
+                <li>若此問題已有已採納之交易，受法律與合約存證保護之已完成交易不受影響。</li>
+              </ul>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsConfirmDeleteQuestionOpen(false)}
+                disabled={isDeletingProcessing}
+                className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              >
+                取消返回
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteQuestion}
+                disabled={isDeletingProcessing}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingProcessing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>正在抹除...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash className="w-3.5 h-3.5" />
+                    <span>確認永久刪除問題</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. 刪除提案 / 討論二次確認 Modal */}
+      {deletingAnswerTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="font-black text-base text-stone-900">
+                  {deletingAnswerTarget.type === 'solution' ? '永久刪除提案方案確認' : '永久刪除討論留言確認'}
+                </h3>
+                <p className="text-xs text-rose-600 font-bold">直接刪除且不再存在・全站與資料庫同步抹除</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-50/80 border border-rose-200 text-xs text-stone-700 space-y-2">
+              <p className="font-bold text-rose-950">
+                您確定要永久刪除此{deletingAnswerTarget.type === 'solution' ? '提案方案' : '討論留言'}嗎？
+              </p>
+              {deletingAnswerTarget.title && (
+                <p className="text-stone-800 bg-white p-2.5 rounded-xl border border-rose-100 line-clamp-2 text-xs italic">
+                  「{deletingAnswerTarget.title}」
+                </p>
+              )}
+              <p className="text-[11px] text-stone-500 leading-relaxed">
+                確認後將自雲端資料庫徹底抹除，永不再現，亦不再計入方案統計。此操作無法復原。
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingAnswerTarget(null)}
+                disabled={isDeletingProcessing}
+                className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteAnswer}
+                disabled={isDeletingProcessing}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingProcessing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>正在刪除...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash className="w-3.5 h-3.5" />
+                    <span>確認永久刪除</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

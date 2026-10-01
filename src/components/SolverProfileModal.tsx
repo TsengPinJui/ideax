@@ -2,6 +2,7 @@ import React from 'react';
 import { Solver, Question, ProblemLevel, isCertifiedExpert } from '../types';
 import { useApp } from '../context/AppContext';
 import { LEVEL_CONFIGS } from '../data/mockData';
+import { CopyableUserId } from './CopyableUserId';
 import {
   X,
   ShieldCheck,
@@ -84,6 +85,9 @@ export const SolverProfileModal: React.FC<SolverProfileModalProps> = ({
               )}
             </div>
             <p className="text-xs sm:text-sm text-stone-600 font-medium">{solver.title}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <CopyableUserId userId={solver.id} prefix="用戶ID: " />
+            </div>
           </div>
         </div>
         {!isFullPage && (

@@ -140,11 +140,11 @@ export type SearchMode = 'keywords' | 'users'; // 關鍵字（問題、方案、
 
 export interface RechargePackage {
   id: string;
-  price: number; // 儲值台幣金額 NT$
-  basePoints: number; // 基礎點數
-  bonusPoints: number; // 贈送點數
-  totalPoints: number; // 總實得點數
-  commissionAmount: number; // 儲值時抽成差額 NT$
+  price: number; // 方案價金 NT$
+  points: number; // 儲值獲得點數
+  totalPoints: number; // 總點數
+  bonusPoints?: number; // 額外回饋點數
+  commissionAmount?: number;
   tag?: string;
   isPopular?: boolean;
 }
@@ -153,38 +153,30 @@ export const RECHARGE_PACKAGES: RechargePackage[] = [
   {
     id: 'pack-299',
     price: 299,
-    basePoints: 210,
-    bonusPoints: 0,
+    points: 210,
     totalPoints: 210,
-    commissionAmount: 89,
     tag: '輕量入門',
   },
   {
     id: 'pack-599',
     price: 599,
-    basePoints: 510,
-    bonusPoints: 0,
+    points: 510,
     totalPoints: 510,
-    commissionAmount: 89,
     tag: '超值熱門',
     isPopular: true,
   },
   {
     id: 'pack-999',
     price: 999,
-    basePoints: 830,
-    bonusPoints: 0,
+    points: 830,
     totalPoints: 830,
-    commissionAmount: 169,
     tag: '行家推薦',
   },
   {
     id: 'pack-2999',
     price: 2999,
-    basePoints: 2610,
-    bonusPoints: 0,
+    points: 2610,
     totalPoints: 2610,
-    commissionAmount: 389,
     tag: '尊榮首選',
   },
 ];
@@ -482,6 +474,13 @@ export interface User {
 
   // 收藏問題列表
   bookmarkedQuestionIds?: string[]; // 收藏之問題 ID 清單
+
+  // 帳號註銷與 7 日反悔期
+  isDeactivated?: boolean; // 是否已申請註銷帳號或已註銷
+  deactivationStatus?: 'pending_grace' | 'deactivated'; // pending_grace: 7日反悔猶豫期中; deactivated: 7日屆滿已正式註銷
+  deactivationRequestedAt?: string; // 申請註銷之時間戳記 (ISO string)
+  deactivationScheduledPurgeAt?: string; // 7日反悔期屆滿時間 (ISO string = deactivationRequestedAt + 7 days)
+  deactivationReason?: string; // 註銷原因
 
   // 條款同意紀錄 (版本管理與首次操作同意)
   hasAgreedGeneralTerms?: boolean; // 通用服務條款（註冊/登入即同意）
@@ -947,17 +946,33 @@ export type PaymentMethod = 'credit_card' | 'line_pay' | 'apple_pay' | 'atm_tran
 export interface Transaction {
   id: string;
   type: 
+    | '提案懸賞'
+    | '方案解鎖'
+    | '解答採納撥付'
+    | '階段交付撥付'
+    | '自訂提案支付'
+    | '自訂提案收入'
+    | '自訂提案退款'
+    | '懸賞逾期退款'
+    | '階段專案退款'
+    | '點數儲值退款'
+    | '爭議調解退款'
+    | '解鎖未成案退款'
+    | '解答者收益'
+    | '私聊自訂方案交易' 
+    | '會員訂閱' 
+    | '點數儲值'
+    | '爭議審查退款' 
+    | '點數扣抵'
+    | '管理員轉入點數'
+    // 相容歷史類型
+    | '會員方案訂閱' 
+    | '錢包儲值'
+    | '儲值'
     | '第三方懸賞託管' 
     | '第三方採納拆款撥付' 
     | '第三方方案解鎖' 
     | '階段交付拆款撥付'
-    | '私聊自訂方案交易' 
-    | '會員方案訂閱' 
-    | '爭議審查退款' 
-    | '點數扣抵'
-    | '管理員轉入點數'
-    | '儲值'
-    // 相容歷史類型
     | '懸賞託管' 
     | '付費解鎖方案' 
     | '預扣額折抵解鎖'
@@ -982,12 +997,14 @@ export interface Transaction {
   bonusAmount?: number; // 大師方案額外加碼 2% BONUS NT$
   netAmount: number; // 解答者實收撥款金額 NT$（撥入銀行帳戶）
   paymentMethod?: string; // '信用卡' | 'LINE Pay' | 'Apple Pay' | 'ATM 虛擬帳號'
-  payoutStatus?: '已撥款至銀行帳戶' | '第三方安全託管中' | '已原路退款' | '已完成';
+  payoutStatus?: '已撥款至銀行帳戶' | '安全託管中' | '已原路退款' | '已完成' | string;
   bankAccountSnapshot?: string; // 撥款銀行帳戶快照，例如 '822 中國信託 (***5821)'
   relatedQuestionTitle?: string;
   relatedQuestionId?: string;
   fromUserName: string;
+  fromUserId?: string;
   toUserName?: string;
+  toUserId?: string;
   solverId?: string;
   rating?: number; // 1~5 星評分
   reviewComment?: string; // 交易評價

@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { Question } from '../types';
 import { LEVEL_CONFIGS } from '../data/mockData';
+import { resolveUserDisplayName, resolveUserAvatar } from '../utils/userDisplay';
 import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark } from 'lucide-react';
 
 interface QuestionCardProps {
@@ -21,13 +22,16 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   onSelectCategory,
   onSearchTag,
 }) => {
-  const { isQuestionBookmarked, toggleBookmarkQuestion, setSearchQuery, isNoPaymentMode } = useApp();
+  const { isQuestionBookmarked, toggleBookmarkQuestion, setSearchQuery, isNoPaymentMode, availableUsers } = useApp();
   const isBookmarked = isQuestionBookmarked(question.id);
 
   const effectiveLevel = isNoPaymentMode ? 'L0' : (question?.level || 'L2');
   const levelConfig = (effectiveLevel && LEVEL_CONFIGS[effectiveLevel]) || LEVEL_CONFIGS.L0;
   const isSolved = question.status === 'solved';
   const isPromoted = question.status === 'open' && question.isFeatured;
+
+  const authorDisplayName = resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
+  const authorDisplayAvatar = resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
 
   const handleCategoryClick = (e: React.MouseEvent) => {
     if (onSelectCategory) {
@@ -51,7 +55,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   return (
     <article
       onClick={onClick}
-      className={`group bg-white rounded-2xl border p-5 transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between relative ${
+      className={`group bg-white rounded-2xl border p-3.5 sm:p-5 transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between relative ${
         isPromoted
           ? 'border-purple-300 ring-1 ring-purple-300/40 bg-gradient-to-b from-purple-50/15 via-white to-white'
           : 'border-stone-200 hover:border-amber-400'
@@ -187,13 +191,13 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       <div className="mt-5 pt-3.5 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
         <div className="flex items-center gap-2">
           <img
-            src={question.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-            alt={question.authorName}
+            src={authorDisplayAvatar}
+            alt={authorDisplayName}
             className="w-5 h-5 rounded-full object-cover ring-1 ring-stone-200"
           />
-          <span className="font-medium text-stone-700 truncate max-w-[150px] sm:max-w-[200px]" title={`${question.authorName}${question.authorTitle ? ` · ${question.authorTitle}` : ''}`}>
-            {question.authorName}
-            {question.authorTitle ? ` · ${question.authorTitle}` : ''}
+          <span className="font-medium text-stone-700 truncate max-w-[150px] sm:max-w-[200px]" title={`${authorDisplayName}${authorDisplayName !== '此帳號已註銷' && question.authorTitle ? ` · ${question.authorTitle}` : ''}`}>
+            {authorDisplayName}
+            {authorDisplayName !== '此帳號已註銷' && question.authorTitle ? ` · ${question.authorTitle}` : ''}
           </span>
         </div>
 

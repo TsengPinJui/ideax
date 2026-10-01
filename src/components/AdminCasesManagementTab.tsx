@@ -203,7 +203,7 @@ export const AdminCasesManagementTab: React.FC<{
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-stone-400">第三方懸賞託管：</span>
+                  <span className="text-xs text-stone-400">提案懸賞：</span>
                   <span className="text-base font-black text-amber-950 font-mono">
                     NT$ {item.bounty.toLocaleString()}
                   </span>

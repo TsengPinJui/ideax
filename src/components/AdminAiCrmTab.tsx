@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { SubscriptionTier, AiCrmSystemConfig, AiCrmLead, AiCrmPushNotification } from '../types';
+import {
+  SubscriptionTier,
+  AiCrmSystemConfig,
+  AiCrmLead,
+  AiCrmPushNotification,
+  NotificationItem,
+} from '../types';
 import { getAiCrmLeadsForSolver, getAiCrmPushesForSolver } from '../services/aiService';
+import { CopyableUserId } from './CopyableUserId';
 import {
   Sparkles,
   Sliders,
@@ -10,6 +17,7 @@ import {
   Clock,
   Send,
   Users,
+  User,
   Radio,
   BarChart3,
   RefreshCw,
@@ -24,7 +32,123 @@ import {
   Plus,
   Zap,
   ShieldAlert,
+  Bell,
+  Trash2,
+  Edit3,
+  Filter,
+  Check,
+  X,
+  Megaphone,
+  Mail,
+  Play,
+  Search,
+  Tag,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
+
+export interface NotificationRule {
+  id: string;
+  name: string; // 通知名稱
+  category: 'system' | 'personal'; // 系統通知 | 個人通知
+  title: string; // 通知標題
+  content: string; // 通知內容
+  triggerCondition: string; // 觸發條件
+  targetAudience: string; // 適用對象
+  enabled: boolean; // 是否啟用
+  updatedAt: string;
+}
+
+const DEFAULT_NOTIFICATION_RULES: NotificationRule[] = [
+  {
+    id: 'rule-new-answer',
+    name: '專家提交落地方案通知',
+    category: 'personal',
+    title: '新解答方案已提交',
+    content: '顧問已為您的懸賞問題提交「商業策略架構」深度方案，歡迎前往查看預覽與解鎖。',
+    triggerCondition: '當任何解答者或專家針對問題提交付費落地方案時自動觸發',
+    targetAudience: '提問發案方 (Questioner)',
+    enabled: true,
+    updatedAt: '2026-09-30 20:00',
+  },
+  {
+    id: 'rule-ai-match',
+    name: 'AI 智慧專家媒合推薦通知',
+    category: 'personal',
+    title: 'AI 智慧專家媒合推薦',
+    content: '您的問題已有推薦解答者，媒合度最高達 96%！點擊立即檢視推薦智庫專家名單。',
+    triggerCondition: '發布問題後 AI 智能計算題意並完成專家庫契合度比對時自動觸發',
+    targetAudience: '提問發案方 (Questioner)',
+    enabled: true,
+    updatedAt: '2026-09-30 20:00',
+  },
+  {
+    id: 'rule-expert-certified',
+    name: '智庫專家實名審核通過通知',
+    category: 'personal',
+    title: '【專家資格認證通過】',
+    content: '恭喜您！您的智庫專家資格已通過管理團隊審查。您的帳號現已獲得官方「智庫專家」認證徽章，並開通優先推薦曝光。',
+    triggerCondition: '管理員於後台「受理認證」中核准專家實名資格時自動觸發',
+    targetAudience: '專家解答者 (Solver)',
+    enabled: true,
+    updatedAt: '2026-09-30 20:00',
+  },
+  {
+    id: 'rule-solution-accepted',
+    name: '方案驗收採納與放款通知',
+    category: 'personal',
+    title: '方案交付已確認放款！',
+    content: '發案方已確認完成方案驗收，第三方託管點數已安全撥付至您的帳戶可用餘額。',
+    triggerCondition: '提問者於聊天室或案件管理中點擊「確認驗收 / 採納放款」時自動觸發',
+    targetAudience: '專家解答者 (Solver)',
+    enabled: true,
+    updatedAt: '2026-09-30 20:00',
+  },
+  {
+    id: 'rule-points-recharge',
+    name: '點數儲值與扣款回執通知',
+    category: 'personal',
+    title: '點數交易與錢包變動通知',
+    content: '您已成功完成點數儲值/扣款異動，點數已入帳，可隨時至儀表板確認交易明細。',
+    triggerCondition: '用戶完成綠界/藍新信用卡儲值付款或懸賞預扣點數時自動觸發',
+    targetAudience: '全體會員 (All)',
+    enabled: true,
+    updatedAt: '2026-09-30 20:00',
+  },
+  {
+    id: 'rule-ai-crm-followup',
+    name: 'AI-CRM 商機追蹤與猶豫期提醒',
+    category: 'personal',
+    title: 'AI-CRM 商機追蹤推播',
+    content: '偵測到關注問題已有超過 3 天猶豫期之發案方，AI 獲客策略藍圖已就緒，點擊前往破冰！',
+    triggerCondition: 'AI-CRM 定時巡航引擎掃描到符合提問者猶豫期門檻時自動推播給專家',
+    targetAudience: '大師方案專家 (Master Solver)',
+    enabled: true,
+    updatedAt: '2026-09-30 20:00',
+  },
+  {
+    id: 'rule-system-announcement',
+    name: '全站系統公告與功能升級通知',
+    category: 'system',
+    title: '【官方公告】平台功能全面升級通知',
+    content: '創點子 IdeaX 系統功能已升級，包含第三方價金託管保障與 AI 智能媒合引擎全面就緒。',
+    triggerCondition: '管理員於系統管理發布重大平台更新公告或維護通知時向全站推播',
+    targetAudience: '全體會員 (All)',
+    enabled: true,
+    updatedAt: '2026-09-30 20:00',
+  },
+  {
+    id: 'rule-board-push',
+    name: '主題看板熱門題目專屬推播',
+    category: 'system',
+    title: '📢 主題看板熱門難題加碼推播',
+    content: '您關注的主題看板新增高額懸賞難題，邀請各界專家好手前往解答破局！',
+    triggerCondition: '提問者啟用置頂推播或熱門題目點擊數超過閥值時自動廣播擴散',
+    targetAudience: '全體會員 (All)',
+    enabled: true,
+    updatedAt: '2026-09-30 20:00',
+  },
+];
 
 interface AdminAiCrmTabProps {
   onOpenAiCrm?: () => void;
@@ -38,6 +162,14 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
     questions,
     solvers,
     availableUsers,
+    notifications,
+    allNotifications,
+    personalNotifications,
+    systemNotifications,
+    addNotification,
+    deleteNotification,
+    clearAllNotifications,
+    updateNotification,
   } = useApp();
 
   // Local form state for settings
@@ -57,7 +189,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
     offPeakIntervalHours: aiCrmConfig?.offPeakIntervalHours ?? 6,
   });
 
-  const [activeSubTab, setActiveSubTab] = useState<'settings' | 'leads_pool' | 'broadcast_center'>('settings');
+  const [activeSubTab, setActiveSubTab] = useState<'settings' | 'leads_pool' | 'broadcast_center' | 'notification_settings'>('settings');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
@@ -119,6 +251,201 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
     setTimeout(() => setBroadcastSuccessNotice(null), 3500);
   };
 
+  // Notification rules state (持久化於 localStorage)
+  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() => {
+    try {
+      const saved = localStorage.getItem('ideax_notification_rules');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_NOTIFICATION_RULES;
+  });
+
+  const [notificationFilter, setNotificationFilter] = useState<'all' | 'system' | 'personal'>('all');
+  const [notificationSearch, setNotificationSearch] = useState('');
+  const [editingRule, setEditingRule] = useState<NotificationRule | null>(null);
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
+  const [isNewRule, setIsNewRule] = useState(false);
+  const [ruleModalForm, setRuleModalForm] = useState<Omit<NotificationRule, 'id' | 'updatedAt'>>({
+    name: '',
+    category: 'personal',
+    title: '',
+    content: '',
+    triggerCondition: '',
+    targetAudience: '提問發案方 (Questioner)',
+    enabled: true,
+  });
+  const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
+  const [notificationActionNotice, setNotificationActionNotice] = useState<string | null>(null);
+
+  // Live dispatched notification management state
+  const [editingLiveNotif, setEditingLiveNotif] = useState<NotificationItem | null>(null);
+  const [liveNotifFilter, setLiveNotifFilter] = useState<'all' | 'system' | 'personal'>('all');
+  const [liveNotifSearch, setLiveNotifSearch] = useState('');
+
+  // 一鍵刪除全部通知確認彈窗
+  const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
+
+  // 選擇發送彈窗狀態（個人 vs 全站）
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+  const [sendingRule, setSendingRule] = useState<NotificationRule | null>(null);
+  const [sendTargetType, setSendTargetType] = useState<'personal' | 'broadcast'>('personal');
+  const [selectedRecipientUserId, setSelectedRecipientUserId] = useState<string>('');
+  const [recipientSearchQuery, setRecipientSearchQuery] = useState<string>('');
+  const [targetAudienceSearchQuery, setTargetAudienceSearchQuery] = useState<string>('');
+  const [isAudienceUserSearchOpen, setIsAudienceUserSearchOpen] = useState(false);
+  const [sendCustomTitle, setSendCustomTitle] = useState<string>('');
+  const [sendCustomMessage, setSendCustomMessage] = useState<string>('');
+  const [sendCategory, setSendCategory] = useState<'system' | 'personal'>('personal');
+
+  const saveNotificationRules = (rules: NotificationRule[]) => {
+    setNotificationRules(rules);
+    try {
+      localStorage.setItem('ideax_notification_rules', JSON.stringify(rules));
+    } catch {}
+  };
+
+  const handleToggleRule = (id: string) => {
+    const nowStr = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const updated = notificationRules.map((r) =>
+      r.id === id ? { ...r, enabled: !r.enabled, updatedAt: nowStr } : r
+    );
+    saveNotificationRules(updated);
+    const target = updated.find((r) => r.id === id);
+    setNotificationActionNotice(`已${target?.enabled ? '啟用' : '停用'}「${target?.name}」觸發規則！`);
+    setTimeout(() => setNotificationActionNotice(null), 3000);
+  };
+
+  const handleDeleteRule = (id: string) => {
+    const target = notificationRules.find((r) => r.id === id);
+    const updated = notificationRules.filter((r) => r.id !== id);
+    saveNotificationRules(updated);
+    setDeletingRuleId(null);
+    setNotificationActionNotice(`已成功刪除「${target?.name || '通知規則'}」！`);
+    setTimeout(() => setNotificationActionNotice(null), 3000);
+  };
+
+  const handleOpenAddRuleModal = () => {
+    setIsNewRule(true);
+    setEditingRule(null);
+    setRuleModalForm({
+      name: '',
+      category: 'personal',
+      title: '',
+      content: '',
+      triggerCondition: '',
+      targetAudience: '提問發案方 (Questioner)',
+      enabled: true,
+    });
+    setIsRuleModalOpen(true);
+  };
+
+  const handleOpenEditRuleModal = (rule: NotificationRule) => {
+    setIsNewRule(false);
+    setEditingRule(rule);
+    setRuleModalForm({
+      name: rule.name,
+      category: rule.category,
+      title: rule.title,
+      content: rule.content,
+      triggerCondition: rule.triggerCondition,
+      targetAudience: rule.targetAudience,
+      enabled: rule.enabled,
+    });
+    setIsRuleModalOpen(true);
+  };
+
+  const handleSaveRuleModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ruleModalForm.name.trim() || !ruleModalForm.title.trim() || !ruleModalForm.content.trim()) return;
+
+    const nowStr = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    if (isNewRule) {
+      const newRuleItem: NotificationRule = {
+        id: `rule-custom-${Date.now()}`,
+        ...ruleModalForm,
+        updatedAt: nowStr,
+      };
+      const updated = [newRuleItem, ...notificationRules];
+      saveNotificationRules(updated);
+      setNotificationActionNotice(`已成功新增通知觸發規則「${newRuleItem.name}」！`);
+    } else if (editingRule) {
+      const updated = notificationRules.map((r) =>
+        r.id === editingRule.id
+          ? {
+              ...r,
+              ...ruleModalForm,
+              updatedAt: nowStr,
+            }
+          : r
+      );
+      saveNotificationRules(updated);
+      setNotificationActionNotice(`已成功修訂「${ruleModalForm.name}」名稱、內容與觸發條件！`);
+    }
+    setIsRuleModalOpen(false);
+    setEditingRule(null);
+    setTimeout(() => setNotificationActionNotice(null), 3500);
+  };
+
+  const handleOpenSendModal = (rule: NotificationRule) => {
+    setSendingRule(rule);
+    setSendTargetType('personal');
+    setSelectedRecipientUserId(currentUser?.id || availableUsers[0]?.id || '');
+    setRecipientSearchQuery('');
+    setSendCustomTitle(rule.title);
+    setSendCustomMessage(rule.content);
+    setSendCategory(rule.category);
+    setIsSendModalOpen(true);
+  };
+
+  const handleConfirmSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sendingRule || !sendCustomTitle.trim() || !sendCustomMessage.trim()) return;
+
+    if (sendTargetType === 'broadcast') {
+      addNotification({
+        title: sendCustomTitle.trim(),
+        message: sendCustomMessage.trim(),
+        category: sendCategory,
+        type: sendCategory === 'system' ? 'system' : 'ai_match',
+        userId: 'all',
+        createdAt: '剛剛',
+      });
+      setNotificationActionNotice(`📢 已成功將「${sendingRule.name}」以全站廣播形式發送給全體會員！`);
+    } else {
+      const recipient = availableUsers.find((u) => u.id === selectedRecipientUserId);
+      const recipientName = recipient?.name || (selectedRecipientUserId === currentUser?.id ? '您自己' : '指定個人');
+      addNotification({
+        title: sendCustomTitle.trim(),
+        message: sendCustomMessage.trim(),
+        category: sendCategory,
+        type: sendCategory === 'system' ? 'system' : 'ai_match',
+        userId: selectedRecipientUserId || currentUser?.id,
+        createdAt: '剛剛',
+      });
+      setNotificationActionNotice(`✉️ 已成功將「${sendingRule.name}」發送給「${recipientName}」！`);
+    }
+
+    setIsSendModalOpen(false);
+    setSendingRule(null);
+    setTimeout(() => setNotificationActionNotice(null), 4000);
+  };
+
+  const handleConfirmClearAll = () => {
+    clearAllNotifications();
+    setIsClearAllConfirmOpen(false);
+    setNotificationActionNotice('已成功一鍵刪除全站所有通知紀錄！');
+    setTimeout(() => setNotificationActionNotice(null), 3500);
+  };
+
+  const handleResetDefaultRules = () => {
+    saveNotificationRules(DEFAULT_NOTIFICATION_RULES);
+    setNotificationActionNotice('已成功將所有通知規則與觸發條件重置為官方預設版本！');
+    setTimeout(() => setNotificationActionNotice(null), 3000);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner / Description */}
@@ -129,7 +456,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               <Sparkles className="w-4 h-4" />
             </span>
             <h2 className="text-base sm:text-lg font-black text-amber-300">
-              AI-CRM 客戶關係管理系統・後台營運控制中心
+              AI-CRM與通知設定・後台營運控制中心
             </h2>
             <span
               className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
@@ -243,6 +570,19 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
         >
           <Radio className="w-3.5 h-3.5" />
           <span>主動推播廣播中心 ({broadcastList.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('notification_settings')}
+          className={`pb-2.5 px-3 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+            activeSubTab === 'notification_settings'
+              ? 'border-purple-600 text-purple-900 font-black'
+              : 'border-transparent text-stone-500 hover:text-stone-800'
+          }`}
+        >
+          <Bell className="w-3.5 h-3.5" />
+          <span>通知設定 ({notificationRules.length})</span>
         </button>
       </div>
 
@@ -872,6 +1212,932 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           </div>
         </div>
       )}
+
+      {/* SUBTAB 4: NOTIFICATION SETTINGS (通知設定) */}
+      {activeSubTab === 'notification_settings' && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          {/* Action notice banner */}
+          {notificationActionNotice && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center justify-between gap-2 shadow-2xs animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{notificationActionNotice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotificationActionNotice(null)}
+                className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Top Info & Actions Card */}
+          <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-extrabold text-sm sm:text-base text-stone-900 flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-purple-600" />
+                  <span>通知設定中心・系統通知與個人通知管理</span>
+                </h3>
+                <p className="text-xs text-stone-500 mt-1">
+                  自由自訂各項系統通知與個人通知的名稱、標題、文案內容、適用對象與觸發條件，支援即時測試觸發與啟用開關。
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleResetDefaultRules}
+                  className="px-3.5 py-2 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                  title="將所有通知重置為系統官方標準版"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-stone-500" />
+                  <span>恢復官方預設</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenAddRuleModal}
+                  className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>新增通知規則</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="pt-2 border-t border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                <button
+                  type="button"
+                  onClick={() => setNotificationFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                    notificationFilter === 'all'
+                      ? 'bg-purple-700 text-white shadow-2xs'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  }`}
+                >
+                  <span>全部通知</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
+                    {notificationRules.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotificationFilter('system')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                    notificationFilter === 'system'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  }`}
+                >
+                  <Megaphone className="w-3.5 h-3.5" />
+                  <span>系統通知</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
+                    {notificationRules.filter((r) => r.category === 'system').length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotificationFilter('personal')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                    notificationFilter === 'personal'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  }`}
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>個人通知</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
+                    {notificationRules.filter((r) => r.category === 'personal').length}
+                  </span>
+                </button>
+              </div>
+
+              <div className="relative w-full sm:w-72">
+                <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={notificationSearch}
+                  onChange={(e) => setNotificationSearch(e.target.value)}
+                  placeholder="搜尋通知名稱、標題或觸發條件..."
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-stone-200 text-xs bg-stone-50 focus:bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                />
+                {notificationSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setNotificationSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Notification Rules List */}
+          <div className="space-y-3.5">
+            {notificationRules
+              .filter((rule) => {
+                if (notificationFilter !== 'all' && rule.category !== notificationFilter) return false;
+                if (notificationSearch.trim()) {
+                  const q = notificationSearch.toLowerCase();
+                  return (
+                    rule.name.toLowerCase().includes(q) ||
+                    rule.title.toLowerCase().includes(q) ||
+                    rule.content.toLowerCase().includes(q) ||
+                    rule.triggerCondition.toLowerCase().includes(q) ||
+                    rule.targetAudience.toLowerCase().includes(q)
+                  );
+                }
+                return true;
+              })
+              .map((rule) => {
+                const isSystem = rule.category === 'system';
+                return (
+                  <div
+                    key={rule.id}
+                    className={`p-4 sm:p-5 rounded-2xl bg-white border transition-all shadow-2xs space-y-3 ${
+                      rule.enabled
+                        ? 'border-stone-200 hover:border-purple-300'
+                        : 'border-stone-200/60 opacity-60 bg-stone-50/60'
+                    }`}
+                  >
+                    {/* Header Row */}
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                              isSystem
+                                ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
+                                : 'bg-amber-100 text-amber-900 border border-amber-200'
+                            }`}
+                          >
+                            {isSystem ? <Megaphone className="w-3 h-3 text-indigo-700" /> : <Mail className="w-3 h-3 text-amber-700" />}
+                            <span>{isSystem ? '系統通知 (System)' : '個人通知 (Personal)'}</span>
+                          </span>
+
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200">
+                            受眾：{rule.targetAudience}
+                          </span>
+
+                          <span
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                              rule.enabled
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-stone-200 text-stone-500'
+                            }`}
+                          >
+                            {rule.enabled ? '● 啟用中' : '○ 已停用'}
+                          </span>
+                        </div>
+
+                        <h4 className="text-sm sm:text-base font-black text-stone-900 pt-0.5">
+                          {rule.name}
+                        </h4>
+                      </div>
+
+                      {/* Right controls: Enable Switch & Quick Actions */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleRule(rule.id)}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border ${
+                            rule.enabled
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                              : 'bg-stone-100 text-stone-600 border-stone-300 hover:bg-stone-200'
+                          }`}
+                          title={rule.enabled ? '點擊停用此通知' : '點擊啟用此通知'}
+                        >
+                          {rule.enabled ? <ToggleRight className="w-4 h-4 text-emerald-600" /> : <ToggleLeft className="w-4 h-4 text-stone-400" />}
+                          <span>{rule.enabled ? '已啟用' : '已停用'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Trigger Condition Box */}
+                    <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-200/80 text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-purple-950">
+                        <Zap className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                        <span>觸發條件：</span>
+                        <span className="font-normal text-stone-700">{rule.triggerCondition}</span>
+                      </div>
+                    </div>
+
+                    {/* Notification Preview Content */}
+                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-xs space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-stone-900 font-bold">
+                        <Bell className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                        <span>預設通知標題：</span>
+                        <span className="text-purple-900 font-extrabold">{rule.title}</span>
+                      </div>
+                      <div className="text-stone-700 leading-relaxed pl-5 font-mono text-[11px] bg-white p-2 rounded-lg border border-stone-200/80">
+                        {rule.content}
+                      </div>
+                    </div>
+
+                    {/* Footer Row: Timestamp & Action Buttons */}
+                    <div className="flex items-center justify-between gap-3 pt-1 border-t border-stone-100 text-xs flex-wrap">
+                      <span className="text-[11px] text-stone-400 font-mono">
+                        最近修訂：{rule.updatedAt}
+                      </span>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSendModal(rule)}
+                          className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs flex items-center gap-1.5 border border-amber-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                          title="選擇發送給特定個人或全站廣播"
+                        >
+                          <Send className="w-3 h-3 text-amber-600" />
+                          <span>選擇發送</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditRuleModal(rule)}
+                          className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-purple-50 text-stone-700 hover:text-purple-900 font-bold text-xs flex items-center gap-1 border border-stone-200 transition-all cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>編輯</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setDeletingRuleId(rule.id)}
+                          className="p-1.5 rounded-xl hover:bg-rose-50 text-stone-400 hover:text-rose-600 transition-all cursor-pointer border border-transparent hover:border-rose-200"
+                          title="刪除此通知設定"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+            {notificationRules.length === 0 && (
+              <div className="p-8 text-center bg-white rounded-2xl border border-stone-200 space-y-3">
+                <Bell className="w-8 h-8 text-stone-300 mx-auto" />
+                <p className="text-sm font-bold text-stone-700">目前尚無通知設定規則</p>
+                <button
+                  type="button"
+                  onClick={handleResetDefaultRules}
+                  className="px-4 py-2 rounded-xl bg-purple-700 text-white text-xs font-bold cursor-pointer"
+                >
+                  恢復官方預設規則
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 全站通知紀錄 */}
+          <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h4 className="text-sm font-black text-stone-900 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-purple-600" />
+                  <span>全站通知紀錄</span>
+                </h4>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  目前全站通知紀錄，共 {(allNotifications || notifications).length} 則（系統通知 {(allNotifications || notifications).filter((n) => n.category === 'system').length} 則 • 個人通知 {(allNotifications || notifications).filter((n) => n.category === 'personal').length} 則）
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsClearAllConfirmOpen(true)}
+                  disabled={(allNotifications || notifications).length === 0}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                    (allNotifications || notifications).length > 0
+                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 hover:border-rose-300 shadow-2xs active:scale-95'
+                      : 'bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed'
+                  }`}
+                  title="一鍵清除全站所有歷史通知紀錄"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>一鍵刪除全部通知</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {(allNotifications || notifications).length === 0 ? (
+                <div className="p-6 text-center text-xs text-stone-400 bg-stone-50 rounded-xl border border-dashed border-stone-200">
+                  目前全站尚無通知紀錄。點擊上方任一規則的「選擇發送」即可派送通知至全站或指定個人。
+                </div>
+              ) : (
+                (allNotifications || notifications).map((notif) => (
+                  <div
+                    key={notif.id}
+                    className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-start justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-md ${
+                            notif.category === 'system'
+                              ? 'bg-indigo-100 text-indigo-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {notif.category === 'system' ? '系統' : '個人'}
+                        </span>
+                        <span className="font-bold text-stone-900">{notif.title}</span>
+                        <span className="text-[10px] text-stone-400 font-mono">{notif.createdAt}</span>
+                        {notif.userId && notif.userId !== 'all' && (
+                          <span className="text-[10px] text-stone-500 font-mono bg-white px-1.5 py-0.2 rounded border border-stone-200">
+                            對象: {availableUsers.find((u) => u.id === notif.userId)?.name || notif.userId}
+                          </span>
+                        )}
+                        {notif.userId === 'all' && (
+                          <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
+                            📢 全站廣播
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-stone-600 text-[11px] leading-relaxed">{notif.message}</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteNotification(notif.id)}
+                      className="text-stone-400 hover:text-rose-600 p-1 rounded-lg hover:bg-white cursor-pointer transition-colors shrink-0"
+                      title="刪除此則紀錄"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: 編輯 / 新增通知設定與觸發條件 */}
+      {isRuleModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 text-stone-900 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                  <Bell className="w-4 h-4 text-purple-700" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-stone-900">
+                    {isNewRule ? '新增通知與觸發規則' : '編輯通知設定與觸發條件'}
+                  </h3>
+                  <span className="text-[11px] text-stone-500 font-bold">
+                    自訂通知名稱、文案內容與觸發判定時機
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRuleModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRuleModal} className="space-y-3.5 text-xs">
+              {/* Category & Status */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-stone-800 block mb-1">通知分類</label>
+                  <select
+                    value={ruleModalForm.category}
+                    onChange={(e) =>
+                      setRuleModalForm({ ...ruleModalForm, category: e.target.value as 'system' | 'personal' })
+                    }
+                    className="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-stone-50 focus:bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  >
+                    <option value="personal">個人通知 (Personal)</option>
+                    <option value="system">系統通知 (System)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-stone-800 block mb-1">啟用狀態</label>
+                  <select
+                    value={ruleModalForm.enabled ? 'true' : 'false'}
+                    onChange={(e) =>
+                      setRuleModalForm({ ...ruleModalForm, enabled: e.target.value === 'true' })
+                    }
+                    className="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-stone-50 focus:bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  >
+                    <option value="true">● 啟用中</option>
+                    <option value="false">○ 已停用</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="text-xs font-bold text-stone-800 block mb-1">
+                  通知名稱 <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={ruleModalForm.name}
+                  onChange={(e) => setRuleModalForm({ ...ruleModalForm, name: e.target.value })}
+                  placeholder="如：專家提交落地方案通知"
+                  className="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-stone-50 focus:bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  required
+                />
+              </div>
+
+              {/* Target Audience */}
+              <div>
+                <label className="text-xs font-bold text-stone-800 block mb-1">
+                  適用對象 / 受眾
+                </label>
+                <input
+                  type="text"
+                  value={ruleModalForm.targetAudience}
+                  onChange={(e) => setRuleModalForm({ ...ruleModalForm, targetAudience: e.target.value })}
+                  placeholder="如：提問發案方 (Questioner)、全體會員 (All)"
+                  className="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-stone-50 focus:bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                />
+              </div>
+
+              {/* Trigger Condition */}
+              <div>
+                <label className="text-xs font-bold text-stone-800 block mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Zap className="w-3.5 h-3.5 text-purple-600" />
+                    <span>觸發條件說明</span>
+                  </span>
+                  <span className="text-[10.5px] text-stone-400">觸發此通知之業務時機</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={ruleModalForm.triggerCondition}
+                  onChange={(e) => setRuleModalForm({ ...ruleModalForm, triggerCondition: e.target.value })}
+                  placeholder="描述當何種事件發生時發送，如：當任何解答者或專家針對問題提交付費落地方案時自動觸發"
+                  className="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-stone-50 focus:bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  required
+                />
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="text-xs font-bold text-stone-800 block mb-1">
+                  預設通知標題 <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={ruleModalForm.title}
+                  onChange={(e) => setRuleModalForm({ ...ruleModalForm, title: e.target.value })}
+                  placeholder="如：新解答方案已提交"
+                  className="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-stone-50 focus:bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  required
+                />
+              </div>
+
+              {/* Content */}
+              <div>
+                <label className="text-xs font-bold text-stone-800 block mb-1">
+                  預設通知內容文案 <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={ruleModalForm.content}
+                  onChange={(e) => setRuleModalForm({ ...ruleModalForm, content: e.target.value })}
+                  placeholder="輸入派發給用戶的通知詳細內容..."
+                  className="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-stone-50 focus:bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  required
+                />
+              </div>
+
+              {/* Form buttons */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setIsRuleModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-xs transition-all cursor-pointer active:scale-95"
+                >
+                  {isNewRule ? '確認新增通知' : '儲存變更'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: 刪除確認彈窗 */}
+      {deletingRuleId && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-stone-200 text-stone-900 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-stone-900">確認刪除此通知設定？</h3>
+                <span className="text-[11px] text-stone-500 font-bold">
+                  {notificationRules.find((r) => r.id === deletingRuleId)?.name}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed">
+              刪除後此項通知觸發規則將不再於全站執行派發。若後續需要，您可隨時透過「恢復官方預設」或「新增通知規則」重新建立。
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setDeletingRuleId(null)}
+                className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteRule(deletingRuleId)}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95"
+              >
+                確認刪除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: 選擇發送通知（個人 vs 全站） */}
+      {isSendModalOpen && sendingRule && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 text-stone-900 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <Send className="w-4 h-4 text-amber-700" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-stone-900">
+                    選擇發送通知
+                  </h3>
+                  <span className="text-[11px] text-stone-500 font-bold">
+                    通知規則：{sendingRule.name}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSendModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSend} className="space-y-4 text-xs">
+              {/* 1. 選擇發送目標：個人 vs 全站 */}
+              <div>
+                <label className="text-xs font-bold text-stone-800 block mb-1.5">
+                  發送對象範圍 <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSendTargetType('personal')}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                      sendTargetType === 'personal'
+                        ? 'bg-amber-50/80 border-amber-400 text-amber-950 shadow-xs ring-2 ring-amber-300/40'
+                        : 'bg-white hover:bg-stone-50 border-stone-200 text-stone-700'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-xl shrink-0 ${sendTargetType === 'personal' ? 'bg-amber-500 text-white' : 'bg-stone-100 text-stone-600'}`}>
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-black text-xs block">發送給個人</span>
+                      <span className="text-[10.5px] text-stone-500 mt-0.5 block">
+                        指定單一會員用戶派送專屬通知
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSendTargetType('broadcast')}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                      sendTargetType === 'broadcast'
+                        ? 'bg-purple-50/80 border-purple-400 text-purple-950 shadow-xs ring-2 ring-purple-300/40'
+                        : 'bg-white hover:bg-stone-50 border-stone-200 text-stone-700'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-xl shrink-0 ${sendTargetType === 'broadcast' ? 'bg-purple-600 text-white' : 'bg-stone-100 text-stone-600'}`}>
+                      <Megaphone className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-black text-xs block">發送給全站</span>
+                      <span className="text-[10.5px] text-stone-500 mt-0.5 block">
+                        向全體會員廣播發送通知
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. 個人對象選擇器 (支援人名與 ID 搜尋，每個用戶 ID 公開可複製) */}
+              {sendTargetType === 'personal' && (
+                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-amber-600" />
+                      <span>指定接收會員（支援搜尋人名或 ID）</span>
+                    </label>
+                    <span className="text-[10.5px] text-stone-400">
+                      共 {availableUsers.length} 位會員
+                    </span>
+                  </div>
+
+                  {/* 當前選取的用戶展示卡片 */}
+                  {(() => {
+                    const currentSelected = availableUsers.find((u) => u.id === selectedRecipientUserId);
+                    const isSelf = selectedRecipientUserId === currentUser?.id;
+                    return (
+                      <div className="p-2.5 rounded-xl bg-white border-2 border-amber-300 flex items-center justify-between gap-3 shadow-2xs">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img
+                            src={
+                              currentSelected?.avatar ||
+                              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
+                            }
+                            alt={currentSelected?.name || selectedRecipientUserId}
+                            className="w-8 h-8 rounded-full object-cover border border-amber-300 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-stone-900 text-xs truncate">
+                                {currentSelected?.name || selectedRecipientUserId}
+                              </span>
+                              {isSelf && (
+                                <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900">
+                                  👑 我自己
+                                </span>
+                              )}
+                              <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-600">
+                                {currentSelected?.role === 'admin'
+                                  ? '管理員'
+                                  : currentSelected?.role === 'solver'
+                                  ? '專家解答者'
+                                  : '提問發案者'}
+                              </span>
+                            </div>
+                            <div className="mt-0.5">
+                              <CopyableUserId userId={selectedRecipientUserId} prefix="用戶ID: " />
+                            </div>
+                          </div>
+                        </div>
+
+                        <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0 flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>已選定</span>
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 搜尋輸入框 */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={recipientSearchQuery}
+                      onChange={(e) => setRecipientSearchQuery(e.target.value)}
+                      placeholder="輸入用戶姓名或 ID 搜尋（如：林智遠、user-1、admin）..."
+                      className="w-full pl-8 pr-7 py-2 rounded-xl border border-stone-300 text-xs bg-white text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    />
+                    {recipientSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setRecipientSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 搜尋結果列表 / 會員快速選擇 */}
+                  <div className="max-h-40 overflow-y-auto space-y-1 pr-1 bg-white p-1.5 rounded-xl border border-stone-200">
+                    {(() => {
+                      const q = recipientSearchQuery.trim().toLowerCase();
+                      const filtered = availableUsers.filter((u) => {
+                        if (!q) return true;
+                        return (
+                          u.name.toLowerCase().includes(q) ||
+                          u.id.toLowerCase().includes(q) ||
+                          (u.email && u.email.toLowerCase().includes(q)) ||
+                          (u.domain && u.domain.toLowerCase().includes(q)) ||
+                          (u.role && u.role.toLowerCase().includes(q))
+                        );
+                      });
+
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="p-2.5 text-center text-stone-500 text-[11px] space-y-1.5">
+                            <p>找不到符合「{recipientSearchQuery}」的會員</p>
+                            {recipientSearchQuery.trim() && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedRecipientUserId(recipientSearchQuery.trim());
+                                  setRecipientSearchQuery('');
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-[10.5px] cursor-pointer"
+                              >
+                                直接指定發送至此 ID：#{recipientSearchQuery.trim()}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      return filtered.map((u) => {
+                        const isSelected = selectedRecipientUserId === u.id;
+                        return (
+                          <div
+                            key={u.id}
+                            onClick={() => {
+                              setSelectedRecipientUserId(u.id);
+                              setRecipientSearchQuery('');
+                            }}
+                            className={`w-full p-2 rounded-lg text-left transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                              isSelected
+                                ? 'bg-amber-100/70 border border-amber-300 font-bold'
+                                : 'hover:bg-stone-50 border border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <img
+                                src={u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                                alt={u.name}
+                                className="w-6 h-6 rounded-full object-cover shrink-0"
+                              />
+                              <div className="truncate min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-stone-900 truncate font-bold">{u.name}</span>
+                                  <span className="text-[9.5px] text-stone-500">
+                                    ({u.role === 'admin' ? '管理員' : u.role === 'solver' ? '專家' : '提問者'})
+                                  </span>
+                                </div>
+                                <div className="mt-0.5">
+                                  <CopyableUserId userId={u.id} prefix="ID: " />
+                                </div>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. 全站廣播說明 (僅當選全站時顯示) */}
+              {sendTargetType === 'broadcast' && (
+                <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200 text-purple-900 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <Megaphone className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                    <span>全站廣播發送說明</span>
+                  </div>
+                  <p className="text-[11px] text-purple-800 leading-relaxed">
+                    此通知將同時推播給全站所有已註冊會員與訪客帳號，並即時出現在所有會員的通知中心。
+                  </p>
+                </div>
+              )}
+
+              {/* 4. 通知分類 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-stone-800 block mb-1">通知分類</label>
+                  <select
+                    value={sendCategory}
+                    onChange={(e) => setSendCategory(e.target.value as 'system' | 'personal')}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-stone-50 focus:bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  >
+                    <option value="personal">個人通知 (Personal)</option>
+                    <option value="system">系統通知 (System)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-stone-800 block mb-1">觸發依據</label>
+                  <div className="p-2.5 rounded-xl bg-stone-100 border border-stone-200 text-stone-600 truncate font-mono text-[11px]">
+                    {sendingRule.triggerCondition}
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. 標題與文案 (可微調) */}
+              <div>
+                <label className="text-xs font-bold text-stone-800 block mb-1">
+                  通知標題 <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={sendCustomTitle}
+                  onChange={(e) => setSendCustomTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-stone-50 focus:bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-800 block mb-1">
+                  通知文案內容 <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={sendCustomMessage}
+                  onChange={(e) => setSendCustomMessage(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-stone-300 text-xs bg-stone-50 focus:bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  required
+                />
+              </div>
+
+              {/* 按鈕 */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setIsSendModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{sendTargetType === 'broadcast' ? '確認全站廣播發送' : '確認發送給個人'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: 一鍵刪除全部通知確認彈窗 */}
+      {isClearAllConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-stone-200 text-stone-900 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-stone-900">確認一鍵刪除全部通知？</h3>
+                <span className="text-[11px] text-stone-500 font-bold">
+                  清空全站所有歷史通知紀錄
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed">
+              此操作將徹底清空全站目前累積之所有通知紀錄（共 {(allNotifications || notifications).length} 則）。清除後所有會員與管理員的通知匣將全面重設，無法復原。
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setIsClearAllConfirmOpen(false)}
+                className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClearAll}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95"
+              >
+                確認全部刪除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
