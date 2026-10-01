@@ -36,6 +36,7 @@ import {
   loginWithFirebaseGoogle,
 } from '../services/firebaseAuth';
 import { syncUserToFirestore, getUserFromFirestore } from '../services/firestoreSync';
+import { recordUserBoard, recordUserSpecialZone } from '../services/recommendationService';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -44,6 +45,40 @@ interface AuthModalProps {
   initialMethod?: 'email' | 'phone' | 'switch';
   interceptReason?: string; // Optional reason why login is required (e.g., '訪客無法發布問題，請先登入')
 }
+
+export interface InterestDomainGroup {
+  categoryTitle: string;
+  badgeClass: string;
+  domains: string[];
+}
+
+export const ONBOARDING_INTEREST_DOMAIN_GROUPS: InterestDomainGroup[] = [
+  {
+    categoryTitle: '主題專區',
+    badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
+    domains: ['創新創業', '閒談交流（L0）'],
+  },
+  {
+    categoryTitle: '創新創業子領域',
+    badgeClass: 'bg-orange-100 text-orange-900 border-orange-300',
+    domains: ['資訊科技', '生醫材料', '機械工業', '服務餐飲', '文創工藝'],
+  },
+  {
+    categoryTitle: '專業問題子領域',
+    badgeClass: 'bg-blue-100 text-blue-900 border-blue-300',
+    domains: ['水電', '室內裝修', '法律智財', '會計稅務', '企業管理'],
+  },
+  {
+    categoryTitle: '學術探討子領域',
+    badgeClass: 'bg-indigo-100 text-indigo-900 border-indigo-300',
+    domains: ['生技醫療', '資訊工程', '電機', '法律政治', '商管', '文學', '社會科學', '藝術設計'],
+  },
+  {
+    categoryTitle: '日常疑難子領域',
+    badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+    domains: ['職場', '家務', '感情', '時事', '購物', '其他'],
+  },
+];
 
 const STORAGE_SURVEY_DRAFT_KEY = 'ideax_reg_survey_draft_v1';
 const STORAGE_REMEMBER_LOGIN_KEY = 'ideax_remember_login_v1';
@@ -620,6 +655,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setCurrentUser(newUser);
       setAvailableUsers((prev) => [newUser, ...prev.filter((u) => u.id !== newUser.id)]);
       recordTermsAgreement('general', CURRENT_TERMS_VERSION);
+
+      // 同步設定推薦偏好：記錄已選取的子領域、創新創業與閒談交流(L0)
+      try {
+        chosenDomains.forEach((domain) => {
+          if (domain === '創新創業') {
+            recordUserBoard(newUser.id, '創新創業');
+          } else if (domain.includes('L0') || domain.includes('閒談') || domain.includes('閒聊')) {
+            recordUserSpecialZone(newUser.id, 'l0_discussion');
+          } else {
+            recordUserBoard(newUser.id, '全部', domain);
+          }
+        });
+      } catch (err) {
+        console.warn('Failed to record user interest boards:', err);
+      }
 
       if (rememberMe) {
         localStorage.setItem(
@@ -1428,41 +1478,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                        認證接案領域 (可複選) <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          '創新創業',
-                          '資訊科技',
-                          '商業管理',
-                          '法律智財',
-                          '行銷增長',
-                          '設計創意',
-                          '生技醫療',
-                          '投資理財',
-                          '日常生活',
-                        ].map((domain) => {
-                          const checked = regInterests.includes(domain);
-                          return (
-                            <button
-                              key={domain}
-                              type="button"
-                              onClick={() => {
-                                setRegInterests((prev) =>
-                                  checked ? prev.filter((d) => d !== domain) : [...prev, domain]
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-bold text-stone-700">
+                          認證接案領域 (可複選) <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[11px] text-blue-600 font-bold">
+                          已選 {regInterests.length} 項
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 border border-stone-200 rounded-2xl p-2.5 bg-stone-50/60">
+                        {ONBOARDING_INTEREST_DOMAIN_GROUPS.map((group) => (
+                          <div key={group.categoryTitle} className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${group.badgeClass}`}>
+                                {group.categoryTitle}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const allGroupChecked = group.domains.every((d) => regInterests.includes(d));
+                                  if (allGroupChecked) {
+                                    setRegInterests((prev) => prev.filter((d) => !group.domains.includes(d)));
+                                  } else {
+                                    setRegInterests((prev) => [...new Set([...prev, ...group.domains])]);
+                                  }
+                                }}
+                                className="text-[10px] text-stone-400 hover:text-blue-600 cursor-pointer"
+                              >
+                                {group.domains.every((d) => regInterests.includes(d)) ? '取消' : '全選'}
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {group.domains.map((domain) => {
+                                const checked = regInterests.includes(domain);
+                                return (
+                                  <button
+                                    key={domain}
+                                    type="button"
+                                    onClick={() => {
+                                      setRegInterests((prev) =>
+                                        checked ? prev.filter((d) => d !== domain) : [...prev, domain]
+                                      );
+                                    }}
+                                    className={`px-2.5 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                                      checked
+                                        ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
+                                        : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100'
+                                    }`}
+                                  >
+                                    {checked ? `✓ ${domain}` : `+ ${domain}`}
+                                  </button>
                                 );
-                              }}
-                              className={`px-2.5 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
-                                checked
-                                  ? 'bg-blue-600 border-blue-600 text-white'
-                                  : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
-                              }`}
-                            >
-                              {checked ? `✓ ${domain}` : `+ ${domain}`}
-                            </button>
-                          );
-                        })}
+                              })}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
@@ -1498,45 +1569,64 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       </p>
                     </div>
 
-                    {/* 興趣領域多選 */}
+                    {/* 興趣領域多選（所有子領域 + 創新創業 + 閒談交流（L0）） */}
                     <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
-                        關注興趣領域（系統將依此推播相關題目）
-                      </label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          '創新創業',
-                          '商業經營',
-                          '資訊科技',
-                          '法律智財',
-                          '生技醫療',
-                          '行銷增長',
-                          '設計創意',
-                          '職場生活',
-                          '日常疑難',
-                          '投資理財',
-                          '學術探討',
-                        ].map((interest) => {
-                          const checked = regInterests.includes(interest);
-                          return (
-                            <button
-                              key={interest}
-                              type="button"
-                              onClick={() => {
-                                setRegInterests((prev) =>
-                                  checked ? prev.filter((i) => i !== interest) : [...prev, interest]
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-bold text-stone-800">
+                          關注興趣領域（系統將依此推播相關題目）
+                        </label>
+                        <span className="text-[11px] text-amber-600 font-bold">
+                          已選 {regInterests.length} 項
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 border border-stone-200 rounded-2xl p-2.5 bg-stone-50/60">
+                        {ONBOARDING_INTEREST_DOMAIN_GROUPS.map((group) => (
+                          <div key={group.categoryTitle} className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${group.badgeClass}`}>
+                                {group.categoryTitle}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const allGroupChecked = group.domains.every((d) => regInterests.includes(d));
+                                  if (allGroupChecked) {
+                                    setRegInterests((prev) => prev.filter((d) => !group.domains.includes(d)));
+                                  } else {
+                                    setRegInterests((prev) => [...new Set([...prev, ...group.domains])]);
+                                  }
+                                }}
+                                className="text-[10px] text-stone-400 hover:text-amber-600 cursor-pointer"
+                              >
+                                {group.domains.every((d) => regInterests.includes(d)) ? '取消' : '全選'}
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {group.domains.map((interest) => {
+                                const checked = regInterests.includes(interest);
+                                return (
+                                  <button
+                                    key={interest}
+                                    type="button"
+                                    onClick={() => {
+                                      setRegInterests((prev) =>
+                                        checked ? prev.filter((i) => i !== interest) : [...prev, interest]
+                                      );
+                                    }}
+                                    className={`px-2.5 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                                      checked
+                                        ? 'bg-amber-500 border-amber-500 text-white shadow-2xs'
+                                        : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100'
+                                    }`}
+                                  >
+                                    {checked ? `✓ ${interest}` : `+ ${interest}`}
+                                  </button>
                                 );
-                              }}
-                              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer ${
-                                checked
-                                  ? 'bg-amber-500 border-amber-500 text-white shadow-2xs'
-                                  : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
-                              }`}
-                            >
-                              {checked ? `✓ ${interest}` : `+ ${interest}`}
-                            </button>
-                          );
-                        })}
+                              })}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
