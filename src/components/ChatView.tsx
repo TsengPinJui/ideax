@@ -220,7 +220,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
   // --- 管理員罐頭訊息 (Canned Messages) 狀態 ---
   const [isCannedMessagesModalOpen, setIsCannedMessagesModalOpen] = useState(false);
 
-  // --- 聊天室首次使用步驟式教學狀態（下載一次教學一次，同裝置不同帳號不重複） ---
+  // --- 聊天室首次使用步驟式教學狀態（由教學導覽銜接或主動觸發） ---
   const [isChatOnboardingOpen, setIsChatOnboardingOpen] = useState(false);
 
   useEffect(() => {
@@ -231,14 +231,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
         const timer = setTimeout(() => {
           setIsChatOnboardingOpen(true);
         }, 400);
-        return () => clearTimeout(timer);
-      }
-
-      const completed = localStorage.getItem(CHAT_ONBOARDING_STORAGE_KEY);
-      if (!completed) {
-        const timer = setTimeout(() => {
-          setIsChatOnboardingOpen(true);
-        }, 500);
         return () => clearTimeout(timer);
       }
     } catch (e) {

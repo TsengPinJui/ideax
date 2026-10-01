@@ -6,6 +6,7 @@ import {
   FileText,
   Info,
   Download,
+  Compass,
 } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
 import { AppTab, AboutSection } from '../types';
@@ -16,9 +17,10 @@ interface FooterProps {
   onNavClick: (tab: AppTab, section?: AboutSection | string) => void;
   onPostClick: () => void;
   onSearchTag?: (tag: string) => void;
+  onStartOnboarding?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearchTag }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearchTag, onStartOnboarding }) => {
   const { openCustomerService, openPwaInstallModal, isDemoMode, isNoPaymentMode, isHideTestAccounts } = useApp();
 
   const handleTagClick = (tagWithHash: string) => {
@@ -65,6 +67,23 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           <div className="space-y-3">
             <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">平台導覽</h4>
             <ul className="space-y-2 text-stone-400">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onStartOnboarding) {
+                      onStartOnboarding();
+                    } else {
+                      onNavClick('about', 'story');
+                    }
+                  }}
+                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  title="啟動平台手把手 10 步驟使用教學導覽"
+                >
+                  <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>導覽教學</span>
+                </button>
+              </li>
               <li>
                 <button
                   onClick={() => onNavClick('explore')}
@@ -225,6 +244,21 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
         <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-stone-500">
           <div className="flex items-center gap-2 flex-wrap text-center md:text-left justify-center md:justify-start">
             <span>© {new Date().getFullYear()} 創點子 IdeaX. All rights reserved.</span>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => {
+                if (onStartOnboarding) {
+                  onStartOnboarding();
+                } else {
+                  onNavClick('about', 'story');
+                }
+              }}
+              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer inline-flex items-center gap-1"
+            >
+              <Compass className="w-3 h-3 text-amber-400" />
+              <span>導覽教學</span>
+            </button>
             <span>•</span>
             <button
               onClick={() => onNavClick('about', 'story')}

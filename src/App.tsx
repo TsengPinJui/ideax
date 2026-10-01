@@ -28,6 +28,7 @@ import { PwaInstallModal } from './components/PwaInstallModal';
 import { SplashScreen } from './components/SplashScreen';
 import { HelpTooltip } from './components/HelpTooltip';
 import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnboardingGuide';
+import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompass';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { updateSEOForQuestion } from './services/seoService';
@@ -118,24 +119,10 @@ function MainContent() {
 
   const [userProfileVersion, setUserProfileVersion] = useState(0);
 
-  // 首次使用引導教學狀態（下載一次教學一次，同裝置不同帳號不重複）
+  // 首次使用引導教學狀態（手動由頁尾、平台介紹或導覽點擊啟動）
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isOnboardingFromAbout, setIsOnboardingFromAbout] = useState(false);
   const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      const completed = localStorage.getItem(ONBOARDING_STORAGE_KEY);
-      if (!completed) {
-        const timer = setTimeout(() => {
-          setIsOnboardingOpen(true);
-        }, 1600);
-        return () => clearTimeout(timer);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
 
   // 問題市場版面檢視模式：手機預設條列式排列 (list)，電腦預設方格式 (grid)
   const [viewMode, setViewMode] = useState<MarketViewMode>(() => {
@@ -1515,6 +1502,18 @@ function MainContent() {
         </div>
       )}
 
+      {/* 網頁版左側羅盤浮動懸停導覽入口 */}
+      <FloatingOnboardingCompass
+        isVisible={!isOnboardingOpen}
+        onStartOnboarding={() => {
+          setIsOnboardingFromAbout(true);
+          setSelectedQuestion(null);
+          setSelectedSolver(null);
+          setActiveTab('explore');
+          setIsOnboardingOpen(true);
+        }}
+      />
+
       {/* Footer */}
       <Footer
         onNavClick={(tab, section) => {
@@ -1527,6 +1526,11 @@ function MainContent() {
         }}
         onPostClick={() => setActiveTab('create_question')}
         onSearchTag={(tag) => setSearchQuery(tag)}
+        onStartOnboarding={() => {
+          setIsOnboardingFromAbout(true);
+          setActiveTab('explore');
+          setIsOnboardingOpen(true);
+        }}
       />
 
       {/* 手機行動裝置專屬底部導覽列 (僅限移動裝置版，電腦桌面版完全隱藏) */}
