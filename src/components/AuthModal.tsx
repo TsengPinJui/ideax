@@ -887,20 +887,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const modalContent = (
     <div
       style={{ zIndex: 2147483647, position: 'fixed', inset: 0 }}
-      className="fixed inset-0 w-screen h-screen bg-white flex flex-col overflow-y-auto animate-in fade-in duration-150"
+      className="fixed inset-0 w-screen h-screen bg-white flex flex-col overflow-y-auto overscroll-y-contain animate-in fade-in duration-150"
     >
-      <div className="w-full min-h-screen flex flex-col justify-center px-6 pt-14 pb-12 sm:px-10 sm:pt-20 sm:pb-16 relative max-w-md mx-auto my-auto">
-        {/* Top Right Close Button */}
+      <div className="w-full min-h-full flex flex-col justify-center px-6 pt-7 pb-12 sm:px-10 sm:pt-10 sm:pb-16 relative max-w-md mx-auto my-auto">
+        {/* Top Right Close Button (位置適中，不超過原本最頂，避免下方切換帳號被截斷) */}
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 sm:top-8 sm:right-8 z-30 p-2.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 z-30 p-2 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
           title="關閉"
         >
-          <X className="w-6 h-6" />
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
 
-        {/* Top Brand Logo, Name & Slogan (整體下移，佈局舒展大氣，字體醒目) */}
-        <div className="pt-6 sm:pt-10 pb-6 sm:pb-8 text-center space-y-4">
+        {/* Top Brand Logo, Name & Slogan */}
+        <div className="pt-2 sm:pt-4 pb-5 sm:pb-7 text-center space-y-3.5">
           <div className="flex items-center justify-center">
             <div className="relative group">
               <IdeaXLogo
