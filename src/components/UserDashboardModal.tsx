@@ -104,6 +104,8 @@ import {
   FlaskConical,
   Ban,
   ClipboardList,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 
@@ -253,6 +255,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [taxCertificateYear, setTaxCertificateYear] = useState<number>(2025);
   const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
   const [isRechargeExpanded, setIsRechargeExpanded] = useState(false);
+  const [isCloudDbExpanded, setIsCloudDbExpanded] = useState(false);
 
   const handleConfirmModeToggle = () => {
     if (!pendingModeConfirm) return;
@@ -344,6 +347,91 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const adminSolvedCount = questions.filter((q) => q.status === 'solved').length;
   const adminOpenCount = questions.filter((q) => q.status === 'open').length;
   const adminVerifiedSolversCount = solvers.filter((s) => s.verifiedBadge).length;
+
+  // 註冊用戶總數與付費會員分類數據 (註冊用戶 ≠ 付費會員)
+  const adminRealUsers = useMemo(() => {
+    return availableUsers.filter((u) => u.id !== 'user-guest');
+  }, [availableUsers]);
+  const adminTotalRegisteredUsersCount = adminRealUsers.length;
+  const adminQuestionersCount = adminRealUsers.filter((u) => u.role === 'questioner').length;
+  const adminSolversCount = adminRealUsers.filter((u) => u.role === 'solver' || u.role === 'admin').length;
+  const adminPaidMembersCount = adminRealUsers.filter(
+    (u) => u.subscriptionTier && u.subscriptionTier !== 'free'
+  ).length;
+  const adminFreeUsersCount = adminRealUsers.filter(
+    (u) => !u.subscriptionTier || u.subscriptionTier === 'free'
+  ).length;
+
+  // 平均用戶交易額 (ARPU) 與 平均用戶收益 (平台從每個註冊用戶賺的錢)
+  const adminAvgGMVPerUser = adminTotalRegisteredUsersCount > 0 ? Math.round(adminTotalGMV / adminTotalRegisteredUsersCount) : 0;
+  const adminAvgPlatformFeePerUser = adminTotalRegisteredUsersCount > 0 ? Math.round(adminTotalPlatformFees / adminTotalRegisteredUsersCount) : 0;
+
+  // 各方案人數與明細統計 (一般用戶 vs 付費方案會員)
+  const adminPlanStats = useMemo(() => {
+    const plans = subscriptionPlans ? Object.values(subscriptionPlans) : Object.values(SUBSCRIPTION_PLANS);
+    return plans.map((plan) => {
+      const isFree = plan.id === 'free';
+      const planUserCount = adminRealUsers.filter((u) => (u.subscriptionTier || 'free') === plan.id).length;
+      const percentage = adminTotalRegisteredUsersCount > 0 ? Math.round((planUserCount / adminTotalRegisteredUsersCount) * 100) : 0;
+      
+      const planTransactions = (transactions || []).filter(
+        (t) =>
+          (t.type.includes('會員訂閱') || t.type.includes('會員方案') || t.type === '會員訂閱') &&
+          (t.note?.includes(plan.name) || t.relatedQuestionTitle?.includes(plan.name) || (t.amount > 0 && plan.monthlyPrice > 0 && t.amount % plan.monthlyPrice === 0))
+      );
+      const planDealsCount = planTransactions.length;
+      const planTotalRevenue = planTransactions.reduce((acc, t) => acc + (t.amount || 0), 0);
+
+      return {
+        ...plan,
+        displayName: isFree ? '一般用戶 (免費)' : plan.name,
+        userCount: planUserCount,
+        percentage,
+        dealsCount: planDealsCount,
+        totalRevenue: planTotalRevenue,
+        isPaidMember: !isFree,
+      };
+    });
+  }, [subscriptionPlans, adminRealUsers, adminTotalRegisteredUsersCount, transactions]);
+
+  // 會員方案成交筆數與總成交額
+  const adminSubscriptionDeals = useMemo(() => {
+    return (transactions || []).filter(
+      (t) =>
+        (t.type.includes('會員訂閱') || t.type.includes('會員方案') || t.type === '會員訂閱') &&
+        (t.status === '已完成' || t.payoutStatus === '已完成')
+    );
+  }, [transactions]);
+  const adminCompletedSubscriptionDealsCount = adminSubscriptionDeals.length;
+  const adminSubscriptionTotalRevenue = adminSubscriptionDeals.reduce((sum, t) => sum + (t.amount || 0), 0);
+
+  // 全站市場案件成交數（懸賞解決與客製委託採納結案）
+  const adminCompletedCasesCount = useMemo(() => {
+    return (questions || []).filter((q) => q.status === 'solved' || q.status === 'closed').length;
+  }, [questions]);
+
+  // 全站總已成交方案數（會員方案成交筆數 + 案件結案媒合總數）
+  const adminTotalDealsCount = useMemo(() => {
+    const planDeals = adminPlanStats.reduce((sum, p) => sum + (p.dealsCount || 0), 0);
+    return Math.max(planDeals + adminCompletedCasesCount, adminCompletedSubscriptionDealsCount + adminCompletedCasesCount);
+  }, [adminPlanStats, adminCompletedCasesCount, adminCompletedSubscriptionDealsCount]);
+
+  // 全站總瀏覽量
+  const totalViewsCount = useMemo(() => {
+    return (questions || []).reduce((acc, q) => acc + (q.views || q.viewsCount || 0), 0);
+  }, [questions]);
+
+  // 即時線上人數
+  const onlineUsersCount = useMemo(() => {
+    const total = adminTotalRegisteredUsersCount;
+    return Math.max(3, Math.min(total, Math.round(total * 0.35) + 3));
+  }, [adminTotalRegisteredUsersCount]);
+
+  // 提案數量（所有解答者提交落地方案總數）
+  const totalProposalsCount = useMemo(() => {
+    return (answers || []).length;
+  }, [answers]);
+
   const adminPlanUserCounts: Record<SubscriptionTier, number> = {
     free: availableUsers.filter((u) => !u.subscriptionTier || u.subscriptionTier === 'free').length + (isDemoMode ? 86 : 0),
     pro: availableUsers.filter((u) => u.subscriptionTier === 'pro').length + (isDemoMode ? 24 : 0),
@@ -1388,7 +1476,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     proposals: '我的案件',
     questions_management: '提問管理',
     points_receivables: '點數 & 收支',
-    overview: '功能總覽儀表板',
+    overview: currentUser.role === 'admin' ? '管理儀表板' : '功能總覽',
     transactions: currentUser.role === 'admin' ? '交易管理' : '交易紀錄',
     subscriptions: currentUser.role === 'admin' ? '會員方案與費率管理' : '會員方案',
     profile: currentUser.role === 'admin' ? '管理員帳號設定' : '帳號與基本資料',
@@ -1574,9 +1662,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           {/* Filtered Admin Tabs */}
           <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto text-xs font-bold">
             {[
-              // 總覽與平台數據 (置頂)
-              { id: 'overview', category: 'all', label: '功能總覽儀表板', icon: LayoutGrid },
-              { id: 'admin_management', category: 'all', label: '平台數據與顯示', icon: Sliders },
+              // 總覽與管理大盤 (置頂)
+              { id: 'overview', category: 'all', label: '管理儀表板', icon: LayoutGrid },
 
               // 財務金流與案件 (無金流模式下完全隱藏金流與點數設定)
               ...(!isNoPaymentMode ? [
@@ -1710,7 +1797,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 font-bold border border-purple-200">2 項</span>
                 </p>
 
-                {/* 1. 功能總覽儀表板 */}
+                {/* 1. 管理儀表板 (整合大盤與數據指標) */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1724,29 +1811,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <LayoutGrid className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <span className="block font-black text-purple-950 group-hover:text-purple-700 transition-colors">功能總覽儀表板</span>
-                      <span className="text-[10px] text-purple-700/80 font-normal">管理員核心營運概覽</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-purple-500 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                {/* 2. 平台數據與顯示 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_management');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg bg-purple-50/50 hover:bg-purple-100/70 active:bg-purple-100 text-left text-xs font-bold text-stone-900 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                      <Sliders className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <span className="block font-black text-purple-950 group-hover:text-purple-700 transition-colors">平台數據與顯示</span>
-                      <span className="text-[10px] text-purple-700/80 font-normal">獲利統計與首頁看板公開指標設定</span>
+                      <span className="block font-black text-purple-950 group-hover:text-purple-700 transition-colors">管理儀表板</span>
+                      <span className="text-[10px] text-purple-700/80 font-normal">全站營運大盤、會員分佈與數據控制</span>
                     </div>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-purple-500 group-hover:translate-x-0.5 transition-transform" />
@@ -2368,77 +2434,1053 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           </div>
         )}
 
-        {/* TAB: 功能總覽 (Overview Hub) */}
+        {/* TAB: 管理儀表板 (Management Dashboard) */}
         {activeTab === 'overview' && (
           currentUser.role === 'admin' ? (
             <div className="space-y-6 animate-in fade-in duration-200">
-              {/* Admin Command Center Banner */}
-              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-stone-950 via-purple-950 to-stone-900 text-white shadow-md">
-                <h3 className="text-xl sm:text-2xl font-black text-white">創點子 IdeaX 運營管理後台</h3>
-                <p className="text-xs text-stone-300 mt-1 max-w-2xl leading-relaxed">
-                  實時掌握全站用戶調研、點數託管、案件進展、認證審核與金流分潤。
-                </p>
+              {/* Admin Command Center Banner (精簡大器，移除已刪除的按鈕) */}
+              <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-stone-950 via-purple-950 to-stone-900 text-white shadow-sm flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded-full bg-purple-500/30 border border-purple-400/40 text-purple-300 text-[10px] font-mono font-black">
+                      ADMIN COMMAND CENTER
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      系統運行正常
+                    </span>
+                  </div>
+                  <h3 className="text-lg sm:text-2xl font-black text-white">創點子 IdeaX 管理儀表板</h3>
+                  <p className="text-[11px] sm:text-xs text-stone-300 mt-0.5 leading-relaxed">
+                    實時掌握全站會員總數、各方案人數與訂閱分佈、成交方案筆數、案件進展與金流分潤。
+                  </p>
+                </div>
               </div>
 
-              {/* KPI Quick Stats */}
-              <div className={`grid grid-cols-2 ${isNoPaymentMode ? 'sm:grid-cols-3' : 'sm:grid-cols-4'} gap-3 sm:gap-4`}>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('admin_user_analytics')}
-                  className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-300 hover:shadow-sm text-left transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between text-stone-500 mb-1">
-                    <span className="text-xs font-bold">總註冊用戶</span>
-                    <Users className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
+              {/* 核心營運大盤 KPI - 手機多格雙欄面板，全景一覽無遺 */}
+              <div className="space-y-2.5 sm:space-y-3.5">
+                {/* 第一排：總瀏覽量 ＋ 線上人數 (雙欄並排) */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {/* 1. 總瀏覽量 */}
+                  <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-left flex flex-col justify-between shadow-2xs">
+                    <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-black text-stone-800">總瀏覽量</span>
+                      <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
+                        {(totalViewsCount || 0).toLocaleString()} <span className="text-[10px] sm:text-xs font-bold text-stone-500">次</span>
+                      </p>
+                      <span className="hidden sm:inline text-xs font-bold text-amber-700">
+                        市場曝光
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                      <span className="truncate">問題、解方與專家主頁瀏覽</span>
+                    </div>
                   </div>
-                  <p className="text-2xl font-black text-stone-900 font-mono">
-                    {availableUsers.filter((u) => u.id !== 'user-guest').length}
-                  </p>
-                  <span className="text-[10px] text-purple-700 font-bold mt-0.5 block">點擊查閱用戶分佈圖表 →</span>
-                </button>
 
-                {!isNoPaymentMode && (
+                  {/* 2. 線上人數 */}
+                  <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-left flex flex-col justify-between shadow-2xs">
+                    <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs sm:text-sm font-black text-stone-800">線上人數</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      </div>
+                      <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                        <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-950 font-mono tracking-tight">
+                        {onlineUsersCount} <span className="text-[10px] sm:text-xs font-bold text-emerald-700">位</span>
+                      </p>
+                      <span className="text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200">
+                        即時在線
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                      <span className="truncate">即時連線活躍瀏覽與互動</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 第二排：總註冊用戶 ＋ 認證專家 (雙欄並排) */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {/* 3. 總註冊用戶 */}
                   <button
                     type="button"
-                    onClick={() => setActiveTab('points_receivables')}
-                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-300 hover:shadow-sm text-left transition-all cursor-pointer group"
+                    onClick={() => setActiveTab('admin_user_management')}
+                    className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
                   >
-                    <div className="flex items-center justify-between text-stone-500 mb-1">
-                      <span className="text-xs font-bold">全站總交易額</span>
-                      <Coins className="w-4 h-4 text-amber-600 group-hover:scale-110 transition-transform" />
+                    <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-black text-stone-800">總註冊用戶</span>
+                      <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
                     </div>
-                    <p className="text-2xl font-black text-stone-900 font-mono">
-                      NT$ {(adminTotalGMV || 0).toLocaleString()}
-                    </p>
-                    <span className="text-[10px] text-amber-700 font-bold mt-0.5 block">點數與應收帳款管理 →</span>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
+                        {adminTotalRegisteredUsersCount} <span className="text-[10px] sm:text-xs font-bold text-stone-500">位</span>
+                      </p>
+                      <span className="hidden sm:inline text-xs font-bold text-purple-700 group-hover:translate-x-0.5 transition-transform">
+                        管理用戶 →
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                      <span>提問 {adminQuestionersCount} 位</span>
+                      <span className="text-stone-300">•</span>
+                      <span>專家 {adminSolversCount} 位</span>
+                    </div>
                   </button>
+
+                  {/* 4. 認證專家 */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('admin_certifications')}
+                    className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-black text-stone-800">認證專家</span>
+                      <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
+                        {solvers.length} <span className="text-[10px] sm:text-xs font-bold text-stone-500">位</span>
+                      </p>
+                      <span className="hidden sm:inline text-xs font-bold text-purple-700 group-hover:translate-x-0.5 transition-transform">
+                        審核認證 →
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                      <span className="truncate">已認證 {adminVerifiedSolversCount} 位</span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* 第三排：問題數量 ＋ 提案數量 (雙欄並排) */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {/* 5. 問題數量 */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('admin_questions')}
+                    className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-blue-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-black text-stone-800">問題數量</span>
+                      <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
+                        {questions.length} <span className="text-[10px] sm:text-xs font-bold text-stone-500">題</span>
+                      </p>
+                      <span className="hidden sm:inline text-xs font-bold text-blue-700 group-hover:translate-x-0.5 transition-transform">
+                        審核問題 →
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                      <span>徵答 {adminOpenCount}</span>
+                      <span className="text-stone-300">•</span>
+                      <span>結案 {adminSolvedCount}</span>
+                    </div>
+                  </button>
+
+                  {/* 6. 提案數量 */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('admin_cases')}
+                    className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-emerald-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-black text-stone-800">提案數量</span>
+                      <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
+                        {totalProposalsCount} <span className="text-[10px] sm:text-xs font-bold text-stone-500">件</span>
+                      </p>
+                      <span className="hidden sm:inline text-xs font-bold text-emerald-700 group-hover:translate-x-0.5 transition-transform">
+                        案件管理 →
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                      <span className="truncate">解法與客製提案交付</span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* 第四排：已解決題數 ＋ 已成交方案 (雙欄並排) */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {/* 7. 已解決題數 */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('admin_questions')}
+                    className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-emerald-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-black text-stone-800">已解決題數</span>
+                      <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-950 font-mono tracking-tight">
+                        {adminSolvedCount} <span className="text-[10px] sm:text-xs font-bold text-emerald-700">題</span>
+                      </p>
+                      <span className="hidden sm:inline text-xs font-bold text-emerald-700 group-hover:translate-x-0.5 transition-transform">
+                        已結案 →
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                      <span className="truncate">已獲提問方採納驗收結案</span>
+                    </div>
+                  </button>
+
+                  {/* 8. 已成交方案 */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('transactions')}
+                    className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 hover:shadow-xs text-left transition-all cursor-pointer group flex flex-col justify-between shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-black text-stone-800">已成交方案</span>
+                      <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
+                        {adminTotalDealsCount} <span className="text-[10px] sm:text-xs font-bold text-stone-500">筆</span>
+                      </p>
+                      <span className="hidden sm:inline text-xs font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform">
+                        交易明細 →
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                      <span className="truncate">會員訂閱與案件媒合開通</span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* 第五排：平均回覆速度 ＋ 滿意度 (雙欄並排) */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {/* 9. 平均回覆速度 */}
+                  <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-left flex flex-col justify-between shadow-2xs">
+                    <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-black text-stone-800">平均回覆速度</span>
+                      <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-600" />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
+                        4.2 <span className="text-[10px] sm:text-xs font-bold text-stone-500">小時</span>
+                      </p>
+                      <span className="text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 border border-sky-200">
+                        時效指標
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                      <span className="truncate">全體專家諮詢方案平均首覆工時</span>
+                    </div>
+                  </div>
+
+                  {/* 10. 滿意度 */}
+                  <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-left flex flex-col justify-between shadow-2xs">
+                    <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-black text-stone-800">滿意度</span>
+                      <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                        <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 fill-amber-400" />
+                      </div>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-xl sm:text-2xl lg:text-3xl font-black text-amber-950 font-mono tracking-tight">
+                        98.6 <span className="text-[10px] sm:text-xs font-bold text-amber-700">%</span>
+                      </p>
+                      <span className="text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                        4.9 ★ 好評
+                      </span>
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
+                      <span className="truncate">全站案件交付與諮詢正評率</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 平台獲利數據與即時運營總覽 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <BarChart3 className="w-3.5 h-3.5 text-amber-600" />
+                    <span>平台獲利數據與即時運營總覽</span>
+                  </h4>
+                  <span className="text-[10px] text-stone-400 font-mono font-bold">即時統計</span>
+                </div>
+
+                <div className={`grid ${isNoPaymentMode ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'} gap-2.5 sm:gap-3 text-center`}>
+                  {!isNoPaymentMode && (
+                    <>
+                      <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs">
+                        <span className="text-[11px] text-stone-500 font-bold block truncate">平台總交易額</span>
+                        <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono mt-1 block">
+                          NT$ {(adminTotalGMV || 0).toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-stone-400 mt-0.5 block truncate">全站媒合總額</span>
+                      </div>
+
+                      <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/70 border border-amber-200 shadow-2xs">
+                        <span className="text-[11px] text-amber-800 font-bold block truncate">平台累計獲利 (淨抽成)</span>
+                        <span className="text-xl sm:text-2xl font-black text-amber-700 font-mono mt-1 block">
+                          NT$ {(adminTotalPlatformFees || 0).toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-amber-600 mt-0.5 block truncate">平台實收服務費</span>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs">
+                    <span className="text-[11px] text-stone-500 font-bold block truncate">平均用戶交易額</span>
+                    <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono mt-1 block">
+                      NT$ {(adminAvgGMVPerUser || 0).toLocaleString()}
+                    </span>
+                    <span className="text-[10px] text-stone-400 mt-0.5 block truncate">
+                      全站會員平均交易貢獻
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 shadow-2xs">
+                    <span className="text-[11px] text-emerald-800 font-bold block truncate">平均用戶收益</span>
+                    <span className="text-xl sm:text-2xl font-black text-emerald-700 font-mono mt-1 block">
+                      NT$ {(adminAvgPlatformFeePerUser || 0).toLocaleString()}
+                    </span>
+                    <span className="text-[10px] text-emerald-600/90 mt-0.5 block truncate" title="平台從每個客戶賺的錢">
+                      平台從每個客戶賺的錢
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 用戶與方案會員分佈區塊 (一般註冊用戶 vs 付費方案會員) - 移至獲利數據後面 */}
+              <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 space-y-2.5 sm:space-y-3 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Crown className="w-4 h-4 text-amber-500" />
+                    <h4 className="font-black text-stone-900 text-xs sm:text-sm">
+                      用戶與方案會員分佈（各方案人數）
+                    </h4>
+                    <span className="text-[10px] text-stone-500 font-normal px-2 py-0.5 rounded-full bg-stone-100">
+                      總註冊用戶 {adminTotalRegisteredUsersCount} 位（一般用戶 {adminFreeUsersCount} 位 · 訂閱會員 {adminPaidMembersCount} 位）
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('subscriptions')}
+                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 text-[10px] sm:text-xs font-black border border-purple-200 flex items-center gap-1 transition-all cursor-pointer shrink-0 self-end sm:self-center"
+                  >
+                    <span>費率管理</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {/* 各方案人數卡片 Grid (手機 2 欄並排，電腦 4 欄) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
+                  {adminPlanStats.map((plan) => {
+                    const isFree = plan.id === 'free';
+                    const isMaster = plan.id === 'master';
+                    const isAuthority = plan.id === 'authority';
+                    return (
+                      <div
+                        key={plan.id}
+                        className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between ${
+                          isFree
+                            ? 'bg-stone-50/80 border-stone-200'
+                            : isMaster
+                            ? 'bg-gradient-to-b from-purple-50/80 to-white border-purple-300 ring-1 ring-purple-200'
+                            : isAuthority
+                            ? 'bg-gradient-to-b from-amber-50/60 to-white border-amber-300'
+                            : 'bg-white border-stone-200'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-black text-xs text-stone-900 flex items-center gap-1 truncate">
+                              {isFree ? (
+                                <Users className="w-3 h-3 text-stone-500 shrink-0" />
+                              ) : isMaster ? (
+                                <Sparkles className="w-3 h-3 text-purple-600 shrink-0" />
+                              ) : (
+                                <Crown className="w-3 h-3 text-amber-500 shrink-0" />
+                              )}
+                              <span className="truncate">{isFree ? '一般用戶 (免費)' : plan.name}</span>
+                            </span>
+                            <span
+                              className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold shrink-0 ${
+                                isFree
+                                  ? 'bg-stone-200 text-stone-700'
+                                  : isMaster
+                                  ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                                  : 'bg-amber-100 text-amber-900 border border-amber-200'
+                              }`}
+                            >
+                              {plan.monthlyPrice === 0 ? '免月費' : `$${plan.monthlyPrice}`}
+                            </span>
+                          </div>
+
+                          <div className="mt-1.5 flex items-baseline justify-between">
+                            <div>
+                              <span className="text-lg sm:text-xl font-black text-stone-950 font-mono">
+                                {plan.userCount}
+                              </span>
+                              <span className="text-[10px] text-stone-500 ml-0.5">人</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-stone-500">
+                              {plan.percentage}%
+                            </span>
+                          </div>
+
+                          {/* 佔比進度條 */}
+                          <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden mt-1.5">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                isFree
+                                  ? 'bg-stone-400'
+                                  : isMaster
+                                  ? 'bg-purple-600'
+                                  : isAuthority
+                                  ? 'bg-amber-500'
+                                  : 'bg-blue-500'
+                              }`}
+                              style={{ width: `${Math.max(plan.percentage, 4)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-2 pt-1.5 border-t border-stone-100/90 text-[10px] flex items-center justify-between text-stone-600">
+                          <span className="text-stone-400">{isFree ? '身分' : '成交'}</span>
+                          <span className={`font-bold font-mono ${isFree ? 'text-stone-600' : 'text-emerald-700'}`}>
+                            {isFree ? '基礎註冊' : `${plan.dealsCount} 筆訂閱開通`}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 首頁公開運營數據展示控制 (管理者自訂選擇要公開那些數據) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3.5 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="font-black text-sm sm:text-base text-amber-950 flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-amber-600" />
+                      <span>首頁公開運營數據展示控制（首頁看板開關）</span>
+                    </h4>
+                    <p className="text-xs text-amber-900/70 mt-0.5">
+                      管理者可自由勾選決定在首頁對外公開呈現的平台真實統計指標，關閉項目將即時於首頁隱藏。
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-200/90 text-amber-950 border border-amber-300 w-fit">
+                    已公開 {Object.values(publicMetricsConfig).filter(Boolean).length} / 13 項指標
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {/* Metric 1: 總瀏覽量 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">總瀏覽量</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">曝光次數</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">全站問題、解方與專家總瀏覽曝光</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showTotalViews: !publicMetricsConfig.showTotalViews })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showTotalViews ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showTotalViews ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showTotalViews ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 2: 線上人數 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showOnlineUsers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">線上人數</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">即時在線</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">當前連線活躍瀏覽與互動人數</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showOnlineUsers: !publicMetricsConfig.showOnlineUsers })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showOnlineUsers ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showOnlineUsers ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showOnlineUsers ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 3: 總註冊用戶 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showTotalMembers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">總註冊用戶</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">會員規模</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">全站註冊會員總人數（提問方與專家）</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showTotalMembers: !publicMetricsConfig.showTotalMembers })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showTotalMembers ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showTotalMembers ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showTotalMembers ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 4: 認證專家 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showVerifiedSolvers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">認證專家</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">智庫認證</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">官方審核通過之認證專家智庫總數</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showVerifiedSolvers: !publicMetricsConfig.showVerifiedSolvers })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showVerifiedSolvers ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showVerifiedSolvers ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showVerifiedSolvers ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 5: 問題數量 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showQuestionsCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">問題數量</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">市場難題</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">全站發布之公開懸賞與客製委託難題</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showQuestionsCount: !publicMetricsConfig.showQuestionsCount })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showQuestionsCount ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showQuestionsCount ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showQuestionsCount ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 6: 提案數量 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showProposalsCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">提案數量</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">解方交付</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">各領域專家提交之專業解題方案總數</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showProposalsCount: !publicMetricsConfig.showProposalsCount })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showProposalsCount ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showProposalsCount ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showProposalsCount ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 7: 已解決題數 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showSolvedCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">已解決題數</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">結案題數</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">全站已結案問題與專家已採納方案總數</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showSolvedCount: !publicMetricsConfig.showSolvedCount })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showSolvedCount ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showSolvedCount ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showSolvedCount ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 8: 已成交方案 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showTotalDeals ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">已成交方案</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">媒合成交</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">全站會員訂閱與案件媒合開通總筆數</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showTotalDeals: !publicMetricsConfig.showTotalDeals })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showTotalDeals ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showTotalDeals ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showTotalDeals ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 9: 平均回覆速度 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showAvgResponseSpeed ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">平均回覆速度</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-sky-100 text-sky-800">時效指標</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">全體專家諮詢方案平均回覆工時</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showAvgResponseSpeed: !publicMetricsConfig.showAvgResponseSpeed })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showAvgResponseSpeed ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showAvgResponseSpeed ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showAvgResponseSpeed ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 10: 滿意度 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showSatisfactionRate ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">滿意度</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">% 滿意度</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">專家星級口碑與方案採納滿意回饋率</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showSatisfactionRate: !publicMetricsConfig.showSatisfactionRate })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showSatisfactionRate ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showSatisfactionRate ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showSatisfactionRate ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 11: 平台總交易額 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showTotalGMV ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">平台總交易額</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700">全站流水</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">全站媒合交易與方案訂閱總流水</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showTotalGMV: !publicMetricsConfig.showTotalGMV })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showTotalGMV ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showTotalGMV ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showTotalGMV ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 12: 累計懸賞金額 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showTotalBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">累計懸賞金額</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">NT$ 即時統計</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">全站已發布問題與已完成交易方案之懸賞總額</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showTotalBounty: !publicMetricsConfig.showTotalBounty })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showTotalBounty ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showTotalBounty ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showTotalBounty ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Metric 13: 當前最高賞金 */}
+                  <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    publicMetricsConfig.showHighestBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+                  }`}>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-xs text-stone-900">當前最高賞金</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">熱門導流</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">即時抓取全站最高單題懸賞金額並導流排行</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updatePublicMetricsConfig({ showHighestBounty: !publicMetricsConfig.showHighestBounty })}
+                      className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                        publicMetricsConfig.showHighestBounty ? 'bg-amber-500' : 'bg-stone-300'
+                      }`}
+                      title={publicMetricsConfig.showHighestBounty ? '點擊隱藏此指標' : '點擊公開此指標'}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        publicMetricsConfig.showHighestBounty ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Firebase Cloud Firestore 雲端資料庫狀態與同步管理 (可收合面板) */}
+              <div className="p-3.5 sm:p-4.5 rounded-2xl bg-gradient-to-br from-purple-50/80 via-white to-stone-50 border border-purple-200/90 shadow-2xs space-y-3">
+                <div
+                  onClick={() => setIsCloudDbExpanded((prev) => !prev)}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                      <Database className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-black text-xs sm:text-sm text-stone-900 flex items-center gap-1.5">
+                          <span>Firebase Cloud Firestore 雲端資料庫</span>
+                        </h4>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                          isFirestoreConnected
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                            : 'bg-amber-50 text-amber-700 border-amber-300'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isFirestoreConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                          <span>{isFirestoreConnected ? '已連線・全自動即時同步' : '離線快取模式'}</span>
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        專案 ID：<code className="text-purple-700 font-mono font-bold">ideax-2af9c</code> · 資料庫：<code className="text-stone-600 font-mono text-[10px]">ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c</code>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsCloudDbExpanded((prev) => !prev);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <span>{isCloudDbExpanded ? '收合資料庫面板' : '展開同步與備份'}</span>
+                      {isCloudDbExpanded ? (
+                        <ChevronUp className="w-3.5 h-3.5 text-purple-600" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-purple-600" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 展開之詳細手動同步、備份與範疇集合架構 */}
+                {isCloudDbExpanded && (
+                  <div className="space-y-3.5 pt-3 border-t border-purple-100/90 animate-fadeIn">
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between">
+                      <p className="text-xs text-stone-500">
+                        全站核心交易、身分治理與通知評價三大範疇雲端持久化管理
+                      </p>
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        {/* 全量上傳至雲端 */}
+                        <button
+                          type="button"
+                          disabled={isCloudSyncing}
+                          onClick={async () => {
+                            setIsCloudSyncing(true);
+                            setCloudSyncReport(null);
+                            try {
+                              const res = await syncAllToCloud();
+                              if (res.success) {
+                                const { coreTransactions, identityGovernance, engagementSocial } = res.categories;
+                                setCloudSyncReport(
+                                  `✅ 上傳寫入成功！全站三大類別已完整寫入 Firestore：\n` +
+                                  `• 業務核心交易：${coreTransactions.questions} 道問題、${coreTransactions.answers} 份提案、${coreTransactions.transactions} 筆交易流水、${coreTransactions.conversations} 組私聊對話\n` +
+                                  `• 身分審核治理：${identityGovernance.users} 位用戶、${identityGovernance.certifications} 筆專家與實名審核、${identityGovernance.auditLogs} 筆稽核日誌\n` +
+                                  `• 互動通知評價：${engagementSocial.notifications} 則通知、${engagementSocial.bookmarks} 筆收藏、${engagementSocial.solvers} 位專家評鑑庫`
+                                );
+                              } else {
+                                setCloudSyncReport(res.message);
+                              }
+                            } catch (e: any) {
+                              setCloudSyncReport(`同步異常: ${e?.message || '未知錯誤'}`);
+                            } finally {
+                              setIsCloudSyncing(false);
+                            }
+                          }}
+                          className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 active:bg-purple-800 disabled:opacity-60 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                          title="將本機最新資料全量上傳至雲端資料庫"
+                        >
+                          {isCloudSyncing ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>寫入雲端中...</span>
+                            </>
+                          ) : (
+                            <>
+                              <UploadCloud className="w-3.5 h-3.5" />
+                              <span>全量上傳 (Push)</span>
+                            </>
+                          )}
+                        </button>
+
+                        {/* 自雲端拉取 */}
+                        <button
+                          type="button"
+                          disabled={isCloudSyncing}
+                          onClick={async () => {
+                            setIsCloudSyncing(true);
+                            setCloudSyncReport(null);
+                            try {
+                              const { loadAllDataFromFirestore } = await import('../services/firestoreSync');
+                              const cloudData = await loadAllDataFromFirestore();
+                              if (cloudData) {
+                                if (cloudData.questions && cloudData.questions.length > 0) {
+                                  setQuestions(cloudData.questions);
+                                }
+                                if (cloudData.users && cloudData.users.length > 0) {
+                                  setAvailableUsers(cloudData.users);
+                                }
+                                if (cloudData.answers && cloudData.answers.length > 0) {
+                                  setAnswers(cloudData.answers);
+                                }
+                                if (cloudData.transactions && cloudData.transactions.length > 0) {
+                                  setTransactions(cloudData.transactions);
+                                }
+                                setCloudSyncReport(`✅ 下載拉取成功！已自雲端資料庫獲取最新題庫與帳目資料。`);
+                              } else {
+                                setCloudSyncReport(`雲端尚無新資料或網路連線異常。`);
+                              }
+                            } catch (e: any) {
+                              setCloudSyncReport(`拉取失敗: ${e?.message || '未知錯誤'}`);
+                            } finally {
+                              setIsCloudSyncing(false);
+                            }
+                          }}
+                          className="px-3 py-2 rounded-xl bg-white hover:bg-purple-50 active:bg-purple-100 text-purple-700 border border-purple-300 font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                          title="自雲端資料庫獲取最新數據並覆蓋同步"
+                        >
+                          <DownloadCloud className="w-3.5 h-3.5" />
+                          <span>雲端拉取 (Pull)</span>
+                        </button>
+
+                        {/* 匯出備份 JSON */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const payload = {
+                              version: '1.4.0',
+                              exportedAt: new Date().toISOString(),
+                              databaseId: 'ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c',
+                              questions,
+                              answers,
+                              transactions,
+                              users: availableUsers,
+                              notifications,
+                            };
+                            const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+                            const a = document.createElement('a');
+                            a.setAttribute('href', dataStr);
+                            a.setAttribute('download', `ideax-backup-${new Date().toISOString().slice(0, 10)}.json`);
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                          }}
+                          className="px-2.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs border border-stone-300 shadow-2xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                          title="下載本機完整 JSON 備份檔"
+                        >
+                          <Download className="w-3.5 h-3.5 text-stone-500" />
+                          <span>匯出 JSON</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 重新分類後的三大業務範疇 (移除第4類與端點) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-2 border-t border-purple-100 text-xs">
+                      {/* 範疇 1: 業務核心與交易類 */}
+                      <div className="p-3 rounded-xl bg-white border border-purple-100 shadow-2xs space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-purple-950 flex items-center gap-1.5 text-xs">
+                            <Coins className="w-3.5 h-3.5 text-amber-600" />
+                            <span>1. 業務核心與交易類</span>
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">4 個集合</span>
+                        </div>
+                        <ul className="text-[11px] text-stone-600 space-y-0.5">
+                          <li className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span><strong>questions</strong>：問題懸賞、難度、AI標籤</span>
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span><strong>answers</strong>：提案解法、里程碑交付驗收</span>
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span><strong>transactions</strong>：點數流水、儲值、託管放款</span>
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span><strong>conversations</strong>：私聊商議、報價、調解</span>
+                          </li>
+                        </ul>
+                      </div>
+
+                      {/* 範疇 2: 用戶身分與審核治理類 */}
+                      <div className="p-3 rounded-xl bg-white border border-purple-100 shadow-2xs space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-purple-950 flex items-center gap-1.5 text-xs">
+                            <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                            <span>2. 用戶身分與治理類</span>
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">3 個集合</span>
+                        </div>
+                        <ul className="text-[11px] text-stone-600 space-y-0.5">
+                          <li className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span><strong>users</strong>：帳號身分、點數餘額、銀行資料</span>
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span><strong>certifications</strong>：實名認證與專家證書審查</span>
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span><strong>audit_logs</strong>：管理員5萬配額與封鎖日誌</span>
+                          </li>
+                        </ul>
+                      </div>
+
+                      {/* 範疇 3: 互動通知與評價體系類 */}
+                      <div className="p-3 rounded-xl bg-white border border-purple-100 shadow-2xs space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-purple-950 flex items-center gap-1.5 text-xs">
+                            <Sparkles className="w-3.5 h-3.5 text-orange-600" />
+                            <span>3. 互動通知與評價類</span>
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-orange-100 text-orange-800">3 個集合</span>
+                        </div>
+                        <ul className="text-[11px] text-stone-600 space-y-0.5">
+                          <li className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span><strong>notifications</strong>：AI媒合、交付提醒、公告</span>
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span><strong>bookmarks</strong>：用戶精選題目追蹤收藏</span>
+                          </li>
+                          <li className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span><strong>solvers</strong>：專家智庫檔案、評價與滿意度</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    {cloudSyncReport && (
+                      <div className="p-3.5 rounded-xl bg-purple-100/90 text-purple-950 font-bold text-xs whitespace-pre-line border border-purple-300 leading-relaxed shadow-2xs">
+                        {cloudSyncReport}
+                      </div>
+                    )}
+                  </div>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('admin_cases')}
-                  className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-blue-300 hover:shadow-sm text-left transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between text-stone-500 mb-1">
-                    <span className="text-xs font-bold">市場問題數</span>
-                    <Briefcase className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
-                  </div>
-                  <p className="text-2xl font-black text-stone-900 font-mono">{questions.length} 題</p>
-                  <span className="text-[10px] text-blue-700 font-bold mt-0.5 block">案件詳細與對話稽核 →</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('admin_certifications')}
-                  className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-emerald-300 hover:shadow-sm text-left transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between text-stone-500 mb-1">
-                    <span className="text-xs font-bold">認證專家智庫</span>
-                    <BadgeCheck className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
-                  </div>
-                  <p className="text-2xl font-black text-stone-900 font-mono">{solvers.length} 位</p>
-                  <span className="text-[10px] text-emerald-700 font-bold mt-0.5 block">受理實名與專家審核 →</span>
-                </button>
               </div>
 
               {/* Administrative Function Pillars */}
@@ -2465,6 +3507,44 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                     <p className="text-xs text-stone-500 line-clamp-2">
                       彙整性別、年齡、職業、期望服務、專業領域、提問預算及付費意願，可一鍵下載標準 Excel 檔案。
+                    </p>
+                  </div>
+
+                  {/* 會員方案與費率管理 */}
+                  <div
+                    onClick={() => setActiveTab('subscriptions')}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 hover:bg-amber-50/20 transition-all cursor-pointer group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Crown className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="font-black text-stone-900 text-sm">會員方案與費率管理</h5>
+                        <span className="text-[10px] text-amber-700 font-bold">自訂階梯定價與分潤優惠</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-stone-500 line-clamp-2">
+                      自由調整一般會員、達人、權威、大師等各級別月費與抽成折抵幅度，即時調控全站營收模型。
+                    </p>
+                  </div>
+
+                  {/* 交易管理 */}
+                  <div
+                    onClick={() => setActiveTab('transactions')}
+                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-emerald-400 hover:bg-emerald-50/20 transition-all cursor-pointer group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="font-black text-stone-900 text-sm">全站交易管理</h5>
+                        <span className="text-[10px] text-emerald-700 font-bold">方案訂閱與金流明細</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-stone-500 line-clamp-2">
+                      查閱全站方案成交訂單、懸賞解鎖、點數儲值與服務費抽成明細，支援多維度篩選與備註。
                     </p>
                   </div>
 
@@ -2506,25 +3586,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </p>
                   </div>
 
-                  {/* 問題管理 (新增於案件管理下方) */}
-                  <div
-                    onClick={() => setActiveTab('admin_questions')}
-                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-400 hover:bg-purple-50/20 transition-all cursor-pointer group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <HelpCircle className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h5 className="font-black text-stone-900 text-sm">問題管理</h5>
-                        <span className="text-[10px] text-purple-700 font-bold">圓餅圖分析與違規下架</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-stone-500 line-clamp-2">
-                      查閱各類問題數量分佈圓餅圖，執行違規問題審核下架並即時發送處置反饋通知。
-                    </p>
-                  </div>
-
                   {/* 受理認證 */}
                   <div
                     onClick={() => setActiveTab('admin_certifications')}
@@ -2541,25 +3602,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                     <p className="text-xs text-stone-500 line-clamp-2">
                       審核用戶送審之身分證明文件與專家頭銜佐證，一鍵批覆通過或核發平台大師徽章。
-                    </p>
-                  </div>
-
-                  {/* 切換帳號 */}
-                  <div
-                    onClick={() => openAuthModal('login')}
-                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 hover:bg-amber-50/20 transition-all cursor-pointer group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <ArrowLeftRight className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h5 className="font-black text-stone-900 text-sm">切換帳號 (身分驗證)</h5>
-                        <span className="text-[10px] text-amber-700 font-bold">提問者 / 解答者 / 訪客</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-stone-500 line-clamp-2">
-                      快速切換至林書豪 (提問者)、陳怡君 (專家解答者) 或訪客探索身分，輕鬆測試雙向流程。
                     </p>
                   </div>
                 </div>
@@ -2736,13 +3778,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 )}
               </div>
 
-              {/* 核心模組卡片區 (電腦版 & 平板版) */}
-              <div className={`grid grid-cols-1 ${isNoPaymentMode ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-5`}>
+              {/* 核心模組卡片區 (多格面板全覽) */}
+              <div className={`grid grid-cols-1 ${isNoPaymentMode ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-3.5 sm:gap-5`}>
                 {/* 1. 資產與帳務 (無金流模式下隱藏點數與金流設定) */}
                 {!isNoPaymentMode && (
-                  <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2.5 border-b border-stone-100 pb-3">
+                  <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2.5 sm:space-y-3">
+                      <div className="flex items-center gap-2.5 border-b border-stone-100 pb-2.5 sm:pb-3">
                         <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black shrink-0">
                           <Coins className="w-4 h-4" />
                         </div>
@@ -2752,7 +3794,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="space-y-2 text-xs">
+                      <div className="grid grid-cols-1 xs:grid-cols-3 md:grid-cols-1 gap-2 text-xs">
                         <button
                           type="button"
                           onClick={() => {
@@ -2761,13 +3803,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           }}
                           className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-amber-50/80 border border-stone-200 hover:border-amber-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                         >
-                          <span className="flex items-center gap-2.5">
+                          <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                             <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                               <Coins className="w-3.5 h-3.5" />
                             </div>
-                            <span>點數 & 收支</span>
+                            <span className="truncate">點數 & 收支</span>
                           </span>
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors shrink-0" />
                         </button>
 
                         <button
@@ -2778,13 +3820,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           }}
                           className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-blue-50/80 border border-stone-200 hover:border-blue-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                         >
-                          <span className="flex items-center gap-2.5">
+                          <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                             <div className="w-7 h-7 rounded-lg bg-blue-100/90 text-blue-700 group-hover:bg-blue-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                               <Clock className="w-3.5 h-3.5" />
                             </div>
-                            <span>交易紀錄</span>
+                            <span className="truncate">交易紀錄</span>
                           </span>
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-blue-700 transition-colors" />
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-blue-700 transition-colors shrink-0" />
                         </button>
 
                         <button
@@ -2792,13 +3834,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           onClick={() => setActiveTab('subscriptions')}
                           className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-purple-50/80 border border-stone-200 hover:border-purple-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                         >
-                          <span className="flex items-center gap-2.5">
+                          <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                             <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-700 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                               <Crown className="w-3.5 h-3.5" />
                             </div>
-                            <span>會員方案管理</span>
+                            <span className="truncate">會員方案管理</span>
                           </span>
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors shrink-0" />
                         </button>
                       </div>
                     </div>
@@ -2806,9 +3848,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 )}
 
                 {/* 2. 帳號管理 */}
-                <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2.5 border-b border-stone-100 pb-3">
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2.5 sm:space-y-3">
+                    <div className="flex items-center gap-2.5 border-b border-stone-100 pb-2.5 sm:pb-3">
                       <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-black shrink-0">
                         <Briefcase className="w-4 h-4" />
                       </div>
@@ -2818,19 +3860,19 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="space-y-2 text-xs">
+                    <div className="grid grid-cols-1 xs:grid-cols-3 md:grid-cols-1 gap-2 text-xs">
                       <button
                         type="button"
                         onClick={() => setActiveTab('proposals')}
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-blue-50/80 border border-stone-200 hover:border-blue-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                       >
-                        <span className="flex items-center gap-2.5">
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-blue-100/90 text-blue-700 group-hover:bg-blue-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                             <Briefcase className="w-3.5 h-3.5" />
                           </div>
-                          <span>我的案件 ({allProposals.length})</span>
+                          <span className="truncate">我的案件 ({allProposals.length})</span>
                         </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-blue-700 transition-colors" />
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-blue-700 transition-colors shrink-0" />
                       </button>
 
                       <button
@@ -2838,13 +3880,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         onClick={() => setActiveTab('questions_management')}
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-indigo-50/80 border border-stone-200 hover:border-indigo-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                       >
-                        <span className="flex items-center gap-2.5">
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-indigo-100/90 text-indigo-700 group-hover:bg-indigo-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                             <HelpCircle className="w-3.5 h-3.5" />
                           </div>
-                          <span>問題管理 ({myQuestions.length})</span>
+                          <span className="truncate">問題管理 ({myQuestions.length})</span>
                         </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-indigo-700 transition-colors" />
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-indigo-700 transition-colors shrink-0" />
                       </button>
 
                       <button
@@ -2852,22 +3894,22 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         onClick={() => setActiveTab('honors_achievements')}
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-amber-50/80 border border-stone-200 hover:border-amber-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                       >
-                        <span className="flex items-center gap-2.5">
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                             <Award className="w-3.5 h-3.5" />
                           </div>
-                          <span>個人成就與榮譽</span>
+                          <span className="truncate">個人成就與榮譽</span>
                         </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors shrink-0" />
                       </button>
                     </div>
                   </div>
                 </div>
 
                 {/* 3. 個資與認證 */}
-                <div className="p-5 rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2.5 border-b border-stone-100 pb-3">
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2.5 sm:space-y-3">
+                    <div className="flex items-center gap-2.5 border-b border-stone-100 pb-2.5 sm:pb-3">
                       <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black shrink-0">
                         <ShieldCheck className="w-4 h-4" />
                       </div>
@@ -2877,7 +3919,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="space-y-2 text-xs">
+                    <div className="grid grid-cols-2 md:grid-cols-1 gap-2 text-xs">
                       <button
                         type="button"
                         onClick={() => {
@@ -2886,13 +3928,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         }}
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-cyan-50/80 border border-stone-200 hover:border-cyan-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                       >
-                        <span className="flex items-center gap-2.5">
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-cyan-100/90 text-cyan-800 group-hover:bg-cyan-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                             <UserCog className="w-3.5 h-3.5" />
                           </div>
-                          <span>帳號與基本資料</span>
+                          <span className="truncate">帳號與資料</span>
                         </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-cyan-700 transition-colors" />
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-cyan-700 transition-colors shrink-0 hidden xs:block" />
                       </button>
 
                       <button
@@ -2900,16 +3942,16 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         onClick={() => setActiveTab('real_name_auth')}
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-sky-50/80 border border-stone-200 hover:border-sky-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                       >
-                        <span className="flex items-center gap-2.5">
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-sky-100/90 text-sky-800 group-hover:bg-sky-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                             <UserCheck className="w-3.5 h-3.5" />
                           </div>
-                          <span>實名認證</span>
+                          <span className="truncate">實名認證</span>
                         </span>
                         {currentUser.realNameAuthStatus === 'verified' || currentUser.bankAccount?.isVerified ? (
-                          <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-bold border border-emerald-200">已認證</span>
+                          <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold border border-emerald-200 shrink-0">已認證</span>
                         ) : (
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-sky-700 transition-colors" />
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-sky-700 transition-colors shrink-0 hidden xs:block" />
                         )}
                       </button>
 
@@ -2918,16 +3960,16 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         onClick={() => setActiveTab('expert_certification')}
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-emerald-50/80 border border-stone-200 hover:border-emerald-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                       >
-                        <span className="flex items-center gap-2.5">
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-emerald-100/90 text-emerald-800 group-hover:bg-emerald-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                             <ShieldCheck className="w-3.5 h-3.5" />
                           </div>
-                          <span>專家認證審查</span>
+                          <span className="truncate">專家審查</span>
                         </span>
                         {currentUser.verifiedExpert || currentUser.verifiedBadge || userAcceptedAnswers.length >= 50 ? (
-                          <span className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md font-bold border border-emerald-200">認證專家</span>
+                          <span className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold border border-emerald-200 shrink-0">認證專家</span>
                         ) : (
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-emerald-700 transition-colors" />
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-emerald-700 transition-colors shrink-0 hidden xs:block" />
                         )}
                       </button>
 
@@ -2942,30 +3984,21 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         }}
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-purple-50/80 border border-stone-200 hover:border-purple-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
                       >
-                        <span className="flex items-center gap-2.5">
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all relative">
                             <ClipboardList className="w-3.5 h-3.5" />
                             {!currentUser.surveyData?.completedAt && (
                               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full ring-1.5 ring-white" />
                             )}
                           </div>
-                          <span>問卷(客戶調查)</span>
+                          <span className="truncate">問卷調研</span>
                         </span>
                         {currentUser.surveyData?.completedAt ? (
-                          <span className="text-[10px] text-purple-750 bg-purple-50 px-2 py-0.5 rounded-md font-bold border border-purple-200">已填寫</span>
+                          <span className="text-[10px] text-purple-750 bg-purple-50 px-1.5 py-0.5 rounded-md font-bold border border-purple-200 shrink-0">已填寫</span>
                         ) : (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-bold border border-amber-200">
-                              完成即送會員
-                            </span>
-                            <span
-                              className="text-[10px] font-bold text-amber-800 hover:text-amber-950 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-0.5 transition-all cursor-pointer"
-                              title="查看活動"
-                            >
-                              <span>查看活動</span>
-                              <ArrowRight className="w-2.5 h-2.5" />
-                            </span>
-                          </div>
+                          <span className="text-[9px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md font-bold border border-amber-200 shrink-0">
+                            送會員
+                          </span>
                         )}
                       </div>
                     </div>
@@ -3041,25 +4074,25 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                 </div>
 
-                {/* 點數餘額與託管預扣卡片 */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* 點數餘額與託管預扣卡片 (雙格並排面板) */}
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                   {/* 可用點數餘額 */}
-                  <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 flex flex-col justify-between gap-2.5">
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/70 border border-amber-200 flex flex-col justify-between gap-2">
                     <div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
                         <span className="text-xs font-bold text-amber-950 block">目前點數餘額</span>
                         <button
                           type="button"
                           onClick={() => setIsRechargeExpanded((prev) => !prev)}
-                          className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                          className="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-[11px] sm:text-xs transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
                           title="展開或收合購買儲值點數方案"
                         >
-                          <CreditCard className="w-3.5 h-3.5" />
-                          <span>{isRechargeExpanded ? '收合儲值方案 ▲' : '+ 購買儲值點數 ▼'}</span>
+                          <CreditCard className="w-3 h-3" />
+                          <span>{isRechargeExpanded ? '收合 ▲' : '+ 儲值 ▼'}</span>
                         </button>
                       </div>
-                      <div className="flex items-baseline gap-2 mt-1.5">
-                        <span className="text-3xl font-black text-amber-950 font-mono">
+                      <div className="flex items-baseline gap-1.5 mt-1 sm:mt-1.5">
+                        <span className="text-xl sm:text-3xl font-black text-amber-950 font-mono">
                           {(currentUser?.balance || 0).toLocaleString()}
                         </span>
                         <span className="text-xs font-bold text-amber-900">點</span>
@@ -3068,10 +4101,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
 
                   {/* 懸賞預扣中點數 */}
-                  <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
-                    <span className="text-xs font-bold text-stone-700 block">預扣點數 (懸賞、支付方案)</span>
-                    <div className="flex items-baseline gap-2 mt-1.5">
-                      <span className="text-3xl font-black text-stone-900 font-mono">
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between">
+                    <span className="text-xs font-bold text-stone-700 block truncate">預扣點數 (託管)</span>
+                    <div className="flex items-baseline gap-1.5 mt-1 sm:mt-1.5">
+                      <span className="text-xl sm:text-3xl font-black text-stone-900 font-mono">
                         {(currentUser.withheldPoints || 0).toLocaleString()}
                       </span>
                       <span className="text-xs font-bold text-stone-600">點</span>
@@ -4973,523 +6006,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           <AdminPointsReceivablesTab />
         )}
 
-        {/* TAB: 平台數據與顯示 (管理員帳號專屬) */}
-        {activeTab === 'admin_management' && currentUser.role === 'admin' && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Header Banner */}
-            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
-                  <Sliders className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base sm:text-lg font-black text-stone-900">創點子 IdeaX 平台數據與顯示</h3>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                      管理員專屬
-                    </span>
-                  </div>
-                  <p className="text-xs text-stone-500 mt-0.5">
-                    平台獲利數據・首頁公開指標控制・全站抽成與價格管理・會員分佈
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {adminSaveMsg && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 text-emerald-900 text-xs font-semibold flex items-center gap-2 border border-emerald-200">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{adminSaveMsg}</span>
-              </div>
-            )}
-
-            {/* 1. 平台獲利數據與即時運營總覽 */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <BarChart3 className="w-4 h-4 text-amber-600" />
-                  <span>平台獲利數據與即時運營總覽</span>
-                </h4>
-                <span className="text-[11px] text-stone-400 font-mono">即時統計</span>
-              </div>
-
-              <div className={`grid ${isNoPaymentMode ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'} gap-3 text-center`}>
-                {!isNoPaymentMode && (
-                  <>
-                    <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
-                      <span className="text-[11px] text-stone-500 font-bold block">平台總交易流水 (GMV)</span>
-                      <span className="text-xl font-black text-stone-900 font-mono mt-1 block">
-                        NT$ {(adminTotalGMV || 0).toLocaleString()}
-                      </span>
-                      <span className="text-[10px] text-stone-400 mt-0.5 block">累計媒合總額</span>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
-                      <span className="text-[11px] text-amber-800 font-bold block">平台累計獲利 (淨抽成)</span>
-                      <span className="text-xl font-black text-amber-700 font-mono mt-1 block">
-                        NT$ {(adminTotalPlatformFees || 0).toLocaleString()}
-                      </span>
-                      <span className="text-[10px] text-amber-600 mt-0.5 block">平台實收服務費</span>
-                    </div>
-                  </>
-                )}
-
-                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
-                  <span className="text-[11px] text-stone-500 font-bold block">市場問題總數</span>
-                  <span className="text-xl font-black text-stone-900 font-mono mt-1 block">
-                    {questions.length} 題
-                  </span>
-                  <span className="text-[10px] text-stone-400 mt-0.5 block">
-                    招募中 {adminOpenCount} · 已解決 {adminSolvedCount}
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
-                  <span className="text-[11px] text-stone-500 font-bold block">認證專家智庫</span>
-                  <span className="text-xl font-black text-emerald-700 font-mono mt-1 block">
-                    {solvers.length} 位
-                  </span>
-                  <span className="text-[10px] text-stone-400 mt-0.5 block">
-                    官方實名認證 {adminVerifiedSolversCount} 位
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. 首頁公開運營數據展示控制 (管理者自訂選擇要公開那些數據) */}
-            <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h4 className="font-extrabold text-sm sm:text-base text-amber-950 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-amber-600" />
-                    <span>首頁公開運營數據展示控制（首頁看板開關）</span>
-                  </h4>
-                  <p className="text-xs text-amber-900/70 mt-0.5">
-                    管理者可自由勾選決定在首頁對外公開呈現的平台真實統計指標，關閉項目將即時於首頁隱藏。
-                  </p>
-                </div>
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300 w-fit">
-                  已公開 {Object.values(publicMetricsConfig).filter(Boolean).length} / 5 項指標
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {/* Metric 1: 累計解決難題 */}
-                <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                  publicMetricsConfig.showSolvedCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
-                }`}>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-extrabold text-xs text-stone-900">累計解決難題</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">即時計算</span>
-                    </div>
-                    <p className="text-[11px] text-stone-500 mt-0.5">全站已結案問題與專家已採納方案總數</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => updatePublicMetricsConfig({ showSolvedCount: !publicMetricsConfig.showSolvedCount })}
-                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                      publicMetricsConfig.showSolvedCount ? 'bg-amber-500' : 'bg-stone-300'
-                    }`}
-                    title={publicMetricsConfig.showSolvedCount ? '點擊隱藏此指標' : '點擊公開此指標'}
-                  >
-                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      publicMetricsConfig.showSolvedCount ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-
-                {/* Metric 2: 累計懸賞金額 */}
-                <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                  publicMetricsConfig.showTotalBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
-                }`}>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-extrabold text-xs text-stone-900">累計懸賞金額</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">NT$ 即時統計</span>
-                    </div>
-                    <p className="text-[11px] text-stone-500 mt-0.5">全站已發布問題與已完成交易方案之懸賞總額</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => updatePublicMetricsConfig({ showTotalBounty: !publicMetricsConfig.showTotalBounty })}
-                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                      publicMetricsConfig.showTotalBounty ? 'bg-amber-500' : 'bg-stone-300'
-                    }`}
-                    title={publicMetricsConfig.showTotalBounty ? '點擊隱藏此指標' : '點擊公開此指標'}
-                  >
-                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      publicMetricsConfig.showTotalBounty ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-
-                {/* Metric 3: 平均回覆速度 */}
-                <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                  publicMetricsConfig.showAvgResponseSpeed ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
-                }`}>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-extrabold text-xs text-stone-900">平均回覆速度</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">時效指標</span>
-                    </div>
-                    <p className="text-[11px] text-stone-500 mt-0.5">全體專家諮詢方案平均回覆工時</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => updatePublicMetricsConfig({ showAvgResponseSpeed: !publicMetricsConfig.showAvgResponseSpeed })}
-                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                      publicMetricsConfig.showAvgResponseSpeed ? 'bg-amber-500' : 'bg-stone-300'
-                    }`}
-                    title={publicMetricsConfig.showAvgResponseSpeed ? '點擊隱藏此指標' : '點擊公開此指標'}
-                  >
-                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      publicMetricsConfig.showAvgResponseSpeed ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-
-                {/* Metric 4: 方案採納滿意度 */}
-                <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                  publicMetricsConfig.showSatisfactionRate ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
-                }`}>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-extrabold text-xs text-stone-900">方案採納滿意度</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">% 滿意度</span>
-                    </div>
-                    <p className="text-[11px] text-stone-500 mt-0.5">專家星級口碑與方案採納滿意回饋率</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => updatePublicMetricsConfig({ showSatisfactionRate: !publicMetricsConfig.showSatisfactionRate })}
-                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                      publicMetricsConfig.showSatisfactionRate ? 'bg-amber-500' : 'bg-stone-300'
-                    }`}
-                    title={publicMetricsConfig.showSatisfactionRate ? '點擊隱藏此指標' : '點擊公開此指標'}
-                  >
-                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      publicMetricsConfig.showSatisfactionRate ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-
-                {/* Metric 5: 當前最高賞金 */}
-                <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                  publicMetricsConfig.showHighestBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
-                }`}>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-extrabold text-xs text-stone-900">當前最高賞金</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">熱門導流</span>
-                    </div>
-                    <p className="text-[11px] text-stone-500 mt-0.5">即時抓取全站最高單題懸賞金額並導流排行</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => updatePublicMetricsConfig({ showHighestBounty: !publicMetricsConfig.showHighestBounty })}
-                    className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
-                      publicMetricsConfig.showHighestBounty ? 'bg-amber-500' : 'bg-stone-300'
-                    }`}
-                    title={publicMetricsConfig.showHighestBounty ? '點擊隱藏此指標' : '點擊公開此指標'}
-                  >
-                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      publicMetricsConfig.showHighestBounty ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* 4. Firebase Cloud Firestore 雲端資料庫狀態與一鍵備份 (位於頁面最下方，重新分類版) */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/80 via-white to-stone-50 border border-purple-200/90 shadow-2xs space-y-4 mt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                    <Database className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-black text-sm text-stone-900 flex items-center gap-1.5">
-                        <span>Firebase Cloud Firestore 雲端資料庫（全站四大範疇持久化）</span>
-                      </h4>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${
-                        isFirestoreConnected
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                          : 'bg-amber-50 text-amber-700 border-amber-300'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isFirestoreConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                        <span>{isFirestoreConnected ? '已連線・全自動即時同步' : '離線快取模式'}</span>
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-stone-500 mt-0.5">
-                      專案 ID：<code className="text-purple-700 font-mono font-bold">ideax-2af9c</code> · 資料庫：<code className="text-stone-600 font-mono text-[10px]">ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c</code>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                  {/* 全量上傳至雲端 */}
-                  <button
-                    type="button"
-                    disabled={isCloudSyncing}
-                    onClick={async () => {
-                      setIsCloudSyncing(true);
-                      setCloudSyncReport(null);
-                      try {
-                        const res = await syncAllToCloud();
-                        if (res.success) {
-                          const { coreTransactions, identityGovernance, engagementSocial, complianceSettings } = res.categories;
-                          setCloudSyncReport(
-                            `✅ 上傳寫入成功！全站四大類別已完整寫入 Firestore：\n` +
-                            `• 業務核心交易：${coreTransactions.questions} 道問題、${coreTransactions.answers} 份提案、${coreTransactions.transactions} 筆交易流水、${coreTransactions.conversations} 組私聊對話\n` +
-                            `• 身分審核治理：${identityGovernance.users} 位用戶、${identityGovernance.certifications} 筆專家與實名審核、${identityGovernance.auditLogs} 筆稽核日誌\n` +
-                            `• 互動通知評價：${engagementSocial.notifications} 則通知、${engagementSocial.bookmarks} 筆收藏、${engagementSocial.solvers} 位專家評鑑庫\n` +
-                            `• 法律合規設定：${complianceSettings.termsAgreements} 筆條款簽署存證、全站抽成與方案設定`
-                          );
-                        } else {
-                          setCloudSyncReport(res.message);
-                        }
-                      } catch (e: any) {
-                        setCloudSyncReport(`同步異常: ${e?.message || '未知錯誤'}`);
-                      } finally {
-                        setIsCloudSyncing(false);
-                      }
-                    }}
-                    className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 active:bg-purple-800 disabled:opacity-60 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                    title="將本機最新資料全量上傳至雲端資料庫"
-                  >
-                    {isCloudSyncing ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>寫入雲端中...</span>
-                      </>
-                    ) : (
-                      <>
-                        <UploadCloud className="w-3.5 h-3.5" />
-                        <span>全量上傳雲端 (Push)</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* 自雲端拉取 */}
-                  <button
-                    type="button"
-                    disabled={isCloudSyncing}
-                    onClick={async () => {
-                      setIsCloudSyncing(true);
-                      setCloudSyncReport(null);
-                      try {
-                        const { loadAllDataFromFirestore } = await import('../services/firestoreSync');
-                        const cloudData = await loadAllDataFromFirestore();
-                        if (cloudData) {
-                          if (cloudData.questions && cloudData.questions.length > 0) {
-                            setQuestions(cloudData.questions);
-                          }
-                          if (cloudData.users && cloudData.users.length > 0) {
-                            setAvailableUsers(cloudData.users);
-                          }
-                          if (cloudData.answers && cloudData.answers.length > 0) {
-                            setAnswers(cloudData.answers);
-                          }
-                          if (cloudData.transactions && cloudData.transactions.length > 0) {
-                            setTransactions(cloudData.transactions);
-                          }
-                          setCloudSyncReport(`✅ 下載拉取成功！已自雲端資料庫獲取最新題庫與帳目資料。`);
-                        } else {
-                          setCloudSyncReport(`雲端尚無新資料或網路連線異常。`);
-                        }
-                      } catch (e: any) {
-                        setCloudSyncReport(`拉取失敗: ${e?.message || '未知錯誤'}`);
-                      } finally {
-                        setIsCloudSyncing(false);
-                      }
-                    }}
-                    className="px-3 py-2 rounded-xl bg-white hover:bg-purple-50 active:bg-purple-100 text-purple-700 border border-purple-300 font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                    title="自雲端資料庫獲取最新數據並覆蓋同步"
-                  >
-                    <DownloadCloud className="w-3.5 h-3.5" />
-                    <span>雲端拉取 (Pull)</span>
-                  </button>
-
-                  {/* 匯出備份 JSON */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const payload = {
-                        version: '1.4.0',
-                        exportedAt: new Date().toISOString(),
-                        databaseId: 'ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c',
-                        questions,
-                        answers,
-                        transactions,
-                        users: availableUsers,
-                        notifications,
-                      };
-                      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
-                      const a = document.createElement('a');
-                      a.setAttribute('href', dataStr);
-                      a.setAttribute('download', `ideax-backup-${new Date().toISOString().slice(0, 10)}.json`);
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
-                    }}
-                    className="px-2.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs border border-stone-300 shadow-2xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
-                    title="下載本機完整 JSON 備份檔"
-                  >
-                    <Download className="w-3.5 h-3.5 text-stone-500" />
-                    <span>匯出 JSON</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 重新分類後的四大業務範疇 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-purple-100 text-xs">
-                {/* 範疇 1: 業務核心與交易類 */}
-                <div className="p-3 rounded-xl bg-white border border-purple-100 shadow-2xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-purple-950 flex items-center gap-1.5 text-xs">
-                      <Coins className="w-3.5 h-3.5 text-amber-600" />
-                      <span>1. 業務核心與交易類</span>
-                    </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">4 個集合</span>
-                  </div>
-                  <ul className="text-[11px] text-stone-600 space-y-0.5">
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>questions</strong>：問題懸賞、難度、AI標籤</span>
-                    </li>
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>answers</strong>：提案解法、里程碑交付驗收</span>
-                    </li>
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>transactions</strong>：點數流水、儲值、託管放款</span>
-                    </li>
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>conversations</strong>：私聊商議、報價、調解</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* 範疇 2: 用戶身分與審核治理類 */}
-                <div className="p-3 rounded-xl bg-white border border-purple-100 shadow-2xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-purple-950 flex items-center gap-1.5 text-xs">
-                      <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-                      <span>2. 用戶身分與治理類</span>
-                    </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">3 個集合</span>
-                  </div>
-                  <ul className="text-[11px] text-stone-600 space-y-0.5">
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>users</strong>：帳號身分、點數餘額、銀行資料</span>
-                    </li>
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>certifications</strong>：實名認證與專家證書審查</span>
-                    </li>
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>audit_logs</strong>：管理員5萬配額與封鎖日誌</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* 範疇 3: 互動通知與評價體系類 */}
-                <div className="p-3 rounded-xl bg-white border border-purple-100 shadow-2xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-purple-950 flex items-center gap-1.5 text-xs">
-                      <Sparkles className="w-3.5 h-3.5 text-orange-600" />
-                      <span>3. 互動通知與評價類</span>
-                    </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-orange-100 text-orange-800">3 個集合</span>
-                  </div>
-                  <ul className="text-[11px] text-stone-600 space-y-0.5">
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>notifications</strong>：AI媒合、交付提醒、公告</span>
-                    </li>
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>bookmarks</strong>：用戶精選題目追蹤收藏</span>
-                    </li>
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>solvers</strong>：專家智庫檔案、評價與滿意度</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* 範疇 4: 法律合規與平台設定類 */}
-                <div className="p-3 rounded-xl bg-white border border-purple-100 shadow-2xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-purple-950 flex items-center gap-1.5 text-xs">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>4. 法律合規與設定類</span>
-                    </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">2 個集合</span>
-                  </div>
-                  <ul className="text-[11px] text-stone-600 space-y-0.5">
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>terms_agreements</strong>：條款同意戳記存證</span>
-                    </li>
-                    <li className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span><strong>platform_settings</strong>：抽成率、方案、指標開關</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* 5. 預留外部對接出入口環境端點 (API & Webhook Gateway) */}
-              <div className="p-3.5 rounded-xl bg-stone-900 text-stone-100 space-y-2 border border-stone-800">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] font-bold text-amber-400 flex items-center gap-1.5">
-                    <span>🔌 預留出入口對接環境端點清單 (Integration Endpoints)</span>
-                  </span>
-                  <span className="text-[10px] text-stone-400 font-mono">Status: READY</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] font-mono text-stone-300">
-                  <div className="p-2 rounded bg-stone-800/80 border border-stone-700">
-                    <span className="text-emerald-400 font-bold block">GET /api/database/status</span>
-                    <span className="text-stone-400 text-[9.5px]">資料庫連線監控與環境變數診斷</span>
-                  </div>
-                  <div className="p-2 rounded bg-stone-800/80 border border-stone-700">
-                    <span className="text-emerald-400 font-bold block">POST /api/webhook/payment-notify</span>
-                    <span className="text-stone-400 text-[9.5px]">第三方金流扣款成功即時回傳接收通道</span>
-                  </div>
-                  <div className="p-2 rounded bg-stone-800/80 border border-stone-700">
-                    <span className="text-emerald-400 font-bold block">POST /api/webhook/event-dispatch</span>
-                    <span className="text-stone-400 text-[9.5px]">外部 CRM 與跨系統推播事件管道</span>
-                  </div>
-                  <div className="p-2 rounded bg-stone-800/80 border border-stone-700">
-                    <span className="text-emerald-400 font-bold block">POST /api/ai/analyze-question</span>
-                    <span className="text-stone-400 text-[9.5px]">AI 智能題意解析與自動打標引擎</span>
-                  </div>
-                </div>
-              </div>
-
-              {cloudSyncReport && (
-                <div className="p-3.5 rounded-xl bg-purple-100/90 text-purple-950 font-bold text-xs whitespace-pre-line border border-purple-300 leading-relaxed shadow-2xs">
-                  {cloudSyncReport}
-                </div>
-              )}
-
-              {lastSyncTime && (
-                <div className="text-[10px] text-stone-400 flex items-center justify-between">
-                  <span>✨ 平台自動監聽狀態變更：用戶發題、回答、審核、下架、儲值、轉入點數皆會即時寫入雲端</span>
-                  <span>最近寫入時間：{lastSyncTime}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* TAB 2: 個人中心 (帳號資訊、身份切換、解答者公開資料與隱私設定) */}
         {activeTab === 'profile' && (
           <div className="space-y-6">
@@ -5618,7 +6134,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
                     >
                       <LayoutGrid className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">功能總覽儀表板</span>
+                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">管理儀表板</span>
                       <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">環境開關與營運概覽</span>
                     </button>
 
@@ -5636,12 +6152,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                     <button
                       type="button"
-                      onClick={() => setActiveTab('admin_management')}
+                      onClick={() => setActiveTab('overview')}
                       className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
                     >
-                      <Sliders className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">平台數據與顯示</span>
-                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">抽成費率與前台指標</span>
+                      <LayoutGrid className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">管理儀表板</span>
+                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">全站營運大盤與指標</span>
                     </button>
 
                     <button

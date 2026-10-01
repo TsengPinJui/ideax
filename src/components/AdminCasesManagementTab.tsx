@@ -99,6 +99,12 @@ export const AdminCasesManagementTab: React.FC<{
     };
   });
 
+  // 案件統計數量
+  const openCasesCount = casesList.filter((c) => c.status === 'open').length;
+  const inProgressCasesCount = casesList.filter((c) => c.status === 'in_progress').length;
+  const solvedCasesCount = casesList.filter((c) => c.status === 'solved').length;
+  const disputedCasesCount = casesList.filter((c) => c.status === 'disputed').length;
+
   const filteredCases = casesList.filter((item) => {
     if (statusFilter !== 'all' && item.status !== statusFilter) return false;
 
@@ -138,6 +144,81 @@ export const AdminCasesManagementTab: React.FC<{
           <p className="text-xs text-stone-500 mt-1">
             查閱全站案件詳細狀況、提問者與接案專家履約進度，並可查閱雙方在私聊中的對話紀錄與自訂方案。
           </p>
+        </div>
+      </div>
+
+      {/* 案件狀態多格面板 (手機 2x2 / 電腦 4 欄一覽) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-center">
+        <div
+          onClick={() => setStatusFilter(statusFilter === 'open' ? 'all' : 'open')}
+          className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer ${
+            statusFilter === 'open'
+              ? 'bg-blue-100/80 border-blue-400 ring-2 ring-blue-300 shadow-xs'
+              : 'bg-blue-50/50 border-blue-200 hover:bg-blue-100/50'
+          }`}
+        >
+          <span className="text-[11px] text-blue-800 font-bold block flex items-center justify-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span>招募中案件</span>
+          </span>
+          <span className="text-xl sm:text-2xl font-black text-blue-900 font-mono mt-1 block">
+            {openCasesCount} 筆
+          </span>
+          <span className="text-[10px] text-blue-700/80 mt-0.5 block truncate">等待專家提案</span>
+        </div>
+
+        <div
+          onClick={() => setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress')}
+          className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer ${
+            statusFilter === 'in_progress'
+              ? 'bg-amber-100/80 border-amber-400 ring-2 ring-amber-300 shadow-xs'
+              : 'bg-amber-50/50 border-amber-200 hover:bg-amber-100/50'
+          }`}
+        >
+          <span className="text-[11px] text-amber-800 font-bold block flex items-center justify-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <span>進行中交付</span>
+          </span>
+          <span className="text-xl sm:text-2xl font-black text-amber-900 font-mono mt-1 block">
+            {inProgressCasesCount} 筆
+          </span>
+          <span className="text-[10px] text-amber-700/80 mt-0.5 block truncate">專家履約執行中</span>
+        </div>
+
+        <div
+          onClick={() => setStatusFilter(statusFilter === 'solved' ? 'all' : 'solved')}
+          className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer ${
+            statusFilter === 'solved'
+              ? 'bg-emerald-100/80 border-emerald-400 ring-2 ring-emerald-300 shadow-xs'
+              : 'bg-emerald-50/50 border-emerald-200 hover:bg-emerald-100/50'
+          }`}
+        >
+          <span className="text-[11px] text-emerald-800 font-bold block flex items-center justify-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>已完成結案</span>
+          </span>
+          <span className="text-xl sm:text-2xl font-black text-emerald-900 font-mono mt-1 block">
+            {solvedCasesCount} 筆
+          </span>
+          <span className="text-[10px] text-emerald-700/80 mt-0.5 block truncate">驗收採納撥款</span>
+        </div>
+
+        <div
+          onClick={() => setStatusFilter(statusFilter === 'disputed' ? 'all' : 'disputed')}
+          className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer ${
+            statusFilter === 'disputed'
+              ? 'bg-rose-100/80 border-rose-400 ring-2 ring-rose-300 shadow-xs'
+              : 'bg-rose-50/50 border-rose-200 hover:bg-rose-100/50'
+          }`}
+        >
+          <span className="text-[11px] text-rose-800 font-bold block flex items-center justify-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            <span>爭議申訴件</span>
+          </span>
+          <span className="text-xl sm:text-2xl font-black text-rose-900 font-mono mt-1 block">
+            {disputedCasesCount} 筆
+          </span>
+          <span className="text-[10px] text-rose-700/80 mt-0.5 block truncate">待管理員介入</span>
         </div>
       </div>
 

@@ -1060,22 +1060,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Public Metrics Config (Admin customizes which stats to display publicly)
+  const defaultPublicMetricsConfig: PublicMetricsConfig = {
+    showSolvedCount: true,
+    showTotalBounty: true,
+    showAvgResponseSpeed: true,
+    showSatisfactionRate: true,
+    showHighestBounty: true,
+    showTotalViews: false,
+    showOnlineUsers: false,
+    showTotalMembers: false,
+    showVerifiedSolvers: false,
+    showQuestionsCount: false,
+    showProposalsCount: false,
+    showTotalDeals: false,
+    showTotalGMV: false,
+  };
+
   const [publicMetricsConfig, setPublicMetricsConfig] = useState<PublicMetricsConfig>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}public_metrics_config`);
       if (saved) {
-        return JSON.parse(saved);
+        return { ...defaultPublicMetricsConfig, ...JSON.parse(saved) };
       }
     } catch (e) {
       console.error(e);
     }
-    return {
-      showSolvedCount: true,
-      showTotalBounty: true,
-      showAvgResponseSpeed: true,
-      showSatisfactionRate: true,
-      showHighestBounty: true,
-    };
+    return defaultPublicMetricsConfig;
   });
 
   const updatePublicMetricsConfig = (config: Partial<PublicMetricsConfig>) => {

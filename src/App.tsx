@@ -1456,9 +1456,6 @@ function MainContent() {
         onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
       />
 
-      {/* 右側浮動下載提示插件 */}
-      <MobilePwaDownloadWidget />
-
       {/* PWA 安裝與下載指引彈窗 */}
       <PwaInstallModal
         isOpen={isPwaInstallModalOpen}

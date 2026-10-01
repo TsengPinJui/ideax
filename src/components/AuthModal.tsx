@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -25,7 +25,6 @@ import {
   Compass,
   KeyRound,
   Check,
-  Smartphone,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
@@ -35,11 +34,7 @@ import {
   loginWithFirebaseEmail,
   registerWithFirebaseEmail,
   loginWithFirebaseGoogle,
-  createRecaptchaVerifier,
-  loginWithFirebasePhone,
-  verifyFirebasePhoneCode,
 } from '../services/firebaseAuth';
-import type { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth';
 import { syncUserToFirestore, getUserFromFirestore } from '../services/firestoreSync';
 
 interface AuthModalProps {
@@ -75,7 +70,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   } = useApp();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot_password'>(initialMode);
-  const [altPanel, setAltPanel] = useState<'none' | 'phone_otp'>('none');
 
   // Login inputs (Username / Phone / Email & Password)
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -84,22 +78,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [rememberMe, setRememberMe] = useState(true);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
-  // Phone SMS inputs (for alternate phone OTP login)
-  const [loginPhone, setLoginPhone] = useState('');
-  const [loginSmsCode, setLoginSmsCode] = useState('');
-  const [isSmsSent, setIsSmsSent] = useState(false);
-  const [smsCountdown, setSmsCountdown] = useState(0);
-
-  // Firebase Phone Auth refs
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
-  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-
   // Register wizard step: 1 = Basic Account & Password Rules, 2 = Profile & Survey Questionnaire
   const [regStep, setRegStep] = useState<1 | 2>(1);
 
   // Step 1: Account registration fields
-  const [regAuthProvider, setRegAuthProvider] = useState<'email' | 'google' | 'phone'>('email');
+  const [regAuthProvider, setRegAuthProvider] = useState<'email' | 'google'>('email');
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
@@ -159,7 +142,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
-      setAltPanel(initialMethod === 'phone' ? 'phone_otp' : 'none');
       setErrorMsg(null);
       setSuccessMsg(null);
       setHasAttemptedSubmit(false);
@@ -170,7 +152,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen, initialMode, initialMethod]);
+  }, [isOpen, initialMode]);
 
   // Load remember me state from localStorage
   useEffect(() => {
@@ -185,15 +167,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       // ignore
     }
   }, []);
-
-  // SMS cooldown countdown timer
-  useEffect(() => {
-    let timer: any;
-    if (smsCountdown > 0) {
-      timer = setTimeout(() => setSmsCountdown((c) => c - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [smsCountdown]);
 
   // Validation helpers for Username and Password
   const validateUsername = (uname: string): { isValid: boolean; message: string } => {
@@ -275,7 +248,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             username: 'Admin_001',
             password: 'John930521',
             name: 'IdeaX 管理團隊',
-            title: '平台審核與交易治理總監',
+            title: '平台總管',
             avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
             role: 'admin',
             balance: 50000,
@@ -462,102 +435,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setCurrentUser(mockGoogleUser);
       setSuccessMsg('登入成功。');
       setTimeout(() => onClose(), 400);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Phone SMS Send OTP (透過 Firebase Authentication 發送真實簡訊至用戶手機)
-  const handleSendSms = async () => {
-    const rawPhone = loginPhone.trim().replace(/[\s-]/g, '');
-    if (!rawPhone) {
-      setErrorMsg('發送失敗：請輸入手機號碼。');
-      return;
-    }
-    // 驗證手機格式 (台灣 09xxxxxxxx 或國際 +8869xxxxxxxx)
-    if (!/^09\d{8}$/.test(rawPhone) && !/^\+8869\d{8}$/.test(rawPhone)) {
-      setErrorMsg('發送失敗：請輸入正確的手機號碼（例如：0912-345-678）。');
-      return;
-    }
-
-    setErrorMsg(null);
-    setIsLoading(true);
-
-    try {
-      if (!recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current = createRecaptchaVerifier('firebase-recaptcha-container');
-      }
-      const formattedPhone = rawPhone.startsWith('+') ? rawPhone : `+886${rawPhone.replace(/^0/, '')}`;
-      const confirmation = await loginWithFirebasePhone(formattedPhone, recaptchaVerifierRef.current);
-      confirmationResultRef.current = confirmation;
-      setIsSmsSent(true);
-      setSmsCountdown(60);
-      setSuccessMsg(`簡訊驗證碼已發送至 ${rawPhone}，請查收手機簡訊。`);
-    } catch (err: any) {
-      console.error('Firebase Phone auth error:', err);
-      if (recaptchaVerifierRef.current) {
-        try {
-          recaptchaVerifierRef.current.clear();
-        } catch {
-          // ignore
-        }
-        recaptchaVerifierRef.current = null;
-      }
-      setErrorMsg('發送失敗：' + (err.message || '簡訊發送異常，請稍後再試。'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Phone SMS Verify OTP & Login (驗證手機收到的真實 6 位數簡訊驗證碼)
-  const handlePhoneLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = loginSmsCode.trim();
-    if (!code) {
-      setErrorMsg('登入失敗：請輸入手機簡訊中的 6 位數驗證碼。');
-      return;
-    }
-    if (!confirmationResultRef.current) {
-      setErrorMsg('登入失敗：尚未發送驗證碼，請先點擊發送驗證碼。');
-      return;
-    }
-    setErrorMsg(null);
-    setIsLoading(true);
-
-    try {
-      const userCred = await verifyFirebasePhoneCode(confirmationResultRef.current, code);
-      const cleanPhone = loginPhone.trim().replace(/[\s-]/g, '');
-      const existing = availableUsers.find(
-        (u) => (u.phone && u.phone.replace(/[\s-]/g, '') === cleanPhone) || (userCred && u.id === userCred.uid)
-      );
-
-      if (existing) {
-        const checkRes = checkUserDeactivationStatus(existing);
-        if (!checkRes.canLogin) {
-          setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已完成註銷。'));
-          setIsLoading(false);
-          return;
-        }
-        const effectiveUser = checkRes.restoredUser || existing;
-        switchAccount(effectiveUser.id);
-        setSuccessMsg('登入成功。');
-        setTimeout(() => onClose(), 400);
-      } else {
-        // 新手機用戶：驗證通過後，一樣引導進入身分選擇與註冊後續程序
-        setAuthUid(userCred?.uid || `phone_${cleanPhone}`);
-        setRegAuthProvider('phone');
-        setRegPhone(cleanPhone);
-        setPhone(cleanPhone);
-        setRegName(`會員_${cleanPhone.slice(-4)}`);
-        setRegRealLegalName('');
-        setRegUsername(`phone_${cleanPhone.slice(-4)}`);
-        setMode('register');
-        setRegStep(1);
-        setAltPanel('none');
-        setSuccessMsg('手機驗證成功！請選擇您的平台身分以完成註冊程序。');
-      }
-    } catch (err: any) {
-      setErrorMsg('登入失敗：' + (err.message || '簡訊驗證碼不正確或已過期。'));
     } finally {
       setIsLoading(false);
     }
@@ -948,7 +825,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* ============================================================== */}
         {/* MODE 1: LOGIN (滿版簡潔版面，舒展大氣，無表情符號、欄位內亮出規則) */}
         {/* ============================================================== */}
-        {mode === 'login' && altPanel === 'none' && (
+        {mode === 'login' && (
           <div className="space-y-6 sm:space-y-7 w-full">
             <form onSubmit={handleAccountPasswordLogin} className="space-y-4 sm:space-y-4.5">
               {/* 1. 帳號輸入框 (在欄位內亮出帳號規則) */}
@@ -1080,97 +957,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div className="flex-1 h-px bg-stone-200" />
             </div>
 
-            {/* 7. 第三方快速登入（Google ＋ 預留 FB, Apple, 手機並標明暫未開通） */}
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center justify-center gap-4 sm:gap-6">
-                {/* 1. Google (正常使用) */}
-                <div className="flex flex-col items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={handleGoogleAuth}
-                    className="w-12 h-12 rounded-full border border-stone-200 hover:border-amber-500 hover:bg-amber-50/30 flex items-center justify-center bg-white transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
-                    title="使用 Google 帳號登入"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path
-                        fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                      />
-                    </svg>
-                  </button>
-                  <span className="text-[10px] text-stone-600 font-bold">Google</span>
-                </div>
-
-                {/* 2. Facebook (預留 暫未開通) */}
-                <div className="flex flex-col items-center gap-1">
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setErrorMsg('Facebook 登入功能升級維護中，暫未開通。')}
-                      className="w-12 h-12 rounded-full border border-stone-200 bg-stone-50/90 flex items-center justify-center transition-all cursor-pointer hover:bg-stone-100 shadow-2xs group"
-                      title="Facebook 登入（暫未開通）"
-                    >
-                      <svg className="w-5 h-5 fill-[#1877F2] opacity-70 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                      </svg>
-                    </button>
-                    <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-stone-200 text-stone-600 text-[8px] font-bold border border-white shadow-2xs whitespace-nowrap select-none scale-90">
-                      暫未開通
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-stone-400 font-medium">FB</span>
-                </div>
-
-                {/* 3. Apple (預留 暫未開通) */}
-                <div className="flex flex-col items-center gap-1">
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setErrorMsg('Apple 登入功能審核串接中，暫未開通。')}
-                      className="w-12 h-12 rounded-full border border-stone-200 bg-stone-50/90 flex items-center justify-center transition-all cursor-pointer hover:bg-stone-100 shadow-2xs group"
-                      title="Apple 登入（暫未開通）"
-                    >
-                      <svg className="w-5 h-5 fill-stone-800 opacity-70 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24">
-                        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.92-2.85-.9.04-1.99.6-2.64 1.35-.57.65-1.07 1.71-.93 2.73 1 .08 2.03-.48 2.65-1.23" />
-                      </svg>
-                    </button>
-                    <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-stone-200 text-stone-600 text-[8px] font-bold border border-white shadow-2xs whitespace-nowrap select-none scale-90">
-                      暫未開通
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-stone-400 font-medium">Apple</span>
-                </div>
-
-                {/* 4. 手機 (預留 暫未開通) */}
-                <div className="flex flex-col items-center gap-1">
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setErrorMsg('手機簡訊驗證登入升級維護中，暫未開通。')}
-                      className="w-12 h-12 rounded-full border border-stone-200 bg-stone-50/90 flex items-center justify-center text-stone-500 transition-all cursor-pointer hover:bg-stone-100 shadow-2xs group"
-                      title="手機登入（暫未開通）"
-                    >
-                      <Smartphone className="w-5 h-5 opacity-70 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                    <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-stone-200 text-stone-600 text-[8px] font-bold border border-white shadow-2xs whitespace-nowrap select-none scale-90">
-                      暫未開通
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-stone-400 font-medium">手機</span>
-                </div>
-              </div>
+            {/* 7. Google 快速登入 */}
+            <div className="pt-1 flex flex-col items-center">
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                className="w-full py-3 sm:py-3.5 px-4 rounded-2xl border border-stone-200 hover:border-amber-400 hover:bg-stone-50 bg-white flex items-center justify-center gap-3 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.99] group"
+                title="使用 Google 帳號登入"
+              >
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                <span className="text-xs sm:text-sm font-bold text-stone-700 group-hover:text-stone-900">使用 Google 帳號登入</span>
+              </button>
             </div>
 
             {/* 8. 切換現有帳號 (按照最近登入的排在左邊，越右邊越久沒登入) */}
@@ -1222,82 +1036,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* ============================================================== */}
-        {/* SUB-PANEL: 手機簡訊驗證登入 (Phone OTP)                          */}
-        {/* ============================================================== */}
-        {mode === 'login' && altPanel === 'phone_otp' && (
-          <div className="space-y-4 pt-1 flex-1 flex flex-col justify-center my-auto">
-            <div className="flex items-center justify-between pb-1 border-b border-stone-100">
-              <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
-                <Smartphone className="w-4 h-4 text-emerald-600" />
-                <span>手機簡訊驗證碼登入</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setAltPanel('none')}
-                className="text-xs font-bold text-stone-500 hover:text-stone-900 cursor-pointer"
-              >
-                ← 返回密碼登入
-              </button>
-            </div>
-
-            <form onSubmit={handlePhoneLogin} className="space-y-3.5">
-              <div ref={recaptchaContainerRef} id="firebase-recaptcha-container" />
-
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">手機號碼</label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Phone className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
-                    <input
-                      type="tel"
-                      required
-                      value={loginPhone}
-                      onChange={(e) => setLoginPhone(e.target.value)}
-                      placeholder="例如：0912-345-678"
-                      className="w-full pl-9 pr-3 py-3 bg-[#f0f4f8] focus:bg-white text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSendSms}
-                    disabled={isLoading || smsCountdown > 0}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold cursor-pointer transition-all disabled:opacity-50 shrink-0"
-                  >
-                    {isLoading ? '發送中...' : smsCountdown > 0 ? `${smsCountdown}s 後重發` : isSmsSent ? '重新發送' : '發送驗證碼'}
-                  </button>
-                </div>
-              </div>
-
-              {isSmsSent && (
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-stone-700">簡訊 6 位數驗證碼</label>
-                    <span className="text-[10px] text-stone-400">有效時間 5 分鐘</span>
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={loginSmsCode}
-                    onChange={(e) => setLoginSmsCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="輸入 6 位數字驗證碼"
-                    className="w-full px-3 py-3 text-sm rounded-xl border border-emerald-400 bg-emerald-50/30 focus:outline-none focus:border-emerald-500 font-mono tracking-widest text-center font-bold text-stone-900"
-                  />
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading || !isSmsSent || !loginSmsCode.trim()}
-                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-black text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isLoading ? '驗證中...' : '確認驗證並登入'}
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* ============================================================== */}
         {/* MODE 2: REGISTER                                               */}
         {/* ============================================================== */}
         {mode === 'register' && (
@@ -1328,7 +1066,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
             </div>
 
-            {/* STEP 1: 身分選擇與帳號設定 (支援 Google / 電話 / 郵件) */}
+            {/* STEP 1: 身分選擇與帳號設定 (支援 Google / 郵件) */}
             {regStep === 1 && (
               <form onSubmit={handleStep1Next} className="space-y-3.5">
                 {/* 註冊渠道提示徽章 */}
@@ -1336,13 +1074,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
                     <span>Google 帳號授權成功（{regEmail || regName}），請選擇您的平台身分</span>
-                  </div>
-                )}
-
-                {regAuthProvider === 'phone' && (
-                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-                    <span>手機簡訊驗證成功（{regPhone || phone}），請選擇您的平台身分</span>
                   </div>
                 )}
 
@@ -1566,7 +1297,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     >
                       《一般服務條款》
                     </button>
-                    （含隱私權政策與免責聲明）
+                    （含隱私權政策與免責聲明，註冊即為免費基礎用戶，無強制訂閱負擔）
                   </span>
                 </label>
 

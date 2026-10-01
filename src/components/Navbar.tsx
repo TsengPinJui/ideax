@@ -338,7 +338,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     setIsUserMenuOpen(false);
     setIsSwitchAccountSectionOpen(false);
     if (user.role === 'admin') {
-      handleOpenDashboard('admin_management');
+      handleOpenDashboard('overview');
     }
   };
 
@@ -1134,12 +1134,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-purple-900 uppercase tracking-wider flex items-center justify-between">
                         <span className="flex items-center gap-1.5">
                           <LayoutGrid className="w-3.5 h-3.5 text-purple-700" />
-                          <span>總覽與平台數據</span>
+                          <span>管理核心總覽</span>
                         </span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 font-bold border border-purple-200">2 項</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 font-bold border border-purple-200">1 項</span>
                       </p>
 
-                      {/* 功能總覽儀表板 */}
+                      {/* 管理儀表板 */}
                       <button
                         onClick={() => handleOpenDashboard('overview')}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-100/70 flex items-center justify-between cursor-pointer group transition-all"
@@ -1149,25 +1149,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                             <LayoutGrid className="w-3.5 h-3.5" />
                           </div>
                           <div>
-                            <span className="block font-black text-purple-950 group-hover:text-purple-700 transition-colors">功能總覽儀表板</span>
-                            <span className="text-[10px] text-purple-700/80 font-normal">管理員核心營運概覽</span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition-all" />
-                      </button>
-
-                      {/* 平台數據與顯示 */}
-                      <button
-                        onClick={() => handleOpenDashboard('admin_management')}
-                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-100/70 flex items-center justify-between cursor-pointer group transition-all"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                            <Sliders className="w-3.5 h-3.5" />
-                          </div>
-                          <div>
-                            <span className="block font-black text-purple-950 group-hover:text-purple-700 transition-colors">平台數據與顯示</span>
-                            <span className="text-[10px] text-purple-700/80 font-normal">獲利統計與首頁看板公開指標設定</span>
+                            <span className="block font-black text-purple-950 group-hover:text-purple-700 transition-colors">管理儀表板</span>
+                            <span className="text-[10px] text-purple-700/80 font-normal">全站營運大盤、會員分佈、數據控制與資料庫</span>
                           </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition-all" />

@@ -203,14 +203,14 @@ export const SubscriptionPlanCard: React.FC = () => {
             <div>
               <span className="text-[11px] font-bold text-stone-500 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-stone-400" />
-                <span>會員資格</span>
+                <span>帳號與身分狀態</span>
               </span>
               <div className="text-xs font-black text-stone-900 mt-0.5">
-                {currentTier === 'free' ? '一般會員（免費）' : '已開通付費方案'}
+                {currentTier === 'free' ? '一般用戶（免月費基礎帳號）' : '訂閱會員（已開通付費方案）'}
               </div>
             </div>
-            <span className="text-[10px] text-stone-400 font-medium">
-              {currentTier === 'free' ? '可隨時升級' : '可隨時變更'}
+            <span className="text-[10px] text-stone-500 font-medium">
+              {currentTier === 'free' ? '可依需求隨時訂閱升級' : '可隨時變更或取消'}
             </span>
           </div>
         </div>

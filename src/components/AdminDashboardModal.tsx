@@ -209,6 +209,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   };
 
   const verifiedSolversCount = solvers.filter((s) => s.verifiedBadge).length;
+  const totalRealUsersCount = availableUsers.filter((u) => u.id !== 'user-guest').length;
+  const avgGMVPerUser = totalRealUsersCount > 0 ? Math.round(totalGMV / totalRealUsersCount) : 0;
+  const avgPlatformFeePerUser = totalRealUsersCount > 0 ? Math.round(totalPlatformFees / totalRealUsersCount) : 0;
 
   const handleSaveCommission = () => {
     setCommissionRate(sliderRate / 100);
@@ -435,44 +438,44 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             <span className="text-[11px] text-stone-400 font-mono">即時統計</span>
           </div>
 
-          <div className={`grid ${isNoPaymentMode ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'} gap-3 text-center`}>
+          <div className={`grid ${isNoPaymentMode ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'} gap-2.5 sm:gap-3 text-center`}>
             {!isNoPaymentMode && (
               <>
-                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
-                  <span className="text-[11px] text-stone-500 font-bold block">平台總交易流水 (GMV)</span>
-                  <span className="text-xl font-black text-stone-900 font-mono mt-1 block">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200">
+                  <span className="text-[11px] text-stone-500 font-bold block truncate">平台總交易額</span>
+                  <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono mt-1 block">
                     NT$ {(totalGMV || 0).toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-stone-400 mt-0.5 block">累計媒合總額</span>
+                  <span className="text-[10px] text-stone-400 mt-0.5 block truncate">累計媒合總額</span>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
-                  <span className="text-[11px] text-amber-800 font-bold block">平台累計獲利 (淨抽成)</span>
-                  <span className="text-xl font-black text-amber-700 font-mono mt-1 block">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
+                  <span className="text-[11px] text-amber-800 font-bold block truncate">平台累計獲利 (淨抽成)</span>
+                  <span className="text-xl sm:text-2xl font-black text-amber-700 font-mono mt-1 block">
                     NT$ {(totalPlatformFees || 0).toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-amber-600 mt-0.5 block">平台實收服務費</span>
+                  <span className="text-[10px] text-amber-600 mt-0.5 block truncate">平台實收服務費</span>
                 </div>
               </>
             )}
 
-            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
-              <span className="text-[11px] text-stone-500 font-bold block">市場問題總數</span>
-              <span className="text-xl font-black text-stone-900 font-mono mt-1 block">
-                {questions.length} 題
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200">
+              <span className="text-[11px] text-stone-500 font-bold block truncate">平均用戶交易額</span>
+              <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono mt-1 block">
+                NT$ {(avgGMVPerUser || 0).toLocaleString()}
               </span>
-              <span className="text-[10px] text-stone-400 mt-0.5 block">
-                招募中 {openQuestionsCount} · 已解決 {solvedQuestionsCount}
+              <span className="text-[10px] text-stone-400 mt-0.5 block truncate">
+                全站會員平均交易貢獻
               </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
-              <span className="text-[11px] text-stone-500 font-bold block">認證專家智庫</span>
-              <span className="text-xl font-black text-emerald-700 font-mono mt-1 block">
-                {solvers.length} 位
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200">
+              <span className="text-[11px] text-emerald-800 font-bold block truncate">平均用戶收益</span>
+              <span className="text-xl sm:text-2xl font-black text-emerald-700 font-mono mt-1 block">
+                NT$ {(avgPlatformFeePerUser || 0).toLocaleString()}
               </span>
-              <span className="text-[10px] text-stone-400 mt-0.5 block">
-                官方實名認證 {verifiedSolversCount} 位
+              <span className="text-[10px] text-emerald-600/90 mt-0.5 block truncate" title="平台從每個客戶賺的錢">
+                平台從每個客戶賺的錢
               </span>
             </div>
           </div>
@@ -492,7 +495,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300 w-fit">
-                已公開 {Object.values(localPublicMetrics).filter(Boolean).length} / 5 項指標
+                已公開 {Object.values(localPublicMetrics).filter(Boolean).length} / 13 項指標
               </span>
               <button
                 type="button"
@@ -511,14 +514,164 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {/* Metric 1: 累計解決難題 */}
+            {/* Metric 1: 總瀏覽量 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">總瀏覽量</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">曝光次數</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">全站問題、解方與專家總瀏覽曝光</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showTotalViews: !prev.showTotalViews }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showTotalViews ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showTotalViews ? '點擊關閉此指標' : '點擊開啟此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showTotalViews ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 2: 線上人數 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showOnlineUsers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">線上人數</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">即時在線</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">當前連線活躍瀏覽與互動人數</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showOnlineUsers: !prev.showOnlineUsers }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showOnlineUsers ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showOnlineUsers ? '點擊關閉此指標' : '點擊開啟此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showOnlineUsers ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 3: 總註冊用戶 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showTotalMembers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">總註冊用戶</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">會員規模</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">全站註冊會員總人數（提問方與專家）</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showTotalMembers: !prev.showTotalMembers }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showTotalMembers ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showTotalMembers ? '點擊關閉此指標' : '點擊開啟此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showTotalMembers ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 4: 認證專家 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showVerifiedSolvers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">認證專家</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-800">智庫認證</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">官方審核通過之認證專家智庫總數</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showVerifiedSolvers: !prev.showVerifiedSolvers }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showVerifiedSolvers ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showVerifiedSolvers ? '點擊關閉此指標' : '點擊開啟此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showVerifiedSolvers ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 5: 問題數量 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showQuestionsCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">問題數量</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">市場難題</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">全站發布之公開懸賞與客製委託難題</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showQuestionsCount: !prev.showQuestionsCount }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showQuestionsCount ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showQuestionsCount ? '點擊關閉此指標' : '點擊開啟此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showQuestionsCount ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 6: 提案數量 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showProposalsCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">提案數量</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">解方交付</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">各領域專家提交之專業解題方案總數</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showProposalsCount: !prev.showProposalsCount }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showProposalsCount ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showProposalsCount ? '點擊關閉此指標' : '點擊開啟此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showProposalsCount ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 7: 累計解決難題 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showSolvedCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-xs text-stone-900">累計解決難題</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">即時計算</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">已結案題數</span>
                 </div>
                 <p className="text-[11px] text-stone-500 mt-0.5">全站已結案問題與專家已採納方案總數</p>
               </div>
@@ -536,7 +689,57 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </button>
             </div>
 
-            {/* Metric 2: 累計懸賞金額 */}
+            {/* Metric 8: 已成交方案 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showTotalDeals ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">已成交方案</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">媒合成交</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">全站會員訂閱與案件媒合開通總筆數</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showTotalDeals: !prev.showTotalDeals }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showTotalDeals ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showTotalDeals ? '點擊關閉此指標' : '點擊開啟此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showTotalDeals ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 9: 平台總交易額 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showTotalGMV ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">平台總交易額</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700">全站流水</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">全站媒合交易與方案訂閱總流水</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showTotalGMV: !prev.showTotalGMV }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showTotalGMV ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showTotalGMV ? '點擊關閉此指標' : '點擊開啟此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showTotalGMV ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 10: 累計懸賞金額 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showTotalBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
@@ -561,7 +764,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </button>
             </div>
 
-            {/* Metric 3: 平均回覆速度 */}
+            {/* Metric 11: 平均回覆速度 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showAvgResponseSpeed ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
@@ -586,7 +789,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </button>
             </div>
 
-            {/* Metric 4: 方案採納滿意度 */}
+            {/* Metric 12: 方案採納滿意度 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showSatisfactionRate ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
@@ -611,7 +814,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </button>
             </div>
 
-            {/* Metric 5: 當前最高賞金 */}
+            {/* Metric 13: 當前最高賞金 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showHighestBounty ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>

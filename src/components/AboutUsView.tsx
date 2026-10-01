@@ -468,6 +468,45 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'terms' && (
         <div className="space-y-4">
+          {/* 核心名詞觀念指引：用戶 vs 會員 */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-50 via-white to-amber-50/40 border border-amber-200/90 shadow-2xs space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-500 text-stone-950 font-black flex items-center justify-center shrink-0 shadow-2xs">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <h3 className="text-xs sm:text-sm font-black text-amber-950">
+                  條款重要名詞指引：用戶與會員之概念區別
+                </h3>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300">
+                權益保障須知
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div className="p-3 rounded-xl bg-white border border-stone-200/90 space-y-1">
+                <div className="flex items-center gap-1.5 font-black text-stone-900">
+                  <span className="w-2 h-2 rounded-full bg-stone-500" />
+                  <span>「用戶」＝ 註冊的帳號（基礎免費）</span>
+                </div>
+                <p className="text-[11px] text-stone-600 leading-relaxed pl-3.5">
+                  完成註冊即為平台用戶，享有全站問題瀏覽、免費提出痛點、發布懸賞、社群討論與自由接案等完整功能。<strong>完全免收月費、無定期扣款</strong>。
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-300/80 space-y-1">
+                <div className="flex items-center gap-1.5 font-black text-amber-950">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span>「會員」＝ 購買訂閱方案的用戶（付費特權）</span>
+                </div>
+                <p className="text-[11px] text-amber-900/90 leading-relaxed pl-3.5">
+                  用戶自主選購定期會員方案（如達人、權威、大師方案），享有<strong>平台服務費抽成減免（實收 95%～102%）與 AI 進階工具</strong>。取消訂閱僅回歸一般用戶，帳號永久保留。
+                </p>
+              </div>
+            </div>
+          </div>
+
           {!selectedTermKey ? (
             /* 條款目錄清單 */
             <div className="bg-white rounded-3xl border border-stone-200 shadow-xs divide-y divide-stone-100 overflow-hidden">

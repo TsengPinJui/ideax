@@ -1075,10 +1075,18 @@ export interface NotificationItem {
 }
 
 export interface PublicMetricsConfig {
-  showSolvedCount: boolean;        // 累計解決難題
+  showSolvedCount: boolean;        // 累計解決難題 / 已解決題數
   showTotalBounty: boolean;        // 累計懸賞金額
   showAvgResponseSpeed: boolean;   // 平均回覆速度
-  showSatisfactionRate: boolean;   // 方案採納滿意度
+  showSatisfactionRate: boolean;   // 方案採納滿意度 / 滿意度
   showHighestBounty: boolean;      // 當前最高賞金
+  showTotalViews?: boolean;        // 總瀏覽量
+  showOnlineUsers?: boolean;       // 即時線上人數
+  showTotalMembers?: boolean;      // 總註冊用戶
+  showVerifiedSolvers?: boolean;   // 認證專家
+  showQuestionsCount?: boolean;    // 問題數量
+  showProposalsCount?: boolean;    // 提案數量
+  showTotalDeals?: boolean;        // 已成交方案
+  showTotalGMV?: boolean;          // 平台總交易額
 }
 

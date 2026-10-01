@@ -223,30 +223,30 @@ export const AdminPointsReceivablesTab: React.FC = () => {
               <span className="text-xs text-stone-400 font-mono">ID: {selectedUser.id}</span>
             </div>
 
-            {/* 用戶 3 大帳務指標 */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
-                <span className="text-xs font-bold text-amber-900 block">可用點數餘額</span>
-                <span className="text-2xl font-black text-amber-950 font-mono mt-1 block">
+            {/* 用戶 3 大帳務指標 (多格面板) */}
+            <div className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-2.5 sm:gap-3.5">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
+                <span className="text-xs font-bold text-amber-900 block truncate">可用點數餘額</span>
+                <span className="text-xl sm:text-2xl font-black text-amber-950 font-mono mt-1 block">
                   {(selectedUser.balance || 0).toLocaleString()} <span className="text-xs font-normal">點</span>
                 </span>
-                <span className="text-[10px] text-amber-800 mt-0.5 block">可於發布懸賞時隨時抵用</span>
+                <span className="text-[10px] text-amber-800 mt-0.5 block truncate">發布懸賞隨時抵用</span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200">
-                <span className="text-xs font-bold text-blue-900 block">應收帳款（託管中）</span>
-                <span className="text-2xl font-black text-blue-950 font-mono mt-1 block">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-blue-50/70 border border-blue-200">
+                <span className="text-xs font-bold text-blue-900 block truncate">應收帳款（託管）</span>
+                <span className="text-xl sm:text-2xl font-black text-blue-950 font-mono mt-1 block">
                   NT$ {(selectedUser.withheldPoints || 0).toLocaleString()}
                 </span>
-                <span className="text-[10px] text-blue-800 mt-0.5 block">待提問方驗收後自動撥付</span>
+                <span className="text-[10px] text-blue-800 mt-0.5 block truncate">驗收後自動撥付</span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200">
-                <span className="text-xs font-bold text-emerald-900 block">累計已撥款出金</span>
-                <span className="text-2xl font-black text-emerald-950 font-mono mt-1 block">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200">
+                <span className="text-xs font-bold text-emerald-900 block truncate">累計已撥款出金</span>
+                <span className="text-xl sm:text-2xl font-black text-emerald-950 font-mono mt-1 block">
                   NT$ {(selectedUser.totalPaidOut || 0).toLocaleString()}
                 </span>
-                <span className="text-[10px] text-emerald-800 mt-0.5 block">歷史直撥銀行累計總額</span>
+                <span className="text-[10px] text-emerald-800 mt-0.5 block truncate">歷史直撥累計總額</span>
               </div>
             </div>
 
