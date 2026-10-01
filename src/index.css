@@ -20,3 +20,35 @@
 .animate-splash-progress {
   animation: splash-progress 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
+
+@keyframes glow-shimmer {
+  0%, 100% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.3));
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.8)) drop-shadow(0 0 14px rgba(251, 191, 36, 0.5));
+    transform: scale(1.03);
+  }
+}
+
+@keyframes sparkle-twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.7) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25) rotate(45deg);
+  }
+}
+
+.animate-glow-shimmer {
+  animation: glow-shimmer 2.2s ease-in-out infinite;
+}
+
+.animate-sparkle-twinkle {
+  animation: sparkle-twinkle 1.8s ease-in-out infinite;
+}

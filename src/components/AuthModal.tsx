@@ -920,7 +920,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <p className="text-lg sm:text-xl font-black text-stone-800 tracking-wide">
               一個問題，找到更多可能。
             </p>
-            <p className="text-sm sm:text-base font-extrabold text-amber-600 tracking-widest">
+            <p className="text-sm sm:text-base font-black text-amber-600 tracking-widest animate-glow-shimmer select-none">
               讓創意發光
             </p>
           </div>
