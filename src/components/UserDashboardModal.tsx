@@ -3366,7 +3366,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           type="button"
                           onClick={() => {
                             const payload = {
-                              version: '1.4.0',
+                              version: '1.4.5',
                               exportedAt: new Date().toISOString(),
                               databaseId: 'ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c',
                               questions,
@@ -9594,7 +9594,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
       {/* 畫面頁尾自動印上淡淡細細的平台版本號與最近更新時間與當前環境簡稱 (日記模式) */}
       <div className="py-2 text-center bg-stone-50/70 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
-        v1.4.0 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+        v1.4.5 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
 
       {/* 商業契約與和解協議書檢視/下載 Modal */}

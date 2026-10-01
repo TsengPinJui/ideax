@@ -254,7 +254,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             <span className="text-stone-600 font-sans">Powered by AI Engine</span>
             <span>•</span>
             <span className="text-stone-500">
-              v1.4.0 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+              v1.4.5 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
             </span>
           </div>
         </div>

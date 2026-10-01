@@ -1591,7 +1591,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
       {/* 平台版本號與最近更新時間與當前環境簡稱 (純英文與數字，以連字號連接至少兩個英文標籤) */}
       <div className="py-2.5 text-center bg-stone-50/50 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
-        v1.4.0 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+        v1.4.5 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
     </div>
   );

@@ -134,7 +134,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
       {/* 行動端頁尾版本號與日記模式 */}
       <div className="pt-1 mt-0.5 border-t border-stone-100 text-center font-mono text-[9.5px] text-stone-400 select-none tracking-tight">
-        v1.4.0 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+        v1.4.5 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
     </nav>
   );
