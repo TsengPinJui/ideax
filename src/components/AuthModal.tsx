@@ -899,8 +899,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <X className="w-6 h-6" />
         </button>
 
-        {/* Top Brand Logo, Name & Slogan (整體下移，佈局舒展大氣) */}
-        <div className="pt-6 sm:pt-10 pb-6 sm:pb-8 text-center space-y-3.5">
+        {/* Top Brand Logo, Name & Slogan (整體下移，佈局舒展大氣，字體醒目) */}
+        <div className="pt-6 sm:pt-10 pb-6 sm:pb-8 text-center space-y-4">
           <div className="flex items-center justify-center">
             <div className="relative group">
               <IdeaXLogo
@@ -911,16 +911,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight flex items-center justify-center gap-2">
+          <h1 className="text-4xl sm:text-5xl font-black text-stone-900 tracking-tight flex items-center justify-center gap-2.5">
             <span>創點子</span>
             <span className="text-amber-500 font-extrabold">IdeaX</span>
           </h1>
 
-          <div className="space-y-1.5 pt-0.5">
-            <p className="text-base sm:text-lg font-black text-stone-800 tracking-wide">
+          <div className="space-y-1.5 pt-1">
+            <p className="text-lg sm:text-xl font-black text-stone-800 tracking-wide">
               一個問題，找到更多可能。
             </p>
-            <p className="text-xs sm:text-sm font-bold text-amber-600 tracking-widest">
+            <p className="text-sm sm:text-base font-extrabold text-amber-600 tracking-widest">
               讓創意發光
             </p>
           </div>
