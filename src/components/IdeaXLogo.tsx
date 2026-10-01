@@ -2,7 +2,7 @@ import React from 'react';
 
 export interface IdeaXLogoProps {
   variant?: 'horizontal' | 'compact' | 'stacked' | 'mark' | 'dark' | 'card' | 'bulb' | 'chuangdianzi' | 'horizontal-ideax' | 'footer-combined' | 'ideax-6';
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   theme?: 'light' | 'dark' | 'auto';
   className?: string;
   showSlogan?: boolean;
@@ -43,15 +43,17 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
       xs: 'w-5 h-5',
       sm: 'w-7 h-7',
       md: 'w-8 h-8 sm:w-9 sm:h-9',
-      lg: 'w-11 h-11',
-      xl: 'w-14 h-14',
+      lg: 'w-12 h-12 sm:w-14 sm:h-14',
+      xl: 'w-16 h-16 sm:w-20 sm:h-20',
+      '2xl': 'w-20 h-20 sm:w-24 sm:h-24',
     },
     bulb: {
       xs: 'w-6 h-6',
       sm: 'w-7 h-7 sm:w-8 sm:h-8',
       md: 'w-8 h-8 sm:w-9 sm:h-9',
-      lg: 'w-10 h-10 sm:w-11 sm:h-11',
-      xl: 'w-14 h-14',
+      lg: 'w-12 h-12 sm:w-14 sm:h-14',
+      xl: 'w-16 h-16 sm:w-20 sm:h-20',
+      '2xl': 'w-20 h-20 sm:w-24 sm:h-24',
     },
     chuangdianzi: {
       xs: 'w-36 h-auto',

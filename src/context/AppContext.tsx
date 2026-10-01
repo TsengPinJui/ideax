@@ -586,10 +586,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.id && parsed.name) {
-          const isAdmin = parsed.id === 'user-admin' || (typeof parsed.name === 'string' && (parsed.name.includes('IdeaX') || parsed.name.includes('管理') || parsed.name.includes('營運')));
+          const isAdmin = parsed.id === 'user-admin' || (typeof parsed.username === 'string' && parsed.username.toLowerCase() === 'admin_001') || (typeof parsed.name === 'string' && (parsed.name.includes('IdeaX') || parsed.name.includes('管理') || parsed.name.includes('營運')));
           return {
             ...CLEAN_CORE_USERS[0],
             ...parsed,
+            username: isAdmin ? 'Admin_001' : parsed.username,
+            password: isAdmin ? 'John930521' : parsed.password,
             name: isAdmin ? 'IdeaX 管理團隊' : parsed.name,
             role: isAdmin ? ('admin' as const) : (parsed.role || 'questioner'),
             balance: typeof parsed.balance === 'number' ? parsed.balance : 0,
@@ -617,9 +619,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
           const usersList = parsed.map((u: any) => {
-            const isAdmin = u.id === 'user-admin' || (typeof u.name === 'string' && (u.name.includes('IdeaX') || u.name.includes('管理') || u.name.includes('營運')));
+            const isAdmin = u.id === 'user-admin' || (typeof u.username === 'string' && u.username.toLowerCase() === 'admin_001') || (typeof u.name === 'string' && (u.name.includes('IdeaX') || u.name.includes('管理') || u.name.includes('營運')));
             return {
               ...u,
+              username: isAdmin ? 'Admin_001' : u.username,
+              password: isAdmin ? 'John930521' : u.password,
               name: isAdmin ? 'IdeaX 管理團隊' : u.name,
               role: isAdmin ? ('admin' as const) : u.role,
               balance: typeof u.balance === 'number' ? u.balance : 0,
@@ -681,17 +685,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser || currentUser.id === 'user-guest') return;
     setDeviceAccounts((prev) => {
       const idx = prev.findIndex((a) => a.userId === currentUser.id);
+      const now = new Date().toISOString();
       if (idx >= 0) {
-        if (!prev[idx].isLoggedIn) {
-          const updated = [...prev];
-          updated[idx] = { ...updated[idx], isLoggedIn: true, lastLoginAt: new Date().toISOString() };
-          return updated;
-        }
-        return prev;
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], isLoggedIn: true, lastLoginAt: now };
+        return updated;
       }
       return [
+        { userId: currentUser.id, isLoggedIn: true, lastLoginAt: now },
         ...prev,
-        { userId: currentUser.id, isLoggedIn: true, lastLoginAt: new Date().toISOString() },
       ];
     });
   }, [currentUser?.id]);

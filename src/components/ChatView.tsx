@@ -2297,51 +2297,47 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                         </>
                       ) : (
                         <>
-                          {/* 1. 發布自訂方案報價 (解答者) */}
-                          {lockedConversationRole === 'solver' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsPlusMenuOpen(false);
-                                setIsOfferModalOpen(true);
-                              }}
-                              className="w-full p-2.5 rounded-xl hover:bg-amber-50/80 text-left flex items-center gap-3 transition-colors cursor-pointer group"
-                            >
-                              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 group-hover:bg-amber-200">
-                                <Award className="w-4 h-4" />
+                          {/* 1. 發布自訂方案報價 */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPlusMenuOpen(false);
+                              setIsOfferModalOpen(true);
+                            }}
+                            className="w-full p-2.5 rounded-xl hover:bg-amber-50/80 text-left flex items-center gap-3 transition-colors cursor-pointer group"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 group-hover:bg-amber-200">
+                              <Award className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                                <span>發起自訂方案報價</span>
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 text-amber-900 font-bold">履約託管</span>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                                  <span>發起報價</span>
-                                  <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 text-amber-900 font-bold">解答專屬</span>
-                                </div>
-                                <p className="text-[10px] text-stone-500 truncate mt-0.5">自訂服務項目、交付時程與專屬報價</p>
-                              </div>
-                            </button>
-                          )}
+                              <p className="text-[10px] text-stone-500 truncate mt-0.5">自訂服務項目、交付時程與報價（預先標明平台服務費）</p>
+                            </div>
+                          </button>
 
-                          {/* 2. 發送詢價委託 (提問者) */}
-                          {lockedConversationRole === 'questioner' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsPlusMenuOpen(false);
-                                setIsRequestModalOpen(true);
-                              }}
-                              className="w-full p-2.5 rounded-xl hover:bg-stone-50 text-left flex items-center gap-3 transition-colors cursor-pointer group"
-                            >
-                              <div className="w-8 h-8 rounded-lg bg-stone-900 text-amber-400 flex items-center justify-center shrink-0">
-                                <HelpCircle className="w-4 h-4" />
+                          {/* 2. 發送詢價委託 */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPlusMenuOpen(false);
+                              setIsRequestModalOpen(true);
+                            }}
+                            className="w-full p-2.5 rounded-xl hover:bg-stone-50 text-left flex items-center gap-3 transition-colors cursor-pointer group"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-stone-900 text-amber-400 flex items-center justify-center shrink-0">
+                              <HelpCircle className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                                <span>發起詢價委託</span>
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-stone-100 text-stone-700 font-bold">需求提案</span>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                                  <span>發起詢價</span>
-                                  <span className="text-[9px] px-1 py-0.2 rounded bg-stone-100 text-stone-700 font-bold">提問專屬</span>
-                                </div>
-                                <p className="text-[10px] text-stone-500 truncate mt-0.5">提出專案需求、期待時程與預算上限</p>
-                              </div>
-                            </button>
-                          )}
+                              <p className="text-[10px] text-stone-500 truncate mt-0.5">提出專案痛點、期待交付成果與預算上限</p>
+                            </div>
+                          </button>
 
                           {/* 3. 提出方案（同問題下方提出方案頁面） */}
                           <button
@@ -2648,6 +2644,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                       <span>買方付款金額：</span>
                       <span className="font-mono font-bold">NT$ {offerPrice.toLocaleString()}</span>
                     </div>
+                    <div className="flex items-center justify-between text-stone-700">
+                      <span>平台託管服務費：</span>
+                      <span className="font-mono font-bold text-amber-900">
+                        NT$ {split.platformFee.toLocaleString()} ({Math.max(0, Math.round(split.feeRate * 100))}%)
+                      </span>
+                    </div>
                     <div className="flex items-center justify-between text-amber-950 font-bold">
                       <span>
                         專家預估實收（{split.planName}・實收 {split.sellerPayoutText}）：
@@ -2657,7 +2659,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                       </span>
                     </div>
                     <div className="text-[10px] text-stone-500 pt-1 border-t border-amber-200/60 flex items-center justify-between gap-2">
-                      <span>🛡️ 第三方金流獨立託管與拆款直撥</span>
+                      <span>第三方金流獨立託管與拆款直撥（已載明平台託管服務費，避免爭議）</span>
                       <span className="text-amber-800 font-bold shrink-0">{split.feeDiscountText}</span>
                     </div>
                   </div>
@@ -2748,6 +2750,25 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                 />
               </div>
 
+              {/* 平台託管服務費與履約機制預先說明（先寫明避免爭議） */}
+              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-stone-700">
+                  <span className="font-bold">預計委託預算：</span>
+                  <span className="font-mono font-bold text-amber-950">NT$ {requestBudget.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-stone-700">
+                  <span className="font-bold">第三方價金託管保障：</span>
+                  <span className="text-emerald-700 font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>100% 履約驗收保障</span>
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-500 pt-1.5 border-t border-stone-200/70 leading-relaxed">
+                  <span className="font-bold text-stone-700">平台託管服務費說明：</span>
+                  買方支付之委託款項將全額暫存於第三方信託專戶。專案交付並經買方滿意驗收後才撥款；平台依規自專家端收益扣取託管服務費，買賣雙方權利義務公開透明，預先寫明避免後續爭議。
+                </p>
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -2801,6 +2822,16 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
               </div>
               <div className="text-[11px] text-stone-500">
                 <span>解答專家：{paymentTargetMessage.senderName} • 交付時程約 {paymentTargetMessage.offer.estimatedDays || 3} 天</span>
+              </div>
+              <div className="pt-2 border-t border-stone-200/80 text-[11px] space-y-1">
+                <div className="flex items-center justify-between text-stone-600">
+                  <span>買方應付託管總額：</span>
+                  <span className="font-mono font-bold text-stone-900">NT$ {paymentTargetMessage.offer.price.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-stone-600">
+                  <span>平台託管服務費：</span>
+                  <span className="text-amber-900 font-medium">由系統於驗收結案時自專家收益依方案費率自動拆款（買方免額外負擔，避免撥款爭議）</span>
+                </div>
               </div>
             </div>
 

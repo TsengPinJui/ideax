@@ -381,6 +381,9 @@ export interface UserSurveyData {
 
 export interface User {
   id: string;
+  username?: string; // 註冊帳號 (4~20 位英數字或底線)
+  password?: string; // 帳號密碼 (6~20 位英數組合)
+  rememberLogin?: boolean; // 記得並保持登入狀態
   name: string;
   title: string;
   avatar: string;
@@ -474,6 +477,10 @@ export interface User {
 
   // 收藏問題列表
   bookmarkedQuestionIds?: string[]; // 收藏之問題 ID 清單
+
+  // 註冊偏好與個資狀態
+  hasCompletedProfile?: boolean; // 是否已完成個人資料填寫（提問者若跳過則為 false，用到相關功能時需補填）
+  interests?: string[]; // 提問者感興趣的領域與主題清單，用於推播精選題目
 
   // 帳號註銷與 7 日反悔期
   isDeactivated?: boolean; // 是否已申請註銷帳號或已註銷

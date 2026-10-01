@@ -189,6 +189,8 @@ export const MOCK_USERS: User[] = [
   },
   {
     id: 'user-admin',
+    username: 'Admin_001',
+    password: 'John930521',
     name: 'IdeaX 管理團隊',
     title: '平台審核與交易治理總監',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
@@ -1811,6 +1813,8 @@ export const MOCK_CONVERSATIONS: import('../types').ChatConversation[] = [
 export const CLEAN_CORE_USERS: User[] = [
   {
     id: 'user-admin',
+    username: 'Admin_001',
+    password: 'John930521',
     name: 'IdeaX 管理團隊',
     title: '平台審核與交易治理總監',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
