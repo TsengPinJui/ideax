@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { ChatConversation, ChatMessage, Question, Answer } from '../types';
 import { mediateDisputeWithAI } from '../services/aiService';
@@ -223,20 +223,105 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
   // --- 聊天室首次使用步驟式教學狀態（由教學導覽銜接或主動觸發） ---
   const [isChatOnboardingOpen, setIsChatOnboardingOpen] = useState(false);
 
+  // 確保對話清單中有對話可供點選（若無任何對話，則自動準備專屬教學示範虛擬聊天室）
+  const ensureDemoConversationAvailable = useCallback(() => {
+    if (conversations.length > 0) {
+      return conversations[0].id;
+    }
+
+    const DEMO_GUIDE_CONV_ID = 'conv-tutorial-demo';
+    const demoUser = availableUsers.find(
+      (u) => u.id !== currentUser.id && u.role === 'solver'
+    ) || {
+      id: 'user-solver-demo',
+      name: '陳建銘 顧問',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      title: '資深商業架構師・智庫專家',
+      role: 'solver',
+    };
+
+    const virtualDemoConv: ChatConversation = {
+      id: DEMO_GUIDE_CONV_ID,
+      participantIds: [currentUser.id, demoUser.id],
+      participantDetails: [
+        {
+          id: currentUser.id,
+          name: currentUser.name || '提問者',
+          avatar: currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+          title: currentUser.title || '提問者',
+        },
+        {
+          id: demoUser.id,
+          name: demoUser.name,
+          avatar: demoUser.avatar,
+          title: demoUser.title || '智庫專家',
+        },
+      ],
+      conversationRole: 'questioner',
+      lastMessage: '歡迎進入聊天室！請點選下方「＋」按鈕體驗核心功能。',
+      lastMessageTime: '剛剛',
+      unreadCount: 0,
+      relatedQuestionTitle: '【教學示範】商業模式驗證與專家諮詢服務',
+      messages: [
+        {
+          id: 'msg-demo-1',
+          senderId: demoUser.id,
+          senderName: demoUser.name,
+          senderAvatar: demoUser.avatar,
+          text: '您好！我是您的專屬智庫顧問。這是一間為您準備的「教學示範聊天室」。',
+          createdAt: '剛剛',
+        },
+        {
+          id: 'msg-demo-2',
+          senderId: demoUser.id,
+          senderName: demoUser.name,
+          senderAvatar: demoUser.avatar,
+          text: '在下方輸入框左側點擊「＋」號，即可使用「自訂方案報價」、「詢價委託」、「提出方案」與「申請 AI 調解」等核心交易功能。',
+          createdAt: '剛剛',
+        },
+      ],
+    };
+
+    setConversations((prev) => [
+      virtualDemoConv,
+      ...prev.filter((c) => c.id !== DEMO_GUIDE_CONV_ID),
+    ]);
+    return virtualDemoConv.id;
+  }, [conversations, availableUsers, currentUser, setConversations]);
+
+  // 選擇並進入第一個聊天室
+  const handleSelectFirstConversation = useCallback(() => {
+    const targetId = ensureDemoConversationAvailable();
+    if (targetId) {
+      setActiveConversationId(targetId);
+      setMobileView('chat');
+    }
+  }, [ensureDemoConversationAvailable, setActiveConversationId]);
+
   useEffect(() => {
     try {
       const forceChatOnboarding = sessionStorage.getItem('ideax_force_chat_onboarding') === 'true';
       if (forceChatOnboarding) {
         sessionStorage.removeItem('ideax_force_chat_onboarding');
+
+        // 1. 確保對話清單中有聊天室可供點選
+        ensureDemoConversationAvailable();
+
+        // 2. 先呈現列表供用戶點擊體驗 (若無特別選定)
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+          setMobileView('list');
+        }
+
+        // 3. 啟動聊天室教學引導
         const timer = setTimeout(() => {
           setIsChatOnboardingOpen(true);
-        }, 400);
+        }, 300);
         return () => clearTimeout(timer);
       }
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [ensureDemoConversationAvailable]);
   const [cannedMessageCategory, setCannedMessageCategory] = useState<string>('all');
   const [cannedMessageSearch, setCannedMessageSearch] = useState('');
   const [customCannedMessages, setCustomCannedMessages] = useState<CannedMessage[]>(() => {
@@ -1161,7 +1246,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                 尚無{listRoleMode === 'questioner' ? '提問者' : '解答者'}相關的對話紀錄
               </div>
             ) : (
-              filteredConversations.map((conv) => {
+              filteredConversations.map((conv, idx) => {
                 const other = conv.isGroup
                   ? {
                       name: conv.groupName || '協作群組',
@@ -1179,6 +1264,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                 return (
                   <button
                     key={conv.id}
+                    id={idx === 0 ? 'chat-conversation-item-0' : undefined}
                     onClick={() => handleSelectConversation(conv.id)}
                     className={`w-full p-3.5 sm:p-4 text-left transition-colors flex items-start gap-3 cursor-pointer ${
                       isSelected ? 'bg-amber-50/90 border-l-4 border-amber-500' : 'hover:bg-stone-100/80'
@@ -2286,6 +2372,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                 {/* + (Plus) Action Button & Dropup Menu */}
                 <div className="relative" ref={plusMenuRef}>
                   <button
+                    id="chat-plus-button"
                     type="button"
                     onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
                     className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
@@ -3871,10 +3958,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
       <ChatOnboardingGuide
         isOpen={isChatOnboardingOpen}
         onClose={() => setIsChatOnboardingOpen(false)}
+        activeConversationId={activeConversation?.id || null}
         isOfferModalOpen={isOfferModalOpen}
         isRequestModalOpen={isRequestModalOpen}
         isSubmitAnswerModalOpen={isSubmitAnswerModalOpen}
         isPlusMenuOpen={isPlusMenuOpen}
+        onSelectFirstConversation={handleSelectFirstConversation}
         onOpenPlusMenu={() => setIsPlusMenuOpen(true)}
         onOpenOfferModal={() => setIsOfferModalOpen(true)}
         onOpenRequestModal={() => setIsRequestModalOpen(true)}

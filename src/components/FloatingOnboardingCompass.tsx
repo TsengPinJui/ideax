@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { EyeOff } from 'lucide-react';
 
 interface FloatingOnboardingCompassProps {
   onStartOnboarding: () => void;
   isVisible?: boolean;
 }
+
+const HIDE_STORAGE_KEY = 'ideax_hide_floating_compass';
+const ONBOARDING_COMPLETED_KEY = 'ideax_app_onboarding_completed_v1';
 
 /**
  * 擬真 Emoji 風格羅盤圖示：金黃金屬外框、純白錶盤、立體紅白藍雙色指針
@@ -122,17 +126,89 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
   isVisible = true,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  
+  // 檢查是否為已安裝開啟的 App 模式 (PWA Standalone)
+  const [isAppMode, setIsAppMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true
+    );
+  });
 
-  if (!isVisible) return null;
+  // 檢查是否已手動隱藏到頁尾
+  const [isDismissed, setIsDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(HIDE_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // 檢查是否已完成教學（教學完成後不再出現）
+  const [isCompleted, setIsCompleted] = useState(() => {
+    try {
+      return localStorage.getItem(ONBOARDING_COMPLETED_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        if (localStorage.getItem(HIDE_STORAGE_KEY) === 'true') {
+          setIsDismissed(true);
+        }
+        if (localStorage.getItem(ONBOARDING_COMPLETED_KEY) === 'true') {
+          setIsCompleted(true);
+        }
+      } catch {}
+    };
+
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleMediaChange = (e: MediaQueryListEvent) => {
+      setIsAppMode(e.matches || (window.navigator as any).standalone === true);
+    };
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleMediaChange);
+    }
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleMediaChange);
+      }
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDismissed(true);
+    try {
+      localStorage.setItem(HIDE_STORAGE_KEY, 'true');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // 核心規則：若在已安裝 App 模式、或已被隱藏、或已完成導覽教學，羅盤浮動鈕不再出現！
+  if (!isVisible || isAppMode || isDismissed || isCompleted) {
+    return null;
+  }
 
   return (
-    <div className="fixed right-3 sm:right-5 top-[220px] sm:top-[252px] z-40 flex items-center justify-end select-none group pointer-events-auto">
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="fixed right-3 sm:right-5 top-[220px] sm:top-[252px] z-40 flex items-center justify-end select-none group pointer-events-auto"
+    >
       {/* 金黃外框、白錶盤、紅白藍指針的經典羅盤按鈕 */}
       <button
         type="button"
         onClick={onStartOnboarding}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
         className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full p-0.5 bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center shadow-[0_6px_22px_rgba(217,119,6,0.45)] hover:shadow-[0_8px_28px_rgba(217,119,6,0.65)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer border-2 border-white/90 ring-2 ring-amber-400/50 shrink-0"
         aria-label="開啟使用導覽（含聊天室教學）"
         title="開啟使用教學導覽"
@@ -146,21 +222,38 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
 
       {/* 滑鼠懸停對話氣泡 (向左冒出 Speech Bubble，指向右側羅盤按鈕) */}
       <div
-        className={`absolute right-full mr-2.5 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 ease-out ${
+        className={`absolute right-full mr-2.5 top-1/2 -translate-y-1/2 transition-all duration-200 ease-out ${
           isHovered
-            ? 'opacity-100 translate-x-0 scale-100'
-            : 'opacity-0 translate-x-2 scale-95'
+            ? 'opacity-100 translate-x-0 scale-100 pointer-events-auto'
+            : 'opacity-0 translate-x-2 scale-95 pointer-events-none'
         }`}
       >
-        <div className="relative bg-stone-900/95 text-white px-3 py-1.5 rounded-xl shadow-xl border border-amber-400/80 backdrop-blur-md flex items-center whitespace-nowrap">
+        <div className="relative bg-stone-900/95 text-white px-3 py-2 rounded-2xl shadow-2xl border border-amber-400/80 backdrop-blur-md flex flex-col gap-1.5 whitespace-nowrap min-w-[136px]">
           {/* 對話氣泡向右尖角 (Triangle Arrow pointing right to Compass) */}
-          <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-stone-900 border-r border-t border-amber-400/80 rotate-45" />
+          <div className="absolute -right-1 top-3.5 w-2.5 h-2.5 bg-stone-900 border-r border-t border-amber-400/80 rotate-45" />
 
-          {/* 氣泡精簡內容 */}
-          <span className="text-amber-300 font-bold text-xs tracking-wide flex items-center gap-1">
+          {/* 氣泡內容標題：點擊可直接啟動導覽 */}
+          <button
+            type="button"
+            onClick={onStartOnboarding}
+            className="text-amber-300 hover:text-amber-200 font-bold text-xs tracking-wide flex items-center gap-1 cursor-pointer transition-colors text-left"
+          >
             <span>🧭</span>
             <span>需要使用導覽嗎？</span>
-          </span>
+          </button>
+
+          {/* 下方隱藏鍵：隱藏到頁尾 */}
+          <div className="pt-1.5 border-t border-stone-800 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={handleDismiss}
+              className="text-[10px] text-stone-400 hover:text-stone-200 hover:underline flex items-center gap-1 transition-colors cursor-pointer"
+              title="隱藏浮動按鈕，您隨時可在頁尾點選「導覽教學」"
+            >
+              <EyeOff className="w-3 h-3 text-stone-400 shrink-0" />
+              <span>隱藏到頁尾</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
