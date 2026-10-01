@@ -5,7 +5,7 @@ import { LEVEL_CONFIGS, isMockTransactionId } from '../data/mockData';
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { HelpTooltip } from './HelpTooltip';
 import { AdminPointsReceivablesTab } from './AdminPointsReceivablesTab';
-import { AdminTransactionsTab } from './AdminTransactionsTab';
+import { AdminTransactionsTab, getTransactionBadge } from './AdminTransactionsTab';
 import { AdminMembershipPlanEditor } from './AdminMembershipPlanEditor';
 import { AdminCasesManagementTab } from './AdminCasesManagementTab';
 import { AdminQuestionsManagementTab } from './AdminQuestionsManagementTab';
@@ -7639,42 +7639,38 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               {transactions.length === 0 ? (
                 <div className="p-8 text-center text-xs text-stone-400">暫無交易紀錄</div>
               ) : (
-                transactions.map((tx) => (
-                  <div key={tx.id} className="p-3 flex items-center justify-between text-xs hover:bg-white rounded-xl transition-colors">
-                    <div>
-                      <div className="font-bold text-stone-900 flex items-center gap-2">
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            tx.type === '懸賞託管'
-                              ? 'bg-amber-100 text-amber-800'
-                              : tx.type === '解答者收益發放'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : tx.type === '付費解鎖方案'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-stone-200 text-stone-700'
-                          }`}
-                        >
-                          {tx.type}
-                        </span>
-                        <span>{tx.relatedQuestionTitle || '帳戶資金異動'}</span>
+                transactions.map((tx) => {
+                  const badge = getTransactionBadge(tx.type);
+                  return (
+                    <div key={tx.id} className="p-3 flex items-center justify-between text-xs hover:bg-white rounded-xl transition-colors">
+                      <div>
+                        <div className="font-bold text-stone-900 flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${badge.bg}`}>
+                            {tx.type}
+                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600 font-mono">
+                            {badge.category}
+                          </span>
+                          <span>{tx.relatedQuestionTitle || '帳戶資金異動'}</span>
+                        </div>
+                        <div className="text-[11px] text-stone-500 mt-1">
+                          狀態：<strong className="text-stone-700">{tx.status}</strong> • 時間：{tx.createdAt.split('T')[0]}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-stone-500 mt-1">
-                        狀態：<strong className="text-stone-700">{tx.status}</strong> • 時間：{tx.createdAt.split('T')[0]}
-                      </div>
-                    </div>
 
-                    <div className="text-right">
-                      <span className="font-bold font-mono text-stone-900 text-sm">
-                        NT$ {(tx.amount || 0).toLocaleString()}
-                      </span>
-                      {tx.platformFee > 0 && (
-                        <span className="text-[10px] text-stone-400 block">
-                          手續費 NT$ {tx.platformFee}
+                      <div className="text-right">
+                        <span className="font-bold font-mono text-stone-900 text-sm">
+                          NT$ {(tx.amount || 0).toLocaleString()}
                         </span>
-                      )}
+                        {tx.platformFee > 0 && (
+                          <span className="text-[10px] text-stone-400 block">
+                            手續費 NT$ {tx.platformFee}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

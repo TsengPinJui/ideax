@@ -1788,7 +1788,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 3. Create Immutable Ledger / Transaction Log
     const auditTx: Transaction = {
       id: `tx-admin-grant-${Date.now()}`,
-      type: '儲值',
+      type: '管理員轉入點數',
       amount: cleanPoints,
       platformFee: 0,
       netAmount: cleanPoints,
@@ -1916,7 +1916,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const auditTx: Transaction = {
       id: `tx-admin-adj-${Date.now()}`,
-      type: '點數扣抵',
+      type: deltaPoints >= 0 ? '管理員轉入點數' : '點數扣抵',
       amount: Math.abs(deltaPoints),
       platformFee: 0,
       netAmount: Math.abs(deltaPoints),

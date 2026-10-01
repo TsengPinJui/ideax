@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { SubscriptionTier } from '../types';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { isMockTransactionId, isMockQuestionId } from '../data/mockData';
+import { getTransactionBadge } from './AdminTransactionsTab';
 import {
   X,
   Sliders,
@@ -873,15 +874,20 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           </div>
 
           <div className="divide-y divide-stone-100 max-h-60 overflow-y-auto border border-stone-200 rounded-2xl p-2 bg-stone-50/50">
-            {transactions.map((tx) => (
-              <div key={tx.id} className="p-2.5 flex items-center justify-between text-xs">
-                <div>
-                  <div className="font-bold text-stone-900 flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 text-[10px]">
-                      {tx.type}
-                    </span>
-                    <span>{tx.relatedQuestionTitle || '系統資金移轉'}</span>
-                  </div>
+            {transactions.map((tx) => {
+              const badge = getTransactionBadge(tx.type);
+              return (
+                <div key={tx.id} className="p-2.5 flex items-center justify-between text-xs">
+                  <div>
+                    <div className="font-bold text-stone-900 flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${badge.bg}`}>
+                        {tx.type}
+                      </span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600 font-mono">
+                        {badge.category}
+                      </span>
+                      <span>{tx.relatedQuestionTitle || '系統資金移轉'}</span>
+                    </div>
                   <div className="text-[11px] text-stone-500 mt-0.5">
                     發起：{tx.fromUserName || '系統'} {tx.toUserName ? `➔ 對象：${tx.toUserName}` : ''} • {tx.createdAt.split('T')[0]}
                   </div>
@@ -896,7 +902,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   </span>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
         </div>
 

@@ -59,7 +59,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     >
       <div>
         {/* Top Header: Category, Level & Bounty */}
-        <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Promoted badge: 以尊貴紫色為主體的「招募中」高質感提示標籤 */}
             {isPromoted && (

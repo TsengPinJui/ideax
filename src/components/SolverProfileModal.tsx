@@ -311,7 +311,7 @@ export const SolverProfileModal: React.FC<SolverProfileModalProps> = ({
           <span className="text-xs text-stone-500 hidden sm:inline">
             可私聊溝通或直接向 {solver.name} 提出專屬定向問題。
           </span>
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap sm:flex-nowrap">
             <button
               onClick={handleStartChat}
               className="px-4 py-2.5 rounded-xl border border-stone-300 hover:bg-stone-100 text-stone-800 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
