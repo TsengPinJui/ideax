@@ -77,19 +77,19 @@ export const AdminQuestionsManagementTab: React.FC = () => {
 
   const [feedbackToast, setFeedbackToast] = useState<{ text: string; isError?: boolean } | null>(null);
 
-  // 計算下架保留剩餘天數 (30日倒數)
+  // 計算下架保留剩餘天數 (7日倒數)
   const getRetentionDaysLeft = (delistedAt?: string) => {
-    if (!delistedAt) return 30;
+    if (!delistedAt) return 7;
     const elapsedDays = Math.floor((Date.now() - new Date(delistedAt).getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(0, 30 - elapsedDays);
+    return Math.max(0, 7 - elapsedDays);
   };
 
-  // 統計已逾30日之過期下架項目
+  // 統計已逾7日之過期下架項目
   const expiredDelistedCount = useMemo(() => {
-    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
     const now = Date.now();
     return questions.filter(
-      (q) => q.status === 'delisted' && q.delistedAt && now - new Date(q.delistedAt).getTime() >= THIRTY_DAYS_MS
+      (q) => q.status === 'delisted' && q.delistedAt && now - new Date(q.delistedAt).getTime() >= SEVEN_DAYS_MS
     ).length;
   }, [questions]);
 
@@ -159,14 +159,14 @@ export const AdminQuestionsManagementTab: React.FC = () => {
     // Send notification to author
     addNotification({
       title: '⚠️ 提問內容違規下架通知',
-      message: `您發布的問題《${delistingQuestion.title.slice(0, 24)}...》因「${violationReason}」已被平台管理員強制下架（下架保留 30 日，逾期將自動從資料庫永久刪除）。處置反饋說明：${
+      message: `您發布的問題《${delistingQuestion.title.slice(0, 24)}...》因「${violationReason}」已被平台管理員強制下架（下架暫存保留 7 日，逾期將自動從資料庫永久刪除）。處置反饋說明：${
         adminFeedback.trim() || '請恪守 IdeaX 社群規範，如有疑義請聯繫官方團隊。'
       }`,
       type: 'system',
     });
 
     setFeedbackToast({
-      text: `已成功將問題《${delistingQuestion.title.slice(0, 16)}...》違規下架，保留期 30 日，並同步至雲端資料庫！`,
+      text: `已成功將問題《${delistingQuestion.title.slice(0, 16)}...》違規下架，暫存保留期 7 日，期間可自問題管理恢復或永久抹除！`,
       isError: false,
     });
 
@@ -220,7 +220,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
     try {
       const count = await purgeExpiredDelistedQuestions();
       setFeedbackToast({
-        text: count > 0 ? `已自動永久清理 ${count} 筆逾 30 日之下架問題！` : '目前無逾 30 日之過期下架項目。',
+        text: count > 0 ? `已自動永久清理 ${count} 筆逾 7 日之過期下架問題！` : '目前無逾 7 日之過期下架項目。',
         isError: false,
       });
     } catch (e: any) {
@@ -284,11 +284,11 @@ export const AdminQuestionsManagementTab: React.FC = () => {
               全站共 {totalCount} 題
             </span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-              下架保留 {delistedCount} 題 (30日保留期)
+              下架/暫存 {delistedCount} 題 (7日暫存期)
             </span>
           </h3>
           <p className="text-xs text-stone-500 mt-1">
-            全站問題分類統計、違規審查下架（保留 30 日後自動自資料庫永久刪除）、即時雲端同步治理中樞。
+            全站問題分類統計、違規審查下架與刪除（暫存保留 7 日，期間可恢復，過後永久抹除）、即時雲端同步治理中樞。
           </p>
         </div>
 
@@ -300,14 +300,14 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             {lastSyncTime && <span className="text-stone-400 font-mono text-[10px]">({lastSyncTime})</span>}
           </div>
 
-          {/* 一鍵清理逾30日項目 */}
+          {/* 一鍵清理逾7日項目 */}
           {expiredDelistedCount > 0 && (
             <button
               type="button"
               disabled={isSyncing}
               onClick={handlePurgeExpired}
               className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-              title="一鍵永久清除所有下架已滿30日之項目"
+              title="一鍵永久清除所有下架已滿7日之項目"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>清理過期下架 ({expiredDelistedCount})</span>
@@ -459,8 +459,8 @@ export const AdminQuestionsManagementTab: React.FC = () => {
           </div>
 
           <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed">
-            <span className="font-bold block mb-0.5">📌 平台下架保留與永久刪除守則：</span>
-            被管理員強制違規下架之問題，將保留於本管理專區 <strong>30 日</strong>。滿 30 日後系統自動執行永久刪除並自資料庫徹底抹除。管理員亦可於下方手動提前執行「立即永久刪除」。
+            <span className="font-bold block mb-0.5">📌 平台下架/刪除暫存與永久抹除守則：</span>
+            被管理員違規下架或刪除之問題，將暫存保留於本管理專區 <strong>7 日</strong>。期間管理員可隨時執行「恢復上架」；滿 7 日後系統自動執行永久刪除並自資料庫徹底抹除。管理員亦可於下方手動提前執行「立即永久刪除」。
           </div>
         </div>
       </div>
@@ -620,7 +620,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                         <span>{q.views || 0} 次瀏覽</span>
                       </div>
 
-                      {/* 違規下架事由與 30 日保留倒數 */}
+                      {/* 違規下架事由與 7 日保留倒數 */}
                       {isDelisted && (
                         <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1.5">
                           <div className="flex items-center justify-between flex-wrap gap-1">
@@ -629,7 +629,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                               <span>下架事由：{q.delistedReason || '違反平台內容審核守則'}</span>
                             </div>
                             <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded-full bg-rose-200/80 text-rose-950 border border-rose-300">
-                              ⏳ 保留剩餘 {daysLeft} 天（30日後自動自資料庫永久刪除）
+                              ⏳ 暫存剩餘 {daysLeft} 天（7日後自動永久抹除）
                             </span>
                           </div>
                           {q.delistedFeedback && (
@@ -781,7 +781,7 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             </div>
 
             <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
-              ℹ️ <strong>下架保留政策：</strong>下架後將保留 30 日於管理員問題管理專區供追蹤申訴，滿 30 日將自動從資料庫永久刪除。
+              ℹ️ <strong>下架暫存保留政策：</strong>下架後將暫存 7 日於管理員問題管理專區供追蹤申訴，滿 7 日將自動從資料庫永久抹除。
             </div>
 
             {/* 底部按鈕 */}

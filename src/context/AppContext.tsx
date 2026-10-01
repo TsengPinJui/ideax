@@ -741,7 +741,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const realClicks = getRealClicks();
     const deletedIds = getDeletedQuestionIds();
     const isDemo = getInitialIsDemoMode();
-    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
     const sanitizeQuestion = (q: any): Question => {
@@ -757,7 +757,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const isDelistedExpired = (q: any): boolean => {
       if (q.status === 'delisted' && q.delistedAt) {
-        return now - new Date(q.delistedAt).getTime() >= THIRTY_DAYS_MS;
+        return now - new Date(q.delistedAt).getTime() >= SEVEN_DAYS_MS;
       }
       return false;
     };
@@ -1301,7 +1301,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!cloudData) return false;
       const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
       const deletedIds = getDeletedQuestionIds();
-      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
       const now = Date.now();
 
       if (cloudData.questions && cloudData.questions.length > 0) {
@@ -1310,7 +1310,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .filter((q) => !deletedIds.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
           .filter((q) => {
             if (q.status === 'delisted' && q.delistedAt) {
-              if (now - new Date(q.delistedAt).getTime() >= THIRTY_DAYS_MS) {
+              if (now - new Date(q.delistedAt).getTime() >= SEVEN_DAYS_MS) {
                 expiredIds.push(q.id);
                 return false;
               }
@@ -1398,8 +1398,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const connected = await testFirestoreConnection();
         if (mounted) setIsFirestoreConnected(connected);
 
-        // Auto purge expired 30-day delisted questions on startup
-        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+        // Auto purge expired 7-day delisted/deleted questions on startup
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
         const now = Date.now();
         const deletedIds = getDeletedQuestionIds();
         const expiredIdsOnBoot: string[] = [];
@@ -1408,7 +1408,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const remaining = prev.filter((q) => {
             if (deletedIds.has(q.id)) return false;
             if (q.status === 'delisted' && q.delistedAt) {
-              if (now - new Date(q.delistedAt).getTime() >= THIRTY_DAYS_MS) {
+              if (now - new Date(q.delistedAt).getTime() >= SEVEN_DAYS_MS) {
                 expiredIdsOnBoot.push(q.id);
                 return false;
               }
@@ -1451,7 +1451,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               .filter((q) => !currentDeleted.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
               .filter((q) => {
                 if (q.status === 'delisted' && q.delistedAt) {
-                  return now - new Date(q.delistedAt).getTime() < THIRTY_DAYS_MS;
+                  return now - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
                 }
                 return true;
               });
@@ -1526,7 +1526,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .filter((q) => !currentDeleted.has(q.id) && (isCurrentDemo || !isMockQuestionId(q.id, q.authorId)))
             .filter((q) => {
               if (q.status === 'delisted' && q.delistedAt) {
-                return Date.now() - new Date(q.delistedAt).getTime() < THIRTY_DAYS_MS;
+                return Date.now() - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
               }
               return true;
             });
@@ -3122,9 +3122,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ]);
   };
 
-  // Action: Delist a question (強制違規下架處置，全站永久持久化並同步至雲端 Firestore 與日誌)
-  const delistQuestion = (questionId: string, reason: string, feedback?: string) => {
+  // Action: Delist or soft-delete a question (強制違規下架處置或直接刪除暫存，均進入 7 日暫存保留期，全站永久持久化並同步至雲端 Firestore 與日誌)
+  const delistQuestion = (
+    questionId: string,
+    reason: string,
+    feedback?: string,
+    options?: { isDirectDelete?: boolean; alsoDelete?: boolean }
+  ) => {
     let targetQ: Question | null = null;
+    const nowIso = new Date().toISOString();
+    const isDirect = options?.isDirectDelete || reason === '直接刪除' || reason.includes('主動直接刪除');
+
     setQuestions((prev) => {
       const updated = prev.map((q) => {
         if (q.id === questionId) {
@@ -3133,7 +3141,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             status: 'delisted' as const,
             delistedReason: reason,
             delistedFeedback: feedback || undefined,
-            delistedAt: new Date().toISOString(),
+            delistedAt: nowIso,
           };
           return targetQ;
         }
@@ -3157,8 +3165,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status: 'delisted' as const,
           delistedReason: reason,
           delistedFeedback: feedback || undefined,
-          delistedAt: new Date().toISOString(),
+          delistedAt: nowIso,
         });
+      }
+    }
+
+    // 若為直接刪除或標記刪除，且有未結案預扣懸賞金，自動退還給提問者
+    const targetQuestionObj = questions.find((q) => q.id === questionId) || targetQ;
+    if (isDirect && targetQuestionObj && targetQuestionObj.status !== 'solved') {
+      const refundAmount = targetQuestionObj.withheldBounty || (targetQuestionObj.status === 'open' ? targetQuestionObj.bounty : 0) || 0;
+      if (refundAmount > 0) {
+        if (currentUser.id === targetQuestionObj.authorId) {
+          setCurrentUser((prev) => ({
+            ...prev,
+            balance: prev.balance + refundAmount,
+            withheldPoints: Math.max(0, (prev.withheldPoints || 0) - refundAmount),
+          }));
+        }
+
+        setAvailableUsers((prev) =>
+          prev.map((u) => {
+            if (u.id === targetQuestionObj.authorId) {
+              const updated = {
+                ...u,
+                balance: (u.balance || 0) + refundAmount,
+                withheldPoints: Math.max(0, (u.withheldPoints || 0) - refundAmount),
+              };
+              syncUserToFirestore(updated);
+              return updated;
+            }
+            return u;
+          })
+        );
+
+        const tx: Transaction = {
+          id: `tx-del-refund-${Date.now()}`,
+          type: '問題下架/刪除退還預扣',
+          amount: refundAmount,
+          platformFee: 0,
+          netAmount: refundAmount,
+          relatedQuestionTitle: targetQuestionObj.title,
+          relatedQuestionId: targetQuestionObj.id,
+          fromUserName: 'IdeaX 平台治理中心',
+          toUserName: targetQuestionObj.authorName,
+          status: '已完成',
+          createdAt: new Date().toISOString(),
+          note: `問題已移入 7 日刪除暫存區，系統自動退還提問預扣懸賞金 NT$ ${refundAmount} 點至提問者可用餘額。`,
+        };
+        setTransactions((prev) => [tx, ...prev]);
+        syncTransactionToFirestore(tx);
       }
     }
 
@@ -3167,9 +3222,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `audit-delist-${Date.now()}`,
         adminId: currentUser.id,
-        action: `強制違規下架問題：${questionId}`,
-        details: { reason, feedback, timestamp: new Date().toISOString() },
-        createdAt: new Date().toISOString(),
+        action: isDirect ? `直接刪除問題（移入7日暫存）：${questionId}` : `強制違規下架問題（移入7日暫存）：${questionId}`,
+        details: { reason, feedback, isDirectDelete: isDirect, timestamp: nowIso },
+        createdAt: nowIso,
       },
     ]);
   };
@@ -3324,12 +3379,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ]);
   };
 
-  // Action: Purge all delisted questions older than 30 days (下架貼文保留30日自動或手動清理，自動退還未完成預扣款)
+  // Action: Purge all delisted questions older than 7 days (下架貼文暫存保留7日自動或手動清理，自動退還未完成預扣款)
   const purgeExpiredDelistedQuestions = async (): Promise<number> => {
-    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
     const now = Date.now();
     const expiredQuestions = questions.filter(
-      (q) => q.status === 'delisted' && q.delistedAt && now - new Date(q.delistedAt).getTime() >= THIRTY_DAYS_MS
+      (q) => q.status === 'delisted' && q.delistedAt && now - new Date(q.delistedAt).getTime() >= SEVEN_DAYS_MS
     );
 
     if (expiredQuestions.length === 0) return 0;

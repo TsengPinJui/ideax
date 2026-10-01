@@ -6,6 +6,7 @@ import { downloadMediationContractMarkdown } from '../services/proposalService';
 import { SubmitAnswerModal } from './SubmitAnswerModal';
 import { HelpTooltip } from './HelpTooltip';
 import { ContractPreviewModal } from './ContractPreviewModal';
+import { ChatOnboardingGuide, CHAT_ONBOARDING_STORAGE_KEY } from './ChatOnboardingGuide';
 import { 
   ContractData, 
   buildContractFromOffer, 
@@ -218,6 +219,32 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
   // --- 管理員罐頭訊息 (Canned Messages) 狀態 ---
   const [isCannedMessagesModalOpen, setIsCannedMessagesModalOpen] = useState(false);
+
+  // --- 聊天室首次使用步驟式教學狀態（下載一次教學一次，同裝置不同帳號不重複） ---
+  const [isChatOnboardingOpen, setIsChatOnboardingOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const forceChatOnboarding = sessionStorage.getItem('ideax_force_chat_onboarding') === 'true';
+      if (forceChatOnboarding) {
+        sessionStorage.removeItem('ideax_force_chat_onboarding');
+        const timer = setTimeout(() => {
+          setIsChatOnboardingOpen(true);
+        }, 400);
+        return () => clearTimeout(timer);
+      }
+
+      const completed = localStorage.getItem(CHAT_ONBOARDING_STORAGE_KEY);
+      if (!completed) {
+        const timer = setTimeout(() => {
+          setIsChatOnboardingOpen(true);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
   const [cannedMessageCategory, setCannedMessageCategory] = useState<string>('all');
   const [cannedMessageSearch, setCannedMessageSearch] = useState('');
   const [customCannedMessages, setCustomCannedMessages] = useState<CannedMessage[]>(() => {
@@ -1300,6 +1327,20 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                       <span>發起詢價</span>
                     </button>
                   )}
+
+                  {/* 聊天室新手教學重啟按鈕 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPlusMenuOpen(true);
+                      setIsChatOnboardingOpen(true);
+                    }}
+                    className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-stone-200 hover:border-amber-400 bg-white hover:bg-amber-50 text-stone-600 hover:text-stone-900 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                    title="開啟聊天室功能使用教學"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="hidden sm:inline text-[11px]">功能教學</span>
+                  </button>
                 </div>
               </div>
 
@@ -2299,6 +2340,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                         <>
                           {/* 1. 發布自訂方案報價 */}
                           <button
+                            id="chat-menu-item-offer"
                             type="button"
                             onClick={() => {
                               setIsPlusMenuOpen(false);
@@ -2320,6 +2362,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
                           {/* 2. 發送詢價委託 */}
                           <button
+                            id="chat-menu-item-request"
                             type="button"
                             onClick={() => {
                               setIsPlusMenuOpen(false);
@@ -2341,6 +2384,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
                           {/* 3. 提出方案（同問題下方提出方案頁面） */}
                           <button
+                            id="chat-menu-item-submit"
                             type="button"
                             onClick={() => {
                               setIsPlusMenuOpen(false);
@@ -2440,6 +2484,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
                       {/* 6. ✨ AI 智慧調解 */}
                       <button
+                        id="chat-menu-item-mediation"
                         type="button"
                         onClick={() => {
                           setIsPlusMenuOpen(false);
@@ -3829,6 +3874,20 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
           onClose={() => setPreviewContract(null)}
         />
       )}
+
+      {/* 聊天室首次使用步驟式互動引導教學 */}
+      <ChatOnboardingGuide
+        isOpen={isChatOnboardingOpen}
+        onClose={() => setIsChatOnboardingOpen(false)}
+        isOfferModalOpen={isOfferModalOpen}
+        isRequestModalOpen={isRequestModalOpen}
+        isSubmitAnswerModalOpen={isSubmitAnswerModalOpen}
+        isPlusMenuOpen={isPlusMenuOpen}
+        onOpenPlusMenu={() => setIsPlusMenuOpen(true)}
+        onOpenOfferModal={() => setIsOfferModalOpen(true)}
+        onOpenRequestModal={() => setIsRequestModalOpen(true)}
+        onOpenSubmitAnswerModal={() => setIsSubmitAnswerModalOpen(true)}
+      />
     </div>
   );
 };

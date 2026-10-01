@@ -355,7 +355,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
           </button>
 
           {/* 2. 獨立專屬專區（創點子/痛點專區 在上，L0問題討論專區 在下） */}
-          <div className="space-y-2 pt-1 pb-1">
+          <div id="onboarding-step-7-special-zones" className="space-y-2 pt-1 pb-1">
             <div className="text-[11px] font-bold text-stone-500 px-1 flex items-center justify-between">
               <span>🔥 主題專區</span>
             </div>

@@ -49,8 +49,9 @@ export type AppTab =
 
 export type AboutSection = 
   | 'list'
-  | 'solver_terms'                  // 接案會員服務條款（解答者條款）
-  | 'questioner_terms'              // 提問會員服務條款（提問者條款）
+  | 'contact'                       // 聯絡我們與客服中心
+  | 'solver_terms'                  // 接案服務條款（解答者條款）
+  | 'questioner_terms'              // 提問服務條款（提問者條款）
   | 'general_terms'                 // 服務條款（一般服務條款）
   | 'recharge_subscription_terms'   // 點數儲值與會員方案訂閱服務條款
   | 'copyright_policy'              // 著作權保護政策相關條款
@@ -59,12 +60,13 @@ export type AboutSection =
   | 'anti_fraud_aml_policy'         // 反詐騙與防制洗錢政策
   | 'refund_dispute_policy'         // 退款政策與爭議調解處理辦法
   | 'community_guidelines'          // 社群守則與內容管理規範
-  | 'about_ideax';                  // 關於創點子 / 關於出任務
+  | 'about_ideax';                  // 關於創點子 / 平台介紹
 
 export type UserDashboardTab = 
   | 'points_receivables'
   | 'overview'
   | 'profile'
+  | 'about_and_support'
   | 'switch_account'
   | 'admin_management'
   | 'admin_cases'
@@ -135,6 +137,8 @@ export const CATEGORY_HIERARCHY: Record<Category, string[]> = {
 };
 
 export type ProblemLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
+
+export type MarketViewMode = 'large' | 'list' | 'grid'; // 問題市場檢視模式：大視窗 / 條列式 / 方格
 
 export type SearchMode = 'keywords' | 'users'; // 關鍵字（問題、方案、討論、內文） | 用戶或專家（輸入 ID 或名稱）
 

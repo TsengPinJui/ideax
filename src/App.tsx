@@ -27,7 +27,8 @@ import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
 import { PwaInstallModal } from './components/PwaInstallModal';
 import { SplashScreen } from './components/SplashScreen';
 import { HelpTooltip } from './components/HelpTooltip';
-import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab } from './types';
+import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnboardingGuide';
+import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { updateSEOForQuestion } from './services/seoService';
 import {
@@ -88,8 +89,78 @@ function MainContent() {
   const [specialZone, setSpecialZone] = useState<SpecialZone>('all');
   const [initialPostType, setInitialPostType] = useState<PostType>('seek_solution');
   const [initialPublishIdentity, setInitialPublishIdentity] = useState<'admin' | 'platform'>('admin');
-  const [sortBy, setSortBy] = useState<QuestionSortOption>('recruiting_promoted');
+  // 問題市場排序方式：按照用戶前一次使用的作為下次預設（預設為 recruiting_promoted 推薦）
+  const [sortBy, setSortBy] = useState<QuestionSortOption>(() => {
+    try {
+      const saved = localStorage.getItem('ideax_market_sort_by');
+      if (
+        saved === 'recruiting_promoted' ||
+        saved === 'most_solutions' ||
+        saved === 'most_discussions' ||
+        saved === 'highest_bounty'
+      ) {
+        return saved;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return 'recruiting_promoted';
+  });
+
+  const handleSetSortBy = (option: QuestionSortOption) => {
+    setSortBy(option);
+    try {
+      localStorage.setItem('ideax_market_sort_by', option);
+    } catch (e) {
+      // ignore
+    }
+  };
+
   const [userProfileVersion, setUserProfileVersion] = useState(0);
+
+  // 首次使用引導教學狀態（下載一次教學一次，同裝置不同帳號不重複）
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isOnboardingFromAbout, setIsOnboardingFromAbout] = useState(false);
+  const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const completed = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+      if (!completed) {
+        const timer = setTimeout(() => {
+          setIsOnboardingOpen(true);
+        }, 1600);
+        return () => clearTimeout(timer);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  // 問題市場版面檢視模式：手機預設條列式排列 (list)，電腦預設方格式 (grid)
+  const [viewMode, setViewMode] = useState<MarketViewMode>(() => {
+    try {
+      const saved = localStorage.getItem('ideax_market_view_mode');
+      if (saved === 'large' || saved === 'list' || saved === 'grid') {
+        return saved;
+      }
+    } catch (e) {
+      // ignore
+    }
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768 ? 'list' : 'grid';
+    }
+    return 'grid';
+  });
+
+  const handleSetViewMode = (mode: MarketViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('ideax_market_view_mode', mode);
+    } catch (e) {
+      // ignore
+    }
+  };
 
   // 監聽並自動記錄個別用戶最近搜尋的關鍵字（防抖 600ms）
   useEffect(() => {
@@ -688,7 +759,7 @@ function MainContent() {
         setSpecialZone={handleSelectSpecialZone}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        onSelectSort={setSortBy}
+        onSelectSort={handleSetSortBy}
         onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
         onOpenCreateQuestionWithType={handleOpenCreateWithType}
         onOpenUserDashboardTab={(tab, scrollSection) => {
@@ -707,6 +778,9 @@ function MainContent() {
           }
         }}
         onOpenAiCrm={() => setActiveTab('ai_crm')}
+        isCategorySidebarOpen={isCategorySidebarOpen}
+        setIsCategorySidebarOpen={setIsCategorySidebarOpen}
+        onStartOnboarding={() => setIsOnboardingOpen(true)}
       />
 
       {/* 帳號停權警告橫幅 */}
@@ -761,7 +835,7 @@ function MainContent() {
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
               onLeaderboardClick={() => {
-                setSortBy('highest_bounty');
+                handleSetSortBy('highest_bounty');
                 const el = document.getElementById('market-grid');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
@@ -920,9 +994,11 @@ function MainContent() {
                       selectedLevel={selectedLevel}
                       setSelectedLevel={setSelectedLevel}
                       sortBy={sortBy}
-                      setSortBy={setSortBy}
+                      setSortBy={handleSetSortBy}
                       totalCount={filteredQuestions.length}
                       categoryCounts={categoryCounts}
+                      viewMode={viewMode}
+                      setViewMode={handleSetViewMode}
                     />
                   </>
                 )}
@@ -1071,7 +1147,16 @@ function MainContent() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div
+                    id="onboarding-step-5-cards"
+                    className={
+                      viewMode === 'grid'
+                        ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
+                        : viewMode === 'list'
+                        ? 'flex flex-col space-y-2.5 sm:space-y-3'
+                        : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
+                    }
+                  >
                     {filteredQuestions.map((q) => {
                       const questionAnswers = answers.filter((a) => a.questionId === q.id);
                       const solutionsCount = questionAnswers.filter((a) => a.type === 'solution' || !a.type).length;
@@ -1083,6 +1168,7 @@ function MainContent() {
                           question={q}
                           solutionsCount={solutionsCount}
                           discussionsCount={discussionsCount}
+                          viewMode={viewMode}
                           onSelectCategory={(cat, sub) => {
                             setSelectedCategory(cat);
                             if (sub) setSelectedSubcategory(sub);
@@ -1132,7 +1218,15 @@ function MainContent() {
         {/* 3. Mechanism Tab (轉向關於我們金流運作) */}
         {activeTab === 'mechanism' && (
           <div className="max-w-5xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
-            <AboutUsView onBack={() => setActiveTab('explore')} initialSection="finance" />
+            <AboutUsView
+              onBack={() => setActiveTab('explore')}
+              initialSection="finance"
+              onStartOnboarding={() => {
+                setIsOnboardingFromAbout(true);
+                setActiveTab('explore');
+                setIsOnboardingOpen(true);
+              }}
+            />
           </div>
         )}
 
@@ -1165,7 +1259,16 @@ function MainContent() {
         {/* 3.2 About Us Tab: 關於我們與條款三大項 */}
         {activeTab === 'about' && (
           <div className="max-w-5xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
-            <AboutUsView key={aboutPageSection} initialSection={aboutPageSection} onBack={() => setActiveTab('explore')} />
+            <AboutUsView
+              key={aboutPageSection}
+              initialSection={aboutPageSection}
+              onBack={() => setActiveTab('explore')}
+              onStartOnboarding={() => {
+                setIsOnboardingFromAbout(true);
+                setActiveTab('explore');
+                setIsOnboardingOpen(true);
+              }}
+            />
           </div>
         )}
 
@@ -1277,6 +1380,11 @@ function MainContent() {
                 setSelectedQuestion(found);
                 setActiveTab('question_detail');
               }
+            }}
+            onStartOnboarding={() => {
+              setIsOnboardingFromAbout(true);
+              setActiveTab('explore');
+              setIsOnboardingOpen(true);
             }}
           />
         )}
@@ -1460,6 +1568,51 @@ function MainContent() {
       <PwaInstallModal
         isOpen={isPwaInstallModalOpen}
         onClose={closePwaInstallModal}
+      />
+
+      {/* 首次使用步驟式跟隨引導教學（下載一次教學一次，同裝置不同帳號不重複） */}
+      <AppOnboardingGuide
+        isOpen={isOnboardingOpen}
+        isFromAboutUs={isOnboardingFromAbout}
+        onClose={(completedAll) => {
+          setIsOnboardingOpen(false);
+          if (completedAll && isOnboardingFromAbout) {
+            setIsOnboardingFromAbout(false);
+            try {
+              sessionStorage.setItem('ideax_force_chat_onboarding', 'true');
+            } catch (e) {
+              // ignore
+            }
+            setSelectedQuestion(null);
+            setSelectedSolver(null);
+            setActiveTab('chat');
+            return;
+          }
+          setIsOnboardingFromAbout(false);
+          setActiveTab('explore');
+        }}
+        onNavigateTab={(tab) => {
+          setSelectedQuestion(null);
+          setSelectedSolver(null);
+          setActiveTab(tab);
+        }}
+        onOpenSidebar={() => setIsCategorySidebarOpen(true)}
+        onCloseSidebar={() => setIsCategorySidebarOpen(false)}
+        onResetFilters={() => {
+          setSelectedCategory('全部');
+          setSelectedSubcategory('全部');
+          setSelectedLevel('全部');
+          setSearchQuery('');
+          setSpecialZone('all');
+        }}
+        onOpenUserDashboard={() => {
+          setSelectedQuestion(null);
+          setSelectedSolver(null);
+          setUserDashboardTab('profile');
+          setActiveTab('user_dashboard');
+        }}
+        viewMode={viewMode}
+        onSetViewMode={handleSetViewMode}
       />
     </div>
   );

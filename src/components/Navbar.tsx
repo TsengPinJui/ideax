@@ -70,6 +70,9 @@ interface NavbarProps {
   onOpenCreateQuestionWithType?: (type: PostType, identity?: 'admin' | 'platform') => void;
   onOpenUserDashboardTab?: (tab: UserDashboardTab, scrollSection?: string) => void;
   onOpenAiCrm?: () => void;
+  isCategorySidebarOpen?: boolean;
+  setIsCategorySidebarOpen?: (open: boolean) => void;
+  onStartOnboarding?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -86,6 +89,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCreateQuestionWithType,
   onOpenUserDashboardTab,
   onOpenAiCrm,
+  isCategorySidebarOpen: isCategorySidebarOpenProp,
+  setIsCategorySidebarOpen: setIsCategorySidebarOpenProp,
+  onStartOnboarding,
 }) => {
   const {
     currentUser,
@@ -121,7 +127,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     addTestAccount,
   } = useApp();
 
-  const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
+  const [internalIsCategorySidebarOpen, setInternalIsCategorySidebarOpen] = useState(false);
+  const isCategorySidebarOpen = isCategorySidebarOpenProp !== undefined ? isCategorySidebarOpenProp : internalIsCategorySidebarOpen;
+  const setIsCategorySidebarOpen = setIsCategorySidebarOpenProp || setInternalIsCategorySidebarOpen;
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const [isSwitchAccountSectionOpen, setIsSwitchAccountSectionOpen] = useState(false);
@@ -358,6 +366,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* 左上燈泡圖片左側側邊欄入口 */}
           <button
+            id="onboarding-step-6-sidebar-btn"
             type="button"
             onClick={() => setIsCategorySidebarOpen(true)}
             className="p-2 -ml-1 sm:ml-0 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-stone-100 active:bg-amber-100 transition-all flex items-center justify-center cursor-pointer border border-stone-200/90 shadow-2xs group"
@@ -412,6 +421,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Navigation Links: 「找專家」與「我的案件」 */}
           <nav className="hidden md:flex items-center gap-1 text-sm font-semibold">
             <button
+              id="onboarding-step-8-solvers-desktop"
               onClick={() => {
                 setActiveTab('solvers');
                 setSelectedQuestion(null);
@@ -772,7 +782,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* 1. 簡潔的加號 (+) 發布按鈕 (管理員可選發文身分，一般用戶進入編輯頁，訪客引導登入) */}
           <div className="relative hidden sm:block" ref={createMenuRef}>
             <button
-              id="nav-create-question-btn"
+              id="onboarding-step-9-create-desktop"
               onClick={() => {
                 if (isGuest) {
                   openAuthModal('login');
@@ -1009,6 +1019,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           ) : (
             <div className="relative hidden sm:block" ref={userMenuRef}>
               <button
+                id="onboarding-step-10-profile-desktop"
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="relative flex items-center gap-2 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-stone-200 hover:border-amber-300 hover:bg-stone-50 transition-all cursor-pointer"
               >
@@ -1694,7 +1705,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="w-7 h-7 rounded-lg bg-slate-100/90 text-slate-700 group-hover:bg-slate-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                         <FileText className="w-3.5 h-3.5" />
                       </div>
-                      <span>關於我們（金流與條款）</span>
+                      <span>平台資訊（介紹與條款）</span>
                     </button>
                     <button
                       onClick={() => {
@@ -1706,8 +1717,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="w-7 h-7 rounded-lg bg-teal-100/90 text-teal-800 group-hover:bg-teal-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                         <Headphones className="w-3.5 h-3.5" />
                       </div>
-                      <span>聯繫客服</span>
+                      <span>客服回報</span>
                     </button>
+                    {onStartOnboarding && (
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onStartOnboarding();
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-amber-50/80 hover:text-amber-950 flex items-center gap-2.5 cursor-pointer group transition-all"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                          <HelpCircle className="w-3.5 h-3.5" />
+                        </div>
+                        <span>新手使用教學（流程引導）</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* 區塊 5：帳號權限與登出 */}

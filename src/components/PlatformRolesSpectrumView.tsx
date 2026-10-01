@@ -336,7 +336,7 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
   const activeRole =
     SPECTRUM_NODES.find((r) => r.id === selectedRoleId) || SPECTRUM_NODES[0];
 
-  const handleSelectZone = (zone: ZoneType) => {
+  const handleSelectZone = (zone: ZoneType, autoScroll = true) => {
     setActiveZone(zone);
     setActivePersona(null);
     if (zone === 'left') {
@@ -353,7 +353,14 @@ export const PlatformRolesSpectrumView: React.FC<PlatformRolesSpectrumViewProps>
         setSelectedRoleId('solver');
       }
     } else {
-      setHighlightedRoleIds([]);
+      setHighlightedRoleIds(['enterprise', 'questioner', 'discussion_asker', 'platform_admin', 'discussion_solver', 'solver', 'certified_expert']);
+    }
+
+    if (autoScroll && spectrumRef.current) {
+      spectrumRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
     }
   };
 

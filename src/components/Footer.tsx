@@ -36,7 +36,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
   };
 
   return (
-    <footer className="bg-stone-950 text-stone-300 border-t border-stone-800 pt-12 pb-24 lg:pb-8">
+    <footer className="hidden md:block bg-stone-950 text-stone-300 border-t border-stone-800 pt-12 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pb-10 border-b border-stone-800 text-xs">
           {/* Brand info - 頁尾 IdeaX 左側去背燈泡 + IdeaX 品牌識別 */}

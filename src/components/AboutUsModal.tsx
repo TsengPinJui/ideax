@@ -7,12 +7,14 @@ interface AboutUsModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialSection?: AboutSection;
+  onStartOnboarding?: () => void;
 }
 
 export const AboutUsModal: React.FC<AboutUsModalProps> = ({
   isOpen,
   onClose,
   initialSection = 'list',
+  onStartOnboarding,
 }) => {
   if (!isOpen) return null;
 
@@ -37,6 +39,12 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
             initialSection={initialSection}
             onBack={onClose}
             isModal={true}
+            onStartOnboarding={() => {
+              onClose();
+              if (onStartOnboarding) {
+                onStartOnboarding();
+              }
+            }}
           />
         </div>
       </div>

@@ -21,9 +21,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     currentUser,
     unreadPersonalCount,
     pendingDisputesCount,
-    isDemoMode,
-    isNoPaymentMode,
-    isHideTestAccounts,
   } = useApp();
   
   // 問卷未填寫提示紅點 (一般用戶未完成問卷或有待處理通知時顯示紅點)
@@ -59,6 +56,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
         {/* 2. 找專家&榮譽榜 */}
         <button
+          id="onboarding-step-8-solvers"
           type="button"
           onClick={() => onNavigate('solvers')}
           className={`flex flex-col items-center justify-center py-1 transition-all cursor-pointer ${
@@ -74,7 +72,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         </button>
 
         {/* 3. 中間凸出按鈕：發布懸賞/提問 */}
-        <div className="flex items-center justify-center -mt-3.5">
+        <div id="onboarding-step-9-create" className="flex items-center justify-center -mt-3.5">
           <button
             type="button"
             onClick={onOpenCreateQuestion}
@@ -104,6 +102,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
         {/* 5. 個人中心 */}
         <button
+          id="onboarding-step-10-profile"
           type="button"
           onClick={() => onNavigate('user_dashboard')}
           className={`flex flex-col items-center justify-center py-1 transition-all cursor-pointer relative ${
@@ -130,11 +129,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           </div>
           <span className="text-[10px] mt-0.5 tracking-tight">個人中心</span>
         </button>
-      </div>
-
-      {/* 行動端頁尾版本號與日記模式 */}
-      <div className="pt-1 mt-0.5 border-t border-stone-100 text-center font-mono text-[9.5px] text-stone-400 select-none tracking-tight">
-        v1.4.5 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
     </nav>
   );

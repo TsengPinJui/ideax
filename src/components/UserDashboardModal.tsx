@@ -22,6 +22,8 @@ import { ContractPreviewModal } from './ContractPreviewModal';
 import { TransactionCertificateModal } from './TransactionCertificateModal';
 import { ConsolidatedStatementModal } from './ConsolidatedStatementModal';
 import { AnnualWithholdingTaxModal } from './AnnualWithholdingTaxModal';
+import { AboutUsView } from './AboutUsView';
+import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
 import { 
   ContractData, 
   buildContractFromProposalItem, 
@@ -67,6 +69,7 @@ import {
   FileSpreadsheet,
   Check,
   Building2,
+  Info,
   CreditCard,
   ArrowRight,
   ChevronRight,
@@ -106,6 +109,9 @@ import {
   ClipboardList,
   ChevronDown,
   ChevronUp,
+  Headphones,
+  Phone,
+  Copy,
 } from 'lucide-react';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 
@@ -113,6 +119,7 @@ export type UserDashboardTab =
   | 'points_receivables'
   | 'overview'
   | 'profile'
+  | 'about_and_support'
   | 'real_name_auth'
   | 'expert_certification'
   | 'survey'
@@ -142,6 +149,7 @@ interface UserDashboardModalProps {
   onNavigateToTerms?: () => void;
   onSelectCategory?: (category: any, subcategory: string) => void;
   onOpenAiCrm?: () => void;
+  onStartOnboarding?: () => void;
 }
 
 export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
@@ -153,6 +161,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   onNavigateToTerms,
   onSelectCategory,
   onOpenAiCrm,
+  onStartOnboarding,
 }) => {
   const {
     currentUser,
@@ -209,6 +218,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setHideTestAccounts,
     toggleHideTestAccounts,
     openAuthModal,
+    openCustomerService,
+    addNotification,
     notifications,
     pendingDisputesCount,
     deleteQuestionPermanently,
@@ -554,6 +565,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [showNameRuleHelp, setShowNameRuleHelp] = useState(false);
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
+
+  // About and Support Tab State
+  const [copiedSupportEmail, setCopiedSupportEmail] = useState(false);
 
   // Basic Personal Profile & SubTab State
   const [profileSubTab, setProfileSubTab] = useState<'basic' | 'survey'>('basic');
@@ -1480,6 +1494,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     transactions: currentUser.role === 'admin' ? '交易管理' : '交易紀錄',
     subscriptions: currentUser.role === 'admin' ? '會員方案與費率管理' : '會員方案',
     profile: currentUser.role === 'admin' ? '管理員帳號設定' : '帳號與基本資料',
+    about_and_support: currentUser.role === 'admin' ? '關於IdeaX' : '平台資訊',
     real_name_auth: '實名認證',
     expert_certification: '專家認證',
     survey: '問卷(客戶調查)',
@@ -1686,6 +1701,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
               // 帳號
               { id: 'profile', category: 'account', label: '管理員設定', icon: SettingsIcon },
+              { id: 'about_and_support', category: 'account', label: '關於IdeaX', icon: Headphones },
               { id: 'switch_account', category: 'account', label: '切換帳號', icon: ArrowLeftRight },
             ]
               .filter((tab) => adminCategoryFilter === 'all' || tab.category === adminCategoryFilter)
@@ -1742,6 +1758,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             { id: 'real_name_auth', label: '實名認證', icon: UserCheck },
             { id: 'expert_certification', label: '專家認證', icon: ShieldCheck },
             { id: 'survey', label: '問卷(客戶調查)', icon: ClipboardList },
+            { id: 'about_and_support', label: '平台資訊', icon: Info },
+            { id: 'customer_service_report', label: '客服回報', icon: Headphones },
             { id: 'switch_account', label: '切換帳號', icon: ArrowLeftRight },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -1751,6 +1769,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => {
+                  if (tab.id === 'customer_service_report') {
+                    openCustomerService({ subject: '來自功能列之客服回報與申訴' });
+                    return;
+                  }
                   if (tab.id === 'switch_account') {
                     openAuthModal('login');
                     setMobileMenuOpen(false);
@@ -2063,9 +2085,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <p className="px-2 pt-1 pb-1 text-[10px] font-black text-stone-500 uppercase tracking-wider flex items-center justify-between border-b border-stone-100 mb-1">
                   <span className="flex items-center gap-1">
                     <SettingsIcon className="w-3 h-3 text-stone-500" />
-                    <span>帳號</span>
+                    <span>帳號與平台資訊</span>
                   </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-bold">2 項</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-bold">3 項</span>
                 </p>
 
                 {/* 13. 管理員帳號設定 */}
@@ -2089,7 +2111,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
                 </button>
 
-                {/* 14. 切換帳號 */}
+                {/* 14. 關於IdeaX */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('about_and_support');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                      <Headphones className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900">關於IdeaX</span>
+                      <span className="text-[10px] text-stone-500 font-normal">平台介紹、客戶支援與條款規範</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+                </button>
+
+                {/* 15. 切換帳號 */}
                 <button
                   type="button"
                   onClick={() => {
@@ -2365,7 +2408,52 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
           </div>
 
-          {/* Section 4: 帳號操作 */}
+          {/* Section 4: 平台資訊與客服 */}
+          <div className="bg-white rounded-xl border border-stone-200/90 p-1 space-y-0.5 shadow-2xs">
+            <p className="px-2 pt-1 pb-0.5 text-[9px] font-bold text-stone-500 uppercase tracking-wider">
+              平台支援與資訊
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('about_and_support');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-stone-100 text-stone-800 flex items-center justify-center shrink-0">
+                  <Info className="w-3 h-3" />
+                </div>
+                <div>
+                  <span className="block font-black text-stone-900">平台資訊</span>
+                  <span className="text-[10px] text-stone-500 font-normal">平台介紹、服務條款與金流運作</span>
+                </div>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                openCustomerService({ subject: '來自功能列之客服回報與申訴' });
+                setMobileMenuOpen(false);
+              }}
+              className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
+                  <Headphones className="w-3 h-3 text-amber-700" />
+                </div>
+                <div>
+                  <span className="block font-black text-stone-900">客服回報</span>
+                  <span className="text-[10px] text-stone-500 font-normal">線上客服、爭議申訴與專人諮詢</span>
+                </div>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+            </button>
+          </div>
+
+          {/* Section 5: 帳號操作 */}
           <div className="bg-white rounded-xl border border-stone-200/80 p-1 space-y-0.5 shadow-2xs">
             <p className="px-2 pt-1 pb-0.5 text-[9px] font-black text-stone-400 uppercase tracking-wider">
               帳號操作
@@ -6008,7 +6096,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
         {/* TAB 2: 個人中心 (帳號資訊、身份切換、解答者公開資料與隱私設定) */}
         {activeTab === 'profile' && (
-          <div className="space-y-6">
+          <div id="onboarding-step-10-profile-page" className="space-y-6">
             {currentUser.role === 'admin' ? (
               /* 管理員專屬：席位與安全治理設定（無個人個資、無問卷、無專家審查、無條款簽署） */
               <div className="space-y-6 animate-in fade-in duration-150">
@@ -6317,7 +6405,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </div>
             ) : (
               /* 一般會員（提問者 / 解答者）個人資料設定、問卷、專家審查與條款簽署 */
-              <div className="space-y-6">
+              <div id="onboarding-step-10-profile-content" className="space-y-6">
                 {/* 身份切換區域 */}
                 <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -6757,12 +6845,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
               {/* 右側欄：服務調研問卷（按 性別、年齡、專業領域、職業、薪水、其他問題 順序排列） */}
               <div className={`xl:col-span-5 space-y-4 ${profileSubTab === 'survey' ? 'block' : 'hidden xl:block'}`}>
-                {/* 填問卷得免費體驗尊榮橫幅 */}
+                {/* 填問卷得免費會員體驗橫幅 */}
                 <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-purple-500/20 border border-amber-300 space-y-2 shadow-2xs">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
                     <h4 className="text-xs sm:text-sm font-black text-stone-900">
-                      🎁 填寫調研問卷，完成即送會員【免費領取 1 週尊榮會員體驗】！
+                      🎁 填寫調研問卷，完成即送會員【免費領取 1 週會員體驗】！
                     </h4>
                   </div>
                   <p className="text-xs text-stone-700 leading-relaxed font-medium">
@@ -6771,7 +6859,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {currentUser.surveyData?.completedAt && (
                     <div className="pt-1 flex items-center gap-2 text-xs font-bold text-emerald-800">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>您已完成問卷並享有尊榮方案體驗！（更新時間：{new Date(currentUser.surveyData.completedAt).toLocaleDateString()}）</span>
+                      <span>您已完成問卷並享有會員方案體驗！（更新時間：{new Date(currentUser.surveyData.completedAt).toLocaleDateString()}）</span>
                     </div>
                   )}
                 </div>
@@ -9467,6 +9555,24 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         </div>
       )}
 
+        {/* TAB: 平台資訊 / 關於IdeaX (直接接入關於我們與平台資訊完整介面) */}
+        {activeTab === 'about_and_support' && (
+          <div className="animate-in fade-in duration-150 -mx-1 sm:mx-0">
+            <AboutUsView
+              isModal={true}
+              onBack={() => {
+                setActiveTab(currentUser.role === 'admin' ? 'overview' : 'proposals');
+              }}
+              onStartOnboarding={() => {
+                onClose();
+                if (onStartOnboarding) {
+                  onStartOnboarding();
+                }
+              }}
+            />
+          </div>
+        )}
+
       {/* 平台環境開關二次確認視窗 */}
       {pendingModeConfirm && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
@@ -9594,7 +9700,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
       {/* 畫面頁尾自動印上淡淡細細的平台版本號與最近更新時間與當前環境簡稱 (日記模式) */}
       <div className="py-2 text-center bg-stone-50/70 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
-        v1.4.5 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+        v{APP_VERSION} • {APP_RELEASE_DATE} • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
 
       {/* 商業契約與和解協議書檢視/下載 Modal */}

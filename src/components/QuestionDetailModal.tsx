@@ -105,6 +105,9 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     selectedQuestion,
     deleteQuestionPermanently,
     deleteAnswerPermanently,
+    delistQuestion,
+    relistQuestion,
+    addNotification,
     availableUsers,
   } = useApp();
 
@@ -121,10 +124,14 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
 
   const isBookmarked = isQuestionBookmarked(question.id);
 
-  // Edit Question State
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(question.title);
-  const [editDesc, setEditDesc] = useState(question.description);
+  // Unified Action Modal State (違規下架 / 直接刪除，均暫存 7 日)
+  const [isUnifiedActionModalOpen, setIsUnifiedActionModalOpen] = useState(false);
+  const [unifiedActionTab, setUnifiedActionTab] = useState<'violation' | 'delete'>('violation');
+  const [delistReasonPreset, setDelistReasonPreset] = useState('違反社群內容規範與文明守則');
+  const [delistCustomReason, setDelistCustomReason] = useState('');
+  const [delistFeedbackInput, setDelistFeedbackInput] = useState('');
+  const [alsoDeleteMarked, setAlsoDeleteMarked] = useState(false);
+  const [isActionProcessing, setIsActionProcessing] = useState(false);
 
   // Deletion Confirmation States
   const [isConfirmDeleteQuestionOpen, setIsConfirmDeleteQuestionOpen] = useState(false);
@@ -258,7 +265,9 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
     maxPrice: 899,
     badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
   };
-  const isAuthor = currentUser.id === question.authorId || currentUser.role === 'admin';
+  const isAdmin = currentUser.role === 'admin';
+  const isOwner = currentUser.id === question.authorId;
+  const isAuthor = isOwner || isAdmin;
   const isAuthorDeactivated = isUserAccountDeactivated(question.authorId, availableUsers);
   const authorDisplayName = resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
   const authorDisplayAvatar = resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
@@ -282,24 +291,80 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
     };
   }, [question, solvers]);
 
-  const handleSaveEdit = () => {
-    if (!editTitle.trim() || !editDesc.trim()) return;
-    setQuestions((prev) =>
-      prev.map((q) =>
-        q.id === question.id
-          ? { ...q, title: editTitle.trim(), description: editDesc.trim() }
-          : q
-      )
-    );
-    question.title = editTitle.trim();
-    question.description = editDesc.trim();
-    setIsEditing(false);
+  // 1. 執行違規下架處置（須填寫理由並通知提問者，可選是否同時移入刪除暫存區，均暫存 7 日）
+  const handleConfirmUnifiedViolation = () => {
+    const finalReason = delistCustomReason.trim() || delistReasonPreset;
+    if (!finalReason) return;
+    setIsActionProcessing(true);
+    try {
+      delistQuestion(question.id, finalReason, delistFeedbackInput.trim());
+      question.status = 'delisted';
+      question.delistedReason = finalReason;
+      question.delistedFeedback = delistFeedbackInput.trim() || undefined;
+      question.delistedAt = new Date().toISOString();
+      if (addNotification) {
+        addNotification({
+          title: '⚠️ 提問內容違規下架通知',
+          message: `您發布的問題《${question.title.slice(0, 24)}...》因「${finalReason}」已被平台管理員強制下架（下架暫存保留 7 日，逾期將自動從資料庫永久刪除）。處置反饋說明：${
+            delistFeedbackInput.trim() || '請恪守 IdeaX 社群規範，如有疑義請聯繫官方團隊。'
+          }`,
+          type: 'system',
+        });
+      }
+      setIsUnifiedActionModalOpen(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsActionProcessing(false);
+    }
+  };
+
+  // 2. 執行直接刪除處置（無須理由，直接自前台移除並進入 7 日暫存區，7 日後自動永久抹除）
+  const handleConfirmUnifiedDirectDelete = () => {
+    setIsActionProcessing(true);
+    try {
+      delistQuestion(question.id, '主動直接刪除');
+      question.status = 'delisted';
+      question.delistedReason = '主動直接刪除（7日暫存保留期）';
+      question.delistedAt = new Date().toISOString();
+      if (addNotification) {
+        addNotification({
+          title: '問題已刪除（7日暫存中）',
+          message: `問題《${question.title.slice(0, 16)}...》已自前台移除並移入 7 日暫存區，期間可自管理中心恢復，過後永久抹除。`,
+          type: 'system',
+        });
+      }
+      setIsUnifiedActionModalOpen(false);
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsActionProcessing(false);
+    }
+  };
+
+  const handleRelistQuestion = () => {
+    relistQuestion(question.id);
+    question.status = 'open';
+    question.delistedReason = undefined;
+    question.delistedFeedback = undefined;
+    question.delistedAt = undefined;
+    if (addNotification) {
+      addNotification({
+        title: '問題已恢復上架',
+        message: `問題《${question.title.slice(0, 16)}...》已恢復公開招募與探索。`,
+        type: 'system',
+      });
+    }
   };
 
   const handleConfirmDeleteQuestion = async () => {
     setIsDeletingProcessing(true);
     try {
       await deleteQuestionPermanently(question.id);
+      if (addNotification) {
+        addNotification('問題已永久刪除', `已將問題《${question.title.slice(0, 16)}...》自全站徹底永久抹除。`, 'system');
+      }
       setIsConfirmDeleteQuestionOpen(false);
       onClose();
     } catch (err) {
@@ -457,10 +522,32 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
 
           {/* 違規下架官方處置說明 */}
           {question.status === 'delisted' && (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs space-y-1.5 shadow-2xs">
-              <div className="flex items-center gap-2 text-rose-900 font-extrabold text-sm">
-                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>此提問因違反平台規範已被管理員強制下架</span>
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs space-y-2 shadow-2xs">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 text-rose-900 font-extrabold text-sm">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>此提問因違反平台規範已被管理員強制下架（前台市場已隱藏）</span>
+                </div>
+                {isAdmin && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleRelistQuestion}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                    >
+                      <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                      <span>恢復上架</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmDeleteQuestionOpen(true)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-rose-800 bg-rose-100 hover:bg-rose-200 transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                    >
+                      <Trash className="w-3 h-3 text-rose-700" />
+                      <span>永久抹除</span>
+                    </button>
+                  </div>
+                )}
               </div>
               {question.delistedReason && (
                 <p className="text-rose-800 font-medium">違規原因：{question.delistedReason}</p>
@@ -473,65 +560,54 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
           )}
 
-          <div className="flex items-center gap-3 justify-between flex-wrap">
-            <div className="flex-1 min-w-[240px]">
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-amber-400 focus:border-amber-600 outline-none rounded-xl text-base sm:text-lg font-black text-stone-900 bg-white shadow-2xs"
-                />
-              ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3 justify-between flex-wrap">
+              <div className="flex-1 min-w-[240px]">
                 <h1 className="text-xl sm:text-2xl font-black text-stone-900 leading-snug">
                   {question.title}
                 </h1>
-              )}
+              </div>
             </div>
 
+            {/* 操作按鈕群：違規/刪除 整合按鍵 */}
             {isAuthor && (
-              <div className="flex items-center gap-1.5 shrink-0">
-                {isEditing ? (
+              <div className="flex items-center gap-2 pt-1 flex-wrap">
+                {question.status === 'delisted' ? (
                   <>
-                    <button
-                      type="button"
-                      onClick={handleSaveEdit}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer"
-                    >
-                      儲存
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsEditing(false)}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-stone-600 bg-stone-50 hover:bg-stone-100 border border-stone-200 transition-all cursor-pointer"
-                    >
-                      取消
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditing(true);
-                        setEditTitle(question.title);
-                        setEditDesc(question.description);
-                      }}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all cursor-pointer flex items-center gap-1"
-                    >
-                      <Edit className="w-3 h-3" />
-                      編輯
-                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={handleRelistQuestion}
+                        className="min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                        title="恢復此問題之公開上架"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>恢復上架</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setIsConfirmDeleteQuestionOpen(true)}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all cursor-pointer flex items-center gap-1"
-                      title="永久刪除此問題（自動退還未結案預扣款，全站徹底抹除）"
+                      className="min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-black text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                      title="立即永久徹底抹除資料"
                     >
-                      <Trash className="w-3 h-3" />
-                      刪除問題
+                      <Trash className="w-3.5 h-3.5 text-rose-600" />
+                      <span>永久抹除</span>
                     </button>
                   </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUnifiedActionTab(isAdmin ? 'violation' : 'delete');
+                      setIsUnifiedActionModalOpen(true);
+                    }}
+                    className="min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-black text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                    title="問題違規下架或直接刪除暫存處置"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                    <span>違規/刪除</span>
+                  </button>
                 )}
               </div>
             )}
@@ -604,7 +680,6 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   {authorDisplayName}
                   {authorDisplayName !== '此帳號已註銷' && question.authorTitle ? ` · ${question.authorTitle}` : ''}
                 </span>
-                <CopyableUserId userId={question.authorId} />
                 {isAuthorDeactivated && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200">
                     帳號已註銷
@@ -686,28 +761,19 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           </div>
 
           <div className="text-stone-800 text-xs sm:text-sm leading-relaxed whitespace-pre-line font-normal">
-            {isEditing ? (
-              <textarea
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-                rows={6}
-                className="w-full p-3 border border-amber-400 focus:border-amber-600 outline-none rounded-xl text-xs sm:text-sm bg-white font-normal leading-relaxed focus:ring-2 focus:ring-amber-100"
-                placeholder="請輸入痛點或討論的詳細需求與內容..."
-              />
-            ) : (
-              <div>
-                <div className={`relative ${!isDescExpanded && (question.description?.length || 0) > 200 ? 'max-h-24 overflow-hidden' : ''}`}>
-                  <p className="whitespace-pre-line">{question.description || '（無詳細描述）'}</p>
-                  {!isDescExpanded && (question.description?.length || 0) > 200 && (
-                    <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
-                  )}
-                </div>
-                {(question.description?.length || 0) > 200 && (
-                  <button
-                    type="button"
-                    onClick={() => setIsDescExpanded(!isDescExpanded)}
-                    className="mt-1.5 text-xs text-amber-700 hover:text-amber-800 font-bold flex items-center gap-1 cursor-pointer"
-                  >
+            <div>
+              <div className={`relative ${!isDescExpanded && (question.description?.length || 0) > 200 ? 'max-h-24 overflow-hidden' : ''}`}>
+                <p className="whitespace-pre-line">{question.description || '（無詳細描述）'}</p>
+                {!isDescExpanded && (question.description?.length || 0) > 200 && (
+                  <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                )}
+              </div>
+              {(question.description?.length || 0) > 200 && (
+                <button
+                  type="button"
+                  onClick={() => setIsDescExpanded(!isDescExpanded)}
+                  className="mt-1.5 text-xs text-amber-700 hover:text-amber-800 font-bold flex items-center gap-1 cursor-pointer"
+                >
                     {isDescExpanded ? (
                       <>
                         <ChevronUp className="w-3.5 h-3.5" />
@@ -722,7 +788,6 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   </button>
                 )}
               </div>
-            )}
           </div>
 
             {/* Tags */}
@@ -2125,7 +2190,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
 
       {/* 爭議申訴檢舉彈窗 */}
       {isDisputeModalOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[100] bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl border border-stone-200 p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2218,9 +2283,243 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         </div>
       )}
 
+      {/* 整合版：違規/刪除 處置 Modal (暫存 7 日，期間可恢復，過後永久抹除) */}
+      {isUnifiedActionModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2.5 text-rose-600">
+                <div className="w-9 h-9 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-stone-900">問題處置（違規下架 / 直接刪除）</h3>
+                  <p className="text-[11px] text-rose-600 font-bold">均暫存 7 日，期間管理員可恢復，過後永久抹除</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsUnifiedActionModalOpen(false)}
+                className="text-stone-400 hover:text-stone-700 p-1.5 rounded-xl hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 目標問題資訊 */}
+            <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-1">
+              <span className="text-stone-500 font-semibold block">目標問題：</span>
+              <p className="font-bold text-stone-900 line-clamp-2">{question.title}</p>
+              <div className="text-[11px] text-stone-500 pt-0.5 flex items-center gap-2">
+                <span>發布者：{authorDisplayName}</span>
+                <span>•</span>
+                <span>懸賞：{(question.bounty || 0) > 0 ? `NT$ ${(question.bounty || 0).toLocaleString()}` : 'L0 免費'}</span>
+              </div>
+            </div>
+
+            {/* Tab 切換：違規下架 vs 直接刪除 */}
+            <div className="grid grid-cols-2 p-1 rounded-2xl bg-stone-100 border border-stone-200 gap-1">
+              <button
+                type="button"
+                onClick={() => setUnifiedActionTab('violation')}
+                className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  unifiedActionTab === 'violation'
+                    ? 'bg-white text-rose-900 shadow-xs border border-rose-200'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                <span>違規下架（填理由並通知）</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUnifiedActionTab('delete')}
+                className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  unifiedActionTab === 'delete'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-300'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <Trash className="w-3.5 h-3.5 text-stone-700" />
+                <span>直接刪除（無理由直接下架）</span>
+              </button>
+            </div>
+
+            {/* ① 違規下架模式 */}
+            {unifiedActionTab === 'violation' && (
+              <div className="space-y-3.5 animate-in fade-in duration-150">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-stone-800 block">
+                    違規原因 <span className="text-rose-500">*（必填，將載於違規通知信函）</span>
+                  </label>
+                  <div className="space-y-1.5">
+                    {[
+                      '違反社群守則與文明交流規範',
+                      '包含廣告宣傳、垃圾商業推銷或無意義洗版',
+                      '涉及未經授權之智慧財產權或個人隱私侵犯',
+                      '含有誘導線下直接交易、詐騙疑慮或不實資訊',
+                      '問題描述嚴重不明確、無實質需求或重複濫發',
+                    ].map((preset) => (
+                      <label
+                        key={preset}
+                        onClick={() => {
+                          setDelistReasonPreset(preset);
+                          setDelistCustomReason('');
+                        }}
+                        className={`p-2.5 rounded-xl border text-xs flex items-center gap-2 cursor-pointer transition-all ${
+                          delistReasonPreset === preset && !delistCustomReason
+                            ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold'
+                            : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="delist_preset_opt"
+                          checked={delistReasonPreset === preset && !delistCustomReason}
+                          onChange={() => {}}
+                          className="accent-rose-600"
+                        />
+                        <span>{preset}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="pt-1">
+                    <input
+                      type="text"
+                      value={delistCustomReason}
+                      onChange={(e) => setDelistCustomReason(e.target.value)}
+                      placeholder="或自行輸入其他違規事由..."
+                      className="w-full p-2.5 text-xs rounded-xl border border-stone-300 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-200"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-800 block">
+                    管理員改善指引或處置說明 <span className="text-stone-400 font-normal">（選填，將通知提問者）</span>
+                  </label>
+                  <textarea
+                    value={delistFeedbackInput}
+                    onChange={(e) => setDelistFeedbackInput(e.target.value)}
+                    placeholder="例如：請修正問題內含之敏感聯絡資訊後向客服申訴重新上架..."
+                    rows={2}
+                    className="w-full p-2.5 text-xs rounded-xl border border-stone-300 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-200 leading-relaxed"
+                  />
+                </div>
+
+                {/* 違規須填寫理由並且通知但不一定刪除（可選） */}
+                <label className="p-3 rounded-2xl bg-stone-50 border border-stone-200 flex items-start gap-2.5 cursor-pointer hover:bg-stone-100 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={alsoDeleteMarked}
+                    onChange={(e) => setAlsoDeleteMarked(e.target.checked)}
+                    className="mt-0.5 accent-rose-600 w-4 h-4 rounded cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold text-stone-900 block">
+                      同時將此問題移入 7 日刪除暫存區（可選）
+                    </span>
+                    <span className="text-[11px] text-stone-500 leading-relaxed block mt-0.5">
+                      若未勾選則僅強制下架停權展示；若勾選則同步標記排程刪除，7 日後自動永久抹除。
+                    </span>
+                  </div>
+                </label>
+
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 space-y-0.5">
+                  <p className="font-bold">處置說明：</p>
+                  <p>1. 執行後將發送系統違規通知給提問者，並自前台市場與探索頁面即刻隱藏。</p>
+                  <p>2. 管理員於 7 日暫存期間內可隨時在「問題管理」執行「恢復上架」或「立即永久抹除」。</p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsUnifiedActionModalOpen(false)}
+                    disabled={isActionProcessing}
+                    className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmUnifiedViolation}
+                    disabled={isActionProcessing || (!delistReasonPreset && !delistCustomReason.trim())}
+                    className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isActionProcessing ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>正在處理...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldAlert className="w-3.5 h-3.5" />
+                        <span>確認執行違規下架</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ② 直接刪除模式 */}
+            {unifiedActionTab === 'delete' && (
+              <div className="space-y-3.5 animate-in fade-in duration-150">
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-stone-800 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-rose-950">
+                    <Trash className="w-4 h-4 text-rose-600" />
+                    <span>無須填寫理由・直接下架並進入 7 日刪除暫存區</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 text-stone-600 text-[11px] leading-relaxed pl-1">
+                    <li>該問題將直接自全站前台市場、探索列表與排行榜中移除，任何用戶皆無法再看見或提案。</li>
+                    <li>進入 <strong>7 日暫存保留期</strong>，期間管理員可隨時自後台「問題管理」執行「恢復上架」。</li>
+                    <li>滿 7 日後系統將自動自雲端資料庫（Firestore）徹底永久抹除資料。</li>
+                    {(question.bounty || 0) > 0 && question.status !== 'solved' && (
+                      <li className="font-bold text-emerald-800">
+                        若有未結案之懸賞，原預扣之 <strong>NT$ {(question.bounty || 0).toLocaleString()}</strong> 點將自動全額原路退還至提問者可用餘額。
+                      </li>
+                    )}
+                  </ul>
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsUnifiedActionModalOpen(false)}
+                    disabled={isActionProcessing}
+                    className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmUnifiedDirectDelete}
+                    disabled={isActionProcessing}
+                    className="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 active:bg-black text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isActionProcessing ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>正在刪除暫存...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash className="w-3.5 h-3.5 text-rose-400" />
+                        <span>確認直接刪除（7日暫存）</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 1. 刪除問題二次確認 Modal */}
       {isConfirmDeleteQuestionOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4">
             <div className="flex items-center gap-3 text-rose-600">
               <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
@@ -2282,7 +2581,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
 
       {/* 2. 刪除提案 / 討論二次確認 Modal */}
       {deletingAnswerTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4">
             <div className="flex items-center gap-3 text-rose-600">
               <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">

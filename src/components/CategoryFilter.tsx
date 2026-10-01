@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Category, ProblemLevel, CATEGORY_HIERARCHY, QuestionSortOption } from '../types';
-import { Layers, Award, Clock, Flame, CheckCircle2, Tag, Search, X, Sparkles, MessageCircle, Lightbulb, Users, ChevronDown, Check, Copy, ChevronRight } from 'lucide-react';
+import { Category, ProblemLevel, CATEGORY_HIERARCHY, QuestionSortOption, MarketViewMode } from '../types';
+import { Layers, Award, Clock, Flame, CheckCircle2, Tag, Search, X, Sparkles, MessageCircle, Lightbulb, Users, ChevronDown, Check, Copy, ChevronRight, Square, List, LayoutGrid } from 'lucide-react';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 
@@ -18,6 +18,8 @@ interface CategoryFilterProps {
   setSortBy: (sort: QuestionSortOption) => void;
   totalCount: number;
   categoryCounts?: Record<string, number>;
+  viewMode?: MarketViewMode;
+  setViewMode?: (mode: MarketViewMode) => void;
 }
 
 export const CategoryFilter: React.FC<CategoryFilterProps> = ({
@@ -34,6 +36,8 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   setSortBy,
   totalCount,
   categoryCounts,
+  viewMode = 'large',
+  setViewMode,
 }) => {
   const {
     searchMode,
@@ -157,7 +161,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   return (
     <div className="space-y-2 sm:space-y-3.5">
       {/* 1. Main Category Horizontal Bar (問題分類) */}
-      <div>
+      <div id="onboarding-step-1-categories">
         <div className="hidden sm:flex text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-1.5 items-center gap-1.5">
           <Layers className="w-3.5 h-3.5 text-amber-600" />
           <span>問題分類</span>
@@ -242,8 +246,9 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
       )}
 
       {/* Search Input Bar (支援關鍵字與用戶/專家雙模式搜尋與下拉選單) */}
-      <div className="relative" ref={searchDropdownRef}>
-        <div className="relative flex items-center">
+      <div id="onboarding-step-2-search" className="space-y-1.5 sm:space-y-2">
+        <div className="relative" ref={searchDropdownRef}>
+          <div className="relative flex items-center">
           {/* 模式切換按鈕 */}
           <button
             type="button"
@@ -577,12 +582,13 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             </button>
           );
         })}
+        </div>
       </div>
 
       {/* 3. Third row: Levels & Sorting */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pt-1.5 sm:pt-2 border-t border-stone-200/80">
         {/* Level pills (L0 ~ L4) */}
-        <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 sm:pb-0 flex-wrap">
+        <div id="onboarding-step-3-levels" className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 sm:pb-0 flex-wrap">
           <span className="text-[11px] sm:text-xs font-bold text-stone-400 mr-0.5 flex items-center gap-1">
             <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> 等級:
           </span>
@@ -640,68 +646,121 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
           )}
         </div>
 
-        {/* Sort selector */}
-        <div className="flex items-center gap-1.5 text-xs self-start sm:self-auto flex-wrap">
+        {/* Sort & View Mode selector */}
+        <div className="flex items-center gap-2 text-xs self-start sm:self-auto flex-wrap justify-between sm:justify-end w-full sm:w-auto">
           <span className="text-stone-400 font-mono hidden lg:inline">
             共 {totalCount} 則難題
           </span>
 
-          <div className="inline-flex rounded-xl bg-stone-100 p-0.5 border border-stone-200 overflow-x-auto max-w-full">
-            {/* 1. 推薦 */}
-            <button
-              onClick={() => setSortBy('recruiting_promoted')}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
-                sortBy === 'recruiting_promoted'
-                  ? 'bg-amber-500 text-stone-950 shadow-2xs font-bold'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-              title="依您最近搜尋的關鍵字、看板與瀏覽主題為您智能推薦"
-            >
-              <Sparkles className={`w-3.5 h-3.5 shrink-0 ${sortBy === 'recruiting_promoted' ? 'text-yellow-200 fill-yellow-300' : 'text-amber-500 fill-amber-400'}`} />
-              <span>推薦</span>
-            </button>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Sort selector */}
+            <div className="inline-flex rounded-xl bg-stone-100 p-0.5 border border-stone-200 overflow-x-auto max-w-full">
+              {/* 1. 推薦 */}
+              <button
+                onClick={() => setSortBy('recruiting_promoted')}
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  sortBy === 'recruiting_promoted'
+                    ? 'bg-amber-500 text-stone-950 shadow-2xs font-bold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="依您最近搜尋的關鍵字、看板與瀏覽主題為您智能推薦"
+              >
+                <Sparkles className={`w-3.5 h-3.5 shrink-0 ${sortBy === 'recruiting_promoted' ? 'text-yellow-200 fill-yellow-300' : 'text-amber-500 fill-amber-400'}`} />
+                <span>推薦</span>
+              </button>
 
-            {/* 2. 最多解答 */}
-            <button
-              onClick={() => setSortBy('most_solutions')}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                sortBy === 'most_solutions'
-                  ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-              title="依收到方案解答總數排序"
-            >
-              <Lightbulb className="w-3 h-3 text-amber-500" />
-              <span>最多解答</span>
-            </button>
+              {/* 2. 最多解答 */}
+              <button
+                onClick={() => setSortBy('most_solutions')}
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                  sortBy === 'most_solutions'
+                    ? 'bg-white text-stone-900 shadow-2xs font-bold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="依收到方案解答總數排序"
+              >
+                <Lightbulb className="w-3 h-3 text-amber-500" />
+                <span>最多解答</span>
+              </button>
 
-            {/* 3. 熱烈討論 */}
-            <button
-              onClick={() => setSortBy('most_discussions')}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                sortBy === 'most_discussions'
-                  ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-              title="依留言討論熱度排序"
-            >
-              <Flame className="w-3 h-3 text-orange-500" />
-              <span>熱烈討論</span>
-            </button>
+              {/* 3. 熱烈討論 */}
+              <button
+                onClick={() => setSortBy('most_discussions')}
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                  sortBy === 'most_discussions'
+                    ? 'bg-white text-stone-900 shadow-2xs font-bold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="依留言討論熱度排序"
+              >
+                <Flame className="w-3 h-3 text-orange-500" />
+                <span>熱烈討論</span>
+              </button>
 
-            {/* 4. 最高懸賞 */}
-            <button
-              onClick={() => setSortBy('highest_bounty')}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                sortBy === 'highest_bounty'
-                  ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-              title="依懸賞金額高低排序"
-            >
-              <Award className="w-3 h-3 text-amber-500" />
-              <span>最高懸賞</span>
-            </button>
+              {/* 4. 最高懸賞 */}
+              <button
+                onClick={() => setSortBy('highest_bounty')}
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                  sortBy === 'highest_bounty'
+                    ? 'bg-white text-stone-900 shadow-2xs font-bold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="依懸賞金額高低排序"
+              >
+                <Award className="w-3 h-3 text-amber-500" />
+                <span>最高懸賞</span>
+              </button>
+            </div>
+
+            {/* View Mode Switcher: 大視窗 / 條列式 / 方格 */}
+            {setViewMode && (
+              <div id="onboarding-step-4-viewmode" className="inline-flex rounded-xl bg-stone-100 p-0.5 border border-stone-200 shrink-0">
+                {/* 大視窗 */}
+                <button
+                  type="button"
+                  onClick={() => setViewMode('large')}
+                  className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    viewMode === 'large'
+                      ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="大視窗模式（完整詳細卡片）"
+                >
+                  <Square className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline text-[11px]">大視窗</span>
+                </button>
+
+                {/* 條列式 */}
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    viewMode === 'list'
+                      ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="條列式模式（簡約清單）"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline text-[11px]">條列式</span>
+                </button>
+
+                {/* 方格 */}
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    viewMode === 'grid'
+                      ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="方格模式（雙欄緊湊）"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline text-[11px]">方格</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
