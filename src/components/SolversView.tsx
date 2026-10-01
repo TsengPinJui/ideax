@@ -88,7 +88,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
               </h2>
               <HelpTooltip
                 title="認證專家標準說明"
-                content="認證專家資格：通過平台專業認證（實名審核與資歷核驗），或 採納方案 ≥ 50 份且評分 ≥ 4 星。公開透明展示專業領域、方案採納數量與客戶評分口碑，為您的難題提供破局關鍵方案。"
+                content="認證專家資格：通過平台專業認證（實名審核與資歷核驗），或 採納方案 ≥ 50 份且評分 ≥ 4 星。公開透明展示專業領域、方案採納次數與客戶評分口碑，為您的難題提供破局關鍵方案。"
               />
             </div>
           </div>
@@ -156,7 +156,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
       {/* Solvers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filtered.map((s) => {
-          // 方案採納數量計算
+          // 方案採納次數計算
           const acceptedSolutionsCount = Math.round(s.answerCount * (s.acceptedRate / 100)) || s.answerCount;
 
           return (
@@ -171,7 +171,12 @@ export const SolversView: React.FC<SolversViewProps> = ({
                     <img
                       src={s.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={s.name}
-                      className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200 group-hover:ring-amber-400 transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectSolver(s);
+                      }}
+                      className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200 group-hover:ring-amber-400 hover:scale-105 transition-all cursor-pointer shadow-2xs"
+                      title={`點擊查看 ${s.name} 專家個人檔案`}
                     />
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -218,7 +223,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
                 {s.featuredCase && (
                   <div className="mt-3.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 text-xs text-stone-700 space-y-0.5">
                     <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                      精選案例經驗
+                      精選實際案例
                     </div>
                     <div className="font-semibold text-stone-900 line-clamp-1">{s.featuredCase.title}</div>
                     <div className="text-[11px] text-stone-500 line-clamp-1">{s.featuredCase.outcome}</div>
@@ -226,7 +231,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
                 )}
               </div>
 
-              {/* Metrics & Action Footer: 公開顯示專業領域、方案採納數量、評分（0~5星） */}
+              {/* Metrics & Action Footer: 公開顯示專業領域、方案採納次數、評分（0~5星） */}
               <div className="mt-4 pt-3.5 border-t border-stone-100">
                 {/* 解答各等級問題數 (L0 ~ L4) */}
                 <div className="mb-3 px-2.5 py-1.5 rounded-xl bg-stone-50 border border-stone-200/80 flex items-center justify-between text-[10px]">

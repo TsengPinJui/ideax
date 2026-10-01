@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { User } from '../types';
 import { useApp } from '../context/AppContext';
+import { HelpTooltip } from './HelpTooltip';
 
 export const RealNameAuthTab: React.FC = () => {
   const { currentUser, setCurrentUser, addNotification, openAboutModal } = useApp();
@@ -60,7 +61,10 @@ export const RealNameAuthTab: React.FC = () => {
     initialData?.idCardBackFile || { name: '國民身分證_反面彩色掃描.jpg', size: '1.9 MB' }
   );
 
-  // Optional Fields
+  // Optional & Registered Address Fields
+  const [idAddress, setIdAddress] = useState(
+    initialData?.idAddress || initialData?.address || '台北市大安區敦化南路二段 100 號 12 樓'
+  );
   const [address, setAddress] = useState(
     initialData?.address || '台北市大安區敦化南路二段 100 號 12 樓'
   );
@@ -110,6 +114,10 @@ export const RealNameAuthTab: React.FC = () => {
       alert('請填寫身分證字號或居留證號！');
       return;
     }
+    if (!idAddress.trim()) {
+      alert('請填寫身分證住址！');
+      return;
+    }
     if (!phoneNumber.trim()) {
       alert('請填寫聯絡手機號碼！');
       return;
@@ -139,6 +147,7 @@ export const RealNameAuthTab: React.FC = () => {
       email: email.trim(),
       idCardFrontFile: frontFile,
       idCardBackFile: backFile,
+      idAddress: idAddress.trim(),
       address: address.trim(),
       idIssueDate,
       idIssueType,
@@ -249,7 +258,7 @@ export const RealNameAuthTab: React.FC = () => {
                 1
               </span>
               <h4 className="font-extrabold text-sm text-stone-900">
-                法定身分基本資料（必要資料）
+                法定身分基本資料
               </h4>
             </div>
             <span className="text-[10px] text-rose-500 font-bold">* 欄位為必填項目</span>
@@ -274,7 +283,7 @@ export const RealNameAuthTab: React.FC = () => {
             {/* 身分證字號 / 居留證號 */}
             <div>
               <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                身分證字號 / 居留證號 (ARC) <span className="text-rose-500">*</span>
+                身分證字號 / 居留證號（大寫英文字母） <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -283,6 +292,36 @@ export const RealNameAuthTab: React.FC = () => {
                 placeholder="例：A123456789"
                 required
                 className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-mono font-medium uppercase focus:outline-none focus:border-blue-500 focus:bg-white"
+              />
+            </div>
+
+            {/* 身分證發證類別 */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                身分證發證類別 <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={idIssueType}
+                onChange={(e) => setIdIssueType(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-blue-500 focus:bg-white"
+              >
+                <option value="換發">換發</option>
+                <option value="初發">初發</option>
+                <option value="補發">補發</option>
+              </select>
+            </div>
+
+            {/* 出生年月日 */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                出生年月日 <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                required
+                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-blue-500 focus:bg-white"
               />
             </div>
 
@@ -304,20 +343,6 @@ export const RealNameAuthTab: React.FC = () => {
                 <option value="馬來西亞">馬來西亞 (Malaysia)</option>
                 <option value="其他國家/地區">其他國家 / 地區</option>
               </select>
-            </div>
-
-            {/* 出生年月日 */}
-            <div>
-              <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                出生年月日 <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="date"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-blue-500 focus:bg-white"
-              />
             </div>
 
             {/* 聯絡手機 / 電話 */}
@@ -349,6 +374,21 @@ export const RealNameAuthTab: React.FC = () => {
                 className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-blue-500 focus:bg-white"
               />
             </div>
+
+            {/* 身分證住址 */}
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                身分證住址（戶籍住址，須與身分證一致） <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={idAddress}
+                onChange={(e) => setIdAddress(e.target.value)}
+                placeholder="例：台北市大安區敦化南路二段 100 號 12 樓"
+                required
+                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-blue-500 focus:bg-white"
+              />
+            </div>
           </div>
         </div>
 
@@ -360,25 +400,26 @@ export const RealNameAuthTab: React.FC = () => {
                 2
               </span>
               <h4 className="font-extrabold text-sm text-stone-900">
-                身分證明文件影像（必要上傳）
+                身分證明文件影像
               </h4>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
-                （僅供管理員和內部查看）
+                （僅供平台認證使用）
               </span>
+              <HelpTooltip
+                title="【認證照片隱私規則】審核完畢即永久刪除"
+                content={
+                  <div className="space-y-1.5 text-[11px] leading-relaxed">
+                    <p>
+                      • <strong>證件安全與即刻銷毀：</strong>您上傳的身分證件彩色影像<strong>僅供官方平台認證使用</strong>，一旦審核完畢（無論通過與否），系統即<strong>永久自雲端伺服器徹底刪除證件影像檔案</strong>，絕不長期留存，全面保障個人隱私。
+                    </p>
+                    <p>
+                      • <strong>自行備份提醒：</strong>平台對用戶上傳資料不負保管責任，請自行妥善留存原始備份；大型佐證或作品請善用 Google Drive、Dropbox、Figma 等外部雲端共享連結。
+                    </p>
+                  </div>
+                }
+              />
             </div>
             <span className="text-[10px] text-stone-400 font-mono">支援 JPG, PNG, PDF (單檔 10MB 內)</span>
-          </div>
-
-          {/* 認證照片僅供認證使用，完畢即永久刪除 & 備份提醒宣告條 */}
-          <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1.5 leading-relaxed">
-            <div className="flex items-center gap-1.5 font-black text-amber-900">
-              <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>【認證照片隱私規則】認證照片僅供認證使用，審核完畢即永久刪除</span>
-            </div>
-            <p className="text-[11px] text-stone-600 font-normal">
-              • <strong>證件安全與即刻銷毀：</strong>您上傳的身分證件正反面彩色影像<strong>僅供管理員和內部身分審查使用</strong>，一旦官方審核完畢（無論通過與否），系統即<strong>永久自雲端資料庫徹底刪除證件影像檔案</strong>，絕不長期留存，全面防護個人隱私。<br />
-              • <strong>自行備份與大檔提醒：</strong>平台不對用戶上傳之資料、檔案負保管責任，請用戶務必自行妥善留存原始備份；若有大型輔助佐證或資歷作品，請善用 <strong>Google Drive、Dropbox、Figma</strong> 等外部雲端儲存工具的共享連結。
-            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -477,34 +518,31 @@ export const RealNameAuthTab: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
-            {/* 戶籍 / 通訊地址 */}
+            {/* 通訊地址 */}
             <div className="sm:col-span-2">
               <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                通訊 / 戶籍地址（選填）
+                通訊地址（選填，如與身分證住址不同可填寫）
               </label>
               <input
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="例：台北市大安區信義路四段..."
+                placeholder="例：台北市信義區忠孝東路五段..."
                 className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-blue-500 focus:bg-white"
               />
             </div>
 
-            {/* 發證日期與類別 */}
+            {/* 發證日期 */}
             <div>
               <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                身分證發證類別（選填）
+                發證日期（選填）
               </label>
-              <select
-                value={idIssueType}
-                onChange={(e) => setIdIssueType(e.target.value)}
+              <input
+                type="date"
+                value={idIssueDate}
+                onChange={(e) => setIdIssueDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-blue-500 focus:bg-white"
-              >
-                <option value="換發">換發</option>
-                <option value="初發">初發</option>
-                <option value="補發">補發</option>
-              </select>
+              />
             </div>
 
             {/* 緊急聯絡人 */}

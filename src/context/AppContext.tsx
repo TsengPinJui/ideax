@@ -236,7 +236,8 @@ interface AppContextType {
     userId: string,
     type: 'real_name' | 'expert',
     action: 'approve' | 'revoke',
-    notes?: string
+    notes?: string,
+    approvedDomains?: string[]
   ) => { success: boolean; message: string };
   updateSubscriptionPlanFull: (tier: SubscriptionTier, updatedData: Partial<SubscriptionPlan>) => void;
   addSubscriptionPlan: (newPlan: SubscriptionPlan) => { success: boolean; message: string };
@@ -1555,7 +1556,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     userId: string,
     type: 'real_name' | 'expert',
     action: 'approve' | 'revoke',
-    notes?: string
+    notes?: string,
+    approvedDomains?: string[]
   ): { success: boolean; message: string } => {
     const targetUser = availableUsers.find((u) => u.id === userId);
     if (!targetUser) return { success: false, message: '找不到該用戶' };
@@ -1586,7 +1588,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ? { ...targetUser.bankAccount, isVerified: true }
             : undefined,
         };
-        notifTitle = '🎉 實名認證 (KYC) 審核通過！';
+        notifTitle = '🎉 實名認證審核通過！';
         notifMsg = `恭喜您！您的帳號已由管理員【${currentUser.name || '平台管理員'}】完成實名認證審查，現已具備第三方價金保管提領與官方認證徽章！${notes ? `（備註：${notes}）` : ''}`;
         auditAction = 'APPROVE_REAL_NAME_KYC';
       } else {
@@ -1605,18 +1607,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       // expert certification
       if (action === 'approve') {
+        const finalDomains = (approvedDomains && approvedDomains.length > 0)
+          ? approvedDomains
+          : (targetUser.expertApplicationData?.domains || (targetUser.domain ? [targetUser.domain] : ['創新創業']));
+        const primaryDomain = (finalDomains[0] || targetUser.domain || '創新創業') as Category;
+
         updatedUser = {
           ...updatedUser,
           verifiedExpert: true,
           expertApplicationStatus: 'approved',
+          domain: primaryDomain,
+          domains: finalDomains as Category[],
           verifiedBadge: updatedUser.verifiedBadge || '官方認證智庫專家',
         };
         // Also update solvers list if exists
         setSolvers((prev) =>
-          prev.map((s) => (s.id === userId || s.userId === userId ? { ...s, verified: true } : s))
+          prev.map((s) => (s.id === userId || s.userId === userId ? { ...s, verified: true, domain: primaryDomain, domains: finalDomains as Category[] } : s))
         );
         notifTitle = '👑 專家認證審核通過！';
-        notifMsg = `恭喜您！您的智庫專家資格已由管理員【${currentUser.name || '平台管理員'}】審核通過，已獲得官方專屬專家認證徽章與優先推薦曝光！${notes ? `（備註：${notes}）` : ''}`;
+        notifMsg = `恭喜您！您的智庫專家資格（認證領域：${finalDomains.join('、')}）已由管理員【${currentUser.name || '平台管理員'}】審核通過，已獲得官方專屬專家認證徽章與優先推薦曝光！${notes ? `（備註：${notes}）` : ''}`;
         auditAction = 'APPROVE_EXPERT_CERTIFICATION';
       } else {
         // revoke

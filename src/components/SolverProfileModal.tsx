@@ -98,7 +98,7 @@ export const SolverProfileModal: React.FC<SolverProfileModalProps> = ({
 
       {/* Body */}
       <div className={`p-4 sm:p-6 space-y-6 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
-          {/* Key Metrics: 公開顯示專業領域、方案採納數量、評分（0~5星），不顯示總賺取賞金 */}
+          {/* Key Metrics: 公開顯示專業領域、方案採納次數、評分（0~5星），不顯示總賺取賞金 */}
           <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
             <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
               <span className="text-[10px] text-stone-400 font-bold block">評分口碑</span>
@@ -110,7 +110,7 @@ export const SolverProfileModal: React.FC<SolverProfileModalProps> = ({
             </div>
 
             <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200">
-              <span className="text-[10px] text-amber-800 font-bold block">方案採納數量</span>
+              <span className="text-[10px] text-amber-800 font-bold block">方案採納次數</span>
               <div className="text-base font-black text-amber-900 font-mono mt-0.5">
                 {Math.round(solver.answerCount * (solver.acceptedRate / 100)) || solver.answerCount} 次
               </div>
@@ -213,7 +213,7 @@ export const SolverProfileModal: React.FC<SolverProfileModalProps> = ({
           {/* Featured Case */}
           {solver.featuredCase && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider">精選案例經驗</h4>
+              <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider">精選實際案例</h4>
               <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-50/60 to-yellow-50/40 border border-amber-200/80 space-y-2.5 shadow-2xs">
                 <div className="font-extrabold text-sm sm:text-base text-stone-900">
                   {solver.featuredCase.title}

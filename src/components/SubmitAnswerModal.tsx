@@ -236,7 +236,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
         return;
       }
       if (currentUser.realNameAuthStatus !== 'verified') {
-        setTermsError('⚠️ 實名認證 (KYC) 為提案之必要條件！請先前往「帳號設定 → 實名認證」通過審核。');
+        setTermsError('⚠️ 實名認證為提案之必要條件！請先前往「帳號設定 → 實名認證」通過審核。');
         return;
       }
 

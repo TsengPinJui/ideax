@@ -77,8 +77,8 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         avatar: s.avatar,
         title: s.title,
         score,
-        primaryStatLabel: '採納方案數',
-        primaryStatValue: `${acceptedCount} 題`,
+        primaryStatLabel: '方案採納次數',
+        primaryStatValue: `${acceptedCount} 次`,
         secondaryStatLabel: '評分口碑',
         secondaryStatValue: `${s.rating} ★ (${s.reviewCount}則)`,
         levelCounts,
@@ -343,7 +343,12 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                     <img
                       src={entry.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={entry.name}
-                      className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200 group-hover:ring-amber-400 transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSolverClick(entry.userId);
+                      }}
+                      className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200 group-hover:ring-amber-400 hover:scale-105 transition-all cursor-pointer shadow-2xs"
+                      title={`點擊查看 ${entry.name} 專家個人檔案`}
                     />
 
                     <div className="space-y-1">
@@ -477,7 +482,22 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                     <img
                       src={entry.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={entry.name}
-                      className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const found = solvers.find((s) => s.id === entry.userId) || availableUsers.find((u) => u.id === entry.userId);
+                        if (found && onSelectSolver) {
+                          onSelectSolver(found as any);
+                        } else {
+                          handleStartChat(e, {
+                            id: entry.userId,
+                            name: entry.name,
+                            avatar: entry.avatar,
+                            title: entry.title,
+                          });
+                        }
+                      }}
+                      className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200 group-hover:ring-amber-400 hover:scale-105 transition-all cursor-pointer shadow-2xs"
+                      title={`點擊查看 ${entry.name} 個人檔案 / 交流`}
                     />
 
                     <div className="space-y-1">

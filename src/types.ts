@@ -420,12 +420,13 @@ export interface User {
 
   // 解答者公開展示資訊
   domain?: Category; // 專業領域
+  domains?: Category[]; // 複選認證領域 (1~5個)
   skills?: string[]; // 專長標籤
   verifiedExpert?: boolean; // 是否為認證專家
   verifiedBadge?: string; // 專家認證徽章稱號
   rating?: number; // 評分（0~5星）
   reviewCount?: number;
-  acceptedSolutionsCount?: number; // 方案採納數量（公開）
+  acceptedSolutionsCount?: number; // 方案採納次數（公開）
   featuredCase?: {
     title: string;
     description?: string;
@@ -505,6 +506,7 @@ export interface User {
     email: string; // 聯絡電子信箱 (必填)
     idCardFrontFile?: { name: string; size?: string; url?: string }; // 身分證正面 (必填)
     idCardBackFile?: { name: string; size?: string; url?: string }; // 身分證反面 (必填)
+    idAddress?: string; // 身分證住址（戶籍住址）
     address?: string; // 戶籍 / 通訊地址 (選填)
     emergencyContactName?: string; // 緊急聯絡人姓名 (選填)
     emergencyContactPhone?: string; // 緊急聯絡人電話 (選填)
@@ -523,6 +525,7 @@ export interface User {
   expertApplicationRejectReason?: string;
   expertApplicationData?: {
     domain: string;
+    domains?: string[]; // 申請之複選領域 (1~5個)
     subdomain?: string;
     professionalTitle: string;
     yearsOfExperience?: string;
@@ -549,6 +552,7 @@ export interface Solver {
   title: string;
   avatar: string;
   domain: Category;
+  domains?: Category[]; // 複選認證領域 (1~5個)
   subdomain?: string;
   subcategory?: string;
   skills: string[];

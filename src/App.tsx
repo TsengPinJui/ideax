@@ -798,7 +798,11 @@ function MainContent() {
                         <HelpTooltip
                           title="創點子 / 痛點專區說明"
                           content="匯集真實生活與產業未解痛點。發布痛點 0 元免費上架，各界專家可自訂解鎖金額提供落地解法，由第三方金流安全託管拆款。"
-                          onLearnMore={() => setActiveTab('about')}
+                          learnMoreText="前往查閱完整「說明二 • 痛點機制」→"
+                          onLearnMore={() => {
+                            setAboutPageSection('other_2');
+                            setActiveTab('about');
+                          }}
                         />
                       </div>
                     </div>
@@ -885,9 +889,13 @@ function MainContent() {
                           </span>
                         </h2>
                         <HelpTooltip
-                          title="問題市場運作說明"
-                          content="瀏覽來自創業家、企業負責人與各界團隊提出的真實難題。買方懸賞金額由第三方支付獨立託管，提問者驗收採納後系統自動拆款撥付至專家銀行帳戶。"
-                          onLearnMore={() => setActiveTab('about')}
+                          title="說明二 • 痛點機制與專家解鎖"
+                          content="在 IdeaX 上，提問者可 NT$ 0 元免費上架生活與產業痛點；各領域專家提交專屬落地解法並自訂解鎖定價，提問者或社群付費解鎖查閱完整方案。"
+                          learnMoreText="前往查閱完整「說明二 • 痛點機制」→"
+                          onLearnMore={() => {
+                            setAboutPageSection('other_2');
+                            setActiveTab('about');
+                          }}
                         />
                       </div>
 

@@ -49,7 +49,15 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
   // Determine initial state based on initialSection prop
   const [activeTab, setActiveTab] = useState<MainTab>(() => {
     if (initialSection === 'finance' || initialSection === 'architecture') return 'finance';
-    if (initialSection === 'others' || initialSection === 'tiers') return 'others';
+    if (
+      initialSection === 'others' ||
+      initialSection === 'tiers' ||
+      initialSection === 'other_1' ||
+      initialSection === 'other_2' ||
+      initialSection === 'other_3' ||
+      initialSection === 'other_4' ||
+      initialSection === 'other_5'
+    ) return 'others';
     if (
       initialSection === 'terms' ||
       initialSection === 'general_terms' ||
@@ -69,6 +77,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       initialSection !== 'finance' &&
       initialSection !== 'others' &&
       initialSection !== 'story' &&
+      !initialSection.startsWith('other_') &&
       TERMS_DATA[initialSection]
     ) {
       return initialSection;
@@ -77,7 +86,18 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
   });
 
   const [selectedFinanceChapterId, setSelectedFinanceChapterId] = useState<string | null>(null);
-  const [selectedOtherChapterId, setSelectedOtherChapterId] = useState<string | null>(null);
+  const [selectedOtherChapterId, setSelectedOtherChapterId] = useState<string | null>(() => {
+    if (
+      initialSection === 'other_1' ||
+      initialSection === 'other_2' ||
+      initialSection === 'other_3' ||
+      initialSection === 'other_4' ||
+      initialSection === 'other_5'
+    ) {
+      return initialSection;
+    }
+    return null;
+  });
   const [activeTimelineStep, setActiveTimelineStep] = useState<number>(3);
 
   // Sync if initialSection changes externally
@@ -85,15 +105,31 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
     if (initialSection === 'finance' || initialSection === 'architecture') {
       setActiveTab('finance');
       setSelectedTermKey(null);
+      setSelectedFinanceChapterId(null);
+      setSelectedOtherChapterId(null);
+    } else if (
+      initialSection === 'other_1' ||
+      initialSection === 'other_2' ||
+      initialSection === 'other_3' ||
+      initialSection === 'other_4' ||
+      initialSection === 'other_5'
+    ) {
+      setActiveTab('others');
+      setSelectedOtherChapterId(initialSection);
+      setSelectedTermKey(null);
+      setSelectedFinanceChapterId(null);
     } else if (initialSection === 'others' || initialSection === 'tiers') {
       setActiveTab('others');
+      setSelectedOtherChapterId(null);
       setSelectedTermKey(null);
     } else if (initialSection === 'about_ideax' || initialSection === 'story') {
       setActiveTab('story');
       setSelectedTermKey(null);
+      setSelectedOtherChapterId(null);
     } else if (initialSection && initialSection !== 'list' && TERMS_DATA[initialSection]) {
       setActiveTab('terms');
       setSelectedTermKey(initialSection);
+      setSelectedOtherChapterId(null);
     }
   }, [initialSection]);
 

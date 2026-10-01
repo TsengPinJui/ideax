@@ -133,7 +133,7 @@ export const AdminCertificationsTab: React.FC = () => {
                   認證管理與治理中心
                 </h3>
                 <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
-                  （僅供管理員和內部查看）
+                  （僅供平台認證使用）
                 </span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                   個資防護高規格
@@ -598,7 +598,7 @@ export const AdminCertificationsTab: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <h4 className="font-black text-base text-stone-900">{inspectUser.name}</h4>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
-                      （僅供管理員和內部查看）
+                      （僅供平台認證使用）
                     </span>
                   </div>
                   <p className="text-xs text-stone-500">ID: {inspectUser.id}</p>

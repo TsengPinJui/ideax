@@ -6152,7 +6152,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-stone-400 font-bold block">方案採納數量 (公開)</span>
+                    <span className="text-[10px] text-stone-400 font-bold block">方案採納次數 (公開)</span>
                     <div className="text-sm font-black text-stone-900 font-mono mt-1">
                       {currentUser.acceptedSolutionsCount ?? userAcceptedAnswers.length} 次被採納
                     </div>
@@ -6185,10 +6185,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   />
                 </div>
 
-                {/* 精選案例經驗 (編輯區塊) */}
+                {/* 精選實際案例 (編輯區塊) */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/40 border border-amber-200/80 space-y-4">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-extrabold text-stone-900 block">🏆 精選案例經驗</span>
+                    <span className="text-xs font-extrabold text-stone-900 block">🏆 精選實際案例</span>
                     <span className="text-[10px] text-amber-800 bg-amber-100 font-bold px-1.5 py-0.2 rounded-md">
                       可編輯 1 個最引以為傲的實務案例，並附 3 份檔案與 5 張成果圖
                     </span>

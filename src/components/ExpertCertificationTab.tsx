@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { User, Category, CATEGORY_HIERARCHY } from '../types';
 import { useApp } from '../context/AppContext';
+import { HelpTooltip } from './HelpTooltip';
 
 export const ExpertCertificationTab: React.FC = () => {
   const { currentUser, setCurrentUser, addNotification, openAboutModal, answers } = useApp();
@@ -53,9 +54,13 @@ export const ExpertCertificationTab: React.FC = () => {
 
   // Form State
   const initialData = currentUser.expertApplicationData;
-  const [domain, setDomain] = useState<string>(
-    initialData?.domain || currentUser.domain || 'auto'
-  );
+  const [selectedDomains, setSelectedDomains] = useState<string[]>(() => {
+    if (initialData?.domains && initialData.domains.length > 0) return initialData.domains;
+    if (initialData?.domain && initialData.domain !== 'auto' && initialData.domain !== '由平台為您分類') return [initialData.domain];
+    if (currentUser.domains && currentUser.domains.length > 0) return currentUser.domains;
+    if (currentUser.domain) return [currentUser.domain];
+    return ['創新創業'];
+  });
   const [subcategory, setSubcategory] = useState<string>(
     initialData?.subdomain || ''
   );
@@ -65,6 +70,24 @@ export const ExpertCertificationTab: React.FC = () => {
   const [yearsOfExperience, setYearsOfExperience] = useState(
     initialData?.yearsOfExperience || '5-8 年'
   );
+
+  const toggleDomain = (domName: string) => {
+    if (selectedDomains.includes(domName)) {
+      if (selectedDomains.length > 1) {
+        setSelectedDomains(selectedDomains.filter((d) => d !== domName));
+      } else {
+        setMsg('⚠️ 至少須保留 1 個申請領域！');
+        setTimeout(() => setMsg(null), 3000);
+      }
+    } else {
+      if (selectedDomains.length < 5) {
+        setSelectedDomains([...selectedDomains, domName]);
+      } else {
+        setMsg('⚠️ 申請專家領域至多可複選 5 個領域！');
+        setTimeout(() => setMsg(null), 3000);
+      }
+    }
+  };
 
   // Uploaded credentials files
   const [credentialsFiles, setCredentialsFiles] = useState<
@@ -126,7 +149,7 @@ export const ExpertCertificationTab: React.FC = () => {
     e.preventDefault();
 
     if (currentUser.realNameAuthStatus !== 'verified') {
-      setMsg('⚠️ 申請專家認證前必須先完成【實名認證 (KYC)】！即使您已達到採納方案數 ≥ 50 且平均評分 ≥ 4.0 星，亦須先完成實名認證通過後，方可解鎖成為認證專家。');
+      setMsg('⚠️ 申請專家認證前必須先完成【實名認證】！即使您已達到採納方案數 ≥ 50 且平均評分 ≥ 4.0 星，亦須先完成實名認證通過後，方可解鎖成為認證專家。');
       return;
     }
 
@@ -158,9 +181,10 @@ export const ExpertCertificationTab: React.FC = () => {
     setIsSubmitting(true);
 
     const appliedAt = new Date().toISOString();
-    const finalDomain = domain === 'auto' ? '由平台為您分類' : domain;
+    const finalDomains = selectedDomains.length > 0 ? selectedDomains : ['創新創業'];
     const payload = {
-      domain: finalDomain,
+      domain: finalDomains[0],
+      domains: finalDomains,
       subdomain: subcategory,
       professionalTitle: professionalTitle.trim(),
       yearsOfExperience,
@@ -175,7 +199,8 @@ export const ExpertCertificationTab: React.FC = () => {
     setTimeout(() => {
       setCurrentUser((prev: User) => ({
         ...prev,
-        domain: (finalDomain !== '由平台為您分類' ? finalDomain : prev.domain) as Category,
+        domain: (finalDomains[0] || prev.domain) as Category,
+        domains: finalDomains as Category[],
         title: professionalTitle.trim(),
         expertApplicationStatus: 'pending',
         lastExpertAppliedAt: appliedAt,
@@ -250,7 +275,7 @@ export const ExpertCertificationTab: React.FC = () => {
               <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
               <div>
                 <h4 className="text-xs sm:text-sm font-black text-rose-950">
-                  ⚠️ 申請專家認證前必須先完成實名認證 (KYC)
+                  ⚠️ 申請專家認證前必須先完成實名認證
                 </h4>
                 <p className="text-[11px] text-rose-800 mt-0.5 leading-relaxed">
                   依 IdeaX 平台合規規範，在申請專家認證前<strong>必須先完成實名認證</strong>！即使您已達到採納方案數 ≥ 50 且平均評分 ≥ 4.0 星，亦須先完成實名認證通過後，方可解鎖成為認證專家。
@@ -314,104 +339,125 @@ export const ExpertCertificationTab: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* 1. 專業領域與頭銜 */}
         <div className="p-5 rounded-3xl bg-white border border-stone-200 space-y-4 shadow-2xs">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-3 gap-2">
             <div className="flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-black flex items-center justify-center">
                 1
               </span>
               <h4 className="font-extrabold text-sm text-stone-900">
-                申請專家類別與公開職銜（按看板類別選填）
+                申請專家領域與公開職銜
               </h4>
             </div>
-            <span className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded font-bold">
-              類別選填（若未填將由平台分類）
+            <span className="text-[10px] text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full font-bold border border-amber-200">
+              可複選 1~5 個領域（已選 {selectedDomains.length} / 5 個）
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
-            {/* 主看板類別 */}
+          <div className="space-y-3.5 text-xs">
+            {/* 複選 1~5 個申請領域 */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold text-stone-700">
-                  主看板領域（選填）
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-bold text-stone-800">
+                  申請專家主領域（點擊勾選 1~5 個專長領域） <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[10px] text-stone-400">若未選將自動分類</span>
+                <span className="text-[10px] text-stone-400">管理員審核時可擇優通過或指派</span>
               </div>
-              <select
-                value={domain}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setDomain(val);
-                  setSubcategory('');
-                }}
-                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-amber-500 focus:bg-white"
-              >
-                <option value="auto">✨ 由平台為您分類（依證件與作品指派）</option>
-                <option value="創新創業">創新創業（商模/融資/股權/出海）</option>
-                <option value="專業問題">專業問題（軟硬體/技術/法律/財務）</option>
-                <option value="學術探討">學術探討（科研/文史/哲學/論文）</option>
-                <option value="日常疑難">日常疑難（職涯/生活/家庭/諮詢）</option>
-              </select>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                {[
+                  { id: '創新創業', name: '創新創業', desc: '商模 / 融資 / 股權 / 跨境出海' },
+                  { id: '專業問題', name: '專業問題', desc: '軟硬體 / 技術 / 法律 / 財務' },
+                  { id: '學術探討', name: '學術探討', desc: '科研 / 文史 / 哲學 / 統計論文' },
+                  { id: '日常疑難', name: '日常疑難', desc: '職涯規劃 / 個人成長 / 諮詢顧問' },
+                ].map((cat) => {
+                  const isChecked = selectedDomains.includes(cat.id);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => toggleDomain(cat.id)}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                        isChecked
+                          ? 'bg-amber-500/15 border-amber-400 text-amber-950 shadow-2xs ring-1 ring-amber-400'
+                          : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-xs text-stone-900">{cat.name}</span>
+                        <div
+                          className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] ${
+                            isChecked
+                              ? 'bg-amber-500 text-stone-950 font-bold'
+                              : 'border border-stone-300 bg-white'
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-stone-500 leading-tight">{cat.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 常用細分專長標籤（亦可點擊加入複選清單） */}
+              <div className="mt-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-100 space-y-1.5">
+                <span className="text-[10px] font-bold text-stone-400 block">亦可快速點選細分領域：</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {['商業模式', '資訊科技', '軟體架構', '法律合規', '財務會計', '醫療生技', '跨境出海', '職涯輔導'].map((tag) => {
+                    const isTagged = selectedDomains.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleDomain(tag)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                          isTagged
+                            ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                            : 'bg-white hover:bg-stone-200 text-stone-600 border border-stone-200'
+                        }`}
+                      >
+                        {isTagged ? `✓ ${tag}` : `+ ${tag}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            {/* 子看板類別 */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold text-stone-700">
-                  子領域看板類別（選填）
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* 實務年資 */}
+              <div>
+                <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                  實務年資 / 經驗年限 <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[10px] text-stone-400">可指定看板</span>
+                <select
+                  value={yearsOfExperience}
+                  onChange={(e) => setYearsOfExperience(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-amber-500 focus:bg-white"
+                >
+                  <option value="1-3 年">1-3 年 實務經驗</option>
+                  <option value="3-5 年">3-5 年 專業資深</option>
+                  <option value="5-8 年">5-8 年 資深顧問/技術主管</option>
+                  <option value="8-12 年">8-12 年 行業總監/創辦人</option>
+                  <option value="12 年以上">12 年以上 領域權威/學術前輩</option>
+                </select>
               </div>
-              <select
-                value={subcategory}
-                onChange={(e) => setSubcategory(e.target.value)}
-                disabled={domain === 'auto' || !domain}
-                className={`w-full px-3 py-2 rounded-xl border font-medium focus:outline-none focus:bg-white ${
-                  domain === 'auto' || !domain
-                    ? 'bg-stone-100 border-stone-200 text-stone-400 cursor-not-allowed'
-                    : 'bg-stone-50 border-stone-300 text-stone-900 focus:border-amber-500'
-                }`}
-              >
-                <option value="">由平台為您分類（全領域智能適配）</option>
-                {domain && domain !== 'auto' && CATEGORY_HIERARCHY[domain as Category]?.map((sub) => (
-                  <option key={sub} value={sub}>
-                    {sub}
-                  </option>
-                ))}
-              </select>
-            </div>
 
-            {/* 實務年資 */}
-            <div>
-              <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                實務年資 / 經驗年限 <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={yearsOfExperience}
-                onChange={(e) => setYearsOfExperience(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-amber-500 focus:bg-white"
-              >
-                <option value="1-3 年">1-3 年 實務經驗</option>
-                <option value="3-5 年">3-5 年 專業資深</option>
-                <option value="5-8 年">5-8 年 資深顧問/技術主管</option>
-                <option value="8-12 年">8-12 年 行業總監/創辦人</option>
-                <option value="12 年以上">12 年以上 領域權威/學術前輩</option>
-              </select>
-            </div>
-
-            {/* 公開認證頭銜 */}
-            <div className="sm:col-span-2 lg:col-span-3">
-              <label className="block text-[11px] font-bold text-stone-700 mb-1">
-                認證公開頭銜 / 職稱（公開於名片與解答處） <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={professionalTitle}
-                onChange={(e) => setProfessionalTitle(e.target.value)}
-                placeholder="例：前科技巨頭 AI 首席架構師 / 執業會計師 / 連續創業顧問"
-                required
-                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-amber-500 focus:bg-white"
-              />
+              {/* 公開認證頭銜 */}
+              <div>
+                <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                  認證公開頭銜 / 職稱（公開於名片與解答處） <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={professionalTitle}
+                  onChange={(e) => setProfessionalTitle(e.target.value)}
+                  placeholder="例：前科技巨頭 AI 首席架構師 / 執業會計師"
+                  required
+                  className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-amber-500 focus:bg-white"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -424,25 +470,26 @@ export const ExpertCertificationTab: React.FC = () => {
                 2
               </span>
               <h4 className="font-extrabold text-sm text-stone-900">
-                上傳專業證件與資歷證明（必要上傳）
+                上傳專業證件與資歷證明
               </h4>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                （僅供管理員和內部查看）
+                （僅供平台認證使用）
               </span>
+              <HelpTooltip
+                title="【認證安全政策】認證照片僅供認證使用，審核完畢即永久刪除"
+                content={
+                  <div className="space-y-1.5 text-[11px] leading-relaxed">
+                    <p>
+                      • <strong>僅供平台認證審查：</strong>所上傳之證照與學經歷證明文件，僅供官方審核人員查驗專業背景，絕不對外公開；審核完畢後即由系統<strong>永久刪除原始證件照片</strong>。
+                    </p>
+                    <p>
+                      • <strong>請務必自行備份：</strong>平台不對用戶上傳之檔案負保管責任。大型作品集、高解析影音或專案成果檔案，<strong>請善用 Google Drive、Dropbox、Figma、GitHub 等外部雲端工具之共享連結</strong>。
+                    </p>
+                  </div>
+                }
+              />
             </div>
             <span className="text-[10px] text-stone-400 font-mono">支援 PDF, JPG, PNG (單檔 10MB 內)</span>
-          </div>
-
-          {/* 認證照片刪除政策與備份規則橫幅 */}
-          <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1.5 leading-relaxed">
-            <div className="flex items-center gap-1.5 font-black text-amber-900">
-              <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>【認證安全政策】認證照片僅供認證使用，審核完畢即永久刪除</span>
-            </div>
-            <p className="text-[11px] text-stone-600 font-normal">
-              • <strong>僅供管理員與內部審查：</strong>所上傳之證照與學經歷證明文件，僅供官方審核人員查驗專業背景，絕不對外公開；審核完畢後即由系統<strong>永久刪除原始證件照片</strong>。<br />
-              • <strong>請用戶務必自行備份：</strong>平台不對用戶上傳之資料、檔案負保管責任。大型作品集、高解析影音或專案成果檔案，<strong>請善用 Google Drive、Dropbox、Figma、GitHub 等外部雲端儲存工具的共享連結</strong>。
-            </p>
           </div>
 
           <p className="text-[11px] text-stone-500">
