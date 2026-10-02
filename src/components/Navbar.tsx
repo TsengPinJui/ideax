@@ -114,6 +114,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     startDirectChat,
     setActiveConversationId,
     logoutAccount,
+    addNotification,
     isNoPaymentMode,
     isDemoMode,
     isAuthModalOpen,
@@ -262,9 +263,47 @@ export const Navbar: React.FC<NavbarProps> = ({
     }).slice(0, 4);
   }, [questions, searchQuery]);
 
+  // 動態熱門搜尋標籤
+  const navbarHotTags = React.useMemo(() => {
+    const tagCountMap: Record<string, { count: number; totalBounty: number }> = {};
+    const activeQuestions = questions.filter((q) => q.status !== 'delisted' && q.status !== 'closed');
+    const sourceQuestions = activeQuestions.length > 0 ? activeQuestions : questions;
+
+    sourceQuestions.forEach((q) => {
+      (q.tags || []).forEach((tag) => {
+        const cleanTag = tag.trim();
+        if (!cleanTag) return;
+        if (!tagCountMap[cleanTag]) {
+          tagCountMap[cleanTag] = { count: 0, totalBounty: 0 };
+        }
+        tagCountMap[cleanTag].count += 1;
+        tagCountMap[cleanTag].totalBounty += q.bounty || 0;
+      });
+    });
+
+    const sortedTags = Object.entries(tagCountMap)
+      .sort((a, b) => {
+        if (b[1].count !== a[1].count) return b[1].count - a[1].count;
+        return b[1].totalBounty - a[1].totalBounty;
+      })
+      .map(([tag]) => tag);
+
+    const fallbackTags = [
+      '商業模式',
+      'AI應用',
+      '創業痛點',
+      '行銷增長',
+      '法律智財',
+      '水電裝修',
+      'TFDA 臨床申報',
+      '專利申請',
+    ];
+    return Array.from(new Set([...sortedTags, ...fallbackTags])).slice(0, 8);
+  }, [questions]);
+
   const handleStartChatWithUser = (target: { id: string; name: string; avatar: string; title: string }) => {
     if (currentUser.id === target.id) {
-      alert('這是您自己的帳號！');
+      addNotification({ title: '提醒', message: '這是您自己的帳號！', type: 'system' });
       return;
     }
     startDirectChat(target);
@@ -722,16 +761,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span>熱門搜尋推薦</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {[
-                          '商業模式',
-                          'AI應用',
-                          '創業痛點',
-                          '行銷增長',
-                          '法律智財',
-                          '水電裝修',
-                          'TFDA 臨床申報',
-                          '專利申請',
-                        ].map((tag) => (
+                        {navbarHotTags.map((tag) => (
                           <button
                             key={tag}
                             type="button"

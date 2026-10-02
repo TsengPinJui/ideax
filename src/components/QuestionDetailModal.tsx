@@ -942,10 +942,10 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     )}
 
                     {!isReportUnlocked ? (
-                      /* LOCKED STATE: BLURRED CONTENT WITH PAYWALL OVERLAY */
+                      /* LOCKED STATE: BLURRED CONTENT WITH PAYWALL OVERLAY (清透毛玻璃，文字更清晰透出) */
                       <div className="relative rounded-xl overflow-hidden pt-2">
                         {/* Blurred Mock Content (3 Dimensions Preview) */}
-                        <div className="filter blur-[6px] opacity-40 select-none pointer-events-none space-y-3 p-4 bg-black/40 rounded-xl border border-white/10">
+                        <div className="filter blur-[0.75px] opacity-90 select-none pointer-events-none space-y-3 p-4 bg-black/30 rounded-xl border border-white/10">
                           <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs space-y-1">
                             <span className="font-bold block">【核心癥結本質診斷】：</span>
                             <p>{preliminaryReport.problemAnalysis.coreDiagnosis || '專案關鍵痛點與商業邊界深度剖析...'}</p>
@@ -970,23 +970,24 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                           </div>
                         </div>
 
-                        {/* Centered Paywall Unlock Overlay */}
-                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-4 bg-stone-950/70 backdrop-blur-[2px] rounded-xl text-center space-y-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-stone-950 flex items-center justify-center shadow-lg shadow-amber-500/20 animate-pulse">
-                            <Lock className="w-5 h-5" />
-                          </div>
+                        {/* Centered Paywall Unlock Overlay (高透毛玻璃) */}
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 sm:p-4 bg-stone-950/15 backdrop-blur-[0.75px] rounded-xl text-center space-y-3">
+                          <div className="bg-stone-900/85 backdrop-blur-md border border-amber-500/40 p-4 sm:p-5 rounded-2xl max-w-md w-full shadow-2xl space-y-2.5">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-stone-950 flex items-center justify-center shadow-lg shadow-amber-500/20 animate-pulse mx-auto">
+                              <Lock className="w-5 h-5" />
+                            </div>
 
-                          <div className="max-w-md space-y-1">
-                            <h4 className="font-black text-sm sm:text-base text-white">
-                              解鎖「IdeaX 初步分析完整報告」
-                            </h4>
-                            <p className="text-xs text-stone-300">
-                              解鎖後立即去除模糊遮罩，並可下載完整文字檔與解題策略
-                            </p>
-                            <p className="text-[11px] text-amber-300 font-medium">
-                              （任何用戶均可支付點數解鎖，達人方案以上享年費解鎖）
-                            </p>
-                          </div>
+                            <div className="space-y-1">
+                              <h4 className="font-black text-sm sm:text-base text-white">
+                                解鎖「IdeaX 初步分析完整報告」
+                              </h4>
+                              <p className="text-xs text-stone-300">
+                                解鎖後去除模糊遮罩，並可下載完整文字檔與解題策略
+                              </p>
+                              <p className="text-[11px] text-amber-300 font-medium">
+                                （任何用戶均可支付點數解鎖，達人方案以上享年費解鎖）
+                              </p>
+                            </div>
 
                           {/* Unlock Notice if any */}
                           {unlockNotice && (
@@ -1045,7 +1046,8 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                           </div>
                         </div>
                       </div>
-                    ) : (
+                    </div>
+                  ) : (
                       /* UNLOCKED STATE: FULL UNBLURRED REPORT VIEW */
                       <div className="space-y-3.5 pt-1">
                         {/* Report Sub-Tabs */}

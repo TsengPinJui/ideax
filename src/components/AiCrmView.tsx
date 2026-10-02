@@ -321,7 +321,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       showToast(
         isAuthorityOrAbove
           ? `已向「${lead.clientName}」發送跟進訊息！`
-          : `🚀【範例體驗】已模擬發送跟進訊息（體驗模式不影響實際對話）！`
+          : `🚀【體驗模式】已模擬發送跟進訊息（不影響實際對話）！`
       );
 
       if (onOpenDirectChat && isAuthorityOrAbove) {
@@ -395,7 +395,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     showToast(
       isAuthorityOrAbove
         ? `🤖「${schedulingLead.clientName}」策略已轉移至右側 24hr 特助佇列！已依時程由近到遠排序。`
-        : `🤖【範例體驗】「${schedulingLead.clientName}」策略已轉移至右側 24hr 特助佇列（已依時程由近到遠排序）！`
+        : `🤖【體驗模式】「${schedulingLead.clientName}」策略已轉移至 24hr 特助佇列！`
     );
   };
 
@@ -426,7 +426,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
             executedAt: '剛剛',
             executionResult: isAuthorityOrAbove
               ? '特助已代操發送成功，客戶聊天室已即時送達！'
-              : '【範例體驗模擬】特助代操發送成功（體驗不影響真實資料）！',
+              : '【體驗模式】特助代操發送成功（不影響真實資料）！',
           }
         : t
     );
@@ -435,7 +435,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     showToast(
       isAuthorityOrAbove
         ? `⚡ 24hr 特助已成功代操發送至「${task.clientName}」的聊天室！`
-        : `⚡【範例體驗】24hr 特助模擬代操發送完成（不影響實際對話）！`
+        : `⚡【體驗模式】24hr 特助模擬代操發送完成！`
     );
   };
 
@@ -616,18 +616,18 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-black text-sky-950 bg-sky-100 border border-sky-300 px-2 py-0.5 rounded-md">
-                  【AI-CRM × 24hr 特助代操・範例體驗】
+                  【AI-CRM × 24hr 特助代操】
                 </span>
                 <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-amber-200 text-amber-900">
                   大師方案專屬
                 </span>
               </div>
               <p className="text-[11px] text-stone-600 mt-1">
-                此處為完整實機功能範例體驗，下方體驗區已用水藍色外框標示，不影響實際資料。
+                大師方案實機體驗，操作不影響實際資料。
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
             {!isDemoUnlocked ? (
               <button
                 type="button"
@@ -676,47 +676,37 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
             : 'border border-stone-200 shadow-2xs'
         }`}
       >
-        {/* 未解鎖體驗模式時的毛玻璃遮蓋層 (點擊水藍色「體驗看看」後解鎖) */}
+        {/* 未解鎖體驗模式時的清透毛玻璃遮蓋層 (清晰透視底層實機畫面，點擊「體驗看看」立即解鎖) */}
         {!isAuthorityOrAbove && !isDemoUnlocked && (
-          <div className="absolute inset-0 z-30 backdrop-blur-md bg-stone-900/60 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
-            <div className="bg-white/95 backdrop-blur-xl border-2 border-sky-400 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
-              <div className="flex justify-center">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 border border-sky-300 text-sky-800 text-xs font-black tracking-wide shadow-2xs">
-                  <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-                  體驗中
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <h3 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
-                  搶先體驗 AI-CRM 拓客軍師 & 特助代操
+          <div className="absolute inset-0 z-30 backdrop-blur-[0.75px] bg-stone-900/10 flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+            <div className="bg-white/95 backdrop-blur-md border-2 border-sky-400 rounded-3xl p-5 sm:p-7 max-w-md w-full text-center shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+              <div className="space-y-1">
+                <h3 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight">
+                  體驗 AI-CRM 拓客軍師 & 特助代操
                 </h3>
                 <p className="text-xs text-stone-600">
-                  全自動高意向客情診斷、時段智能排定、24hr 自動化代操發送
+                  全自動意向診斷、時段智能排定、24hr 自動化代操發送
                 </p>
               </div>
 
               {/* 體驗說明框 */}
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-sky-50 border border-sky-300 text-left space-y-1.5">
-                <p className="text-xs text-sky-950 leading-relaxed font-bold">
-                  點擊下方按鍵即可解鎖實機功能體驗。
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-sky-50/80 border border-sky-200 text-left space-y-1">
+                <p className="text-xs text-sky-950 font-bold">
+                  點擊下方按鍵即可解鎖實機體驗：
                 </p>
-                <p className="text-[11px] sm:text-xs text-sky-900 leading-relaxed">
-                  在體驗中所進行的任何動作（排定時程、特助模擬發送、編輯策略等）均為示範模擬，絕不影響實際系統與真實對話。
+                <p className="text-[11px] text-sky-900 leading-relaxed">
+                  排程與代操發送為本地模擬示範，不影響實際真實資料。離開本版面後即自動復原。
                 </p>
-                <div className="pt-1 border-t border-sky-200/60 text-[10px] sm:text-[11px] text-stone-500 font-medium">
-                  ※ 離開本版面後自動跳回原本狀態，需重新點擊「體驗看看」再次體驗。
-                </div>
               </div>
 
               {/* 按鈕組：水藍色體驗看看按鍵 */}
-              <div className="space-y-2.5 pt-1">
+              <div className="space-y-2 pt-0.5">
                 <button
                   type="button"
                   onClick={() => {
                     setIsDemoUnlocked(true);
                   }}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-sky-500 hover:bg-sky-400 active:scale-98 text-white font-black text-sm sm:text-base shadow-lg shadow-sky-500/30 border border-sky-300 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  className="w-full py-3 px-5 rounded-2xl bg-sky-500 hover:bg-sky-400 active:scale-98 text-white font-black text-sm shadow-md shadow-sky-500/25 border border-sky-300 flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   <span>體驗看看</span>
@@ -1317,7 +1307,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       {/* Schedule Modal (軍師擬定 -> 特助代操) */}
       {schedulingLead && (
         <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-stone-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-stone-200 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center">
@@ -1607,7 +1597,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       {/* Manual Task Modal */}
       {isManualTaskModalOpen && (
         <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-stone-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-stone-200 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <h3 className="font-black text-sm text-stone-900 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-purple-600" />

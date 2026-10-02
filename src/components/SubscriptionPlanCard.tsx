@@ -392,7 +392,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                         type="button"
                         onClick={handleConvertFree}
                         disabled={isProcessing || currentTier === 'free'}
-                        className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-95 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-95 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <XCircle className="w-3.5 h-3.5 text-amber-400" />
                         <span>{currentTier === 'free' ? '目前已是一般會員' : '確認轉換為一般會員 (取消資格・免扣款)'}</span>

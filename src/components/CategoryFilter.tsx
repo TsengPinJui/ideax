@@ -49,6 +49,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
     setSelectedSolver,
     setSelectedQuestion,
     questions,
+    addNotification,
   } = useApp();
 
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
@@ -149,7 +150,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
 
   const handleStartChatWithUser = (target: { id: string; name: string; avatar: string; title: string }) => {
     if (currentUser.id === target.id) {
-      alert('這是您自己的帳號！');
+      addNotification({ title: '提醒', message: '這是您自己的帳號！', type: 'system' });
       return;
     }
     startDirectChat(target);
@@ -157,6 +158,52 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   };
 
   const currentSubcategories = selectedCategory !== '全部' ? CATEGORY_HIERARCHY[selectedCategory] || [] : [];
+
+  // 動態跟進當前熱門話題標籤：
+  // 統計進行中題目的標籤出現頻率與賞金熱度，依權重動態取出最熱門的標籤
+  const dynamicHotTags = useMemo(() => {
+    const tagCountMap: Record<string, { count: number; totalBounty: number }> = {};
+    const activeQuestions = questions.filter((q) => q.status !== 'delisted' && q.status !== 'closed');
+    const sourceQuestions = activeQuestions.length > 0 ? activeQuestions : questions;
+
+    sourceQuestions.forEach((q) => {
+      const inCurrentCategory = selectedCategory === '全部' || q.category === selectedCategory;
+      const weight = inCurrentCategory ? 2 : 1;
+
+      (q.tags || []).forEach((tag) => {
+        const cleanTag = tag.trim();
+        if (!cleanTag) return;
+        if (!tagCountMap[cleanTag]) {
+          tagCountMap[cleanTag] = { count: 0, totalBounty: 0 };
+        }
+        tagCountMap[cleanTag].count += weight;
+        tagCountMap[cleanTag].totalBounty += q.bounty || 0;
+      });
+    });
+
+    const sortedTags = Object.entries(tagCountMap)
+      .sort((a, b) => {
+        if (b[1].count !== a[1].count) {
+          return b[1].count - a[1].count;
+        }
+        return b[1].totalBounty - a[1].totalBounty;
+      })
+      .map(([tag]) => tag);
+
+    const fallbackTags = [
+      '商業模式',
+      'AI應用',
+      '創業痛點',
+      '行銷增長',
+      '系統架構',
+      '股權募資',
+      '合約法律',
+      '產品設計',
+      '職場顧問',
+    ];
+    const combined = Array.from(new Set([...sortedTags, ...fallbackTags]));
+    return combined.slice(0, 10);
+  }, [questions, selectedCategory]);
 
   return (
     <div className="space-y-2 sm:space-y-3.5">
@@ -509,17 +556,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                     <span>熱門推薦關鍵字（點擊立即搜尋）</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {[
-                      '商業模式',
-                      'AI應用',
-                      '創業痛點',
-                      '行銷增長',
-                      '系統架構',
-                      '股權募資',
-                      '合約法律',
-                      '產品設計',
-                      '職場顧問',
-                    ].map((tag) => (
+                    {dynamicHotTags.map((tag) => (
                       <button
                         key={tag}
                         type="button"
@@ -540,24 +577,14 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
         )}
       </div>
 
-      {/* 2.5 Quick Topic Tags: 快速點擊篩選該主題問題 */}
-      <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 sm:pb-1 scrollbar-none text-xs">
+      {/* 2.5 Quick Topic Tags: 動態跟進當前熱門話題標籤 */}
+      <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 sm:pb-1 scrollbar-none text-xs -mx-1 px-1 sm:mx-0 sm:px-0">
         <span className="text-[11px] font-bold text-stone-500 shrink-0 flex items-center gap-1 mr-0.5">
           <Sparkles className="w-3 h-3 text-amber-600" />
-          <span className="hidden sm:inline">熱門話題標籤：</span>
+          <span className="hidden sm:inline">熱門話題：</span>
           <span className="sm:hidden">話題：</span>
         </span>
-        {[
-          '商業模式',
-          'AI應用',
-          '創業痛點',
-          '行銷增長',
-          '系統架構',
-          '股權募資',
-          '合約法律',
-          '產品設計',
-          '職場顧問',
-        ].map((tag) => {
+        {dynamicHotTags.map((tag) => {
           const isActive = searchQuery.trim().toLowerCase() === tag.toLowerCase();
           return (
             <button
