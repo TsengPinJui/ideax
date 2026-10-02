@@ -337,12 +337,7 @@ export const AppOnboardingGuide: React.FC<AppOnboardingGuideProps> = ({
             width: `${Math.min(window.innerWidth - 8, targetRect.width + 8)}px`,
             height: `${targetRect.height + 8}px`,
           }}
-        >
-          {/* Subtle animated pin pointer */}
-          <span className="absolute -top-3 left-4 px-2 py-0.5 bg-amber-500 text-stone-950 font-black text-[10px] rounded-full shadow-md">
-            重點標示
-          </span>
-        </div>
+        />
       )}
 
       {/* 3. Non-blocking Sleek HUD Controller - Positioned safely away from target without covering content */}

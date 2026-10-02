@@ -85,36 +85,36 @@ export const CenterToast: React.FC<CenterToastProps> = ({ toast, onDismiss }) =>
       style={{ zIndex: 2147483646 }}
       className="fixed inset-0 flex items-center justify-center pointer-events-none p-4 select-none"
     >
-      {/* 輕量半透明遮罩背景（增加中央焦點感） */}
+      {/* 輕量柔和半透明遮罩背景（極輕淺景深，襯托純白卡片） */}
       <div
-        className={`absolute inset-0 bg-stone-950/20 backdrop-blur-[2px] transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-stone-950/15 backdrop-blur-[1.5px] transition-opacity duration-300 ${
           isExiting ? 'opacity-0' : 'opacity-100'
         }`}
       />
 
-      {/* 中央跳出提示卡片（簡約白底質感主題） */}
+      {/* 中央跳出提示卡片（極簡精緻純白主題） */}
       <div
         role="alert"
         aria-live="assertive"
-        className={`pointer-events-auto relative w-full max-w-[290px] sm:max-w-xs bg-white/95 text-stone-900 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-stone-200/90 ring-1 ring-stone-900/5 flex flex-col items-center text-center transition-all duration-300 ease-out ${
+        className={`pointer-events-auto relative w-full max-w-[300px] sm:max-w-xs bg-white text-stone-900 rounded-3xl p-6 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)] border border-stone-100/90 ring-1 ring-stone-900/5 flex flex-col items-center text-center transition-all duration-300 ease-out ${
           isExiting
             ? 'opacity-0 scale-95 translate-y-1'
-            : 'opacity-100 scale-100 translate-y-0 animate-in zoom-in-90 fade-in duration-200'
+            : 'opacity-100 scale-100 translate-y-0 animate-in zoom-in-95 fade-in duration-200'
         }`}
       >
         {/* 右上角關閉按鈕 */}
         <button
           type="button"
           onClick={onDismiss}
-          className="absolute top-3.5 right-3.5 p-1 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
           title="關閉"
           aria-label="關閉提示"
         >
           <X className="w-4 h-4" />
         </button>
 
-        {/* 提示圖示圓圈 */}
-        <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center mb-3 shadow-inner ${getBadgeBg()}`}>
+        {/* 提示圖示圓圈 (純白質感基底 + 亮眼金色微光邊框) */}
+        <div className={`w-13 h-13 rounded-2xl border flex items-center justify-center mb-3.5 shadow-xs ${getBadgeBg()}`}>
           {getIcon()}
         </div>
 
@@ -125,7 +125,7 @@ export const CenterToast: React.FC<CenterToastProps> = ({ toast, onDismiss }) =>
 
         {/* 副標題說明 */}
         {toast.subtitle && (
-          <p className="text-xs sm:text-sm text-stone-500 mt-1 leading-relaxed px-1">
+          <p className="text-xs sm:text-sm text-stone-600 font-medium mt-1.5 leading-relaxed px-1">
             {toast.subtitle}
           </p>
         )}
@@ -135,7 +135,7 @@ export const CenterToast: React.FC<CenterToastProps> = ({ toast, onDismiss }) =>
           <button
             type="button"
             onClick={handleAction}
-            className="mt-4 px-5 py-2 rounded-full bg-linear-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-stone-950 text-xs sm:text-sm font-black shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="mt-4.5 px-6 py-2.5 rounded-full bg-linear-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-stone-950 text-xs sm:text-sm font-black shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <span>{toast.actionLabel}</span>
             <ChevronRight className="w-4 h-4 stroke-[2.5]" />

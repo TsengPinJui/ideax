@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Question, MarketViewMode } from '../types';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { resolveUserDisplayName, resolveUserAvatar } from '../utils/userDisplay';
+import { isPainPointQuestion } from '../utils/questionUtils';
 import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark } from 'lucide-react';
 
 interface QuestionCardProps {
@@ -31,6 +32,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const levelConfig = (effectiveLevel && LEVEL_CONFIGS[effectiveLevel]) || LEVEL_CONFIGS.L0;
   const isSolved = question.status === 'solved';
   const isPromoted = question.status === 'open' && question.isFeatured;
+  const isPainPoint = isPainPointQuestion(question);
 
   const authorDisplayName = resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
   const authorDisplayAvatar = resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
@@ -81,19 +83,26 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               {question.subcategory || question.category}
             </span>
 
-            {/* $+數字 */}
+            {/* $+數字 (痛點提問懸賞匡用紅色框起來) */}
             <div className="shrink-0 font-mono text-right">
               {isNoPaymentMode ? (
                 <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                   免費
+                </span>
+              ) : isPainPoint ? (
+                <span
+                  className="text-xs sm:text-[13px] font-black font-mono px-1.5 py-0.5 rounded-md border-2 border-rose-500 bg-rose-50 text-rose-600 shadow-2xs ring-1 ring-rose-400/25 inline-block"
+                  title="痛點提問懸賞"
+                >
+                  {question.bounty > 0 ? `$${question.bounty.toLocaleString()}` : '$0痛點'}
                 </span>
               ) : question.bounty > 0 ? (
                 <span className="text-xs sm:text-[13px] font-black text-amber-600 font-mono">
                   ${question.bounty.toLocaleString()}
                 </span>
               ) : (
-                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
-                  $0痛點
+                <span className="text-[10px] font-bold text-sky-800 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">
+                  L0 討論
                 </span>
               )}
             </div>
@@ -110,7 +119,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               {question.tags.slice(0, 3).map((tag) => (
                 <span
                   key={tag}
-                  className="text-[9.5px] font-medium text-stone-600 bg-stone-100 px-1.5 py-0.2 rounded border border-stone-200/70 truncate max-w-[80px] select-none pointer-events-none"
+                  className={`text-[9.5px] font-medium px-1.5 py-0.2 rounded border truncate max-w-[80px] select-none pointer-events-none ${
+                    isPainPoint
+                      ? 'text-rose-600 bg-rose-50 border-rose-200/80'
+                      : 'text-stone-600 bg-stone-100 border-stone-200/70'
+                  }`}
                 >
                   #{tag}
                 </span>
@@ -204,12 +217,24 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               )}
             </div>
 
-            {/* Bounty Tag (拿掉收藏鍵) */}
+            {/* Bounty Tag (痛點提問懸賞匡用紅色框起來) */}
             <div className="shrink-0">
               {isNoPaymentMode ? (
                 <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-300 shadow-2xs">
                   免費交流
                 </span>
+              ) : isPainPoint ? (
+                <div
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-50/90 border-2 border-rose-500 text-rose-950 shadow-2xs ring-1 ring-rose-400/25"
+                  title="痛點提問懸賞"
+                >
+                  <span className="text-[11px] text-rose-600 font-bold">
+                    {question.bounty > 0 ? '痛點懸賞' : '痛點'}
+                  </span>
+                  <span className="text-xs sm:text-sm font-black font-mono text-rose-600">
+                    {question.bounty > 0 ? `NT$ ${question.bounty.toLocaleString()}` : '$0 免費'}
+                  </span>
+                </div>
               ) : question.bounty > 0 ? (
                 <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 shadow-2xs">
                   <span className="text-[11px] text-amber-700 font-medium">懸賞</span>
@@ -218,8 +243,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   </span>
                 </div>
               ) : (
-                <span className="text-xs font-semibold text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-lg border border-stone-200">
-                  痛點 $0
+                <span className="text-xs font-bold text-sky-800 bg-sky-50 px-2.5 py-0.5 rounded-lg border border-sky-200">
+                  L0 閒聊討論
                 </span>
               )}
             </div>
@@ -236,7 +261,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               {question.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-[10.5px] font-medium text-stone-600 bg-stone-100 px-2 py-0.2 rounded border border-stone-200 select-none pointer-events-none"
+                  className={`text-[10.5px] font-medium px-2 py-0.2 rounded border select-none pointer-events-none ${
+                    isPainPoint
+                      ? 'text-rose-600 bg-rose-50 border-rose-200/80 font-semibold'
+                      : 'text-stone-600 bg-stone-100 border-stone-200'
+                  }`}
                 >
                   #{tag}
                 </span>
@@ -329,9 +358,15 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
             {/* Level badge */}
             <span
-              className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border ${levelConfig.badgeClass}`}
+              className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border ${
+                isPainPoint
+                  ? 'bg-rose-50 text-rose-700 border-rose-200 shadow-2xs font-extrabold'
+                  : levelConfig.badgeClass
+              }`}
             >
-              {question.level} · {levelConfig.name}
+              {isPainPoint
+                ? '痛點/創點子'
+                : `${question.level} · ${levelConfig.name}`}
             </span>
 
             {isSolved && (
@@ -341,12 +376,24 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             )}
           </div>
 
-          {/* Bounty Tag & Bookmark Button */}
+          {/* Bounty Tag & Bookmark Button (痛點提問懸賞匡用紅色框起來) */}
           <div className="shrink-0 flex items-center gap-1.5">
             {isNoPaymentMode ? (
               <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
                 免費交流
               </span>
+            ) : isPainPoint ? (
+              <div
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-rose-50/90 border-2 border-rose-500 text-rose-950 shadow-xs ring-1 ring-rose-400/25"
+                title="痛點提問懸賞"
+              >
+                <span className="text-xs text-rose-600 font-bold">
+                  {question.bounty > 0 ? '痛點懸賞' : '痛點'}
+                </span>
+                <span className="text-sm font-black font-mono text-rose-600">
+                  {question.bounty > 0 ? `NT$ ${question.bounty.toLocaleString()}` : '$0 免費'}
+                </span>
+              </div>
             ) : question.bounty > 0 ? (
               <div className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 shadow-2xs">
                 <span className="text-xs text-amber-700 font-medium">懸賞</span>
@@ -355,8 +402,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </span>
               </div>
             ) : (
-              <span className="text-xs font-semibold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-lg border border-stone-200">
-                無賞金問題
+              <span className="text-xs font-bold text-sky-800 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">
+                L0 閒聊討論
               </span>
             )}
 
@@ -410,7 +457,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   setSearchQuery(tag);
                 }
               }}
-              className="text-[11px] font-medium text-stone-600 bg-stone-100/90 hover:bg-amber-100 hover:text-amber-950 hover:border-amber-300 px-2 py-0.5 rounded-md border border-stone-200/90 transition-all cursor-pointer shadow-2xs"
+              className={`text-[11px] font-medium px-2 py-0.5 rounded-md border transition-all cursor-pointer shadow-2xs ${
+                isPainPoint
+                  ? 'text-rose-600 bg-rose-50/90 hover:bg-rose-100 hover:text-rose-950 hover:border-rose-300 border-rose-200/90 font-semibold'
+                  : 'text-stone-600 bg-stone-100/90 hover:bg-amber-100 hover:text-amber-950 hover:border-amber-300 border-stone-200/90'
+              }`}
               title={`點擊搜尋「#${tag}」相關問題`}
             >
               #{tag}

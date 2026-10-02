@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Question, Answer } from '../types';
+import { isPainPointQuestion } from '../utils/questionUtils';
 import { 
   HelpCircle, 
   Briefcase, 
@@ -250,7 +251,16 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({ onOpenQuestion }
                     <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700">
                       {q.category} · {q.subcategory}
                     </span>
-                    {(q.bounty || 0) > 0 ? (
+                    {isPainPointQuestion(q) && (
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 font-extrabold shadow-2xs">
+                        痛點/創點子
+                      </span>
+                    )}
+                    {isPainPointQuestion(q) ? (
+                      <span className="text-xs font-black px-2.5 py-1 rounded-lg font-mono border-2 border-rose-500 bg-rose-50 text-rose-700 shadow-2xs ring-1 ring-rose-400/25">
+                        {(q.bounty || 0) > 0 ? `痛點懸賞 NT$ ${(q.bounty || 0).toLocaleString()}` : '痛點 $0 免費'}
+                      </span>
+                    ) : (q.bounty || 0) > 0 ? (
                       <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 font-mono">
                         懸賞金 NT$ {(q.bounty || 0).toLocaleString()}
                       </span>
@@ -271,6 +281,22 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({ onOpenQuestion }
                 <p className="text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed">
                   {q.description}
                 </p>
+                {q.tags && q.tags.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    {q.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className={`text-[10.5px] font-medium px-2 py-0.2 rounded border ${
+                          isPainPointQuestion(q)
+                            ? 'text-rose-600 bg-rose-50 border-rose-200/80 font-semibold'
+                            : 'text-stone-600 bg-stone-100 border-stone-200'
+                        }`}
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2 text-xs sm:text-sm text-stone-600">

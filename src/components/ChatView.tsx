@@ -150,6 +150,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
     setIsNotificationsSidebarOpen,
     openAuthModal,
     addNotification,
+    promptLogin,
   } = useApp();
 
   // --- 提出方案 (完整提案 Modal，同問題下方提出方案頁面) ---
@@ -2518,8 +2519,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                             onClick={() => {
                               setIsPlusMenuOpen(false);
                               if (currentUser.id === 'user-guest') {
-                                openAuthModal('login', 'email', '請先登入');
-                                addNotification({ title: '請先登入', message: '訪客模式請先登入帳號以提出方案', type: 'system' });
+                                promptLogin('訪客模式請先登入帳號以提出方案');
                                 return;
                               }
                               setIsSubmitAnswerModalOpen(true);

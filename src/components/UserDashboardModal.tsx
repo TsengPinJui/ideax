@@ -58,6 +58,7 @@ import {
   User as UserIcon,
   FileText,
   Download,
+  BookOpen,
   DownloadCloud,
   ShieldCheck,
   BadgeCheck,
@@ -71,6 +72,7 @@ import {
   Check,
   Building2,
   Info,
+  Bell,
   CreditCard,
   ArrowRight,
   ChevronRight,
@@ -237,7 +239,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setQuestions,
     setAnswers,
     setTransactions,
+    setIsNotificationsSidebarOpen,
+    unreadPersonalCount,
+    hasUnreadSystemNotifs,
   } = useApp();
+
+  const displayBadgeCount = currentUser.role === 'admin'
+    ? pendingDisputesCount
+    : (unreadPersonalCount || 0) + (hasUnreadSystemNotifs ? 1 : 0);
 
   const adminUnreadMailCount = useMemo(() => {
     return (notifications || []).filter((n) => !n.read).length;
@@ -1746,6 +1755,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             { id: 'real_name_auth', label: '實名認證', icon: UserCheck },
             { id: 'expert_certification', label: '專家認證', icon: ShieldCheck },
             { id: 'survey', label: '問卷(客戶調查)', icon: ClipboardList },
+            { id: 'notifications', label: '通知中心', icon: Bell, badge: displayBadgeCount > 0 ? (displayBadgeCount > 99 ? '99+' : `${displayBadgeCount}`) : undefined },
             { id: 'about_and_support', label: '平台資訊', icon: Info },
             { id: 'customer_service_report', label: '客服回報', icon: Headphones },
             { id: 'switch_account', label: '切換帳號', icon: ArrowLeftRight },
@@ -1757,6 +1767,15 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => {
+                  if (tab.id === 'notifications') {
+                    if (currentUser.role === 'admin') {
+                      setActiveTab('admin_mail_disputes');
+                    } else {
+                      setIsNotificationsSidebarOpen(true);
+                    }
+                    setMobileMenuOpen(false);
+                    return;
+                  }
                   if (tab.id === 'customer_service_report') {
                     openCustomerService({ subject: '來自功能列之客服回報與申訴' });
                     return;
@@ -2418,11 +2437,49 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
           </div>
 
-          {/* Section 4: 平台資訊與客服 */}
+          {/* Section 4: 平台資訊、通知與客服 */}
           <div className="bg-white rounded-xl border border-stone-200/90 p-1 space-y-0.5 shadow-2xs">
-            <p className="px-2 pt-1 pb-0.5 text-[9px] font-bold text-stone-500 uppercase tracking-wider">
-              平台支援與資訊
+            <p className="px-2 pt-1 pb-0.5 text-[9px] font-bold text-stone-500 uppercase tracking-wider flex items-center justify-between">
+              <span>平台支援、通知與資訊</span>
+              {displayBadgeCount > 0 && (
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono">
+                  {displayBadgeCount > 99 ? '99+' : displayBadgeCount} 則新通知
+                </span>
+              )}
             </p>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                if (currentUser.role === 'admin') {
+                  setActiveTab('admin_mail_disputes');
+                } else {
+                  setIsNotificationsSidebarOpen(true);
+                }
+              }}
+              className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-amber-100 text-amber-900 flex items-center justify-center shrink-0 relative">
+                  <Bell className="w-3 h-3 text-amber-700" />
+                  {displayBadgeCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-rose-500 rounded-full ring-1 ring-white" />
+                  )}
+                </div>
+                <div>
+                  <span className="block font-black text-stone-900">通知中心</span>
+                  <span className="text-[10px] text-stone-500 font-normal">案件進度、系統訊息與提醒</span>
+                </div>
+              </span>
+              <div className="flex items-center gap-1.5">
+                {displayBadgeCount > 0 && (
+                  <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono">
+                    {displayBadgeCount > 99 ? '99+' : displayBadgeCount}
+                  </span>
+                )}
+                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+              </div>
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -3874,8 +3931,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
               </div>
 
-              {/* 核心模組卡片區 (多格面板全覽，全模式 3 欄同步) */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-5">
+              {/* 核心模組卡片區 (多格面板全覽，4 欄自適應同步) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
                 {/* 1. 資產與帳務 */}
                 <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
                   <div className="space-y-2.5 sm:space-y-3">
@@ -4120,6 +4177,119 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           </span>
                         )}
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. 平台資訊與支援 */}
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2.5 sm:space-y-3">
+                    <div className="flex items-center gap-2.5 border-b border-stone-100 pb-2.5 sm:pb-3">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black shrink-0">
+                        <Info className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="font-black text-sm text-stone-900">平台資訊與支援</h4>
+                        <p className="text-[10px] text-stone-500">平台介紹、下載APP、服務條款與客服</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('about_and_support');
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-amber-50/80 border border-stone-200 hover:border-amber-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                      >
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <Info className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="truncate">平台資訊（介紹與條款）</span>
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors shrink-0" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('about_and_support');
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-amber-50/80 border border-stone-200 hover:border-amber-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                      >
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <Download className="w-3.5 h-3.5 text-stone-950" />
+                          </div>
+                          <span className="truncate">下載官方 App</span>
+                        </span>
+                        <span className="text-[10px] text-amber-900 bg-amber-100 font-extrabold px-1.5 py-0.5 rounded-md border border-amber-300 shrink-0">PWA</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsNotificationsSidebarOpen(true);
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-amber-50/80 border border-stone-200 hover:border-amber-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                      >
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all relative">
+                            <Bell className="w-3.5 h-3.5 text-amber-700" />
+                            {displayBadgeCount > 0 && (
+                              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full ring-1 ring-white" />
+                            )}
+                          </div>
+                          <span className="truncate">通知中心</span>
+                        </span>
+                        {displayBadgeCount > 0 ? (
+                          <span className="text-[10px] text-white bg-rose-500 px-1.5 py-0.5 rounded-full font-black font-mono shrink-0">
+                            {displayBadgeCount > 99 ? '99+' : displayBadgeCount}
+                          </span>
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors shrink-0" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          openCustomerService({ subject: '來自個人中心總覽之客服回報' });
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-teal-50/80 border border-stone-200 hover:border-teal-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                      >
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-teal-100/90 text-teal-800 group-hover:bg-teal-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <Headphones className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="truncate">客服回報與申訴</span>
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-teal-700 transition-colors shrink-0" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onStartOnboarding) {
+                            onStartOnboarding();
+                            onClose();
+                          }
+                        }}
+                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 hover:border-stone-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                      >
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-stone-200/90 text-stone-700 group-hover:bg-stone-300 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <BookOpen className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="truncate">使用教學導覽</span>
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-700 transition-colors shrink-0" />
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { Category, CATEGORY_HIERARCHY, Question, QuestionSortOption, SpecialZone
 import { useApp } from '../context/AppContext';
 import { isMockQuestionId } from '../data/mockData';
 import { isQuestionExpired } from '../services/recommendationService';
+import { isPainPointQuestion } from '../utils/questionUtils';
 import {
   X,
   Layers,
@@ -23,6 +24,10 @@ import {
   Lightbulb,
   ShieldCheck,
   Trophy,
+  Info,
+  Download,
+  Bell,
+  Mail,
 } from 'lucide-react';
 
 interface CategorySidebarProps {
@@ -38,9 +43,10 @@ interface CategorySidebarProps {
   questions: Question[];
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
-  onNavigateToAbout?: () => void;
+  onNavigateToAbout?: (section?: string) => void;
   onNavigateToSolvers?: () => void;
   onNavigateToLeaderboard?: () => void;
+  onOpenNotifications?: () => void;
   activeTab?: AppTab;
 }
 
@@ -60,11 +66,23 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   onNavigateToAbout,
   onNavigateToSolvers,
   onNavigateToLeaderboard,
+  onOpenNotifications,
   activeTab = 'explore',
 }) => {
   const [sidebarSearch, setSidebarSearch] = useState('');
 
-  const { isDemoMode } = useApp();
+  const {
+    isDemoMode,
+    currentUser,
+    unreadPersonalCount,
+    hasUnreadSystemNotifs,
+    pendingDisputesCount,
+    setIsNotificationsSidebarOpen,
+  } = useApp();
+
+  const displayBadgeCount = currentUser?.role === 'admin'
+    ? pendingDisputesCount
+    : (unreadPersonalCount || 0) + (hasUnreadSystemNotifs ? 1 : 0);
 
   const validQuestions = useMemo(() => {
     return (isDemoMode
@@ -108,21 +126,16 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   };
 
   // 專區數量統計
-  // 1. 創點子/痛點專區：透過提出痛點提出的問題與標註痛點的問題
-  const painPointsCount = validQuestions.filter(
-    (q) =>
-      q.postType === 'pain_point' ||
-      q.tags.some((t) => t.includes('痛點') || t.includes('創點子')) ||
-      q.title.includes('痛點') ||
-      q.description.includes('痛點')
-  ).length;
+  // 1. 創點子/痛點專區：透過提出痛點提出的問題與標註痛點的問題 (痛點優先歸類)
+  const painPointsCount = validQuestions.filter(isPainPointQuestion).length;
 
-  // 2. L0問題討論專區：所有 L0 問題和點選閒聊討論提出的問題
+  // 2. L0問題討論專區：所有純 L0 閒聊/討論問題 (排除痛點提問，痛點特性 > L0)
   const l0DiscussionCount = validQuestions.filter(
     (q) =>
-      q.level === 'L0' ||
-      q.postType === 'chat_discussion' ||
-      q.tags.some((t) => t.includes('L0') || t.includes('閒聊') || t.includes('討論'))
+      !isPainPointQuestion(q) &&
+      (q.level === 'L0' ||
+        q.postType === 'chat_discussion' ||
+        q.tags.some((t) => t.includes('L0') || t.includes('閒聊') || t.includes('討論')))
   ).length;
 
   const categoryMeta: Record<
@@ -320,6 +333,115 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                   </div>
                   <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
                     卓越解題專家與委託人排行
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
+            </button>
+          </div>
+
+          {/* 📖 平台資訊與官方 APP */}
+          <div className="space-y-2 pb-1">
+            <div className="text-[11px] font-bold text-stone-500 px-1 flex items-center justify-between">
+              <span>📖 平台資訊與 APP</span>
+            </div>
+
+            {/* ① 平台資訊（介紹與條款） */}
+            <button
+              onClick={() => {
+                if (onNavigateToAbout) onNavigateToAbout('story');
+                onClose();
+              }}
+              className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
+                activeTab === 'about'
+                  ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-200 shadow-2xs'
+                  : 'bg-white hover:bg-amber-50/40 border-stone-200 hover:border-amber-300'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                  <Info className="w-4 h-4 text-amber-700" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-700 transition-colors flex items-center gap-1.5">
+                    <span>平台資訊</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
+                      介紹
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
+                    平台介紹、常見問題、條款與金流運作
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
+            </button>
+
+            {/* ② 下載官方 App */}
+            <button
+              onClick={() => {
+                if (onNavigateToAbout) onNavigateToAbout('download_app');
+                onClose();
+              }}
+              className="w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-white hover:border-amber-400 border-amber-300/80 shadow-2xs"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center font-black shrink-0 shadow-2xs">
+                  <Download className="w-4 h-4 text-stone-950" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-700 transition-colors flex items-center gap-1.5">
+                    <span>下載官方 App</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-500 text-stone-950">
+                      PWA
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-amber-900/80 font-medium mt-0.5 line-clamp-1">
+                    一鍵直接安裝・全螢幕秒開
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-amber-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* ③ 通知中心 */}
+            <button
+              onClick={() => {
+                onClose();
+                if (onOpenNotifications) {
+                  onOpenNotifications();
+                } else {
+                  setIsNotificationsSidebarOpen(true);
+                }
+              }}
+              className="w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group bg-white hover:bg-amber-50/40 border-stone-200 hover:border-amber-300 shadow-2xs"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center font-bold shrink-0 shadow-2xs relative">
+                  {currentUser?.role === 'admin' ? (
+                    <Mail className="w-4 h-4 text-purple-700" />
+                  ) : (
+                    <Bell className="w-4 h-4 text-amber-700" />
+                  )}
+                  {displayBadgeCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-700 transition-colors flex items-center gap-1.5">
+                    <span>{currentUser?.role === 'admin' ? '申訴與郵件管理' : '通知中心'}</span>
+                    {displayBadgeCount > 0 ? (
+                      <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-rose-500 text-white shadow-2xs font-mono">
+                        {displayBadgeCount > 99 ? '99+' : displayBadgeCount}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-600">
+                        即時通知
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
+                    {currentUser?.role === 'admin' ? '審核待裁定申訴與爭議調解' : '即時提問回復、方案採納與系統通知'}
                   </p>
                 </div>
               </div>

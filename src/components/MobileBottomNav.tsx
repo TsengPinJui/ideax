@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, GraduationCap, Plus, MessageCircle, User, Briefcase } from 'lucide-react';
+import { Compass, GraduationCap, Plus, MessageCircle, User, Briefcase, Info } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AppTab, UserDashboardTab } from '../types';
 
@@ -31,14 +31,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const isExploreActive = activeTab === 'explore' || activeTab === 'question_detail';
   const isSolversActive = activeTab === 'solvers' || activeTab === 'solver_profile';
   const isMyProjectsActive = activeTab === 'my_projects' || (activeTab === 'user_dashboard' && userDashboardTab === 'proposals');
+  const isAboutActive = activeTab === 'about';
   const isDashboardActive = activeTab === 'user_dashboard' && userDashboardTab !== 'proposals';
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-stone-200/90 px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-lg shadow-stone-950/10"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-stone-200/90 px-1.5 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-lg shadow-stone-950/10"
       aria-label="行動端底部快速導覽列"
     >
-      <div className="grid grid-cols-5 items-center max-w-lg mx-auto">
+      <div className="grid grid-cols-6 items-center max-w-lg mx-auto">
         {/* 1. 探索問題 */}
         <button
           type="button"
@@ -52,10 +53,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <div className="relative">
             <Compass className={`w-5 h-5 transition-transform ${isExploreActive ? 'scale-110' : ''}`} />
           </div>
-          <span className="text-[10px] mt-0.5 tracking-tight">探索問題</span>
+          <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-[54px]">探索問題</span>
         </button>
 
-        {/* 2. 找專家&榮譽榜 */}
+        {/* 2. 找專家 */}
         <button
           id="onboarding-step-8-solvers"
           type="button"
@@ -69,7 +70,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <div className="relative">
             <GraduationCap className={`w-5 h-5 transition-transform ${isSolversActive ? 'scale-110' : ''}`} />
           </div>
-          <span className="text-[10px] mt-0.5 tracking-tight">找專家&榮譽榜</span>
+          <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-[54px]">找專家</span>
         </button>
 
         {/* 3. 中間凸出按鈕：發布懸賞/提問 */}
@@ -83,7 +84,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               }
               onOpenCreateQuestion();
             }}
-            className="w-11 h-11 rounded-full bg-linear-to-tr from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-stone-950 flex items-center justify-center shadow-md shadow-amber-500/30 ring-3 ring-white cursor-pointer transition-all"
+            className="w-11 h-11 rounded-full bg-gradient-to-tr from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-stone-950 flex items-center justify-center shadow-md shadow-amber-500/30 ring-3 ring-white cursor-pointer transition-all"
             title="發布提問與痛點"
             aria-label="發布提問與痛點"
           >
@@ -110,10 +111,26 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <div className="relative">
             <Briefcase className={`w-5 h-5 transition-transform ${isMyProjectsActive ? 'scale-110' : ''}`} />
           </div>
-          <span className="text-[10px] mt-0.5 tracking-tight">我的案件</span>
+          <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-[54px]">我的案件</span>
         </button>
 
-        {/* 5. 個人中心 */}
+        {/* 5. 平台資訊 */}
+        <button
+          type="button"
+          onClick={() => onNavigate('about')}
+          className={`flex flex-col items-center justify-center py-1 transition-all cursor-pointer relative ${
+            isAboutActive
+              ? 'text-amber-600 font-black'
+              : 'text-stone-500 hover:text-stone-900 font-medium'
+          }`}
+        >
+          <div className="relative">
+            <Info className={`w-5 h-5 transition-transform ${isAboutActive ? 'scale-110 text-amber-600' : ''}`} />
+          </div>
+          <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-[54px]">平台資訊</span>
+        </button>
+
+        {/* 6. 個人中心 */}
         <button
           id="onboarding-step-10-profile"
           type="button"

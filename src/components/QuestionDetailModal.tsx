@@ -56,6 +56,7 @@ import { SeoPreviewModal } from './SeoPreviewModal';
 import { getQuestionShareUrl } from '../services/seoService';
 import { copyToClipboard } from '../utils/clipboard';
 import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated } from '../utils/userDisplay';
+import { isPainPointQuestion } from '../utils/questionUtils';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -125,6 +126,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   }, [question?.id, incrementQuestionViews]);
 
   const isBookmarked = isQuestionBookmarked(question.id);
+  const isPainPoint = isPainPointQuestion(question);
 
   // Unified Action Modal State (違規下架 / 直接刪除，均暫存 7 日)
   const [isUnifiedActionModalOpen, setIsUnifiedActionModalOpen] = useState(false);
@@ -497,8 +499,16 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 </span>
               )
             )}
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${levelConfig.badgeClass}`}>
-              {question.level} · {levelConfig.name}
+            <span
+              className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                isPainPoint
+                  ? 'bg-rose-50 text-rose-700 border-rose-200 font-extrabold shadow-2xs'
+                  : levelConfig.badgeClass
+              }`}
+            >
+              {isPainPoint
+                ? '痛點/創點子'
+                : `${question.level} · ${levelConfig.name}`}
             </span>
             {question.status === 'delisted' ? (
               <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
@@ -624,9 +634,21 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 全站免費提案
               </span>
             </div>
+          ) : isPainPoint ? (
+            <div
+              className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border-2 border-rose-500 bg-rose-50/90 shadow-2xs ring-1 ring-rose-400/25"
+              title="痛點提問懸賞"
+            >
+              <span className="text-[11px] font-bold text-rose-700 block">
+                {(question.bounty || 0) > 0 ? '痛點懸賞' : '痛點提問'}
+              </span>
+              <span className="text-lg sm:text-xl font-black text-rose-600 font-mono">
+                {(question.bounty || 0) > 0 ? `NT$ ${(question.bounty || 0).toLocaleString()}` : '$0 免費上架'}
+              </span>
+            </div>
           ) : (question.bounty || 0) > 0 ? (
-            <div className="text-right shrink-0">
-              <span className="text-[11px] font-semibold text-stone-500 block">懸賞獎金</span>
+            <div className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border border-amber-300 bg-amber-50/60">
+              <span className="text-[11px] font-semibold text-amber-800 block">懸賞獎金</span>
               <span className="text-lg sm:text-xl font-black text-amber-600 font-mono">
                 NT$ {(question.bounty || 0).toLocaleString()}
               </span>
@@ -811,7 +833,11 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                         onClose();
                       }
                     }}
-                    className="text-xs font-bold text-amber-950 bg-amber-50 hover:bg-amber-100 hover:border-amber-400 border border-amber-200/90 px-2.5 py-0.5 rounded-lg transition-all cursor-pointer shadow-2xs"
+                    className={`text-xs font-bold px-2.5 py-0.5 rounded-lg transition-all cursor-pointer shadow-2xs border ${
+                      isPainPoint
+                        ? 'text-rose-600 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 border-rose-200/90 font-semibold'
+                        : 'text-amber-950 bg-amber-50 hover:bg-amber-100 hover:border-amber-400 border border-amber-200/90'
+                    }`}
                     title={`點擊搜尋「#${tag}」相關問題`}
                   >
                     #{tag}

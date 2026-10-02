@@ -32,6 +32,7 @@ import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnbo
 import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompass';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
+import { isPainPointQuestion } from './utils/questionUtils';
 import { updateSEOForQuestion } from './services/seoService';
 import {
   recordUserSearchKeyword,
@@ -410,21 +411,18 @@ function MainContent() {
           q.tags.includes(selectedSubcategory);
         const matchesLevel = selectedLevel === '全部' || q.level === selectedLevel;
 
-        // Special zone filtering (此二分類與看板類型不衝突)
+        // Special zone filtering (此二分類與看板類型不衝突，痛點特性 > L0，優先歸屬痛點專區)
         let matchesSpecialZone = true;
         if (specialZone === 'pain_points') {
-          // 痛點專區：透過提出痛點提出的問題和標註痛點/創點子的問題
-          matchesSpecialZone =
-            q.postType === 'pain_point' ||
-            q.tags.some((t) => t.includes('痛點') || t.includes('創點子')) ||
-            q.title.includes('痛點') ||
-            q.description.includes('痛點');
+          // 痛點專區：所有透過提出痛點提出的問題和標註痛點/創點子的問題（優先歸屬痛點專區）
+          matchesSpecialZone = isPainPointQuestion(q);
         } else if (specialZone === 'l0_discussion') {
-          // L0問題討論專區：包含所有L0的問題和點選閒聊討論提出的問題
+          // L0問題討論專區：包含所有純L0的問題和點選閒聊討論提出的問題，明確排除痛點提問（痛點特性 > L0）
           matchesSpecialZone =
-            q.level === 'L0' ||
-            q.postType === 'chat_discussion' ||
-            q.tags.some((t) => t.includes('L0') || t.includes('閒聊') || t.includes('討論'));
+            (q.level === 'L0' ||
+              q.postType === 'chat_discussion' ||
+              q.tags.some((t) => t.includes('L0') || t.includes('閒聊') || t.includes('討論'))) &&
+            !isPainPointQuestion(q);
         }
 
         if (!matchesSpecialZone) return false;
@@ -781,6 +779,12 @@ function MainContent() {
         isCategorySidebarOpen={isCategorySidebarOpen}
         setIsCategorySidebarOpen={setIsCategorySidebarOpen}
         onStartOnboarding={() => setIsOnboardingOpen(true)}
+        onNavigateToAbout={(section) => {
+          setAboutPageSection(section || 'story');
+          setActiveTab('about');
+          setSelectedQuestion(null);
+          setSelectedSolver(null);
+        }}
       />
 
       {/* 帳號停權警告橫幅 */}
@@ -1300,8 +1304,7 @@ function MainContent() {
             }}
             onOpenSubmitAnswer={(initialType) => {
               if (currentUser.id === 'user-guest') {
-                openAuthModal('login', 'email', '請先登入');
-                addNotification({ title: '請先登入', message: '訪客模式請先登入帳號以提出方案', type: 'system' });
+                promptLogin('訪客模式請先登入帳號以提出方案');
                 return;
               }
               setSubmitInitialType(initialType || 'solution');

@@ -32,6 +32,10 @@ import {
   Shield,
   Send,
   Compass,
+  Download,
+  Smartphone,
+  Laptop,
+  Zap,
 } from 'lucide-react';
 import { TERMS_DATA, TermItem } from '../data/termsData';
 import { AboutSection, ProblemLevel } from '../types';
@@ -40,6 +44,7 @@ import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
 import { PlatformRolesSpectrumView } from './PlatformRolesSpectrumView';
 import { APP_VERSION } from '../data/versionData';
+import { triggerDirectAppDownloadOrInstall, downloadAppLauncherFile } from '../services/pwaInstaller';
 
 interface AboutUsViewProps {
   initialSection?: AboutSection | string;
@@ -48,7 +53,7 @@ interface AboutUsViewProps {
   onStartOnboarding?: () => void;
 }
 
-type MainTab = 'story' | 'contact' | 'terms' | 'finance' | 'others';
+type MainTab = 'story' | 'download_app' | 'contact' | 'terms' | 'finance' | 'others';
 
 export const AboutUsView: React.FC<AboutUsViewProps> = ({
   initialSection = 'list',
@@ -56,10 +61,13 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
   isModal = false,
   onStartOnboarding,
 }) => {
-  const { currentUser, openCustomerService, addNotification } = useApp();
+  const { currentUser, openCustomerService, addNotification, openPwaInstallModal } = useApp();
+  const [copiedAppUrl, setCopiedAppUrl] = useState(false);
+  const [selectedAppGuide, setSelectedAppGuide] = useState<'all' | 'android' | 'ios' | 'desktop'>('all');
 
   // Determine initial state based on initialSection prop
   const [activeTab, setActiveTab] = useState<MainTab>(() => {
+    if (initialSection === 'download_app' || initialSection === 'app' || initialSection === 'pwa') return 'download_app';
     if (initialSection === 'contact') return 'contact';
     if (initialSection === 'finance' || initialSection === 'architecture') return 'finance';
     if (
@@ -442,7 +450,20 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 <span>平台介紹</span>
               </button>
 
-              {/* 2. 聯絡我們 & 常見問題 */}
+              {/* 2. 下載 APP (位於平台介紹與聯絡我們之間) */}
+              <button
+                onClick={() => setActiveTab('download_app')}
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                  activeTab === 'download_app'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <Download className="w-4 h-4 text-amber-600" />
+                <span>下載 APP</span>
+              </button>
+
+              {/* 3. 聯絡我們 & 常見問題 */}
               <button
                 onClick={() => setActiveTab('contact')}
                 className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
@@ -578,7 +599,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
           </div>
 
           {/* 快捷導覽入口按鈕群 */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
             <button
               type="button"
               onClick={() => {
@@ -592,6 +613,15 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
             >
               <Compass className="w-5 h-5 text-amber-600" />
               <span className="text-xs font-bold text-stone-800">使用教學導覽</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('download_app')}
+              className="p-3.5 rounded-2xl bg-white border border-stone-200/80 hover:border-amber-400 hover:shadow-xs flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <Download className="w-5 h-5 text-amber-600" />
+              <span className="text-xs font-bold text-stone-800">下載 APP</span>
             </button>
 
             <button
@@ -637,7 +667,329 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 2. 聯絡我們 (直接套用原則申訴頁面 & 官方客服管道) */}
+      {/* 2. 下載 APP (直接下載鍵與安裝教學卡片) */}
+      {/* ========================================================================= */}
+      {activeTab === 'download_app' && !isSubPage && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* 主下載卡片 (Hero Direct Download Card) */}
+          <div className="bg-gradient-to-br from-stone-900 via-stone-950 to-amber-950 rounded-3xl p-6 sm:p-8 text-white border border-amber-500/20 shadow-xl relative overflow-hidden">
+            {/* 背景科技光暈裝飾 */}
+            <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+            <div className="absolute bottom-0 left-0 w-60 h-60 bg-purple-500/10 rounded-full blur-2xl pointer-events-none -ml-20 -mb-20" />
+
+            <div className="relative z-10 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-amber-400/50 bg-white p-1.5 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
+                    <img
+                      src="/pwa-192x192.png"
+                      alt="IdeaX創點子"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <IdeaXLogo variant="ideax-6" size="sm" theme="dark" />
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                        官方原生 PWA 應用程式
+                      </span>
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+                      下載 IdeaX 創點子 App
+                    </h2>
+                  </div>
+                </div>
+
+                {/* 平台版本與即時更新標籤 */}
+                <div className="hidden sm:flex flex-col items-end text-xs text-stone-400">
+                  <span className="font-mono text-stone-300 font-bold">版本 v{APP_VERSION}</span>
+                  <span className="text-emerald-400 flex items-center gap-1 font-semibold text-[11px] mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
+                    即時雲端版本・免繁瑣審核
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-2xl">
+                將「創點子 IdeaX」安裝至您的手機或電腦桌面，享有獨立無網址列全螢幕視窗、毫秒級極速快開、即時懸賞通知與安全金流託管保護。無論 iOS、Android、Windows 或 Mac 均全面支援！
+              </p>
+
+              {/* 特色亮點標籤 */}
+              <div className="flex items-center gap-2 flex-wrap text-[11px] font-bold">
+                <span className="px-2.5 py-1 rounded-xl bg-white/10 text-amber-300 border border-amber-400/20 flex items-center gap-1">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  秒速極速啟動
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-white/10 text-emerald-300 border border-emerald-400/20 flex items-center gap-1">
+                  <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                  全螢幕無干擾視窗
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-white/10 text-blue-300 border border-blue-400/20 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                  案件與聊天即時通知
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-white/10 text-purple-300 border border-purple-400/20 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                  銀行級 SSL 託管安全
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-white/10 text-stone-300 border border-white/15">
+                  極小體積 &lt; 5MB
+                </span>
+              </div>
+
+              {/* 直接下載鍵核心區 */}
+              <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* 1. 主按鈕：直接下載 / 安裝 App */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await triggerDirectAppDownloadOrInstall(openPwaInstallModal);
+                  }}
+                  className="px-6 py-4 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-stone-950 font-black text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-lg shadow-amber-500/30 transition-all cursor-pointer group"
+                  title="直接喚起瀏覽器原生安裝程序"
+                >
+                  <Download className="w-5 h-5 stroke-[2.5] text-stone-950 group-hover:translate-y-0.5 transition-transform" />
+                  <span>直接下載 / 安裝 IdeaX App</span>
+                </button>
+
+                {/* 2. 電腦桌面捷徑下載 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ok = downloadAppLauncherFile();
+                    if (ok) {
+                      addNotification({
+                        title: '捷徑下載成功',
+                        message: '已為您下載桌面快速啟動捷徑檔，點擊即可一秒直達平台！',
+                        type: 'system',
+                      });
+                    }
+                  }}
+                  className="px-4 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border border-white/20 transition-all cursor-pointer"
+                  title="下載電腦桌面一鍵啟動捷徑檔 (.url / .html)"
+                >
+                  <Laptop className="w-4 h-4 text-amber-300" />
+                  <span>下載電腦桌面捷徑檔</span>
+                </button>
+
+                {/* 3. 複製平台網址 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      navigator.clipboard.writeText(window.location.origin);
+                      setCopiedAppUrl(true);
+                      setTimeout(() => setCopiedAppUrl(false), 2500);
+                      addNotification({
+                        title: '連結複製成功',
+                        message: '已複製平台網址，您可貼至手機或電腦瀏覽器進行加入主畫面！',
+                        type: 'system',
+                      });
+                    } catch {}
+                  }}
+                  className="px-4 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border border-white/20 transition-all cursor-pointer"
+                  title="複製平台網址"
+                >
+                  {copiedAppUrl ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span className="text-emerald-300">網址已複製！</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-stone-300" />
+                      <span>複製 App 網址</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <p className="text-[11px] text-stone-400 font-medium">
+                💡 提示：點擊「直接下載 / 安裝」鍵，系統將自動偵測設備呼叫專屬安裝程序。若您的瀏覽器已安裝過或未自動跳出，請參考下方對應裝置教學卡片。
+              </p>
+            </div>
+          </div>
+
+          {/* 教學卡片群標題 */}
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-amber-600" />
+              <h3 className="text-sm sm:text-base font-extrabold text-stone-900">
+                各裝置手動加入主畫面教學卡片
+              </h3>
+            </div>
+            <span className="text-xs text-stone-500 font-medium">
+              30 秒快速設定即可完成
+            </span>
+          </div>
+
+          {/* 教學卡片 Grid (3 大主流設備 + 1 應用優勢卡片) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* 教學卡片 1：Android 手機 */}
+            <div className="bg-white rounded-3xl border border-stone-200/90 p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4 hover:border-emerald-400 transition-colors">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                      <Smartphone className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-stone-900">Android 安裝教學</h4>
+                      <p className="text-[10px] text-stone-500">Chrome / Edge / 三星瀏覽器</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    推薦
+                  </span>
+                </div>
+
+                <ol className="space-y-2.5 text-xs text-stone-700 leading-relaxed font-medium">
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">1</span>
+                    <span>使用手機 Chrome 或 Edge 開啟 IdeaX 平台</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">2</span>
+                    <span>點選瀏覽器右上角的<strong>「⋮ 選單（三個點）」</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">3</span>
+                    <span>選擇<strong>「安裝應用程式」</strong>或<strong>「加到主畫面」</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">4</span>
+                    <span>點擊「安裝」確認，App 圖示即自動加入手機桌面</span>
+                  </li>
+                </ol>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-[11px] text-emerald-900 font-medium">
+                ✨ 安裝後點擊桌面圖示，即享獨立全螢幕無網址列操作！
+              </div>
+            </div>
+
+            {/* 教學卡片 2：iPhone / iPad (iOS) */}
+            <div className="bg-white rounded-3xl border border-stone-200/90 p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4 hover:border-blue-400 transition-colors">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                      <Smartphone className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-stone-900">iPhone / iPad 安裝</h4>
+                      <p className="text-[10px] text-stone-500">iOS Safari 專屬安裝管道</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                    iOS 必備
+                  </span>
+                </div>
+
+                <ol className="space-y-2.5 text-xs text-stone-700 leading-relaxed font-medium">
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">1</span>
+                    <span>使用 iPhone 內建 <strong>Safari 瀏覽器</strong>開啟 IdeaX</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">2</span>
+                    <span>點選螢幕底部中間的<strong>「分享按鈕（⎋ 向上箭頭）」</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">3</span>
+                    <span>在選單中向下滑動，點選<strong>「加入主畫面（＋）」</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">4</span>
+                    <span>確認名稱後點右上角「新增」，App 即可在桌面秒開</span>
+                  </li>
+                </ol>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200/80 text-[11px] text-blue-900 font-medium">
+                💡 iOS 請務必使用 Safari 瀏覽器方能啟動「加入主畫面」。
+              </div>
+            </div>
+
+            {/* 教學卡片 3：電腦桌面版 (Windows / macOS) */}
+            <div className="bg-white rounded-3xl border border-stone-200/90 p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4 hover:border-purple-400 transition-colors">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                      <Laptop className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-stone-900">電腦桌面版安裝</h4>
+                      <p className="text-[10px] text-stone-500">Windows / macOS / Chrome / Edge</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                    獨立視窗
+                  </span>
+                </div>
+
+                <ol className="space-y-2.5 text-xs text-stone-700 leading-relaxed font-medium">
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">1</span>
+                    <span>使用電腦版 Chrome 或 Edge 開啟 IdeaX 平台</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">2</span>
+                    <span>注意網址列最右側出現的<strong>「安裝應用程式」</strong>圖示</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">3</span>
+                    <span>點擊「安裝」，自動在工作列與桌面建立專屬圖示</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">4</span>
+                    <span>亦可點擊上方「下載電腦桌面捷徑檔」一秒下載啟動檔</span>
+                  </li>
+                </ol>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/80 text-[11px] text-purple-900 font-medium">
+                ⚡ 獨立桌面視窗完全不受其他分頁干擾，操作流暢十倍！
+              </div>
+            </div>
+          </div>
+
+          {/* 教學卡片 4：常見問答 Q&A */}
+          <div className="bg-white rounded-3xl border border-stone-200/90 p-5 sm:p-6 shadow-xs space-y-3.5">
+            <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+              <HelpCircle className="w-4 h-4 text-amber-600" />
+              <span>PWA 應用程式常見問題與特色</span>
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/70 space-y-1.5">
+                <span className="font-bold text-stone-900 text-xs sm:text-sm">Q: 需要到 Google Play 或 App Store 搜尋嗎？</span>
+                <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                  完全不需要！IdeaX 採用國際 W3C 標準 PWA 架構，直接由官方雲端發布，省去商店搜尋與漫長審核，永遠使用最新修正版。
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/70 space-y-1.5">
+                <span className="font-bold text-stone-900 text-xs sm:text-sm">Q: 安裝會佔用很多手機空間嗎？</span>
+                <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                  不會！核心體積僅小於 5MB，比傳統 Native App 省下 90% 以上儲存空間，運行輕巧省電且支援極速快取。
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/70 space-y-1.5">
+                <span className="font-bold text-stone-900 text-xs sm:text-sm">Q: 電腦與手機資料會即時同步嗎？</span>
+                <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                  全平台 100% 雲端同步！無論您從手機 App 提案、或在電腦版查看分析，所有資料、聊天與錢包點數皆即時無縫連動。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. 聯絡我們 (直接套用原則申訴頁面 & 官方客服管道) */}
       {/* ========================================================================= */}
       {activeTab === 'contact' && !isSubPage && (
         <div className="space-y-4 animate-in fade-in duration-150">

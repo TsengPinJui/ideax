@@ -183,13 +183,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setErrorMsg(null);
       setSuccessMsg(null);
       setHasAttemptedSubmit(false);
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
   }, [isOpen, initialMode]);
 
   // Load remember me state from localStorage (不預先填入帳號，保持欄位為空)
@@ -819,12 +813,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const modalContent = (
     <div
       style={{ zIndex: 2147483647 }}
-      className="fixed inset-0 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-y-contain animate-in fade-in duration-200"
+      className="fixed inset-0 bg-stone-950/60 backdrop-blur-xs overflow-y-auto overscroll-y-contain p-3 sm:p-4 animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-stone-200/90 px-6 py-7 sm:px-8 sm:py-9 relative my-auto animate-in zoom-in-95 duration-200">
+      <div
+        className="min-h-full flex items-center justify-center py-4 sm:py-8 pointer-events-none"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="pointer-events-auto w-full max-w-md bg-white rounded-3xl shadow-2xl border border-stone-200/90 px-6 py-7 sm:px-8 sm:py-9 relative animate-in zoom-in-95 duration-200"
+        >
         {/* Top Right Close Button */}
         <button
           onClick={onClose}
@@ -1834,6 +1837,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </form>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

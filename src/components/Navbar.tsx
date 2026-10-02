@@ -48,6 +48,7 @@ import {
   LayoutGrid,
   Headphones,
   ShieldAlert,
+  Info,
   Send,
   Mail,
   Copy,
@@ -73,6 +74,7 @@ interface NavbarProps {
   isCategorySidebarOpen?: boolean;
   setIsCategorySidebarOpen?: (open: boolean) => void;
   onStartOnboarding?: () => void;
+  onNavigateToAbout?: (section?: string) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -92,6 +94,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isCategorySidebarOpen: isCategorySidebarOpenProp,
   setIsCategorySidebarOpen: setIsCategorySidebarOpenProp,
   onStartOnboarding,
+  onNavigateToAbout,
 }) => {
   const {
     currentUser,
@@ -499,29 +502,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Briefcase className="w-3.5 h-3.5 text-blue-600" />
               <span>我的案件</span>
-            </button>
-            <button
-              onClick={() => {
-                if (onOpenAiCrm) {
-                  onOpenAiCrm();
-                } else {
-                  setActiveTab('ai_crm');
-                }
-                setSelectedQuestion(null);
-                setSelectedSolver(null);
-              }}
-              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
-                activeTab === 'ai_crm'
-                  ? 'bg-amber-100 text-amber-950 font-black border-amber-400 ring-2 ring-amber-200 shadow-2xs'
-                  : 'bg-white text-stone-800 border-stone-200 hover:border-amber-400 hover:bg-amber-50/60 hover:text-amber-950 shadow-2xs'
-              }`}
-              title="AI-CRM 客戶關係管理 (含24hr特助代操)"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span>AI-CRM</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 font-bold">
-                特助
-              </span>
             </button>
           </nav>
         </div>
@@ -1070,8 +1050,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => {
-                openAuthModal('login', 'email', '請先登入');
-                addNotification({ title: '請先登入', message: '訪客模式請先登入帳號', type: 'system' });
+                openAuthModal('login', 'email');
               }}
               className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
             >
@@ -1872,6 +1851,22 @@ export const Navbar: React.FC<NavbarProps> = ({
         isOpen={isCategorySidebarOpen}
         onClose={() => setIsCategorySidebarOpen(false)}
         activeTab={activeTab}
+        onOpenNotifications={() => {
+          if (currentUser.role === 'admin') {
+            handleOpenDashboard('admin_mail_disputes');
+          } else {
+            setIsNotificationsSidebarOpen(true);
+          }
+        }}
+        onNavigateToAbout={(section) => {
+          if (onNavigateToAbout) {
+            onNavigateToAbout(section);
+          } else {
+            setActiveTab('about');
+            setSelectedQuestion(null);
+            setSelectedSolver(null);
+          }
+        }}
         onNavigateToSolvers={() => {
           setActiveTab('solvers');
           setSelectedQuestion(null);
@@ -1906,11 +1901,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         questions={questions}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
-        onNavigateToAbout={() => {
-          setActiveTab('about');
-          setSelectedQuestion(null);
-          setSelectedSolver(null);
-        }}
       />
 
       {/* 右側通知中心抽屜 */}
