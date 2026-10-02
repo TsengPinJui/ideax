@@ -84,6 +84,7 @@ export type UserDashboardTab =
   | 'subscriptions'
   | 'real_name_auth'
   | 'expert_certification'
+  | 'ai_assistant_settings'
   | 'survey'
   | 'settings';
 
@@ -270,14 +271,14 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     billingCycles: [
       { cycle: 'semi_annual', price: 1499, label: '6 個月 $1,499', savingsText: '約 $249/月', durationMonths: 6 },
     ],
-    platformFeeRate: 0.05,
-    feeDiscountText: '服務費 -5%（半價）',
-    sellerPayoutRate: 0.95,
-    sellerPayoutText: '95%',
-    effectiveRateText: '5%',
-    rebatePercent: 5,
+    platformFeeRate: 0.08,
+    feeDiscountText: '服務費 8%（僅收 8% 服務費，實收 92%）',
+    sellerPayoutRate: 0.92,
+    sellerPayoutText: '92%',
+    effectiveRateText: '8%',
+    rebatePercent: 2,
     badgeClass: 'bg-blue-50 text-blue-800 border-blue-200 font-bold',
-    tagline: '服務費砍半！實質僅收 5% 服務費，實收 95%',
+    tagline: '服務費僅 8%！解答者實收高達 92%',
     benefits: [
       '全站發問與解答提案',
       'AI 初步問題分析報告：免費查看 50 次',
@@ -292,14 +293,14 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     billingCycles: [
       { cycle: 'semi_annual', price: 1499, label: '6 個月 $1,499', savingsText: '約 $249/月', durationMonths: 6 },
     ],
-    platformFeeRate: 0.05,
-    feeDiscountText: '服務費 -5%（半價）',
-    sellerPayoutRate: 0.95,
-    sellerPayoutText: '95%',
-    effectiveRateText: '5%',
-    rebatePercent: 5,
+    platformFeeRate: 0.08,
+    feeDiscountText: '服務費 8%（僅收 8% 服務費，實收 92%）',
+    sellerPayoutRate: 0.92,
+    sellerPayoutText: '92%',
+    effectiveRateText: '8%',
+    rebatePercent: 2,
     badgeClass: 'bg-blue-50 text-blue-800 border-blue-200 font-bold',
-    tagline: '服務費砍半！實質僅收 5% 服務費，實收 95%',
+    tagline: '服務費僅 8%！解答者實收高達 92%',
     benefits: [
       '全站發問與解答提案',
       'AI 初步問題分析報告：免費查看 50 次',
@@ -309,6 +310,30 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   authority: {
     id: 'authority',
     name: '權威方案',
+    pricingText: '$599/月 或 $5,990/年',
+    monthlyPrice: 599,
+    billingCycles: [
+      { cycle: 'monthly', price: 599, label: '月繳 NT$ 599/月', durationMonths: 1 },
+      { cycle: 'annual', price: 5990, label: '年繳 NT$ 5,990/年', savingsText: '年繳現省 NT$ 1,198', durationMonths: 12 },
+    ],
+    platformFeeRate: 0.05,
+    feeDiscountText: '服務費 5%（半價優惠，僅收 5% 服務費，實收 95%）',
+    sellerPayoutRate: 0.95,
+    sellerPayoutText: '95%',
+    effectiveRateText: '5%',
+    rebatePercent: 5,
+    badgeClass: 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-700 font-black shadow-2xs',
+    tagline: '服務費僅 5%！實收高達 95% ＋ 高賞提案優先推薦',
+    benefits: [
+      '全站發問與解答提案',
+      'AI 初步問題分析報告：全站免費無限次查看及下載報告',
+      'AI 提案架構整理：一鍵整理為 4 層架構',
+      '高賞提案優先推薦',
+    ],
+  },
+  master: {
+    id: 'master',
+    name: '大師方案',
     pricingText: '$1,490/月 或 $14,900/年',
     monthlyPrice: 1490,
     billingCycles: [
@@ -316,47 +341,92 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
       { cycle: 'annual', price: 14900, label: '年繳 NT$ 14,900/年', savingsText: '年繳現省 NT$ 2,980', durationMonths: 12 },
     ],
     platformFeeRate: 0.00,
-    feeDiscountText: '服務費 -10%（免服務費）',
+    feeDiscountText: '免服務費（0% 服務費，全額實收 100%）',
     sellerPayoutRate: 1.00,
     sellerPayoutText: '100%',
     effectiveRateText: '0%',
     rebatePercent: 10,
-    badgeClass: 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-700 font-black shadow-2xs',
-    tagline: '免平台服務費！解答者 100% 全額入帳',
-    benefits: [
-      '全站發問與解答提案',
-      'AI 初步問題分析報告：全站免費無限次查看及下載報告',
-      'AI 提案架構整理：一鍵整理為 4 層架構',
-      '高價值商業案件優先推薦',
-    ],
-  },
-  master: {
-    id: 'master',
-    name: '大師方案',
-    pricingText: '$3,990/月 或 $43,990/年',
-    monthlyPrice: 3990,
-    billingCycles: [
-      { cycle: 'monthly', price: 3990, label: '月繳 NT$ 3,990/月', durationMonths: 1 },
-      { cycle: 'annual', price: 43990, label: '年繳 NT$ 43,990/年', savingsText: '現省 NT$ 3,890', durationMonths: 12 },
-    ],
-    platformFeeRate: -0.02,
-    feeDiscountText: '免服務費 + 額外回饋 2% BONUS',
-    sellerPayoutRate: 1.02,
-    sellerPayoutText: '102%',
-    effectiveRateText: '+2% BONUS',
-    rebatePercent: 12,
     badgeClass: 'bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-500 text-stone-950 border-amber-500 font-black shadow-sm',
-    tagline: '0 服務費 ＋ 平台額外補貼 2% BONUS（實收高達 102%！）',
+    tagline: '0% 服務費！全額實收 100% ＋ 24hr AI客服特助',
     benefits: [
       '全站發問與解答提案',
       'AI 初步問題分析報告：全站免費無限次查看及下載報告',
       'AI 提案架構整理：一鍵整理為 4 層架構',
-      '高價值商業案件優先推薦',
-      'AI-CRM 主動客戶關係管理系統：管理案件小秘書(高端限定)',
-      '主題看板專家方案主動推播：高端限定(高效曝光、精準媒合)',
-      '⚡ 雙效 BUFF：管理案件小秘書 ＋ 高效精準媒合，打造主動接案成長飛輪',
+      '高賞提案優先推薦',
+      '🤖 24hr AI客服特助：離線主動對談維護客戶＋聊天室召喚談判策略建議(大師專屬)',
+      'AI-CRM 主動客戶關係管理系統：管理案件小秘書(大師專屬)',
+      '⚡ 雙效 BUFF：24hr AI客服特助 ＋ AI-CRM 客戶關係管理，打造高轉單接案飛輪',
     ],
   },
+};
+
+// 24hr AI特助代客服務相關結構
+export interface AssistantFaqItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface AssistantCustomPrompt {
+  id: string;
+  instruction: string;
+  isEnabled: boolean;
+}
+
+export interface Assistant24hrConfig {
+  isEnabled: boolean; // 是否啟用 24hr AI特助代客服務
+  tone: 'professional' | 'warm' | 'technical' | 'authoritative'; // 交談語氣
+  toneDescription?: string; // 希望的回答方向（自然語言）
+  faqList: AssistantFaqItem[]; // 客戶常見問題 FAQ 與期望回答
+  offlineTriggerMinutes: number; // 專家離線召喚時間 (預設 20 分鐘)
+  requireHumanApprovalForDeals: boolean; // 產出交易但仍要專家事後親自確認 (預設 true)
+  customPrompts: AssistantCustomPrompt[]; // 其他希望的 prompt 指令 (多筆)
+  dailyMessageLimitPerChat: number; // 單對話單日最大代答上限 (預設 15 則，避免惡意消耗 Tokens)
+  enableConfidentialityFirewall: boolean; // 嚴格商業機密與個資防火牆 (防止資料洩漏)
+  todayReplyCount?: number; // 今日代答計數
+  totalAssistedCount?: number; // 累計協助代答次數
+  lastActiveAt?: string;
+}
+
+export const DEFAULT_ASSISTANT_24HR_CONFIG: Assistant24hrConfig = {
+  isEnabled: false,
+  tone: 'professional',
+  toneDescription: '以專業嚴謹且具同理心的態度接待，釐清客戶時程與需求痛點，引導具體合作方向。',
+  faqList: [
+    {
+      id: 'faq-1',
+      question: '最快什麼時候可以開始執行專案？',
+      answer: '確認需求與里程碑報價後，通常可在 1~2 個工作天內排程啟動。',
+    },
+    {
+      id: 'faq-2',
+      question: '初步諮詢的收費方式為何？',
+      answer: '平台提供履約款項託管保證，所有報價均依里程碑分階段驗收才撥款，正式報價將由專家親自確認後出具。',
+    },
+    {
+      id: 'faq-3',
+      question: '如果專案規格有變更怎麼處理？',
+      answer: '可隨時透過聊天室補充規格並協商調整里程碑，雙方同意後才會變更交付計畫。',
+    },
+  ],
+  offlineTriggerMinutes: 20,
+  requireHumanApprovalForDeals: true,
+  customPrompts: [
+    {
+      id: 'prompt-1',
+      instruction: '勿代替專家向客戶做出任何絕對保證成效（如「保證獲利」、「保證過審」）之承諾。',
+      isEnabled: true,
+    },
+    {
+      id: 'prompt-2',
+      instruction: '提及專家資歷時，以個人檔案公開領域與成功案例為主，請勿虛構或捏造不可考的背書。',
+      isEnabled: true,
+    },
+  ],
+  dailyMessageLimitPerChat: 15,
+  enableConfidentialityFirewall: true,
+  todayReplyCount: 0,
+  totalAssistedCount: 0,
 };
 
 export interface BankAccountInfo {
@@ -436,6 +506,7 @@ export interface User {
     images?: Array<{ url: string; caption?: string }>;
   };
   showRecentSolutions?: boolean;
+  assistant24hrConfig?: Assistant24hrConfig; // 24hr AI特助代客服務設定 (權威方案以上)
 
   // 默認隱藏顯示（可選擇公開）
   reputationPoints?: number; // 榮譽點數
@@ -928,6 +999,7 @@ export interface ChatMessage {
     size?: string;
   };
   userCard?: ChatUserCard;
+  isAiAssistant?: boolean; // 是否為 24hr AI特助代答
 }
 
 export interface ChatConversation {

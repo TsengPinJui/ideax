@@ -523,7 +523,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                 })}
               </tr>
 
-              {/* 橫列 2: 平台服務費率 (強調：半價、免服務費、另獲2%紅利) */}
+              {/* 橫列 2: 平台服務費率 (達人 8%、權威 5%、大師 0%) */}
               <tr className="hover:bg-stone-50/60 transition-colors">
                 <td className="py-3.5 px-3.5 font-bold text-stone-600 bg-stone-50/40">
                   平台服務費率
@@ -555,38 +555,35 @@ export const SubscriptionPlanCard: React.FC = () => {
                       ) : isPro ? (
                         <div className="space-y-0.5">
                           <div className="font-bold text-blue-950">
-                            服務費 <strong className="text-blue-950 font-black">{rate.effectiveFeePercent}%</strong>
+                            服務費 <strong className="text-blue-950 font-black">8%</strong>
                           </div>
-                          <span className="inline-block font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 text-[11px] shadow-2xs">
-                            半價
+                          <span className="inline-block font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 text-[11px] shadow-2xs">
+                            僅收 8%
                           </span>
                         </div>
                       ) : isAuth ? (
                         <div className="space-y-0.5">
                           <div className="font-bold text-purple-950">
-                            服務費 <strong className="text-purple-950 font-black">0%</strong>
+                            服務費 <strong className="text-purple-950 font-black">5%</strong>
                           </div>
-                          <span className="inline-block font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 text-[11px] shadow-2xs">
-                            免服務費
+                          <span className="inline-block font-black text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-300 text-[11px] shadow-2xs">
+                            半價 5%
                           </span>
                         </div>
                       ) : isMaster ? (
                         <div className="space-y-1">
                           <div className="flex items-center justify-center gap-1 flex-wrap">
-                            <span className="font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 text-[11px]">
-                              免服務費
-                            </span>
-                            <span className="font-black text-amber-950 bg-gradient-to-r from-amber-400 to-orange-400 px-2 py-0.5 rounded-full border border-amber-400 text-[11px] shadow-2xs">
-                              另獲 2% 紅利
+                            <span className="font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 text-[11px]">
+                              0% 免服務費
                             </span>
                           </div>
                         </div>
                       ) : (
                         <span className="font-bold text-stone-800">
                           {rate.effectiveFeePercent <= 0 ? (
-                            <strong className="text-emerald-700 font-black">免服務費</strong>
+                            <strong className="text-emerald-700 font-black">免服務費 (0%)</strong>
                           ) : (
-                            `抽成 ${rate.effectiveFeePercent}%`
+                            `服務費 ${rate.effectiveFeePercent}%`
                           )}
                         </span>
                       )}
@@ -622,8 +619,8 @@ export const SubscriptionPlanCard: React.FC = () => {
                           {rate.sellerPayoutPercent}%
                         </span>
                         {isMaster && (
-                          <span className="text-[10px] font-black text-amber-900 bg-amber-200/80 px-1.5 py-0.2 rounded mt-0.5">
-                            +2% BONUS 超額實收
+                          <span className="text-[10px] font-black text-amber-950 bg-amber-200/90 px-1.5 py-0.2 rounded mt-0.5">
+                            全額 100% 入帳
                           </span>
                         )}
                       </div>
@@ -695,11 +692,11 @@ export const SubscriptionPlanCard: React.FC = () => {
                 },
                 {
                   id: 'commercial_priority',
-                  name: '高價值商業案件推薦',
+                  name: '高賞提案優先推薦',
                   renderCell: (plan: SubscriptionPlan) => {
                     const hasIt =
                       ['authority', 'master'].includes(plan.id) ||
-                      plan.benefits?.some((b) => b.includes('商業') || b.includes('推薦'));
+                      plan.benefits?.some((b) => b.includes('商業') || b.includes('推薦') || b.includes('高賞'));
                     if (!hasIt) return <span className="text-stone-300 font-bold">—</span>;
                     return (
                       <span
@@ -725,27 +722,24 @@ export const SubscriptionPlanCard: React.FC = () => {
                     return (
                       <div className="flex flex-col items-center justify-center gap-0.5">
                         <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-300 to-orange-300 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
-                          👑 管理案件小秘書(高端限定)
+                          👑 管理案件小秘書(大師專屬)
                         </span>
-                        <div className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 font-black text-[11px] leading-none flex items-center justify-center shadow-2xs border border-amber-500/50">
-                          +
-                        </div>
                       </div>
                     );
                   },
                 },
                 {
-                  id: 'board_push',
-                  name: '主題看板專家方案主動推播',
+                  id: 'ai_assistant',
+                  name: '24hr AI客服特助',
                   renderCell: (plan: SubscriptionPlan) => {
                     const hasIt =
                       plan.id === 'master' ||
-                      plan.benefits?.some((b) => b.includes('看板') || b.includes('推播') || b.includes('精準媒合'));
+                      plan.benefits?.some((b) => b.includes('特助') || b.includes('客服特助'));
                     if (!hasIt) return <span className="text-stone-300 font-bold">—</span>;
                     return (
                       <div className="flex flex-col items-center justify-center gap-0.5">
-                        <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-300 to-orange-300 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
-                          👑 高端限定(高效曝光、精準媒合)
+                        <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-orange-400 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
+                          🤖 離線代客對談 ＋ 聊天室策略建議
                         </span>
                       </div>
                     );
@@ -792,17 +786,17 @@ export const SubscriptionPlanCard: React.FC = () => {
           </span>
           <div className="flex items-center gap-1.5 flex-wrap justify-center text-xs">
             <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-black text-[11px]">
-              👑 管理案件小秘書(高端限定)
+              🤖 24hr AI客服特助(大師專屬)
             </span>
             <span className="w-5 h-5 rounded-full bg-amber-400 text-stone-950 font-black text-xs flex items-center justify-center shadow-2xs border border-amber-500/60">
               +
             </span>
             <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-black text-[11px]">
-              👑 高端限定(高效曝光、精準媒合)
+              👑 管理案件小秘書(大師專屬)
             </span>
             <span className="font-black text-amber-700 text-sm px-0.5">＝</span>
             <span className="text-amber-950 font-black text-[11px] sm:text-xs bg-white/90 px-2.5 py-0.5 rounded-md border border-amber-300/80 shadow-2xs">
-              形成主動接案雙倍閉環，大幅提升案件轉換率！
+              0% 免服務費全額入帳 ＋ 主動接案轉單飛輪！
             </span>
           </div>
         </div>

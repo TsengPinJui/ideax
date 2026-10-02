@@ -1,4 +1,4 @@
-import { Category, ProblemLevel, Solver, Question, AIPreliminaryReport, AiCrmLead, AiCrmPushNotification } from '../types';
+import { Category, ProblemLevel, Solver, Question, AIPreliminaryReport, AiCrmLead, AiCrmPushNotification, Assistant24hrConfig } from '../types';
 
 export interface AIAnalysisResult {
   category: Category;
@@ -1075,5 +1075,142 @@ export function getCurrentTimeSlotInfo(
     focusSummary: '💤 整理未解決問題，排定明早優先追蹤名單',
     nextScanEstimatedText: `${Math.min(minutesToNext, 180)} 分鐘後`,
     activityLevelText: `離峰節能（每 ${offPeakInterval} 小時深層彙整）`,
+  };
+}
+
+// ==========================================
+// 24hr AI特助代客服務 & 專家在線召喚建議 API
+// ==========================================
+
+export interface Assistant24hrReplyResult {
+  replyText: string;
+  identifiedNeed: string;
+  estimatedBudget?: string;
+  estimatedTimeline?: string;
+  shouldHandoverToHuman: boolean;
+}
+
+export async function generate24hrAssistantReply(options: {
+  solverName: string;
+  solverTitle?: string;
+  config: Assistant24hrConfig;
+  conversationHistory: Array<{ senderName: string; text: string; isSelf: boolean }>;
+  latestMessage: string;
+}): Promise<Assistant24hrReplyResult> {
+  try {
+    const res = await fetch('/api/ai/assistant-24hr-reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        solverName: options.solverName,
+        solverTitle: options.solverTitle,
+        tone: options.config.tone,
+        toneDescription: options.config.toneDescription,
+        faqList: options.config.faqList,
+        customPrompts: options.config.customPrompts,
+        requireHumanApprovalForDeals: options.config.requireHumanApprovalForDeals,
+        enableConfidentialityFirewall: options.config.enableConfidentialityFirewall,
+        conversationHistory: options.conversationHistory,
+        latestMessage: options.latestMessage,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.data?.replyText) {
+        return data.data as Assistant24hrReplyResult;
+      }
+    }
+  } catch (err) {
+    console.warn('Network call to assistant-24hr-reply failed, using local firewall engine:', err);
+  }
+
+  // 離線本地智慧回覆（嚴格執行個資與商業機密防火牆）
+  const lowerMsg = (options.latestMessage || '').toLowerCase();
+  let matchedAnswer = '';
+
+  // 嘗試比對 FAQ
+  if (options.config.faqList && options.config.faqList.length > 0) {
+    const foundFaq = options.config.faqList.find((f) => {
+      const qKeywords = f.question.toLowerCase().split(/[？?,\s]+/);
+      return qKeywords.some((k) => k.length >= 2 && lowerMsg.includes(k));
+    });
+    if (foundFaq) {
+      matchedAnswer = foundFaq.answer;
+    }
+  }
+
+  const baseReply = matchedAnswer
+    ? `您好！我是 ${options.solverName} 專屬的 24hr AI 特助。針對您的問題，${matchedAnswer}\n\n正式專案細節與合約確認，${options.solverName} 顧問上線後會親自為您詳細評估。請問您期望的完成時程與專案預算大約是多少呢？`
+    : `您好！我是 ${options.solverName} 專屬的 24hr AI 特助。${options.solverName} 顧問目前處於離線狀態，我已先為您記錄這項需求。\n\n為了讓顧問第一時間為您準備具體方案，能否請您簡短分享希望的交付時程與預算範圍呢？所有正式報價與條款將由顧問本人上線後親自確認。`;
+
+  return {
+    replyText: baseReply,
+    identifiedNeed: '客戶提出新專案諮詢，AI 特助已代客記錄並引導確認時程預算',
+    estimatedBudget: lowerMsg.includes('元') || lowerMsg.includes('萬') ? '初步提及' : '未提及',
+    estimatedTimeline: lowerMsg.includes('天') || lowerMsg.includes('月') || lowerMsg.includes('急') ? '初步提及' : '未提及',
+    shouldHandoverToHuman: lowerMsg.includes('電話') || lowerMsg.includes('立刻') || lowerMsg.includes('急'),
+  };
+}
+
+export interface ExpertAdviceItem {
+  strategyTitle: string;
+  suggestedText: string;
+  psychologicalAnalysis: string;
+}
+
+export interface ExpertChatAdviceResult {
+  adviceList: ExpertAdviceItem[];
+  quickTips: string;
+}
+
+export async function generateExpertChatAdvice(options: {
+  solverName: string;
+  solverTitle?: string;
+  expertQuestion?: string;
+  conversationHistory: Array<{ senderName: string; text: string; isSelf: boolean }>;
+}): Promise<ExpertChatAdviceResult> {
+  try {
+    const res = await fetch('/api/ai/expert-chat-advice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        solverName: options.solverName,
+        solverTitle: options.solverTitle,
+        expertQuestion: options.expertQuestion,
+        conversationHistory: options.conversationHistory,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.data?.adviceList && Array.isArray(data.data.adviceList)) {
+        return data.data as ExpertChatAdviceResult;
+      }
+    }
+  } catch (err) {
+    console.warn('Network call to expert-chat-advice failed, using local advice engine:', err);
+  }
+
+  // Local fallback advice
+  return {
+    adviceList: [
+      {
+        strategyTitle: '專業拆解・引導里程碑',
+        suggestedText: `收到您的需求！針對此專案，我建議將其拆解為兩個階段：第一階段先聚焦核心痛點產出架構與可行性驗證，待驗收確認滿意後再進入細部落地。這樣能確保您的預算花在刀口上，您覺得如何？`,
+        psychologicalAnalysis: '降低客戶一次性付大錢的心理防線，透過分期驗收建立雙方信任感。',
+      },
+      {
+        strategyTitle: '價值錨定・強調保障',
+        suggestedText: `理解您的考量。此專案關鍵在於後續的穩定性與風險控管，我的規劃包含平台完整的款項託管與成果驗收保證，能為您省去後續返工的高額隱性成本。我們可以先就具體規格深入確認。`,
+        psychologicalAnalysis: '將焦點從單純的「價格比價」轉移至「品質與風險保障」，提升專業議價籌碼。',
+      },
+      {
+        strategyTitle: '彈性折衷・範疇調整',
+        suggestedText: `若目前有預算限制，我們可以先保留最關鍵的核心模組，將次要輔助功能列為第二期選配，這樣即可在您目前的預算內準時上線。我有幾種調整方案可以向您說明。`,
+        psychologicalAnalysis: '展現為客戶著想的彈性，在不賤賣自身時薪的前提下達成商業成交。',
+      },
+    ],
+    quickTips: '保持專業自信，不要輕易直接降價；透過調整範圍或分階段交付來維持專業價值。',
   };
 }

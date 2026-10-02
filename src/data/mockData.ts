@@ -1,4 +1,4 @@
-import { Question, Solver, Answer, Transaction, LevelConfig, User, ProblemLevel } from '../types';
+import { Question, Solver, Answer, Transaction, LevelConfig, User, ProblemLevel, DEFAULT_ASSISTANT_24HR_CONFIG } from '../types';
 
 export const LEVEL_CONFIGS: Record<ProblemLevel, LevelConfig> = {
   L0: {
@@ -172,8 +172,14 @@ export const MOCK_USERS: User[] = [
     achievementsCount: 11,
     levelAnswerCounts: { L0: 5, L1: 8, L2: 12, L3: 7, L4: 4 },
     levelQuestionCounts: { L0: 1, L1: 2, L2: 1, L3: 0, L4: 0 },
-    subscriptionTier: 'expert', // 達人方案（6個月$1499，服務費-5%）
+    subscriptionTier: 'authority', // 權威方案（免服務費，享 24hr AI 特助代客服務）
     subscriptionExpiresAt: '2026-10-31',
+    assistant24hrConfig: {
+      ...DEFAULT_ASSISTANT_24HR_CONFIG,
+      isEnabled: true,
+      tone: 'professional',
+      toneDescription: '以專業嚴謹且具同理心的態度接待，釐清客戶時程與需求痛點，引導具體合作方向。',
+    },
     domain: '創新創業',
     skills: ['雙邊市場冷啟動', '商業模式診斷', '分成架構設計', 'O2O 增長飛輪'],
     verifiedExpert: true,

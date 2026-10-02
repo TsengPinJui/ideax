@@ -23,6 +23,7 @@ import { TransactionCertificateModal } from './TransactionCertificateModal';
 import { ConsolidatedStatementModal } from './ConsolidatedStatementModal';
 import { AnnualWithholdingTaxModal } from './AnnualWithholdingTaxModal';
 import { AboutUsView } from './AboutUsView';
+import { AiAssistantSettingsPanel } from './AiAssistantSettingsPanel';
 import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
 import { 
   ContractData, 
@@ -86,6 +87,7 @@ import {
   UploadCloud,
   Calendar,
   Crown,
+  Bot,
   LayoutGrid,
   UserPlus,
   UserCog,
@@ -138,6 +140,7 @@ export type UserDashboardTab =
   | 'proposals'
   | 'transactions'
   | 'subscriptions'
+  | 'ai_assistant_settings'
   | 'settings';
 
 interface UserDashboardModalProps {
@@ -170,6 +173,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setAvailableUsers,
     subscriptionPlans,
     updateSubscriptionPlan,
+    updateAssistant24hrConfig,
     commissionRate,
     setCommissionRate,
     solvers,
@@ -314,7 +318,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       const tier = key as SubscriptionTier;
       acc[tier] = {
         monthlyPrice: subscriptionPlans[tier]?.monthlyPrice || 0,
-        rebatePercent: subscriptionPlans[tier]?.rebatePercent ?? (tier === 'master' ? 12 : tier === 'authority' ? 10 : tier === 'expert' || tier === 'pro' ? 5 : 0),
+        rebatePercent: subscriptionPlans[tier]?.rebatePercent ?? (tier === 'master' ? 10 : tier === 'authority' ? 5 : tier === 'expert' || tier === 'pro' ? 2 : 0),
       };
       return acc;
     }, {} as Record<SubscriptionTier, { monthlyPrice: number; rebatePercent: number }>);
@@ -1695,6 +1699,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
               // AI 智能與會員方案 (自成一區在帳號設定上面)
               { id: 'admin_aicrm', category: 'ai_sub', label: 'AI-CRM與通知設定', icon: Sparkles, badge: 'AI' },
+              { id: 'ai_assistant_settings', category: 'ai_sub', label: '24hr AI特助設定', icon: Bot, badge: 'AI' },
               ...(!isNoPaymentMode ? [
                 { id: 'subscriptions', category: 'ai_sub', label: '會員方案與費率', icon: Crown },
               ] : []),
@@ -1750,6 +1755,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             ...(!isNoPaymentMode ? [
               { id: 'points_receivables', label: '點數 & 收支', icon: Coins },
               { id: 'subscriptions', label: '會員方案', icon: Crown },
+              { id: 'ai_assistant_settings', label: '24hr AI特助', icon: Bot, badge: '大師' },
             ] : []),
             { id: 'proposals', label: '我的案件', icon: Briefcase },
             { id: 'questions_management', label: '問題管理', icon: MessageSquare },
@@ -6854,7 +6860,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </h4>
                   </div>
                   <p className="text-xs text-stone-700 leading-relaxed font-medium">
-                    填寫完畢獲得<strong>一週達人方案體驗（雙 AI 功能超值雙享）</strong>！前 500 名完成者更享有<strong>一週權威方案體驗（完全 0 服務費 + 高價值提案幫你優先推薦）</strong>！
+                    填寫完畢獲得<strong>一週達人方案體驗（抽成僅 8% ＋ 雙 AI 分析工具）</strong>！前 500 名完成者更享有<strong>一週權威方案體驗（抽成降至 5%，比達人方案額外享有：AI 報告無限次下載 ＋ 高賞提案優先推薦）</strong>！
                   </p>
                   {currentUser.surveyData?.completedAt && (
                     <div className="pt-1 flex items-center gap-2 text-xs font-bold text-emerald-800">
@@ -9145,6 +9151,21 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <SubscriptionPlanCard />
             </div>
           )
+        )}
+
+        {/* TAB: 24hr AI客服特助代客服務 (大師方案專屬) */}
+        {activeTab === 'ai_assistant_settings' && (
+          <div className="space-y-6">
+            <AiAssistantSettingsPanel
+              currentUser={currentUser}
+              onUpdateConfig={(newConfig) => {
+                updateAssistant24hrConfig(newConfig);
+                setMsg('✨ 24hr AI特助設定已儲存成功！');
+                setTimeout(() => setMsg(null), 3000);
+              }}
+              onUpgradePlan={() => setActiveTab('subscriptions')}
+            />
+          </div>
         )}
 
         {/* 管理員專用：案件管理 */}

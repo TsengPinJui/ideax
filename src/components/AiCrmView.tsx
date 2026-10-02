@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { getAiCrmLeadsForSolver, getAiCrmPushesForSolver, getCurrentTimeSlotInfo } from '../services/aiService';
 import { AiCrmLead, AiCrmPushNotification } from '../types';
+import { AiAssistantSettingsPanel } from './AiAssistantSettingsPanel';
 import {
   Crown,
   Sparkles,
@@ -30,6 +31,7 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  Bot,
 } from 'lucide-react';
 
 interface AiCrmViewProps {
@@ -41,15 +43,20 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
   onBack,
   onOpenDirectChat,
 }) => {
-  const { currentUser, subscribePlan, sendMessage, questions, startDirectChat, aiCrmConfig } = useApp();
+  const { currentUser, subscribePlan, sendMessage, questions, startDirectChat, aiCrmConfig, updateAssistant24hrConfig } = useApp();
 
   const userTier = currentUser?.subscriptionTier || 'free';
   const isAdmin = currentUser?.role === 'admin';
   const isMaster = userTier === 'master' || isAdmin;
+  const isAuthority = userTier === 'authority';
+  const isAuthorityOrAbove = isMaster || isAuthority || isAdmin;
 
-  // AI-CRM 系統先不開放非大師級體驗；僅大師級用戶與管理員具備完整存取權限
-  const [demoMode, setDemoMode] = useState<boolean>(isMaster || isAdmin);
-  const [activeTab, setActiveTab] = useState<'leads' | 'broadcast' | 'analytics'>('leads');
+  // 權威方案以上與管理員具備完整存取權限
+  const [demoMode, setDemoMode] = useState<boolean>(isAuthorityOrAbove);
+  const [activeTab, setActiveTab] = useState<'leads' | 'broadcast' | 'assistant' | 'analytics'>(() => {
+    if (isAuthority && !isMaster && !isAdmin) return 'broadcast';
+    return 'leads';
+  });
 
   // Leads state derived dynamically from questions
   const [leads, setLeads] = useState<AiCrmLead[]>(() =>
@@ -179,7 +186,15 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     const res = subscribePlan('master', 'monthly');
     if (res.success) {
       setDemoMode(true);
-      showToast('恭喜！您已成功升級「大師方案」，AI-CRM 系統已全面解鎖！');
+      showToast('恭喜！您已成功升級「大師方案」（$1,490/月，0% 服務費），24hr AI客服特助與 AI-CRM 全面解鎖！');
+    }
+  };
+
+  const handleUpgradeAuthority = () => {
+    const res = subscribePlan('authority', 'monthly');
+    if (res.success) {
+      setDemoMode(true);
+      showToast('恭喜！您已成功升級「權威方案」（$599/月，5% 服務費），高賞提案優先推薦已解鎖！');
     }
   };
 
@@ -352,7 +367,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-stone-950 font-black text-sm shadow-md transition-all cursor-pointer flex items-center gap-2"
             >
               <Crown className="w-4 h-4 fill-stone-950" />
-              <span>立即升級大師方案 ($3,990/月，實收 102%)</span>
+              <span>立即升級大師方案 ($1,490/月，0% 服務費)</span>
             </button>
           </div>
         </div>
@@ -387,7 +402,26 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               }`}
             >
               <Radio className="w-4 h-4 text-amber-600" />
-              <span>系統主動推播擴散</span>
+              <span>專家方案主動推播</span>
+              <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 text-[10px] font-black border border-purple-200">
+                權威以上
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('assistant')}
+              className={`pb-3.5 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+                activeTab === 'assistant'
+                  ? 'border-amber-500 text-stone-950 font-black'
+                  : 'border-transparent text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              <Bot className="w-4 h-4 text-amber-600" />
+              <span>24hr AI客服特助</span>
+              <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-stone-950 text-[10px] font-black border border-amber-300">
+                大師專屬
+              </span>
             </button>
 
             <button
@@ -927,6 +961,18 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* TAB 4: 24HR AI ASSISTANT SETTINGS */}
+            {activeTab === 'assistant' && (
+              <AiAssistantSettingsPanel
+                currentUser={currentUser}
+                onUpdateConfig={(newConfig) => {
+                  updateAssistant24hrConfig(newConfig);
+                  showToast('✨ 24hr AI特助代客服務設定已成功儲存並同步至雲端！');
+                }}
+                onUpgradePlan={handleUpgradeAuthority}
+              />
             )}
           </div>
 

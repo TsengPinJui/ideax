@@ -22,6 +22,7 @@ import {
   ChatUserCard,
   SearchMode,
   DeviceAccount,
+  Assistant24hrConfig,
 } from '../types';
 import {
   MOCK_QUESTIONS,
@@ -43,7 +44,7 @@ import {
   isMockConversationId,
 } from '../data/mockData';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
-import { analyzeQuestionWithAI, AIAnalysisResult } from '../services/aiService';
+import { analyzeQuestionWithAI, AIAnalysisResult, generate24hrAssistantReply } from '../services/aiService';
 import { logoutFromFirebase } from '../services/firebaseAuth';
 import {
   testFirestoreConnection,
@@ -269,6 +270,9 @@ interface AppContextType {
   // AI-CRM System Config (Admin)
   aiCrmConfig: AiCrmSystemConfig;
   updateAiCrmConfig: (config: Partial<AiCrmSystemConfig>) => void;
+
+  // 24hr AI特助代客服務 (權威方案以上)
+  updateAssistant24hrConfig: (config: Assistant24hrConfig) => void;
 
   // Admin Account & User Management
   blockUser: (userId: string, duration: number | 'permanent', reason: string) => { success: boolean; message: string };
@@ -1139,6 +1143,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  // 24hr AI特助代客服務設定更新 (權威方案以上)
+  const updateAssistant24hrConfig = (newConfig: Assistant24hrConfig) => {
+    setCurrentUser((prev) => {
+      const updated = {
+        ...prev,
+        assistant24hrConfig: newConfig,
+      };
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+      syncUserToFirestore(updated);
+      return updated;
+    });
+    setAvailableUsers((prev) =>
+      prev.map((u) => (u.id === currentUser.id ? { ...u, assistant24hrConfig: newConfig } : u))
+    );
+  };
+
   // About & Terms Modal State
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [aboutModalInitialSection, setAboutModalInitialSection] = useState<AboutSection>('list');
@@ -1577,7 +1601,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [subscriptionPlans, setSubscriptionPlans] = useState<Record<SubscriptionTier, SubscriptionPlan>>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}plans`);
-    return saved ? JSON.parse(saved) : SUBSCRIPTION_PLANS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (
+          parsed.authority?.monthlyPrice === 599 &&
+          parsed.authority?.platformFeeRate === 0.05 &&
+          parsed.master?.monthlyPrice === 1490 &&
+          parsed.master?.platformFeeRate === 0.00
+        ) {
+          return parsed;
+        }
+      } catch {}
+    }
+    return SUBSCRIPTION_PLANS;
   });
 
   const updateSubscriptionPlan = (tier: SubscriptionTier, monthlyPrice: number, rebatePercent: number, customBaseRate?: number) => {
@@ -1624,12 +1661,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           billingCycles[1] = { ...billingCycles[1], price: monthlyPrice * 10, label: `年繳 NT$ ${monthlyPrice * 10}/年` };
         }
       } else if (tier === 'master') {
-        pricingText = `$${monthlyPrice}/月 或 $${monthlyPrice * 11}/年`;
+        pricingText = `$${monthlyPrice}/月 或 $${monthlyPrice * 10}/年`;
         if (billingCycles.length > 0) {
           billingCycles[0] = { ...billingCycles[0], price: monthlyPrice, label: `月繳 NT$ ${monthlyPrice}/月` };
         }
         if (billingCycles.length > 1) {
-          billingCycles[1] = { ...billingCycles[1], price: monthlyPrice * 11, label: `年繳 NT$ ${monthlyPrice * 11}/年` };
+          billingCycles[1] = { ...billingCycles[1], price: monthlyPrice * 10, label: `年繳 NT$ ${monthlyPrice * 10}/年` };
         }
       }
 
@@ -4370,6 +4407,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return conv;
       })
     );
+
+    // 24hr AI特助代客服務：若對方為離線專家（權威方案以上且開啟特助代管）
+    const targetConv = conversations.find((c) => c.id === conversationId);
+    if (targetConv && !targetConv.isGroup && text.trim().length > 0) {
+      const recipientId = targetConv.participantIds.find((id) => id !== currentUser.id);
+      const recipientUser = availableUsers.find((u) => u.id === recipientId);
+      const assistantConfig = recipientUser?.assistant24hrConfig;
+
+      if (recipientUser && assistantConfig && assistantConfig.isEnabled) {
+        // 防惡意消耗 Tokens 防火牆：檢核單日單對話上限
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayCount = (targetConv.messages || []).filter(
+          (m) =>
+            m.senderId === recipientUser.id &&
+            (m.isAiAssistant || m.senderName.includes('AI特助')) &&
+            m.createdAt.startsWith(todayStr)
+        ).length;
+
+        const dailyLimit = assistantConfig.dailyMessageLimitPerChat || 15;
+        if (todayCount < dailyLimit) {
+          // 模擬專家離線召喚時間或即時代客應答 (1.8 秒延遲)
+          setTimeout(async () => {
+            try {
+              const res = await generate24hrAssistantReply({
+                solverName: recipientUser.name,
+                solverTitle: recipientUser.title,
+                config: assistantConfig,
+                conversationHistory: [
+                  ...targetConv.messages.slice(-5).map((m) => ({
+                    senderName: m.senderName,
+                    text: m.text,
+                    isSelf: m.senderId === recipientUser.id,
+                  })),
+                  { senderName: currentUser.name, text: text.trim(), isSelf: false },
+                ],
+                latestMessage: text.trim(),
+              });
+
+              if (res && res.replyText) {
+                const assistantMsg: ChatMessage = {
+                  id: `msg-assistant-${Date.now()}`,
+                  senderId: recipientUser.id,
+                  senderName: `${recipientUser.name} 的 24hr AI 特助`,
+                  senderAvatar: recipientUser.avatar,
+                  text: res.replyText,
+                  createdAt: new Date().toISOString(),
+                  isAiAssistant: true,
+                };
+
+                setConversations((inner) =>
+                  inner.map((c) => {
+                    if (c.id === conversationId) {
+                      return {
+                        ...c,
+                        lastMessage: `[24hr AI特助代答] ${res.replyText.slice(0, 30)}...`,
+                        lastMessageTime: '剛剛',
+                        messages: [...c.messages, assistantMsg],
+                      };
+                    }
+                    return c;
+                  })
+                );
+              }
+            } catch (err) {
+              console.warn('AI Assistant offline reply error:', err);
+            }
+          }, 1800);
+        }
+      }
+    }
   };
 
   // Action: Accept and pay for custom offer directly in chat
@@ -5337,6 +5444,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatePublicMetricsConfig,
         aiCrmConfig,
         updateAiCrmConfig,
+        updateAssistant24hrConfig,
         blockUser,
         unblockUser,
         adminUpdateUserVerification,
