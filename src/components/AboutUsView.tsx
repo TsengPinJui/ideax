@@ -312,8 +312,8 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
     {
       id: 'other_3',
       num: '04',
-      title: '會員訂閱方案與服務費減免',
-      summary: '達人方案（5% 半價）、權威方案（0% 免服務費）與大師方案（最高實收 102%）。',
+      title: '會員訂閱方案與費率減免',
+      summary: '達人方案（8% 費率）、權威方案（5% 費率＋高賞提案優先推薦）與大師方案（0% 免服務費）。',
       badge: '會員權益',
     },
     {
@@ -344,7 +344,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
     },
     {
       q: '平台服務費抽成是多少？如何享有服務費減免？',
-      a: '一般用戶解答收益扣除標準平台服務費；若您訂閱「達人方案」享有服務費半價 5%（實收 95%）、「權威方案」享有 0% 免服務費（100% 全額入帳）、「大師方案」更可獲得 102%（免服務費 ＋ 平台額外加碼 2% BONUS）。',
+      a: '一般用戶解答收益扣除標準平台服務費（10%）；若您訂閱「達人方案」享有費率 8%（實收 92%）、「權威方案」享有費率 5%（實收 95% ＋ 高賞提案優先推薦）、「大師方案」更可獲得 0% 免服務費（100% 全額入帳 ＋ 24hr AI客服特助與 AI-CRM）。',
     },
     {
       q: '方案採納後的著作權與商業使用授權如何歸屬？',
@@ -1361,10 +1361,10 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                         說明三 • 會員方案
                       </span>
                       <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
-                        會員訂閱方案與服務費減免
+                        會員訂閱方案與費率減免
                       </h3>
                     </div>
-                    <span className="text-xs text-stone-900 font-bold">最高實收 102%</span>
+                    <span className="text-xs text-stone-900 font-bold">最高 100% 全額入帳</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -1372,33 +1372,33 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-stone-900 text-sm">達人方案</span>
                         <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                          半價 5%
+                          費率 8%
                         </span>
                       </div>
                       <p className="font-mono font-bold text-stone-900">半年 $1,499</p>
-                      <p className="text-stone-500 text-[11px]">抽取 5% 服務費，實收 95%。</p>
+                      <p className="text-stone-500 text-[11px]">費率僅 8%，實收 92%。</p>
                     </div>
 
                     <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-stone-900 text-sm">權威方案</span>
                         <span className="text-[10px] font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
-                          免服務費 0%
+                          費率 5%
                         </span>
                       </div>
-                      <p className="font-mono font-bold text-stone-900">$1,490/月</p>
-                      <p className="text-stone-500 text-[11px]">免服務費，100% 全額入帳。</p>
+                      <p className="font-mono font-bold text-stone-900">$599/月 或 $5,990/年</p>
+                      <p className="text-stone-500 text-[11px]">費率 5%（實收 95%）＋ 高賞提案優先推薦。</p>
                     </div>
 
                     <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-stone-900 text-sm">大師方案</span>
                         <span className="text-[10px] font-bold bg-amber-200 text-stone-900 px-2 py-0.5 rounded-full">
-                          實收 102%
+                          0% 免服務費
                         </span>
                       </div>
-                      <p className="font-mono font-bold text-stone-900">$3,990/月</p>
-                      <p className="text-stone-600 text-[11px]">免服務費 ＋ 平台額外補貼 2% BONUS。</p>
+                      <p className="font-mono font-bold text-stone-900">$1,490/月 或 $14,900/年</p>
+                      <p className="text-stone-600 text-[11px]">0% 免服務費，100% 全額入帳 ＋ 24hr AI客服特助與 AI-CRM。</p>
                     </div>
                   </div>
                 </div>

@@ -555,7 +555,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                       ) : isPro ? (
                         <div className="space-y-0.5">
                           <div className="font-bold text-blue-950">
-                            服務費 <strong className="text-blue-950 font-black">8%</strong>
+                            <strong className="text-blue-950 font-black text-base font-mono">8%</strong>
                           </div>
                           <span className="inline-block font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 text-[11px] shadow-2xs">
                             僅收 8%
@@ -566,8 +566,8 @@ export const SubscriptionPlanCard: React.FC = () => {
                           <div className="font-bold text-purple-950">
                             服務費 <strong className="text-purple-950 font-black">5%</strong>
                           </div>
-                          <span className="inline-block font-black text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-300 text-[11px] shadow-2xs">
-                            半價 5%
+                          <span className="inline-block font-black text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-300 text-[11px] shadow-2xs" title="比達人方案再降 3% 服務費">
+                            比達人更省 3%（僅收 5%）
                           </span>
                         </div>
                       ) : isMaster ? (
@@ -657,11 +657,15 @@ export const SubscriptionPlanCard: React.FC = () => {
                           plan.id === 'master'
                             ? 'text-amber-950 bg-amber-200/80'
                             : plan.id === 'authority'
-                            ? 'text-purple-900 bg-purple-100/70'
+                            ? 'text-purple-900 bg-purple-100/70 font-black'
                             : 'text-blue-900 bg-blue-100/70'
                         }`}
                       >
-                        {isPro ? '免費查看 50 次' : '免費無限次查看及下載報告'}
+                        {isPro
+                          ? '免費查看 50 次'
+                          : plan.id === 'authority'
+                          ? '✨ 比達人升級無限次＋下載報告'
+                          : '免費無限次查看及下載報告'}
                       </span>
                     );
                   },
@@ -703,10 +707,10 @@ export const SubscriptionPlanCard: React.FC = () => {
                         className={`inline-block font-bold px-2 py-0.5 rounded-md text-[11px] ${
                           plan.id === 'master'
                             ? 'text-amber-950 bg-amber-200/80'
-                            : 'text-purple-900 bg-purple-100/70'
+                            : 'text-purple-900 bg-purple-100/70 font-black'
                         }`}
                       >
-                        優先推薦曝光
+                        {plan.id === 'authority' ? '✨ 比達人新增優先推薦曝光' : '優先推薦曝光'}
                       </span>
                     );
                   },

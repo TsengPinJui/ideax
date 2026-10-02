@@ -130,9 +130,9 @@ export const MechanismView: React.FC = () => {
     {
       id: 'ch_other_3',
       num: '四',
-      title: '會員訂閱方案與服務費減免（最高實收 102%）',
+      title: '會員訂閱方案與費率減免（最高 100% 全額入帳）',
       summary:
-        '達人方案、權威方案與大師方案之服務費減免優惠，解答者享免服務費甚至額外 2% 平台補貼回饋。',
+        '達人方案（8% 費率）、權威方案（5% 費率＋高賞提案優先推薦）與大師方案（0% 免服務費全額入帳）。',
       badge: '會員與費率',
     },
     {
@@ -871,10 +871,10 @@ export const MechanismView: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-4">
                     <h2 className="text-xl font-black text-stone-900 flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-amber-600" />
-                      <span>新版會員方案（服務費減免與最高實收 102%）</span>
+                      <span>新版會員方案（費率減免與最高 100% 全額入帳）</span>
                     </h2>
                     <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                      服務費直接折抵 • 自動撥款結算
+                      費率直接折抵 • 自動撥款結算
                     </span>
                   </div>
 
@@ -884,14 +884,14 @@ export const MechanismView: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <span className="font-black text-sm text-blue-900">達人方案</span>
                         <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">
-                          半價 5%
+                          費率 8%
                         </span>
                       </div>
                       <p className="font-mono text-blue-950 font-extrabold text-sm">
                         6 個月 $1,499（$249/月）
                       </p>
                       <p className="text-[11px] text-blue-800 leading-relaxed">
-                        服務費直接減半 -5%（僅抽取 5% 服務費，<strong>解答者實收 95%</strong>）。
+                        費率僅 8%（僅收 8% 服務費，<strong>解答者實收 92%</strong>）。
                       </p>
                     </div>
 
@@ -900,14 +900,14 @@ export const MechanismView: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <span className="font-black text-sm text-purple-900">權威方案</span>
                         <span className="text-[10px] font-bold bg-purple-600 text-white px-2 py-0.5 rounded-full">
-                          免服務費 0%
+                          費率 5%
                         </span>
                       </div>
                       <p className="font-mono text-purple-950 font-extrabold text-sm">
-                        $1,490/月 或 $14,900/年
+                        $599/月 或 $5,990/年
                       </p>
                       <p className="text-[11px] text-purple-800 leading-relaxed">
-                        服務費 -10%（<strong>免服務費，解答者 100% 全額入帳</strong>），年繳現省 NT$ 2,980。
+                        費率降至 5%（<strong>解答者實收 95%</strong>），享有無限次 AI 分析報告與<strong>高賞提案優先推薦</strong>。
                       </p>
                     </div>
 
@@ -916,14 +916,14 @@ export const MechanismView: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <span className="font-black text-sm text-stone-950">大師方案</span>
                         <span className="text-[10px] font-black bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 px-2 py-0.5 rounded-full">
-                          實收 102%
+                          0% 免服務費
                         </span>
                       </div>
                       <p className="font-mono text-stone-950 font-extrabold text-sm">
-                        $3,990/月 或 $43,990/年
+                        $1,490/月 或 $14,900/年
                       </p>
                       <p className="text-[11px] text-stone-700 leading-relaxed">
-                        <strong>免服務費 ＋ 平台額外補貼 2% BONUS</strong>（每筆交易實收高達 102%！）。
+                        <strong>0% 免服務費（100% 全額入帳）</strong>，享 24hr AI客服特助 ＋ AI-CRM 客戶關係管理。
                       </p>
                     </div>
                   </div>
