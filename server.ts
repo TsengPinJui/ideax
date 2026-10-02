@@ -1226,6 +1226,84 @@ ${historyText || '（剛開始交流）'}
   });
 });
 
+// AI Customer Support Agent Endpoint
+app.post('/api/ai/customer-support-chat', async (req: Request, res: Response) => {
+  const { message, history, userContext } = req.body;
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+
+  const prompt = `你現在是「IdeaX」創新創業與專業問題媒合平台的官方 AI 智能客服助理。
+你的任務：以親切、專業、結構化（繁體中文台灣語境）回答用戶問題，並協助解答平台使用、點數收費、提案成案規則、爭議仲裁與個人帳號諮詢。
+
+【當前用戶資訊（若未登入則為訪客）】
+${userContext ? JSON.stringify(userContext, null, 2) : '訪客（未登入）'}
+
+【對話歷史上下文】
+${(history || []).map((h: any) => `${h.role === 'user' ? '用戶' : '客服'}: ${h.text}`).join('\n')}
+
+【用戶最新發問】
+${message}
+
+【嚴格規則】
+1. 若用戶詢問自身點數、帳戶、交易或成案，請依據【當前用戶資訊】精準說明，嚴禁憑空捏造。
+2. 若涉及退款爭議、受騙檢舉或嚴重抱怨，請安撫用戶並說明平台爭議仲裁保障與工單流程。
+3. 輸出格式必須為 JSON，包含：
+   - reply: 回覆給用戶的繁體中文 Markdown 內容，排版清晰優雅
+   - quickOptions: 2~4 個建議用戶下一步點擊的快捷按鈕文字
+   - extractedFaqCandidate: 若用戶詢問具備通用價值的常見問題，請提煉出 { question, answer, category }，否則填 null
+`;
+
+  try {
+    const ai = getGeminiClient();
+    if (ai) {
+      for (const model of CANDIDATE_MODELS) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  reply: { type: Type.STRING },
+                  quickOptions: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  extractedFaqCandidate: {
+                    type: Type.OBJECT,
+                    properties: {
+                      question: { type: Type.STRING },
+                      answer: { type: Type.STRING },
+                      category: { type: Type.STRING },
+                    },
+                  },
+                },
+                required: ['reply'],
+              },
+            },
+          });
+
+          if (response && response.text) {
+            const parsed = JSON.parse(response.text.trim());
+            return res.json(parsed);
+          }
+        } catch (e) {
+          // try next model
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Gemini CS chat error:', err);
+  }
+
+  // Fallback response if AI call failed
+  return res.json({
+    reply: `感謝您的提問！IdeaX 平台提供專業問題懸賞發布、專家落地方案媒合與第三方金流託管保護。\n\n若您需要進一步查詢個人帳號數據或開立專屬工單，請隨時點選下方快捷選項。`,
+    quickOptions: ['查詢點數餘額', '查詢交易紀錄', '常見問題 FAQ', '轉交專人工單'],
+    extractedFaqCandidate: null,
+  });
+});
+
 // Vite Middleware & Production static serve
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Question, User } from '../types';
+import { Question, User, CustomerSupportConversation, FaqItem } from '../types';
 import {
   Mail,
   Scale,
@@ -18,11 +18,23 @@ import {
   ArrowRight,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   X,
   Plus,
   RefreshCw,
   Coins,
+  Bot,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
+import {
+  getStoredConversations,
+  getStoredTickets,
+  approveFaqCandidate,
+  getPlatformFaqs,
+} from '../services/customerSupportService';
+import { CopyableUserId } from './CopyableUserId';
 
 interface AdminMailDisputesTabProps {
   onOpenQuestion?: (questionId: string) => void;
@@ -40,10 +52,20 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     markDisputeResolved,
   } = useApp();
 
-  const [activeSubTab, setActiveSubTab] = useState<'disputes' | 'reports'>('disputes');
+  const [activeSubTab, setActiveSubTab] = useState<'disputes' | 'reports' | 'ai_logs'>('disputes');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'resolved'>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // AI 客服紀錄與 FAQ 萃取狀態
+  const [csConversations, setCsConversations] = useState<CustomerSupportConversation[]>([]);
+  const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
+  const [aiFilterStatus, setAiFilterStatus] = useState<'all' | 'escalated' | 'resolved'>('all');
+  const [csSearch, setCsSearch] = useState('');
+
+  useEffect(() => {
+    setCsConversations(getStoredConversations());
+  }, [activeSubTab]);
 
   // 爭議裁決確認視窗（顯示系統即將依照裁定結果自動發布的罐頭式官方文字）
   const [rulingModal, setRulingModal] = useState<{
@@ -223,6 +245,19 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           <AlertTriangle className="w-3.5 h-3.5" />
           <span>檢舉反饋 (0)</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('ai_logs')}
+          className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+            activeSubTab === 'ai_logs'
+              ? 'bg-stone-900 text-white font-black'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5 text-amber-500" />
+          <span>AI 客服對話回顧與 FAQ 審核 ({csConversations.length})</span>
+        </button>
       </div>
 
       {/* TAB 1: DISPUTES & APPEALS */}
@@ -376,6 +411,259 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
       {activeSubTab === 'reports' && (
         <div className="p-8 text-center text-xs text-stone-400 bg-white rounded-2xl border border-stone-200">
           目前沒有待處理的內容檢舉或違規舉報，全站社群互動狀態優良。
+        </div>
+      )}
+
+      {/* TAB 3: AI CUSTOMER SUPPORT AUDIT & FAQ MINING */}
+      {activeSubTab === 'ai_logs' && (
+        <div className="space-y-4">
+          {/* Top Metrics Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="p-3 rounded-2xl bg-white border border-stone-200 shadow-2xs">
+              <span className="text-[10px] text-stone-400 font-bold block">累計客服對話</span>
+              <span className="text-lg font-black text-stone-900 font-mono mt-0.5 block">
+                {csConversations.length} 次
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-white border border-stone-200 shadow-2xs">
+              <span className="text-[10px] text-stone-400 font-bold block">已升級轉工單</span>
+              <span className="text-lg font-black text-rose-600 font-mono mt-0.5 block">
+                {csConversations.filter((c) => c.status === 'escalated' || c.ticketId).length} 件
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-white border border-stone-200 shadow-2xs">
+              <span className="text-[10px] text-stone-400 font-bold block">滿意度好評率</span>
+              <span className="text-lg font-black text-emerald-600 font-mono mt-0.5 block">
+                {(() => {
+                  const positive = csConversations.filter((c) => c.satisfaction === 'positive').length;
+                  const total = csConversations.filter((c) => c.satisfaction).length;
+                  return total > 0 ? `${Math.round((positive / total) * 100)}%` : '100%';
+                })()}
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 shadow-2xs">
+              <span className="text-[10px] text-amber-800 font-bold block">AI 萃取待審 FAQ</span>
+              <span className="text-lg font-black text-amber-950 font-mono mt-0.5 block">
+                {csConversations.filter((c) => c.extractedFaqCandidate).length} 條
+              </span>
+            </div>
+          </div>
+
+          {/* AI Extracted FAQ Candidate Section */}
+          {csConversations.some((c) => c.extractedFaqCandidate) && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-white border border-amber-300 space-y-2.5 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-black text-amber-950">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>AI 自動從客服對話中提煉之高頻 FAQ 候選建議</span>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 border border-amber-300">
+                  管理員可一鍵採納
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {csConversations
+                  .filter((c) => c.extractedFaqCandidate)
+                  .map((conv) => {
+                    const cand = conv.extractedFaqCandidate!;
+                    return (
+                      <div
+                        key={conv.id}
+                        className="p-3 rounded-xl bg-white border border-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-stone-900 font-sans">{cand.question}</span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
+                              {cand.category}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-stone-600 leading-relaxed">{cand.answer}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            approveFaqCandidate(cand);
+                            showToast(`已成功將「${cand.question}」採納發布至前台官方 FAQ 庫！`);
+                          }}
+                          className="shrink-0 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>一鍵採納加入 FAQ</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Filter Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              {[
+                { id: 'all', label: '全部對話' },
+                { id: 'resolved', label: '已由AI解答' },
+                { id: 'escalated', label: '已開立工單' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setAiFilterStatus(f.id as any)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                    aiFilterStatus === f.id
+                      ? 'bg-stone-900 text-white'
+                      : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={csSearch}
+                onChange={(e) => setCsSearch(e.target.value)}
+                placeholder="搜尋發問用戶或關鍵字..."
+                className="pl-8 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-amber-500 outline-none w-full sm:w-60"
+              />
+            </div>
+          </div>
+
+          {/* Conversations Audit List */}
+          <div className="space-y-2.5">
+            {csConversations.length === 0 ? (
+              <div className="p-8 text-center text-xs text-stone-400 bg-white rounded-2xl border border-stone-200">
+                目前尚無 AI 客服會話紀錄。當用戶在前台開啟客服助理交談時，對話日誌將即時同步於此供管理員審閱。
+              </div>
+            ) : (
+              csConversations
+                .filter((conv) => {
+                  if (aiFilterStatus === 'resolved' && conv.status !== 'resolved') return false;
+                  if (aiFilterStatus === 'escalated' && conv.status !== 'escalated') return false;
+                  if (csSearch.trim()) {
+                    const q = csSearch.toLowerCase();
+                    return (
+                      conv.userName.toLowerCase().includes(q) ||
+                      conv.userId.toLowerCase().includes(q) ||
+                      conv.summary.toLowerCase().includes(q)
+                    );
+                  }
+                  return true;
+                })
+                .map((conv) => {
+                  const isExpanded = expandedConvId === conv.id;
+                  return (
+                    <div
+                      key={conv.id}
+                      className="p-3.5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={conv.userAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
+                            alt={conv.userName}
+                            className="w-8 h-8 rounded-xl object-cover ring-1 ring-stone-200 shrink-0"
+                          />
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs text-stone-900">{conv.userName}</span>
+                              <CopyableUserId userId={conv.userId} prefix="UID: " className="text-[9.5px] py-0 px-1 bg-stone-100" />
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
+                                {conv.userRole}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-stone-500 mt-0.5 line-clamp-1">
+                              問題焦點：{conv.summary || '用戶平台諮詢'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                          {conv.status === 'escalated' ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 font-mono">
+                              <span>已立案工單</span>
+                              {conv.ticketId && <span>#{conv.ticketId}</span>}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>已由AI解答</span>
+                            </span>
+                          )}
+
+                          {conv.satisfaction && (
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+                                conv.satisfaction === 'positive'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
+                              }`}
+                            >
+                              {conv.satisfaction === 'positive' ? (
+                                <>
+                                  <ThumbsUp className="w-2.5 h-2.5" />
+                                  <span>好評</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ThumbsDown className="w-2.5 h-2.5" />
+                                  <span>需改進</span>
+                                </>
+                              )}
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setExpandedConvId(isExpanded ? null : conv.id)}
+                            className="px-2 py-1 rounded-lg border border-stone-200 hover:bg-stone-50 text-xs font-bold text-stone-700 flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <span>{isExpanded ? '收合' : '回顧完整對話'}</span>
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expanded Transcript View */}
+                      {isExpanded && (
+                        <div className="pt-2 border-t border-stone-100 space-y-2 mt-2 bg-stone-50/70 p-3 rounded-xl max-h-80 overflow-y-auto">
+                          <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
+                            對話歷程逐字稿紀錄 (共 {conv.messages.length} 則)
+                          </div>
+                          {conv.messages.map((m, mIdx) => (
+                            <div
+                              key={mIdx}
+                              className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}
+                            >
+                              <div
+                                className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                                  m.role === 'user'
+                                    ? 'bg-stone-900 text-white'
+                                    : 'bg-white border border-stone-200 text-stone-800'
+                                }`}
+                              >
+                                {m.toolUsed && (
+                                  <div className="text-[9.5px] font-mono text-amber-700 font-bold mb-1">
+                                    [調用工具: {m.toolUsed}]
+                                  </div>
+                                )}
+                                <div className="whitespace-pre-line">{m.text}</div>
+                              </div>
+                              <span className="text-[9.5px] text-stone-400 mt-0.5 px-1">{m.timestamp}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+            )}
+          </div>
         </div>
       )}
 

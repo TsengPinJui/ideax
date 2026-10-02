@@ -1246,3 +1246,72 @@ export interface PublicMetricsConfig {
   showTotalGMV?: boolean;          // 平台總交易額
 }
 
+// =========================================================================
+// AI 客服與智慧工單 / FAQ 體系 (AI Customer Support & FAQ Suite)
+// =========================================================================
+
+export interface CustomerSupportMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  timestamp: string;
+  toolUsed?: string;
+  dataCard?: {
+    type: 'balance' | 'orders' | 'proposals' | 'ticket' | 'faq';
+    title: string;
+    details: Array<{ label: string; value: string }>;
+  };
+  quickOptions?: string[];
+  isEscalated?: boolean;
+  ticketId?: string;
+}
+
+export interface CustomerSupportConversation {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  userRole: string;
+  startedAt: string;
+  endedAt?: string;
+  summary: string;
+  category: 'account' | 'billing' | 'matching' | 'dispute' | 'general';
+  messages: CustomerSupportMessage[];
+  status: 'resolved' | 'escalated' | 'active';
+  satisfaction?: 'positive' | 'negative';
+  ticketId?: string;
+  extractedFaqCandidate?: {
+    question: string;
+    answer: string;
+    category: string;
+  };
+}
+
+export interface CustomerSupportTicket {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  title: string;
+  category: 'delivery_dispute' | 'payment' | 'payout' | 'account' | 'feature' | 'bug' | 'suggestion' | 'other';
+  description: string;
+  priority: 'normal' | 'urgent';
+  status: 'pending' | 'in_progress' | 'resolved';
+  createdAt: string;
+  resolvedAt?: string;
+  resolutionNote?: string;
+  relatedOrderId?: string;
+  conversationId?: string;
+}
+
+export interface FaqItem {
+  id: string;
+  category: string;
+  question: string;
+  answer: string;
+  tags?: string[];
+  helpfulCount?: number;
+  source?: 'system' | 'auto_mined';
+  recommendedByAdmin?: boolean;
+}
+
