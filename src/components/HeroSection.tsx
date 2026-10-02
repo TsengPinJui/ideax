@@ -27,7 +27,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onExploreClick,
   onLeaderboardClick,
 }) => {
-  const { questions, answers, solvers, transactions, availableUsers, publicMetricsConfig, isNoPaymentMode, isDemoMode } = useApp();
+  const { questions, answers, solvers, transactions, conversations, availableUsers, publicMetricsConfig, isNoPaymentMode, isDemoMode } = useApp();
 
   // 1. 總瀏覽量
   const totalViewsFormatted = useMemo(() => {
@@ -80,12 +80,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     return total >= 1000 ? `${total.toLocaleString()}+` : `${total}`;
   }, [questions, answers]);
 
-  // 8. 已成交方案
+  // 8. 已成交方案（全站問題提案獲採納成案數 + 聊天室自訂提案成案數）
   const totalDealsFormatted = useMemo(() => {
     const solvedQuestions = (questions || []).filter((q) => q.status === 'solved' || q.status === 'closed').length;
-    const completedDeals = (transactions || []).filter((t) => t.status === '已完成' || t.payoutStatus === '已完成').length;
-    return `${Math.max(solvedQuestions, completedDeals)}`;
-  }, [questions, transactions]);
+    const acceptedAnswers = (answers || []).filter((a) => a.isAccepted).length;
+    const questionDeals = Math.max(solvedQuestions, acceptedAnswers);
+    const chatDeals = (conversations || []).reduce((acc, conv) => {
+      const acceptedOffers = (conv.messages || []).filter(
+        (m) => m.offer && (m.offer.status === 'accepted' || m.offer.status === 'completed')
+      ).length;
+      return acc + acceptedOffers;
+    }, 0);
+    const total = questionDeals + chatDeals;
+    return `${total}`;
+  }, [questions, answers, conversations]);
 
   // 9. 累計懸賞金額 (正式模式與無金流模式歸零；測試環境依據發出之懸賞與成交方案計算)
   const totalBountyFormatted = useMemo(() => {

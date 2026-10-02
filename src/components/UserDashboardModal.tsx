@@ -435,11 +435,129 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     return (questions || []).filter((q) => q.status === 'solved' || q.status === 'closed').length;
   }, [questions]);
 
-  // 全站總已成交方案數（會員方案成交筆數 + 案件結案媒合總數）
+  // 全站已成交方案總數（問題提案獲採納成案數 + 聊天室自訂提案成案數）
   const adminTotalDealsCount = useMemo(() => {
-    const planDeals = adminPlanStats.reduce((sum, p) => sum + (p.dealsCount || 0), 0);
-    return Math.max(planDeals + adminCompletedCasesCount, adminCompletedSubscriptionDealsCount + adminCompletedCasesCount);
-  }, [adminPlanStats, adminCompletedCasesCount, adminCompletedSubscriptionDealsCount]);
+    // 1. 問題下獲採納之提案數
+    const acceptedQuestionProposals = (answers || []).filter((a) => a.isAccepted).length;
+    const questionDeals = Math.max(acceptedQuestionProposals, adminCompletedCasesCount);
+
+    // 2. 聊天室私聊自訂提案成案數 (accepted / completed)
+    const chatDeals = (conversations || []).reduce((acc, conv) => {
+      const acceptedOffers = (conv.messages || []).filter(
+        (m) => m.offer && (m.offer.status === 'accepted' || m.offer.status === 'completed')
+      ).length;
+      return acc + acceptedOffers;
+    }, 0);
+
+    return questionDeals + chatDeals;
+  }, [answers, adminCompletedCasesCount, conversations]);
+
+  // 全站真實平均回覆速度（依據題目發布至首筆解答之真實時間差統計）
+  const adminAvgResponseSpeed = useMemo(() => {
+    const validDiffs: number[] = [];
+
+    (questions || []).forEach((q) => {
+      const qTime = new Date(q.createdAt).getTime();
+      if (isNaN(qTime)) return;
+
+      const qAnswers = (answers || []).filter((a) => a.questionId === q.id);
+      if (qAnswers.length > 0) {
+        let earliest = Infinity;
+        qAnswers.forEach((a) => {
+          const aTime = new Date(a.createdAt).getTime();
+          if (!isNaN(aTime) && aTime >= qTime) {
+            if (aTime < earliest) earliest = aTime;
+          }
+        });
+
+        if (earliest !== Infinity) {
+          const diffHours = (earliest - qTime) / (1000 * 60 * 60);
+          if (diffHours >= 0) {
+            validDiffs.push(diffHours);
+          }
+        }
+      }
+    });
+
+    if (validDiffs.length === 0) {
+      return {
+        value: '0',
+        unit: '小時',
+        badge: '即時響應',
+        desc: '全體專家諮詢方案平均首覆工時',
+      };
+    }
+
+    const avgHours = validDiffs.reduce((a, b) => a + b, 0) / validDiffs.length;
+    if (avgHours < 1) {
+      const mins = Math.max(1, Math.round(avgHours * 60));
+      return {
+        value: `${mins}`,
+        unit: '分鐘',
+        badge: '極速首覆',
+        desc: `平均 ${mins} 分鐘內獲首筆專家解答`,
+      };
+    } else if (avgHours < 24) {
+      const hoursStr = avgHours.toFixed(1);
+      return {
+        value: hoursStr,
+        unit: '小時',
+        badge: '時效指標',
+        desc: `全體專家諮詢方案平均 ${hoursStr} 小時首覆`,
+      };
+    } else {
+      const daysStr = (avgHours / 24).toFixed(1);
+      return {
+        value: daysStr,
+        unit: '天',
+        badge: '深度研擬',
+        desc: `全體專家諮詢方案平均 ${daysStr} 天首覆`,
+      };
+    }
+  }, [questions, answers]);
+
+  // 全站真實滿意度（依據方案評分與專家星級真實綜合計算）
+  const adminSatisfactionStats = useMemo(() => {
+    const allRatings: number[] = [];
+
+    // 1. 已評分之方案
+    (answers || []).forEach((a) => {
+      if (typeof a.rating === 'number' && a.rating > 0) {
+        allRatings.push(a.rating);
+      }
+    });
+
+    // 2. 專家個人真實評分
+    (solvers || []).forEach((s) => {
+      if (typeof s.rating === 'number' && s.rating > 0) {
+        const count = Math.min(Math.max(s.reviewCount || 1, 1), 10);
+        for (let i = 0; i < count; i++) {
+          allRatings.push(s.rating);
+        }
+      }
+    });
+
+    if (allRatings.length === 0) {
+      return {
+        percentage: 100,
+        percentageFormatted: '100',
+        starsFormatted: '5.0',
+        badge: '全新上線',
+        desc: '全站尚無負評紀錄',
+      };
+    }
+
+    const avgRating = allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length;
+    const percentage = Math.min(100, Math.max(0, (avgRating / 5) * 100));
+
+    return {
+      percentage,
+      percentageFormatted: percentage.toFixed(1),
+      starsFormatted: avgRating.toFixed(1),
+      badge: `${avgRating.toFixed(1)} ★ 好評`,
+      desc: `全站 ${allRatings.length} 筆交付評價與專家口碑`,
+    };
+  }, [answers, solvers]);
 
   // 全站總瀏覽量
   const totalViewsCount = useMemo(() => {
@@ -2817,7 +2935,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </span>
                     </div>
                     <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
-                      <span className="truncate">會員訂閱與案件媒合開通</span>
+                      <span className="truncate">問題採納提案與聊天室自訂成案</span>
                     </div>
                   </button>
                 </div>
@@ -2834,14 +2952,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                     <div className="flex items-baseline justify-between">
                       <p className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-950 font-mono tracking-tight">
-                        4.2 <span className="text-[10px] sm:text-xs font-bold text-stone-500">小時</span>
+                        {adminAvgResponseSpeed.value} <span className="text-[10px] sm:text-xs font-bold text-stone-500">{adminAvgResponseSpeed.unit}</span>
                       </p>
                       <span className="text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 border border-sky-200">
-                        時效指標
+                        {adminAvgResponseSpeed.badge}
                       </span>
                     </div>
                     <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
-                      <span className="truncate">全體專家諮詢方案平均首覆工時</span>
+                      <span className="truncate">{adminAvgResponseSpeed.desc}</span>
                     </div>
                   </div>
 
@@ -2855,14 +2973,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                     <div className="flex items-baseline justify-between">
                       <p className="text-xl sm:text-2xl lg:text-3xl font-black text-amber-950 font-mono tracking-tight">
-                        98.6 <span className="text-[10px] sm:text-xs font-bold text-amber-700">%</span>
+                        {adminSatisfactionStats.percentageFormatted} <span className="text-[10px] sm:text-xs font-bold text-amber-700">%</span>
                       </p>
                       <span className="text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                        4.9 ★ 好評
+                        {adminSatisfactionStats.badge}
                       </span>
                     </div>
                     <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
-                      <span className="truncate">全站案件交付與諮詢正評率</span>
+                      <span className="truncate">{adminSatisfactionStats.desc}</span>
                     </div>
                   </div>
                 </div>
@@ -3231,7 +3349,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         <span className="font-extrabold text-xs text-stone-900">已成交方案</span>
                         <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">媒合成交</span>
                       </div>
-                      <p className="text-[11px] text-stone-500 mt-0.5">全站會員訂閱與案件媒合開通總筆數</p>
+                      <p className="text-[11px] text-stone-500 mt-0.5">全站問題提案採納與聊天室自訂提案成案總筆數</p>
                     </div>
                     <button
                       type="button"

@@ -698,7 +698,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   <span className="font-extrabold text-xs text-stone-900">已成交方案</span>
                   <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">媒合成交</span>
                 </div>
-                <p className="text-[11px] text-stone-500 mt-0.5">全站會員訂閱與案件媒合開通總筆數</p>
+                <p className="text-[11px] text-stone-500 mt-0.5">全站問題提案採納與聊天室自訂提案成案總筆數</p>
               </div>
               <button
                 type="button"
