@@ -2172,8 +2172,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    const guestUser = availableUsers.find((u) => u.id === 'user-guest') || availableUsers[0];
-                    setCurrentUser(guestUser);
+                    logoutAccount(currentUser.id);
                     onClose();
                   }}
                   className="w-full px-2 py-1.5 rounded-lg hover:bg-rose-50 text-left text-xs font-bold text-rose-600 flex items-center justify-between group cursor-pointer transition-colors"
@@ -2489,8 +2488,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                const guestUser = availableUsers.find((u) => u.id === 'user-guest') || availableUsers[0];
-                setCurrentUser(guestUser);
+                logoutAccount(currentUser.id);
                 onClose();
               }}
               className="w-full px-2 py-1.5 rounded-lg hover:bg-rose-50 active:bg-rose-100 text-left text-xs font-bold text-rose-600 flex items-center justify-between group cursor-pointer transition-colors"
@@ -8453,8 +8451,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const guestUser = availableUsers.find((u) => u.id === 'user-guest') || availableUsers[0];
-                  setCurrentUser(guestUser);
+                  logoutAccount(currentUser.id);
                   setMsg('已成功登出帳號，目前為訪客體驗模式。');
                   setTimeout(() => setMsg(null), 3000);
                 }}

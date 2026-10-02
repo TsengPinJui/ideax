@@ -33,6 +33,7 @@ import {
   MOCK_CONVERSATIONS,
   CLEAN_CORE_USERS,
   DEMO_CORE_TEST_USERS,
+  GUEST_USER,
   CLEAN_CORE_QUESTIONS,
   CLEAN_CORE_ANSWERS,
   CLEAN_CORE_SOLVERS,
@@ -456,8 +457,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     setCurrentUser((curr) => {
+      if (curr.id === 'user-guest') return curr;
       if ((testAccountIds.includes(curr.id) || curr.id.startsWith('solver-')) && curr.id !== 'user-admin') {
-        return CLEAN_CORE_USERS[0];
+        return GUEST_USER;
       }
       if (curr.id === 'user-admin' && !enabled && (!curr.balance || curr.balance === 0)) {
         // 切換回正式營運模式 (NORM) 時，管理員點數恢復原樣 (50,000 點)
@@ -492,21 +494,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    const testAccountIds = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
+    const testAccountIds = ['user-questioner', 'solver-2', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
     if (enabled) {
       // 1. 隱藏測試帳號（用戶列表）
       setAvailableUsers((prev) => {
-        const filtered = prev.filter((u) => (!testAccountIds.includes(u.id) && !u.id.startsWith('solver-') && !isTestAccountUserId(u.id)) || u.id === 'user-admin');
+        const filtered = prev.filter((u) => (!testAccountIds.includes(u.id) && !u.id.startsWith('solver-') && !isTestAccountUserId(u.id)) || u.id === 'user-admin' || u.id === 'user-guest');
         if (!filtered.some((u) => u.id === 'user-admin')) {
           filtered.unshift(CLEAN_CORE_USERS[0]);
         }
         return filtered;
       });
 
-      // 2. 當前使用者若為測試帳號，自動切換至管理員
+      // 2. 當前使用者若為測試帳號，自動切換至訪客
       setCurrentUser((curr) => {
+        if (curr.id === 'user-guest') return curr;
         if ((testAccountIds.includes(curr.id) || curr.id.startsWith('solver-') || isTestAccountUserId(curr.id)) && curr.id !== 'user-admin') {
-          return CLEAN_CORE_USERS[0];
+          return GUEST_USER;
         }
         return curr;
       });
@@ -584,14 +587,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setHideTestAccounts(!isHideTestAccounts);
   };
 
-  // Load initial state with localStorage support
+  // Load initial state with localStorage support (預設未登入任何帳號，以訪客身分開始)
   const [currentUser, setCurrentUser] = useState<User>(() => {
     try {
+      const isAuthenticated = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_authenticated`) === 'true';
+      if (!isAuthenticated) {
+        return GUEST_USER;
+      }
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}user`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.id && parsed.name) {
-          const isAdmin = parsed.id === 'user-admin' || (typeof parsed.username === 'string' && parsed.username.toLowerCase() === 'admin_001') || (typeof parsed.name === 'string' && (parsed.name.includes('IdeaX') || parsed.name.includes('管理') || parsed.name.includes('營運')));
+        if (parsed && parsed.id && parsed.name && parsed.id !== 'user-guest') {
+          const isAdmin =
+            parsed.id === 'user-admin' ||
+            (typeof parsed.username === 'string' && parsed.username.toLowerCase() === 'admin_001') ||
+            (typeof parsed.name === 'string' && (parsed.name.includes('IdeaX') || parsed.name.includes('管理') || parsed.name.includes('營運')));
           return {
             ...CLEAN_CORE_USERS[0],
             ...parsed,
@@ -613,7 +623,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    return CLEAN_CORE_USERS[0];
+    return GUEST_USER;
   });
 
   const [availableUsers, setAvailableUsers] = useState<User[]>(() => {
@@ -671,11 +681,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    return [
-      { userId: 'user-admin', isLoggedIn: true, lastLoginAt: new Date().toISOString() },
-      { userId: 'user-questioner', isLoggedIn: true, lastLoginAt: new Date().toISOString() },
-      { userId: 'solver-2', isLoggedIn: true, lastLoginAt: new Date().toISOString() },
-    ];
+    return [];
   });
 
   useEffect(() => {
@@ -1234,6 +1240,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Save to localStorage & Cloud Firestore
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(currentUser));
+    if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}is_authenticated`, 'true');
+    } else {
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+    }
     setAvailableUsers((users) => {
       const idx = users.findIndex((u) => u.id === currentUser.id);
       if (idx >= 0) {
@@ -2347,26 +2358,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((a) => (a.userId === targetId ? { ...a, isLoggedIn: false } : a))
     );
     if (targetId === currentUser.id) {
-      const guest = availableUsers.find((u) => u.id === 'user-guest') || {
-        id: 'user-guest',
-        name: '未登入訪客',
-        title: '訪客身份 (未登入)',
-        avatar: '',
-        role: 'questioner' as const,
-        balance: 0,
-        pendingEarnings: 0,
-        reputation: 0,
-        joinedDate: '2026-01-01',
-        bio: '未登入訪客，僅限瀏覽內容。',
-        email: '',
-        totalWithdrawn: 0,
-        subscriptionTier: 'free' as const,
-        domain: '日常疑難' as Category,
-        skills: ['自由探索'],
-        verifiedExpert: false,
-      };
-      setCurrentUser(guest as User);
+      const guest = GUEST_USER;
+      setCurrentUser(guest);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
       localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(guest));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(guest));
     }
   };
 
@@ -5454,7 +5450,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const realUsers = prev.filter((u) => !u.id.startsWith('solver-') && u.id !== 'user-questioner' && u.id !== 'user-guest' && u.id !== 'user-admin');
       return [CLEAN_CORE_USERS[0], ...realUsers];
     });
-    setCurrentUser(CLEAN_CORE_USERS[0]);
+    setCurrentUser(GUEST_USER);
+    try {
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+    } catch {}
   };
 
   const resetDemoData = () => {

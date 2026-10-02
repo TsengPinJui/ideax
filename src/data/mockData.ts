@@ -53,6 +53,32 @@ export const LEVEL_CONFIGS: Record<ProblemLevel, LevelConfig> = {
   },
 };
 
+export const GUEST_USER: User = {
+  id: 'user-guest',
+  name: '未登入訪客',
+  title: '訪客身份 (未登入)',
+  avatar: '',
+  role: 'questioner',
+  balance: 0,
+  pendingEarnings: 0,
+  reputation: 0,
+  joinedDate: '2026-01-01',
+  bio: '未登入訪客，僅限瀏覽內容。',
+  email: '',
+  phone: '',
+  totalWithdrawn: 0,
+  totalPaidOut: 0,
+  totalRevenue: 0,
+  escrowedEarnings: 0,
+  withheldPoints: 0,
+  reputationPoints: 0,
+  subscriptionTier: 'free',
+  verifiedExpert: false,
+  rating: 0,
+  reviewCount: 0,
+  surveyData: undefined,
+};
+
 export const MOCK_USERS: User[] = [
   {
     id: 'user-questioner',
@@ -1938,31 +1964,7 @@ export const DEMO_CORE_TEST_USERS: User[] = [
     avgSolutionBounty: 0,
     surveyData: undefined,
   },
-  {
-    id: 'user-guest',
-    name: '未登入訪客',
-    title: '訪客身份 (未登入)',
-    avatar: '',
-    role: 'questioner',
-    balance: 0,
-    pendingEarnings: 0,
-    reputation: 0,
-    joinedDate: '2026-01-01',
-    bio: '未登入訪客，僅限瀏覽內容。',
-    email: '',
-    phone: '',
-    totalWithdrawn: 0,
-    totalPaidOut: 0,
-    totalRevenue: 0,
-    escrowedEarnings: 0,
-    withheldPoints: 0,
-    reputationPoints: 0,
-    subscriptionTier: 'free',
-    verifiedExpert: false,
-    rating: 0,
-    reviewCount: 0,
-    surveyData: undefined,
-  },
+  GUEST_USER,
 ];
 
 /**

@@ -173,10 +173,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Sync mode when opened
+  // Sync mode when opened (剛開始進入登入頁面時帳號與密碼欄位要是空的)
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
+      setLoginIdentifier('');
+      setLoginPassword('');
+      setShowPassword(false);
       setErrorMsg(null);
       setSuccessMsg(null);
       setHasAttemptedSubmit(false);
@@ -189,13 +192,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     };
   }, [isOpen, initialMode]);
 
-  // Load remember me state from localStorage
+  // Load remember me state from localStorage (不預先填入帳號，保持欄位為空)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_REMEMBER_LOGIN_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed?.identifier) setLoginIdentifier(parsed.identifier);
         if (typeof parsed?.rememberMe === 'boolean') setRememberMe(parsed.rememberMe);
       }
     } catch {
