@@ -1654,10 +1654,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           <div className="flex items-center justify-between px-4 py-1.5 border-b border-stone-200/70 bg-stone-100/70 text-xs">
             <div className="flex items-center gap-1.5 overflow-x-auto">
               {[
-                { key: 'all', label: '全部功能', count: 12 },
+                { key: 'all', label: '全部功能', count: 11 },
                 { key: 'finance', label: '💰 金流與案件', count: 4 },
                 { key: 'users', label: '👥 用戶審核', count: 3 },
-                { key: 'ai_sub', label: '🤖 AI與方案', count: 2 },
+                { key: 'ai_sub', label: '👑 會員方案', count: 1 },
                 { key: 'account', label: '⚙️ 帳號', count: 3 },
               ].map((cat) => (
                 <button
@@ -1693,8 +1693,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               { id: 'admin_certifications', category: 'users', label: '受理認證', icon: BadgeCheck },
               { id: 'admin_user_analytics', category: 'users', label: '用戶分佈與習慣統計', icon: BarChart3, badge: 'EXCEL' },
 
-              // AI 智能與會員方案 (特助整合至 AI-CRM)
-              { id: 'admin_aicrm', category: 'ai_sub', label: 'AI-CRM與特助總控', icon: Sparkles, badge: 'AI' },
+              // 會員方案與費率
               { id: 'subscriptions', category: 'ai_sub', label: '會員方案與費率', icon: Crown },
 
               // 帳號
@@ -2040,32 +2039,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <span>AI 智能與會員方案</span>
                   </span>
                   <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">
-                    3 項
+                    2 項
                   </span>
                 </p>
-
-                {/* AI-CRM 系統 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('admin_aicrm');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                      <Sparkles className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">AI-CRM與通知設定</span>
-                      </div>
-                      <span className="text-[10px] text-stone-500 font-normal">功能開關、客情商機、話術與通知管理</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
 
                 {/* 24hr AI客服特助設定 */}
                 <button
@@ -2499,6 +2475,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </span>
               <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
             </button>
+            {onStartOnboarding && (
+              <button
+                type="button"
+                onClick={() => {
+                  onStartOnboarding();
+                  setMobileMenuOpen(false);
+                  onClose();
+                }}
+                className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-md bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
+                    <BookOpen className="w-3 h-3 text-amber-700" />
+                  </div>
+                  <div>
+                    <span className="block font-black text-stone-900">使用教學</span>
+                    <span className="text-[10px] text-stone-500 font-normal">平台各項功能操作引導與流程示範</span>
+                  </div>
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -2508,8 +2506,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
             >
               <span className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-md bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
-                  <Headphones className="w-3 h-3 text-amber-700" />
+                <div className="w-5 h-5 rounded-md bg-teal-100 text-teal-800 flex items-center justify-center shrink-0">
+                  <Headphones className="w-3 h-3 text-teal-700" />
                 </div>
                 <div>
                   <span className="block font-black text-stone-900">客服回報</span>
@@ -4255,6 +4253,27 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         )}
                       </button>
 
+                      {onStartOnboarding && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onStartOnboarding) {
+                              onStartOnboarding();
+                              onClose();
+                            }
+                          }}
+                          className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 hover:border-stone-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                        >
+                          <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                              <BookOpen className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="truncate">使用教學</span>
+                          </span>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors shrink-0" />
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => {
@@ -4270,25 +4289,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           <span className="truncate">客服回報與申訴</span>
                         </span>
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-teal-700 transition-colors shrink-0" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onStartOnboarding) {
-                            onStartOnboarding();
-                            onClose();
-                          }
-                        }}
-                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 hover:border-stone-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
-                      >
-                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                          <div className="w-7 h-7 rounded-lg bg-stone-200/90 text-stone-700 group-hover:bg-stone-300 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                            <BookOpen className="w-3.5 h-3.5" />
-                          </div>
-                          <span className="truncate">使用教學導覽</span>
-                        </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-700 transition-colors shrink-0" />
                       </button>
                     </div>
                   </div>

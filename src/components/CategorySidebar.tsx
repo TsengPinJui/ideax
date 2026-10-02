@@ -28,6 +28,8 @@ import {
   Download,
   Bell,
   Mail,
+  HelpCircle,
+  Headphones,
 } from 'lucide-react';
 
 interface CategorySidebarProps {
@@ -47,6 +49,7 @@ interface CategorySidebarProps {
   onNavigateToSolvers?: () => void;
   onNavigateToLeaderboard?: () => void;
   onOpenNotifications?: () => void;
+  onStartOnboarding?: () => void;
   activeTab?: AppTab;
 }
 
@@ -67,6 +70,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   onNavigateToSolvers,
   onNavigateToLeaderboard,
   onOpenNotifications,
+  onStartOnboarding,
   activeTab = 'explore',
 }) => {
   const [sidebarSearch, setSidebarSearch] = useState('');
@@ -78,6 +82,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
     hasUnreadSystemNotifs,
     pendingDisputesCount,
     setIsNotificationsSidebarOpen,
+    openCustomerService,
   } = useApp();
 
   const displayBadgeCount = currentUser?.role === 'admin'
@@ -446,6 +451,62 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
+            </button>
+
+            {/* ④ 使用教學 (管理員不顯示) */}
+            {currentUser?.role !== 'admin' && onStartOnboarding && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onStartOnboarding();
+                }}
+                className="w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group bg-white hover:bg-amber-50/40 border-stone-200 hover:border-amber-300 shadow-2xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                    <HelpCircle className="w-4 h-4 text-amber-700" />
+                  </div>
+                  <div>
+                    <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-700 transition-colors flex items-center gap-1.5">
+                      <span>使用教學</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
+                        引導
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
+                      平台各項功能操作引導與流程示範
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
+              </button>
+            )}
+
+            {/* ⑤ 客服回報 */}
+            <button
+              onClick={() => {
+                onClose();
+                openCustomerService({ subject: '來自功能列之客服回報與申訴' });
+              }}
+              className="w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group bg-white hover:bg-teal-50/40 border-stone-200 hover:border-teal-300 shadow-2xs"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-800 border border-teal-300 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                  <Headphones className="w-4 h-4 text-teal-700" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-teal-800 transition-colors flex items-center gap-1.5">
+                    <span>客服回報</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-teal-100 text-teal-900 border border-teal-200">
+                      申訴
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
+                    線上客服、爭議申訴與專人諮詢
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-teal-700 transition-colors shrink-0" />
             </button>
           </div>
 
