@@ -818,11 +818,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const modalContent = (
     <div
-      style={{ zIndex: 2147483647, position: 'fixed', inset: 0 }}
-      className="fixed inset-0 w-screen h-screen bg-white flex flex-col overflow-y-auto overscroll-y-contain animate-in fade-in duration-150"
+      style={{ zIndex: 2147483647 }}
+      className="fixed inset-0 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-y-contain animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className="w-full min-h-full flex flex-col justify-center px-6 pt-7 pb-12 sm:px-10 sm:pt-10 sm:pb-16 relative max-w-md mx-auto my-auto">
-        {/* Top Right Close Button (位置適中，不超過原本最頂，避免下方切換帳號被截斷) */}
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-stone-200/90 px-6 py-7 sm:px-8 sm:py-9 relative my-auto animate-in zoom-in-95 duration-200">
+        {/* Top Right Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 sm:top-5 sm:right-5 z-30 p-2 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"

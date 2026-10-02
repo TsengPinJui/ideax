@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html {
+  scrollbar-gutter: stable;
+}
+
 @keyframes splash-progress {
   0% { transform: translateX(-100%); }
   50% { transform: translateX(30%); }
