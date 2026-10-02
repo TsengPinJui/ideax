@@ -599,7 +599,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         updatedAt: new Date().toISOString(),
       };
 
-      const newId = registeredUid || authUid || `user-${Date.now().toString(36)}`;
+      // 系統賦予獨一無二的專屬會員 ID (優先使用 Firebase Auth UID，若無則生成毫秒時間戳+隨機字串+UUID之全站唯一碼)
+      const generateUniqueUserId = () => {
+        const timePart = Date.now().toString(36);
+        const randomPart = Math.random().toString(36).substring(2, 8);
+        const uuidPart = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID().slice(0, 8)
+          : Math.random().toString(36).substring(2, 8);
+        return `user-${timePart}-${randomPart}-${uuidPart}`;
+      };
+
+      const newId = registeredUid || authUid || generateUniqueUserId();
       const effectivePhone = (phone.trim() || regPhone.trim()) || undefined;
 
       const newUser: UserType = {

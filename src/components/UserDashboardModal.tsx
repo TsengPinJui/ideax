@@ -24,6 +24,7 @@ import { ConsolidatedStatementModal } from './ConsolidatedStatementModal';
 import { AnnualWithholdingTaxModal } from './AnnualWithholdingTaxModal';
 import { AboutUsView } from './AboutUsView';
 import { AiAssistantSettingsPanel } from './AiAssistantSettingsPanel';
+import { CopyableUserId } from './CopyableUserId';
 import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
 import { 
   ContractData, 
@@ -1707,6 +1708,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {currentPlan.name}
                 </span>
               )}
+
+              {/* 會員專屬唯一編號 ID */}
+              <CopyableUserId userId={currentUser.id} prefix="ID: " className="text-[9.5px] sm:text-[10px] py-0.2 px-1.5 shrink-0" />
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
@@ -4025,6 +4029,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                               : '解答者')
                           : '提問者'}
                       </span>
+                      <CopyableUserId userId={currentUser.id} prefix="ID: " className="bg-stone-900/60 text-stone-200 border-white/20 hover:bg-stone-900 hover:text-white" />
                     </div>
                     <p className="text-xs text-amber-200/80 mt-1">{currentUser.title || '一般會員用戶'}</p>
                   </div>
@@ -6452,6 +6457,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           <span className="text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 border border-purple-400/30 shrink-0">
                             平台超級管理員席位
                           </span>
+                          <CopyableUserId userId={currentUser.id} prefix="ID: " className="bg-purple-950/70 text-purple-200 border-purple-500/40 hover:bg-purple-900" />
                         </div>
                         <p className="text-[10px] sm:text-xs text-purple-200/80 mt-0.5 line-clamp-2">
                           最高系統權限 (Super Administrator) · 全站治理、仲裁調解、金流託管與風控中樞
@@ -6809,6 +6815,29 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <div className={`xl:col-span-7 space-y-6 ${profileSubTab === 'basic' ? 'block' : 'hidden xl:block'}`}>
                 {/* 1. 基本帳號資訊 */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+                  {/* 會員專屬唯一編號 (User ID / UID) 卡片 */}
+                  <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 font-black text-xs flex items-center justify-center shadow-2xs shrink-0">
+                        UID
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h5 className="text-xs font-black text-stone-900">會員專屬 ID (Unique User ID)</h5>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-200/80 text-amber-900 border border-amber-300">
+                            雲端唯一識別碼
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-600 mt-0.5">
+                          註冊時系統自動賦予且獨一無二存於雲端資料庫。可用於客服諮詢、交易對帳與好友邀請。
+                        </p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 self-stretch sm:self-auto flex items-center justify-end">
+                      <CopyableUserId userId={currentUser.id} prefix="ID: " className="text-xs px-3 py-1.5 bg-white hover:bg-stone-50 border-amber-300/90 text-stone-900 shadow-2xs" />
+                    </div>
+                  </div>
+
                   {/* 個人頭像照片上傳 */}
                   <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
                     <div className="flex items-center gap-3">

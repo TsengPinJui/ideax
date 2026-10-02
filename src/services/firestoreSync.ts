@@ -383,7 +383,7 @@ export async function syncUserToFirestore(user: User): Promise<void> {
   try {
     const userRef = doc(db, 'users', user.id);
     const cleanUser = JSON.parse(JSON.stringify(user));
-    await setDoc(userRef, { ...cleanUser, updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(userRef, { ...cleanUser, id: user.id, updatedAt: new Date().toISOString() }, { merge: true });
 
     // 同步提取使用者審核證書資料至 certifications 集合
     if (user.realNameAuthStatus || user.expertCertStatus) {

@@ -24,12 +24,6 @@ import {
   Lightbulb,
   ShieldCheck,
   Trophy,
-  Info,
-  Download,
-  Bell,
-  Mail,
-  HelpCircle,
-  Headphones,
 } from 'lucide-react';
 
 interface CategorySidebarProps {
@@ -77,17 +71,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
 
   const {
     isDemoMode,
-    currentUser,
-    unreadPersonalCount,
-    hasUnreadSystemNotifs,
-    pendingDisputesCount,
-    setIsNotificationsSidebarOpen,
-    openCustomerService,
   } = useApp();
-
-  const displayBadgeCount = currentUser?.role === 'admin'
-    ? pendingDisputesCount
-    : (unreadPersonalCount || 0) + (hasUnreadSystemNotifs ? 1 : 0);
 
   const validQuestions = useMemo(() => {
     return (isDemoMode
@@ -344,169 +328,6 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
             </button>
           </div>
-
-          {/* 📖 平台資訊與官方 APP (管理員不顯示) */}
-          {currentUser?.role !== 'admin' && (
-            <div className="space-y-2 pb-1">
-              <div className="text-[11px] font-bold text-stone-500 px-1 flex items-center justify-between">
-                <span>📖 平台資訊與 APP</span>
-              </div>
-
-              {/* ① 平台資訊（介紹與條款） */}
-              <button
-                onClick={() => {
-                  if (onNavigateToAbout) onNavigateToAbout('story');
-                  onClose();
-                }}
-                className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
-                  activeTab === 'about'
-                    ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-200 shadow-2xs'
-                    : 'bg-white hover:bg-amber-50/40 border-stone-200 hover:border-amber-300'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center font-bold shrink-0 shadow-2xs">
-                    <Info className="w-4 h-4 text-amber-700" />
-                  </div>
-                  <div>
-                    <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-700 transition-colors flex items-center gap-1.5">
-                      <span>平台資訊</span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
-                        介紹
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
-                      平台介紹、常見問題、條款與金流運作
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
-              </button>
-
-              {/* ② 下載官方 App */}
-              <button
-                onClick={() => {
-                  if (onNavigateToAbout) onNavigateToAbout('download_app');
-                  onClose();
-                }}
-                className="w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-white hover:border-amber-400 border-amber-300/80 shadow-2xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center font-black shrink-0 shadow-2xs">
-                    <Download className="w-4 h-4 text-stone-950" />
-                  </div>
-                  <div>
-                    <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-700 transition-colors flex items-center gap-1.5">
-                      <span>下載官方 App</span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-500 text-stone-950">
-                        PWA
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-amber-900/80 font-medium mt-0.5 line-clamp-1">
-                      一鍵直接安裝・全螢幕秒開
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-amber-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-              </button>
-
-              {/* ③ 通知中心 */}
-              <button
-                onClick={() => {
-                  onClose();
-                  if (onOpenNotifications) {
-                    onOpenNotifications();
-                  } else {
-                    setIsNotificationsSidebarOpen(true);
-                  }
-                }}
-                className="w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group bg-white hover:bg-amber-50/40 border-stone-200 hover:border-amber-300 shadow-2xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center font-bold shrink-0 shadow-2xs relative">
-                    <Bell className="w-4 h-4 text-amber-700" />
-                    {displayBadgeCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-700 transition-colors flex items-center gap-1.5">
-                      <span>通知中心</span>
-                      {displayBadgeCount > 0 ? (
-                        <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-rose-500 text-white shadow-2xs font-mono">
-                          {displayBadgeCount > 99 ? '99+' : displayBadgeCount}
-                        </span>
-                      ) : (
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-600">
-                          即時通知
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
-                      即時提問回復、方案採納與系統通知
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
-              </button>
-
-              {/* ④ 使用教學 (非管理員專屬) */}
-              {onStartOnboarding && (
-                <button
-                  onClick={() => {
-                    onClose();
-                    onStartOnboarding();
-                  }}
-                  className="w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group bg-white hover:bg-amber-50/40 border-stone-200 hover:border-amber-300 shadow-2xs"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center font-bold shrink-0 shadow-2xs">
-                      <HelpCircle className="w-4 h-4 text-amber-700" />
-                    </div>
-                    <div>
-                      <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-700 transition-colors flex items-center gap-1.5">
-                        <span>使用教學</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
-                          引導
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
-                        平台各項功能操作引導與流程示範
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
-                </button>
-              )}
-
-              {/* ⑤ 客服回報 */}
-              <button
-                onClick={() => {
-                  onClose();
-                  openCustomerService({ subject: '來自功能列之客服回報與申訴' });
-                }}
-                className="w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group bg-white hover:bg-teal-50/40 border-stone-200 hover:border-teal-300 shadow-2xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-800 border border-teal-300 flex items-center justify-center font-bold shrink-0 shadow-2xs">
-                    <Headphones className="w-4 h-4 text-teal-700" />
-                  </div>
-                  <div>
-                    <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-teal-800 transition-colors flex items-center gap-1.5">
-                      <span>客服回報</span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-teal-100 text-teal-900 border border-teal-200">
-                        申訴
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
-                      線上客服、爭議申訴與專人諮詢
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-teal-700 transition-colors shrink-0" />
-              </button>
-            </div>
-          )}
 
           {/* 1. 全部問題入口 */}
           <button
