@@ -184,6 +184,7 @@ interface AppContextType {
     cycle?: 'monthly' | 'semi_annual' | 'annual',
     paymentMethod?: string
   ) => { success: boolean; message: string };
+  cancelPendingPlanChange: () => { success: boolean; message: string };
   triggerMonthEndRebate: () => { success: boolean; amount: number; message: string };
   updateBankAccount: (bankInfo: import('../types').BankAccountInfo) => void;
   updateTransactionNote: (transactionId: string, note: string) => void;
@@ -4051,6 +4052,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Action: subscribe or change subscription plan via Third-party Payment
+  // 規則：轉換為一般會員不需要重新扣款，視為取消會員資格。任何變換方案都會在下個期間開始生效。
   const subscribePlan = (
     tier: SubscriptionTier,
     cycle: 'monthly' | 'semi_annual' | 'annual' = 'monthly',
@@ -4059,26 +4061,103 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const plan = SUBSCRIPTION_PLANS[tier];
     if (!plan) return { success: false, message: '無效的方案' };
 
+    const currentTier = currentUser.subscriptionTier || 'free';
+    const currentExpiry = currentUser.subscriptionExpiresAt || '2026-10-31';
+
+    // 情況 1：轉換為一般會員（free）
+    // 轉換為一般會員不需要重新扣款 (免扣款 / NT$ 0)，視為取消會員資格。任何變換方案都會在下個期間開始。
     if (tier === 'free') {
+      if (currentTier === 'free') {
+        return { success: true, message: '您目前已經是一般會員，無需重新扣款。' };
+      }
+
+      // 現有付費會員轉為一般會員 -> 視為取消會員資格，下個期間開始生效，不重新扣款
       setCurrentUser((prev) => ({
         ...prev,
-        subscriptionTier: 'free',
-        subscriptionExpiresAt: undefined,
+        nextSubscriptionTier: 'free',
+        nextSubscriptionCycle: undefined,
+        nextSubscriptionEffectiveAt: currentExpiry,
       }));
+
       setAvailableUsers((prev) =>
         prev.map((u) =>
           u.id === currentUser.id
-            ? { ...u, subscriptionTier: 'free', subscriptionExpiresAt: undefined }
+            ? {
+                ...u,
+                nextSubscriptionTier: 'free',
+                nextSubscriptionCycle: undefined,
+                nextSubscriptionEffectiveAt: currentExpiry,
+              }
             : u
         )
       );
-      return { success: true, message: '已切換為一般會員方案（標準服務費 10%）' };
+
+      setNotifications((prev) => [
+        {
+          id: `notif-${Date.now()}`,
+          title: '已申請轉換為一般會員（視為取消會員資格）',
+          message: `您已申請轉換為一般會員，不需要重新扣款。此操作視為取消會員資格，現有特權將保留享有至本期到期（${currentExpiry}），下個期間開始正式轉換為一般會員。`,
+          type: 'system',
+          createdAt: '剛剛',
+          read: false,
+        },
+        ...prev,
+      ]);
+
+      return {
+        success: true,
+        message: `已為您設定轉換為一般會員（視為取消會員資格，不需要重新扣款）。目前權益仍享有至本期到期日（${currentExpiry}），將於下個期間開始正式生效。`,
+      };
     }
 
     const selectedCycle = plan.billingCycles.find((c) => c.cycle === cycle) || plan.billingCycles[0];
     const price = selectedCycle.price;
     const durationMonths = selectedCycle.durationMonths || 1;
+    const cycleDisplay = selectedCycle.label || `月繳 $${price.toLocaleString()}`;
 
+    // 情況 2：若當前已有付費方案，進行「變換方案」
+    // 任何變換方案都會在下個期間開始（不立即重新扣款，新方案於下期續訂日扣款並生效）
+    if (currentTier !== 'free') {
+      setCurrentUser((prev) => ({
+        ...prev,
+        nextSubscriptionTier: tier,
+        nextSubscriptionCycle: cycle,
+        nextSubscriptionEffectiveAt: currentExpiry,
+      }));
+
+      setAvailableUsers((prev) =>
+        prev.map((u) =>
+          u.id === currentUser.id
+            ? {
+                ...u,
+                nextSubscriptionTier: tier,
+                nextSubscriptionCycle: cycle,
+                nextSubscriptionEffectiveAt: currentExpiry,
+              }
+            : u
+        )
+      );
+
+      setNotifications((prev) => [
+        {
+          id: `notif-${Date.now()}`,
+          title: `預約變更為「${plan.name}」成功`,
+          message: `您已預約變換方案！任何變換方案都會在下個期間開始（${currentExpiry}）生效，屆時將依新方案（${cycleDisplay}）進行續訂扣款。本期享有原方案權益，不重複扣款。`,
+          type: 'system',
+          createdAt: '剛剛',
+          read: false,
+        },
+        ...prev,
+      ]);
+
+      return {
+        success: true,
+        message: `已成功預約變換為「${plan.name}」！任何變換方案都會在下個期間開始（${currentExpiry}）生效，本期不重複扣款。`,
+      };
+    }
+
+    // 情況 3：一般會員（free）首次訂閱付費方案
+    // 由於先前無付費週期，首次購買即刻開通第一期
     const expiry = new Date();
     expiry.setMonth(expiry.getMonth() + durationMonths);
     const expiryStr = expiry.toISOString().split('T')[0];
@@ -4087,18 +4166,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...prev,
       subscriptionTier: tier,
       subscriptionExpiresAt: expiryStr,
+      nextSubscriptionTier: undefined,
+      nextSubscriptionCycle: undefined,
+      nextSubscriptionEffectiveAt: undefined,
     }));
 
     setAvailableUsers((prev) =>
       prev.map((u) =>
         u.id === currentUser.id
-          ? { ...u, subscriptionTier: tier, subscriptionExpiresAt: expiryStr }
+          ? {
+              ...u,
+              subscriptionTier: tier,
+              subscriptionExpiresAt: expiryStr,
+              nextSubscriptionTier: undefined,
+              nextSubscriptionCycle: undefined,
+              nextSubscriptionEffectiveAt: undefined,
+            }
           : u
       )
     );
 
-    const cycleDisplay = selectedCycle.label || `月繳 $${price.toLocaleString()}`;
-    const cleanSubTitle = `訂閱會員方案「${plan.name}（${cycleDisplay}）」`;
+    const cleanSubTitle = `開通會員方案「${plan.name}（${cycleDisplay}）」`;
 
     const tx: Transaction = {
       id: `tx-sub-${Date.now()}`,
@@ -4122,7 +4210,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-${Date.now()}`,
         title: `成功開通「${plan.name}」！`,
-        message: `您已完成第三方支付 NT$ ${price.toLocaleString()} 元成功開通「${plan.name}」。即日起所有方案交易之服務費享有「${plan.feeDiscountText}」（解答者實收 ${plan.sellerPayoutText}）！`,
+        message: `您已完成第三方支付 NT$ ${price.toLocaleString()} 元成功開通「${plan.name}」。即日起所有方案交易之服務費享有「${plan.feeDiscountText}」（解答者實收 ${plan.sellerPayoutText}）！後續任何變換方案均會在下個期間開始生效。`,
         type: 'system',
         createdAt: '剛剛',
         read: false,
@@ -4133,6 +4221,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return {
       success: true,
       message: `成功開通「${plan.name}」！即刻享有服務費 ${plan.feeDiscountText}（實收 ${plan.sellerPayoutText}）。`,
+    };
+  };
+
+  // Action: cancel pending plan change (撤銷預約變更，保留原方案續約)
+  const cancelPendingPlanChange = (): { success: boolean; message: string } => {
+    setCurrentUser((prev) => ({
+      ...prev,
+      nextSubscriptionTier: undefined,
+      nextSubscriptionCycle: undefined,
+      nextSubscriptionEffectiveAt: undefined,
+    }));
+
+    setAvailableUsers((prev) =>
+      prev.map((u) =>
+        u.id === currentUser.id
+          ? {
+              ...u,
+              nextSubscriptionTier: undefined,
+              nextSubscriptionCycle: undefined,
+              nextSubscriptionEffectiveAt: undefined,
+            }
+          : u
+      )
+    );
+
+    return {
+      success: true,
+      message: '已撤銷下期方案變更預約，將維持原方案自動續訂。',
     };
   };
 
@@ -4425,7 +4541,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             m.createdAt.startsWith(todayStr)
         ).length;
 
-        const dailyLimit = assistantConfig.dailyMessageLimitPerChat || 15;
+        const dailyLimit = assistantConfig.dailyMessageLimitPerChat || 30;
         if (todayCount < dailyLimit) {
           // 模擬專家離線召喚時間或即時代客應答 (1.8 秒延遲)
           setTimeout(async () => {
@@ -4469,11 +4585,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     return c;
                   })
                 );
+
+                // 更新特助累計代答次數
+                setAvailableUsers((users) =>
+                  users.map((u) => {
+                    if (u.id === recipientUser.id && u.assistant24hrConfig) {
+                      return {
+                        ...u,
+                        assistant24hrConfig: {
+                          ...u.assistant24hrConfig,
+                          todayReplyCount: (u.assistant24hrConfig.todayReplyCount || 0) + 1,
+                          totalAssistedCount: (u.assistant24hrConfig.totalAssistedCount || 0) + 1,
+                          lastActiveAt: new Date().toISOString(),
+                        },
+                      };
+                    }
+                    return u;
+                  })
+                );
               }
             } catch (err) {
               console.warn('AI Assistant offline reply error:', err);
             }
           }, 1800);
+        } else if (todayCount === dailyLimit) {
+          // 達到 30 則/日/聊天室 上限時，特助發送委婉提醒並暫停自動代答，保護 Token 並通知專家親自接手
+          setTimeout(() => {
+            const limitExceededNoticeMsg: ChatMessage = {
+              id: `msg-assistant-limit-${Date.now()}`,
+              senderId: recipientUser.id,
+              senderName: `${recipientUser.name} 的 24hr AI 特助`,
+              senderAvatar: recipientUser.avatar,
+              text: `【系統代答上限提醒】您好！今日 24hr AI 特助已在此聊天室為您代客服務達上限（${dailyLimit} 則/日/聊天室）。您的所有提問與需求細節已完整記錄並即時通知專家，請您稍候專家上線親自為您接手解答！`,
+              createdAt: new Date().toISOString(),
+              isAiAssistant: true,
+            };
+
+            setConversations((inner) =>
+              inner.map((c) => {
+                if (c.id === conversationId) {
+                  return {
+                    ...c,
+                    lastMessage: `[24hr AI特助代答已達上限] 請靜候專家上線親自回覆`,
+                    lastMessageTime: '剛剛',
+                    messages: [...c.messages, limitExceededNoticeMsg],
+                  };
+                }
+                return c;
+              })
+            );
+          }, 1500);
         }
       }
     }
@@ -5418,6 +5579,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refundPhasePayout,
         togglePrivacySettings,
         subscribePlan,
+        cancelPendingPlanChange,
         triggerMonthEndRebate,
         updateBankAccount,
         updateTransactionNote,

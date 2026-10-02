@@ -1,37 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { getAiCrmLeadsForSolver, getAiCrmPushesForSolver, getCurrentTimeSlotInfo } from '../services/aiService';
-import { AiCrmLead, AiCrmPushNotification } from '../types';
+import { getAiCrmLeadsForSolver, getCurrentTimeSlotInfo } from '../services/aiService';
+import { AiCrmLead, AssistantScheduledTask, DEFAULT_ASSISTANT_24HR_CONFIG } from '../types';
 import { AiAssistantSettingsPanel } from './AiAssistantSettingsPanel';
 import {
   Crown,
   Sparkles,
   Send,
   CheckCircle2,
-  Users,
-  Radio,
   BarChart3,
   Clock,
   TrendingUp,
   MessageSquare,
-  ShieldCheck,
-  Flame,
   Edit3,
   ArrowLeft,
-  RefreshCw,
   Sliders,
-  ChevronRight,
   Target,
-  FileText,
-  AlertCircle,
-  HelpCircle,
-  Zap,
-  Activity,
-  Layers,
   ChevronDown,
   ChevronUp,
-  Info,
   Bot,
+  Calendar,
+  Play,
+  X,
+  Plus,
+  Trash2,
+  Check,
 } from 'lucide-react';
 
 interface AiCrmViewProps {
@@ -39,11 +32,87 @@ interface AiCrmViewProps {
   onOpenDirectChat?: (targetUser: { id: string; name: string; avatar: string; title: string }) => void;
 }
 
+export const SCHEDULE_PRESET_OPTIONS = [
+  { id: '30m', label: '30 分鐘後', desc: '即刻快速預熱' },
+  { id: '1h', label: '1 小時後', desc: '初步沉澱發送' },
+  { id: 'today_1530', label: '今日 15:30', desc: '午後思考時段' },
+  { id: 'today_1930', label: '今晚 19:30', desc: '晚間決策尖峰' },
+  { id: 'today_2100', label: '今晚 21:00', desc: '夜間深度交流' },
+  { id: 'tomorrow_0930', label: '明日 09:30', desc: '晨間開工第一案' },
+  { id: 'tomorrow_1230', label: '明日 12:30', desc: '午間休息空檔' },
+  { id: 'tomorrow_1430', label: '明日 14:30', desc: '午後業務關鍵期' },
+  { id: 'tomorrow_2000', label: '明晚 20:00', desc: '次日深度評估' },
+  { id: 'after_tomorrow_1000', label: '後天 10:00', desc: '兩天溫和複盤' },
+  { id: '3days_1430', label: '3 天後 14:30', desc: '三天猶豫期破冰' },
+  { id: 'next_mon_0930', label: '下週一 09:30', desc: '下週開工首選' },
+];
+
+export const SCHEDULE_DAYS = ['今天', '明天', '後天', '3天後', '本週末', '下週一'];
+export const SCHEDULE_HOURS = ['09:30', '11:00', '12:30', '14:30', '16:30', '19:30', '21:00'];
+
+/**
+ * 解析排定時程字串為毫秒時間戳，以利按「由近到遠」精確排序
+ */
+export function parseScheduleTimestamp(timeStr?: string, fallbackTimestamp?: number): number {
+  if (!timeStr) return fallbackTimestamp || Date.now() + 1000 * 60 * 60 * 24;
+  const now = Date.now();
+
+  const minMatch = timeStr.match(/(\d+)\s*分鐘後/);
+  if (minMatch) {
+    return now + parseInt(minMatch[1], 10) * 60 * 1000;
+  }
+
+  const hourMatch = timeStr.match(/(\d+)\s*小時後/);
+  if (hourMatch) {
+    return now + parseInt(hourMatch[1], 10) * 60 * 60 * 1000;
+  }
+
+  let dayOffset = 0;
+  if (timeStr.includes('今天') || timeStr.includes('今日')) {
+    dayOffset = 0;
+  } else if (timeStr.includes('明天') || timeStr.includes('明日')) {
+    dayOffset = 1;
+  } else if (timeStr.includes('後天')) {
+    dayOffset = 2;
+  } else if (timeStr.includes('3 天後') || timeStr.includes('3天後')) {
+    dayOffset = 3;
+  } else if (timeStr.includes('本週末')) {
+    dayOffset = 4;
+  } else if (timeStr.includes('下週一')) {
+    dayOffset = 5;
+  } else if (timeStr.includes('平日')) {
+    dayOffset = 1;
+  }
+
+  const timePartMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+  if (timePartMatch) {
+    const hours = parseInt(timePartMatch[1], 10);
+    const minutes = parseInt(timePartMatch[2], 10);
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + dayOffset);
+    targetDate.setHours(hours, minutes, 0, 0);
+    if (dayOffset === 0 && targetDate.getTime() < now) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+    return targetDate.getTime();
+  }
+
+  return fallbackTimestamp || now + (dayOffset + 1) * 24 * 60 * 60 * 1000;
+}
+
 export const AiCrmView: React.FC<AiCrmViewProps> = ({
   onBack,
   onOpenDirectChat,
 }) => {
-  const { currentUser, subscribePlan, sendMessage, questions, startDirectChat, aiCrmConfig, updateAssistant24hrConfig } = useApp();
+  const {
+    currentUser,
+    subscribePlan,
+    sendMessage,
+    questions,
+    startDirectChat,
+    aiCrmConfig,
+    updateAssistant24hrConfig,
+  } = useApp();
 
   const userTier = currentUser?.subscriptionTier || 'free';
   const isAdmin = currentUser?.role === 'admin';
@@ -51,59 +120,167 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
   const isAuthority = userTier === 'authority';
   const isAuthorityOrAbove = isMaster || isAuthority || isAdmin;
 
-  // 權威方案以上與管理員具備完整存取權限
-  const [demoMode, setDemoMode] = useState<boolean>(isAuthorityOrAbove);
-  const [activeTab, setActiveTab] = useState<'leads' | 'broadcast' | 'assistant' | 'analytics'>(() => {
-    if (isAuthority && !isMaster && !isAdmin) return 'broadcast';
-    return 'leads';
-  });
+  // 體驗模式解鎖狀態：預設先用毛玻璃遮蓋，點擊「體驗看看」後才解鎖；離開版面即重置
+  const [isDemoUnlocked, setIsDemoUnlocked] = useState(false);
 
-  // Leads state derived dynamically from questions
+  const [activeTab, setActiveTab] = useState<'leads' | 'assistant' | 'analytics'>('leads');
+  const [assistantSubTab, setAssistantSubTab] = useState<'queue' | 'settings'>('queue');
+
+  // Leads
   const [leads, setLeads] = useState<AiCrmLead[]>(() =>
     getAiCrmLeadsForSolver(currentUser.domain, currentUser.skills, questions)
   );
-  const [pushes] = useState<AiCrmPushNotification[]>(() => getAiCrmPushesForSolver(currentUser.id));
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [editedMessage, setEditedMessage] = useState<string>('');
   const [sendingLeadId, setSendingLeadId] = useState<string | null>(null);
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
 
-  // 定時自動巡檢與監控狀態
-  const [isScanning, setIsScanning] = useState(false);
-  const [lastScanTime, setLastScanTime] = useState<string>('剛剛');
-  const [selectedStrategyLead, setSelectedStrategyLead] = useState<AiCrmLead | null>(null);
-  const [expandedDiagnostics, setExpandedDiagnostics] = useState<Record<string, boolean>>({
-    'crm-lead-1': true,
-    'crm-lead-2': true,
-    'crm-lead-3': true,
+  // Scheduled tasks queue (軍師規劃，24hr特助代操)
+  const [scheduledTasks, setScheduledTasks] = useState<AssistantScheduledTask[]>(() => {
+    return (
+      currentUser.assistant24hrConfig?.scheduledTasks ||
+      DEFAULT_ASSISTANT_24HR_CONFIG.scheduledTasks ||
+      []
+    );
   });
 
-  // 當前時段自適應巡航狀態
+  // 記錄初始乾淨狀態（供體驗模式重置使用，確保離開版面後跳回原本狀態）
+  const initialLeadsRef = useRef<AiCrmLead[]>([]);
+  const initialTasksRef = useRef<AssistantScheduledTask[]>([]);
+
+  useEffect(() => {
+    const rawLeads = getAiCrmLeadsForSolver(currentUser.domain, currentUser.skills, questions);
+    initialLeadsRef.current = JSON.parse(JSON.stringify(rawLeads));
+    const rawTasks = (
+      currentUser.assistant24hrConfig?.scheduledTasks ||
+      DEFAULT_ASSISTANT_24HR_CONFIG.scheduledTasks ||
+      []
+    );
+    initialTasksRef.current = JSON.parse(JSON.stringify(rawTasks));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 重置體驗模式：恢復初始狀態，毛玻璃重新遮蓋
+  const resetDemoState = () => {
+    setIsDemoUnlocked(false);
+    if (initialLeadsRef.current && initialLeadsRef.current.length > 0) {
+      setLeads(JSON.parse(JSON.stringify(initialLeadsRef.current)));
+    } else {
+      setLeads(getAiCrmLeadsForSolver(currentUser.domain, currentUser.skills, questions));
+    }
+    if (initialTasksRef.current && initialTasksRef.current.length > 0) {
+      setScheduledTasks(JSON.parse(JSON.stringify(initialTasksRef.current)));
+    } else {
+      setScheduledTasks(
+        JSON.parse(
+          JSON.stringify(
+            currentUser.assistant24hrConfig?.scheduledTasks ||
+              DEFAULT_ASSISTANT_24HR_CONFIG.scheduledTasks ||
+              []
+          )
+        )
+      );
+    }
+    setSchedulingLead(null);
+    setEditingLeadId(null);
+    setActiveTab('leads');
+  };
+
+  // 離開版面自動重置體驗狀態：用戶在體驗模式做的任何動作都不影響實際，一離開這個版面就跳回原本狀態也有重新點擊體驗看看才能再次體驗
+  useEffect(() => {
+    return () => {
+      if (!isAuthorityOrAbove) {
+        resetDemoState();
+      }
+    };
+  }, [isAuthorityOrAbove]);
+
+  const handleBack = () => {
+    if (!isAuthorityOrAbove) {
+      resetDemoState();
+    }
+    if (onBack) onBack();
+  };
+
+  // Modal states for scheduling (純點選式，免手打時段)
+  const [schedulingLead, setSchedulingLead] = useState<AiCrmLead | null>(null);
+  const [selectedTimeOption, setSelectedTimeOption] = useState<string>('30 分鐘後');
+  const [timePickerMode, setTimePickerMode] = useState<'preset' | 'custom_picker'>('preset');
+  const [scheduleDay, setScheduleDay] = useState<string>('明天');
+  const [scheduleHour, setScheduleHour] = useState<string>('14:30');
+  const [scheduleMsg, setScheduleMsg] = useState<string>('');
+  const [autoExecute, setAutoExecute] = useState<boolean>(true);
+
+  // Manual create task modal
+  const [isManualTaskModalOpen, setIsManualTaskModalOpen] = useState(false);
+  const [manualClientName, setManualClientName] = useState('');
+  const [manualQuestionTitle, setManualQuestionTitle] = useState('');
+  const [manualMsg, setManualMsg] = useState('');
+  const [manualTime, setManualTime] = useState('今晚 20:00 (黃金洽談尖峰)');
+
+  // Patrol scan
+  const [lastScanTime, setLastScanTime] = useState<string>('剛剛');
+  const [expandedDiagnostics, setExpandedDiagnostics] = useState<Record<string, boolean>>({
+    'crm-lead-1': true,
+  });
+
   const timeSlotInfo = getCurrentTimeSlotInfo(aiCrmConfig);
 
   useEffect(() => {
     setLeads(getAiCrmLeadsForSolver(currentUser.domain, currentUser.skills, questions));
   }, [currentUser.domain, currentUser.skills, questions]);
 
+  useEffect(() => {
+    if (currentUser.assistant24hrConfig?.scheduledTasks && isAuthorityOrAbove) {
+      setScheduledTasks(currentUser.assistant24hrConfig.scheduledTasks);
+    }
+  }, [currentUser.assistant24hrConfig, isAuthorityOrAbove]);
+
   const showToast = (msg: string) => {
     setFeedbackToast(msg);
     setTimeout(() => setFeedbackToast(null), 3500);
   };
 
-  // 觸發定時巡航主動分析與策略重整
-  const handleTriggerPatrolScan = () => {
-    setIsScanning(true);
-    setTimeout(() => {
-      setLeads(getAiCrmLeadsForSolver(currentUser.domain, currentUser.skills, questions));
-      setIsScanning(false);
-      const now = new Date();
-      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-      setLastScanTime(`剛剛 ${timeStr}`);
-      showToast('✨ AI-CRM 定時巡航掃描完成！已完成全站用戶狀態深度分析，並為您重新精準制定 3 項獲客策略！');
-    }, 1200);
+  // 任務同步：體驗模式不影響實際設定，僅正式方案才持久化寫入
+  const syncTasks = (tasks: AssistantScheduledTask[]) => {
+    setScheduledTasks(tasks);
+    if (isAuthorityOrAbove) {
+      const currConf = currentUser.assistant24hrConfig || DEFAULT_ASSISTANT_24HR_CONFIG;
+      updateAssistant24hrConfig({
+        ...currConf,
+        scheduledTasks: tasks,
+      });
+    }
   };
 
-  // Toggle diagnostics section
+  // Radar view sub-filter (待排定 vs 已轉移特助佇列)
+  const [radarFilter, setRadarFilter] = useState<'pending' | 'transferred' | 'all'>('pending');
+
+  // 檢核某個客戶之策略是否已排定並轉移至特助佇列
+  const isLeadTransferred = (lead: AiCrmLead) => {
+    return !!(lead.isScheduled || scheduledTasks.some((t) => t.clientId === lead.clientId && t.status === 'pending'));
+  };
+
+  const pendingRadarLeads = leads.filter((l) => !l.hasSent && !isLeadTransferred(l));
+  const transferredRadarLeads = leads.filter((l) => isLeadTransferred(l));
+  const pendingTaskCount = scheduledTasks.filter((t) => t.status === 'pending').length;
+
+  // 佇列任務：按照時程「由近到遠」嚴格排序 (Nearest upcoming first)
+  const sortedScheduledTasks = [...scheduledTasks].sort((a, b) => {
+    // 待代操發送 (pending) 排在前面，已完成或取消排在後面
+    if (a.status === 'pending' && b.status !== 'pending') return -1;
+    if (a.status !== 'pending' && b.status === 'pending') return 1;
+    const timeA = parseScheduleTimestamp(a.scheduledTime, a.scheduledTimestamp);
+    const timeB = parseScheduleTimestamp(b.scheduledTime, b.scheduledTimestamp);
+    return timeA - timeB;
+  });
+
+  const displayedLeads =
+    radarFilter === 'pending'
+      ? pendingRadarLeads
+      : radarFilter === 'transferred'
+      ? transferredRadarLeads
+      : leads;
+
   const toggleDiagnostics = (leadId: string) => {
     setExpandedDiagnostics((prev) => ({
       ...prev,
@@ -111,15 +288,11 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     }));
   };
 
-  // Handle one-click agreement and send message to client
-  const handleOneClickSend = async (lead: AiCrmLead) => {
+  // Direct Send Message
+  const handleOneClickSend = async (lead: AiCrmLead, msgOverride?: string) => {
     setSendingLeadId(lead.id);
-
     try {
-      // Dispatch to conversation
-      const textToSend = editingLeadId === lead.id ? editedMessage : lead.suggestedMessage;
-
-      // Start direct chat if not exists
+      const textToSend = msgOverride || (editingLeadId === lead.id ? editedMessage : lead.suggestedMessage);
       const targetUser = {
         id: lead.clientId,
         name: lead.clientName,
@@ -127,14 +300,15 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
         title: lead.clientRole,
       };
 
-      const targetQ = questions.find((q) => q.id === lead.questionId);
-      const convId = startDirectChat(targetUser, targetQ);
-
-      if (convId) {
-        sendMessage(convId, textToSend);
+      // 僅在正式方案下才發送至真實對話，體驗模式下不影響實際
+      if (isAuthorityOrAbove) {
+        const targetQ = questions.find((q) => q.id === lead.questionId);
+        const convId = startDirectChat(targetUser, targetQ);
+        if (convId) {
+          sendMessage(convId, textToSend);
+        }
       }
 
-      // Mark lead as sent
       setLeads((prev) =>
         prev.map((item) =>
           item.id === lead.id
@@ -144,16 +318,167 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       );
 
       setEditingLeadId(null);
-      showToast(`已成功向「${lead.clientName}」發送主動跟進訊息與專屬解題策略！`);
+      showToast(
+        isAuthorityOrAbove
+          ? `已向「${lead.clientName}」發送跟進訊息！`
+          : `🚀【範例體驗】已模擬發送跟進訊息（體驗模式不影響實際對話）！`
+      );
 
-      if (onOpenDirectChat) {
+      if (onOpenDirectChat && isAuthorityOrAbove) {
         setTimeout(() => {
           onOpenDirectChat(targetUser);
-        }, 800);
+        }, 600);
       }
     } finally {
       setSendingLeadId(null);
     }
+  };
+
+  // Open Schedule Dialog for Lead (排定的時間默認為 aicrm 判斷的針對此用戶的最適時間)
+  const handleOpenScheduleModal = (lead: AiCrmLead) => {
+    setSchedulingLead(lead);
+    setScheduleMsg(lead.suggestedMessage);
+    const optimalTime =
+      lead.strategyBlueprint?.bestContactTime ||
+      (lead.urgency === 'high'
+        ? '今日 14:00 - 18:00 (高意向搶佔首位優勢)'
+        : lead.urgency === 'medium'
+        ? '今晚 19:30 - 21:00 (晚間決策尖峰窗口)'
+        : '明日 09:30 - 11:30 (晨間業務空檔)');
+    setSelectedTimeOption(optimalTime);
+    setAutoExecute(true);
+  };
+
+  // Confirm Scheduling Task (軍師擬定 -> 已經排定的策略轉移到右邊佇列，並且都按照近到遠排序)
+  const handleConfirmSchedule = () => {
+    if (!schedulingLead) return;
+    const timeToUse = selectedTimeOption;
+    const calculatedTimestamp = parseScheduleTimestamp(timeToUse);
+    const taskId = `task-${Date.now()}`;
+
+    const newTask: AssistantScheduledTask = {
+      id: taskId,
+      clientId: schedulingLead.clientId,
+      clientName: schedulingLead.clientName,
+      clientAvatar: schedulingLead.clientAvatar,
+      questionId: schedulingLead.questionId,
+      questionTitle: schedulingLead.questionTitle,
+      strategySource: `AI-CRM 軍師策略：${schedulingLead.aiRecommendedAction}`,
+      suggestedAction: '24hr 特助代操：發送專屬解題策略與時程建議',
+      messageTemplate: scheduleMsg.trim() || schedulingLead.suggestedMessage,
+      scheduledTime: timeToUse,
+      scheduledTimestamp: calculatedTimestamp,
+      status: 'pending',
+      autoExecute,
+      createdAt: '剛剛',
+    };
+
+    // 標註客戶策略已排定並轉移
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === schedulingLead.id
+          ? {
+              ...l,
+              isScheduled: true,
+              scheduledTaskId: taskId,
+              scheduledTime: timeToUse,
+            }
+          : l
+      )
+    );
+
+    const nextTasks = [newTask, ...scheduledTasks.filter((t) => t.id !== newTask.id)];
+    syncTasks(nextTasks);
+    setSchedulingLead(null);
+
+    // 核心流轉：已經排定的策略轉移到右邊佇列，並依時程由近到遠排序
+    showToast(
+      isAuthorityOrAbove
+        ? `🤖「${schedulingLead.clientName}」策略已轉移至右側 24hr 特助佇列！已依時程由近到遠排序。`
+        : `🤖【範例體驗】「${schedulingLead.clientName}」策略已轉移至右側 24hr 特助佇列（已依時程由近到遠排序）！`
+    );
+  };
+
+  // Execute Scheduled Task right now by Assistant
+  const handleExecuteScheduledTask = (task: AssistantScheduledTask) => {
+    const targetUser = {
+      id: task.clientId,
+      name: task.clientName,
+      avatar: task.clientAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      title: '發案客戶',
+    };
+
+    // 僅在正式方案下才發送真實訊息，體驗模式下不影響實際
+    if (isAuthorityOrAbove) {
+      const targetQ = task.questionId ? questions.find((q) => q.id === task.questionId) : undefined;
+      const convId = startDirectChat(targetUser, targetQ);
+      if (convId) {
+        const assistantMessage = `[24hr AI特助代發] ${task.messageTemplate}`;
+        sendMessage(convId, assistantMessage);
+      }
+    }
+
+    const updatedTasks = scheduledTasks.map((t) =>
+      t.id === task.id
+        ? {
+            ...t,
+            status: 'completed' as const,
+            executedAt: '剛剛',
+            executionResult: isAuthorityOrAbove
+              ? '特助已代操發送成功，客戶聊天室已即時送達！'
+              : '【範例體驗模擬】特助代操發送成功（體驗不影響真實資料）！',
+          }
+        : t
+    );
+
+    syncTasks(updatedTasks);
+    showToast(
+      isAuthorityOrAbove
+        ? `⚡ 24hr 特助已成功代操發送至「${task.clientName}」的聊天室！`
+        : `⚡【範例體驗】24hr 特助模擬代操發送完成（不影響實際對話）！`
+    );
+  };
+
+  // Cancel Scheduled Task
+  const handleCancelScheduledTask = (taskId: string) => {
+    const updated = scheduledTasks.map((t) =>
+      t.id === taskId ? { ...t, status: 'cancelled' as const } : t
+    );
+    syncTasks(updated);
+    showToast('已取消此特助排程代操任務。');
+  };
+
+  // Delete Task
+  const handleDeleteTask = (taskId: string) => {
+    const updated = scheduledTasks.filter((t) => t.id !== taskId);
+    syncTasks(updated);
+    showToast('已刪除此排程任務。');
+  };
+
+  // Manual Task Submit
+  const handleCreateManualTask = () => {
+    if (!manualClientName.trim() || !manualMsg.trim()) return;
+    const newTask: AssistantScheduledTask = {
+      id: `task-${Date.now()}`,
+      clientId: `client-${Date.now()}`,
+      clientName: manualClientName.trim(),
+      questionTitle: manualQuestionTitle.trim() || '專案合作洽談',
+      strategySource: '專家手動委託 AI 特助代操排程',
+      suggestedAction: '24hr 特助代操發送',
+      messageTemplate: manualMsg.trim(),
+      scheduledTime: manualTime,
+      scheduledTimestamp: Date.now() + 1000 * 60 * 60,
+      status: 'pending',
+      autoExecute: true,
+      createdAt: '剛剛',
+    };
+
+    syncTasks([newTask, ...scheduledTasks]);
+    setIsManualTaskModalOpen(false);
+    setManualClientName('');
+    setManualQuestionTitle('');
+    setManualMsg('');
+    showToast(`🤖 特助代操任務已新增！將於「${manualTime}」發送。`);
   };
 
   const handleStartEdit = (lead: AiCrmLead) => {
@@ -169,944 +494,1214 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       )
     );
     setEditingLeadId(null);
-    showToast('AI 建議跟進訊息已成功修改儲存！您可以隨時點擊發送。');
-  };
-
-  const handleSaveAndSend = async (lead: AiCrmLead) => {
-    if (!editedMessage.trim()) return;
-    setLeads((prev) =>
-      prev.map((item) =>
-        item.id === lead.id ? { ...item, suggestedMessage: editedMessage.trim() } : item
-      )
-    );
-    await handleOneClickSend({ ...lead, suggestedMessage: editedMessage.trim() });
+    showToast('已更新跟進話術！');
   };
 
   const handleUpgradeMaster = () => {
     const res = subscribePlan('master', 'monthly');
     if (res.success) {
-      setDemoMode(true);
-      showToast('恭喜！您已成功升級「大師方案」（$1,490/月，0% 服務費），24hr AI客服特助與 AI-CRM 全面解鎖！');
-    }
-  };
-
-  const handleUpgradeAuthority = () => {
-    const res = subscribePlan('authority', 'monthly');
-    if (res.success) {
-      setDemoMode(true);
-      showToast('恭喜！您已成功升級「權威方案」（$599/月，5% 服務費），高賞提案優先推薦已解鎖！');
+      showToast('已升級大師方案！AI-CRM 與 24hr AI特助代操全面啟用。');
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 animate-in fade-in duration-200">
-      {/* 管理員預覽專家視角橫幅 (Admin Preview Alert Bar) */}
-      {isAdmin && (
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-stone-900 text-white shadow-md border border-purple-500/40 flex items-center justify-between gap-3 flex-wrap animate-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/30 text-purple-300 flex items-center justify-center shrink-0 border border-purple-400/40">
-              <Crown className="w-4 h-4 text-amber-300 fill-amber-300" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-amber-300">管理員預覽模式</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500 text-white font-bold">
-                  大師方案專家視角
-                </span>
-              </div>
-              <p className="text-[11px] text-purple-200 mt-0.5">
-                您正以管理員身分檢視全功能 AI-CRM，可直接模擬測試商機挖掘、跟進話術與推播廣播。
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onBack}
-            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold text-white transition-all cursor-pointer border border-white/20 flex items-center gap-1.5"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>返回管理面板</span>
-          </button>
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 animate-in fade-in duration-200">
+      {/* Toast */}
+      {feedbackToast && (
+        <div className="fixed top-16 right-4 sm:right-8 z-50 px-4 py-2.5 rounded-2xl bg-stone-900 text-white text-xs sm:text-sm font-bold shadow-xl border border-stone-700 flex items-center gap-2 animate-in slide-in-from-top-2 duration-150">
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{feedbackToast}</span>
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-transparent p-6 sm:p-8 rounded-3xl border border-amber-200/80">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-amber-800 bg-amber-100/90 px-3 py-1 rounded-full border border-amber-300/80 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-              <span>AI-CRM 主動客戶關係管理系統・大師方案專屬特權</span>
-            </span>
+      {/* Admin Preview Alert Bar */}
+      {isAdmin && (
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-stone-900 text-white shadow-sm border border-purple-500/40 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0 border border-purple-400/30">
+              <Crown className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-xs font-black text-amber-300 mr-2">管理員視角</span>
+              <span className="text-[11px] text-stone-300">
+                AI-CRM 軍師策略與 24hr 特助代操全功能預覽中
+              </span>
+            </div>
           </div>
-          <h1 className="text-xl sm:text-3xl font-black text-stone-900 tracking-tight">
-            定時主動關注與用戶需求深度分析
-          </h1>
-          <p className="text-xs sm:text-sm text-stone-600 max-w-2xl leading-relaxed">
-            系統演算法定時巡檢全站提問者狀態、痛點需求與猶豫卡點，主動為訂閱大師專家制定專屬作戰策略與破冰方案，主動將潛在商機轉化為高額訂單！
-          </p>
+          {onBack && (
+            <button
+              type="button"
+              onClick={handleBack}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold text-white transition-all cursor-pointer border border-white/20 flex items-center gap-1.5 shrink-0"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>返回面板</span>
+            </button>
+          )}
         </div>
+      )}
 
-        {/* Action Header Button */}
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={handleTriggerPatrolScan}
-            disabled={isScanning}
-            className="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center gap-2 border border-amber-300 disabled:opacity-50"
-            title="立即觸發 AI 深度巡航，更新全站提問者需求與最新策略"
-          >
-            <RefreshCw className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
-            <span>{isScanning ? 'AI 正在深度巡航掃描中...' : '立即執行 AI 深度巡航分析'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 定時主動巡檢監控與健康狀態看板 (Active AI Patrol Status Bar) */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-stone-900 via-purple-950/80 to-stone-900 text-white border border-purple-800/40 shadow-md">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-600/30 border border-purple-400/40 flex items-center justify-center shrink-0">
-              <Activity className="w-5 h-5 text-purple-300 animate-pulse" />
+      {/* Executive Hero Banner (電腦寬版/手機緊湊) */}
+      <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950 p-4 sm:p-6 rounded-3xl text-white shadow-sm border border-stone-800 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold text-amber-300 bg-amber-950/80 border border-amber-600/40 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>AI-CRM 拓客軍師 × 24hr 特助代操</span>
+              </span>
+              <span className="text-[10px] text-stone-400">大師方案專屬</span>
+              {onBack && !isAdmin && (
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-[11px] font-bold text-stone-300 hover:text-white transition-all cursor-pointer flex items-center gap-1 border border-white/15"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  <span>返回</span>
+                </button>
+              )}
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-extrabold text-sm sm:text-base text-white">AI-CRM 自動定時巡航引擎</h3>
-                <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
-                  timeSlotInfo.badgeTheme === 'emerald'
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
-                    : timeSlotInfo.badgeTheme === 'amber'
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
-                    : 'bg-purple-500/20 text-purple-300 border-purple-400/40'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full animate-ping ${
-                    timeSlotInfo.badgeTheme === 'emerald'
-                      ? 'bg-emerald-400'
-                      : timeSlotInfo.badgeTheme === 'amber'
-                      ? 'bg-amber-400'
-                      : 'bg-purple-400'
-                  }`} />
-                  <span>{timeSlotInfo.slotName} ({timeSlotInfo.slotRange}) · 每 {timeSlotInfo.currentIntervalHours} 小時動態巡航</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-3 flex-wrap mt-0.5">
-                <p className="text-xs text-stone-300">
-                  上次巡檢分析：<strong>{lastScanTime}</strong> · 下次自動排程：<strong>{timeSlotInfo.nextScanEstimatedText}</strong>
-                </p>
-                <span className="text-[11px] text-amber-300/90 font-medium">
-                  {timeSlotInfo.focusSummary}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 shrink-0 text-center text-xs">
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-[11px] text-stone-400 block">監控中高意向客情</span>
-              <span className="text-sm font-black text-amber-400 font-mono mt-0.5 block">{leads.length} 位客戶</span>
-            </div>
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-[11px] text-stone-400 block">AI 策略預估促成率</span>
-              <span className="text-sm font-black text-emerald-400 font-mono mt-0.5 block">85.3%</span>
-            </div>
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 col-span-2 sm:col-span-1">
-              <span className="text-[11px] text-stone-400 block">待促成潛在案值</span>
-              <span className="text-sm font-black text-purple-300 font-mono mt-0.5 block">NT$ 72,000+</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Master Plan Required Gate */}
-      {!demoMode ? (
-        <div className="p-8 sm:p-12 rounded-3xl bg-white border border-stone-200 shadow-sm text-center space-y-6 max-w-3xl mx-auto">
-          <div className="w-16 h-16 rounded-3xl bg-amber-100 border border-amber-300 text-amber-700 flex items-center justify-center mx-auto shadow-inner">
-            <Crown className="w-8 h-8 fill-amber-500 text-amber-600" />
-          </div>
-
-          <div className="space-y-2">
-            <h2 className="text-xl sm:text-2xl font-black text-stone-900">
-              AI-CRM 客戶關係管理系統僅向「大師方案」專家開放
-            </h2>
-            <p className="text-xs sm:text-sm text-stone-500 max-w-lg mx-auto leading-relaxed">
-              升級大師方案即可解鎖專屬 AI 商業智庫小秘書，享 0% 平台抽成、額外 2% BONUS 撥款補貼與全自動主動客情商機追蹤！
+            <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight">
+              客戶關係管理與自動化代操
+            </h1>
+            <p className="text-xs text-stone-300 max-w-xl leading-relaxed">
+              AI-CRM 擔任軍師分析客情意向與切入時機，24hr 特助全天候在線代操發送、接待諮詢並守護商機。
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left max-w-xl mx-auto">
-            <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-1.5">
-              <span className="text-amber-800 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-                <Target className="w-4 h-4 text-amber-600" /> 定時商機巡檢
+          {/* Quick Metrics (手機 3 欄 / 電腦緊湊) */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 shrink-0 text-center">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-white/5 border border-white/10">
+              <span className="text-[10px] sm:text-[11px] text-stone-400 block">待跟進客情</span>
+              <span className="text-sm sm:text-base font-black text-amber-400 font-mono mt-0.5 block">
+                {leads.filter((l) => !l.hasSent).length} 位
               </span>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                自動監控曾查看您主頁或提案的提問者，並主動提示最佳切入時間。
-              </p>
             </div>
-            <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-1.5">
-              <span className="text-amber-800 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-amber-600" /> 專屬策略制定
+            <div className="p-2 sm:p-2.5 rounded-xl bg-white/5 border border-white/10">
+              <span className="text-[10px] sm:text-[11px] text-stone-400 block">特助代操佇列</span>
+              <span className="text-sm sm:text-base font-black text-emerald-400 font-mono mt-0.5 block">
+                {pendingTaskCount} 件
               </span>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                AI 自動根據客戶背景產出客製跟進話術，專家一鍵同意即刻傳送。
-              </p>
             </div>
-            <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-1.5">
-              <span className="text-amber-800 font-bold text-xs sm:text-sm flex items-center gap-1.5">
-                <Radio className="w-4 h-4 text-amber-600" /> 系統主動推播
+            <div className="p-2 sm:p-2.5 rounded-xl bg-white/5 border border-white/10">
+              <span className="text-[10px] sm:text-[11px] text-stone-400 block">代答保護上限</span>
+              <span className="text-sm sm:text-base font-black text-purple-300 font-mono mt-0.5 block">
+                30則/日/室
               </span>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                主動向關注特定主題看板的提問者推播您的專業提案，帶來持續曝光。
+            </div>
+          </div>
+        </div>
+
+        {/* Status Bar */}
+        <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-stone-400">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1.5 text-stone-300">
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <span>當前時段：{timeSlotInfo.slotName} ({timeSlotInfo.slotRange})</span>
+            </span>
+            <span className="text-stone-600">•</span>
+            <span>最後巡檢：{lastScanTime}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Non-subscribed User Feature Sample Showcase Banner */}
+      {!isAuthorityOrAbove && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-sky-50 via-amber-50/40 to-transparent border-2 border-sky-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-800 border border-sky-300 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-sky-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-sky-950 bg-sky-100 border border-sky-300 px-2 py-0.5 rounded-md">
+                  【AI-CRM × 24hr 特助代操・範例體驗】
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-amber-200 text-amber-900">
+                  大師方案專屬
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-600 mt-1">
+                此處為完整實機功能範例體驗，下方體驗區已用水藍色外框標示，不影響實際資料。
               </p>
             </div>
           </div>
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+            {!isDemoUnlocked ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDemoUnlocked(true);
+                  const el = document.getElementById('ai-crm-demo-dashboard');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 active:scale-95 text-white font-black text-xs shadow-md shadow-sky-500/25 transition-all cursor-pointer flex items-center gap-1.5 border border-sky-300"
+              >
+                <Play className="w-3.5 h-3.5 fill-white" />
+                <span>體驗看看</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  resetDemoState();
+                }}
+                title="再次點擊取消體驗狀態"
+                className="px-4 py-2 rounded-xl bg-sky-50 border-2 border-sky-400 text-sky-700 hover:bg-sky-100 active:scale-95 font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-sky-600 animate-pulse" />
+                <span>體驗中</span>
+              </button>
+            )}
 
-          <div className="flex items-center gap-3 pt-2 flex-wrap justify-center">
             <button
               type="button"
               onClick={handleUpgradeMaster}
-              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-stone-950 font-black text-sm shadow-md transition-all cursor-pointer flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
             >
-              <Crown className="w-4 h-4 fill-stone-950" />
-              <span>立即升級大師方案 ($1,490/月，0% 服務費)</span>
+              <Crown className="w-3.5 h-3.5 fill-stone-950" />
+              <span>馬上開通！</span>
             </button>
           </div>
         </div>
-      ) : (
-        /* Full-Page Active Master CRM Dashboard */
-        <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden flex flex-col">
-          {/* Nav Tabs */}
-          <div className="px-4 sm:px-8 pt-4 border-b border-stone-200 flex items-center gap-2 bg-stone-50/80 overflow-x-auto">
+      )}
+
+      {/* Main Active Dashboard (全體用戶皆可查閱實機範例與完整內涵，體驗區域用水藍色外匡框住) */}
+      <div
+        id="ai-crm-demo-dashboard"
+        className={`bg-white rounded-3xl transition-all flex flex-col relative overflow-hidden ${
+          !isAuthorityOrAbove
+            ? 'border-2 border-sky-400 ring-4 ring-sky-200/50 shadow-xl shadow-sky-100/50'
+            : 'border border-stone-200 shadow-2xs'
+        }`}
+      >
+        {/* 未解鎖體驗模式時的毛玻璃遮蓋層 (點擊水藍色「體驗看看」後解鎖) */}
+        {!isAuthorityOrAbove && !isDemoUnlocked && (
+          <div className="absolute inset-0 z-30 backdrop-blur-md bg-stone-900/60 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+            <div className="bg-white/95 backdrop-blur-xl border-2 border-sky-400 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+              <div className="flex justify-center">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 border border-sky-300 text-sky-800 text-xs font-black tracking-wide shadow-2xs">
+                  <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+                  體驗中
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+                  搶先體驗 AI-CRM 拓客軍師 & 特助代操
+                </h3>
+                <p className="text-xs text-stone-600">
+                  全自動高意向客情診斷、時段智能排定、24hr 自動化代操發送
+                </p>
+              </div>
+
+              {/* 體驗說明框 */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-sky-50 border border-sky-300 text-left space-y-1.5">
+                <p className="text-xs text-sky-950 leading-relaxed font-bold">
+                  點擊下方按鍵即可解鎖實機功能體驗。
+                </p>
+                <p className="text-[11px] sm:text-xs text-sky-900 leading-relaxed">
+                  在體驗中所進行的任何動作（排定時程、特助模擬發送、編輯策略等）均為示範模擬，絕不影響實際系統與真實對話。
+                </p>
+                <div className="pt-1 border-t border-sky-200/60 text-[10px] sm:text-[11px] text-stone-500 font-medium">
+                  ※ 離開本版面後自動跳回原本狀態，需重新點擊「體驗看看」再次體驗。
+                </div>
+              </div>
+
+              {/* 按鈕組：水藍色體驗看看按鍵 */}
+              <div className="space-y-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDemoUnlocked(true);
+                  }}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-sky-500 hover:bg-sky-400 active:scale-98 text-white font-black text-sm sm:text-base shadow-lg shadow-sky-500/30 border border-sky-300 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>體驗看看</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleUpgradeMaster}
+                  className="w-full py-2.5 px-4 rounded-2xl bg-amber-400 hover:bg-amber-300 active:scale-98 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs"
+                >
+                  <Crown className="w-3.5 h-3.5 fill-stone-950" />
+                  <span>馬上開通！</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Top Segmented Navigation Tabs */}
+        <div className="px-3 sm:px-6 pt-3 border-b border-stone-200 flex items-center gap-1.5 bg-stone-50/70 overflow-x-auto text-xs font-bold">
             <button
               type="button"
               onClick={() => setActiveTab('leads')}
-              className={`pb-3.5 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+              className={`pb-3 px-3.5 border-b-2 transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
                 activeTab === 'leads'
-                  ? 'border-amber-500 text-stone-950'
+                  ? 'border-amber-500 text-stone-900 font-black'
                   : 'border-transparent text-stone-500 hover:text-stone-800'
               }`}
             >
-              <Users className="w-4 h-4 text-amber-600" />
-              <span>潛在客戶追蹤與跟進雷達</span>
-              <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[10px] font-black flex items-center justify-center">
+              <Target className="w-4 h-4 text-amber-600" />
+              <span>拓客雷達 (軍師策略)</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-stone-950 text-[10px] font-black">
                 {leads.filter((l) => !l.hasSent).length}
               </span>
             </button>
 
             <button
               type="button"
-              onClick={() => setActiveTab('broadcast')}
-              className={`pb-3.5 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-                activeTab === 'broadcast'
-                  ? 'border-amber-500 text-stone-950'
-                  : 'border-transparent text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              <Radio className="w-4 h-4 text-amber-600" />
-              <span>專家方案主動推播</span>
-              <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 text-[10px] font-black border border-purple-200">
-                權威以上
-              </span>
-            </button>
-
-            <button
-              type="button"
               onClick={() => setActiveTab('assistant')}
-              className={`pb-3.5 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+              className={`pb-3 px-3.5 border-b-2 transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
                 activeTab === 'assistant'
-                  ? 'border-amber-500 text-stone-950 font-black'
+                  ? 'border-amber-500 text-stone-900 font-black'
                   : 'border-transparent text-stone-500 hover:text-stone-800'
               }`}
             >
               <Bot className="w-4 h-4 text-amber-600" />
-              <span>24hr AI客服特助</span>
-              <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-stone-950 text-[10px] font-black border border-amber-300">
-                大師專屬
-              </span>
+              <span>24hr 特助 (代操排程 & 設定)</span>
+              {pendingTaskCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-white text-[10px] font-black">
+                  {pendingTaskCount}
+                </span>
+              )}
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('analytics')}
-              className={`pb-3.5 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+              className={`pb-3 px-3.5 border-b-2 transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
                 activeTab === 'analytics'
-                  ? 'border-amber-500 text-stone-950'
+                  ? 'border-amber-500 text-stone-900 font-black'
                   : 'border-transparent text-stone-500 hover:text-stone-800'
               }`}
             >
               <BarChart3 className="w-4 h-4 text-amber-600" />
-              <span>客戶關係漏斗與成效</span>
+              <span>轉化漏斗</span>
             </button>
           </div>
 
-          {/* Tab Content Body */}
-          <div className="p-4 sm:p-8 space-y-6">
-            {/* TAB 1: LEADS TRACKING */}
-            {activeTab === 'leads' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div>
-                    <h3 className="font-extrabold text-base sm:text-lg text-stone-900">
-                      即時客情狀態追蹤與專屬策略制定
-                    </h3>
-                    <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
-                      系統定時主動關注與分析用戶狀況和需求，並為您制定最佳促成策略！
-                    </p>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-stone-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
-                    待跟進高價值客戶：{leads.filter((l) => !l.hasSent).length} 位
+          {/* TAB 1: 拓客雷達 (軍師策略) */}
+          {activeTab === 'leads' && (
+            <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-5">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-stone-900">
+                    即時高意向客情雷達
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-stone-500">
+                    AI-CRM 軍師診斷客戶痛點並擬定話術，可一鍵委託 24hr 特助排定代操或親自發送。
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono font-bold text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                    待跟進：{leads.filter((l) => !l.hasSent).length} 位
                   </span>
                 </div>
+              </div>
 
-                <div className="space-y-5">
-                  {leads.map((lead) => {
-                    const isExpanded = expandedDiagnostics[lead.id] !== false;
+              {/* Leads List */}
+              <div className="space-y-3.5">
+                {leads.map((lead) => {
+                  const isExpanded = expandedDiagnostics[lead.id] !== false;
+                  const relatedTask = scheduledTasks.find(
+                    (t) => t.clientId === lead.clientId && t.status === 'pending'
+                  );
 
-                    return (
-                      <div
-                        key={lead.id}
-                        className={`p-5 sm:p-6 rounded-3xl border transition-all space-y-4 shadow-sm ${
-                          lead.hasSent
-                            ? 'bg-stone-50/70 border-stone-200 opacity-90'
-                            : lead.urgency === 'high'
-                            ? 'bg-gradient-to-b from-amber-50/30 to-white border-amber-300 ring-1 ring-amber-200'
-                            : 'bg-white border-stone-200'
-                        }`}
-                      >
-                        {/* Client Header Info */}
-                        <div className="flex items-start justify-between gap-3 flex-wrap border-b border-stone-100 pb-3.5">
-                          <div className="flex items-center gap-3.5">
-                            <img
-                              src={lead.clientAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                              alt={lead.clientName}
-                              className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-200 shadow-xs"
-                            />
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="font-black text-base text-blue-600">{lead.clientName}</h4>
-                                <span className="text-xs text-stone-500">{lead.clientRole}</span>
-                                <span
-                                  className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                                    lead.urgency === 'high'
-                                      ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                                      : 'bg-amber-100 text-amber-800'
-                                  }`}
-                                >
-                                  {lead.urgency === 'high' ? '🔥 迫切剛需・優先跟進' : '穩健意向'}
+                  return (
+                    <div
+                      key={lead.id}
+                      className={`p-3.5 sm:p-5 rounded-2xl border transition-all space-y-3 shadow-2xs ${
+                        lead.hasSent
+                          ? 'bg-stone-50/60 border-stone-200'
+                          : lead.urgency === 'high'
+                          ? 'bg-amber-50/20 border-amber-300 ring-1 ring-amber-200/60'
+                          : 'bg-white border-stone-200'
+                      }`}
+                    >
+                      {/* Client Header */}
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={
+                              lead.clientAvatar ||
+                              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+                            }
+                            alt={lead.clientName}
+                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border border-amber-200 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-black text-sm text-stone-900">{lead.clientName}</h4>
+                              <span className="text-[11px] text-stone-500">{lead.clientRole}</span>
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.2 rounded-md ${
+                                  lead.urgency === 'high'
+                                    ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                              >
+                                {lead.urgency === 'high' ? '🔥 優先跟進' : '穩健意向'}
+                              </span>
+                              {relatedTask && (
+                                <span className="text-[10px] font-bold px-2 py-0.2 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  <span>特助已排定：{relatedTask.scheduledTime}</span>
                                 </span>
-                                {lead.clientStatus && (
-                                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-800 border border-purple-200">
-                                    {lead.clientStatus}
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5 flex-wrap">
+                              <span className="font-semibold text-stone-700">動態：{lead.statusDescription}</span>
+                              <span>•</span>
+                              <span>{lead.lastActiveTime}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Question snippet & toggle */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {lead.questionTitle && (
+                            <span className="text-[11px] text-stone-500 hidden md:inline max-w-xs truncate">
+                              專案：{lead.questionTitle}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => toggleDiagnostics(lead.id)}
+                            className="p-1 px-2 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-600 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>{isExpanded ? '收合' : '軍師分析'}</span>
+                            {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expandable Strategist Blueprint */}
+                      {isExpanded && lead.clientNeedsAnalysis && (
+                        <div className="p-3 sm:p-4 rounded-xl bg-amber-50/50 border border-amber-200/80 space-y-2.5 text-xs animate-in fade-in duration-150">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-amber-950 flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                              <span>AI-CRM 軍師診斷報告</span>
+                            </span>
+                            <span className="text-[11px] font-mono text-amber-800">
+                              預算評估：{lead.clientNeedsAnalysis.budgetIntent}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2.5 bg-white rounded-lg border border-amber-200/60 space-y-1">
+                              <span className="font-bold text-stone-800 block">核心痛點：</span>
+                              <ul className="list-disc list-inside space-y-0.5 text-stone-600">
+                                {lead.clientNeedsAnalysis.corePainPoints.map((pain, pIdx) => (
+                                  <li key={pIdx}>{pain}</li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div className="p-2.5 bg-white rounded-lg border border-amber-200/60 space-y-1">
+                              <span className="font-bold text-stone-800 block">決策關鍵因子：</span>
+                              <div className="flex flex-wrap gap-1">
+                                {lead.clientNeedsAnalysis.decisionFactors.map((df, dfIdx) => (
+                                  <span key={dfIdx} className="px-1.5 py-0.2 rounded bg-amber-100/70 text-amber-900 text-[10px]">
+                                    {df}
                                   </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-stone-600 mt-1">
-                                <span className="font-semibold text-amber-950">【動態】：{lead.statusDescription}</span>
-                                <span className="text-stone-400">•</span>
-                                <span className="text-stone-400 flex items-center gap-1">
-                                  <Clock className="w-3 h-3" /> {lead.lastActiveTime}
-                                </span>
+                                ))}
                               </div>
                             </div>
                           </div>
+                        </div>
+                      )}
 
-                          <div className="flex items-center gap-2">
-                            {lead.questionTitle && (
-                              <div className="text-right text-xs max-w-xs truncate hidden md:block">
-                                <span className="text-stone-400 block text-[10px]">關聯專案/懸賞：</span>
-                                <span className="font-semibold text-stone-800 truncate block">
-                                  {lead.questionTitle}
-                                </span>
-                              </div>
-                            )}
+                      {/* AI Suggested Message Area */}
+                      <div className="p-3 sm:p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-2.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-stone-800 flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5 text-amber-600" />
+                            <span>軍師推薦話術：</span>
+                          </span>
+                          {!lead.hasSent && editingLeadId !== lead.id && (
                             <button
                               type="button"
-                              onClick={() => toggleDiagnostics(lead.id)}
-                              className="p-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-500 text-xs font-bold flex items-center gap-1 cursor-pointer"
-                              title={isExpanded ? '收合深度診斷與策略' : '展開深度診斷與策略'}
+                              onClick={() => handleStartEdit(lead)}
+                              className="text-[11px] font-bold text-stone-600 hover:text-amber-800 flex items-center gap-1 cursor-pointer"
                             >
-                              <span className="text-[11px]">{isExpanded ? '收合' : '展開診斷'}</span>
-                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              <Edit3 className="w-3 h-3" />
+                              <span>修改話術</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {editingLeadId === lead.id ? (
+                          <div className="space-y-2">
+                            <textarea
+                              rows={3}
+                              value={editedMessage}
+                              onChange={(e) => setEditedMessage(e.target.value)}
+                              className="w-full p-2.5 rounded-lg border border-amber-300 text-xs text-stone-900 focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white leading-relaxed"
+                              placeholder="編輯跟進話術..."
+                            />
+                            <div className="flex justify-end gap-2 text-xs">
+                              <button
+                                type="button"
+                                onClick={() => setEditingLeadId(null)}
+                                className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold"
+                              >
+                                取消
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEdit(lead.id)}
+                                className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold"
+                              >
+                                儲存
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-stone-700 leading-relaxed font-normal bg-white p-2.5 rounded-lg border border-stone-200">
+                            「{lead.suggestedMessage}」
+                          </p>
+                        )}
+
+                        {/* Actions (電腦水平排列 / 手機自適應) */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-1 gap-2.5">
+                          <span className="text-[11px] text-stone-500">
+                            💡 軍師建議：<strong className="text-stone-700">{lead.aiRecommendedAction}</strong>
+                          </span>
+
+                          {lead.hasSent ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold self-start sm:self-auto">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>已發送跟進</span>
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* 核心新功能：排定發送 */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenScheduleModal(lead)}
+                                className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-300 font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                                title="由 AI-CRM 作為軍師排定時程，24hr 特助作為代操者全自動發送"
+                              >
+                                <Bot className="w-3.5 h-3.5 text-purple-700" />
+                                <span>排定發送</span>
+                              </button>
+
+                              {/* 立即親自發送 */}
+                              <button
+                                type="button"
+                                disabled={sendingLeadId === lead.id}
+                                onClick={() => handleOneClickSend(lead)}
+                                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 text-stone-950 font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50 active:scale-95"
+                              >
+                                <Send className="w-3 h-3" />
+                                <span>親自發送</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: 24hr 特助 (代操排程 & 設定) */}
+          {activeTab === 'assistant' && (
+            <div className="p-3.5 sm:p-6 space-y-5">
+              {/* Architecture Banner: AI-CRM軍師 × 24hr特助代操 */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-900/10 via-amber-500/10 to-transparent border border-purple-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-800 border border-purple-300 flex items-center justify-center shrink-0">
+                    <Bot className="w-5 h-5 text-purple-700" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-xs sm:text-sm text-stone-900 flex items-center gap-1.5">
+                      <span>AI-CRM (軍師策略) ➔ 24hr AI特助 (全自動代操者)</span>
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      軍師負責分析客戶時程並擬定策略，24hr 特助 7x24 在線代操發送訊息、聊天室接待與守護。
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sub Tab Switch */}
+                <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setAssistantSubTab('queue')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      assistantSubTab === 'queue'
+                        ? 'bg-white text-stone-900 shadow-2xs'
+                        : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                    <span>特助排定佇列 ({pendingTaskCount})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAssistantSubTab('settings')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      assistantSubTab === 'settings'
+                        ? 'bg-white text-stone-900 shadow-2xs'
+                        : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-amber-600" />
+                    <span>特助接待設定</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-View A: 排定代操佇列 */}
+              {assistantSubTab === 'queue' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <h4 className="font-extrabold text-xs sm:text-sm text-stone-900">
+                        特助自動化排程任務佇列
+                      </h4>
+                      <p className="text-[11px] text-stone-500">
+                        時間到達時，24hr 特助將全自動進入客戶聊天室代操發送。
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsManualTaskModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>新增特助代操任務</span>
+                    </button>
+                  </div>
+
+                  {scheduledTasks.length === 0 ? (
+                    <div className="p-8 text-center bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+                      <Bot className="w-8 h-8 text-stone-400 mx-auto" />
+                      <p className="text-xs font-bold text-stone-700">目前尚無排定中的特助代操任務</p>
+                      <p className="text-[11px] text-stone-500">
+                        前往「拓客雷達」點選任一客戶卡片上的「排定發送」，軍師將自動建立排程！
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {scheduledTasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className={`p-3.5 sm:p-4 rounded-2xl border transition-all space-y-2.5 shadow-2xs ${
+                            task.status === 'completed'
+                              ? 'bg-stone-50/70 border-stone-200'
+                              : task.status === 'cancelled'
+                              ? 'bg-stone-50/50 border-stone-200 opacity-60'
+                              : 'bg-white border-purple-200 ring-1 ring-purple-100'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3 flex-wrap">
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                  task.status === 'completed'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : task.status === 'cancelled'
+                                    ? 'bg-stone-200 text-stone-600'
+                                    : 'bg-purple-100 text-purple-900'
+                                }`}
+                              >
+                                <Bot className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-black text-xs sm:text-sm text-stone-900">
+                                    {task.clientName}
+                                  </span>
+                                  {task.questionTitle && (
+                                    <span className="text-[11px] text-stone-500">
+                                      ({task.questionTitle})
+                                    </span>
+                                  )}
+                                  <span
+                                    className={`text-[10px] font-bold px-2 py-0.2 rounded-md ${
+                                      task.status === 'completed'
+                                        ? 'bg-emerald-100 text-emerald-800'
+                                        : task.status === 'cancelled'
+                                        ? 'bg-stone-200 text-stone-600'
+                                        : 'bg-purple-100 text-purple-900 border border-purple-300'
+                                    }`}
+                                  >
+                                    {task.status === 'completed'
+                                      ? '✅ 特助已代操發送'
+                                      : task.status === 'cancelled'
+                                      ? '已取消'
+                                      : '⏳ 待代操發送'}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-purple-900 font-semibold block mt-0.5">
+                                  {task.strategySource}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Scheduled Time info */}
+                            <div className="flex items-center gap-1.5 text-xs text-stone-600 font-mono">
+                              <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                              <span>預定時程：{task.scheduledTime}</span>
+                            </div>
+                          </div>
+
+                          {/* Message Content */}
+                          <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700 leading-relaxed font-normal">
+                            「{task.messageTemplate}」
+                          </div>
+
+                          {/* Action footer */}
+                          <div className="flex items-center justify-between pt-1 gap-2 flex-wrap text-xs">
+                            <span className="text-[11px] text-stone-500">
+                              {task.status === 'completed' && task.executionResult ? (
+                                <span className="text-emerald-700 font-bold">{task.executionResult}</span>
+                              ) : (
+                                <span>特助模式：全自動代操發送</span>
+                              )}
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              {task.status === 'pending' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExecuteScheduledTask(task)}
+                                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                                    title="立即由 24hr 特助代操發送"
+                                  >
+                                    <Play className="w-3 h-3 fill-white" />
+                                    <span>特助立即代操</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCancelScheduledTask(task.id)}
+                                    className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs cursor-pointer"
+                                  >
+                                    取消
+                                  </button>
+                                </>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="p-1 rounded-lg hover:bg-rose-50 text-stone-400 hover:text-rose-600 cursor-pointer"
+                                title="刪除任務"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Sub-View B: 特助設定與防護 (含 30則/日/聊天室) */}
+              {assistantSubTab === 'settings' && (
+                <div className="space-y-4">
+                  <AiAssistantSettingsPanel
+                    currentUser={currentUser}
+                    onUpdateConfig={(newConfig) => {
+                      updateAssistant24hrConfig(newConfig);
+                      showToast('✨ 24hr 特助接待設定已儲存！');
+                    }}
+                    onUpgradePlan={handleUpgradeMaster}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: 轉化漏斗 */}
+          {activeTab === 'analytics' && (
+            <div className="p-3.5 sm:p-6 space-y-5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200 text-center">
+                  <span className="text-[11px] text-stone-400 font-bold block mb-1">提案檢視數</span>
+                  <span className="text-lg sm:text-xl font-black text-stone-900 font-mono">48 次</span>
+                </div>
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200 text-center">
+                  <span className="text-[11px] text-stone-400 font-bold block mb-1">特助代操跟進</span>
+                  <span className="text-lg sm:text-xl font-black text-amber-600 font-mono">16 次</span>
+                </div>
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200 text-center">
+                  <span className="text-[11px] text-stone-400 font-bold block mb-1">促成採納率</span>
+                  <span className="text-lg sm:text-xl font-black text-emerald-600 font-mono">75.0%</span>
+                </div>
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200 text-center">
+                  <span className="text-[11px] text-stone-400 font-bold block mb-1">促成業績</span>
+                  <span className="text-lg sm:text-xl font-black text-stone-900 font-mono">NT$ 38,400</span>
+                </div>
+              </div>
+
+              {/* Conversion Funnel Bar */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-3 shadow-2xs">
+                <h4 className="font-bold text-xs sm:text-sm text-stone-900 flex items-center gap-1.5">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <span>客戶轉化階段</span>
+                </h4>
+                <div className="space-y-2.5 text-xs">
+                  <div>
+                    <div className="flex justify-between font-bold text-stone-700 mb-1">
+                      <span>1. 客戶檢視專家提案 (48 人)</span>
+                      <span>100%</span>
+                    </div>
+                    <div className="w-full bg-stone-100 rounded-full h-2">
+                      <div className="bg-amber-400 h-2 rounded-full w-full" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between font-bold text-stone-700 mb-1">
+                      <span>2. AI-CRM 軍師策略規劃與猶豫期破冰 (24 人)</span>
+                      <span>50.0%</span>
+                    </div>
+                    <div className="w-full bg-stone-100 rounded-full h-2">
+                      <div className="bg-purple-500 h-2 rounded-full w-1/2" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between font-bold text-stone-700 mb-1">
+                      <span>3. 24hr 特助代操排程發送 (16 人)</span>
+                      <span>33.3%</span>
+                    </div>
+                    <div className="w-full bg-stone-100 rounded-full h-2">
+                      <div className="bg-blue-500 h-2 rounded-full w-1/3" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between font-bold text-stone-700 mb-1">
+                      <span>4. 成功採納與履約撥款 (12 人)</span>
+                      <span>25.0%</span>
+                    </div>
+                    <div className="w-full bg-stone-100 rounded-full h-2">
+                      <div className="bg-emerald-500 h-2 rounded-full w-1/4" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Footer Disclaimer */}
+          <div className="p-3.5 sm:p-4 border-t border-stone-200 bg-stone-50/70 text-[11px] text-stone-500 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <span>
+              創點子 IdeaX • AI-CRM 客戶關係管理 (含 24hr AI特助代操)
+            </span>
+            {onBack && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="text-stone-700 hover:text-stone-900 font-bold cursor-pointer underline self-start sm:self-auto"
+              >
+                返回
+              </button>
+            )}
+          </div>
+        </div>
+
+      {/* Schedule Modal (軍師擬定 -> 特助代操) */}
+      {schedulingLead && (
+        <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center">
+                  <Bot className="w-4 h-4 text-purple-700" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-stone-900">
+                    排定發送（特助代操）
+                  </h3>
+                  <p className="text-[10px] text-stone-500">
+                    AI-CRM 軍師擬定策略 ➔ 24hr 特助自動化排程發送
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSchedulingLead(null)}
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {/* Target Client & Strategy Card */}
+              {(() => {
+                const optimalTime =
+                  schedulingLead.strategyBlueprint?.bestContactTime ||
+                  (schedulingLead.urgency === 'high'
+                    ? '今日 14:00 - 18:00 (高意向搶佔首位優勢)'
+                    : schedulingLead.urgency === 'medium'
+                    ? '今晚 19:30 - 21:00 (晚間決策尖峰窗口)'
+                    : '明日 09:30 - 11:30 (晨間業務空檔)');
+
+                return (
+                  <>
+                    <div className="p-3 rounded-2xl bg-purple-50/80 border border-purple-200 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-xs text-purple-950">目標客戶：{schedulingLead.clientName}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-200 text-purple-900 font-bold">
+                          {schedulingLead.strategyBlueprint?.strategyName || '客情破冰策略'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-purple-800">
+                        軍師建議行動：{schedulingLead.aiRecommendedAction}
+                      </p>
+                      <div className="pt-1.5 border-t border-purple-200/80 flex items-center justify-between flex-wrap gap-1 text-[11px]">
+                        <span className="text-purple-900 font-bold flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                          <span>AICRM 最適時間：</span>
+                        </span>
+                        <span className="font-black text-purple-950 bg-white/80 px-2 py-0.5 rounded-md border border-purple-200">
+                          {optimalTime}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Time Selection (純選項選擇，完全免打字) */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-stone-700 block">
+                          排定發送時間：
+                        </label>
+                        <span className="text-[10px] text-purple-700 font-bold flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-amber-500" />
+                          <span>默認為 AICRM 最適時間</span>
+                        </span>
+                      </div>
+
+                      {/* 預設首選：AICRM 針對此用戶判斷之最適時間 */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTimeOption(optimalTime)}
+                        className={`w-full p-2.5 rounded-xl text-left transition-all border cursor-pointer flex items-center justify-between ${
+                          selectedTimeOption === optimalTime
+                            ? 'bg-gradient-to-r from-purple-900 to-indigo-950 text-white border-purple-900 shadow-sm ring-2 ring-purple-300'
+                            : 'bg-purple-50/50 hover:bg-purple-100/60 text-purple-950 border-purple-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                              selectedTimeOption === optimalTime
+                                ? 'bg-amber-400 text-stone-950 font-bold'
+                                : 'bg-purple-200 text-purple-800'
+                            }`}
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-black text-xs">{optimalTime}</span>
+                              <span
+                                className={`text-[9px] px-1.5 py-0.2 rounded font-black ${
+                                  selectedTimeOption === optimalTime
+                                    ? 'bg-amber-400 text-stone-950'
+                                    : 'bg-purple-200 text-purple-900'
+                                }`}
+                              >
+                                AICRM 最適推薦
+                              </span>
+                            </div>
+                            <span
+                              className={`text-[10px] block ${
+                                selectedTimeOption === optimalTime
+                                  ? 'text-purple-200'
+                                  : 'text-stone-500'
+                              }`}
+                            >
+                              依客戶作息習慣與決策窗口精算
+                            </span>
+                          </div>
+                        </div>
+                        {selectedTimeOption === optimalTime && (
+                          <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                        )}
+                      </button>
+
+                      {/* 其他時段點選面板（免打字，提供豐富選項） */}
+                      <div className="pt-1 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-stone-600">更多時段選項（點選切換）：</span>
+                          <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-lg border border-stone-200 text-[10px]">
+                            <button
+                              type="button"
+                              onClick={() => setTimePickerMode('preset')}
+                              className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                                timePickerMode === 'preset'
+                                  ? 'bg-purple-900 text-white shadow-2xs'
+                                  : 'text-stone-600 hover:text-stone-900'
+                              }`}
+                            >
+                              精選情境時段
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTimePickerMode('custom_picker')}
+                              className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                                timePickerMode === 'custom_picker'
+                                  ? 'bg-purple-900 text-white shadow-2xs'
+                                  : 'text-stone-600 hover:text-stone-900'
+                              }`}
+                            >
+                              日期＋時刻組合
                             </button>
                           </div>
                         </div>
 
-                        {/* Collapsible Deep Analysis & Strategy Blueprint */}
-                        {isExpanded && (
-                          <div className="space-y-4 animate-in fade-in duration-150">
-                            {/* 1. 用戶狀況與核心需求診斷 (Client Needs Diagnostics) */}
-                            {lead.clientNeedsAnalysis && (
-                              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/90 text-xs sm:text-sm space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-extrabold text-amber-950 flex items-center gap-1.5">
-                                    <Sparkles className="w-4 h-4 text-amber-700" />
-                                    <span>AI 客戶需求深度診斷與行為分析</span>
-                                  </span>
-                                  <span className="text-[11px] font-bold text-amber-800 font-mono">
-                                    預估預算承載：{lead.clientNeedsAnalysis.budgetIntent}
-                                  </span>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                                  {/* 痛點 */}
-                                  <div className="p-3 bg-white/90 rounded-xl border border-amber-200/70 space-y-1.5">
-                                    <span className="font-bold text-stone-900 block flex items-center gap-1">
-                                      <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                                      <span>客戶核心痛點拆解：</span>
-                                    </span>
-                                    <ul className="list-disc list-inside space-y-1 text-stone-700">
-                                      {lead.clientNeedsAnalysis.corePainPoints.map((pain, pIdx) => (
-                                        <li key={pIdx} className="leading-relaxed">{pain}</li>
-                                      ))}
-                                    </ul>
+                        {timePickerMode === 'preset' ? (
+                          /* Mode 1: 常用精選時段 (12 個情境點選卡片) */
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[160px] overflow-y-auto pr-0.5">
+                            {SCHEDULE_PRESET_OPTIONS.map((opt) => {
+                              const isSelected = selectedTimeOption === opt.label;
+                              return (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  onClick={() => setSelectedTimeOption(opt.label)}
+                                  className={`p-2 rounded-xl text-left transition-all border cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-purple-900 text-white border-purple-900 shadow-2xs'
+                                      : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                                  }`}
+                                >
+                                  <div className="font-bold text-xs leading-tight">{opt.label}</div>
+                                  <div className={`text-[9px] mt-0.5 ${isSelected ? 'text-purple-200' : 'text-stone-400'}`}>
+                                    {opt.desc}
                                   </div>
-
-                                  {/* 決策因子與訊號 */}
-                                  <div className="p-3 bg-white/90 rounded-xl border border-amber-200/70 space-y-2">
-                                    <div>
-                                      <span className="font-bold text-stone-900 block flex items-center gap-1 mb-1">
-                                        <Target className="w-3.5 h-3.5 text-amber-600" />
-                                        <span>關鍵決策因子：</span>
-                                      </span>
-                                      <div className="flex flex-wrap gap-1.5">
-                                        {lead.clientNeedsAnalysis.decisionFactors.map((df, dfIdx) => (
-                                          <span key={dfIdx} className="px-2 py-0.5 rounded-md bg-amber-100/70 text-amber-900 text-[10px] font-semibold">
-                                            {df}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-
-                                    <div>
-                                      <span className="font-bold text-stone-900 block flex items-center gap-1 mb-1">
-                                        <Activity className="w-3.5 h-3.5 text-purple-600" />
-                                        <span>定時巡檢互動訊號：</span>
-                                      </span>
-                                      <ul className="list-disc list-inside space-y-0.5 text-stone-600 text-[11px]">
-                                        {lead.clientNeedsAnalysis.interactionSignals.map((sig, sIdx) => (
-                                          <li key={sIdx}>{sig}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  </div>
-                                </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          /* Mode 2: 日期 + 時段兩鍵點選組合盤 (100% 點選，不需鍵盤輸入) */
+                          <div className="p-2.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
+                            <div>
+                              <div className="text-[10px] font-bold text-stone-500 mb-1">① 點選發送日期：</div>
+                              <div className="grid grid-cols-6 gap-1">
+                                {SCHEDULE_DAYS.map((day) => (
+                                  <button
+                                    key={day}
+                                    type="button"
+                                    onClick={() => {
+                                      setScheduleDay(day);
+                                      setSelectedTimeOption(`${day} ${scheduleHour}`);
+                                    }}
+                                    className={`py-1.5 px-1 rounded-lg text-center font-bold text-[11px] transition-all cursor-pointer border ${
+                                      scheduleDay === day
+                                        ? 'bg-purple-900 text-white border-purple-900 shadow-2xs'
+                                        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
+                                    }`}
+                                  >
+                                    {day}
+                                  </button>
+                                ))}
                               </div>
-                            )}
+                            </div>
 
-                            {/* 2. AI 專屬作戰策略藍圖 (Strategy Blueprint) */}
-                            {lead.strategyBlueprint && (
-                              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-950/10 via-indigo-950/5 to-purple-950/10 border border-purple-300 text-xs sm:text-sm space-y-3.5">
-                                <div className="flex items-center justify-between gap-2 flex-wrap">
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black shadow-xs">
-                                      <Layers className="w-4 h-4" />
-                                    </span>
-                                    <div>
-                                      <h5 className="font-black text-sm text-purple-950">
-                                        {lead.strategyBlueprint.strategyName}
-                                      </h5>
-                                      <span className="text-[11px] text-purple-800">
-                                        建議方案形式：<strong>{lead.strategyBlueprint.suggestedOfferType}</strong> · 建議報價：<strong>{lead.strategyBlueprint.suggestedPriceRange}</strong>
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <div className="text-right">
-                                      <span className="text-[10px] text-stone-500 block font-bold">預估促成率</span>
-                                      <span className="text-sm font-black text-emerald-700 font-mono">
-                                        {lead.strategyBlueprint.dealProbability}%
-                                      </span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedStrategyLead(lead)}
-                                      className="px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer transition-all active:scale-95"
-                                    >
-                                      <Sliders className="w-3.5 h-3.5" />
-                                      <span>查看策略作戰藍圖</span>
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* 3 階段戰術 */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                                  {lead.strategyBlueprint.tacticalSteps.map((step) => (
-                                    <div key={step.step} className="p-3 bg-white rounded-xl border border-purple-200/80 space-y-1 shadow-2xs">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-900 font-mono font-black text-[11px] flex items-center justify-center shrink-0">
-                                          {step.step}
-                                        </span>
-                                        <span className="font-bold text-xs text-stone-900 truncate">{step.title}</span>
-                                      </div>
-                                      <p className="text-[11px] text-stone-600 leading-relaxed pl-6">{step.desc}</p>
-                                    </div>
-                                  ))}
-                                </div>
-
-                                <div className="flex items-center justify-between text-[11px] text-purple-900/80 bg-purple-50/70 p-2.5 rounded-xl border border-purple-200/70 flex-wrap gap-2">
-                                  <span>⏰ 最佳聯繫時機：<strong>{lead.strategyBlueprint.bestContactTime}</strong></span>
-                                  <span>🛡️ 避坑防護：{lead.strategyBlueprint.riskAssessment}</span>
-                                </div>
+                            <div>
+                              <div className="text-[10px] font-bold text-stone-500 mb-1">② 點選發送時刻：</div>
+                              <div className="grid grid-cols-4 sm:grid-cols-7 gap-1">
+                                {SCHEDULE_HOURS.map((hr) => (
+                                  <button
+                                    key={hr}
+                                    type="button"
+                                    onClick={() => {
+                                      setScheduleHour(hr);
+                                      setSelectedTimeOption(`${scheduleDay} ${hr}`);
+                                    }}
+                                    className={`py-1 px-1 rounded-lg text-center font-mono font-bold text-[11px] transition-all cursor-pointer border ${
+                                      scheduleHour === hr
+                                        ? 'bg-purple-900 text-white border-purple-900 shadow-2xs'
+                                        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
+                                    }`}
+                                  >
+                                    {hr}
+                                  </button>
+                                ))}
                               </div>
-                            )}
+                            </div>
+
+                            <div className="pt-1.5 border-t border-stone-200/80 flex items-center justify-between text-xs">
+                              <span className="text-[10px] text-stone-500 font-bold">點選組合結果：</span>
+                              <span className="font-black text-purple-900 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+                                {selectedTimeOption}
+                              </span>
+                            </div>
                           </div>
                         )}
-
-                        {/* AI Suggested Message & Action Panel */}
-                        <div className="p-4 sm:p-5 rounded-2xl bg-stone-50/90 border border-stone-200 space-y-3.5">
-                          <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <span className="text-xs sm:text-sm font-extrabold text-stone-900 flex items-center gap-1.5">
-                              <MessageSquare className="w-4 h-4 text-amber-600" />
-                              <span>AI 擬定建議發送之跟進訊息：</span>
-                            </span>
-
-                            {/* 頂部快捷操作：直接發送 或 直接編輯 */}
-                            {!lead.hasSent && editingLeadId !== lead.id && (
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEdit(lead)}
-                                  className="px-3 py-1.5 rounded-xl border border-stone-300 hover:border-stone-400 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                                  title="編輯建議內容"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-amber-600" />
-                                  <span>編輯</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  disabled={sendingLeadId === lead.id}
-                                  onClick={() => handleOneClickSend(lead)}
-                                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 active:scale-95 text-stone-950 font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-50"
-                                  title="直接一鍵發送此訊息給客戶"
-                                >
-                                  <Send className="w-3.5 h-3.5" />
-                                  <span>直接發送</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* 編輯模式 vs 預覽模式（可直接點擊泡泡編輯） */}
-                          {editingLeadId === lead.id ? (
-                            <div className="space-y-3 p-3.5 rounded-xl bg-white border-2 border-amber-400 shadow-xs animate-in fade-in duration-150">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="font-bold text-amber-950 flex items-center gap-1.5">
-                                  <Edit3 className="w-3.5 h-3.5 text-amber-600" />
-                                  <span>編輯專屬溝通訊息：</span>
-                                </span>
-                                <span className="text-[11px] text-stone-400 font-mono">
-                                  {editedMessage.length} 字
-                                </span>
-                              </div>
-
-                              <textarea
-                                rows={3}
-                                value={editedMessage}
-                                onChange={(e) => setEditedMessage(e.target.value)}
-                                className="w-full p-3 rounded-xl border border-amber-300 text-xs sm:text-sm font-normal text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-300 leading-relaxed bg-amber-50/20"
-                                placeholder="輸入您想向該提問客戶發送的自訂訊息..."
-                              />
-
-                              <div className="flex items-center justify-end gap-2 flex-wrap pt-1">
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingLeadId(null)}
-                                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 cursor-pointer transition-colors"
-                                >
-                                  取消
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveEdit(lead.id)}
-                                  className="px-4 py-1.5 rounded-xl text-xs font-bold text-stone-850 bg-stone-200 hover:bg-stone-300 cursor-pointer transition-colors shadow-2xs"
-                                >
-                                  儲存修改
-                                </button>
-
-                                <button
-                                  type="button"
-                                  disabled={sendingLeadId === lead.id}
-                                  onClick={() => handleSaveAndSend(lead)}
-                                  className="px-4 py-1.5 rounded-xl text-xs font-black text-stone-950 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 shadow-xs cursor-pointer transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
-                                >
-                                  <Send className="w-3.5 h-3.5" />
-                                  <span>儲存並立即發送</span>
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div
-                              onClick={() => {
-                                if (!lead.hasSent) {
-                                  handleStartEdit(lead);
-                                }
-                              }}
-                              className={`p-3.5 sm:p-4 rounded-xl border transition-all relative group ${
-                                !lead.hasSent
-                                  ? 'bg-white hover:bg-amber-50/40 border-stone-200 hover:border-amber-400 cursor-pointer shadow-2xs'
-                                  : 'bg-white border-stone-200 text-stone-800'
-                              }`}
-                              title={!lead.hasSent ? '點擊此處可直接編輯' : undefined}
-                            >
-                              <p className="text-xs sm:text-sm text-stone-800 leading-relaxed font-normal">
-                                「{lead.suggestedMessage}」
-                              </p>
-
-                              {!lead.hasSent && (
-                                <span className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2.5 top-2.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs">
-                                  <Edit3 className="w-3 h-3" />
-                                  <span>點擊編輯</span>
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Action Buttons */}
-                          <div className="flex items-center justify-between pt-1 gap-3 flex-wrap">
-                            <span className="text-xs text-stone-500">
-                              💡 建議行動：<strong className="text-stone-700">{lead.aiRecommendedAction}</strong>
-                            </span>
-
-                            {lead.hasSent ? (
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold">
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                  <span>已於 {lead.sentAt || '剛才'} 主動發送</span>
-                                </span>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const targetUser = {
-                                      id: lead.clientId,
-                                      name: lead.clientName,
-                                      avatar: lead.clientAvatar,
-                                      title: lead.clientRole,
-                                    };
-                                    const targetQ = questions.find((q) => q.id === lead.questionId);
-                                    startDirectChat(targetUser, targetQ);
-                                    if (onOpenDirectChat) {
-                                      onOpenDirectChat(targetUser);
-                                    }
-                                  }}
-                                  className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" />
-                                  <span>前往此聊天室</span>
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEdit(lead)}
-                                  className="px-3 py-2 rounded-xl border border-stone-300 hover:bg-stone-100 text-stone-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                  <span>編輯內容</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  disabled={sendingLeadId === lead.id}
-                                  onClick={() => handleOneClickSend(lead)}
-                                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 text-stone-950 font-black text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
-                                >
-                                  <Send className="w-3.5 h-3.5" />
-                                  <span>直接點擊發送給客戶</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  </>
+                );
+              })()}
+
+              {/* Message to send */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-stone-700 block">
+                  特助代操發送話術：
+                </label>
+                <textarea
+                  rows={3}
+                  value={scheduleMsg}
+                  onChange={(e) => setScheduleMsg(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-stone-300 text-xs text-stone-800 focus:outline-none focus:ring-1 focus:ring-purple-500 leading-relaxed"
+                />
               </div>
-            )}
 
-            {/* TAB 2: SMART PUSH BROADCAST */}
-            {activeTab === 'broadcast' && (
-              <div className="space-y-6">
-                <div className="p-5 rounded-2xl bg-amber-50/60 border border-amber-200 flex items-start gap-3.5">
-                  <Radio className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-sm sm:text-base text-stone-900">
-                      IdeaX 系統主動推播專家聲譽機制
-                    </h4>
-                    <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                      當您身為大師方案專家，系統演算法會主動在提問者瀏覽相關主題看板或發布相關提問時，主動發送推播通知：「您關注的看板，剛新增了 2 則高品質解題方案」，為您帶來精準曝光與高轉換潛在委託！
-                    </p>
-                  </div>
+              {/* Mode Toggle */}
+              <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-stone-800 block">全自動特助代操</span>
+                  <span className="text-[10px] text-stone-500">
+                    到達時程時，24hr 特助全自動進入聊天室發送
+                  </span>
                 </div>
-
-                <div className="space-y-3">
-                  <h4 className="font-bold text-xs sm:text-sm text-stone-700">近期自動推播紀錄與受眾反饋</h4>
-                  {pushes.map((push) => (
-                    <div
-                      key={push.id}
-                      className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 flex items-center justify-between gap-4 shadow-2xs"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-200">
-                            受眾：{push.targetAudience}
-                          </span>
-                          <span className="text-[11px] text-stone-400 font-mono">觸發事件：{push.triggerEvent}</span>
-                        </div>
-                        <p className="text-xs sm:text-sm text-stone-800 font-medium">{push.content}</p>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <span className="text-[10px] text-stone-400 block font-bold">點擊轉換數</span>
-                        <span className="text-base sm:text-lg font-black text-amber-600 font-mono">
-                          {push.clicksCount} 次點擊
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Broadcast Automation Setting */}
-                <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
-                  <h4 className="font-bold text-xs sm:text-sm text-stone-900">推播自動化策略偏好</h4>
-                  <div className="space-y-2.5 text-xs sm:text-sm text-stone-700">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" defaultChecked className="rounded text-amber-500 w-4 h-4" />
-                      <span>當提問者 3 天未回覆提案時，自動在專家後台生成 AI-CRM 跟進提醒</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" defaultChecked className="rounded text-amber-500 w-4 h-4" />
-                      <span>當關注的主題看板有 NT$ 2,000 以上新懸賞時，第一時間推播專家優先提案</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" defaultChecked className="rounded text-amber-500 w-4 h-4" />
-                      <span>允許平台向曾查看過個人主頁的提問者，自動推薦最新成功案例精選</span>
-                    </label>
-                  </div>
-                </div>
+                <input
+                  type="checkbox"
+                  checked={autoExecute}
+                  onChange={(e) => setAutoExecute(e.target.checked)}
+                  className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                />
               </div>
-            )}
-
-            {/* TAB 3: FUNNEL & ANALYTICS */}
-            {activeTab === 'analytics' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 text-center shadow-2xs">
-                    <span className="text-xs text-stone-400 font-bold block mb-1">本月被檢視提案</span>
-                    <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono">48 次</span>
-                  </div>
-                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 text-center shadow-2xs">
-                    <span className="text-xs text-stone-400 font-bold block mb-1">CRM 主動跟進數</span>
-                    <span className="text-xl sm:text-2xl font-black text-amber-600 font-mono">16 次</span>
-                  </div>
-                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 text-center shadow-2xs">
-                    <span className="text-xs text-stone-400 font-bold block mb-1">跟進後促成採納率</span>
-                    <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono">75.0%</span>
-                  </div>
-                  <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 text-center shadow-2xs">
-                    <span className="text-xs text-stone-400 font-bold block mb-1">主動挽回潛在業績</span>
-                    <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono">NT$ 38,400</span>
-                  </div>
-                </div>
-
-                <div className="p-6 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
-                  <h4 className="font-bold text-sm sm:text-base text-stone-900 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    <span>大摩等級商業轉化漏斗分析</span>
-                  </h4>
-                  <div className="space-y-3 text-xs sm:text-sm">
-                    <div>
-                      <div className="flex justify-between font-bold text-stone-700 mb-1.5">
-                        <span>1. 客戶檢視專家提案 (48 人)</span>
-                        <span>100%</span>
-                      </div>
-                      <div className="w-full bg-stone-100 rounded-full h-2.5">
-                        <div className="bg-amber-400 h-2.5 rounded-full w-full" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between font-bold text-stone-700 mb-1.5">
-                        <span>2. 觸發 AI-CRM 主動跟進 (16 人，3 天猶豫期)</span>
-                        <span>33.3%</span>
-                      </div>
-                      <div className="w-full bg-stone-100 rounded-full h-2.5">
-                        <div className="bg-amber-500 h-2.5 rounded-full w-1/3" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between font-bold text-stone-700 mb-1.5">
-                        <span>3. 發送補充資料後重新熱絡諮詢 (14 人)</span>
-                        <span>29.1% (跟進有效度 87.5%)</span>
-                      </div>
-                      <div className="w-full bg-stone-100 rounded-full h-2.5">
-                        <div className="bg-emerald-500 h-2.5 rounded-full w-[29%]" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between font-bold text-stone-700 mb-1.5">
-                        <span>4. 最終正式採納與解鎖付款 (12 人)</span>
-                        <span>25.0% (促成總成交 NT$ 38,400)</span>
-                      </div>
-                      <div className="w-full bg-stone-100 rounded-full h-2.5">
-                        <div className="bg-emerald-600 h-2.5 rounded-full w-1/4" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 4: 24HR AI ASSISTANT SETTINGS */}
-            {activeTab === 'assistant' && (
-              <AiAssistantSettingsPanel
-                currentUser={currentUser}
-                onUpdateConfig={(newConfig) => {
-                  updateAssistant24hrConfig(newConfig);
-                  showToast('✨ 24hr AI特助代客服務設定已成功儲存並同步至雲端！');
-                }}
-                onUpgradePlan={handleUpgradeAuthority}
-              />
-            )}
-          </div>
-
-          {/* Footer Summary & Disclaimer */}
-          <div className="p-4 sm:p-5 border-t border-stone-200 bg-stone-50 space-y-3">
-            <div className="flex items-center justify-between gap-4 text-xs sm:text-sm text-stone-600 flex-wrap">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>大師方案享有平台 0% 服務費 ＋ 額外 2% BONUS 撥款補貼與全自動 AI-CRM 支持</span>
-              </span>
-              {onBack && (
-                <button
-                  type="button"
-                  onClick={onBack}
-                  className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs transition-colors cursor-pointer"
-                >
-                  返回問題市場
-                </button>
-              )}
             </div>
 
-            {/* AI-CRM 智能客情與客戶管理策略免責聲明 */}
-            <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed flex items-start gap-2.5">
-              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <strong className="font-bold">【AI-CRM 客戶管理與拓客策略免責聲明】</strong>
-                本系統提供之定時巡航分析、客戶猶豫期診斷、獲客策略藍圖、報價區間建議及促成率預測，係由 AI 統計模型輔助推算之決策參考工具，不構成商業成果、營收保證或成交承諾。各專案之具體委託條款、方案報價與交付標準，均由解答者與發案雙方自主合意確認。
-              </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setSchedulingLead(null)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSchedule}
+                className="px-4 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>確認排定發送</span>
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 專屬 AI 策略作戰藍圖 Modal */}
-      {selectedStrategyLead && selectedStrategyLead.strategyBlueprint && (
-        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-stone-200 text-stone-900 my-8">
-            <div className="flex items-start justify-between gap-3 border-b border-stone-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                  <Layers className="w-6 h-6 text-purple-700" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
-                    AI-CRM 專屬客戶作戰藍圖
-                  </span>
-                  <h3 className="text-lg font-black text-stone-900 mt-1">
-                    針對「<span className="text-blue-600">{selectedStrategyLead.clientName}</span>」的促成策略
-                  </h3>
-                </div>
-              </div>
+      {/* Manual Task Modal */}
+      {isManualTaskModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-stone-200">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <h3 className="font-black text-sm text-stone-900 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-purple-600" />
+                <span>新增特助代操任務</span>
+              </h3>
               <button
                 type="button"
-                onClick={() => setSelectedStrategyLead(null)}
-                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer"
+                onClick={() => setIsManualTaskModalOpen(false)}
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Strategy Content */}
-            <div className="space-y-4 text-xs sm:text-sm">
-              <div className="p-4 rounded-2xl bg-purple-50/80 border border-purple-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-purple-950 text-sm">
-                    {selectedStrategyLead.strategyBlueprint.strategyName}
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-bold text-xs">
-                    預估促成率 {selectedStrategyLead.strategyBlueprint.dealProbability}%
-                  </span>
-                </div>
-                <p className="text-purple-900/80 text-xs">
-                  建議方案形式：<strong>{selectedStrategyLead.strategyBlueprint.suggestedOfferType}</strong> · 建議報價區間：<strong>{selectedStrategyLead.strategyBlueprint.suggestedPriceRange}</strong>
-                </p>
+            <div className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-stone-700">目標客戶名稱：</label>
+                <input
+                  type="text"
+                  value={manualClientName}
+                  onChange={(e) => setManualClientName(e.target.value)}
+                  placeholder="例如：張總經理 (前瞻生技)"
+                  className="w-full p-2 rounded-xl border border-stone-300 text-xs text-stone-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
               </div>
 
-              {/* Steps */}
-              <div className="space-y-2.5">
-                <span className="font-extrabold text-stone-900 block text-xs flex items-center gap-1.5">
-                  <Target className="w-4 h-4 text-purple-600" />
-                  <span>三階段作戰落地行動方針：</span>
-                </span>
-                <div className="space-y-2">
-                  {selectedStrategyLead.strategyBlueprint.tacticalSteps.map((step) => (
-                    <div key={step.step} className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-purple-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">
-                          {step.step}
-                        </span>
-                        <span className="font-bold text-stone-900">{step.title}</span>
-                      </div>
-                      <p className="text-xs text-stone-600 pl-7 leading-relaxed">{step.desc}</p>
-                    </div>
+              <div className="space-y-1">
+                <label className="font-bold text-stone-700">專案/主題 (選填)：</label>
+                <input
+                  type="text"
+                  value={manualQuestionTitle}
+                  onChange={(e) => setManualQuestionTitle(e.target.value)}
+                  placeholder="例如：生醫檢測規格諮詢"
+                  className="w-full p-2 rounded-xl border border-stone-300 text-xs text-stone-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-bold text-stone-700 block">排定時間（點選選擇）：</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  {[
+                    '30 分鐘後',
+                    '今晚 19:30',
+                    '今晚 21:00',
+                    '明日 09:30',
+                    '明日 14:30',
+                    '後天 10:00',
+                  ].map((timeOpt) => (
+                    <button
+                      key={timeOpt}
+                      type="button"
+                      onClick={() => setManualTime(timeOpt)}
+                      className={`p-1.5 rounded-xl text-center font-bold text-xs transition-all border cursor-pointer ${
+                        manualTime === timeOpt
+                          ? 'bg-purple-900 text-white border-purple-900 shadow-2xs'
+                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                      }`}
+                    >
+                      {timeOpt}
+                    </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Best Timing & Risk */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
-                  <span className="font-bold text-stone-800 block mb-1">⏰ 最佳跟進時間：</span>
-                  <span className="text-stone-600">{selectedStrategyLead.strategyBlueprint.bestContactTime}</span>
-                </div>
-                <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200">
-                  <span className="font-bold text-amber-900 block mb-1">🛡️ 避坑防護重點：</span>
-                  <span className="text-amber-800">{selectedStrategyLead.strategyBlueprint.riskAssessment}</span>
+                <div className="text-[11px] font-bold text-purple-900 bg-purple-50 p-2 rounded-xl border border-purple-200 flex items-center justify-between">
+                  <span>已選擇發送時間：</span>
+                  <span className="font-black text-xs text-purple-950">{manualTime}</span>
                 </div>
               </div>
 
-              {/* 彈窗免責聲明 */}
-              <div className="p-3 rounded-xl bg-stone-100 text-stone-500 text-[10px] leading-relaxed">
-                ℹ️ <strong>免責聲明</strong>：AI 策略藍圖與話術建議僅供溝通參考，不構成商業成果或成交保證，請依實際洽談情境靈活調整。
+              <div className="space-y-1">
+                <label className="font-bold text-stone-700">特助代操訊息內容：</label>
+                <textarea
+                  rows={3}
+                  value={manualMsg}
+                  onChange={(e) => setManualMsg(e.target.value)}
+                  placeholder="輸入特助代發之客製化訊息..."
+                  className="w-full p-2.5 rounded-xl border border-stone-300 text-xs text-stone-800 focus:outline-none focus:ring-1 focus:ring-purple-500 leading-relaxed"
+                />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+            <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
               <button
                 type="button"
-                onClick={() => setSelectedStrategyLead(null)}
-                className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+                onClick={() => setIsManualTaskModalOpen(false)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100"
               >
-                關閉
+                取消
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const leadToAct = selectedStrategyLead;
-                  setSelectedStrategyLead(null);
-                  handleOneClickSend(leadToAct);
-                }}
-                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                onClick={handleCreateManualTask}
+                className="px-4 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5" />
-                <span>套用並發送此策略訊息</span>
+                建立任務
               </button>
             </div>
           </div>

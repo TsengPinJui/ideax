@@ -451,6 +451,29 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Briefcase className="w-3.5 h-3.5 text-blue-600" />
               <span>我的案件</span>
             </button>
+            <button
+              onClick={() => {
+                if (onOpenAiCrm) {
+                  onOpenAiCrm();
+                } else {
+                  setActiveTab('ai_crm');
+                }
+                setSelectedQuestion(null);
+                setSelectedSolver(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
+                activeTab === 'ai_crm'
+                  ? 'bg-amber-100 text-amber-950 font-black border-amber-400 ring-2 ring-amber-200 shadow-2xs'
+                  : 'bg-white text-stone-800 border-stone-200 hover:border-amber-400 hover:bg-amber-50/60 hover:text-amber-950 shadow-2xs'
+              }`}
+              title="AI-CRM 客戶關係管理 (含24hr特助代操)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>AI-CRM</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 font-bold">
+                特助
+              </span>
+            </button>
           </nav>
         </div>
 
@@ -918,74 +941,70 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* 3.5 點數 / 應收帳款快捷按鈕 (電腦版) - 無金流模式下隱藏 */}
-          {!isNoPaymentMode && (
-            <button
-              onClick={() => {
-                if (currentUser.role === 'solver') {
-                  handleOpenDashboard('points_receivables');
-                } else {
-                  handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
-                }
-              }}
-              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs hover:shadow-xs group shrink-0 ${
-                currentUser.role === 'solver'
-                  ? 'bg-blue-50/90 hover:bg-blue-100 border-blue-200/90 text-blue-950'
-                  : 'bg-amber-50/90 hover:bg-amber-100 border-amber-200/90 text-amber-950'
-              }`}
-              title={currentUser.role === 'solver' ? '應收帳款中心' : '點數中心'}
-            >
-              {currentUser.role === 'solver' ? (
-                <>
-                  <Building2 className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
-                  <span>應收 NT$ {(currentUser.withheldPoints || 0).toLocaleString()}</span>
-                </>
-              ) : (
-                <>
-                  <Coins className="w-3.5 h-3.5 text-amber-600 group-hover:scale-110 transition-transform" />
-                  <span className="font-mono text-amber-900 font-extrabold">{(currentUser?.balance || 0).toLocaleString()} 點</span>
-                </>
-              )}
-            </button>
-          )}
+          {/* 3.5 點數 / 應收帳款快捷按鈕 (電腦版) - 全模式配置同步 */}
+          <button
+            onClick={() => {
+              if (currentUser.role === 'solver') {
+                handleOpenDashboard('points_receivables');
+              } else {
+                handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
+              }
+            }}
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs hover:shadow-xs group shrink-0 ${
+              currentUser.role === 'solver'
+                ? 'bg-blue-50/90 hover:bg-blue-100 border-blue-200/90 text-blue-950'
+                : 'bg-amber-50/90 hover:bg-amber-100 border-amber-200/90 text-amber-950'
+            }`}
+            title={currentUser.role === 'solver' ? '應收帳款中心' : '點數中心'}
+          >
+            {currentUser.role === 'solver' ? (
+              <>
+                <Building2 className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                <span>{isNoPaymentMode ? '應收 尚未開放' : `應收 NT$ ${(currentUser.withheldPoints || 0).toLocaleString()}`}</span>
+              </>
+            ) : (
+              <>
+                <Coins className="w-3.5 h-3.5 text-amber-600 group-hover:scale-110 transition-transform" />
+                <span className="font-mono text-amber-900 font-extrabold">{(currentUser?.balance || 0).toLocaleString()} 點</span>
+              </>
+            )}
+          </button>
 
-          {/* 手機版：餘額按鈕（位於右上角聊天室入口左側，點擊連結到點數儲值或應收帳款管理） - 無金流模式下隱藏 */}
-          {!isNoPaymentMode && (
-            <button
-              type="button"
-              onClick={() => {
-                if (currentUser.role === 'solver') {
-                  handleOpenDashboard('points_receivables');
-                } else {
-                  handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
-                }
-              }}
-              className={`sm:hidden flex items-center gap-1 px-2 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
-                currentUser.role === 'solver'
-                  ? 'bg-blue-50/95 hover:bg-blue-100 border-blue-200 text-blue-950'
-                  : 'bg-amber-50/95 hover:bg-amber-100 border-amber-200 text-amber-950'
-              }`}
-              title={currentUser.role === 'solver' ? '應收帳款管理' : '點數儲值管理'}
-            >
-              {currentUser.role === 'solver' ? (
-                <>
-                  <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span className="text-[10px] font-bold text-blue-800">應收</span>
-                  <span className="font-mono text-[11px] font-black text-blue-950">
-                    NT${(currentUser.withheldPoints || 0).toLocaleString()}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span className="font-mono text-amber-950 font-black text-[11px]">
-                    {(currentUser?.balance || 0).toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-amber-900 font-bold">點</span>
-                </>
-              )}
-            </button>
-          )}
+          {/* 手機版：餘額按鈕（位於右上角聊天室入口左側，點擊連結到點數儲值或應收帳款管理） - 全模式配置同步 */}
+          <button
+            type="button"
+            onClick={() => {
+              if (currentUser.role === 'solver') {
+                handleOpenDashboard('points_receivables');
+              } else {
+                handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
+              }
+            }}
+            className={`sm:hidden flex items-center gap-1 px-2 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
+              currentUser.role === 'solver'
+                ? 'bg-blue-50/95 hover:bg-blue-100 border-blue-200 text-blue-950'
+                : 'bg-amber-50/95 hover:bg-amber-100 border-amber-200 text-amber-950'
+            }`}
+            title={currentUser.role === 'solver' ? '應收帳款管理' : '點數儲值管理'}
+          >
+            {currentUser.role === 'solver' ? (
+              <>
+                <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="text-[10px] font-bold text-blue-800">應收</span>
+                <span className={`text-[11px] font-black text-blue-950 ${isNoPaymentMode ? 'font-sans text-[10px]' : 'font-mono'}`}>
+                  {isNoPaymentMode ? '尚未開放' : `NT$${(currentUser.withheldPoints || 0).toLocaleString()}`}
+                </span>
+              </>
+            ) : (
+              <>
+                <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span className="font-mono text-amber-950 font-black text-[11px]">
+                  {(currentUser?.balance || 0).toLocaleString()}
+                </span>
+                <span className="text-[10px] text-amber-900 font-bold">點</span>
+              </>
+            )}
+          </button>
 
           {/* Mobile Message Center Entry (替代頭像) */}
           <button
@@ -1168,54 +1187,52 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </button>
                     </div>
 
-                    {/* 分類 1: 💰 財務與點數治理 (無金流模式下隱藏) */}
-                    {!isNoPaymentMode && (
-                      <div className="py-1.5 px-1.5 space-y-0.5">
-                        <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-amber-700 uppercase tracking-wider flex items-center justify-between">
-                          <span className="flex items-center gap-1">
-                            <Coins className="w-3 h-3 text-amber-600" />
-                            <span>財務與點數治理</span>
-                          </span>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">3 項</span>
-                        </p>
+                    {/* 分類 1: 💰 財務與點數治理 (全模式配置同步) */}
+                    <div className="py-1.5 px-1.5 space-y-0.5">
+                      <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-amber-700 uppercase tracking-wider flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <Coins className="w-3 h-3 text-amber-600" />
+                          <span>財務與點數治理</span>
+                        </span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">3 項</span>
+                      </p>
 
-                        {/* 1. 點數與帳務管理 (整合點數查詢、應收託管與管理員撥付) */}
-                        <button
-                          onClick={() => handleOpenDashboard('points_receivables')}
-                          className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
-                              <Coins className="w-3.5 h-3.5" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="block font-black text-stone-900">點數與帳務管理</span>
-                              </div>
-                              <span className="text-[10px] text-stone-500 font-normal">用戶帳目查閱、點數撥發與應收管理</span>
-                            </div>
+                      {/* 1. 點數與帳務管理 (整合點數查詢、應收託管與管理員撥付) */}
+                      <button
+                        onClick={() => handleOpenDashboard('points_receivables')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
+                            <Coins className="w-3.5 h-3.5" />
                           </div>
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
-                        </button>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="block font-black text-stone-900">點數與帳務管理</span>
+                            </div>
+                            <span className="text-[10px] text-stone-500 font-normal">用戶帳目查閱、點數撥發與應收管理</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
+                      </button>
 
-                        {/* 3. 交易流水管理 */}
-                        <button
-                          onClick={() => handleOpenDashboard('transactions')}
-                          className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 shadow-2xs">
-                              <Clock className="w-3.5 h-3.5" />
-                            </div>
-                            <div>
-                              <span className="block font-black text-stone-900">交易管理</span>
-                              <span className="text-[10px] text-stone-500 font-normal">全站交易紀錄、拆款與退款稽核</span>
-                            </div>
+                      {/* 3. 交易流水管理 */}
+                      <button
+                        onClick={() => handleOpenDashboard('transactions')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 shadow-2xs">
+                            <Clock className="w-3.5 h-3.5" />
                           </div>
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
-                        </button>
-                      </div>
-                    )}
+                          <div>
+                            <span className="block font-black text-stone-900">交易管理</span>
+                            <span className="text-[10px] text-stone-500 font-normal">全站交易紀錄、拆款與退款稽核</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
+                      </button>
+                    </div>
 
                     {/* 案件管理與問題管理 (業務與內容審核) */}
                     <div className="py-1.5 px-1.5 space-y-0.5">
@@ -1327,23 +1344,49 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <Sparkles className="w-3 h-3 text-amber-600" />
                           <span>AI 智能與會員方案</span>
                         </span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">2 項</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">3 項</span>
                       </p>
 
-                      {/* AI-CRM 系統 */}
+                      {/* AI-CRM 系統 (專家前台與特助代操視角) */}
                       <button
-                        onClick={() => handleOpenDashboard('admin_aicrm')}
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          if (onOpenAiCrm) {
+                            onOpenAiCrm();
+                          } else {
+                            setActiveTab('ai_crm');
+                          }
+                        }}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
                       >
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs font-bold">
                             <Sparkles className="w-3.5 h-3.5" />
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="block font-black text-stone-900">AI-CRM與通知設定</span>
+                              <span className="block font-black text-stone-900">AI-CRM 拓客與特助代操</span>
                             </div>
-                            <span className="text-[10px] text-stone-500 font-normal">功能開關、客情商機、推播與通知管理</span>
+                            <span className="text-[10px] text-stone-500 font-normal">軍師策略、商機雷達與特助排定</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
+                      </button>
+
+                      {/* AI-CRM 總控營運設定 */}
+                      <button
+                        onClick={() => handleOpenDashboard('admin_aicrm')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-50 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center shrink-0 shadow-2xs">
+                            <Settings className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="block font-black text-stone-900">AI-CRM 與通知營運設定</span>
+                            </div>
+                            <span className="text-[10px] text-stone-500 font-normal">功能總開關、巡航排程與通知規則</span>
                           </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
@@ -1473,65 +1516,61 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ) : (
                   <div className="py-1 divide-y divide-stone-100">
 
-                  {/* 區塊 1：資產與帳務 (無金流模式下隱藏點數、儲值與金流相關設定) */}
+                  {/* 區塊 1：資產與帳務 (全模式配置同步) */}
                   <div className="py-1.5 px-1.5 space-y-0.5">
-                    {!isNoPaymentMode && (
-                      <>
-                        <p className="px-2 pt-0.5 pb-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                          資產與帳務
-                        </p>
-                        <button
-                          onClick={() => handleOpenDashboard('points_receivables')}
-                          className={`w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold flex items-center justify-between cursor-pointer group transition-all ${
-                            currentUser.role === 'solver'
-                              ? 'text-blue-950 bg-blue-50/80 hover:bg-blue-100'
-                              : 'text-amber-950 bg-amber-50/80 hover:bg-amber-100'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${
-                              currentUser.role === 'solver'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-amber-100 text-amber-800'
-                            }`}>
-                              {currentUser.role === 'solver' ? (
-                                <Building2 className="w-3.5 h-3.5" />
-                              ) : (
-                                <Coins className="w-3.5 h-3.5" />
-                              )}
-                            </div>
-                            <span>點數 & 收支</span>
-                          </div>
-                          <span className={`font-mono font-black text-xs ${
-                            currentUser.role === 'solver' ? 'text-blue-950' : 'text-amber-900'
-                          }`}>
-                            {currentUser.role === 'solver'
-                              ? `NT$ ${(currentUser?.withheldPoints || 0).toLocaleString()}`
-                              : `${(currentUser?.balance || 0).toLocaleString()} 點`}
-                          </span>
-                        </button>
+                    <p className="px-2 pt-0.5 pb-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                      資產與帳務
+                    </p>
+                    <button
+                      onClick={() => handleOpenDashboard('points_receivables')}
+                      className={`w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold flex items-center justify-between cursor-pointer group transition-all ${
+                        currentUser.role === 'solver'
+                          ? 'text-blue-950 bg-blue-50/80 hover:bg-blue-100'
+                          : 'text-amber-950 bg-amber-50/80 hover:bg-amber-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${
+                          currentUser.role === 'solver'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {currentUser.role === 'solver' ? (
+                            <Building2 className="w-3.5 h-3.5" />
+                          ) : (
+                            <Coins className="w-3.5 h-3.5" />
+                          )}
+                        </div>
+                        <span>點數 & 收支</span>
+                      </div>
+                      <span className={`font-mono font-black text-xs ${
+                        currentUser.role === 'solver' ? 'text-blue-950' : 'text-amber-900'
+                      }`}>
+                        {currentUser.role === 'solver'
+                          ? (isNoPaymentMode ? '尚未開放' : `NT$ ${(currentUser?.withheldPoints || 0).toLocaleString()}`)
+                          : (isNoPaymentMode ? '免點數' : `${(currentUser?.balance || 0).toLocaleString()} 點`)}
+                      </span>
+                    </button>
 
-                        <button
-                          onClick={() => handleOpenDashboard('points_receivables', 'transactions-section')}
-                          className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-orange-50/80 hover:text-orange-950 flex items-center gap-2.5 cursor-pointer group transition-all"
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-orange-100/80 text-orange-800 group-hover:bg-orange-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                            <Clock className="w-3.5 h-3.5" />
-                          </div>
-                          <span>交易紀錄</span>
-                        </button>
+                    <button
+                      onClick={() => handleOpenDashboard('points_receivables', 'transactions-section')}
+                      className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-orange-50/80 hover:text-orange-950 flex items-center gap-2.5 cursor-pointer group transition-all"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-orange-100/80 text-orange-800 group-hover:bg-orange-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                        <Clock className="w-3.5 h-3.5" />
+                      </div>
+                      <span>交易紀錄</span>
+                    </button>
 
-                        <button
-                          onClick={() => handleOpenDashboard('subscriptions')}
-                          className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-purple-50/80 hover:text-purple-950 flex items-center gap-2.5 cursor-pointer group transition-all"
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-purple-100/80 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                            <Crown className="w-3.5 h-3.5" />
-                          </div>
-                          <span>會員方案（訂閱與續約）</span>
-                        </button>
-                      </>
-                    )}
+                    <button
+                      onClick={() => handleOpenDashboard('subscriptions')}
+                      className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-purple-50/80 hover:text-purple-950 flex items-center gap-2.5 cursor-pointer group transition-all"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-purple-100/80 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                        <Crown className="w-3.5 h-3.5" />
+                      </div>
+                      <span>會員方案（訂閱與續約）</span>
+                    </button>
 
                     <button
                       onClick={() => {
@@ -1544,7 +1583,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-stone-950 group-hover:scale-105 flex items-center justify-center shrink-0 shadow-2xs font-bold">
                           <Crown className="w-3.5 h-3.5 fill-stone-950" />
                         </div>
-                        <span>AI-CRM 客戶關係管理</span>
+                        <span>AI-CRM (含24hr特助代操)</span>
                       </div>
                       <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
                         大師專屬

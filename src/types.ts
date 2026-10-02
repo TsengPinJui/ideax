@@ -85,6 +85,7 @@ export type UserDashboardTab =
   | 'real_name_auth'
   | 'expert_certification'
   | 'ai_assistant_settings'
+  | 'ai_crm'
   | 'survey'
   | 'settings';
 
@@ -317,18 +318,18 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
       { cycle: 'annual', price: 5990, label: '年繳 NT$ 5,990/年', savingsText: '年繳現省 NT$ 1,198', durationMonths: 12 },
     ],
     platformFeeRate: 0.05,
-    feeDiscountText: '費率 5%（比達人更省 3%，僅收 5% 服務費，實收 95%）',
+    feeDiscountText: '服務費 5%（-5% 減免，實收 95%）',
     sellerPayoutRate: 0.95,
     sellerPayoutText: '95%',
     effectiveRateText: '5%',
     rebatePercent: 5,
     badgeClass: 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-700 font-black shadow-2xs',
-    tagline: '費率僅 5%！實收 95% ＋ 比達人升級無限次 AI 分析報告 ＋ 高賞提案優先推薦',
+    tagline: '服務費僅 5%（-5%）！實收 95% ＋ 升級無限次 AI 分析報告 ＋ 優先推薦曝光',
     benefits: [
       '全站發問與解答提案',
-      'AI 初步問題分析報告：全站免費無限次查看及下載報告（比達人方案升級無限次＋下載）',
+      'AI 初步問題分析報告：全站免費無限次查看及下載報告（升級無限次＋下載）',
       'AI 提案架構整理：一鍵整理為 4 層架構',
-      '✨ 高賞提案優先推薦曝光（達人方案無此特權）',
+      '✨ 升級高賞提案優先推薦曝光',
     ],
   },
   master: {
@@ -373,6 +374,25 @@ export interface AssistantCustomPrompt {
   isEnabled: boolean;
 }
 
+export interface AssistantScheduledTask {
+  id: string;
+  clientId: string;
+  clientName: string;
+  clientAvatar?: string;
+  questionId?: string;
+  questionTitle?: string;
+  strategySource: string; // 由 AI-CRM 作為軍師產出之策略名稱
+  suggestedAction: string; // 行動指示
+  messageTemplate: string; // 24hr特助作為代操者將發送的客製化訊息
+  scheduledTime: string; // 排定發送時間說明或時間字串
+  scheduledTimestamp: number; // 排定時間戳記
+  status: 'pending' | 'executing' | 'completed' | 'cancelled';
+  executedAt?: string;
+  executionResult?: string;
+  autoExecute: boolean; // 是否全自動代操（true: 時間到由24hr特助代操發送；false: 需專家確認後發送）
+  createdAt: string;
+}
+
 export interface Assistant24hrConfig {
   isEnabled: boolean; // 是否啟用 24hr AI特助代客服務
   tone: 'professional' | 'warm' | 'technical' | 'authoritative'; // 交談語氣
@@ -381,8 +401,9 @@ export interface Assistant24hrConfig {
   offlineTriggerMinutes: number; // 專家離線召喚時間 (預設 20 分鐘)
   requireHumanApprovalForDeals: boolean; // 產出交易但仍要專家事後親自確認 (預設 true)
   customPrompts: AssistantCustomPrompt[]; // 其他希望的 prompt 指令 (多筆)
-  dailyMessageLimitPerChat: number; // 單對話單日最大代答上限 (預設 15 則，避免惡意消耗 Tokens)
+  dailyMessageLimitPerChat: number; // 單對話單日最大代答上限 (預設 30 則/日/聊天室，避免惡意消耗 Tokens)
   enableConfidentialityFirewall: boolean; // 嚴格商業機密與個資防火牆 (防止資料洩漏)
+  scheduledTasks?: AssistantScheduledTask[]; // 由 AI-CRM 作為軍師規劃，24hr 特助作為代操者的排定任務清單
   todayReplyCount?: number; // 今日代答計數
   totalAssistedCount?: number; // 累計協助代答次數
   lastActiveAt?: string;
@@ -423,10 +444,62 @@ export const DEFAULT_ASSISTANT_24HR_CONFIG: Assistant24hrConfig = {
       isEnabled: true,
     },
   ],
-  dailyMessageLimitPerChat: 15,
+  dailyMessageLimitPerChat: 30,
   enableConfidentialityFirewall: true,
   todayReplyCount: 0,
   totalAssistedCount: 0,
+  scheduledTasks: [
+    {
+      id: 'task-1',
+      clientId: 'client-101',
+      clientName: '陳執行長 (智網生醫)',
+      clientAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+      questionId: 'q-demo-1',
+      questionTitle: '高頻生醫檢測儀硬體規格選型與 FDA 規範疑難',
+      strategySource: 'AI-CRM 軍師策略：客戶猶豫期痛點破冰（意向評分 94%）',
+      suggestedAction: '24hr 特助代操發送：關鍵技術時程切角與痛點案例說明',
+      messageTemplate: '陳執行長您好！我是專家的 24hr AI 業務特助。AI-CRM 系統監測到您的 FDA 認證規格案近期正進入審查倒數，專家已針對您提出的硬體公差疑慮梳理出 3 點解套關鍵，特別請我向您主動說明。請問方便安排 15 分鐘線上確認嗎？',
+      scheduledTime: '今日 19:30 (晚間決策尖峰期)',
+      scheduledTimestamp: Date.now() + 1000 * 60 * 90,
+      status: 'pending',
+      autoExecute: true,
+      createdAt: '今日 14:20',
+    },
+    {
+      id: 'task-2',
+      clientId: 'client-102',
+      clientName: '林總監 (綠能前瞻科技)',
+      clientAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80',
+      questionId: 'q-demo-2',
+      questionTitle: '儲能系統微電網即時負載調控演算法優化',
+      strategySource: 'AI-CRM 軍師策略：提案檢視後未回覆（發案超過 18 小時）',
+      suggestedAction: '24hr 特助代操發送：提供同業專利落地數據與里程碑諮詢時段',
+      messageTemplate: '林總監您好！我是專家的 AI 特助。感謝您檢視專家的微電網調控提案！專家本週四尚保留下午 14:00~15:00 一個諮詢時段，可直接為貴司推演動態調頻演算法模擬，若您有需要我可立即為您保留！',
+      scheduledTime: '明日 09:30 (晨間開工期)',
+      scheduledTimestamp: Date.now() + 1000 * 60 * 60 * 18,
+      status: 'pending',
+      autoExecute: true,
+      createdAt: '今日 16:00',
+    },
+    {
+      id: 'task-3',
+      clientId: 'client-103',
+      clientName: '王創辦人 (智鏈物聯)',
+      clientAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
+      questionId: 'q-demo-3',
+      questionTitle: '智慧物流跨國冷鏈感測節點架構評估',
+      strategySource: 'AI-CRM 軍師策略：冷鏈感測規格確認（初次觸達破冰）',
+      suggestedAction: '24hr 特助已代操發送：冷鏈架構快速自我健檢清單',
+      messageTemplate: '王創辦人您好！專家的 24hr AI 特助已為您送上冷鏈物聯網硬體通訊協議評估清單，隨時歡迎在聊天室進一步討論！',
+      scheduledTime: '今日 11:15',
+      scheduledTimestamp: Date.now() - 1000 * 60 * 180,
+      status: 'completed',
+      executedAt: '今日 11:15',
+      executionResult: '特助已代操發送成功，客戶已閱讀並留下 1 則回覆訊息！',
+      autoExecute: true,
+      createdAt: '今日 09:30',
+    },
+  ],
 };
 
 export interface BankAccountInfo {
@@ -540,6 +613,9 @@ export interface User {
   // 訂閱與提領
   subscriptionTier?: SubscriptionTier; // 訂閱降抽成方案
   subscriptionExpiresAt?: string; // 訂閱到期日
+  nextSubscriptionTier?: SubscriptionTier; // 下個期間生效之方案（轉換為一般會員視為取消資格）
+  nextSubscriptionCycle?: 'monthly' | 'semi_annual' | 'annual'; // 下個期間計費週期
+  nextSubscriptionEffectiveAt?: string; // 下個期間生效日期 (到期日即為下期起算日)
   totalWithdrawn?: number; // 累積撥款入帳金額 NT$
   withheldPoints?: number; // 託管中懸賞金額 NT$
 
@@ -772,6 +848,9 @@ export interface AiCrmLead {
   suggestedMessage: string;
   hasSent: boolean;
   sentAt?: string;
+  isScheduled?: boolean; // 策略是否已排定並轉移至 24hr 特助佇列
+  scheduledTaskId?: string; // 關聯之特助代操任務 ID
+  scheduledTime?: string; // 排定發送時間
 
   // --- AICRM 定時主動關注與深度分析欄位 ---
   clientStatus?: string; // 用戶當前評估狀態（如：猶豫評估中、迫切尋求交付、預算比對中）

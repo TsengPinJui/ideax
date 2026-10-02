@@ -116,6 +116,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
+import { AiCrmView } from './AiCrmView';
 
 export type UserDashboardTab =
   | 'points_receivables'
@@ -141,6 +142,7 @@ export type UserDashboardTab =
   | 'transactions'
   | 'subscriptions'
   | 'ai_assistant_settings'
+  | 'ai_crm'
   | 'settings';
 
 interface UserDashboardModalProps {
@@ -460,26 +462,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(!initialTab || initialTab === 'overview');
 
   const [activeTab, setActiveTab] = useState<UserDashboardTab>(() => {
-    if (
-      (isNoPaymentMode && ['points_receivables', 'transactions', 'subscriptions', 'admin_transfer_points'].includes(initialTab)) ||
-      ((isNoPaymentMode || !isDemoMode) && initialTab === 'admin_mail_disputes')
-    ) {
-      return 'overview';
-    }
     return initialTab || 'overview';
   });
   const [msg, setMsg] = useState<string | null>(null);
   const [isExpertApplyModalOpen, setIsExpertApplyModalOpen] = useState(false);
 
   React.useEffect(() => {
-    if (
-      (isNoPaymentMode && ['points_receivables', 'transactions', 'subscriptions', 'admin_transfer_points'].includes(initialTab)) ||
-      ((isNoPaymentMode || !isDemoMode) && initialTab === 'admin_mail_disputes')
-    ) {
-      setActiveTab('overview');
-      setMobileMenuOpen(false);
-      return;
-    }
     if (initialTab === 'survey') {
       setActiveTab('profile');
       setProfileSubTab('survey');
@@ -507,7 +495,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       setActiveTab(initialTab);
       setMobileMenuOpen(false);
     }
-  }, [initialTab, isNoPaymentMode]);
+  }, [initialTab]);
 
   // 當從右上角點數餘額點擊進入時，自動導覽並滾動至「點數」區塊
   React.useEffect(() => {
@@ -1509,10 +1497,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     admin_user_management: '用戶管理',
     admin_user_analytics: '用戶分佈與習慣統計',
     admin_certifications: '受理認證 (實名、專家)',
-    admin_aicrm: 'AI-CRM與通知設定',
+    admin_aicrm: 'AI-CRM與特助總控',
     admin_mail_disputes: '申訴與郵件',
     settings: '帳號與基本資料',
     honors_achievements: '個人成就與榮譽',
+    ai_crm: 'AI-CRM (含特助代操)',
+    ai_assistant_settings: 'AI-CRM (含特助代操)',
   };
 
   const content = (
@@ -1614,8 +1604,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 ml-auto pl-2">
-          {/* 管理員專用：申訴郵件信封圖示按鈕 (移至最右側，顯示未處理案件與信件數量) - 僅非無金流且測試環境顯示 */}
-          {currentUser.role === 'admin' && !isNoPaymentMode && isDemoMode && (
+          {/* 管理員專用：申訴郵件信封圖示按鈕 (移至最右側，顯示未處理案件與信件數量) - 全模式同步可用 */}
+          {currentUser.role === 'admin' && (
             <button
               type="button"
               onClick={() => {
@@ -1656,11 +1646,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           <div className="flex items-center justify-between px-4 py-1.5 border-b border-stone-200/70 bg-stone-100/70 text-xs">
             <div className="flex items-center gap-1.5 overflow-x-auto">
               {[
-                { key: 'all', label: '全部功能', count: isNoPaymentMode ? 11 : 13 },
-                { key: 'finance', label: '💰 金流與案件', count: isNoPaymentMode ? 2 : 4 },
+                { key: 'all', label: '全部功能', count: 12 },
+                { key: 'finance', label: '💰 金流與案件', count: 4 },
                 { key: 'users', label: '👥 用戶審核', count: 3 },
-                { key: 'ai_sub', label: '🤖 AI與方案', count: isNoPaymentMode ? 1 : 2 },
-                { key: 'account', label: '⚙️ 帳號', count: 2 },
+                { key: 'ai_sub', label: '🤖 AI與方案', count: 2 },
+                { key: 'account', label: '⚙️ 帳號', count: 3 },
               ].map((cat) => (
                 <button
                   key={cat.key}
@@ -1684,11 +1674,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               // 總覽與管理大盤 (置頂)
               { id: 'overview', category: 'all', label: '管理儀表板', icon: LayoutGrid },
 
-              // 財務金流與案件 (無金流模式下完全隱藏金流與點數設定)
-              ...(!isNoPaymentMode ? [
-                { id: 'points_receivables', category: 'finance', label: '點數 & 收支', icon: Coins },
-                { id: 'transactions', category: 'finance', label: '交易管理', icon: Clock },
-              ] : []),
+              // 財務金流與案件 (全模式配置同步)
+              { id: 'points_receivables', category: 'finance', label: '點數 & 收支', icon: Coins },
+              { id: 'transactions', category: 'finance', label: '交易管理', icon: Clock },
               { id: 'admin_cases', category: 'finance', label: '案件管理', icon: Briefcase },
               { id: 'admin_questions', category: 'finance', label: '問題管理', icon: HelpCircle },
 
@@ -1697,12 +1685,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               { id: 'admin_certifications', category: 'users', label: '受理認證', icon: BadgeCheck },
               { id: 'admin_user_analytics', category: 'users', label: '用戶分佈與習慣統計', icon: BarChart3, badge: 'EXCEL' },
 
-              // AI 智能與會員方案 (自成一區在帳號設定上面)
-              { id: 'admin_aicrm', category: 'ai_sub', label: 'AI-CRM與通知設定', icon: Sparkles, badge: 'AI' },
-              { id: 'ai_assistant_settings', category: 'ai_sub', label: '24hr AI特助設定', icon: Bot, badge: 'AI' },
-              ...(!isNoPaymentMode ? [
-                { id: 'subscriptions', category: 'ai_sub', label: '會員方案與費率', icon: Crown },
-              ] : []),
+              // AI 智能與會員方案 (特助整合至 AI-CRM)
+              { id: 'admin_aicrm', category: 'ai_sub', label: 'AI-CRM與特助總控', icon: Sparkles, badge: 'AI' },
+              { id: 'subscriptions', category: 'ai_sub', label: '會員方案與費率', icon: Crown },
 
               // 帳號
               { id: 'profile', category: 'account', label: '管理員設定', icon: SettingsIcon },
@@ -1752,10 +1737,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         <div className="hidden sm:flex items-center gap-1 px-4 py-2 bg-stone-50 border-b border-stone-200 overflow-x-auto text-xs font-bold shrink-0">
           {[
             { id: 'overview', label: '功能總覽', icon: LayoutGrid },
-            ...(!isNoPaymentMode ? [
-              { id: 'points_receivables', label: '點數 & 收支', icon: Coins },
-              { id: 'subscriptions', label: '會員方案', icon: Crown },
-            ] : []),
+            { id: 'points_receivables', label: '點數 & 收支', icon: Coins },
+            { id: 'subscriptions', label: '會員方案', icon: Crown },
+            { id: 'ai_crm', label: 'AI-CRM (含特助代操)', icon: Sparkles, badge: '大師' },
             { id: 'proposals', label: '我的案件', icon: Briefcase },
             { id: 'questions_management', label: '問題管理', icon: MessageSquare },
             { id: 'honors_achievements', label: '個人成就', icon: Award },
@@ -1786,6 +1770,15 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   if (tab.id === 'survey') {
                     setActiveTab('profile');
                     setProfileSubTab('survey');
+                    setMobileMenuOpen(false);
+                    return;
+                  }
+                  if (tab.id === 'ai_crm' || tab.id === 'ai_assistant_settings') {
+                    if (onOpenAiCrm) {
+                      onOpenAiCrm();
+                      return;
+                    }
+                    setActiveTab('ai_crm');
                     setMobileMenuOpen(false);
                     return;
                   }
@@ -1853,56 +1846,51 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <span>金流與點數資產</span>
                   </span>
                   <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">
-                    {isNoPaymentMode ? '2 項' : '4 項'}
+                    4 項
                   </span>
                 </p>
 
-                {/* 1. 點數與應收帳款 - 無金流模式下隱藏 */}
-                {!isNoPaymentMode && (
-                  <>
-                    {/* 1. 點數與帳務管理 (整合點數查詢、應收託管與管理員撥付) */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('points_receivables');
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
-                          <Coins className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">點數與帳務管理</span>
-                          <span className="text-[10px] text-stone-500 font-normal">用戶帳目查閱、點數撥發與應收管理</span>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
+                {/* 1. 點數與帳務管理 (整合點數查詢、應收託管與管理員撥付) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('points_receivables');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
+                      <Coins className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">點數與帳務管理</span>
+                      <span className="text-[10px] text-stone-500 font-normal">用戶帳目查閱、點數撥發與應收管理</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
 
-                    {/* 3. 交易管理 */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('transactions');
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
-                          <Clock className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">交易管理</span>
-                          <span className="text-[10px] text-stone-500 font-normal">全站交易紀錄、拆款與退款稽核</span>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
-                  </>
-                )}
+                {/* 2. 交易管理 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('transactions');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
+                      <Clock className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">交易管理</span>
+                      <span className="text-[10px] text-stone-500 font-normal">全站交易紀錄、拆款與退款稽核</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
 
                 {/* 3. 案件管理 */}
                 <button
@@ -1925,7 +1913,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
-                {/* 4. 問題管理 (新增於案件管理下方) */}
+                {/* 4. 問題管理 */}
                 <button
                   type="button"
                   onClick={() => {
@@ -2026,7 +2014,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </button>
               </div>
 
-              {/* 分類 3: 🤖 AI 智能與會員方案 (自成一區在帳號設定上面) */}
+              {/* 分類 3: 🤖 AI 智能與會員方案 (全模式配置同步) */}
               <div className="bg-white rounded-xl border border-amber-200/90 p-1.5 space-y-0.5 shadow-2xs">
                 <p className="px-2 pt-1 pb-1 text-[10px] font-black text-amber-900 uppercase tracking-wider flex items-center justify-between border-b border-amber-100 mb-1">
                   <span className="flex items-center gap-1.5">
@@ -2034,7 +2022,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <span>AI 智能與會員方案</span>
                   </span>
                   <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">
-                    {isNoPaymentMode ? '1 項' : '2 項'}
+                    3 項
                   </span>
                 </p>
 
@@ -2055,34 +2043,56 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <div className="flex items-center gap-1.5">
                         <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">AI-CRM與通知設定</span>
                       </div>
-                      <span className="text-[10px] text-stone-500 font-normal">功能開關、客情商機、推播與通知管理</span>
+                      <span className="text-[10px] text-stone-500 font-normal">功能開關、客情商機、話術與通知管理</span>
                     </div>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
-                {/* 會員方案與費率管理 (無金流模式下隱藏) */}
-                {!isNoPaymentMode && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('subscriptions');
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-200 flex items-center justify-center shrink-0">
-                        <Crown className="w-3.5 h-3.5 text-amber-700" />
-                      </div>
-                      <div>
-                        <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">會員方案與費率管理</span>
-                        <span className="text-[10px] text-stone-500 font-normal">平台抽成設定與會員訂閱方案編輯</span>
-                      </div>
+                {/* 24hr AI客服特助設定 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('ai_assistant_settings');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-400 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
+                      <Bot className="w-3.5 h-3.5" />
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                )}
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">24hr AI特助設定</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">大師</span>
+                      </div>
+                      <span className="text-[10px] text-stone-500 font-normal">離線代客對話、預約諮詢與心理學策略推演</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
+                {/* 會員方案與費率管理 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('subscriptions');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6.5 h-6.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-200 flex items-center justify-center shrink-0">
+                      <Crown className="w-3.5 h-3.5 text-amber-700" />
+                    </div>
+                    <div>
+                      <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">會員方案與費率管理</span>
+                      <span className="text-[10px] text-stone-500 font-normal">平台抽成設定與會員訂閱方案編輯</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
               </div>
 
               {/* 分類 4: ⚙️ 帳號 */}
@@ -2179,91 +2189,87 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             </div>
           ) : (
             <>
-              {/* Section 1: 資產與帳務 (僅在有金流模式下顯示) */}
-              {!isNoPaymentMode && (
-                <div className="bg-white rounded-xl border border-stone-200/80 p-1 space-y-0.5 shadow-2xs">
-                  <p className="px-2 pt-1 pb-0.5 text-[9px] font-black text-stone-400 uppercase tracking-wider">
-                    資產與帳務
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('points_receivables');
-                      setPointsSubView('points');
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
-                        <Coins className="w-3 h-3" />
-                      </div>
-                      <span>點數 & 收支</span>
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('points_receivables');
-                      setPointsSubView('transactions');
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
-                        <Clock className="w-3 h-3" />
-                      </div>
-                      <span>交易紀錄</span>
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('subscriptions');
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
-                        <Crown className="w-3 h-3" />
-                      </div>
-                      <span>會員管理</span>
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                  </button>
-
-                  {/* AI-CRM 僅供解答者/專家顯示，不干擾提問者 */}
-                  {currentUser.role !== 'asker' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        if (onOpenAiCrm) {
-                          onOpenAiCrm();
-                        }
-                      }}
-                      className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
-                    >
-                      <span className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
-                          <Crown className="w-3 h-3 fill-stone-950" />
-                        </div>
-                        <span>AI-CRM 客戶關係管理</span>
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                          大師專屬
-                        </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-                      </div>
-                    </button>
-                  )}
+              {/* Section 1: 資產與帳務 (全模式配置同步) */}
+          <div className="bg-white rounded-xl border border-stone-200/80 p-1 space-y-0.5 shadow-2xs">
+            <p className="px-2 pt-1 pb-0.5 text-[9px] font-black text-stone-400 uppercase tracking-wider">
+              資產與帳務
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('points_receivables');
+                setPointsSubView('points');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
+                  <Coins className="w-3 h-3" />
                 </div>
-              )}
+                <span>點數 & 收支</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('points_receivables');
+                setPointsSubView('transactions');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
+                  <Clock className="w-3 h-3" />
+                </div>
+                <span>交易紀錄</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('subscriptions');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0">
+                  <Crown className="w-3 h-3" />
+                </div>
+                <span>會員管理</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                if (onOpenAiCrm) {
+                  onOpenAiCrm();
+                  return;
+                }
+                setActiveTab('ai_crm');
+              }}
+              className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Sparkles className="w-3 h-3 text-stone-950" />
+                </div>
+                <span>AI-CRM (含24hr特助代操)</span>
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                  大師專屬
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+              </div>
+            </button>
+          </div>
 
           {/* Section 2: 帳號管理 */}
           <div className="bg-white rounded-xl border border-stone-200/80 p-1 space-y-0.5 shadow-2xs">
@@ -3854,92 +3860,114 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                 </button>
 
-                {!isNoPaymentMode && (
-                  <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-                    <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10 text-center min-w-[100px]">
-                      <span className="text-[10px] text-stone-300 font-semibold block">點數餘額</span>
-                      <span className="text-base font-black text-amber-400 font-mono">
-                        NT$ {(currentUser.balance || 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10 text-center min-w-[100px]">
-                      <span className="text-[10px] text-stone-300 font-semibold block">應收帳款</span>
-                      <span className="text-base font-black text-emerald-400 font-mono">
-                        NT$ {(currentUser.withheldPoints || 0).toLocaleString()}
-                      </span>
-                    </div>
+                {/* 點數與應收資產概覽 (全模式配置同步) */}
+                <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                  <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10 text-center min-w-[100px]">
+                    <span className="text-[10px] text-stone-300 font-semibold block">點數餘額</span>
+                    <span className="text-base font-black text-amber-400 font-mono">
+                      {isNoPaymentMode ? '免點數' : `NT$ ${(currentUser.balance || 0).toLocaleString()}`}
+                    </span>
                   </div>
-                )}
+                  <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10 text-center min-w-[100px]">
+                    <span className="text-[10px] text-stone-300 font-semibold block">應收帳款</span>
+                    <span className={`text-base font-black ${isNoPaymentMode ? 'text-stone-300 font-sans text-xs sm:text-sm' : 'text-emerald-400 font-mono'}`}>
+                      {isNoPaymentMode ? '尚未開放' : `NT$ ${(currentUser.withheldPoints || 0).toLocaleString()}`}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* 核心模組卡片區 (多格面板全覽) */}
-              <div className={`grid grid-cols-1 ${isNoPaymentMode ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-3.5 sm:gap-5`}>
-                {/* 1. 資產與帳務 (無金流模式下隱藏點數與金流設定) */}
-                {!isNoPaymentMode && (
-                  <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
-                    <div className="space-y-2.5 sm:space-y-3">
-                      <div className="flex items-center gap-2.5 border-b border-stone-100 pb-2.5 sm:pb-3">
-                        <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black shrink-0">
-                          <Coins className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-black text-sm text-stone-900">資產與帳務</h4>
-                          <p className="text-[10px] text-stone-500">點數管理、拆款紀錄與會員方案</p>
-                        </div>
+              {/* 核心模組卡片區 (多格面板全覽，全模式 3 欄同步) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-5">
+                {/* 1. 資產與帳務 */}
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2.5 sm:space-y-3">
+                    <div className="flex items-center gap-2.5 border-b border-stone-100 pb-2.5 sm:pb-3">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black shrink-0">
+                        <Coins className="w-4 h-4" />
                       </div>
-
-                      <div className="grid grid-cols-1 xs:grid-cols-3 md:grid-cols-1 gap-2 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveTab('points_receivables');
-                            setPointsSubView('points');
-                          }}
-                          className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-amber-50/80 border border-stone-200 hover:border-amber-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
-                        >
-                          <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                              <Coins className="w-3.5 h-3.5" />
-                            </div>
-                            <span className="truncate">點數 & 收支</span>
-                          </span>
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors shrink-0" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveTab('points_receivables');
-                            setPointsSubView('transactions');
-                          }}
-                          className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-blue-50/80 border border-stone-200 hover:border-blue-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
-                        >
-                          <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-blue-100/90 text-blue-700 group-hover:bg-blue-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                              <Clock className="w-3.5 h-3.5" />
-                            </div>
-                            <span className="truncate">交易紀錄</span>
-                          </span>
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-blue-700 transition-colors shrink-0" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('subscriptions')}
-                          className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-purple-50/80 border border-stone-200 hover:border-purple-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
-                        >
-                          <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-700 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                              <Crown className="w-3.5 h-3.5" />
-                            </div>
-                            <span className="truncate">會員方案管理</span>
-                          </span>
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors shrink-0" />
-                        </button>
+                      <div>
+                        <h4 className="font-black text-sm text-stone-900">資產與帳務</h4>
+                        <p className="text-[10px] text-stone-500">點數管理、拆款紀錄與會員方案</p>
                       </div>
                     </div>
+
+                    <div className="grid grid-cols-1 gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('points_receivables');
+                          setPointsSubView('points');
+                        }}
+                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-amber-50/80 border border-stone-200 hover:border-amber-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                      >
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-amber-100/90 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <Coins className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="truncate">點數 & 收支</span>
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors shrink-0" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('points_receivables');
+                          setPointsSubView('transactions');
+                        }}
+                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-blue-50/80 border border-stone-200 hover:border-blue-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                      >
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-blue-100/90 text-blue-700 group-hover:bg-blue-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <Clock className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="truncate">交易紀錄</span>
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-blue-700 transition-colors shrink-0" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('subscriptions')}
+                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-purple-50/80 border border-stone-200 hover:border-purple-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                      >
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-700 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <Crown className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="truncate">會員方案管理</span>
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors shrink-0" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onOpenAiCrm) {
+                            onOpenAiCrm();
+                            return;
+                          }
+                          setActiveTab('ai_crm');
+                        }}
+                        className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-amber-50/80 border border-stone-200 hover:border-amber-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
+                      >
+                        <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-400 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
+                            <Sparkles className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="truncate">AI-CRM (含特助代操)</span>
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                            大師
+                          </span>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
+                        </div>
+                      </button>
+                    </div>
                   </div>
-                )}
+                </div>
 
                 {/* 2. 帳號管理 */}
                 <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-stone-200 shadow-2xs space-y-3 flex flex-col justify-between">
@@ -4137,7 +4165,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  應收帳款
+                  應收帳款 {isNoPaymentMode && <span className="text-[10px] text-stone-400 font-normal ml-0.5">（尚未開放）</span>}
                 </button>
                 <button
                   type="button"
@@ -4443,6 +4471,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-amber-600" />
                     <h4 className="font-black text-base text-stone-900">應收帳款</h4>
+                    {isNoPaymentMode && (
+                      <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 text-xs font-bold border border-stone-200">
+                        尚未開放
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -4458,6 +4491,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* 無金流模式提示 */}
+                {isNoPaymentMode && (
+                  <div className="p-3.5 rounded-2xl bg-stone-100 border border-stone-200 text-stone-700 text-xs font-semibold flex items-center gap-2">
+                    <span className="font-bold text-stone-800">💡 無金流模式：</span>
+                    <span>應收帳款與銀行撥款提領功能尚未開放。</span>
+                  </div>
+                )}
 
                 {/* 應收帳款核心指標卡片 */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
@@ -4526,8 +4567,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   {/* 2. 平台應撥款 */}
                   <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200">
                     <span className="text-xs font-bold text-stone-700 block">平台應撥款</span>
-                    <span className="text-2xl font-black text-stone-900 font-mono mt-1 block">
-                      NT$ {(currentUser.withheldPoints || 0).toLocaleString()}
+                    <span className={`text-2xl font-black ${isNoPaymentMode ? 'text-stone-400 font-sans text-base sm:text-lg' : 'text-stone-900 font-mono'} mt-1 block`}>
+                      {isNoPaymentMode ? '尚未開放' : `NT$ ${(currentUser.withheldPoints || 0).toLocaleString()}`}
                     </span>
                   </div>
 
@@ -4536,8 +4577,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <span className="text-xs font-bold text-emerald-950 block">
                       累計撥款（{payoutPeriod === 'week' ? '週' : payoutPeriod === 'month' ? '月' : payoutPeriod === 'year' ? '年' : '歷史'}）
                     </span>
-                    <span className="text-2xl font-black text-emerald-950 font-mono mt-1 block">
-                      NT$ {(
+                    <span className={`text-2xl font-black ${isNoPaymentMode ? 'text-stone-400 font-sans text-base sm:text-lg' : 'text-emerald-950 font-mono'} mt-1 block`}>
+                      {isNoPaymentMode ? '尚未開放' : `NT$ ${(
                         payoutPeriod === 'week'
                           ? Math.round(totalPaidOutAmount * 0.08) || (isDemoMode ? 1800 : 0)
                           : payoutPeriod === 'month'
@@ -4545,7 +4586,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           : payoutPeriod === 'year'
                           ? Math.round(totalPaidOutAmount * 0.75) || (isDemoMode ? 86500 : 0)
                           : totalPaidOutAmount
-                      ).toLocaleString()}
+                      ).toLocaleString()}`}
                     </span>
                   </div>
                 </div>
@@ -6232,17 +6273,15 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">環境開關與營運概覽</span>
                     </button>
 
-                    {!isNoPaymentMode && isDemoMode && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('admin_mail_disputes')}
-                        className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
-                      >
-                        <Mail className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-                        <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">申訴與郵件</span>
-                        <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">案件仲裁與官方通知</span>
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('admin_mail_disputes')}
+                      className="p-2.5 sm:p-3 rounded-xl border border-stone-200 hover:border-purple-300 hover:bg-purple-50/30 text-left transition-all cursor-pointer group"
+                    >
+                      <Mail className="w-4 h-4 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+                      <span className="font-black text-[11px] sm:text-xs text-stone-900 block truncate">申訴與郵件</span>
+                      <span className="text-[9px] sm:text-[10px] text-stone-500 block truncate">案件仲裁與官方通知</span>
+                    </button>
 
                     <button
                       type="button"
@@ -6742,9 +6781,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                 </div>
 
-                {/* 2. 收退款帳戶設定（無金流模式下隱藏） */}
-                {!isNoPaymentMode && (
-                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-amber-50/40 border border-stone-200 space-y-4 shadow-2xs">
+                {/* 2. 收退款帳戶設定 (全模式配置同步) */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-amber-50/40 border border-stone-200 space-y-4 shadow-2xs">
                     <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-2xs">
@@ -6846,7 +6884,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </button>
                     </div>
                   </div>
-                )}
               </div>
 
               {/* 右側欄：服務調研問卷（按 性別、年齡、專業領域、職業、薪水、其他問題 順序排列） */}
@@ -9153,17 +9190,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           )
         )}
 
-        {/* TAB: 24hr AI客服特助代客服務 (大師方案專屬) */}
-        {activeTab === 'ai_assistant_settings' && (
+        {/* TAB: AI-CRM 客戶關係管理與 24hr 特助代操 */}
+        {(activeTab === 'ai_crm' || activeTab === 'ai_assistant_settings') && (
           <div className="space-y-6">
-            <AiAssistantSettingsPanel
-              currentUser={currentUser}
-              onUpdateConfig={(newConfig) => {
-                updateAssistant24hrConfig(newConfig);
-                setMsg('✨ 24hr AI特助設定已儲存成功！');
-                setTimeout(() => setMsg(null), 3000);
-              }}
-              onUpgradePlan={() => setActiveTab('subscriptions')}
+            <AiCrmView
+              onBack={() => setActiveTab('overview')}
             />
           </div>
         )}
@@ -9197,14 +9228,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         {activeTab === 'admin_aicrm' && currentUser.role === 'admin' && (
           <AdminAiCrmTab
             onOpenAiCrm={() => {
-              onClose();
               if (onOpenAiCrm) onOpenAiCrm();
+              else setActiveTab('ai_crm');
             }}
           />
         )}
 
         {/* 管理員專用：申訴與郵件 */}
-        {activeTab === 'admin_mail_disputes' && currentUser.role === 'admin' && !isNoPaymentMode && isDemoMode && (
+        {activeTab === 'admin_mail_disputes' && currentUser.role === 'admin' && (
           <AdminMailDisputesTab onOpenQuestion={onOpenQuestion} />
         )}
       </div>

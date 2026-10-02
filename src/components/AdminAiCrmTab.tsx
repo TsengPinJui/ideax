@@ -45,7 +45,9 @@ import {
   Tag,
   ToggleLeft,
   ToggleRight,
+  Bot,
 } from 'lucide-react';
+import { AiAssistantSettingsPanel } from './AiAssistantSettingsPanel';
 
 export interface NotificationRule {
   id: string;
@@ -491,7 +493,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
             {formData.isEnabled ? '● 正常啟用中' : '○ 已手動停用'}
           </span>
           <span className="text-[10px] text-stone-400 mt-0.5 block">
-            {formData.boardPushEnabled ? '主題看板推播：開' : '主題看板推播：關'}
+            客情自動巡航與話術生成
           </span>
         </div>
 
@@ -889,28 +891,6 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
                 {/* Additional Toggles */}
                 <div className="space-y-3">
-                  <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-stone-900 block">主題看板主動推播擴散</span>
-                      <span className="text-[10px] text-stone-500 block mt-0.5">
-                        當提問者進入相關領域主題看板時，系統主動發送優選大師解題方案
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, boardPushEnabled: !formData.boardPushEnabled })}
-                      className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                        formData.boardPushEnabled ? 'bg-amber-500' : 'bg-stone-300'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                          formData.boardPushEnabled ? 'left-5.5' : 'left-0.5'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
                   <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-stone-900 block">允許專家編輯 AI 話術</span>

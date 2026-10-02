@@ -443,10 +443,12 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
             <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-stone-800 dark:text-stone-200">
                 <span>單對話單日代答上限保護</span>
-                <span className="text-amber-600 dark:text-amber-400">{config.dailyMessageLimitPerChat} 則 / 日</span>
+                <span className="text-amber-600 dark:text-amber-400 font-mono font-bold">
+                  {config.dailyMessageLimitPerChat || 30} 則 / 日 / 聊天室
+                </span>
               </div>
               <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
-                防止惡意洗版消耗 Tokens。超過限制時，特助會委婉說明已為客戶記錄完畢，請客戶靜候專家上線親自接手。
+                保護對話不被惡意消耗 Tokens。每間聊天室每日最高 30 則代答，超額時委婉提醒客戶靜候專家上線。
               </p>
               <div className="flex items-center gap-2 pt-1 text-[11px] text-stone-400">
                 <Zap className="w-3 h-3 text-amber-500" />

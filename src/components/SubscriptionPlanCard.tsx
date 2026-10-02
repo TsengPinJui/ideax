@@ -15,10 +15,11 @@ import {
   XCircle,
   ShieldCheck,
   ArrowLeft,
+  Info,
 } from 'lucide-react';
 
 export const SubscriptionPlanCard: React.FC = () => {
-  const { currentUser, subscribePlan, subscriptionPlans, commissionRate, openAboutModal } = useApp();
+  const { currentUser, subscribePlan, cancelPendingPlanChange, subscriptionPlans, commissionRate, openAboutModal } = useApp();
 
   const currentTier: SubscriptionTier = currentUser.subscriptionTier || 'free';
   const currentPlan = subscriptionPlans[currentTier] || SUBSCRIPTION_PLANS[currentTier as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.free;
@@ -88,14 +89,38 @@ export const SubscriptionPlanCard: React.FC = () => {
     };
   };
 
-  // 執行付款並開通/更改方案
+  // 轉換為一般會員（不需要重新扣款，視為取消會員資格，下個期間開始生效）
+  const handleConvertFree = () => {
+    setIsProcessing(true);
+    const res = subscribePlan('free', 'monthly', '無');
+    setActionMsg({
+      text: res.message,
+      isError: !res.success,
+    });
+    setIsProcessing(false);
+    setTimeout(() => setActionMsg(null), 6000);
+  };
+
+  // 預約下期變換方案（任何變換方案都會在下個期間開始，本期不重複扣款）
+  const handleScheduleNextCyclePlan = () => {
+    setIsProcessing(true);
+    const res = subscribePlan(selectedTier, selectedCycle);
+    setActionMsg({
+      text: res.message,
+      isError: !res.success,
+    });
+    setIsProcessing(false);
+    setTimeout(() => setActionMsg(null), 6000);
+  };
+
+  // 執行付款並開通新方案（一般會員首次訂閱開通）
   const handleConfirmPayment = () => {
     setIsProcessing(true);
     const res = subscribePlan(selectedTier, selectedCycle, selectedPaymentMethod);
 
     if (res.success) {
       setActionMsg({
-        text: `🎉 成功更改為「${targetPlan.name}」！付款方式：${selectedPaymentMethod}，已即時開通並享有專屬服務費減免與特權！`,
+        text: `🎉 成功開通「${targetPlan.name}」！付款方式：${selectedPaymentMethod}，即刻享有專屬服務費減免與特權！後續變更方案皆會在下個期間開始生效。`,
         isError: false,
       });
       setIsPaymentStep(false);
@@ -110,17 +135,17 @@ export const SubscriptionPlanCard: React.FC = () => {
     setTimeout(() => setActionMsg(null), 6000);
   };
 
-  // 確認取消訂閱
+  // 確認取消會員資格（轉為一般會員・免重新扣款・下個期間開始生效）
   const handleConfirmCancel = () => {
     setIsProcessing(true);
-    subscribePlan('free', 'monthly', '無');
+    const res = subscribePlan('free', 'monthly', '無');
     setIsCancelConfirmOpen(false);
     setActionMsg({
-      text: '已成功取消會員訂閱，您的身分已恢復為一般會員（標準服務費 10%）。您可以隨時重新升級！',
+      text: res.message || '已成功取消會員訂閱，轉換為一般會員不需要重新扣款，將於下個期間開始生效。',
       isError: false,
     });
     setIsProcessing(false);
-    setTimeout(() => setActionMsg(null), 5000);
+    setTimeout(() => setActionMsg(null), 6000);
   };
 
   return (
@@ -171,6 +196,46 @@ export const SubscriptionPlanCard: React.FC = () => {
             <strong className="text-stone-900 font-mono font-black">{expiryDisplay}</strong>
           </div>
         </div>
+
+        {/* 下期方案變更或取消狀態橫幅 */}
+        {currentUser.nextSubscriptionTier && (
+          <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in ${
+            currentUser.nextSubscriptionTier === 'free'
+              ? 'bg-amber-500/10 border-amber-300 text-amber-950'
+              : 'bg-purple-500/10 border-purple-300 text-purple-950'
+          }`}>
+            <div className="flex items-start gap-2.5">
+              {currentUser.nextSubscriptionTier === 'free' ? (
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              ) : (
+                <Calendar className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+              )}
+              <div className="text-xs space-y-0.5">
+                <div className="font-black text-sm">
+                  {currentUser.nextSubscriptionTier === 'free'
+                    ? '已申請轉換為一般會員（視為取消會員資格）'
+                    : `已預約變換方案：${subscriptionPlans[currentUser.nextSubscriptionTier]?.name || currentUser.nextSubscriptionTier}`}
+                </div>
+                <p className="opacity-90 leading-relaxed font-semibold">
+                  {currentUser.nextSubscriptionTier === 'free'
+                    ? `轉換為一般會員不需要重新扣款。目前「${currentPlan.name}」專屬特權將持續服務至本期結束（${expiryDisplay}），下個期間開始正式生效。`
+                    : `任何變換方案都會在下個期間開始（${currentUser.nextSubscriptionEffectiveAt || expiryDisplay}）生效。本期享有原方案權益，不重複扣款。`}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const res = cancelPendingPlanChange();
+                setActionMsg({ text: res.message, isError: false });
+                setTimeout(() => setActionMsg(null), 5000);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 font-bold text-xs shrink-0 cursor-pointer shadow-2xs transition-colors self-start sm:self-auto"
+            >
+              {currentUser.nextSubscriptionTier === 'free' ? '恢復自動續訂' : '撤銷預約變更'}
+            </button>
+          </div>
+        )}
 
         {/* 當前方案待遇指標 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
@@ -226,7 +291,7 @@ export const SubscriptionPlanCard: React.FC = () => {
             <span>更改方案</span>
           </h4>
           <p className="text-[11px] text-stone-500 mt-0.5">
-            由下拉選單選取欲變更的方案與週期，點選「確認更改」後進入付款確認頁面。
+            由下拉選單選取欲變更的方案。轉換為一般會員不需要重新扣款，視為取消會員資格；任何變換方案都會在下個期間開始生效。
           </p>
         </div>
 
@@ -251,7 +316,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                       : `抽成 ${r.effectiveFeePercent}%`;
                     return (
                       <option key={p.id} value={p.id}>
-                        {p.name}（{p.pricingText || `NT$ ${p.monthlyPrice}/月`}・{feeDesc}・實收 {r.sellerPayoutPercent}%）
+                        {p.name}（{p.id === 'free' ? '免費基礎帳號・免扣款' : p.pricingText || `NT$ ${p.monthlyPrice}/月`}・{feeDesc}・實收 {r.sellerPayoutPercent}%）
                       </option>
                     );
                   })}
@@ -263,7 +328,11 @@ export const SubscriptionPlanCard: React.FC = () => {
                 <label className="block text-[11px] font-bold text-stone-700 mb-1">
                   選擇計費週期 *
                 </label>
-                {targetPlan?.billingCycles && targetPlan.billingCycles.length > 1 ? (
+                {selectedTier === 'free' ? (
+                  <div className="px-3 py-2 bg-stone-100 border border-stone-200 rounded-xl text-xs font-bold text-stone-600">
+                    永久免費・無續訂扣款
+                  </div>
+                ) : targetPlan?.billingCycles && targetPlan.billingCycles.length > 1 ? (
                   <select
                     value={selectedCycle}
                     onChange={(e) => setSelectedCycle(e.target.value as any)}
@@ -290,19 +359,106 @@ export const SubscriptionPlanCard: React.FC = () => {
                 ? (targetRate.effectiveFeePercent < 0 ? `免服務費 + 另獲 ${Math.abs(targetRate.effectiveFeePercent)}% 紅利` : '免服務費')
                 : `抽成 ${targetRate.effectiveFeePercent}%`;
 
+              // 情況 A：選取一般會員 (free)
+              if (selectedTier === 'free') {
+                return (
+                  <div className="space-y-2.5">
+                    <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-1">
+                      <div className="font-black flex items-center gap-1.5 text-amber-900">
+                        <Info className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>轉換為一般會員規範提醒</span>
+                      </div>
+                      <p className="text-[11px] text-amber-800 leading-relaxed font-semibold">
+                        轉換為一般會員<strong>不需要重新扣款（費用 NT$ 0）</strong>，此操作視為取消會員資格。您的目前特權將保留至本期結束（{expiryDisplay}），<strong>下個期間開始正式生效</strong>。
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-stone-100 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-black text-xs text-stone-900">
+                            預計變更為：一般會員（視為取消會員資格）
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-stone-200 text-stone-700">
+                            標準 10% 服務費
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-600 mt-0.5">
+                          費用：<strong className="text-emerald-700 font-bold">NT$ 0 不需要重新扣款</strong> • 生效時間：下個期間開始（{expiryDisplay}）
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleConvertFree}
+                        disabled={isProcessing || currentTier === 'free'}
+                        className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-95 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <XCircle className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{currentTier === 'free' ? '目前已是一般會員' : '確認轉換為一般會員 (取消資格・免扣款)'}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // 情況 B：現有付費會員切換方案 (任何變換方案都會在下個期間開始)
+              if (currentTier !== 'free') {
+                return (
+                  <div className="space-y-2.5">
+                    <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200 text-xs text-purple-950 space-y-1">
+                      <div className="font-black flex items-center gap-1.5 text-purple-900">
+                        <Calendar className="w-4 h-4 text-purple-600 shrink-0" />
+                        <span>任何變換方案都會在下個期間開始</span>
+                      </div>
+                      <p className="text-[11px] text-purple-800 leading-relaxed font-semibold">
+                        您目前已享有「{currentPlan.name}」。變換為「{targetPlan.name}」將於<strong>下個期間開始（{expiryDisplay}）</strong>生效並依新方案計費，<strong>本期不重複扣款</strong>，原特權享有至本期結束。
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-black text-xs text-purple-950">
+                            預約變換為：{targetPlan.name}（{targetCycleObj.label}）
+                          </span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${targetPlan.badgeClass}`}>
+                            {feeBadgeText}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-purple-900/80 mt-0.5 font-bold">
+                          本次費用：<strong className="text-emerald-700">NT$ 0 (本期不重複扣款)</strong> • 下期續訂 NT$ {(targetCycleObj.price || 0).toLocaleString()}（於 {expiryDisplay} 扣款）
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleScheduleNextCyclePlan}
+                        disabled={isProcessing || (currentTier === selectedTier && !currentUser.nextSubscriptionTier)}
+                        className="px-4 py-2 rounded-xl bg-purple-900 hover:bg-purple-800 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span>預約下期變換為「{targetPlan.name}」（下期生效）</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // 情況 C：一般會員首次開通方案
               return (
                 <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="font-black text-xs text-amber-950">
-                        預計變更為：{targetPlan.name}
+                        首次開通方案：{targetPlan.name}
                       </span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${targetPlan.badgeClass}`}>
                         {feeBadgeText}
                       </span>
                     </div>
                     <p className="text-[11px] text-amber-900/80 mt-0.5 font-bold">
-                      本次費用 <strong>NT$ {(targetCycleObj.price || 0).toLocaleString()}</strong>
+                      首次開通費用 <strong>NT$ {(targetCycleObj.price || 0).toLocaleString()}</strong>（開通後後續任何變換方案皆於下個期間開始）
                     </p>
                   </div>
 
@@ -311,7 +467,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                     onClick={() => setIsPaymentStep(true)}
                     className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
                   >
-                    <span>確認更改</span>
+                    <span>前往付款開通</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -557,8 +713,8 @@ export const SubscriptionPlanCard: React.FC = () => {
                           <div className="font-bold text-blue-950">
                             <strong className="text-blue-950 font-black text-base font-mono">8%</strong>
                           </div>
-                          <span className="inline-block font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 text-[11px] shadow-2xs">
-                            僅收 8%
+                          <span className="inline-block font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 text-[11px] shadow-2xs font-mono">
+                            -2%
                           </span>
                         </div>
                       ) : isAuth ? (
@@ -566,8 +722,8 @@ export const SubscriptionPlanCard: React.FC = () => {
                           <div className="font-bold text-purple-950">
                             服務費 <strong className="text-purple-950 font-black">5%</strong>
                           </div>
-                          <span className="inline-block font-black text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-300 text-[11px] shadow-2xs" title="比達人方案再降 3% 服務費">
-                            比達人更省 3%（僅收 5%）
+                          <span className="inline-block font-black text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-300 text-[11px] shadow-2xs font-mono">
+                            -5%
                           </span>
                         </div>
                       ) : isMaster ? (
@@ -662,9 +818,9 @@ export const SubscriptionPlanCard: React.FC = () => {
                         }`}
                       >
                         {isPro
-                          ? '免費查看 50 次'
+                          ? '＋ 免費查看 50 次'
                           : plan.id === 'authority'
-                          ? '✨ 比達人升級無限次＋下載報告'
+                          ? '升級無限次＋下載報告'
                           : '免費無限次查看及下載報告'}
                       </span>
                     );
@@ -679,6 +835,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                       (['pro', 'expert', 'authority', 'master'].includes(plan.id) ||
                         plan.benefits?.some((b) => b.includes('架構')));
                     if (!hasIt) return <span className="text-stone-300 font-bold">—</span>;
+                    const isPro = plan.id === 'pro' || plan.id === 'expert';
                     return (
                       <span
                         className={`inline-block font-bold px-2 py-0.5 rounded-md text-[11px] ${
@@ -689,7 +846,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                             : 'text-blue-900 bg-blue-100/70'
                         }`}
                       >
-                        一鍵整理 4 層架構
+                        {isPro ? '＋ 一鍵整理 4 層架構' : '一鍵整理 4 層架構'}
                       </span>
                     );
                   },
@@ -710,7 +867,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                             : 'text-purple-900 bg-purple-100/70 font-black'
                         }`}
                       >
-                        {plan.id === 'authority' ? '✨ 比達人新增優先推薦曝光' : '優先推薦曝光'}
+                        {plan.id === 'authority' ? '＋ 升級優先推薦曝光' : '優先推薦曝光'}
                       </span>
                     );
                   },
@@ -726,7 +883,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                     return (
                       <div className="flex flex-col items-center justify-center gap-0.5">
                         <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-300 to-orange-300 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
-                          👑 管理案件小秘書(大師專屬)
+                          ＋ 👑 管理案件小秘書(大師專屬)
                         </span>
                       </div>
                     );
@@ -743,7 +900,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                     return (
                       <div className="flex flex-col items-center justify-center gap-0.5">
                         <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-orange-400 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
-                          🤖 離線代客對談 ＋ 聊天室策略建議
+                          ＋ 🤖 離線代客對談 ＋ 聊天室策略建議
                         </span>
                       </div>
                     );
@@ -813,21 +970,41 @@ export const SubscriptionPlanCard: React.FC = () => {
         <div>
           <h5 className="font-black text-xs sm:text-sm text-rose-950 flex items-center gap-1.5">
             <XCircle className="w-4 h-4 text-rose-600" />
-            <span>取消會員訂閱</span>
+            <span>取消會員資格（轉換為一般會員）</span>
           </h5>
           <p className="text-[11px] text-rose-900/80 mt-0.5">
-            若暫時不需要服務費減免與專屬特權，可點選取消訂閱。取消後身分將於到期後降為一般會員。
+            轉換為一般會員<strong>不需要重新扣款</strong>，視為取消會員資格。任何變換方案都會在<strong>下個期間開始生效</strong>，現有特權將完整保留至本期結束。
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsCancelConfirmOpen(true)}
-          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
-        >
-          <XCircle className="w-3.5 h-3.5" />
-          <span>取消訂閱</span>
-        </button>
+        {currentUser.nextSubscriptionTier === 'free' ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-rose-800 bg-rose-100 px-3 py-1.5 rounded-xl border border-rose-300">
+              已申請下期轉為一般會員
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const res = cancelPendingPlanChange();
+                setActionMsg({ text: res.message, isError: false });
+                setTimeout(() => setActionMsg(null), 5000);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 font-bold text-xs cursor-pointer shadow-2xs transition-colors"
+            >
+              恢復自動續約
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsCancelConfirmOpen(true)}
+            disabled={currentTier === 'free'}
+            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <XCircle className="w-3.5 h-3.5" />
+            <span>{currentTier === 'free' ? '目前已是一般會員' : '取消會員資格'}</span>
+          </button>
+        )}
       </div>
 
       {/* 取消訂閱防呆二次確認彈窗 */}
@@ -836,12 +1013,18 @@ export const SubscriptionPlanCard: React.FC = () => {
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-stone-200">
             <div className="flex items-center gap-2.5 text-rose-600">
               <AlertTriangle className="w-6 h-6 shrink-0" />
-              <h4 className="font-black text-base text-stone-900">確認取消會員訂閱？</h4>
+              <h4 className="font-black text-base text-stone-900">確認取消會員資格？</h4>
             </div>
 
-            <p className="text-xs text-stone-600 leading-relaxed">
-              您目前享有<strong>「{currentPlan.name}」</strong>。確認取消後，您的帳號將於到期日後降為一般會員，第三方交易拆款將恢復為全站基準 {baseRatePercent}% 服務費，且將失去相關特權。
-            </p>
+            <div className="space-y-2 text-xs text-stone-600 leading-relaxed">
+              <p>
+                您目前享有<strong>「{currentPlan.name}」</strong>。
+              </p>
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 font-semibold text-[11px] space-y-1">
+                <p>💡 <strong>轉換為一般會員不需要重新扣款</strong>（費用 NT$ 0），視為取消會員資格。</p>
+                <p>任何變換方案都會在<strong>下個期間開始生效</strong>（到期日：{expiryDisplay}）。現有方案特權將保留享有至本期結束，下個期間開始不再自動續約扣款。</p>
+              </div>
+            </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
               <button
@@ -858,7 +1041,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                 disabled={isProcessing}
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
               >
-                確認取消訂閱
+                確認取消（下期生效・免扣款）
               </button>
             </div>
           </div>
