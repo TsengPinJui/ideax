@@ -25,6 +25,7 @@ import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
 import { PwaInstallModal } from './components/PwaInstallModal';
+import { CenterToast } from './components/CenterToast';
 import { SplashScreen } from './components/SplashScreen';
 import { HelpTooltip } from './components/HelpTooltip';
 import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnboardingGuide';
@@ -77,8 +78,12 @@ function MainContent() {
     availableUsers,
     startDirectChat,
     openAuthModal,
+    addNotification,
     isDemoMode,
     isNoPaymentMode,
+    centerToast,
+    hideCenterToast,
+    promptLogin,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<AppTab>('explore');
@@ -286,13 +291,13 @@ function MainContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
 
-  // Guest intercept: if guest tries to view personal center or my projects, redirect to login
+  // Guest intercept: if guest tries to view personal center or my projects or create question, redirect to login
   useEffect(() => {
-    if (currentUser.id === 'user-guest' && (activeTab === 'user_dashboard' || activeTab === 'my_projects')) {
+    if (currentUser.id === 'user-guest' && (activeTab === 'create_question' || activeTab === 'user_dashboard' || activeTab === 'my_projects')) {
       setActiveTab('explore');
-      openAuthModal('login');
+      promptLogin('訪客模式請先登入帳號以繼續操作');
     }
-  }, [currentUser.id, activeTab, openAuthModal]);
+  }, [currentUser.id, activeTab, promptLogin]);
 
   // Read URL query parameter ?q= or ?questionId= or #q= on load/change to support direct links
   useEffect(() => {
@@ -690,6 +695,10 @@ function MainContent() {
   }, [availableUsers, solvers, searchQuery]);
 
   const handleOpenCreateWithType = (type: PostType = 'seek_solution', identity?: 'admin' | 'platform') => {
+    if (currentUser.id === 'user-guest') {
+      promptLogin('訪客模式請先登入帳號以發布問題');
+      return;
+    }
     if (currentUser.isBlocked) {
       alert(`⚠️ 您的帳號已被管理員執行停權處分（原因：${currentUser.blockedReason || '違反平台規範'}），在解封前無法發布新問題或痛點！如有疑問請聯繫客服。`);
       return;
@@ -750,6 +759,10 @@ function MainContent() {
         onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
         onOpenCreateQuestionWithType={handleOpenCreateWithType}
         onOpenUserDashboardTab={(tab, scrollSection) => {
+          if (currentUser.id === 'user-guest') {
+            promptLogin('訪客模式請先登入帳號以查看個人中心');
+            return;
+          }
           setUserDashboardTab(tab);
           setActiveTab('user_dashboard');
           if (tab === 'overview') {
@@ -1286,6 +1299,11 @@ function MainContent() {
               setActiveTab('explore');
             }}
             onOpenSubmitAnswer={(initialType) => {
+              if (currentUser.id === 'user-guest') {
+                openAuthModal('login', 'email', '請先登入');
+                addNotification({ title: '請先登入', message: '訪客模式請先登入帳號以提出方案', type: 'system' });
+                return;
+              }
               setSubmitInitialType(initialType || 'solution');
               setIsSubmittingAnswer(true);
             }}
@@ -1541,7 +1559,7 @@ function MainContent() {
           setSelectedQuestion(null);
           setSelectedSolver(null);
           if (currentUser.id === 'user-guest' && (tab === 'user_dashboard' || tab === 'my_projects')) {
-            openAuthModal('login');
+            promptLogin(tab === 'my_projects' ? '訪客模式請先登入帳號以查看我的案件' : '訪客模式請先登入帳號以查看個人中心');
             return;
           }
           if (tab === 'user_dashboard') {
@@ -1618,6 +1636,9 @@ function MainContent() {
         viewMode={viewMode}
         onSetViewMode={handleSetViewMode}
       />
+
+      {/* 螢幕正中央提示浮窗 (Center Toast HUD: 中間跳出提示再消失) */}
+      <CenterToast toast={centerToast} onDismiss={hideCenterToast} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Question,
   Solver,
@@ -74,6 +74,7 @@ import {
   loadAllDataFromFirestore,
   CategorizedSyncResult,
 } from '../services/firestoreSync';
+import { CenterToastData } from '../components/CenterToast';
 
 interface AppContextType {
   currentUser: User;
@@ -150,7 +151,8 @@ interface AppContextType {
   isAuthModalOpen: boolean;
   authModalMode: 'login' | 'register';
   authModalMethod: 'email' | 'phone' | 'switch';
-  openAuthModal: (mode?: 'login' | 'register', method?: 'email' | 'phone' | 'switch') => void;
+  authModalInterceptReason?: string;
+  openAuthModal: (mode?: 'login' | 'register', method?: 'email' | 'phone' | 'switch', interceptReason?: string) => void;
   closeAuthModal: () => void;
 
   // Identity Switcher & Solver Profile Preferences
@@ -330,6 +332,21 @@ interface AppContextType {
   isPwaInstallModalOpen: boolean;
   openPwaInstallModal: () => void;
   closePwaInstallModal: () => void;
+
+  // Center Toast Notification State & Triggers (中央彈出式提示再消失)
+  centerToast: CenterToastData | null;
+  showCenterToast: (
+    title: string,
+    subtitle?: string,
+    options?: {
+      actionLabel?: string;
+      onAction?: () => void;
+      type?: 'lock' | 'info' | 'warning' | 'success';
+      duration?: number;
+    }
+  ) => void;
+  hideCenterToast: () => void;
+  promptLogin: (customSubtitle?: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -402,19 +419,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [authModalMethod, setAuthModalMethod] = useState<'email' | 'phone' | 'switch'>('email');
+  const [authModalInterceptReason, setAuthModalInterceptReason] = useState<string | undefined>(undefined);
 
   const openAuthModal = (
     mode: 'login' | 'register' = 'login',
-    method: 'email' | 'phone' | 'switch' = 'email'
+    method: 'email' | 'phone' | 'switch' = 'email',
+    interceptReason?: string
   ) => {
     setAuthModalMode(mode);
     setAuthModalMethod(method);
+    setAuthModalInterceptReason(interceptReason);
     setIsAuthModalOpen(true);
   };
 
   const closeAuthModal = () => {
     setIsAuthModalOpen(false);
+    setAuthModalInterceptReason(undefined);
   };
+
+  // Center Toast State (中央浮動彈出提示)
+  const [centerToast, setCenterToast] = useState<CenterToastData | null>(null);
+
+  const hideCenterToast = useCallback(() => {
+    setCenterToast(null);
+  }, []);
+
+  const showCenterToast = useCallback(
+    (
+      title: string,
+      subtitle?: string,
+      options?: {
+        actionLabel?: string;
+        onAction?: () => void;
+        type?: 'lock' | 'info' | 'warning' | 'success';
+        duration?: number;
+      }
+    ) => {
+      setCenterToast({
+        id: Date.now(),
+        title,
+        subtitle,
+        actionLabel: options?.actionLabel,
+        onAction: options?.onAction,
+        type: options?.type || 'lock',
+        duration: options?.duration || 2000,
+      });
+    },
+    []
+  );
+
+  const promptLogin = useCallback(
+    (customSubtitle?: string) => {
+      showCenterToast('請先登入', customSubtitle || '訪客模式請先登入帳號以繼續操作', {
+        type: 'lock',
+        actionLabel: '前往登入',
+        onAction: () => openAuthModal('login', 'email'),
+        duration: 2200,
+      });
+    },
+    [showCenterToast, openAuthModal]
+  );
 
   // PWA Install Modal State
   const [isPwaInstallModalOpen, setIsPwaInstallModalOpen] = useState(false);
@@ -671,11 +735,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [deviceAccounts, setDeviceAccounts] = useState<DeviceAccount[]>(() => {
     try {
+      const isAuthenticated = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_authenticated`) === 'true';
       const saved = localStorage.getItem(DEVICE_ACCOUNTS_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          // 若目前未登入（如剛進入網站或剛下載之用戶），絕不殘留任何舊版預設之管理員或訪客帳號
+          const cleaned = parsed.filter((a: any) => {
+            if (!a || !a.userId || a.userId === 'user-guest') return false;
+            if (!isAuthenticated && (a.userId === 'user-admin' || isTestAccountUserId(a.userId))) return false;
+            return true;
+          });
+          return cleaned;
         }
       }
     } catch {
@@ -5544,6 +5615,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAuthModalOpen,
         authModalMode,
         authModalMethod,
+        authModalInterceptReason,
         openAuthModal,
         closeAuthModal,
         createQuestion,
@@ -5628,6 +5700,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isPwaInstallModalOpen,
         openPwaInstallModal,
         closePwaInstallModal,
+        centerToast,
+        showCenterToast,
+        hideCenterToast,
+        promptLogin,
       }}
     >
       {children}

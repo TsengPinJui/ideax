@@ -108,7 +108,9 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     delistQuestion,
     relistQuestion,
     addNotification,
+    openAuthModal,
     availableUsers,
+    promptLogin,
   } = useApp();
 
   const liveQuestion = questions.find((item) => item.id === question.id) || selectedQuestion || question;
@@ -1335,14 +1337,26 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             {/* Submit Action */}
             <div className="flex items-center gap-2">
               <button
-                onClick={() => onOpenSubmitAnswer('solution')}
+                onClick={() => {
+                  if (currentUser.id === 'user-guest') {
+                    promptLogin('訪客模式請先登入帳號以提出方案');
+                    return;
+                  }
+                  onOpenSubmitAnswer('solution');
+                }}
                 className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Award className="w-3.5 h-3.5" />
                 <span>提出方案（可付費、可附件）</span>
               </button>
               <button
-                onClick={() => onOpenSubmitAnswer('discussion')}
+                onClick={() => {
+                  if (currentUser.id === 'user-guest') {
+                    promptLogin('訪客模式請先登入帳號以參與討論');
+                    return;
+                  }
+                  onOpenSubmitAnswer('discussion');
+                }}
                 className="px-3 py-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <MessageSquare className="w-3.5 h-3.5 text-stone-500" />
@@ -1362,7 +1376,13 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     方案可設定公開顯示精華與付費解鎖內容；懸賞額 NT$ {(question.bounty || 0).toLocaleString()} 或可由您自訂解鎖價格！
                   </p>
                   <button
-                    onClick={() => onOpenSubmitAnswer('solution')}
+                    onClick={() => {
+                      if (currentUser.id === 'user-guest') {
+                        promptLogin('訪客模式請先登入帳號以提出方案');
+                        return;
+                      }
+                      onOpenSubmitAnswer('solution');
+                    }}
                     className="mt-3 px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition-colors cursor-pointer"
                   >
                     搶先提交方案
@@ -2152,14 +2172,26 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             {isFullPage ? '返回問題市場' : '關閉'}
           </button>
           <button
-            onClick={() => onOpenSubmitAnswer('solution')}
+            onClick={() => {
+              if (currentUser.id === 'user-guest') {
+                promptLogin('訪客模式請先登入帳號以提出方案');
+                return;
+              }
+              onOpenSubmitAnswer('solution');
+            }}
             className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Award className="w-3.5 h-3.5 shrink-0" />
             <span>提出方案（可付費解鎖）</span>
           </button>
           <button
-            onClick={() => onOpenSubmitAnswer('discussion')}
+            onClick={() => {
+              if (currentUser.id === 'user-guest') {
+                promptLogin('訪客模式請先登入帳號以參與討論');
+                return;
+              }
+              onOpenSubmitAnswer('discussion');
+            }}
             className="px-3.5 py-2.5 sm:py-2 rounded-xl border border-stone-300 hover:bg-stone-100 text-stone-800 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
           >
             <MessageSquare className="w-3.5 h-3.5 text-stone-600 shrink-0" />

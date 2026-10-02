@@ -21,6 +21,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     currentUser,
     unreadPersonalCount,
     pendingDisputesCount,
+    promptLogin,
   } = useApp();
   
   // 問卷未填寫提示紅點 (一般用戶未完成問卷或有待處理通知時顯示紅點)
@@ -75,7 +76,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <div id="onboarding-step-9-create" className="flex items-center justify-center -mt-3.5">
           <button
             type="button"
-            onClick={onOpenCreateQuestion}
+            onClick={() => {
+              if (currentUser.id === 'user-guest') {
+                promptLogin('訪客模式請先登入帳號以發布問題');
+                return;
+              }
+              onOpenCreateQuestion();
+            }}
             className="w-11 h-11 rounded-full bg-linear-to-tr from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-stone-950 flex items-center justify-center shadow-md shadow-amber-500/30 ring-3 ring-white cursor-pointer transition-all"
             title="發布提問與痛點"
             aria-label="發布提問與痛點"
@@ -87,7 +94,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         {/* 4. 我的案件 */}
         <button
           type="button"
-          onClick={() => onNavigate('my_projects')}
+          onClick={() => {
+            if (currentUser.id === 'user-guest') {
+              promptLogin('訪客模式請先登入帳號以查看我的案件');
+              return;
+            }
+            onNavigate('my_projects');
+          }}
           className={`flex flex-col items-center justify-center py-1 transition-all cursor-pointer relative ${
             isMyProjectsActive
               ? 'text-amber-600 font-black'
@@ -104,7 +117,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button
           id="onboarding-step-10-profile"
           type="button"
-          onClick={() => onNavigate('user_dashboard')}
+          onClick={() => {
+            if (currentUser.id === 'user-guest') {
+              promptLogin('訪客模式請先登入帳號以查看個人中心');
+              return;
+            }
+            onNavigate('user_dashboard');
+          }}
           className={`flex flex-col items-center justify-center py-1 transition-all cursor-pointer relative ${
             isDashboardActive
               ? 'text-amber-600 font-black'

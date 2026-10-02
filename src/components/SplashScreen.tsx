@@ -103,7 +103,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   // 當資料即時就緒且時間充足時，加速過渡
   useEffect(() => {
-    if (questions.length > 0 && solvers.length > 0 && answers.length > 0 && progress >= 85) {
+    if (questions.length > 0 && solvers.length > 0 && answers.length > 0 && progress >= 85 && progress < 100) {
       setProgress(100);
     }
   }, [questions.length, solvers.length, answers.length, progress]);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -204,6 +204,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       // ignore
     }
   }, []);
+
+  // 僅限本裝置曾成功登入過並記錄於 deviceAccounts 之帳號方可切換（新用戶或剛進入網站之訪客 deviceAccounts 為空，絕不顯示任何切換帳號包括管理員）
+  const deviceUserIds = useMemo(() => new Set(deviceAccounts.map((d) => d.userId)), [deviceAccounts]);
+
+  const sortedAvailableUsers = useMemo(() => {
+    return availableUsers
+      .filter((u) => u.id !== 'user-guest' && u.id !== currentUser.id && deviceUserIds.has(u.id))
+      .sort((a, b) => {
+        const devA = deviceAccounts.find((d) => d.userId === a.id);
+        const devB = deviceAccounts.find((d) => d.userId === b.id);
+
+        const timeA = devA?.lastLoginAt ? new Date(devA.lastLoginAt).getTime() : 0;
+        const timeB = devB?.lastLoginAt ? new Date(devB.lastLoginAt).getTime() : 0;
+
+        return timeB - timeA;
+      });
+  }, [availableUsers, currentUser.id, deviceUserIds, deviceAccounts]);
 
   // Validation helpers for Username and Password
   const validateUsername = (uname: string): { isValid: boolean; message: string } => {
@@ -799,20 +816,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const regPwdStatus = validatePassword(regPassword);
   const regUserStatus = validateUsername(regUsername);
 
-  // 按照最近登入排序（最近登入的排在左邊，越久沒登入的排在越右邊）
-  const sortedAvailableUsers = [...availableUsers].sort((a, b) => {
-    if (a.id === currentUser.id) return -1;
-    if (b.id === currentUser.id) return 1;
-
-    const devA = deviceAccounts.find((d) => d.userId === a.id);
-    const devB = deviceAccounts.find((d) => d.userId === b.id);
-
-    const timeA = devA?.lastLoginAt ? new Date(devA.lastLoginAt).getTime() : 0;
-    const timeB = devB?.lastLoginAt ? new Date(devB.lastLoginAt).getTime() : 0;
-
-    return timeB - timeA;
-  });
-
   const modalContent = (
     <div
       style={{ zIndex: 2147483647, position: 'fixed', inset: 0 }}
@@ -853,12 +856,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               讓創意發光
             </p>
           </div>
-
-          {interceptReason && (
-            <div className="mt-3 p-3 rounded-xl bg-amber-50 text-amber-950 text-xs font-bold border border-amber-200 text-left">
-              {interceptReason}
-            </div>
-          )}
         </div>
 
         {/* Feedback Alert Messages (無表情符號、簡潔有力、失敗提示可能原因) */}

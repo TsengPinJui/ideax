@@ -120,12 +120,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     isAuthModalOpen,
     authModalMode,
     authModalMethod,
+    authModalInterceptReason,
     openAuthModal,
     closeAuthModal,
     unreadPersonalCount,
     hasUnreadSystemNotifs,
     pendingDisputesCount,
     addTestAccount,
+    promptLogin,
   } = useApp();
 
   const [internalIsCategorySidebarOpen, setInternalIsCategorySidebarOpen] = useState(false);
@@ -340,6 +342,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   const handleOpenDashboard = (tab: UserDashboardTab, scrollSection?: string) => {
+    if (isGuest) {
+      promptLogin('訪客模式請先登入帳號以查看個人中心');
+      return;
+    }
     if (onOpenUserDashboardTab) {
       onOpenUserDashboardTab(tab, scrollSection);
     }
@@ -477,6 +483,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
             <button
               onClick={() => {
+                if (isGuest) {
+                  promptLogin('訪客模式請先登入帳號以查看我的案件');
+                  return;
+                }
                 setActiveTab('my_projects');
                 setSelectedQuestion(null);
                 setSelectedSolver(null);
@@ -838,7 +848,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="onboarding-step-9-create-desktop"
               onClick={() => {
                 if (isGuest) {
-                  openAuthModal('login');
+                  promptLogin('訪客模式請先登入帳號以發布問題');
                   return;
                 }
                 if (currentUser.role === 'admin') {
@@ -1059,7 +1069,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           {isGuest ? (
             <button
               type="button"
-              onClick={() => openAuthModal('login')}
+              onClick={() => {
+                openAuthModal('login', 'email', '請先登入');
+                addNotification({ title: '請先登入', message: '訪客模式請先登入帳號', type: 'system' });
+              }}
               className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
             >
               <LogIn className="w-4 h-4 text-stone-950" />
@@ -1880,6 +1893,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           setSelectedSolver(null);
         }}
         onOpenCreateQuestion={() => {
+          if (isGuest) {
+            promptLogin('訪客模式請先登入帳號以發布問題');
+            return;
+          }
           if (onOpenCreateQuestion) {
             onOpenCreateQuestion();
           } else {
@@ -1930,6 +1947,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         onClose={closeAuthModal}
         initialMode={authModalMode}
         initialMethod={authModalMethod}
+        interceptReason={authModalInterceptReason}
       />
     </header>
   );

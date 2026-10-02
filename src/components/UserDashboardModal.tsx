@@ -246,7 +246,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const adminPendingDisputesCount = pendingDisputesCount;
 
   const [accountToRemove, setAccountToRemove] = useState<User | null>(null);
-  const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
   const [deactivateReasonInput, setDeactivateReasonInput] = useState('');
   const [isDeactivating, setIsDeactivating] = useState(false);
@@ -8164,7 +8163,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setIsAddAccountModalOpen(true)}
+                  onClick={() => {
+                    openAuthModal('login', 'switch');
+                  }}
                   className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-stone-50 text-stone-900 border border-stone-200 hover:border-amber-300 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0 self-start sm:self-auto"
                 >
                   <UserPlus className="w-3.5 h-3.5 text-amber-600" />
@@ -9512,93 +9513,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               >
                 確認移除
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 登入其他帳號至此裝置彈窗 */}
-      {isAddAccountModalOpen && (
-        <div
-          onClick={() => setIsAddAccountModalOpen(false)}
-          className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-stone-950/80 backdrop-blur-md animate-in fade-in duration-150"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-stone-200 p-6 space-y-4 animate-in zoom-in-95 duration-150 max-h-[85vh] flex flex-col"
-          >
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-black shrink-0 shadow-2xs">
-                  <UserPlus className="w-5 h-5 text-amber-700" />
-                </div>
-                <div>
-                  <h3 className="font-black text-base text-stone-900">登入其他帳號至此裝置</h3>
-                  <p className="text-xs text-stone-500">選擇帳號即刻登入並保存於本裝置快速切換清單</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAddAccountModalOpen(false)}
-                className="p-2 rounded-xl hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-2 overflow-y-auto flex-1 pr-1">
-              {availableUsers
-                .filter((u) => u.id !== 'user-guest' && !deviceAccounts.some((da) => da.userId === u.id))
-                .map((u) => (
-                  <div
-                    key={u.id}
-                    className="p-3 rounded-2xl border border-stone-200 hover:border-amber-300 hover:bg-amber-50/40 transition-all flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                        alt={u.name}
-                        className="w-10 h-10 rounded-xl object-cover ring-1 ring-stone-200 shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-black text-xs text-stone-900 truncate">{u.name}</span>
-                          <span
-                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                              u.role === 'admin'
-                                ? 'bg-purple-100 text-purple-800'
-                                : u.role === 'solver'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-amber-100 text-amber-900'
-                            }`}
-                          >
-                            {u.role === 'admin' ? '管理員' : u.role === 'solver' ? '解答者' : '提問者'}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-stone-500 truncate mt-0.5">{u.title || u.email}</p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        addDeviceAccount(u.id);
-                        setIsAddAccountModalOpen(false);
-                        setMsg(`已成功登入並切換為「${u.name}」！`);
-                        setTimeout(() => setMsg(null), 3000);
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs shadow-2xs shrink-0 cursor-pointer transition-colors"
-                    >
-                      登入此裝置
-                    </button>
-                  </div>
-                ))}
-
-              {availableUsers.filter((u) => u.id !== 'user-guest' && !deviceAccounts.some((da) => da.userId === u.id)).length === 0 && (
-                <div className="p-8 text-center text-xs text-stone-400">
-                  所有平台帳號皆已新增於本裝置中。
-                </div>
-              )}
             </div>
           </div>
         </div>
