@@ -1747,7 +1747,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="w-7 h-7 rounded-lg bg-teal-100/90 text-teal-800 group-hover:bg-teal-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                         <Headphones className="w-3.5 h-3.5" />
                       </div>
-                      <span>客服回報</span>
+                      <span>客服與回報</span>
                     </button>
                   </div>
 

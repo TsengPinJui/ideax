@@ -274,7 +274,7 @@ export const CustomerServiceModal: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-sm sm:text-base font-black text-stone-900">IdeaX AI 智能客服與爭議仲裁中心</h3>
+                <h3 className="text-sm sm:text-base font-black text-stone-900">客服與回報</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span>24hr 即時連線</span>
@@ -309,7 +309,7 @@ export const CustomerServiceModal: React.FC = () => {
             }`}
           >
             <Bot className="w-3.5 h-3.5" />
-            <span>AI 智能客服</span>
+            <span>24hr 智能客服</span>
           </button>
 
           <button
@@ -527,7 +527,7 @@ export const CustomerServiceModal: React.FC = () => {
             <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
               {filteredFaqs.length === 0 ? (
                 <div className="py-12 text-center text-stone-400 text-xs">
-                  查無相關常見問題，您可以切換至「AI 智能客服」由專屬助理為您即時解答！
+                  查無相關常見問題，您可以切換至「24hr 智能客服」由專屬助理為您即時解答！
                 </div>
               ) : (
                 filteredFaqs.map((faq, idx) => {
@@ -602,7 +602,7 @@ export const CustomerServiceModal: React.FC = () => {
                     }}
                     className="px-6 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black shadow-xs cursor-pointer"
                   >
-                    返回 AI 客服交談
+                    返回 24hr 智能客服交談
                   </button>
                 </div>
               </div>

@@ -368,7 +368,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
     },
     {
       q: '若遇到交付內容不符、惡意抄襲或爭議時該如何申訴？',
-      a: '您可以點擊本頁上方的「客服回報」按鈕，平台客服與法務審查專員將儘速啟動爭議調解程序，調閱雙方交付紀錄、啟動 AI 爭議報告分析，並在調查期間立即凍結爭議款項，確保雙方權益不受侵害。',
+      a: '您可以點擊本頁上方的「客服與回報」按鈕，平台客服與法務審查專員將儘速啟動爭議調解程序，調閱雙方交付紀錄、啟動 AI 爭議報告分析，並在調查期間立即凍結爭議款項，確保雙方權益不受侵害。',
     },
     {
       q: '如何修改個人資料、綁定銀行帳戶或更換收款資訊？',
@@ -1011,14 +1011,14 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 </p>
               </div>
 
-              {/* 客服回報按鈕 */}
+              {/* 客服與回報按鈕 */}
               <button
                 type="button"
-                onClick={() => openCustomerService({ subject: '來自平台資訊之客服回報與申訴' })}
+                onClick={() => openCustomerService({ subject: '來自平台資訊之客服與回報' })}
                 className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
               >
                 <MessageSquare className="w-4 h-4 text-amber-400" />
-                <span>客服回報</span>
+                <span>客服與回報</span>
               </button>
             </div>
           </div>

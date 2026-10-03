@@ -1878,7 +1878,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             { id: 'survey', label: '問卷(客戶調查)', icon: ClipboardList },
             { id: 'notifications', label: '通知中心', icon: Bell, badge: displayBadgeCount > 0 ? (displayBadgeCount > 99 ? '99+' : `${displayBadgeCount}`) : undefined },
             { id: 'about_and_support', label: '平台資訊', icon: Info },
-            { id: 'customer_service_report', label: '客服回報', icon: Headphones },
+            { id: 'customer_service_report', label: '客服與回報', icon: Headphones },
             { id: 'switch_account', label: '切換帳號', icon: ArrowLeftRight },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -1898,7 +1898,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     return;
                   }
                   if (tab.id === 'customer_service_report') {
-                    openCustomerService({ subject: '來自功能列之客服回報與申訴' });
+                    openCustomerService({ subject: '來自功能列之客服與回報' });
                     return;
                   }
                   if (tab.id === 'switch_account') {
@@ -2622,7 +2622,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                openCustomerService({ subject: '來自功能列之客服回報與申訴' });
+                openCustomerService({ subject: '來自功能列之客服與回報' });
                 setMobileMenuOpen(false);
               }}
               className="w-full px-2 py-1.5 rounded-lg hover:bg-stone-50 active:bg-stone-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-colors"
@@ -2632,7 +2632,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <Headphones className="w-3 h-3 text-teal-700" />
                 </div>
                 <div>
-                  <span className="block font-black text-stone-900">客服回報</span>
+                  <span className="block font-black text-stone-900">客服與回報</span>
                   <span className="text-[10px] text-stone-500 font-normal">線上客服、爭議申訴與專人諮詢</span>
                 </div>
               </span>
@@ -4400,7 +4400,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          openCustomerService({ subject: '來自個人中心總覽之客服回報' });
+                          openCustomerService({ subject: '來自個人中心總覽之客服與回報' });
                           setMobileMenuOpen(false);
                         }}
                         className="w-full p-2.5 rounded-xl bg-stone-50 hover:bg-teal-50/80 border border-stone-200 hover:border-teal-300 text-left font-bold text-stone-800 flex items-center justify-between transition-all cursor-pointer group"
@@ -4409,7 +4409,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           <div className="w-7 h-7 rounded-lg bg-teal-100/90 text-teal-800 group-hover:bg-teal-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                             <Headphones className="w-3.5 h-3.5" />
                           </div>
-                          <span className="truncate">客服回報與申訴</span>
+                          <span className="truncate">客服與回報</span>
                         </span>
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-teal-700 transition-colors shrink-0" />
                       </button>

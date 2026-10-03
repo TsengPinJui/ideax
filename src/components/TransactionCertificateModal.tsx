@@ -153,7 +153,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
     <strong>【統一發票與稅務申報備查說明】</strong><br>
     1. 本收據係本平台就收取之「平台抽成與媒合技術服務費」依法開立之營業收入憑證。<br>
     2. 公司行號可憑本收據載明之統一編號與稅額，依加值型及非加值型營業稅法申報扣抵進項稅額。<br>
-    3. 如需財政部電子發票載具歸戶或補印紙本發票證明聯，可洽客服中心辦理。
+    3. 如需財政部電子發票載具歸戶或補印紙本發票證明聯，可洽「客服與回報」窗口辦理。
   </div>
 
   <div class="footer">

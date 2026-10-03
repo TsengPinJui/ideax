@@ -171,7 +171,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5"
                 >
                   <Headphones className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>客服服務</span>
+                  <span>客服與回報</span>
                 </button>
               </li>
               <li>
@@ -278,7 +278,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               onClick={() => openCustomerService({ subject: '頁尾客服諮詢與支援' })}
               className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
             >
-              客服服務
+              客服與回報
             </button>
             <span>•</span>
             <span>讓創新想法化為真實商業價值。</span>
