@@ -327,9 +327,9 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
     {
       id: 'other_5',
       num: '05',
-      title: 'AI 功能介紹與智慧賦能',
-      summary: 'AI 題目自動標籤與建議、AI 專家智慧媒合推播、AI-CRM 客戶作戰藍圖、AI 爭議調解報告與商業企劃書生成。',
-      badge: 'AI 智慧功能',
+      title: 'AI 智能四大 Agent 體系',
+      summary: 'AI 客服與工單諮詢、AICRM 24hr 特助作戰藍圖、AI 專家智慧媒合推播、AI 智慧爭議調解報告。',
+      badge: 'AI 智慧賦能',
     },
   ];
 
@@ -1790,30 +1790,25 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                     IdeaX 整合最前沿 AI 語意與專家大語言模型，全面賦能提問者、解答者與平台營運管理：
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">1. AI 題目自動標籤與建議</span>
-                      <p className="text-stone-500 text-[11px]">自動分析痛點語意，生成 Hashtag 與推薦懸賞級別。</p>
+                      <span className="font-bold text-stone-900 block">1. AI 客服特助 Agent</span>
+                      <p className="text-stone-500 text-[11px]">全天候解答平台規範、點數金流，並自主受理與升級專人工單。</p>
                     </div>
 
                     <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">2. AI 專家智慧媒合推播</span>
-                      <p className="text-stone-500 text-[11px]">主動將高適配度問題推播給專屬專家。</p>
+                      <span className="font-bold text-stone-900 block">2. AICRM 24hr 特助 Agent</span>
+                      <p className="text-stone-500 text-[11px]">為專家拆解客戶痛點、分析意向評分，並定時自主代操發送破冰訊息。</p>
                     </div>
 
                     <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">3. AI-CRM 客戶作戰藍圖</span>
-                      <p className="text-stone-500 text-[11px]">為專家拆解潛在客戶痛點與 3 階段促成策略。</p>
+                      <span className="font-bold text-stone-900 block">3. AI 專家智慧媒合推播 Agent</span>
+                      <p className="text-stone-500 text-[11px]">依據痛點語意與專家專長、歷史履約評價，精準推播高適配度問題。</p>
                     </div>
 
                     <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">4. AI 智慧爭議調解報告</span>
-                      <p className="text-stone-500 text-[11px]">調閱對話與交付紀錄，生成中立調解報告與和解協議。</p>
-                    </div>
-
-                    <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">5. AI 商業企劃與合規生成</span>
-                      <p className="text-stone-500 text-[11px]">一鍵產出正規商業企劃書、電子協議與進度試算。</p>
+                      <span className="font-bold text-stone-900 block">4. AI 智慧爭議調解報告 Agent</span>
+                      <p className="text-stone-500 text-[11px]">調閱對話與交付紀錄，生成中立調解報告與和解協議，保障交易安全。</p>
                     </div>
                   </div>
                 </div>

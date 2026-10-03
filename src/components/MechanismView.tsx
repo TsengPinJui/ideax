@@ -138,10 +138,10 @@ export const MechanismView: React.FC = () => {
     {
       id: 'ch_other_5',
       num: '五',
-      title: 'AI 功能介紹與智慧賦能',
+      title: 'AI 智能四大 Agent 體系',
       summary:
-        'AI 題目自動標籤與建議、AI 專家智慧媒合推播、AI-CRM 客戶作戰藍圖、AI 爭議調解報告與商業企劃書生成。',
-      badge: 'AI 智慧功能',
+        'AI 客服特助、AICRM 24hr 特助作戰藍圖、AI 專家智慧媒合推播、AI 智慧爭議調解報告。',
+      badge: 'AI 智慧賦能',
     },
   ];
 
@@ -959,21 +959,31 @@ export const MechanismView: React.FC = () => {
                     IdeaX 整合最前沿 AI 語意與專家大語言模型，全面賦能提問者、解答者與平台營運管理，打造無縫高效的知識與解決方案交易生態：
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
                     <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
                       <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4 text-purple-600" />
-                        <span>AI 題目自動標籤與建議</span>
+                        <span>1. AI 客服特助 Agent</span>
                       </span>
                       <p className="text-stone-600 leading-relaxed">
-                        提問發布時，系統自動分析痛點語意，生成精準主題 Hashtag 與推薦懸賞級別。
+                        全天候解答全站機制、規範與金流，支援智能引導並主動受理與升級官方專人工單。
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
+                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-purple-600" />
+                        <span>2. AICRM 24hr 特助 Agent</span>
+                      </span>
+                      <p className="text-stone-600 leading-relaxed">
+                        為專家拆解潛在客戶痛點、計算意向評分與跟進時機，定時自主代操發送破冰訊息與接待。
                       </p>
                     </div>
 
                     <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
                       <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
                         <Users className="w-4 h-4 text-purple-600" />
-                        <span>AI 專家智慧媒合推播</span>
+                        <span>3. AI 專家智慧媒合推播 Agent</span>
                       </span>
                       <p className="text-stone-600 leading-relaxed">
                         即時分析專家領域、認證資歷與歷史評價，主動推播高適配度問題給專屬專家。
@@ -982,31 +992,11 @@ export const MechanismView: React.FC = () => {
 
                     <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
                       <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
-                        <Layers className="w-4 h-4 text-purple-600" />
-                        <span>AI-CRM 客戶作戰藍圖</span>
-                      </span>
-                      <p className="text-stone-600 leading-relaxed">
-                        為專家拆解潛在客戶痛點、決策因子與跟進時機，生成 3 階段促成策略與對話建議。
-                      </p>
-                    </div>
-
-                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
-                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
                         <Scale className="w-4 h-4 text-purple-600" />
-                        <span>AI 智慧爭議調解報告</span>
+                        <span>4. AI 智慧爭議調解報告 Agent</span>
                       </span>
                       <p className="text-stone-600 leading-relaxed">
                         爭議發生時，調閱聊天室對話與交付紀錄，生成中立客觀的調解報告與和解協議。
-                      </p>
-                    </div>
-
-                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
-                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
-                        <FileText className="w-4 h-4 text-purple-600" />
-                        <span>AI 商業企劃與合規生成</span>
-                      </span>
-                      <p className="text-stone-600 leading-relaxed">
-                        一鍵自動產出正規商業企劃書、電子和解協議與專案進度試算，提升履約保障。
                       </p>
                     </div>
                   </div>
