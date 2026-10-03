@@ -1,6 +1,11 @@
 import { CustomerSupportConversation, CustomerSupportMessage, CustomerSupportTicket, FaqItem, User, Transaction, Question } from '../types';
 import { INITIAL_FAQS, searchFaqs } from '../data/faqData';
-import { syncAuditLogsToFirestore } from './firestoreSync';
+import {
+  syncAuditLogsToFirestore,
+  syncTicketToFirestore,
+  syncCustomerSupportConversationToFirestore,
+  getTicketsFromFirestore,
+} from './firestoreSync';
 
 const STORAGE_CONVERSATIONS_KEY = 'ideax_cs_conversations';
 const STORAGE_TICKETS_KEY = 'ideax_cs_tickets';
@@ -31,6 +36,9 @@ export function saveConversationToStorage(conv: CustomerSupportConversation) {
     const list = getStoredConversations();
     const updated = [conv, ...list.filter((c) => c.id !== conv.id)];
     localStorage.setItem(STORAGE_CONVERSATIONS_KEY, JSON.stringify(updated.slice(0, 50)));
+
+    // Push conversation to Firestore
+    syncCustomerSupportConversationToFirestore(conv);
     
     // Also push to Firestore audit log for admin review
     syncAuditLogsToFirestore([
@@ -67,7 +75,35 @@ export function saveTicketToStorage(ticket: CustomerSupportTicket) {
     const list = getStoredTickets();
     const updated = [ticket, ...list.filter((t) => t.id !== ticket.id)];
     localStorage.setItem(STORAGE_TICKETS_KEY, JSON.stringify(updated));
-  } catch (e) {}
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('customer_tickets_updated'));
+    }
+
+    // Real-time sync to Firestore so all admins receive it across sessions & devices
+    syncTicketToFirestore(ticket);
+
+    // Also push to Audit Logs for admin dispute dashboard
+    syncAuditLogsToFirestore([
+      {
+        id: `audit-tk-${ticket.id}`,
+        adminId: 'system-ticket',
+        action: `用戶提報客服工單: #${ticket.id} (${ticket.title})`,
+        targetUserId: ticket.userId,
+        details: {
+          ticketId: ticket.id,
+          userName: ticket.userName,
+          userEmail: ticket.userEmail,
+          category: ticket.category,
+          priority: ticket.priority,
+          status: ticket.status,
+          description: ticket.description,
+        },
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  } catch (e) {
+    console.warn('Failed to save ticket:', e);
+  }
 }
 
 export function getPlatformFaqs(): FaqItem[] {

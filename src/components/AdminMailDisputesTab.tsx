@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Question, User, CustomerSupportConversation, FaqItem } from '../types';
+import { Question, User, CustomerSupportConversation, CustomerSupportTicket, FaqItem } from '../types';
 import {
   Mail,
   Scale,
@@ -27,13 +27,23 @@ import {
   Bot,
   ThumbsUp,
   ThumbsDown,
+  Headphones,
+  Inbox,
+  Check,
+  CornerDownRight,
+  HelpCircle,
 } from 'lucide-react';
 import {
   getStoredConversations,
   getStoredTickets,
+  saveTicketToStorage,
   approveFaqCandidate,
   getPlatformFaqs,
 } from '../services/customerSupportService';
+import {
+  subscribeToTickets,
+  subscribeToCustomerSupportConversations,
+} from '../services/firestoreSync';
 import { CopyableUserId } from './CopyableUserId';
 
 interface AdminMailDisputesTabProps {
@@ -52,10 +62,18 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     markDisputeResolved,
   } = useApp();
 
-  const [activeSubTab, setActiveSubTab] = useState<'disputes' | 'reports' | 'ai_logs'>('disputes');
+  const [activeSubTab, setActiveSubTab] = useState<'tickets' | 'disputes' | 'reports' | 'ai_logs'>('tickets');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'resolved'>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // 客服工單受理狀態 (Customer Support Tickets)
+  const [supportTickets, setSupportTickets] = useState<CustomerSupportTicket[]>([]);
+  const [ticketSearch, setTicketSearch] = useState('');
+  const [ticketFilterStatus, setTicketFilterStatus] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
+  const [selectedTicketForReply, setSelectedTicketForReply] = useState<CustomerSupportTicket | null>(null);
+  const [ticketReplyNote, setTicketReplyNote] = useState('');
+  const [showTicketInfo, setShowTicketInfo] = useState(false);
 
   // AI 客服紀錄與 FAQ 萃取狀態
   const [csConversations, setCsConversations] = useState<CustomerSupportConversation[]>([]);
@@ -64,8 +82,93 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
   const [csSearch, setCsSearch] = useState('');
 
   useEffect(() => {
+    // 1. Load initial local storage tickets & conversations
+    setSupportTickets(getStoredTickets());
     setCsConversations(getStoredConversations());
+
+    // 2. Subscribe to real-time Firestore tickets so any user submission across the globe is received instantly
+    const unsubTickets = subscribeToTickets((firestoreTickets) => {
+      if (firestoreTickets && firestoreTickets.length > 0) {
+        setSupportTickets((prev) => {
+          const map = new Map<string, CustomerSupportTicket>();
+          prev.forEach((t) => map.set(t.id, t));
+          firestoreTickets.forEach((t) => map.set(t.id, t));
+          return Array.from(map.values()).sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        });
+      }
+    });
+
+    // 3. Subscribe to real-time Firestore CS conversations
+    const unsubConvs = subscribeToCustomerSupportConversations((firestoreConvs) => {
+      if (firestoreConvs && firestoreConvs.length > 0) {
+        setCsConversations((prev) => {
+          const map = new Map<string, CustomerSupportConversation>();
+          prev.forEach((c) => map.set(c.id, c));
+          firestoreConvs.forEach((c) => map.set(c.id, c));
+          return Array.from(map.values()).sort(
+            (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+          );
+        });
+      }
+    });
+
+    return () => {
+      if (unsubTickets) unsubTickets();
+      if (unsubConvs) unsubConvs();
+    };
   }, [activeSubTab]);
+
+  // Handle updating ticket status
+  const handleUpdateTicketStatus = (ticketId: string, newStatus: 'pending' | 'in_progress' | 'resolved') => {
+    const target = supportTickets.find((t) => t.id === ticketId);
+    if (!target) return;
+
+    const updated: CustomerSupportTicket = {
+      ...target,
+      status: newStatus,
+    };
+
+    saveTicketToStorage(updated);
+    setSupportTickets((prev) => prev.map((t) => (t.id === ticketId ? updated : t)));
+
+    showToast(
+      `工單 #${ticketId} 狀態已更新為【${
+        newStatus === 'resolved' ? '已結案' : newStatus === 'in_progress' ? '處理中' : '待受理'
+      }】！`
+    );
+  };
+
+  // Handle sending official reply to ticket submitter
+  const handleSendTicketReply = (ticket: CustomerSupportTicket) => {
+    if (!ticketReplyNote.trim()) return;
+
+    const replyText = ticketReplyNote.trim();
+    const updated: CustomerSupportTicket = {
+      ...ticket,
+      status: 'resolved',
+      adminNote: replyText,
+    };
+
+    saveTicketToStorage(updated);
+    setSupportTickets((prev) => prev.map((t) => (t.id === ticket.id ? updated : t)));
+
+    // Send official notification to the user
+    if (addNotification && ticket.userId && ticket.userId !== 'guest') {
+      addNotification(
+        `【官方工單回覆】工單 #${ticket.id} 處理進度`,
+        `親愛的用戶您好，管理團隊已針對您提報的客服工單「${ticket.title}」完成審查與回覆：\n\n${replyText}\n\n如有進一步問題，歡迎隨時透過「客服與回報」向專員洽詢。`,
+        'system',
+        ticket.userId,
+        'personal'
+      );
+    }
+
+    setSelectedTicketForReply(null);
+    setTicketReplyNote('');
+    showToast(`官方回覆已發送給用戶（${ticket.userName}），工單 #${ticket.id} 已結案！`);
+  };
 
   // 爭議裁決確認視窗（顯示系統即將依照裁定結果自動發布的罐頭式官方文字）
   const [rulingModal, setRulingModal] = useState<{
@@ -177,8 +280,25 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     setRulingModal(null);
   };
 
-  // Pending count of dispute cases
+  // Pending counts
   const pendingDisputesCount = disputeCasesList.filter((d) => d.status === 'pending_review').length;
+  const pendingTicketsCount = supportTickets.filter((t) => t.status === 'pending').length;
+  const pendingReportsCount = 0;
+
+  // Filtered support tickets
+  const filteredTickets = supportTickets.filter((t) => {
+    const matchStatus = ticketFilterStatus === 'all' || t.status === ticketFilterStatus;
+    const q = ticketSearch.trim().toLowerCase();
+    const matchSearch =
+      !q ||
+      t.id.toLowerCase().includes(q) ||
+      (t.userName && t.userName.toLowerCase().includes(q)) ||
+      (t.userEmail && t.userEmail.toLowerCase().includes(q)) ||
+      (t.title && t.title.toLowerCase().includes(q)) ||
+      (t.description && t.description.toLowerCase().includes(q)) ||
+      (t.category && t.category.toLowerCase().includes(q));
+    return matchStatus && matchSearch;
+  });
 
   return (
     <div className="space-y-4 animate-in fade-in duration-150">
@@ -198,15 +318,15 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
               </span>
             </div>
             <p className="text-[11px] text-stone-500">
-              案件履約申訴受理、爭議仲裁劃撥、裁定自動派發平台官方郵件與罐頭式通知
+              案件履約申訴受理、爭議仲裁劃撥、客服工單處理、裁定自動派發平台官方郵件與通知
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs font-bold shrink-0">
-          <span className="text-[11px] text-stone-400">待裁定案件：</span>
-          <span className="font-mono font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-            {pendingDisputesCount} 件
+        <div className="flex items-center gap-2 text-xs font-bold shrink-0">
+          <span className="text-[11px] text-stone-400">待辦總計：</span>
+          <span className="font-mono font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+            {pendingTicketsCount + pendingDisputesCount + pendingReportsCount} 件
           </span>
         </div>
       </div>
@@ -222,6 +342,19 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
       <div className="flex items-center gap-1 border-b border-stone-200 text-xs font-bold overflow-x-auto pb-1">
         <button
           type="button"
+          onClick={() => setActiveSubTab('tickets')}
+          className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+            activeSubTab === 'tickets'
+              ? 'bg-amber-500 text-stone-950 font-black shadow-2xs'
+              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+          }`}
+        >
+          <Headphones className="w-3.5 h-3.5" />
+          <span>客服工單受理 ({pendingTicketsCount})</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveSubTab('disputes')}
           className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
             activeSubTab === 'disputes'
@@ -230,7 +363,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           }`}
         >
           <Scale className="w-3.5 h-3.5" />
-          <span>申訴調解 ({pendingDisputesCount})</span>
+          <span>案件申訴調解 ({pendingDisputesCount})</span>
         </button>
 
         <button
@@ -243,7 +376,7 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           }`}
         >
           <AlertTriangle className="w-3.5 h-3.5" />
-          <span>檢舉反饋 (0)</span>
+          <span>檢舉反饋 ({pendingReportsCount})</span>
         </button>
 
         <button
@@ -259,6 +392,286 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
           <span>AI 客服對話回顧與 FAQ 審核 ({csConversations.length})</span>
         </button>
       </div>
+
+      {/* TAB 0: CUSTOMER SUPPORT TICKETS (NEW & REAL-TIME) */}
+      {activeSubTab === 'tickets' && (
+        <div className="space-y-3">
+          {/* 橫幅說明 / 標題列 */}
+          <div className="p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-amber-50 via-stone-50 to-amber-50/40 border border-amber-200 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Headphones className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="font-extrabold text-stone-900 text-xs sm:text-sm">
+                  客服工單受理
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowTicketInfo(!showTicketInfo)}
+                  className={`w-5 h-5 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                    showTicketInfo
+                      ? 'bg-amber-500 text-white shadow-2xs scale-105'
+                      : 'bg-amber-100/90 text-amber-800 hover:bg-amber-200 hover:scale-110'
+                  }`}
+                  title={showTicketInfo ? '隱藏工單說明' : '點擊查看工單說明'}
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <span className="text-[10.5px] font-bold text-stone-500 bg-white/80 px-2 py-0.5 rounded-md border border-stone-200/80">
+                即時同步中
+              </span>
+            </div>
+
+            {showTicketInfo && (
+              <div className="mt-2.5 pt-2 border-t border-amber-200/60 text-[11px] text-stone-600 leading-relaxed animate-in fade-in duration-150">
+                用戶在前台「客服與回報」提報的所有專人工單（含 AI 自動升級工單），均已透過 Firestore 雲端即時同步至此。管理員可於此查看詳細事由、切換處理進度，並直接<strong>發送官方回覆通知</strong>給用戶。
+              </div>
+            )}
+          </div>
+
+          {/* 搜尋與狀態過濾 */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
+              <input
+                type="text"
+                placeholder="搜尋工單號、用戶名稱、信箱或事由..."
+                value={ticketSearch}
+                onChange={(e) => setTicketSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-stone-200 rounded-lg focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-1 overflow-x-auto pb-0.5 text-xs">
+              {(
+                [
+                  { id: 'all', label: `全部 (${supportTickets.length})` },
+                  { id: 'pending', label: `待處理 (${supportTickets.filter((t) => t.status === 'pending').length})` },
+                  { id: 'in_progress', label: `處理中 (${supportTickets.filter((t) => t.status === 'in_progress').length})` },
+                  { id: 'resolved', label: `已結案 (${supportTickets.filter((t) => t.status === 'resolved').length})` },
+                ] as const
+              ).map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setTicketFilterStatus(f.id)}
+                  className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                    ticketFilterStatus === f.id
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                      : 'bg-white text-stone-500 border border-stone-200 hover:bg-stone-50'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 工單列表 */}
+          {filteredTickets.length === 0 ? (
+            <div className="py-12 text-center bg-white rounded-xl border border-stone-200 text-xs text-stone-400">
+              <Inbox className="w-8 h-8 mx-auto text-stone-300 mb-2" />
+              <span>目前尚無符合條件的客服工單</span>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredTickets.map((ticket) => {
+                const isSelected = selectedTicketForReply?.id === ticket.id;
+                const isUrgent = ticket.priority === 'urgent';
+                const isPending = ticket.status === 'pending';
+
+                const categoryLabels: Record<string, string> = {
+                  delivery_dispute: '專案履約與交付爭議',
+                  payment: '金流扣款與退款問題',
+                  payout: '收益提領與帳戶',
+                  account: '帳號安全與身分',
+                  feature: '功能諮詢',
+                  bug: '系統異常回報',
+                  suggestion: '功能優化建議',
+                  other: '一般綜合回報',
+                };
+
+                return (
+                  <div
+                    key={ticket.id}
+                    className={`p-4 rounded-2xl bg-white border transition-all ${
+                      isPending
+                        ? 'border-amber-300 shadow-2xs'
+                        : ticket.status === 'in_progress'
+                        ? 'border-blue-200'
+                        : 'border-stone-200/80 opacity-90'
+                    }`}
+                  >
+                    {/* 工單頂部標籤列 */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap pb-2.5 border-b border-stone-100 text-xs">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-black text-xs text-stone-900 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
+                          #{ticket.id}
+                        </span>
+
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-700">
+                          {categoryLabels[ticket.category] || ticket.category}
+                        </span>
+
+                        {isUrgent && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            <span>加急排查</span>
+                          </span>
+                        )}
+
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            ticket.status === 'resolved'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : ticket.status === 'in_progress'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-amber-100 text-amber-900 font-black'
+                          }`}
+                        >
+                          {ticket.status === 'resolved'
+                            ? '已結案'
+                            : ticket.status === 'in_progress'
+                            ? '處理中'
+                            : '待受理'}
+                        </span>
+                      </div>
+
+                      <div className="text-[11px] text-stone-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>{new Date(ticket.createdAt).toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    {/* 用戶資訊列 */}
+                    <div className="pt-2.5 pb-2 flex items-center gap-3 text-xs text-stone-600 flex-wrap">
+                      <div className="flex items-center gap-1.5 font-bold text-stone-900">
+                        <Users className="w-3.5 h-3.5 text-stone-400" />
+                        <span>提報用戶：{ticket.userName}</span>
+                      </div>
+
+                      {ticket.userEmail && (
+                        <div className="flex items-center gap-1 text-[11px] text-stone-500">
+                          <Mail className="w-3 h-3 text-stone-400" />
+                          <span>{ticket.userEmail}</span>
+                        </div>
+                      )}
+
+                      {ticket.userId && (
+                        <div className="flex items-center gap-1">
+                          <CopyableUserId userId={ticket.userId} prefix="UID: " className="text-[10px] py-0 px-1.5 bg-stone-100" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 問題標題與說明 */}
+                    <div className="bg-stone-50/80 p-3 rounded-xl border border-stone-200/80 space-y-1.5 my-2">
+                      <div className="font-black text-xs text-stone-900">
+                        {ticket.title}
+                      </div>
+                      <div className="text-xs text-stone-700 whitespace-pre-wrap leading-relaxed font-mono text-[11.5px]">
+                        {ticket.description}
+                      </div>
+                    </div>
+
+                    {/* 管理員歷史回覆紀錄 */}
+                    {ticket.adminNote && (
+                      <div className="p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-950 flex items-start gap-2 my-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-black block text-emerald-900">已發布官方回覆：</span>
+                          <p className="text-[11.5px] leading-relaxed text-emerald-800 whitespace-pre-wrap mt-0.5">
+                            {ticket.adminNote}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 操作按鈕與官方回覆表單 */}
+                    <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        {ticket.status !== 'in_progress' && ticket.status !== 'resolved' && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateTicketStatus(ticket.id, 'in_progress')}
+                            className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold border border-blue-200 cursor-pointer transition-colors"
+                          >
+                            標記為處理中
+                          </button>
+                        )}
+
+                        {ticket.status !== 'resolved' && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateTicketStatus(ticket.id, 'resolved')}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 cursor-pointer transition-colors"
+                          >
+                            直接標記結案
+                          </button>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedTicketForReply(null);
+                          } else {
+                            setSelectedTicketForReply(ticket);
+                            setTicketReplyNote(ticket.adminNote || '');
+                          }
+                        }}
+                        className="px-3 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{isSelected ? '收起回覆' : '官方回覆並結案'}</span>
+                      </button>
+                    </div>
+
+                    {/* 展開官方回覆輸入區 */}
+                    {isSelected && (
+                      <div className="mt-3 p-3 rounded-xl bg-amber-50/50 border border-amber-200 space-y-2.5 animate-in fade-in">
+                        <div className="flex items-center justify-between text-xs font-bold text-amber-950">
+                          <span className="flex items-center gap-1.5">
+                            <CornerDownRight className="w-3.5 h-3.5 text-amber-600" />
+                            <span>撰寫官方回覆（將自動推播至用戶通知中心與信箱）</span>
+                          </span>
+                        </div>
+
+                        <textarea
+                          rows={3}
+                          value={ticketReplyNote}
+                          onChange={(e) => setTicketReplyNote(e.target.value)}
+                          placeholder="請輸入給予用戶的處理結果說明、補償點數明細或後續操作指示..."
+                          className="w-full p-2.5 text-xs bg-white border border-stone-200 rounded-xl focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                        />
+
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTicketForReply(null)}
+                            className="px-3 py-1 text-xs font-bold text-stone-500 hover:bg-stone-100 rounded-lg cursor-pointer"
+                          >
+                            取消
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSendTicketReply(ticket)}
+                            className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>發布回覆並標記結案</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* TAB 1: DISPUTES & APPEALS */}
       {activeSubTab === 'disputes' && (

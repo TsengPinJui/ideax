@@ -1250,6 +1250,16 @@ async function queryDifyAgent(params: {
     platform_name: 'IdeaX',
   };
 
+  const userRoleLabel = userContext?.userRole === 'solver'
+    ? '專家顧問'
+    : userContext?.userRole === 'admin'
+    ? '平台管理員'
+    : '一般會員';
+
+  const queryWithContext = userContext?.userId
+    ? `[系統環境驗證 - 當前已安全登入用戶資訊：用戶ID=${userContext.userId}，用戶名稱=${userContext.userName || '用戶'}，登入信箱=${userContext.userEmail || userContext.userId + '@ideax.tw'}，帳戶身份=${userRoleLabel}，可用點數=${userContext.balance || 0} 點，已成交方案=${userContext.dealsCount || 0} 筆]\n\n用戶諮詢問題：${query}`
+    : `[系統環境驗證：當前為訪客瀏覽模式（尚未登入）]\n\n用戶諮詢問題：${query}`;
+
   const endUserId = userContext?.userId
     ? `usr_${String(userContext.userId).replace(/[^a-zA-Z0-9_-]/g, '_')}`
     : 'guest_visitor';
@@ -1266,7 +1276,7 @@ async function queryDifyAgent(params: {
       },
       body: JSON.stringify({
         inputs,
-        query,
+        query: queryWithContext,
         response_mode: 'streaming',
         conversation_id: conversationId || '',
         user: endUserId,
@@ -1286,7 +1296,8 @@ async function queryDifyAgent(params: {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let fullAnswer = '';
+    let agentMessageChunks = '';
+    let standardMessageChunks = '';
     let resultConvId = conversationId || '';
     let buffer = '';
 
@@ -1303,8 +1314,11 @@ async function queryDifyAgent(params: {
         const jsonStr = trimmed.slice(6);
         try {
           const evt = JSON.parse(jsonStr);
-          if (evt.event === 'agent_message' || evt.event === 'message') {
-            fullAnswer += evt.answer || '';
+          if (evt.event === 'agent_message') {
+            agentMessageChunks += evt.answer || '';
+          } else if (evt.event === 'message') {
+            // For workflow or non-agent apps
+            standardMessageChunks += evt.answer || '';
           }
           if (evt.conversation_id) {
             resultConvId = evt.conversation_id;
@@ -1318,8 +1332,10 @@ async function queryDifyAgent(params: {
     if (buffer.trim().startsWith('data: ')) {
       try {
         const evt = JSON.parse(buffer.trim().slice(6));
-        if (evt.event === 'agent_message' || evt.event === 'message') {
-          fullAnswer += evt.answer || '';
+        if (evt.event === 'agent_message') {
+          agentMessageChunks += evt.answer || '';
+        } else if (evt.event === 'message') {
+          standardMessageChunks += evt.answer || '';
         }
         if (evt.conversation_id) {
           resultConvId = evt.conversation_id;
@@ -1327,8 +1343,10 @@ async function queryDifyAgent(params: {
       } catch (e) {}
     }
 
-    if (fullAnswer.trim().length > 0) {
-      let cleaned = fullAnswer.trim();
+    const fullAnswer = agentMessageChunks.trim() || standardMessageChunks.trim();
+
+    if (fullAnswer.length > 0) {
+      let cleaned = fullAnswer;
       // Replace any raw template variables if Dify outputted them verbatim
       for (const [k, v] of Object.entries(inputs)) {
         const regex1 = new RegExp(`\\{\\{${k}\\}\\}`, 'g');

@@ -72,8 +72,10 @@ import {
   syncAuditLogsToFirestore,
   pushAllDataToFirestore,
   loadAllDataFromFirestore,
+  subscribeToTickets,
   CategorizedSyncResult,
 } from '../services/firestoreSync';
+import { getStoredTickets } from '../services/customerSupportService';
 import { CenterToastData } from '../components/CenterToast';
 
 interface AppContextType {
@@ -213,6 +215,9 @@ interface AppContextType {
   resolvedDisputeIds: string[];
   markDisputeResolved: (disputeId: string, questionId?: string) => void;
   pendingDisputesCount: number;
+  pendingTicketsCount: number;
+  pendingReportsCount: number;
+  adminMailBadgeCount: number;
   delistQuestion: (questionId: string, reason: string, feedback?: string) => void;
   relistQuestion: (questionId: string) => void;
   deleteQuestionPermanently: (questionId: string) => Promise<void>;
@@ -5082,6 +5087,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return demoPending + questionsPending;
   }, [questions, resolvedDisputeIds]);
 
+  // 全站統一追蹤客服工單受理數量 (pending 狀態之工單)
+  const [pendingTicketsCount, setPendingTicketsCount] = useState<number>(() => {
+    try {
+      const tickets = getStoredTickets();
+      return (tickets || []).filter((t) => t.status === 'pending').length;
+    } catch {
+      return 0;
+    }
+  });
+
+  useEffect(() => {
+    const updateTicketsFromStorage = () => {
+      try {
+        const tickets = getStoredTickets();
+        setPendingTicketsCount((tickets || []).filter((t) => t.status === 'pending').length);
+      } catch {}
+    };
+
+    updateTicketsFromStorage();
+
+    const unsub = subscribeToTickets((firestoreTickets) => {
+      if (firestoreTickets) {
+        setPendingTicketsCount(firestoreTickets.filter((t) => t.status === 'pending').length);
+      }
+    });
+
+    window.addEventListener('storage', updateTicketsFromStorage);
+    window.addEventListener('customer_tickets_updated', updateTicketsFromStorage);
+
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('storage', updateTicketsFromStorage);
+      window.removeEventListener('customer_tickets_updated', updateTicketsFromStorage);
+    };
+  }, []);
+
+  // 檢舉反饋待處理數量
+  const pendingReportsCount = 0;
+
+  // 管理員紫色郵件符號總待辦計數：包含客服工單、案件申訴調解、檢舉反饋
+  const adminMailBadgeCount = useMemo(() => {
+    return pendingTicketsCount + pendingDisputesCount + pendingReportsCount;
+  }, [pendingTicketsCount, pendingDisputesCount, pendingReportsCount]);
+
   // Action: Increment real views count (tracks views strictly according to real clicks)
   const incrementQuestionViews = (questionId: string, amount: number = 1) => {
     let nextViews = 1;
@@ -5633,6 +5682,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resolvedDisputeIds,
         markDisputeResolved,
         pendingDisputesCount,
+        pendingTicketsCount,
+        pendingReportsCount,
+        adminMailBadgeCount,
         delistQuestion,
         relistQuestion,
         deleteQuestionPermanently,

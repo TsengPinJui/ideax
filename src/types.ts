@@ -1300,6 +1300,7 @@ export interface CustomerSupportTicket {
   createdAt: string;
   resolvedAt?: string;
   resolutionNote?: string;
+  adminNote?: string;
   relatedOrderId?: string;
   conversationId?: string;
 }

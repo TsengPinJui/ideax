@@ -20,6 +20,8 @@ import {
   SubscriptionPlan,
   NotificationItem,
   Solver,
+  CustomerSupportTicket,
+  CustomerSupportConversation,
 } from '../types';
 
 let isQuotaExhausted = (() => {
@@ -776,4 +778,97 @@ export async function loadAllDataFromFirestore(): Promise<{
     return null;
   }
 }
+
+// =========================================================================
+// 客服工單與對話即時雲端同步 (Customer Support Tickets & Conversations)
+// =========================================================================
+
+export async function syncTicketToFirestore(ticket: CustomerSupportTicket): Promise<boolean> {
+  if (isQuotaExhausted) return false;
+  try {
+    const docRef = doc(db, 'customer_support_tickets', ticket.id);
+    await setDoc(docRef, {
+      ...ticket,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    handleFirestoreError(`syncTicketToFirestore(${ticket.id})`, err);
+    return false;
+  }
+}
+
+export async function getTicketsFromFirestore(): Promise<CustomerSupportTicket[] | null> {
+  if (isQuotaExhausted) return null;
+  try {
+    const snap = await getDocs(collection(db, 'customer_support_tickets'));
+    if (!snap.empty) {
+      return snap.docs.map((d) => d.data() as CustomerSupportTicket);
+    }
+    return [];
+  } catch (err) {
+    handleFirestoreError('getTicketsFromFirestore', err);
+    return null;
+  }
+}
+
+export function subscribeToTickets(callback: (tickets: CustomerSupportTicket[]) => void): Unsubscribe | null {
+  if (isQuotaExhausted) return null;
+  try {
+    return onSnapshot(
+      collection(db, 'customer_support_tickets'),
+      (snapshot) => {
+        const list: CustomerSupportTicket[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as CustomerSupportTicket);
+        });
+        callback(list);
+      },
+      (err) => {
+        handleFirestoreError('subscribeToTickets', err);
+      }
+    );
+  } catch (err) {
+    handleFirestoreError('subscribeToTickets', err);
+    return null;
+  }
+}
+
+export async function syncCustomerSupportConversationToFirestore(conv: CustomerSupportConversation): Promise<boolean> {
+  if (isQuotaExhausted) return false;
+  try {
+    const docRef = doc(db, 'customer_support_conversations', conv.id);
+    await setDoc(docRef, {
+      ...conv,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    handleFirestoreError(`syncCustomerSupportConversationToFirestore(${conv.id})`, err);
+    return false;
+  }
+}
+
+export function subscribeToCustomerSupportConversations(callback: (convs: CustomerSupportConversation[]) => void): Unsubscribe | null {
+  if (isQuotaExhausted) return null;
+  try {
+    return onSnapshot(
+      collection(db, 'customer_support_conversations'),
+      (snapshot) => {
+        const list: CustomerSupportConversation[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as CustomerSupportConversation);
+        });
+        callback(list);
+      },
+      (err) => {
+        handleFirestoreError('subscribeToCustomerSupportConversations', err);
+      }
+    );
+  } catch (err) {
+    handleFirestoreError('subscribeToCustomerSupportConversations', err);
+    return null;
+  }
+}
+
 

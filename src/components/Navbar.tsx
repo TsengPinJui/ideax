@@ -129,6 +129,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     unreadPersonalCount,
     hasUnreadSystemNotifs,
     pendingDisputesCount,
+    pendingTicketsCount,
+    pendingReportsCount,
+    adminMailBadgeCount,
     addTestAccount,
     promptLogin,
   } = useApp();
@@ -163,8 +166,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     return userConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
   }, [userConversations]);
 
-  // 管理員身分：郵件圖示顯示數量直接等於「待裁定」案件數量！一般用戶：僅根據「個人通知」未讀數量（系統通知不計入郵件數字）
-  const displayBadgeCount = currentUser.role === 'admin' ? pendingDisputesCount : unreadPersonalCount;
+  // 管理員身分：郵件圖示顯示總待辦（客服工單、案件申訴調解、檢舉反饋）數量！一般用戶：僅根據「個人通知」未讀數量（系統通知不計入郵件數字）
+  const displayBadgeCount = currentUser.role === 'admin' ? adminMailBadgeCount : unreadPersonalCount;
 
   // Close menus on outside click
   useEffect(() => {
@@ -947,7 +950,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }}
             className="hidden sm:flex relative p-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:bg-amber-50 transition-colors cursor-pointer border border-stone-200/80"
             aria-label={currentUser.role === 'admin' ? "申訴與郵件管理中心" : "開啟通知中心右側欄"}
-            title={currentUser.role === 'admin' ? `申訴與郵件管理中心（待裁定案件：${pendingDisputesCount} 件）` : "開啟通知中心右側欄"}
+            title={currentUser.role === 'admin' ? `申訴與郵件管理中心（待辦總計：${adminMailBadgeCount} 件，含客服工單 ${pendingTicketsCount} 件、案件申訴調解 ${pendingDisputesCount} 件、檢舉反饋 ${pendingReportsCount} 件）` : "開啟通知中心右側欄"}
           >
             {currentUser.role === 'admin' ? (
               <Mail className="w-5 h-5 text-purple-700" />

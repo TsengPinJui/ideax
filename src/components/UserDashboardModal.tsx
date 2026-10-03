@@ -243,17 +243,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setIsNotificationsSidebarOpen,
     unreadPersonalCount,
     hasUnreadSystemNotifs,
+    adminMailBadgeCount,
+    pendingTicketsCount,
+    pendingReportsCount,
   } = useApp();
 
   const displayBadgeCount = currentUser.role === 'admin'
-    ? pendingDisputesCount
+    ? adminMailBadgeCount
     : (unreadPersonalCount || 0) + (hasUnreadSystemNotifs ? 1 : 0);
 
   const adminUnreadMailCount = useMemo(() => {
     return (notifications || []).filter((n) => !n.read).length;
   }, [notifications]);
 
-  const adminPendingDisputesCount = pendingDisputesCount;
+  const adminPendingDisputesCount = adminMailBadgeCount;
 
   const [accountToRemove, setAccountToRemove] = useState<User | null>(null);
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
@@ -1747,7 +1750,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   ? 'bg-purple-700 text-white border-purple-800 shadow-md font-black'
                   : 'bg-white hover:bg-purple-50 text-purple-700 border-purple-200'
               }`}
-              title={`申訴與郵件管理中心（待裁定案件：${adminPendingDisputesCount} 件）`}
+              title={`申訴與郵件管理中心（待辦總計：${adminMailBadgeCount} 件，含客服工單 ${pendingTicketsCount} 件、案件申訴調解 ${pendingDisputesCount} 件、檢舉反饋 ${pendingReportsCount} 件）`}
             >
               <Mail className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${activeTab === 'admin_mail_disputes' ? 'text-white' : 'text-purple-700'}`} />
               {adminPendingDisputesCount > 0 && (
@@ -4008,20 +4011,29 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             <div className="space-y-6 animate-in fade-in duration-200">
               {/* Header Hero */}
               <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-stone-900 via-stone-800 to-amber-950 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('profile')}
-                  className="flex items-center gap-3.5 text-left hover:opacity-90 transition-all cursor-pointer group"
-                  title="點擊前往帳號設定頁"
-                >
-                  <img
-                    src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                    alt={currentUser.name}
-                    className="w-14 h-14 rounded-2xl object-cover ring-2 ring-amber-400/80 shrink-0 group-hover:ring-amber-300 transition-all"
-                  />
+                <div className="flex items-center gap-3.5 text-left group">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('profile')}
+                    className="flex items-center hover:opacity-90 transition-all cursor-pointer group shrink-0"
+                    title="點擊前往帳號設定頁"
+                  >
+                    <img
+                      src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                      alt={currentUser.name}
+                      className="w-14 h-14 rounded-2xl object-cover ring-2 ring-amber-400/80 shrink-0 group-hover:ring-amber-300 transition-all"
+                    />
+                  </button>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg font-black text-white group-hover:text-amber-300 transition-colors">{currentUser.name}</h3>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('profile')}
+                        className="text-lg font-black text-white hover:text-amber-300 transition-colors cursor-pointer text-left"
+                        title="點擊前往帳號設定頁"
+                      >
+                        {currentUser.name}
+                      </button>
                       <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950">
                         {currentUser.role === 'solver'
                           ? (currentUser.verifiedExpert || currentUser.verifiedBadge || userAcceptedAnswers.length >= 50
@@ -4033,7 +4045,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                     <p className="text-xs text-amber-200/80 mt-1">{currentUser.title || '一般會員用戶'}</p>
                   </div>
-                </button>
+                </div>
 
                 {/* 點數與應收資產概覽 (全模式配置同步) */}
                 <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
