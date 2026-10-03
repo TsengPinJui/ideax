@@ -1256,9 +1256,17 @@ async function queryDifyAgent(params: {
     ? '平台管理員'
     : '一般會員';
 
+  const pricingKnowledge = `【IdeaX 平台懸賞提問定價規範（1 點 = NT$ 1）】：
+- L0 免費交流：0 點（免費公開討論，完全不扣點，可無限次提問發案）
+- L1 基礎懸賞：100 ~ 300 點（實務建議 / 痛點排查 / 基礎診斷）
+- L2 進階懸賞：301 ~ 899 點（商業架構 / 產品驗證 / 增長模型）
+- L3 高階挑戰：900 ~ 2,999 點（跨領域技術突破 / 產業級重大難題）
+- L4 資深顧問級：3,000 點以上（關鍵技術突破 / 重磅顧問專案）
+※ 注意：平台絕無「每次扣 10 點」的提問規則！若用戶詢問可用點數還能提問幾次，請依據上述 L0~L4 各等級分別試算說明（例如 1,000 點可發布 L0 免費提問無限次、L1 基礎懸賞約 3~10 次、L2 約 1~3 次、L3 約 1 次）。`;
+
   const queryWithContext = userContext?.userId
-    ? `[系統環境驗證 - 當前已安全登入用戶資訊：用戶ID=${userContext.userId}，用戶名稱=${userContext.userName || '用戶'}，登入信箱=${userContext.userEmail || userContext.userId + '@ideax.tw'}，帳戶身份=${userRoleLabel}，可用點數=${userContext.balance || 0} 點，已成交方案=${userContext.dealsCount || 0} 筆]\n\n用戶諮詢問題：${query}`
-    : `[系統環境驗證：當前為訪客瀏覽模式（尚未登入）]\n\n用戶諮詢問題：${query}`;
+    ? `[系統環境驗證 - 當前已安全登入用戶資訊：用戶ID=${userContext.userId}，用戶名稱=${userContext.userName || '用戶'}，登入信箱=${userContext.userEmail || userContext.userId + '@ideax.tw'}，帳戶身份=${userRoleLabel}，可用點數=${userContext.balance || 0} 點，已成交方案=${userContext.dealsCount || 0} 筆]\n${pricingKnowledge}\n\n用戶諮詢問題：${query}`
+    : `[系統環境驗證：當前為訪客瀏覽模式（尚未登入）]\n${pricingKnowledge}\n\n用戶諮詢問題：${query}`;
 
   const endUserId = userContext?.userId
     ? `usr_${String(userContext.userId).replace(/[^a-zA-Z0-9_-]/g, '_')}`
@@ -1415,6 +1423,14 @@ ${(history || []).map((h: any) => `${h.role === 'user' ? '用戶' : '客服'}: $
 
 【用戶最新發問】
 ${message}
+
+【IdeaX 平台懸賞提問定價規範（1 點 = NT$ 1）】
+- L0 免費交流：0 點（免費公開討論，完全不扣點，可無限次提問發案）
+- L1 基礎懸賞：100 ~ 300 點（實務建議 / 痛點排查 / 基礎診斷）
+- L2 進階懸賞：301 ~ 899 點（商業架構 / 產品驗證 / 增長模型）
+- L3 高階挑戰：900 ~ 2,999 點（跨領域技術突破 / 產業級重大難題）
+- L4 資深顧問級：3,000 點以上（關鍵技術突破 / 重磅顧問專案）
+※ 平台絕無「每次扣 10 點」的提問規則！若用戶詢問可用點數還能提問幾次，請依據上述 L0~L4 各等級分別試算說明。
 
 【嚴格規則】
 1. 若用戶詢問自身點數、帳戶、交易或成案，請依據【當前用戶資訊】精準說明，嚴禁憑空捏造。

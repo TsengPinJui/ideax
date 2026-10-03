@@ -11,6 +11,124 @@ const STORAGE_CONVERSATIONS_KEY = 'ideax_cs_conversations';
 const STORAGE_TICKETS_KEY = 'ideax_cs_tickets';
 const STORAGE_FAQS_KEY = 'ideax_cs_faqs';
 
+const DIFY_CLIENT_API_KEY = 'app-VQ8gZUuZuDe08fm3pn75oeI6';
+const DIFY_CLIENT_BASE_URL = 'https://api.dify.ai/v1';
+
+// Direct Client-Side Dify Fallback for Static Hostings (Firebase Hosting, Vercel, Netlify, GitHub Pages)
+async function queryDifyDirectFromClient(
+  query: string,
+  user: User | null,
+  conversationId?: string,
+  dealsCount: number = 0
+): Promise<{ replyText: string; difyConversationId?: string } | null> {
+  try {
+    const userRoleLabel = user?.role === 'solver'
+      ? '專家顧問'
+      : user?.role === 'admin'
+      ? '平台管理員'
+      : '一般會員';
+
+    const inputs: Record<string, string> = {
+      current_user_id: user?.id || '訪客未登入',
+      current_user_email: user?.email || (user?.id ? `${user.id}@ideax.tw` : '訪客未提供信箱'),
+      current_user_role: user ? userRoleLabel : '訪客瀏覽模式',
+      current_user_name: user?.name || '訪客用戶',
+      current_user_balance: user?.balance ? `NT$ ${user.balance.toLocaleString()} 點` : '0 點',
+      current_user_deals: `${dealsCount} 筆`,
+      平台名稱: 'IdeaX',
+      platform_name: 'IdeaX',
+    };
+
+    const pricingKnowledge = `【IdeaX 平台懸賞提問定價規範（1 點 = NT$ 1）】：
+- L0 免費交流：0 點（免費公開討論，完全不扣點，可無限次提問發案）
+- L1 基礎懸賞：100 ~ 300 點（實務建議 / 痛點排查 / 基礎診斷）
+- L2 進階懸賞：301 ~ 899 點（商業架構 / 產品驗證 / 增長模型）
+- L3 高階挑戰：900 ~ 2,999 點（跨領域技術突破 / 產業級重大難題）
+- L4 資深顧問級：3,000 點以上（關鍵技術突破 / 重磅顧問專案）
+※ 注意：平台絕無「每次扣 10 點」的提問規則！若用戶詢問可用點數還能提問幾次，請依據上述 L0~L4 各等級分別試算說明（例如 1,000 點可發布 L0 免費提問無限次、L1 基礎懸賞約 3~10 次、L2 約 1~3 次、L3 約 1 次）。`;
+
+    const queryWithContext = user?.id
+      ? `[系統環境驗證 - 當前已安全登入用戶資訊：用戶ID=${user.id}，用戶名稱=${user.name || '用戶'}，登入信箱=${user.email || user.id + '@ideax.tw'}，帳戶身份=${userRoleLabel}，可用點數=${user.balance || 0} 點，已成交方案=${dealsCount} 筆]\n${pricingKnowledge}\n\n用戶諮詢問題：${query}`
+      : `[系統環境驗證：當前為訪客瀏覽模式（尚未登入）]\n${pricingKnowledge}\n\n用戶諮詢問題：${query}`;
+
+    const endUserId = user?.id
+      ? `usr_${String(user.id).replace(/[^a-zA-Z0-9_-]/g, '_')}`
+      : 'guest_visitor';
+
+    const res = await fetch(`${DIFY_CLIENT_BASE_URL}/chat-messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${DIFY_CLIENT_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inputs,
+        query: queryWithContext,
+        response_mode: 'streaming',
+        conversation_id: conversationId || '',
+        user: endUserId,
+      }),
+    });
+
+    if (!res.ok || !res.body) return null;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let agentMessageChunks = '';
+    let standardMessageChunks = '';
+    let resultConvId = conversationId || '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        try {
+          const evt = JSON.parse(trimmed.slice(6));
+          if (evt.event === 'agent_message') {
+            agentMessageChunks += evt.answer || '';
+          } else if (evt.event === 'message') {
+            standardMessageChunks += evt.answer || '';
+          }
+          if (evt.conversation_id) {
+            resultConvId = evt.conversation_id;
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (buffer.trim().startsWith('data: ')) {
+      try {
+        const evt = JSON.parse(buffer.trim().slice(6));
+        if (evt.event === 'agent_message') agentMessageChunks += evt.answer || '';
+        else if (evt.event === 'message') standardMessageChunks += evt.answer || '';
+        if (evt.conversation_id) resultConvId = evt.conversation_id;
+      } catch (e) {}
+    }
+
+    const fullAnswer = agentMessageChunks.trim() || standardMessageChunks.trim();
+    if (fullAnswer.length > 0) {
+      let cleaned = fullAnswer;
+      for (const [k, v] of Object.entries(inputs)) {
+        const regex1 = new RegExp(`\\{\\{${k}\\}\\}`, 'g');
+        const regex2 = new RegExp(`\\{${k}\\}`, 'g');
+        cleaned = cleaned.replace(regex1, v).replace(regex2, v);
+      }
+      return { replyText: cleaned, difyConversationId: resultConvId };
+    }
+    return null;
+  } catch (err) {
+    console.warn('Direct client Dify call failed:', err);
+    return null;
+  }
+}
+
 export interface CustomerSupportContext {
   currentUser: User | null;
   userTransactions?: Transaction[];
@@ -279,7 +397,7 @@ export async function sendCustomerSupportMessage(
     };
   }
 
-  // 2. Try Calling Backend Dify / Gemini API
+  // 2. Try Calling Backend Dify / Gemini API (or Direct Client-side Dify if deployed as Static SPA)
   try {
     const res = await fetch('/api/ai/customer-support-chat', {
       method: 'POST',
@@ -317,7 +435,22 @@ export async function sendCustomerSupportMessage(
       }
     }
   } catch (err) {
-    // Fall back to local intelligent matcher
+    // If backend proxy fails or is not present (static deployment), try direct client call
+  }
+
+  // 2.5 Direct Client-Side Dify Fallback (Guarantees Dify works on static hosts / Firebase Hosting / Vercel)
+  const clientDifyResult = await queryDifyDirectFromClient(
+    query,
+    user,
+    ctx.difyConversationId,
+    ctx.acceptedDealsCount || 0
+  );
+  if (clientDifyResult && clientDifyResult.replyText) {
+    return {
+      replyText: clientDifyResult.replyText,
+      difyConversationId: clientDifyResult.difyConversationId,
+      quickOptions: ['查詢我的點數餘額', '查詢我的訂單紀錄', '平台收費與金流規則', '常見問題 FAQ'],
+    };
   }
 
   // 3. Local Intelligent Matcher (FAQ Search & Fallback)
