@@ -1627,12 +1627,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     admin_user_management: '用戶管理',
     admin_user_analytics: '用戶分佈與習慣統計',
     admin_certifications: '受理認證 (實名、專家)',
-    admin_aicrm: 'AI-CRM與特助總控',
+    admin_aicrm: 'AI-CRM 監控與 Agent 測試',
     admin_mail_disputes: '申訴與郵件',
     settings: '帳號與基本資料',
     honors_achievements: '個人成就與榮譽',
-    ai_crm: 'AI-CRM (含特助代操)',
-    ai_assistant_settings: 'AI-CRM (含特助代操)',
+    ai_crm: 'AI-CRM 客戶關係管理',
+    ai_assistant_settings: 'AI-CRM 客戶關係管理',
   };
 
   const content = (
@@ -1779,10 +1779,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           <div className="flex items-center justify-between px-4 py-1.5 border-b border-stone-200/70 bg-stone-100/70 text-xs">
             <div className="flex items-center gap-1.5 overflow-x-auto">
               {[
-                { key: 'all', label: '全部功能', count: 11 },
+                { key: 'all', label: '全部功能', count: 12 },
                 { key: 'finance', label: '💰 金流與案件', count: 4 },
                 { key: 'users', label: '👥 用戶審核', count: 3 },
-                { key: 'ai_sub', label: '👑 會員方案', count: 1 },
+                { key: 'ai_sub', label: '🤖 AI與方案', count: 2 },
                 { key: 'account', label: '⚙️ 帳號', count: 3 },
               ].map((cat) => (
                 <button
@@ -1818,7 +1818,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               { id: 'admin_certifications', category: 'users', label: '受理認證', icon: BadgeCheck },
               { id: 'admin_user_analytics', category: 'users', label: '用戶分佈與習慣統計', icon: BarChart3, badge: 'EXCEL' },
 
-              // 會員方案與費率
+              // 會員方案與 AI-CRM
+              { id: 'admin_aicrm', category: 'ai_sub', label: 'AI-CRM 與 Agent 測試', icon: Sparkles, badge: 'Agent' },
               { id: 'subscriptions', category: 'ai_sub', label: '會員方案與費率', icon: Crown },
 
               // 帳號
@@ -1871,7 +1872,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             { id: 'overview', label: '功能總覽', icon: LayoutGrid },
             { id: 'points_receivables', label: '點數 & 收支', icon: Coins },
             { id: 'subscriptions', label: '會員方案', icon: Crown },
-            { id: 'ai_crm', label: 'AI-CRM (含特助代操)', icon: Sparkles, badge: '大師' },
+            { id: 'ai_crm', label: 'AI-CRM 客戶關係管理', icon: Sparkles, badge: '大師' },
             { id: 'proposals', label: '我的案件', icon: Briefcase },
             { id: 'questions_management', label: '問題管理', icon: MessageSquare },
             { id: 'honors_achievements', label: '個人成就', icon: Award },
@@ -2168,25 +2169,25 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </span>
                 </p>
 
-                {/* 24hr AI客服特助設定 */}
+                {/* AI-CRM 監控與 Agent 測試 */}
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('ai_assistant_settings');
+                    setActiveTab('admin_aicrm');
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full px-2 py-1.5 rounded-lg hover:bg-amber-50/80 active:bg-amber-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-purple-50/80 active:bg-purple-100 text-left text-xs font-bold text-stone-850 flex items-center justify-between group cursor-pointer transition-all"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-400 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
-                      <Bot className="w-3.5 h-3.5" />
+                    <div className="w-6.5 h-6.5 rounded-lg bg-gradient-to-br from-purple-700 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Sparkles className="w-3.5 h-3.5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="block font-black text-stone-900 group-hover:text-amber-800 transition-colors">24hr AI特助設定</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">大師</span>
+                        <span className="block font-black text-stone-900 group-hover:text-purple-900 transition-colors">AI-CRM 監控與 Agent 測試</span>
+                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">後台</span>
                       </div>
-                      <span className="text-[10px] text-stone-500 font-normal">離線代客對話、預約諮詢與心理學策略推演</span>
+                      <span className="text-[10px] text-stone-500 font-normal">全站客服特助、拓客代操、爭議調解與 Agent 實測</span>
                     </div>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
@@ -2378,7 +2379,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 <div className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
                   <Sparkles className="w-3 h-3 text-stone-950" />
                 </div>
-                <span>AI-CRM (含24hr特助代操)</span>
+                <span>AI-CRM 客戶關係管理</span>
               </span>
               <div className="flex items-center gap-1.5">
                 <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
@@ -4143,7 +4144,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-400 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
                             <Sparkles className="w-3.5 h-3.5" />
                           </div>
-                          <span className="truncate">AI-CRM (含特助代操)</span>
+                          <span className="truncate">AI-CRM 客戶關係管理</span>
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">

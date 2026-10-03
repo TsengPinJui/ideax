@@ -351,39 +351,31 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             <span className="text-[11px] font-bold text-purple-300 block mb-2">
               📌 系統固定保留之各身分測試帳號（點擊可快速切換身分進行功能驗證）：
             </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {[
                 {
                   id: 'user-admin',
-                  name: 'IdeaX 管理團隊',
+                  name: '站長・仲裁管理員',
                   roleName: '平台超級管理員',
-                  desc: '具備全站管理、審核與抽成設定',
-                  badge: '管理員',
+                  desc: '具備爭議仲裁、違規審查、每日撥款配額與全站資料控制權',
+                  badge: '👑 管理員',
                   badgeColor: 'bg-purple-500/30 text-purple-200 border-purple-400/40',
                 },
                 {
+                  id: 'solver-1',
+                  name: '柯育任 (認證專家)',
+                  roleName: '官方認證專家解答者',
+                  desc: '具備專家認證標籤、提交落地方案、應收帳款中心與專屬專家報價',
+                  badge: '🏆 認證專家',
+                  badgeColor: 'bg-blue-500/30 text-blue-200 border-blue-400/40',
+                },
+                {
                   id: 'user-questioner',
-                  name: '林書豪 (測試提問者)',
-                  roleName: '提問者身分',
-                  desc: '發布問題、自訂懸賞、採納與評價',
-                  badge: '提問者',
+                  name: '林書豪 (企業發案者)',
+                  roleName: '發案提問企業家',
+                  desc: '發布問題懸賞、查看解鎖方案、三階段金流驗收與評價',
+                  badge: '💼 提問發案者',
                   badgeColor: 'bg-amber-500/30 text-amber-200 border-amber-400/40',
-                },
-                {
-                  id: 'solver-2',
-                  name: '陳怡君 (測試專家/解答者)',
-                  roleName: '官方專家解答者',
-                  desc: '提交解方、解鎖收益、專家私聊',
-                  badge: '解答者',
-                  badgeColor: 'bg-emerald-500/30 text-emerald-200 border-emerald-400/40',
-                },
-                {
-                  id: 'user-guest',
-                  name: '訪客探索體驗',
-                  roleName: '免登入訪客模式',
-                  desc: '限制僅限瀏覽，驗證攔截防護',
-                  badge: '訪客',
-                  badgeColor: 'bg-stone-500/30 text-stone-200 border-stone-400/40',
                 },
               ].map((acc) => {
                 const isCurrent = currentUser.id === acc.id;

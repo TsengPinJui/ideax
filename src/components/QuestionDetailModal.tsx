@@ -57,6 +57,8 @@ import { getQuestionShareUrl } from '../services/seoService';
 import { copyToClipboard } from '../utils/clipboard';
 import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated } from '../utils/userDisplay';
 import { isPainPointQuestion } from '../utils/questionUtils';
+import { syncQuestionToFirestore } from '../services/firestoreSync';
+import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -112,7 +114,31 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     openAuthModal,
     availableUsers,
     promptLogin,
+    openRechargePage,
+    autoTagQuestionWithAI,
   } = useApp();
+
+  const [isAiAutoTagging, setIsAiAutoTagging] = useState(false);
+
+  const handleRunLiveAiAutoTag = async () => {
+    setIsAiAutoTagging(true);
+    try {
+      const res = await autoTagQuestionWithAI(question.id);
+      if (res && res.success && res.data) {
+        if (addNotification) {
+          addNotification({
+            title: '✨ AI 分析與標籤歸類完成',
+            message: `問題《${question.title.slice(0, 16)}...》已由 AI 智能匹配分類至「${res.data.category} · ${res.data.subcategory || ''}」，並配置標籤：#${(res.data.tags || []).join(' #')}`,
+            type: 'system',
+          });
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsAiAutoTagging(false);
+    }
+  };
 
   const liveQuestion = questions.find((item) => item.id === question.id) || selectedQuestion || question;
 
@@ -165,6 +191,30 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
 
+  // Dynamic AI Analysis Fallback
+  const [dynamicAiAnalysis, setDynamicAiAnalysis] = useState<any>(question.aiAnalysis || null);
+
+  useEffect(() => {
+    if (question.aiAnalysis) {
+      setDynamicAiAnalysis(question.aiAnalysis);
+    } else if (!dynamicAiAnalysis && question.title) {
+      marketAdvisorAgent.classifyAndTagQuestion(question.title, question.description || '')
+        .then((res) => {
+          if (res) {
+            setDynamicAiAnalysis({
+              summary: res.summary,
+              structuredNeed: res.structuredNeed,
+              solverProfileAdvice: res.solverProfileAdvice,
+              marketFitRating: '高商業價值',
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [question.id, question.aiAnalysis, question.title, question.description]);
+
+  const effectiveAiAnalysis = question.aiAnalysis || dynamicAiAnalysis;
+
   // Solution answers collapse / expand states (預設收合，點擊向下展開)
   const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({});
   const [isDescExpanded, setIsDescExpanded] = useState<boolean>(false);
@@ -176,41 +226,121 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     }));
   };
 
-  // AI Preliminary Report (達人方案以上免費，一般會員可支付 50 點數解鎖)
+  // AI Preliminary Report (提問者本人、管理員、達人方案以上免費，一般會員可支付 50 點數解鎖)
+  const isAuthorUser = currentUser.id === question.authorId || currentUser.role === 'admin';
   const userTier = currentUser?.subscriptionTier || 'free';
-  const isProOrHigher = ['pro', 'expert', 'authority', 'master'].includes(userTier);
+  const isProOrHigher = ['pro', 'expert', 'authority', 'master'].includes(userTier) || isAuthorUser;
+  
+  // 關鍵規範：L0 與閒聊討論問題不適用 AI 付費深度分析報告功能
+  const isL0OrChat = question.level === 'L0' || question.postType === 'chat_discussion';
+
+  const existingReport = liveQuestion?.aiPreliminaryReport || question.aiPreliminaryReport;
   const [preliminaryReport, setPreliminaryReport] = useState<AIPreliminaryReport>(() => {
-    return question.aiPreliminaryReport || getInitialPreliminaryReport(question);
+    return existingReport || getInitialPreliminaryReport(question);
   });
   const [isReportUnlocked, setIsReportUnlocked] = useState<boolean>(() => {
-    if (isProOrHigher) return true;
-    if (question.aiPreliminaryReport?.unlockedUserIds?.includes(currentUser.id)) return true;
+    if (isL0OrChat) return false;
+    if (isProOrHigher || isAuthorUser) return true;
+    if (existingReport?.unlockedUserIds?.includes(currentUser.id)) return true;
     return false;
   });
   const [activeReportTab, setActiveReportTab] = useState<'analysis' | 'solution' | 'direction'>('analysis');
   const [isReportExpanded, setIsReportExpanded] = useState<boolean>(false);
   const [isReportDownloaded, setIsReportDownloaded] = useState<boolean>(false);
-  const [unlockNotice, setUnlockNotice] = useState<string | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
+  const [unlockNotice, setUnlockNotice] = useState<React.ReactNode | null>(null);
+
+  // 首位解鎖時呼叫 AI 生成並存檔；若已存在儲存的報告則直接重用（L0 與閒聊問題不適用）
+  const fetchOrGenerateReport = async () => {
+    if (isL0OrChat) return;
+    const currentPersisted = liveQuestion?.aiPreliminaryReport || question.aiPreliminaryReport;
+    if (currentPersisted && currentPersisted.id && currentPersisted.id.includes('pre-report-live')) {
+      setPreliminaryReport(currentPersisted);
+      return;
+    }
+
+    setIsGeneratingReport(true);
+    try {
+      const liveReport = await marketAdvisorAgent.generatePreliminaryReport(question);
+      if (liveReport) {
+        const existingUnlocked = currentPersisted?.unlockedUserIds || [];
+        const updatedUnlocked = Array.from(new Set([...existingUnlocked, currentUser.id]));
+        const savedReport: AIPreliminaryReport = {
+          ...liveReport,
+          unlockedUserIds: updatedUnlocked,
+        };
+        setPreliminaryReport(savedReport);
+
+        // 關鍵規則：儲存至本地狀態與資料庫，下次任何人解鎖可以直接使用！
+        const updatedTarget = {
+          ...liveQuestion,
+          ...question,
+          aiPreliminaryReport: savedReport,
+        };
+        setQuestions((prev) => prev.map((q) => (q.id === question.id ? updatedTarget : q)));
+        syncQuestionToFirestore(updatedTarget);
+      }
+    } catch (e) {
+      console.warn('AI report generation error:', e);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+  // When report is expanded by an unlocked user, fetch live AI report if it was static initial
+  useEffect(() => {
+    if (isReportUnlocked && isReportExpanded && (!preliminaryReport.id || !preliminaryReport.id.includes('pre-report-live'))) {
+      fetchOrGenerateReport();
+    }
+  }, [isReportUnlocked, isReportExpanded]);
 
   const handleUnlockReport = async () => {
-    if (!isProOrHigher) {
-      if ((currentUser.balance || 0) < 50) {
-        setUnlockNotice(`您的可用點數餘額不足 50 點（目前餘額 ${(currentUser.balance || 0)} 點）。請先儲值點數或升級達人方案享免費查看 50 次！`);
+    if (!isProOrHigher && !isAuthorUser) {
+      if ((currentUser.balance || 0) < 30) {
+        setUnlockNotice(
+          <div className="flex items-center gap-1 flex-wrap">
+            <span>您的可用點數餘額不足 30 點（目前餘額 {currentUser.balance || 0} 點）。請</span>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                openRechargePage();
+              }}
+              className="px-1 py-0.5 rounded bg-amber-200 hover:bg-amber-300 text-amber-950 font-black underline cursor-pointer transition-colors"
+            >
+              ［先去儲值］
+            </button>
+            <span>點數或升級達人方案享年費解鎖！</span>
+          </div>
+        );
         return;
       }
-      spendPoints(50, `解鎖【${question.title}】之 AI 初步問題分析與解題報告`);
+      spendPoints(30, `解鎖【${question.title}】之 AI 初步問題分析與解題報告`);
     }
+
     setUnlockNotice(null);
     setIsReportUnlocked(true);
     setIsReportExpanded(true);
-    // Fetch live Gemini AI preliminary report in background
-    try {
-      const liveReport = await generatePreliminaryReportWithAI(question);
-      if (liveReport) {
-        setPreliminaryReport(liveReport);
-      }
-    } catch {
-      // Keep initial report
+
+    const currentPersisted = liveQuestion?.aiPreliminaryReport || question.aiPreliminaryReport;
+    if (currentPersisted && currentPersisted.id && currentPersisted.id.includes('pre-report-live')) {
+      // 報告已由首位解鎖者生成，本次解鎖直接重複使用已儲存報告，記錄解鎖用戶
+      const updatedUnlocked = Array.from(new Set([...(currentPersisted.unlockedUserIds || []), currentUser.id]));
+      const updatedReport: AIPreliminaryReport = {
+        ...currentPersisted,
+        unlockedUserIds: updatedUnlocked,
+      };
+      setPreliminaryReport(updatedReport);
+      const updatedTarget = {
+        ...liveQuestion,
+        ...question,
+        aiPreliminaryReport: updatedReport,
+      };
+      setQuestions((prev) => prev.map((q) => (q.id === question.id ? updatedTarget : q)));
+      syncQuestionToFirestore(updatedTarget);
+    } else {
+      // 首位點選解鎖，呼叫 AI 生成並儲存
+      fetchOrGenerateReport();
     }
   };
 
@@ -323,18 +453,15 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
     }
   };
 
-  // 2. 執行直接刪除處置（無須理由，直接自前台移除並進入 7 日暫存區，7 日後自動永久抹除）
-  const handleConfirmUnifiedDirectDelete = () => {
+  // 2. 執行直接刪除處置（徹底自全站與雲端資料庫抹除）
+  const handleConfirmUnifiedDirectDelete = async () => {
     setIsActionProcessing(true);
     try {
-      delistQuestion(question.id, '主動直接刪除');
-      question.status = 'delisted';
-      question.delistedReason = '主動直接刪除（7日暫存保留期）';
-      question.delistedAt = new Date().toISOString();
+      await deleteQuestionPermanently(question.id);
       if (addNotification) {
         addNotification({
-          title: '問題已刪除（7日暫存中）',
-          message: `問題《${question.title.slice(0, 16)}...》已自前台移除並移入 7 日暫存區，期間可自管理中心恢復，過後永久抹除。`,
+          title: '問題已成功刪除',
+          message: `問題《${question.title.slice(0, 16)}...》已自全站徹底永久刪除，原預扣懸賞金已全額退還。`,
           type: 'system',
         });
       }
@@ -581,22 +708,20 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               </div>
             </div>
 
-            {/* 操作按鈕群：違規/刪除 整合按鍵 */}
-            {isAuthor && (
+            {/* 操作按鈕群：管理員顯示「違規/刪除」，非管理員僅顯示圖式檢舉鍵 */}
+            {isAdmin ? (
               <div className="flex items-center gap-2 pt-1 flex-wrap">
                 {question.status === 'delisted' ? (
                   <>
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={handleRelistQuestion}
-                        className="min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                        title="恢復此問題之公開上架"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>恢復上架</span>
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={handleRelistQuestion}
+                      className="min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                      title="恢復此問題之公開上架"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>恢復上架</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setIsConfirmDeleteQuestionOpen(true)}
@@ -611,16 +736,29 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   <button
                     type="button"
                     onClick={() => {
-                      setUnifiedActionTab(isAdmin ? 'violation' : 'delete');
+                      setUnifiedActionTab('violation');
                       setIsUnifiedActionModalOpen(true);
                     }}
                     className="min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-black text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                    title="問題違規下架或直接刪除暫存處置"
+                    title="管理員：問題違規下架或直接刪除暫存處置"
                   >
                     <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
                     <span>違規/刪除</span>
                   </button>
                 )}
+              </div>
+            ) : (
+              /* 非管理員：不出現「違規/刪除」，改為只有圖式的檢舉鍵 */
+              <div className="flex items-center gap-2 pt-1 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setIsDisputeModalOpen(true)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-stone-400 hover:text-purple-600 hover:bg-purple-50 border border-stone-200 hover:border-purple-200 transition-all cursor-pointer shadow-2xs active:scale-95"
+                  title="檢舉此問題"
+                  aria-label="檢舉此問題"
+                >
+                  <Flag className="w-4 h-4 text-purple-600" />
+                </button>
               </div>
             )}
           </div>
@@ -849,125 +987,135 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
         </div>
 
-        {/* AI Structured Analysis Panel & Hanging Preliminary Report */}
-        {question.aiAnalysis && (
+        {effectiveAiAnalysis && (
           <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/50 border border-amber-200 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-lg bg-amber-400 text-stone-900 flex items-center justify-center">
                   <Sparkles className="w-4 h-4 fill-stone-900" />
                 </div>
-                <h4 className="font-bold text-sm text-stone-900">AI 解題分析與建議</h4>
+                <h4 className="font-bold text-sm text-stone-900">AI Agent「市場顧問」解題分析與建議</h4>
               </div>
-              {question.aiAnalysis.marketFitRating && (
-                <span className="text-xs font-bold text-amber-900 bg-amber-200/70 px-2.5 py-0.5 rounded-full">
-                  評級：{question.aiAnalysis.marketFitRating}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {effectiveAiAnalysis.marketFitRating && (
+                  <span className="text-xs font-bold text-amber-900 bg-amber-200/70 px-2.5 py-0.5 rounded-full">
+                    評級：{effectiveAiAnalysis.marketFitRating}
+                  </span>
+                )}
+              </div>
             </div>
 
             <p className="text-xs sm:text-sm text-stone-700 leading-relaxed font-normal">
-              {question.aiAnalysis.summary}
+              {effectiveAiAnalysis.summary}
             </p>
 
             {/* Structured need checklist */}
-            <div className="pt-1">
-              <p className="text-xs font-bold text-stone-800 mb-2">建議解答者應涵蓋的 3 大關鍵維度：</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {question.aiAnalysis.structuredNeed.map((need, idx) => (
-                  <div
-                    key={idx}
-                    className="p-2.5 rounded-xl bg-white border border-amber-200/70 text-xs text-stone-800 flex items-start gap-2 shadow-2xs font-medium"
-                  >
-                    <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center shrink-0 text-[10px]">
-                      {idx + 1}
+            {effectiveAiAnalysis.structuredNeed && effectiveAiAnalysis.structuredNeed.length > 0 && (
+              <div className="pt-1">
+                <p className="text-xs font-bold text-stone-800 mb-2">建議解答者應涵蓋的 3 大關鍵維度：</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {effectiveAiAnalysis.structuredNeed.map((need: string, idx: number) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl bg-white border border-amber-200/70 text-xs text-stone-800 flex items-start gap-2 shadow-2xs font-medium"
+                    >
+                      <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center shrink-0 text-[10px]">
+                        {idx + 1}
+                      </span>
+                      <span>{need}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 獨立模組：AI Agent「市場顧問」深度付費分析報告（僅適用於 L1~L4 與懸賞問題，L0 與閒聊討論不適用） */}
+        {!isL0OrChat && (
+          <div className="rounded-xl overflow-hidden bg-gradient-to-br from-stone-900 via-stone-900 to-amber-950 text-white border border-amber-500/30 shadow-sm transition-all">
+          {/* Collapsible Header / Trigger Bar */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setIsReportExpanded(!isReportExpanded)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsReportExpanded(!isReportExpanded); } }}
+            className="p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.03] transition-colors select-none"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center font-black shrink-0 shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 fill-stone-950" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h5 className="font-extrabold text-xs sm:text-sm text-white tracking-tight truncate">
+                    AI Agent「市場顧問」深度付費分析報告
+                  </h5>
+                  {!isReportUnlocked && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      單次 30 點解鎖 / 達人年費解鎖
                     </span>
-                    <span>{need}</span>
-                  </div>
-                ))}
+                  )}
+                </div>
+                <p className="text-[11px] text-stone-300 truncate mt-0.5">
+                  市場顧問量身撰寫：初步問題剖析、建議解決方案、建議解題方向
+                </p>
               </div>
             </div>
 
-            {/* 懸掛在 AI 解題分析與建議 下方：IdeaX 初步分析完整報告（可解鎖，預設折疊，展開後模糊化，解鎖後去除模糊並可下載文字檔） */}
-            <div className="mt-4 pt-3 border-t border-amber-200/80">
-              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-stone-900 via-stone-900 to-amber-950 text-white border border-amber-500/30 shadow-sm transition-all">
-                {/* Collapsible Header / Trigger Bar */}
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setIsReportExpanded(!isReportExpanded)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsReportExpanded(!isReportExpanded); } }}
-                  className="p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.03] transition-colors select-none"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center font-black shrink-0 shadow-xs">
-                      <Sparkles className="w-3.5 h-3.5 fill-stone-950" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h5 className="font-extrabold text-xs sm:text-sm text-white tracking-tight truncate">
-                          IdeaX 初步分析完整報告
-                        </h5>
-                        {isReportUnlocked ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                            已解鎖
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                            50 點數 / 達人年費解鎖
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-stone-300 truncate mt-0.5">
-                        含初步問題分析、建議解決方案、建議解題方向
-                      </p>
-                    </div>
-                  </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-stone-400 hidden sm:inline-block">
+                {isReportExpanded ? '點擊收合' : '點擊展開報告'}
+              </span>
+              <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-amber-300 transition-transform">
+                {isReportExpanded ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </div>
+            </div>
+          </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-stone-400 hidden sm:inline-block">
-                      {isReportExpanded ? '點擊收合' : '點擊展開報告'}
-                    </span>
-                    <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-amber-300 transition-transform">
-                      {isReportExpanded ? (
-                        <ChevronUp className="w-4 h-4" />
+          {/* Expanded Content Area */}
+          {isReportExpanded && (
+            <div className="p-3.5 sm:p-4 pt-0 space-y-3.5 border-t border-white/10 animate-in fade-in duration-200">
+              {/* Top Action Bar if Unlocked */}
+              {isReportUnlocked && (
+                <div className="pt-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-xs text-amber-200 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>完整報告已解鎖，支援下載與策略調用</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleDownloadReport}
+                      className="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                      title="下載文字檔報告"
+                    >
+                      {isReportDownloaded ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-950" />
+                          <span>已下載 (.txt)</span>
+                        </>
                       ) : (
-                        <ChevronDown className="w-4 h-4" />
+                        <>
+                          <Download className="w-3.5 h-3.5 text-stone-950" />
+                          <span>下載報告 (.txt)</span>
+                        </>
                       )}
-                    </div>
+                    </button>
                   </div>
                 </div>
+              )}
 
-                {/* Expanded Content Area */}
-                {isReportExpanded && (
-                  <div className="p-3.5 sm:p-4 pt-0 space-y-3.5 border-t border-white/10 animate-in fade-in duration-200">
-                    {/* Top Action Bar if Unlocked */}
-                    {isReportUnlocked && (
-                      <div className="pt-3 flex items-center justify-between gap-3 flex-wrap">
-                        <div className="text-xs text-amber-200 font-bold flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                          <span>完整報告已解鎖，支援下載與策略調用</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleDownloadReport}
-                          className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                          title="下載文字檔報告"
-                        >
-                          {isReportDownloaded ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-emerald-950" />
-                              <span>已下載！</span>
-                            </>
-                          ) : (
-                            <>
-                              <Download className="w-3.5 h-3.5 text-stone-950" />
-                              <span>下載文字檔</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
+              {isGeneratingReport && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 animate-pulse">
+                  <Sparkles className="w-4 h-4 animate-spin text-amber-400 shrink-0" />
+                  <span>IdeaX AI 智庫引擎正在為本題痛點量身撰寫深度分析與三階段解題架構...</span>
+                </div>
+              )}
 
                     {!isReportUnlocked ? (
                       /* LOCKED STATE: BLURRED CONTENT WITH PAYWALL OVERLAY (清透毛玻璃，文字更清晰透出) */
@@ -1051,7 +1199,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                   className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
                                 >
                                   <Unlock className="w-3.5 h-3.5" />
-                                  <span>支付 50 點數解鎖</span>
+                                  <span>支付 30 點數解鎖</span>
                                 </button>
                                 <span className="text-stone-400 text-xs font-bold">或</span>
                                 <button
@@ -1227,108 +1375,112 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                           <span>✅ 本報告已解鎖（任何用戶均可支付點數解鎖，達人方案以上享年費解鎖）</span>
                           <span className="font-mono text-[10px]">生成時間：{new Date(preliminaryReport.generatedAt).toLocaleDateString()}</span>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-600" />
-              <h4 className="font-bold text-sm text-stone-900">AI 推薦最佳解答專家</h4>
-              <HelpTooltip
-                title="AI 推薦專家媒合說明"
-                content="系統依據過往解題資歷、專長標籤與領域深度，從認證專家智庫中即時精準媒合適配人選。"
-              />
-            </div>
-          </div>
-
-          {isMatching ? (
-            <div className="p-6 text-center text-xs text-stone-500 bg-stone-50 rounded-2xl animate-pulse">
-              AI 正在深入分析專家領域與解題勝率...
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {aiMatches.map((match) => {
-                if (!match || !match.solver) return null;
-                const isInvited = invitedSolvers[match.solver.id];
-                return (
-                  <div
-                    key={match.solver.id}
-                    className="p-3.5 rounded-2xl border border-stone-200 bg-white hover:border-amber-300 transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                          媒合度 {match.matchScore}%
-                        </span>
-                        <div className="flex items-center gap-1 text-xs font-bold text-stone-700">
-                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                          <span>{match.solver.rating}</span>
-                        </div>
-                      </div>
-
-                      <div
-                        onClick={() => onSelectSolver(match.solver)}
-                        className="flex items-center gap-2 cursor-pointer group"
-                      >
-                        <img
-                          src={match.solver.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                          alt={match.solver.name || '專家'}
-                          className="w-9 h-9 rounded-xl object-cover ring-1 ring-stone-200"
-                        />
-                        <div className="overflow-hidden">
-                          <h5 className="font-bold text-xs text-stone-900 group-hover:text-amber-600 transition-colors truncate">
-                            {match.solver.name || '特邀顧問'}
-                          </h5>
-                          <p className="text-[11px] text-stone-500 truncate">{match.solver.title}</p>
-                        </div>
-                      </div>
-
-                      <p className="text-[11px] text-stone-600 mt-2 line-clamp-2 bg-stone-50 p-2 rounded-lg">
-                        {match.matchReason}
-                      </p>
                     </div>
-
-                    <div className="mt-3 pt-2 border-t border-stone-100 flex items-center justify-between gap-2">
-                      <button
-                        onClick={() =>
-                          handlePrivateChat({
-                            id: match.solver.id,
-                            name: match.solver.name,
-                            avatar: match.solver.avatar,
-                            title: match.solver.title,
-                          })
-                        }
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer flex items-center gap-1"
-                        title="私聊諮詢此專家"
-                      >
-                        <MessageCircle className="w-3 h-3 text-amber-600" />
-                        <span>私聊</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleInvite(match.solver.id)}
-                        disabled={isInvited}
-                        className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
-                          isInvited
-                            ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
-                            : 'bg-stone-900 hover:bg-stone-800 text-white shadow-2xs'
-                        }`}
-                      >
-                        {isInvited ? '已邀請' : '邀請回答'}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                  )}
+                </div>
+              )}
             </div>
           )}
-        </div>
+
+        {/* 提問者專屬：專家推薦推播（僅發布本題之提問者本人與管理員可見） */}
+        {isAuthor && (
+          <div className="space-y-3 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 border border-amber-300 inline-flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>提問者專家推薦</span>
+                </span>
+              </div>
+              <HelpTooltip
+                title="提問者專家推薦說明"
+                content="系統依據題意痛點、專長標籤與歷史履約評價，從認證智庫專家庫中即時精準媒合最佳解答專家，提問者可一鍵私聊或發出邀請。"
+              />
+            </div>
+
+            {isMatching ? (
+              <div className="p-6 text-center text-xs text-stone-500 bg-stone-50 rounded-2xl animate-pulse">
+                AI 正在深入分析專家領域與解題勝率...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {aiMatches.map((match) => {
+                  if (!match || !match.solver) return null;
+                  const isInvited = invitedSolvers[match.solver.id];
+                  return (
+                    <div
+                      key={match.solver.id}
+                      className="p-3.5 rounded-2xl border border-stone-200 bg-white hover:border-amber-300 transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                            媒合度 {match.matchScore}%
+                          </span>
+                          <div className="flex items-center gap-1 text-xs font-bold text-stone-700">
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+                            <span>{match.solver.rating}</span>
+                          </div>
+                        </div>
+
+                        <div
+                          onClick={() => onSelectSolver(match.solver)}
+                          className="flex items-center gap-2 cursor-pointer group"
+                        >
+                          <img
+                            src={match.solver.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                            alt={match.solver.name || '專家'}
+                            className="w-9 h-9 rounded-xl object-cover ring-1 ring-stone-200"
+                          />
+                          <div className="overflow-hidden">
+                            <h5 className="font-bold text-xs text-stone-900 group-hover:text-amber-600 transition-colors truncate">
+                              {match.solver.name || '特邀顧問'}
+                            </h5>
+                            <p className="text-[11px] text-stone-500 truncate">{match.solver.title}</p>
+                          </div>
+                        </div>
+
+                        <p className="text-[11px] text-stone-600 mt-2 line-clamp-2 bg-stone-50 p-2 rounded-lg">
+                          {match.matchReason}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 pt-2 border-t border-stone-100 flex items-center justify-between gap-2">
+                        <button
+                          onClick={() =>
+                            handlePrivateChat({
+                              id: match.solver.id,
+                              name: match.solver.name,
+                              avatar: match.solver.avatar,
+                              title: match.solver.title,
+                            })
+                          }
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer flex items-center gap-1"
+                          title="私聊諮詢此專家"
+                        >
+                          <MessageCircle className="w-3 h-3 text-amber-600" />
+                          <span>私聊</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleInvite(match.solver.id)}
+                          disabled={isInvited}
+                          className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                            isInvited
+                              ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
+                              : 'bg-stone-900 hover:bg-stone-800 text-white shadow-2xs'
+                          }`}
+                        >
+                          {isInvited ? '已邀請' : '邀請回答'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Dual-Track Tabs: 討論 (留言式無賞金) vs 方案 (付費解鎖) */}
         <div className="space-y-4 pt-4 border-t border-stone-200">

@@ -199,12 +199,71 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   }, []);
 
-  // 僅限本裝置曾成功登入過並記錄於 deviceAccounts 之帳號方可切換（新用戶或剛進入網站之訪客 deviceAccounts 為空，絕不顯示任何切換帳號包括管理員）
-  const deviceUserIds = useMemo(() => new Set(deviceAccounts.map((d) => d.userId)), [deviceAccounts]);
+  // 判定本機裝置是否曾登入過管理員帳號（有登入過管理員時，登入頁面膠囊切換區才亮出 1~3 測試角色供快速切換）
+  const hasAdminOnThisDevice = useMemo(() => {
+    return (
+      deviceAccounts.some((d) => d.userId === 'user-admin') ||
+      currentUser.role === 'admin' ||
+      currentUser.id === 'user-admin'
+    );
+  }, [deviceAccounts, currentUser.role, currentUser.id]);
 
   const sortedAvailableUsers = useMemo(() => {
+    const deviceUserIds = new Set(deviceAccounts.map((d) => d.userId));
+
+    if (hasAdminOnThisDevice) {
+      // 本地有管理員登入紀錄：在膠囊式切換區提供 1~3 核心測試角色（管理員、認證專家、發案者）與本地其他已登入帳號
+      const testPersonas: UserType[] = [
+        availableUsers.find((u) => u.id === 'user-admin' || u.role === 'admin') || ({
+          id: 'user-admin',
+          name: '管理員',
+          role: 'admin',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          balance: 50000,
+        } as UserType),
+        availableUsers.find((u) => u.id === 'solver-1') || availableUsers.find((u) => u.role === 'solver' && u.verifiedExpert) || ({
+          id: 'solver-1',
+          name: '柯育任',
+          title: '智慧零售架構師',
+          role: 'solver',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+          verifiedExpert: true,
+        } as UserType),
+        availableUsers.find((u) => u.id === 'user-questioner') || availableUsers.find((u) => u.role === 'questioner') || ({
+          id: 'user-questioner',
+          name: '林書豪',
+          title: '發案提問者',
+          role: 'questioner',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          balance: 3000,
+        } as UserType),
+      ].filter(Boolean) as UserType[];
+
+      const otherDeviceUsers = availableUsers.filter(
+        (u) =>
+          u.id !== 'user-guest' &&
+          deviceUserIds.has(u.id) &&
+          !testPersonas.some((tp) => tp.id === u.id)
+      );
+
+      return [...testPersonas, ...otherDeviceUsers];
+    }
+
+    // 一般非管理員訪客/用戶：僅顯示本機裝置曾登入之一般帳號，絕不外露測試角色與管理員
     return availableUsers
-      .filter((u) => u.id !== 'user-guest' && u.id !== currentUser.id && deviceUserIds.has(u.id))
+      .filter((u) => {
+        if (u.id === 'user-guest') return false;
+        if (!deviceUserIds.has(u.id)) return false;
+        if (
+          u.id === 'user-admin' ||
+          u.id.startsWith('solver-') ||
+          u.id === 'user-questioner' ||
+          u.id.startsWith('user-test-')
+        ) {
+          return false;
+        }
+        return true;
+      })
       .sort((a, b) => {
         const devA = deviceAccounts.find((d) => d.userId === a.id);
         const devB = deviceAccounts.find((d) => d.userId === b.id);
@@ -214,7 +273,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         return timeB - timeA;
       });
-  }, [availableUsers, currentUser.id, deviceUserIds, deviceAccounts]);
+  }, [availableUsers, hasAdminOnThisDevice, deviceAccounts]);
 
   // Validation helpers for Username and Password
   const validateUsername = (uname: string): { isValid: boolean; message: string } => {
@@ -1068,14 +1127,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar">
                   {sortedAvailableUsers.map((u) => {
                     const isCurrent = currentUser.id === u.id;
+                    const isAdminUser = u.id === 'user-admin' || u.role === 'admin';
+
                     return (
                       <button
                         key={u.id}
                         type="button"
                         onClick={() => handleSwitchAccount(u)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-left transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95 ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-left transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95 ${
                           isCurrent
-                            ? 'bg-amber-100/90 border-amber-300 text-amber-950 font-bold'
+                            ? 'bg-amber-100/90 border-amber-400 text-amber-950 font-bold ring-2 ring-amber-300'
+                            : isAdminUser
+                            ? 'bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-950 font-bold'
                             : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-700 hover:border-stone-300'
                         }`}
                         title={`切換登入為「${u.name}」`}
@@ -1083,11 +1146,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         <img
                           src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                           alt={u.name}
-                          className="w-4 h-4 rounded-full object-cover shrink-0"
+                          className="w-5 h-5 rounded-full object-cover shrink-0 ring-1 ring-stone-200"
                         />
-                        <span className="text-[11px] font-bold truncate max-w-[80px]">{u.name}</span>
-                        {u.role === 'admin' && (
-                          <span className="text-[9px] px-1 rounded bg-purple-200 text-purple-900 font-bold shrink-0">
+                        <span className="text-xs font-bold truncate max-w-[90px]">{u.name}</span>
+                        {isAdminUser && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-200 text-purple-900 font-bold shrink-0">
                             管理員
                           </span>
                         )}

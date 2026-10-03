@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { ChatConversation, ChatMessage, Question, Answer } from '../types';
 import { mediateDisputeWithAI } from '../services/aiService';
+import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 import { downloadMediationContractMarkdown } from '../services/proposalService';
 import { SubmitAnswerModal } from './SubmitAnswerModal';
 import { HelpTooltip } from './HelpTooltip';
@@ -13,7 +14,6 @@ import {
   buildContractFromMediation, 
   downloadContractFile 
 } from '../utils/contractGenerator';
-import { SummonAssistantModal } from './SummonAssistantModal';
 import {
   MessageSquare,
   Send,
@@ -228,9 +228,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
   // --- 聊天室首次使用步驟式教學狀態（由教學導覽銜接或主動觸發） ---
   const [isChatOnboardingOpen, setIsChatOnboardingOpen] = useState(false);
 
-  // --- 24hr AI特助即時召喚請求建議狀態 (大師方案專屬) ---
-  const [isSummonAssistantOpen, setIsSummonAssistantOpen] = useState(false);
-
   // 確保對話清單中有對話可供點選（若無任何對話，則自動準備專屬教學示範虛擬聊天室）
   const ensureDemoConversationAvailable = useCallback(() => {
     if (conversations.length > 0) {
@@ -368,13 +365,35 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
   const [paymentAgreementAccepted, setPaymentAgreementAccepted] = useState(true);
   const [previewContract, setPreviewContract] = useState<ContractData | null>(null);
 
-  // 分離兩種身份各自面對的對話清單
-  const questionerConversations = conversations.filter(
-    (c) => (c.conversationRole || 'questioner') === 'questioner'
-  );
-  const solverConversations = conversations.filter(
-    (c) => c.conversationRole === 'solver'
-  );
+  const isBella = (user?: { name?: string; username?: string; id?: string; email?: string } | null): boolean => {
+    if (!user) return false;
+    const name = (user.name || '').toLowerCase();
+    const username = (user.username || '').toLowerCase();
+    const id = (user.id || '').toLowerCase();
+    const email = (user.email || '').toLowerCase();
+    return (
+      name.includes('貝拉') ||
+      name.includes('bella') ||
+      username.includes('bella') ||
+      id === 'user-bella' ||
+      email.includes('bella')
+    );
+  };
+
+  const isCoreAdminGroup = (c: ChatConversation) => {
+    return c.id === 'group-admin-core' || (c.isGroup && (c.groupName === '平台核心管理群' || c.groupName === '平台管理員核心協作群組'));
+  };
+
+  const isQualifiedForCore = currentUser.role === 'admin' || isBella(currentUser);
+
+  // 分離兩種身份各自面對的對話清單（除了管理員身份或貝拉入群組外，其餘用戶不會加入或看到平台核心管理群）
+  const questionerConversations = conversations
+    .filter((c) => (c.conversationRole || 'questioner') === 'questioner')
+    .filter((c) => !isCoreAdminGroup(c) || isQualifiedForCore);
+
+  const solverConversations = conversations
+    .filter((c) => c.conversationRole === 'solver')
+    .filter((c) => !isCoreAdminGroup(c) || isQualifiedForCore);
 
   // Admin chat categories & Vendor group logic
   const isAdmin = currentUser.role === 'admin';
@@ -400,12 +419,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
   });
 
   const adminAdminsConversations = conversations.filter((c) => {
-    if (c.isGroup && c.groupName === '平台管理員核心協作群組') return true;
+    if (isCoreAdminGroup(c)) return isQualifiedForCore;
     if (c.isGroup) return true;
     const other = c.participantDetails.find((p) => p.id !== currentUser.id);
     if (!other) return false;
     const isOtherAdmin = availableUsers.find((u) => u.id === other.id)?.role === 'admin';
-    return isOtherAdmin;
+    return isOtherAdmin || isBella(other);
   });
 
   const activeAdminList = adminChatTab === 'general'
@@ -503,7 +522,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
       const latestOffer = [...activeConversation.messages].reverse().find((m) => m.offer)?.offer;
       const escrowTotal = latestOffer?.price || relatedQ?.bounty || 2000;
 
-      const result = await mediateDisputeWithAI(
+      const result = await marketAdvisorAgent.mediateDispute(
         questionTitle,
         questionDescription,
         actualDeliverablesSummary,
@@ -515,9 +534,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
       const newMedMsg: ChatMessage = {
         id: `msg-med-${Date.now()}`,
         senderId: 'system-ai',
-        senderName: 'IdeaX AI助理',
+        senderName: 'IdeaX 市場顧問',
         senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
-        text: 'IdeaX AI助理已產出《履約偏差與和解建議書》（含三方客觀比對與雙軌和解方案）',
+        text: 'AI Agent「市場顧問」已產出《履約偏差與和解建議書》（含三方客觀比對與雙軌和解方案）',
         createdAt: new Date().toISOString(),
         aiMediation: {
           ...result,
@@ -531,7 +550,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
       };
 
       activeConversation.messages.push(newMedMsg);
-      activeConversation.lastMessage = 'IdeaX AI助理已產出《履約偏差與和解建議書》';
+      activeConversation.lastMessage = '「市場顧問」已產出《履約偏差與和解建議書》';
       activeConversation.lastMessageTime = '剛剛';
 
       setIsMediationModalOpen(false);
@@ -1397,27 +1416,13 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                       <span>罐頭訊息</span>
                     </button>
                   ) : lockedConversationRole === 'solver' ? (
-                    <>
-                      {/* 召喚 AI 特助建議按鈕 */}
-                      <button
-                        type="button"
-                        onClick={() => setIsSummonAssistantOpen(true)}
-                        className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-stone-950 font-black text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95 border border-amber-300"
-                        title="召喚 24hr AI 特助建議（輸入卡點並產出 3 種戰略回覆）"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 fill-stone-950" />
-                        <span className="hidden sm:inline">召喚特助建議</span>
-                        <span className="sm:hidden">特助</span>
-                      </button>
-
-                      <button
-                        onClick={() => setIsOfferModalOpen(true)}
-                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Award className="w-3.5 h-3.5" />
-                        <span>發起報價</span>
-                      </button>
-                    </>
+                    <button
+                      onClick={() => setIsOfferModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Award className="w-3.5 h-3.5" />
+                      <span>發起報價</span>
+                    </button>
                   ) : (
                     <button
                       onClick={() => setIsRequestModalOpen(true)}
@@ -1464,10 +1469,10 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                         <div className={`flex items-center gap-2 text-[10px] text-stone-400 ${isMe ? 'justify-end' : ''}`}>
                           <span className="font-semibold text-stone-600 flex items-center gap-1">
                             <span>{msg.senderName}</span>
-                            {(msg.isAiAssistant || msg.senderName.includes('AI特助') || msg.senderName.includes('AI 特助')) && (
+                            {(msg.isAiAssistant || msg.senderName.includes('AI軍師') || msg.senderName.includes('AI 軍師') || msg.senderName.includes('AI特助') || msg.senderName.includes('AI 特助')) && (
                               <span className="px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[9px] flex items-center gap-0.5 shadow-2xs">
                                 <Bot className="w-2.5 h-2.5 text-amber-700" />
-                                <span>24hr AI特助代答</span>
+                                <span>24hr AI軍師代答</span>
                               </span>
                             )}
                           </span>
@@ -1480,7 +1485,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                             className={`p-3 sm:p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-line shadow-2xs ${
                               isMe
                                 ? 'bg-amber-500 text-stone-950 font-medium rounded-br-xs'
-                                : (msg.isAiAssistant || msg.senderName.includes('AI特助') || msg.senderName.includes('AI 特助'))
+                                : (msg.isAiAssistant || msg.senderName.includes('AI軍師') || msg.senderName.includes('AI 軍師') || msg.senderName.includes('AI特助') || msg.senderName.includes('AI 特助'))
                                 ? 'bg-gradient-to-br from-amber-50/90 via-orange-50/60 to-amber-100/70 border-2 border-amber-300/80 text-stone-900 rounded-bl-xs shadow-xs'
                                 : 'bg-white border border-stone-200 text-stone-900 rounded-bl-xs'
                             }`}
@@ -2384,25 +2389,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                   </div>
                 )}
 
-                {/* 解答者在線時：召喚 24hr AI 特助快捷工具列 */}
-                {lockedConversationRole === 'solver' && (
-                  <div className="px-3 sm:px-4 py-1.5 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent border-t border-amber-200/60 flex items-center justify-between gap-2 overflow-x-auto text-[11px]">
-                    <div className="flex items-center gap-1.5 text-amber-900 font-bold shrink-0">
-                      <Bot className="w-3.5 h-3.5 text-amber-600" />
-                      <span>24hr AI 特助在線護航</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsSummonAssistantOpen(true)}
-                      className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-[11px] shadow-2xs flex items-center gap-1 cursor-pointer transition-all border border-amber-400 shrink-0"
-                    >
-                      <Sparkles className="w-3 h-3 fill-stone-950" />
-                      <span>召喚 AI 特助請求建議</span>
-                      <span className="text-[9px] px-1 py-0.2 rounded-full bg-stone-950/15 font-bold">大師限定</span>
-                    </button>
-                  </div>
-                )}
-
                 <form onSubmit={handleSendText} className="p-2.5 sm:p-4 flex items-center gap-2 relative">
                 {/* Hidden File Inputs */}
                 <input
@@ -2537,28 +2523,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                               <p className="text-[10px] text-stone-500 truncate mt-0.5">文字建議、檔案交付、線上會談與多階段交付</p>
                             </div>
                           </button>
-
-                          {/* 4. 召喚 24hr AI 特助建議 */}
-                          <button
-                            id="chat-menu-item-summon-assistant"
-                            type="button"
-                            onClick={() => {
-                              setIsPlusMenuOpen(false);
-                              setIsSummonAssistantOpen(true);
-                            }}
-                            className="w-full p-2.5 rounded-xl hover:bg-amber-50/90 text-left flex items-center gap-3 transition-colors cursor-pointer group"
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-500 text-stone-950 flex items-center justify-center shrink-0 font-bold shadow-2xs">
-                              <Bot className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                                <span>召喚 AI 特助建議</span>
-                                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-200 text-amber-950 font-bold">即時戰略</span>
-                              </div>
-                              <p className="text-[10px] text-stone-500 truncate mt-0.5">針對客戶卡點推演 3 種談判策略與回覆，直接選擇發送</p>
-                            </div>
-                          </button>
                         </>
                       )}
 
@@ -2638,7 +2602,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                         </div>
                       </button>
 
-                      {/* 6. ✨ AI 智慧調解 */}
+                      {/* 6. ✨ AI Agent「市場顧問」爭議調解仲裁 */}
                       <button
                         id="chat-menu-item-mediation"
                         type="button"
@@ -2653,10 +2617,10 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                            <span>申請 AI 調解</span>
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-200 text-amber-950 font-bold">IdeaX AI助理</span>
+                            <span>AI 市場顧問調解仲裁</span>
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-200 text-amber-950 font-bold">市場顧問 Agent</span>
                           </div>
-                          <p className="text-[10px] text-stone-500 truncate mt-0.5">由 IdeaX AI助理閱讀對話脈絡並生成客觀和解協議</p>
+                          <p className="text-[10px] text-stone-500 truncate mt-0.5">由 AI Agent「市場顧問」閱讀雙方對話與交付檔案，產出雙軌和解書</p>
                         </div>
                       </button>
                     </div>
@@ -2694,26 +2658,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
           )}
         </div>
       </div>
-
-      {/* --- Modal 0: 24hr AI特助顧問即時策略建議彈窗 (專家在線專屬) --- */}
-      {isSummonAssistantOpen && activeConversation && (
-        <SummonAssistantModal
-          isOpen={isSummonAssistantOpen}
-          onClose={() => setIsSummonAssistantOpen(false)}
-          activeConversation={activeConversation}
-          currentUser={currentUser}
-          onApplySuggestedText={(text) => {
-            setInputMessage(text);
-          }}
-          onSendDirectly={(text) => {
-            sendMessage(activeConversation.id, text);
-          }}
-          onUpgradePlan={() => {
-            setIsSummonAssistantOpen(false);
-            if (onOpenAiCrm) onOpenAiCrm();
-          }}
-        />
-      )}
 
       {/* --- Modal 1: 解答者「發起報價」彈窗 --- */}
       {isOfferModalOpen && (
@@ -3125,7 +3069,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                 <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black">
                   <Scale className="w-4 h-4" />
                 </div>
-                <h3 className="font-black text-base text-stone-900">申請 AI 調解</h3>
+                <div>
+                  <h3 className="font-black text-base text-stone-900 flex items-center gap-1.5">
+                    <span>AI Agent「市場顧問」調解仲裁</span>
+                  </h3>
+                  <span className="text-[10px] text-stone-500 font-medium">履約偏差分析與雙軌和解</span>
+                </div>
               </div>
               <button
                 onClick={() => setIsMediationModalOpen(false)}
@@ -3137,7 +3086,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
             <div className="space-y-2 text-xs text-stone-600 leading-relaxed">
               <p>
-                IdeaX AI助理將調閱本聊天室之歷史對話與交付紀錄，客觀比對兩造主張與交付品質，並生成具備約束力之調解報告與和解協議書。
+                由 IdeaX 專屬 AI Agent「市場顧問」閱讀雙方歷史對話脈絡、交付附件與履約約定，客觀比對兩造主張與交付品質，判定責任佔比並即時生成雙軌和解協議書。
               </p>
             </div>
 
@@ -3148,11 +3097,32 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
               <textarea
                 rows={3}
                 value={mediationDisputeReason}
+                disabled={isAnalyzingMediation}
                 onChange={(e) => setMediationDisputeReason(e.target.value)}
-                placeholder="例如：提問者覺得報告少了一份 SWOT 分析表格；解答者認為已涵蓋核心架構..."
-                className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-normal outline-none focus:border-amber-500"
+                placeholder="例如：提問者覺得報告少了一份 SWOT 分析表格；解答者認為已涵蓋核心架構且有追加項目..."
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-normal outline-none focus:border-amber-500 disabled:bg-stone-50 disabled:text-stone-400"
               />
             </div>
+
+            {/* 提示資訊 / 調解進度通知 */}
+            {isAnalyzingMediation ? (
+              <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 flex items-start gap-2.5 text-amber-950 text-xs animate-pulse">
+                <Loader2 className="w-4 h-4 text-amber-600 animate-spin shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-black text-amber-900 block">
+                    提示: Agent正在閱讀對話脈絡與調閱交易，請耐心等待約1~3分鐘
+                  </span>
+                  <p className="text-amber-800 text-[11px] leading-relaxed">
+                    系統正在深度比對合約規格、已交付檔案與對話紀錄，即將生成具衡平性之雙軌和解協議書...
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/80 flex items-center gap-2 text-stone-700 text-[11px]">
+                <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span className="font-medium">提示: Agent正在閱讀對話脈絡與調閱交易，請耐心等待約1~3分鐘</span>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
@@ -3171,12 +3141,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                 {isAnalyzingMediation ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>AI 助理分析調解中...</span>
+                    <span>市場顧問 Agent 調解中...</span>
                   </>
                 ) : (
                   <>
                     <Scale className="w-3.5 h-3.5" />
-                    <span>產出 AI 調解報告</span>
+                    <span>調用市場顧問產出調解協議</span>
                   </>
                 )}
               </button>

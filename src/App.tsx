@@ -337,9 +337,18 @@ function MainContent() {
     window.addEventListener('popstate', parseAndOpenQuestion);
     window.addEventListener('hashchange', parseAndOpenQuestion);
 
+    const handleOpenRecharge = () => {
+      setSelectedQuestion(null);
+      setSelectedSolver(null);
+      setUserDashboardTab('points_receivables');
+      setActiveTab('user_dashboard');
+    };
+    window.addEventListener('ideax_open_recharge', handleOpenRecharge);
+
     return () => {
       window.removeEventListener('popstate', parseAndOpenQuestion);
       window.removeEventListener('hashchange', parseAndOpenQuestion);
+      window.removeEventListener('ideax_open_recharge', handleOpenRecharge);
     };
   }, [questions]);
 
@@ -1215,6 +1224,10 @@ function MainContent() {
                 setActiveTab('leaderboard');
               }}
               onPostQuestion={() => handleOpenCreateWithType('seek_solution')}
+              onOpenExpertCertification={() => {
+                setUserDashboardTab('expert_certification');
+                setActiveTab('user_dashboard');
+              }}
             />
           </div>
         )}

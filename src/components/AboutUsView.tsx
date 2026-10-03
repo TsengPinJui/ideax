@@ -36,6 +36,11 @@ import {
   Smartphone,
   Laptop,
   Zap,
+  Bot,
+  Crown,
+  Target,
+  Users,
+  Lock,
 } from 'lucide-react';
 import { TERMS_DATA, TermItem } from '../data/termsData';
 import { AboutSection, ProblemLevel } from '../types';
@@ -321,14 +326,14 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       id: 'other_3',
       num: '04',
       title: '會員訂閱方案與費率減免',
-      summary: '達人方案（8% 費率）、權威方案（5% 費率＋高賞提案優先推薦）與大師方案（0% 免服務費）。',
+      summary: '提供達人、權威與大師等會員方案，享有專屬服務費減免與 AI-CRM 工具特權。',
       badge: '會員權益',
     },
     {
       id: 'other_5',
       num: '05',
-      title: 'AI 智能四大 Agent 體系',
-      summary: 'AI 客服與工單諮詢、AICRM 24hr 特助作戰藍圖、AI 專家智慧媒合推播、AI 智慧爭議調解報告。',
+      title: 'AI 智慧功能與全流程賦能',
+      summary: '24hr 官方客服特助、AI-CRM 24hr 特助代操、AI 策略軍師人機協同、專家智慧媒合與爭議調解報告。',
       badge: 'AI 智慧賦能',
     },
   ];
@@ -352,7 +357,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
     },
     {
       q: '平台服務費抽成是多少？如何享有服務費減免？',
-      a: '一般用戶解答收益扣除標準平台服務費（10%）；若您訂閱「達人方案」享有費率 8%（實收 92%）、「權威方案」享有費率 5%（實收 95% ＋ 高賞提案優先推薦）、「大師方案」更可獲得 0% 免服務費（100% 全額入帳 ＋ 24hr AI客服特助與 AI-CRM）。',
+      a: '一般用戶解答收益扣除標準平台服務費；若您訂閱「達人方案」、「權威方案」或「大師方案」，依方案等級享有不同程度的服務費大幅減免與專屬特權（如 24hr AI客服特助與 AI-CRM 客戶關係管理），各方案之即時費用與減免優惠，悉以本平台最新公告之《會員方案與費率標準表》為準。',
     },
     {
       q: '方案採納後的著作權與商業使用授權如何歸屬？',
@@ -655,12 +660,12 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
               type="button"
               onClick={() => {
                 setActiveTab('others');
-                setSelectedOtherChapterId('other_4');
+                setSelectedOtherChapterId(null);
               }}
               className="p-3.5 rounded-2xl bg-white border border-stone-200/80 hover:border-stone-400 hover:shadow-xs flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
               <Layers className="w-5 h-5 text-purple-600" />
-              <span className="text-xs font-bold text-stone-800">平台用戶光譜</span>
+              <span className="text-xs font-bold text-stone-800">其他說明</span>
             </button>
           </div>
         </div>
@@ -1716,7 +1721,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                         會員訂閱方案與費率減免
                       </h3>
                     </div>
-                    <span className="text-xs text-stone-900 font-bold">最高 100% 全額入帳</span>
+                    <span className="text-xs text-stone-900 font-bold">最高 98% 實收入帳</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -1727,7 +1732,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                           費率 8%
                         </span>
                       </div>
-                      <p className="font-mono font-bold text-stone-900">半年 $1,499</p>
+                      <p className="font-mono font-bold text-stone-900">$299/月 或 半年 $1,499</p>
                       <p className="text-stone-500 text-[11px]">費率僅 8%，實收 92%。</p>
                     </div>
 
@@ -1746,11 +1751,11 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-stone-900 text-sm">大師方案</span>
                         <span className="text-[10px] font-bold bg-amber-200 text-stone-900 px-2 py-0.5 rounded-full">
-                          0% 免服務費
+                          極低 2% 服務費
                         </span>
                       </div>
-                      <p className="font-mono font-bold text-stone-900">$1,490/月 或 $14,900/年</p>
-                      <p className="text-stone-600 text-[11px]">0% 免服務費，100% 全額入帳 ＋ 24hr AI客服特助與 AI-CRM。</p>
+                      <p className="font-mono font-bold text-stone-900">$1,980/月 或 $19,800/年</p>
+                      <p className="text-stone-600 text-[11px]">極低 2% 服務費，98% 實收入帳 ＋ 24hr AI客服特助與 AI-CRM。</p>
                     </div>
                   </div>
                 </div>
@@ -1773,43 +1778,194 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
 
               {/* 說明 5: AI 功能介紹與智慧賦能 */}
               {selectedOtherChapterId === 'other_5' && (
-                <div className="p-5 sm:p-7 space-y-4">
-                  <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
+                <div className="p-5 sm:p-7 space-y-6 animate-in fade-in">
+                  {/* Header Title */}
+                  <div className="border-b border-stone-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <span className="text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200">
-                        說明五 • AI 智慧功能
-                      </span>
-                      <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5 flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-purple-600" />
-                        <span>AI 智慧引擎賦能與高效溝通工具</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200 inline-flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                          <span>說明五 • AI 智慧賦能</span>
+                        </span>
+                        <span className="text-[11px] font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md">
+                          全流程生態體系
+                        </span>
+                      </div>
+                      <h3 className="text-base sm:text-xl font-black text-stone-900 mt-2 flex items-center gap-2 tracking-tight">
+                        AI 智慧引擎賦能與高效協同系統
                       </h3>
+                    </div>
+                    <span className="text-xs text-stone-500 hidden sm:inline-block">
+                      人機協同 • 智能代操 • 交易安全
+                    </span>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+                    IdeaX 深度整合自然語言語意理解、人機協同決策模型與主動特助機制，為提問發案者、智庫解答專家及平台交易治理打造全方位智慧賦能矩陣：
+                  </p>
+
+                  {/* 核心架構三大維度 */}
+                  <div className="space-y-5">
+                    {/* 維度一：AI 智能 Agent 體系 (全天候自主運作) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-purple-600" />
+                        <h4 className="text-xs sm:text-sm font-black text-stone-900 flex items-center gap-1.5">
+                          <span>一、AI 智能特助 Agent 體系（全天候自動化運作）</span>
+                        </h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                        {/* 1. 官方客服特助 */}
+                        <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2 hover:border-purple-300 transition-all shadow-2xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
+                              <Bot className="w-4 h-4 text-purple-600" />
+                              <span>1. 24hr 官方客服特助</span>
+                            </span>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              全體用戶標配
+                            </span>
+                          </div>
+                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                            全天候解答全站機制、點數金流、問題發布規範與認證流程；支援多輪意圖引導，並能自主受理、分類與升級專人工單。
+                          </p>
+                          <div className="pt-1.5 border-t border-stone-200/60 flex items-center gap-1 text-[11px] text-purple-800 font-bold">
+                            <span>⚡ 適用：平台疑難排解、點數儲值與申訴引導</span>
+                          </div>
+                        </div>
+
+                        {/* 2. AI-CRM 24hr 特助代操 */}
+                        <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2 hover:border-amber-400 transition-all shadow-2xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
+                              <Crown className="w-4 h-4 text-amber-600" />
+                              <span>2. AI-CRM 24hr 特助代操</span>
+                            </span>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-200 text-stone-900 border border-amber-300">
+                              大師方案專屬
+                            </span>
+                          </div>
+                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                            即時巡航潛在發案客戶，智能分析痛點與猶豫期；於專家離線時主動接待維繫關係，並在最佳商業時段自主排程發送破冰提案。
+                          </p>
+                          <div className="pt-1.5 border-t border-amber-200/70 flex items-center gap-1 text-[11px] text-amber-900 font-bold">
+                            <span>🎯 包含：離線接待、自訂語氣風格與 FAQ 知識庫</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 維度二：AI 智慧輔助與決策軍師 (人機協同模式) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-indigo-600" />
+                        <h4 className="text-xs sm:text-sm font-black text-stone-900 flex items-center gap-1.5">
+                          <span>二、AI 智慧決策與軍師輔助（專家在線人機協同）</span>
+                        </h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                        {/* 3. AI-CRM 24hr巡航雷達(軍師) */}
+                        <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2 hover:border-indigo-300 transition-all shadow-2xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
+                              <MessageSquare className="w-4 h-4 text-indigo-600" />
+                              <span>3. AI-CRM 24hr巡航雷達(軍師)</span>
+                            </span>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
+                              策略與排程
+                            </span>
+                          </div>
+                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                            深度剖析潛在客戶的痛點意向與猶豫期心理，自動擬定 3 組心理學破冰對策與專屬時程排定，無縫移轉至 24hr 特助代操佇列。
+                          </p>
+                          <div className="pt-1.5 border-t border-stone-200/60 flex items-center gap-1 text-[11px] text-indigo-800 font-bold">
+                            <span>💡 特點：專家可自由審閱微調，掌握精準成案契機</span>
+                          </div>
+                        </div>
+
+                        {/* 4. AI 專家智慧媒合與題意多維標籤 */}
+                        <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2 hover:border-indigo-300 transition-all shadow-2xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
+                              <Target className="w-4 h-4 text-indigo-600" />
+                              <span>4. 專家精準媒合與題意標籤</span>
+                            </span>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-200 text-stone-800">
+                              智慧運算
+                            </span>
+                          </div>
+                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                            自動對新發布問題進行語意維度剖析，精準比對智庫專家專長技能、實名認證與歷史評價，主動向合適專家精準推播高契合度案件。
+                          </p>
+                          <div className="pt-1.5 border-t border-stone-200/60 flex items-center gap-1 text-[11px] text-indigo-800 font-bold">
+                            <span>🚀 效果：大幅縮短解題等待週期，提升成交率</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 維度三：爭議調解與交易安全守護 (治理與風控) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                        <h4 className="text-xs sm:text-sm font-black text-stone-900 flex items-center gap-1.5">
+                          <span>三、爭議調解與安全防火牆（交易安全與治理）</span>
+                        </h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                        {/* 5. 智慧爭議調解報告 */}
+                        <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2 hover:border-emerald-300 transition-all shadow-2xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
+                              <Scale className="w-4 h-4 text-emerald-600" />
+                              <span>5. 爭議客觀調解與分析報告</span>
+                            </span>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              爭議自動介入
+                            </span>
+                          </div>
+                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                            雙方發起申訴或意見分歧時，自動調閱完整溝通脈絡與落地方案交付紀錄，客觀梳理雙方履約事實與爭議點，產出中立調解建議與和解方案。
+                          </p>
+                          <div className="pt-1.5 border-t border-stone-200/60 flex items-center gap-1 text-[11px] text-emerald-800 font-bold">
+                            <span>⚖️ 保障：杜絕各說各話，加速管理團隊裁決放款</span>
+                          </div>
+                        </div>
+
+                        {/* 6. 個資與商業機密防火牆 */}
+                        <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2 hover:border-emerald-300 transition-all shadow-2xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
+                              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                              <span>6. 雙重隱私與機密安全防火牆</span>
+                            </span>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              全站常駐保護
+                            </span>
+                          </div>
+                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                            自動遮蔽電話、LINE、身分證與銀行帳號等敏感私密聯絡方式；建立嚴密隔離牆防範 Prompt 注入惡意攻擊，並設有單室每日代答上限防止惡意刷量。
+                          </p>
+                          <div className="pt-1.5 border-t border-stone-200/60 flex items-center gap-1 text-[11px] text-emerald-800 font-bold">
+                            <span>🛡️ 保護：捍衛商業營業秘密與平台交易合規</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <p className="text-xs text-stone-600 leading-relaxed">
-                    IdeaX 整合最前沿 AI 語意與專家大語言模型，全面賦能提問者、解答者與平台營運管理：
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">1. AI 客服特助 Agent</span>
-                      <p className="text-stone-500 text-[11px]">全天候解答平台規範、點數金流，並自主受理與升級專人工單。</p>
+                  {/* 核心原則與價值理念卡 */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-stone-50 to-amber-50 border border-purple-200/70 space-y-1.5 text-xs text-stone-700">
+                    <div className="flex items-center gap-2 font-black text-stone-900">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
+                      <span>IdeaX AI 核心設計哲學：人機協同（Human-in-the-loop）</span>
                     </div>
-
-                    <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">2. AICRM 24hr 特助 Agent</span>
-                      <p className="text-stone-500 text-[11px]">為專家拆解客戶痛點、分析意向評分，並定時自主代操發送破冰訊息。</p>
-                    </div>
-
-                    <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">3. AI 專家智慧媒合推播 Agent</span>
-                      <p className="text-stone-500 text-[11px]">依據痛點語意與專家專長、歷史履約評價，精準推播高適配度問題。</p>
-                    </div>
-
-                    <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">4. AI 智慧爭議調解報告 Agent</span>
-                      <p className="text-stone-500 text-[11px]">調閱對話與交付紀錄，生成中立調解報告與和解協議，保障交易安全。</p>
-                    </div>
+                    <p className="text-[11px] sm:text-xs text-stone-600 leading-relaxed">
+                      AI 負責繁瑣的客情巡航、即時接待、數據洞察與草案擬定，而最終的專業深度洞見、合約定價授權與解題成果，始終由人類專家親自把關決策，發揮科技與真人智慧的最強加乘效應。
+                    </p>
                   </div>
                 </div>
               )}

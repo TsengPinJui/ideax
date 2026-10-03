@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Category, ProblemLevel, Question, CATEGORY_HIERARCHY, PostType, DeliveryPhase } from '../types';
 import { useApp } from '../context/AppContext';
 import { LEVEL_CONFIGS } from '../data/mockData';
-import { analyzeQuestionWithAI, AIAnalysisResult } from '../services/aiService';
+import { AIAnalysisResult } from '../services/aiService';
+import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import {
@@ -63,11 +64,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [postType, setPostType] = useState<PostType>(initialPostType);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<Category>(initialCategory || '創新創業');
+  const [category, setCategory] = useState<Category | ''>(initialCategory || '');
   const [subcategory, setSubcategory] = useState<string>(
-    initialSubcategory && initialSubcategory !== '全部'
-      ? initialSubcategory
-      : (CATEGORY_HIERARCHY[initialCategory || '創新創業']?.[0] || '資訊科技')
+    initialSubcategory && initialSubcategory !== '全部' ? initialSubcategory : ''
   );
   const [tagsInput, setTagsInput] = useState('');
   const [level, setLevel] = useState<ProblemLevel>(
@@ -88,6 +87,47 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [isPromotedWithMegaphone, setIsPromotedWithMegaphone] = useState(false);
   // 外部雲端工具連結 (Google Drive, Dropbox, Figma 等)
   const [externalLink, setExternalLink] = useState('');
+
+  // AI Agent 市場顧問 智慧分析與分類標籤狀態
+  const [isAnalyzingWithAi, setIsAnalyzingWithAi] = useState(false);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<AIAnalysisResult | null>(null);
+
+  const handleAutoAnalyzeWithAi = async () => {
+    if (title.trim().length < 5 && description.trim().length < 10) {
+      setTermsError('請先輸入至少 5 個字的問題標題或部分描述，讓市場顧問為您精準分析！');
+      return;
+    }
+    setIsAnalyzingWithAi(true);
+    setTermsError(null);
+    try {
+      const res = await marketAdvisorAgent.classifyAndTagQuestion(
+        title.trim() || '專案商業模式與痛點分析',
+        description.trim() || title.trim()
+      );
+      if (res) {
+        setAiAnalysisResult(res);
+        if (res.category) {
+          setCategory(res.category as Category);
+        }
+        if (res.subcategory) {
+          setSubcategory(res.subcategory);
+        }
+        if (res.tags && res.tags.length > 0) {
+          setTagsInput(res.tags.map((t) => `#${t}`).join(' '));
+        }
+        if (postType === 'seek_solution' && res.level) {
+          setLevel(res.level);
+          if (res.suggestedBounty && (bounty === 500 || bounty === 0)) {
+            setBounty(res.suggestedBounty);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Manual AI auto-analyze failed:', err);
+    } finally {
+      setIsAnalyzingWithAi(false);
+    }
+  };
 
   // Sync postType selection with default level & bounty
   const handlePostTypeChange = (type: PostType) => {
@@ -117,45 +157,16 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     }
   }, [initialPostType]);
 
-  // AI analysis state for background auto-tagging
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
 
   const effectiveBounty = isNoPaymentMode ? 0 : (enablePhasedDelivery && bounty > 0 ? (phase1Points + phase2Points) : bounty);
   const currentBounty = isNoPaymentMode ? 0 : (Number(effectiveBounty) || 0);
 
   // Update subcategory whenever category changes
-  const handleCategoryChange = (newCat: Category) => {
+  const handleCategoryChange = (newCat: Category | '') => {
     setCategory(newCat);
-    const subList = CATEGORY_HIERARCHY[newCat] || [];
-    setSubcategory(subList[0] || '');
+    setSubcategory('');
   };
-
-  // Debounced background auto-tagging & category matching as user types
-  useEffect(() => {
-    if (!title.trim() && !description.trim()) return;
-
-    const timer = setTimeout(async () => {
-      try {
-        const res = await analyzeQuestionWithAI(title, description);
-        if (res) {
-          setAiResult(res);
-          // If tags input is currently empty, auto-populate with AI generated tags
-          if (!tagsInput.trim() && res.tags && res.tags.length > 0) {
-            setTagsInput(res.tags.map((t) => `#${t}`).join(' '));
-          }
-          if (res.category && category === '創新創業' && !subcategory) {
-            setCategory(res.category);
-            if (res.subcategory) setSubcategory(res.subcategory);
-          }
-        }
-      } catch {
-        // quiet background fallback
-      }
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [title, description]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,13 +186,29 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       return;
     }
 
-    if (title.trim().length < 10) {
-      setTermsError(`問題標題至少需要 10 個字（目前已輸入 ${title.trim().length} 字）`);
+    const isL0OrChatType = postType === 'chat_discussion';
+    const titleMin = isL0OrChatType ? 8 : 10;
+    const titleMax = isL0OrChatType ? 30 : 50;
+    const descMin = isL0OrChatType ? 20 : 30;
+    const descMax = isL0OrChatType ? 300 : 3000;
+
+    const titleLen = title.trim().length;
+    if (titleLen < titleMin || titleLen > titleMax) {
+      setTermsError(
+        isL0OrChatType
+          ? `【閒聊討論/L0】問題標題需介於 8 ~ 30 個字（目前已輸入 ${titleLen} 字）`
+          : `問題標題需介於 10 ~ 50 個字（目前已輸入 ${titleLen} 字）`
+      );
       return;
     }
 
-    if (description.trim().length < 30) {
-      setTermsError(`問題內容敘述至少需要 30 個字（目前已輸入 ${description.trim().length} 字）`);
+    const descLen = description.trim().length;
+    if (descLen < descMin || descLen > descMax) {
+      setTermsError(
+        isL0OrChatType
+          ? `【閒聊討論/L0】問題內容需介於 20 ~ 300 個字（目前已輸入 ${descLen} 字）`
+          : `問題內容需介於 30 ~ 3000 個字（目前已輸入 ${descLen} 字）`
+      );
       return;
     }
 
@@ -194,33 +221,43 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      let finalCategory: Category = (category || '創新創業') as Category;
+      let finalSubcategory = subcategory;
       let finalTags = tagsInput
         .split(/[#,\s，、]+/)
         .map((t) => t.trim().replace(/^#/, ''))
         .filter(Boolean);
 
-      let finalAiResult = aiResult;
-
-      // If user hasn't provided tags or fewer than 2 tags, run AI auto-tagging on the fly
-      if (finalTags.length < 2) {
+      // 一律確保調用 AI Agent「市場顧問」進行深度分類、標籤萃取與解題維度歸納
+      let finalAiResult: AIAnalysisResult | null = aiAnalysisResult;
+      if (!finalAiResult) {
         try {
-          const res = await analyzeQuestionWithAI(title, description);
+          const res = await marketAdvisorAgent.classifyAndTagQuestion(title.trim(), description.trim());
           if (res) {
             finalAiResult = res;
-            const generated = (res.tags || []).slice(0, 5);
-            finalTags = Array.from(new Set([...finalTags, ...generated])).filter(Boolean);
-            if (finalTags.length === 0) {
-              finalTags = [category, subcategory].filter(Boolean);
-            }
           }
-        } catch {
-          if (finalTags.length === 0) {
-            finalTags = [category, subcategory].filter(Boolean);
-          }
+        } catch (err) {
+          console.warn('Market Advisor Agent classification fallback:', err);
         }
       }
 
-      // Ensure 2~5 tags
+      if (finalAiResult) {
+        if (!category && finalAiResult.category) {
+          finalCategory = finalAiResult.category as Category;
+        }
+        if (!subcategory) {
+          finalSubcategory = finalAiResult.subcategory || (CATEGORY_HIERARCHY[finalCategory]?.[0] || '一般專案');
+        }
+        if (finalTags.length < 2 && finalAiResult.tags && finalAiResult.tags.length > 0) {
+          finalTags = Array.from(new Set([...finalTags, ...finalAiResult.tags])).filter(Boolean).slice(0, 5);
+        }
+      }
+
+      if (!finalCategory) finalCategory = '創新創業';
+      if (!finalSubcategory) finalSubcategory = CATEGORY_HIERARCHY[finalCategory]?.[0] || '一般專案';
+      if (finalTags.length === 0) {
+        finalTags = [finalCategory, finalSubcategory].filter(Boolean);
+      }
       if (finalTags.length > 5) {
         finalTags = finalTags.slice(0, 5);
       }
@@ -267,8 +304,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       const newQuestion = createQuestion({
         title,
         description: finalDescription,
-        category,
-        subcategory,
+        category: finalCategory,
+        subcategory: finalSubcategory,
         tags: finalTags,
         level,
         bounty: currentBounty,
@@ -290,6 +327,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               marketFitRating: '高商業價值',
             }
           : undefined,
+        aiPreliminaryReport: undefined, // 關鍵規則：報告未有首位解鎖前不預先生成，待首位點擊解鎖再即時呼叫 AI 生成並存入資料庫
       });
 
       if (agreeQuestionerTerms) {
@@ -302,7 +340,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     }
   };
 
-  const currentSubcategories = CATEGORY_HIERARCHY[category] || [];
+  const currentSubcategories = category ? (CATEGORY_HIERARCHY[category] || []) : [];
   const levelConfig = LEVEL_CONFIGS[level] || LEVEL_CONFIGS.L2;
 
   const content = (
@@ -510,26 +548,37 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-              <span>問題標題 / 核心痛點 *</span>
-              <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/70 border border-amber-300/80 px-1.5 py-0.2 rounded">
-                至少 10 字
+              <span>{postType === 'chat_discussion' ? '討論標題 *' : '問題標題 / 核心痛點 *'}</span>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border ${
+                postType === 'chat_discussion' 
+                  ? 'text-blue-800 bg-blue-100/70 border-blue-300/80' 
+                  : 'text-amber-800 bg-amber-100/70 border-amber-300/80'
+              }`}>
+                {postType === 'chat_discussion' ? '8 ~ 30 字' : '10 ~ 50 字'}
               </span>
             </label>
-            <span className={`text-[11px] font-mono ${title.trim().length < 10 ? 'text-amber-600 font-bold' : 'text-stone-400'}`}>
-              {title.trim().length} / 10 字
+            <span className={`text-[11px] font-mono ${
+              title.trim().length < (postType === 'chat_discussion' ? 8 : 10) || title.trim().length > (postType === 'chat_discussion' ? 30 : 50)
+                ? 'text-amber-600 font-bold' 
+                : 'text-stone-400'
+            }`}>
+              {title.trim().length} / {postType === 'chat_discussion' ? 30 : 50} 字
             </span>
           </div>
           <input
             type="text"
             required
-            minLength={10}
+            minLength={postType === 'chat_discussion' ? 8 : 10}
+            maxLength={postType === 'chat_discussion' ? 30 : 50}
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);
               if (termsError) setTermsError(null);
             }}
             placeholder={
-              postType === 'pain_point'
+              postType === 'chat_discussion'
+                ? '例如：大家對於遠距辦公溝通效率有什麼看法？'
+                : postType === 'pain_point'
                 ? '例如：傳統實體早餐店如何解決上班尖峰排隊流失與備料浪費？'
                 : '例如：校園共享雨傘如何從租借收入轉向商家合作模式？'
             }
@@ -541,26 +590,37 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-              <span>問題背景與具體情境需求 *</span>
-              <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/70 border border-amber-300/80 px-1.5 py-0.2 rounded">
-                至少 30 字
+              <span>{postType === 'chat_discussion' ? '討論內容與交流背景 *' : '問題背景與具體情境需求 *'}</span>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border ${
+                postType === 'chat_discussion' 
+                  ? 'text-blue-800 bg-blue-100/70 border-blue-300/80' 
+                  : 'text-amber-800 bg-amber-100/70 border-amber-300/80'
+              }`}>
+                {postType === 'chat_discussion' ? '20 ~ 300 字' : '30 ~ 3000 字'}
               </span>
             </label>
-            <span className={`text-[11px] font-mono ${description.trim().length < 30 ? 'text-amber-600 font-bold' : 'text-stone-400'}`}>
-              {description.trim().length} / 30 字
+            <span className={`text-[11px] font-mono ${
+              description.trim().length < (postType === 'chat_discussion' ? 20 : 30) || description.trim().length > (postType === 'chat_discussion' ? 300 : 3000)
+                ? 'text-amber-600 font-bold' 
+                : 'text-stone-400'
+            }`}>
+              {description.trim().length} / {postType === 'chat_discussion' ? 300 : 3000} 字
             </span>
           </div>
           <textarea
             required
-            minLength={30}
-            rows={4}
+            minLength={postType === 'chat_discussion' ? 20 : 30}
+            maxLength={postType === 'chat_discussion' ? 300 : 3000}
+            rows={postType === 'chat_discussion' ? 3 : 4}
             value={description}
             onChange={(e) => {
               setDescription(e.target.value);
               if (termsError) setTermsError(null);
             }}
             placeholder={
-              postType === 'pain_point'
+              postType === 'chat_discussion'
+                ? '簡述您想與大家交流的生活經驗、職場觀察或看法探討（20 ~ 300 字）...'
+                : postType === 'pain_point'
                 ? '詳述您在日常工作、生活或商業運營中發現的真實痛點與困境，讓專業解題者能看清癥結，為您提供專屬落地解法...'
                 : '詳述您的團隊現況、試過的方法、面臨的瓶頸，以及希望解答者提供的方案維度（如財務模型、合作條款、執行步驟等）...'
             }
@@ -596,36 +656,95 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
         </div>
 
-        {/* AI Automatic Analysis & Tagging Notice Banner */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-50/60 to-orange-50/40 border border-amber-200/90 flex items-start gap-3 shadow-2xs">
-          <div className="w-7 h-7 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
-            <Sparkles className="w-4 h-4 fill-stone-950" />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-black text-amber-950">AI分析與自動歸類</span>
-              <span className="text-[10px] font-bold text-amber-800 bg-amber-200/70 px-2 py-0.2 rounded-md">
-                自動生成 2~5 個標籤
-              </span>
+        {/* AI Agent「市場顧問」一鍵智慧分析與標籤帶入工具列 */}
+        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-100/40 to-stone-50 border border-amber-300/80 shadow-2xs space-y-2.5">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center font-black shadow-xs shrink-0">
+                <Sparkles className="w-3.5 h-3.5 fill-stone-950" />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-stone-900">AI Agent「市場顧問」自動分析</h4>
+                <p className="text-[10px] text-stone-500">依題意深度剖析痛點，自動帶入最佳領域、標籤與建議解題維度</p>
+              </div>
             </div>
-            <p className="text-[11px] sm:text-xs text-stone-600 leading-relaxed font-normal">
-              發布時由 <strong>AI</strong> 自動深度解析問題核心痛點、自動適配所屬專業分類與領域標籤，並即時媒合推薦在線顧問專家。您亦可於下方手動自訂。
-            </p>
+
+            <button
+              type="button"
+              onClick={handleAutoAnalyzeWithAi}
+              disabled={isAnalyzingWithAi}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-black text-stone-950 bg-amber-400 hover:bg-amber-300 active:scale-95 transition-all cursor-pointer shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {isAnalyzingWithAi ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>市場顧問分析中...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 fill-stone-950" />
+                  <span>一鍵自動分析與自動標籤</span>
+                </>
+              )}
+            </button>
           </div>
+
+          {/* AI 即時分析結果預覽卡片 */}
+          {aiAnalysisResult && (
+            <div className="p-3 rounded-xl bg-white/90 border border-amber-200 text-xs space-y-2 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between flex-wrap gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md border border-amber-300">
+                    建議領域：{aiAnalysisResult.category} › {aiAnalysisResult.subcategory}
+                  </span>
+                  <span className="text-[10px] font-bold bg-stone-100 text-stone-800 px-2 py-0.5 rounded-md">
+                    等級建議：{aiAnalysisResult.level}（NT$ {aiAnalysisResult.suggestedBounty?.toLocaleString()}）
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  已自動適配領域與標籤
+                </span>
+              </div>
+
+              <p className="text-[11px] text-stone-700 leading-relaxed font-normal bg-stone-50/80 p-2 rounded-lg border border-stone-200/60">
+                <strong>痛點診斷：</strong>{aiAnalysisResult.summary}
+              </p>
+
+              {aiAnalysisResult.structuredNeed && aiAnalysisResult.structuredNeed.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-stone-600 block">建議解答者應涵蓋之 3 大關鍵維度：</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                    {aiAnalysisResult.structuredNeed.map((need, i) => (
+                      <div key={i} className="text-[10px] p-1.5 bg-amber-50 text-amber-950 rounded-md border border-amber-200/60 flex items-center gap-1 font-medium">
+                        <span className="w-3.5 h-3.5 rounded-full bg-amber-200 text-amber-900 text-[9px] font-black flex items-center justify-center shrink-0">
+                          {i + 1}
+                        </span>
+                        <span className="truncate">{need}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Category & Subcategory */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-stone-700">主分類 *</label>
-              <span className="text-[10px] text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded font-bold">AI 智慧預選</span>
+              <label className="text-xs font-bold text-stone-700">主領域</label>
+              <span className="text-[10px] text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded font-bold">
+                未選將由「市場顧問」自動判定
+              </span>
             </div>
             <select
               value={category}
-              onChange={(e) => handleCategoryChange(e.target.value as Category)}
+              onChange={(e) => handleCategoryChange(e.target.value as Category | '')}
               className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-xs font-semibold text-stone-800 outline-none focus:border-amber-500"
             >
+              <option value="">請選擇主領域（未選由「市場顧問」自動判定）</option>
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -636,14 +755,19 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-stone-700">子領域 *</label>
-              <span className="text-[10px] text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded font-bold">可自訂</span>
+              <label className="text-xs font-bold text-stone-700">子領域</label>
+              <span className="text-[10px] text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded font-bold">
+                未選將由「市場顧問」自動判定
+              </span>
             </div>
             <select
               value={subcategory}
               onChange={(e) => setSubcategory(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-xs font-semibold text-stone-800 outline-none focus:border-amber-500"
             >
+              <option value="">
+                {category ? '請選擇子領域（未選由「市場顧問」自動判定）' : '請先選主領域（未選由「市場顧問」自動判定）'}
+              </option>
               {currentSubcategories.map((sc) => (
                 <option key={sc} value={sc}>
                   {sc}
@@ -1038,7 +1162,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>正在發布並適配標籤...</span>
+                <span>「市場顧問」正在判斷領域並標注標籤...</span>
               </>
             ) : (
               <>

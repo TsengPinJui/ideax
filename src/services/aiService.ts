@@ -219,30 +219,55 @@ export async function matchSolversWithAI(question: Question, solvers: Solver[]):
     console.warn('Network call to AI matcher failed, falling back to local matcher', err);
   }
 
-  // Local heuristic matcher
+  // Continuous Multi-Dimensional Matching Algorithm
+  const qTitle = (question.title || '').toLowerCase();
+  const qDesc = (question.description || '').toLowerCase();
   const qCategory = (question.category || '').toLowerCase();
   const qTags = (question.tags || []).map((t) => t.toLowerCase());
+  const qFullText = `${qTitle} ${qDesc} ${qCategory} ${qTags.join(' ')}`;
 
   const scored = solvers.map((s) => {
-    let score = 72;
+    // 1. Domain Match (0 ~ 25 pts)
     const sDomain = (s.domain || '').toLowerCase();
-    const sSkills = s.skills.map((sk) => sk.toLowerCase());
-
-    if (sDomain === qCategory) {
-      score += 15;
+    const sSub = (s.subcategory || '').toLowerCase();
+    let domainScore = 0;
+    if (sDomain && (qCategory.includes(sDomain) || sDomain.includes(qCategory))) {
+      domainScore = 22;
+    } else if (sSub && qFullText.includes(sSub)) {
+      domainScore = 18;
+    } else {
+      domainScore = 8;
     }
 
-    const matches = sSkills.filter((sk) => qTags.some((qt) => sk.includes(qt) || qt.includes(sk)));
-    score += Math.min(matches.length * 6, 12);
-    score += Math.round(s.rating * 2);
+    // 2. Skill & Keyword Intersection (0 ~ 35 pts)
+    const sSkills = (s.skills || []).map((sk) => sk.toLowerCase());
+    let skillHits = 0;
+    sSkills.forEach((sk) => {
+      if (qFullText.includes(sk) || qTags.some((qt) => sk.includes(qt) || qt.includes(sk))) {
+        skillHits += 1;
+      }
+    });
+    const skillScore = Math.min(35, Math.round((skillHits / Math.max(1, sSkills.length)) * 32) + (skillHits > 0 ? 8 : 2));
 
-    score = Math.min(Math.max(score, 78), 98);
+    // 3. Historical Track Record & Quality (0 ~ 25 pts)
+    const ratingScore = Math.round(((s.rating || 4.5) / 5) * 12);
+    const accScore = Math.round(((s.acceptedRate || 80) / 100) * 8);
+    const expScore = Math.min(5, Math.round(Math.log10(Math.max(1, s.answerCount || 5)) * 3));
 
-    const matchReason = `專精於 ${s.skills.slice(0, 2).join('、')}，在「${s.domain}」累積 ${s.answerCount} 次方案，採納率高達 ${s.acceptedRate}%。`;
+    // 4. Verified Expert & Credibility Bonus (0 ~ 10 pts)
+    const certScore = s.verifiedExpert ? 8 : 3;
+
+    // Total Raw Score: 不設人為上下限（僅限制有效範圍 0 ~ 100）
+    let rawScore = domainScore + skillScore + ratingScore + accScore + expScore + certScore;
+    const finalScore = Math.min(100, Math.max(0, Math.round(rawScore)));
+
+    const matchedKeySkills = s.skills.filter((sk) => qFullText.includes(sk.toLowerCase()));
+    const displaySkills = matchedKeySkills.length > 0 ? matchedKeySkills.slice(0, 2) : s.skills.slice(0, 2);
+    const matchReason = `專精於「${displaySkills.join('、')}」，在 ${s.domain || '相關領域'} 累計 ${s.answerCount || 10} 次方案驗收，歷史滿意度達 ${s.rating || 4.9} 星（採納率 ${s.acceptedRate || 85}%）。`;
 
     return {
       solverId: s.id,
-      matchScore: score,
+      matchScore: finalScore,
       matchReason,
       solver: s,
     };
@@ -418,7 +443,7 @@ export async function generatePreliminaryReportWithAI(question: Question): Promi
       const data = await response.json();
       if (data && data.report) {
         return {
-          id: `pre-report-${question.id}-${Date.now()}`,
+          id: `pre-report-live-${question.id}-${Date.now()}`,
           generatedAt: new Date().toISOString(),
           problemAnalysis: data.report.problemAnalysis,
           recommendedSolutions: data.report.recommendedSolutions,

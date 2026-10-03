@@ -5,6 +5,7 @@ import { CategorySidebar } from './CategorySidebar';
 import { NotificationsSidebar } from './NotificationsSidebar';
 import { AuthModal } from './AuthModal';
 import { AppTab, Category, QuestionSortOption, PostType, SpecialZone, User as UserType, SUBSCRIPTION_PLANS, UserDashboardTab } from '../types';
+import { isTestAccountUserId } from '../data/mockData';
 import {
   Lightbulb,
   PlusCircle,
@@ -134,6 +135,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     adminMailBadgeCount,
     addTestAccount,
     promptLogin,
+    getAdminRemainingDailyQuota,
   } = useApp();
 
   const [internalIsCategorySidebarOpen, setInternalIsCategorySidebarOpen] = useState(false);
@@ -976,14 +978,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs hover:shadow-xs group shrink-0 ${
               currentUser.role === 'solver'
                 ? 'bg-blue-50/90 hover:bg-blue-100 border-blue-200/90 text-blue-950'
+                : currentUser.role === 'admin'
+                ? 'bg-purple-50/90 hover:bg-purple-100 border-purple-200/90 text-purple-950'
                 : 'bg-amber-50/90 hover:bg-amber-100 border-amber-200/90 text-amber-950'
             }`}
-            title={currentUser.role === 'solver' ? '應收帳款中心' : '點數中心'}
+            title={currentUser.role === 'solver' ? '應收帳款中心' : currentUser.role === 'admin' ? '管理員每日可撥付配額中心' : '點數中心'}
           >
             {currentUser.role === 'solver' ? (
               <>
                 <Building2 className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
                 <span>{isNoPaymentMode ? '應收 尚未開放' : `應收 NT$ ${(currentUser.withheldPoints || 0).toLocaleString()}`}</span>
+              </>
+            ) : currentUser.role === 'admin' ? (
+              <>
+                <Coins className="w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform" />
+                <span className="font-mono text-purple-950 font-extrabold">{(getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()} 點</span>
               </>
             ) : (
               <>
@@ -1006,9 +1015,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             className={`sm:hidden flex items-center gap-1 px-2 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
               currentUser.role === 'solver'
                 ? 'bg-blue-50/95 hover:bg-blue-100 border-blue-200 text-blue-950'
+                : currentUser.role === 'admin'
+                ? 'bg-purple-50/95 hover:bg-purple-100 border-purple-200 text-purple-950'
                 : 'bg-amber-50/95 hover:bg-amber-100 border-amber-200 text-amber-950'
             }`}
-            title={currentUser.role === 'solver' ? '應收帳款管理' : '點數儲值管理'}
+            title={currentUser.role === 'solver' ? '應收帳款管理' : currentUser.role === 'admin' ? '管理員每日可撥配額' : '點數儲值管理'}
           >
             {currentUser.role === 'solver' ? (
               <>
@@ -1017,6 +1028,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className={`text-[11px] font-black text-blue-950 ${isNoPaymentMode ? 'font-sans text-[10px]' : 'font-mono'}`}>
                   {isNoPaymentMode ? '尚未開放' : `NT$${(currentUser.withheldPoints || 0).toLocaleString()}`}
                 </span>
+              </>
+            ) : currentUser.role === 'admin' ? (
+              <>
+                <Coins className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <span className="font-mono text-purple-950 font-black text-[11px]">
+                  {(getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()}
+                </span>
+                <span className="text-[10px] text-purple-900 font-bold">點</span>
               </>
             ) : (
               <>
@@ -1362,17 +1381,37 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </button>
                     </div>
 
-                    {/* 分類 3: 👑 會員方案與費率 */}
+                    {/* 分類 3: ✨ AI 智能與會員方案 */}
                     <div className="py-1.5 px-1.5 space-y-0.5">
-                      <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-amber-700 uppercase tracking-wider flex items-center justify-between">
+                      <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-amber-900 uppercase tracking-wider flex items-center justify-between">
                         <span className="flex items-center gap-1">
-                          <Crown className="w-3 h-3 text-amber-600" />
-                          <span>會員方案與費率</span>
+                          <Sparkles className="w-3 h-3 text-amber-600" />
+                          <span>AI 智能與會員方案</span>
                         </span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">1 項</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">2 項</span>
                       </p>
 
-                      {/* 會員方案與費率管理 */}
+                      {/* 1. AI-CRM 監控與 Agent 測試 */}
+                      <button
+                        onClick={() => handleOpenDashboard('admin_aicrm')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-50 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-700 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                            <Sparkles className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="block font-black text-stone-900 group-hover:text-purple-900 transition-colors">AI-CRM 監控與 Agent 測試</span>
+                              <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">後台</span>
+                            </div>
+                            <span className="text-[10px] text-stone-500 font-normal">全站客服特助、拓客代操、爭議調解與 Agent 實測</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
+                      </button>
+
+                      {/* 2. 會員方案與費率管理 */}
                       <button
                         onClick={() => handleOpenDashboard('subscriptions')}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
@@ -1441,43 +1480,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
                       </button>
 
-                      {/* 只有管理員帳號才可以新增測試帳號 */}
-                      <div className="px-2 pt-1 pb-1 grid grid-cols-3 gap-1 bg-stone-50/80 rounded-xl border border-stone-200/80 my-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            addTestAccount({ role: 'solver', autoSwitch: true });
-                            setIsUserMenuOpen(false);
-                          }}
-                          className="px-1.5 py-1 rounded-lg bg-white hover:bg-blue-50 text-blue-900 font-bold text-[10px] text-center border border-blue-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
-                          title="免註冊一鍵建立測試解答者並切換"
-                        >
-                          + 測試解答者
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            addTestAccount({ role: 'questioner', autoSwitch: true });
-                            setIsUserMenuOpen(false);
-                          }}
-                          className="px-1.5 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-900 font-bold text-[10px] text-center border border-amber-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
-                          title="免註冊一鍵建立測試提問者並切換"
-                        >
-                          + 測試提問者
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            addTestAccount({ role: 'admin', autoSwitch: true });
-                            setIsUserMenuOpen(false);
-                          }}
-                          className="px-1.5 py-1 rounded-lg bg-white hover:bg-purple-50 text-purple-900 font-bold text-[10px] text-center border border-purple-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
-                          title="免註冊一鍵建立測試管理員並切換"
-                        >
-                          + 測試管理員
-                        </button>
-                      </div>
-
                       {/* 15. 登出帳號 */}
                       <button
                         onClick={() => {
@@ -1495,6 +1497,30 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 ) : (
                   <div className="py-1 divide-y divide-stone-100">
+
+                  {/* 若當前登入為測試模擬帳號（非真實普通用戶），在頂部提供一鍵返回管理員身分 */}
+                  {(isTestAccountUserId(currentUser.id) || ['solver-1', 'solver-2', 'user-questioner'].includes(currentUser.id)) && (
+                    <div className="p-2 m-1.5 bg-gradient-to-r from-purple-950 via-stone-900 to-indigo-950 rounded-2xl border border-purple-500/50 text-white shadow-xs space-y-1.5">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-[10px] font-black text-amber-300 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-amber-400" />
+                          <span>測試模擬身分進行中</span>
+                        </span>
+                        <span className="text-[9px] text-purple-300">管理員專用</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const adminUser = availableUsers.find((u) => u.id === 'user-admin' || u.role === 'admin');
+                          if (adminUser) handleSwitchUser(adminUser);
+                        }}
+                        className="w-full py-1.5 px-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-black text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer border border-purple-400/40"
+                      >
+                        <Crown className="w-3.5 h-3.5 text-amber-300" />
+                        <span>👑 一鍵返回管理員身分 (Admin)</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* 區塊 1：資產與帳務 (全模式配置同步) */}
                   <div className="py-1.5 px-1.5 space-y-0.5">
@@ -1563,7 +1589,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-stone-950 group-hover:scale-105 flex items-center justify-center shrink-0 shadow-2xs font-bold">
                           <Crown className="w-3.5 h-3.5 fill-stone-950" />
                         </div>
-                        <span>AI-CRM (含24hr特助代操)</span>
+                        <span>AI-CRM 客戶關係管理</span>
                       </div>
                       <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
                         大師專屬

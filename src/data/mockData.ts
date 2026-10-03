@@ -1865,6 +1865,90 @@ export const MOCK_CONVERSATIONS: import('../types').ChatConversation[] = [
       },
     ],
   },
+  {
+    id: 'conv-admin-1',
+    participantIds: ['user-admin', 'user-questioner'],
+    conversationRole: 'questioner',
+    participantDetails: [
+      {
+        id: 'user-admin',
+        name: '站長・仲裁管理員',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+        title: '平台總管',
+      },
+      {
+        id: 'user-questioner',
+        name: '林書豪',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        title: '早期新創孵化創辦人',
+      },
+    ],
+    relatedQuestionId: 'q-1',
+    relatedQuestionTitle: '校園共享雨傘如何從租借收入轉向商家合作模式？',
+    lastMessage: '管理員：您好！已為您調閱第三方金流託管進度，隨時可發起 AI 市場顧問仲裁調解。',
+    lastMessageTime: '5 分鐘前',
+    unreadCount: 0,
+    messages: [
+      {
+        id: 'msg-adm-101',
+        senderId: 'user-questioner',
+        senderName: '林書豪',
+        senderAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        text: '管理員您好，我們目前正在與柯顧問進行校園加盟條款的履約驗收，想確認第三方價金保管與三階段驗收撥款的保障機制。',
+        createdAt: '2026-09-24T09:00:00Z',
+      },
+      {
+        id: 'msg-adm-102',
+        senderId: 'user-admin',
+        senderName: '站長・仲裁管理員',
+        senderAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+        text: '林創辦人您好！IdeaX 平台款項一律採用第三方履約保管，未經您點擊驗收通過前絕不擅自撥款。若交付成果有落差，雙方亦可在聊天室點擊「+ → AI 市場顧問調解仲裁」生成具法律衡平性的和解協議。',
+        createdAt: '2026-09-24T09:10:00Z',
+      },
+    ],
+  },
+  {
+    id: 'conv-admin-2',
+    participantIds: ['user-admin', 'solver-1'],
+    conversationRole: 'solver',
+    participantDetails: [
+      {
+        id: 'user-admin',
+        name: '站長・仲裁管理員',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+        title: '平台總管',
+      },
+      {
+        id: 'solver-1',
+        name: '柯育任',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        title: '智慧零售架構師 / 新創策略顧問',
+      },
+    ],
+    relatedQuestionId: 'q-demo-pain-1',
+    relatedQuestionTitle: '大專校園共享空間硬體租借的「押金與違約爭議」如何從制度設計根除？',
+    lastMessage: '管理員：恭喜柯顧問！您的專家實名資格與 5 星解題紀錄已完成官方核驗。',
+    lastMessageTime: '20 分鐘前',
+    unreadCount: 0,
+    messages: [
+      {
+        id: 'msg-adm-201',
+        senderId: 'solver-1',
+        senderName: '柯育任',
+        senderAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        text: '管理團隊好，我已提交近期的專家落地方案與勞務報酬撥付申請，想了解本週四撥款的審核進度。',
+        createdAt: '2026-09-24T14:00:00Z',
+      },
+      {
+        id: 'msg-adm-202',
+        senderId: 'user-admin',
+        senderName: '站長・仲裁管理員',
+        senderAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+        text: '恭喜柯顧問！您的方案採納評價均達 5 顆星，應收帳款已列入本期優先自動劃撥名冊。祝您接案順利！',
+        createdAt: '2026-09-24T14:20:00Z',
+      },
+    ],
+  },
 ];
 
 // =========================================================================
@@ -2033,12 +2117,12 @@ export const isTestAccountUserId = (userId?: string): boolean => {
 /**
  * 判定各類資料是否為模擬/測試預留資料
  */
-export const isMockQuestionId = (id: string, authorId?: string): boolean => {
+export const isMockQuestionId = (id: string, _authorId?: string): boolean => {
   if (!id) return false;
   if (id === 'q-test-1') return true;
   if (id.startsWith('q-test-') || id.startsWith('q-demo-') || id.startsWith('q-mock-')) return true;
-  if (/^q-[0-9]+$/.test(id)) return true;
-  if (authorId && isTestAccountUserId(authorId)) return true;
+  // 僅命中模擬預置題目 q-1 ~ q-99，絕不誤判以 Date.now() 生成之真實題目 q-174...
+  if (/^q-[1-9]$|^q-[1-9][0-9]$/.test(id)) return true;
   return false;
 };
 

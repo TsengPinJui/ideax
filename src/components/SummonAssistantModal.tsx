@@ -134,7 +134,7 @@ export const SummonAssistantModal: React.FC<SummonAssistantModalProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-black text-base sm:text-lg text-white flex items-center gap-1.5">
-                  <span>24hr AI 特助顧問・即時策略建議</span>
+                  <span>24hr AI 軍師顧問・即時策略建議</span>
                 </h3>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40 flex items-center gap-1">
                   <Crown className="w-3 h-3 text-amber-400" />
@@ -174,7 +174,7 @@ export const SummonAssistantModal: React.FC<SummonAssistantModalProps> = ({
               <Crown className="w-5 h-5 text-amber-600 shrink-0" />
               <div className="text-xs text-stone-800">
                 <span className="font-black text-amber-900">非大師方案專屬體驗：</span>
-                {trialUsed ? '您已體驗過 1 次，升級即可無限次在對話中召喚 AI 特助！' : '目前為您開放「免費體驗 1 次」，立即感受特助談判實戰力！'}
+                {trialUsed ? '您已體驗過 1 次，升級即可無限次在對話中召喚 AI 軍師！' : '目前為您開放「免費體驗 1 次」，立即感受軍師談判實戰力！'}
               </div>
             </div>
             {onUpgradePlan && (
@@ -183,7 +183,7 @@ export const SummonAssistantModal: React.FC<SummonAssistantModalProps> = ({
                 onClick={onUpgradePlan}
                 className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs shadow-xs transition-all cursor-pointer shrink-0 flex items-center gap-1"
               >
-                <span>升級大師方案 ($1,490/月，0% 服務費)</span>
+                <span>升級大師方案 ($1,980/月，2% 服務費)</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
@@ -211,7 +211,7 @@ export const SummonAssistantModal: React.FC<SummonAssistantModalProps> = ({
                 />
                 <span>正在與 {otherParticipant.name} 溝通中（最近 3~4 則紀錄）</span>
               </div>
-              <span className="text-[11px] text-stone-400 font-normal">特助已讀取上下文</span>
+              <span className="text-[11px] text-stone-400 font-normal">軍師已讀取上下文</span>
             </div>
 
             <div className="space-y-1 max-h-28 overflow-y-auto text-xs bg-white p-2.5 rounded-xl border border-stone-100">
@@ -274,7 +274,7 @@ export const SummonAssistantModal: React.FC<SummonAssistantModalProps> = ({
               className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 active:scale-98 text-stone-950 font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Sparkles className={`w-4 h-4 fill-stone-950 ${isLoading ? 'animate-spin' : ''}`} />
-              <span>{isLoading ? '特助正在推演心理學與談判策略中...' : '召喚 AI 特助推演 3 種策略與建議回答'}</span>
+              <span>{isLoading ? '軍師正在推演心理學與談判策略中...' : '召喚 AI 軍師推演 3 種策略與建議回答'}</span>
             </button>
           </div>
 
@@ -284,7 +284,7 @@ export const SummonAssistantModal: React.FC<SummonAssistantModalProps> = ({
               <div className="flex items-center justify-between">
                 <h4 className="font-black text-sm text-stone-900 flex items-center gap-1.5">
                   <Lightbulb className="w-4 h-4 text-amber-600" />
-                  <span>AI 特助建議作戰策略（共 3 種應對取向）</span>
+                  <span>AI 軍師建議作戰策略（共 3 種應對取向）</span>
                 </h4>
                 <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
                   {quickTips}

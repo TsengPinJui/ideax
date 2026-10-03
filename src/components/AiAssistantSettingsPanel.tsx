@@ -52,11 +52,6 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
     setTimeout(() => setIsSavedToast(false), 3000);
   };
 
-  const handleToggleEnable = () => {
-    const next = { ...config, isEnabled: !config.isEnabled };
-    handleSave(next);
-  };
-
   const handleAddFaq = () => {
     if (!newFaqQ.trim() || !newFaqA.trim()) return;
     const newItem: AssistantFaqItem = {
@@ -104,58 +99,6 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
 
   return (
     <div className="space-y-6">
-      {/* 頂部功能介紹 Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-stone-900 via-stone-800 to-amber-950 p-5 sm:p-6 text-white shadow-xl border border-amber-500/30">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-black border border-amber-500/40">
-                <Crown className="w-3.5 h-3.5 text-amber-400" />
-                大師方案專屬尊榮特權
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
-                24hr 離線全天候護航
-              </span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-amber-100 flex items-center gap-2">
-              <Bot className="w-6 h-6 text-amber-400" />
-              24hr AI客服特助代客服務
-            </h2>
-            <p className="text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
-              協助專家離線時主動與客戶交談維持緊密關係，自動梳理時程與痛點規格；
-              專家在線時亦可在聊天室隨時召喚特助請求談判與報價建議，雙軌確保訂單零流失！
-            </p>
-          </div>
-
-          {/* 總開關控制鈕 */}
-          <div className="flex items-center gap-3 bg-stone-900/80 p-3 rounded-2xl border border-stone-700/80 shrink-0">
-            <div className="text-right">
-              <div className="text-xs font-black text-stone-200">特助代客服務狀態</div>
-              <div className={`text-[11px] font-bold ${config.isEnabled ? 'text-emerald-400' : 'text-stone-400'}`}>
-                {config.isEnabled ? '● 全天候在線代管中' : '○ 目前已關閉'}
-              </div>
-            </div>
-            <button
-              type="button"
-              disabled={!isMasterOrAdmin}
-              onClick={handleToggleEnable}
-              className={`w-14 h-8 rounded-full transition-colors relative cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                config.isEnabled ? 'bg-amber-500' : 'bg-stone-700'
-              }`}
-            >
-              <div
-                className={`w-6 h-6 rounded-full bg-white shadow-md transition-transform absolute top-1 ${
-                  config.isEnabled ? 'left-7' : 'left-1'
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-
-        {/* 背景裝飾光澤 */}
-        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-      </div>
-
       {/* 方案門檻提示：若未達大師方案 */}
       {!isMasterOrAdmin && (
         <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border-2 border-amber-400/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-300">
@@ -169,7 +112,7 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
               </h4>
               <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">
                 您目前的方案為【{userTier === 'authority' ? '權威方案' : userTier === 'free' ? '一般會員' : userTier === 'pro' ? 'Pro 方案' : '達人方案'}】。
-                升級至大師方案即可立即解鎖 24hr AI 客服特助代客服務、0% 平台服務費（100% 全額入帳）與全功能 AI-CRM！
+                升級至大師方案即可立即解鎖 24hr AI 客服特助代客服務、2% 極低服務費（實收 98%）與全功能 AI-CRM！
               </p>
             </div>
           </div>
@@ -180,7 +123,7 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
               className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs shadow-md transition-all shrink-0 cursor-pointer flex items-center gap-1.5 justify-center"
             >
               <Crown className="w-4 h-4 text-stone-950" />
-              <span>立即升級大師方案 ($1,490/月，0% 服務費)</span>
+              <span>立即升級大師方案 ($1,980/月，2% 服務費)</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           )}
@@ -199,18 +142,18 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 左側 2 欄：核心行為與知識庫設定 */}
         <div className="lg:col-span-2 space-y-6">
-          {/* 模組 1: 交談語氣與離線召喚時間 */}
+          {/* 模組 1: 觸發時機與交談語氣 */}
           <div className="bg-white dark:bg-stone-900 rounded-2xl p-5 border border-stone-200 dark:border-stone-800 shadow-xs space-y-4">
             <h3 className="text-sm font-black text-stone-900 dark:text-stone-100 flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-500" />
-              1. 召喚時間與交談語氣設定
+              1. 觸發時機與交談語氣
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* 離線召喚時間 (預設 20 分鐘) */}
               <div>
                 <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5 flex items-center justify-between">
-                  <span>專家離線召喚時間</span>
+                  <span>專家離線觸發時間</span>
                   <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">預設 20 分鐘</span>
                 </label>
                 <select
@@ -219,49 +162,47 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
                   className="w-full text-xs font-bold p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 cursor-pointer"
                 >
                   <option value={0}>客戶發訊立即代答（0 分鐘）</option>
-                  <option value={5}>專家離線 5 分鐘未回覆</option>
-                  <option value={10}>專家離線 10 分鐘未回覆</option>
-                  <option value={20}>專家離線 20 分鐘未回覆（標準推薦）</option>
-                  <option value={30}>專家離線 30 分鐘未回覆</option>
-                  <option value={60}>專家離線 60 分鐘未回覆</option>
+                  <option value={5}>離線 5 分鐘未回覆</option>
+                  <option value={10}>離線 10 分鐘未回覆</option>
+                  <option value={20}>離線 20 分鐘未回覆（標準推薦）</option>
+                  <option value={30}>離線 30 分鐘未回覆</option>
+                  <option value={60}>離線 60 分鐘未回覆</option>
                 </select>
                 <p className="text-[10px] text-stone-400 mt-1">
-                  💡 若您在上述時間內未在線回覆，AI 特助將自動代表您禮貌回話，避免潛在委託人因等待而離開。
+                  離線達設定時長，AI特助自動代答避免潛在客戶流失。
                 </p>
               </div>
 
               {/* 交談語氣 */}
               <div>
                 <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5">
-                  交談語氣與風格
+                  <span>交談語氣風格</span>
                 </label>
                 <select
                   value={config.tone}
                   onChange={(e) => handleSave({ ...config, tone: e.target.value as any })}
                   className="w-full text-xs font-bold p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 cursor-pointer"
                 >
+                  <option value="adaptive">依AI判定客戶習慣客製語氣</option>
                   <option value="professional">專業幹練・俐落嚴謹（商務諮詢推薦）</option>
                   <option value="warm">親切溫暖・耐心傾聽（個人顧問與輔導推薦）</option>
                   <option value="technical">架構深度・精準客觀（工程與資安領域推薦）</option>
                   <option value="authoritative">戰略高度・自信堅定（高階主管與投資策略推薦）</option>
                 </select>
-                <p className="text-[10px] text-stone-400 mt-1">
-                  特助將模擬您選擇的口吻與客戶交談。
-                </p>
               </div>
             </div>
 
             {/* 自然語言期望回答方向 */}
             <div>
               <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5 flex items-center justify-between">
-                <span>希望的回答方向與基本策略（可用自然語言自訂）</span>
-                <span className="text-[10px] text-stone-400">AI 將融會貫通於所有對話中</span>
+                <span>應對方針與策略（自然語言自訂）</span>
+                <span className="text-[10px] text-stone-400">融入特助對話決策</span>
               </label>
               <textarea
                 value={config.toneDescription || ''}
                 onChange={(e) => setConfig({ ...config, toneDescription: e.target.value })}
                 onBlur={() => handleSave(config)}
-                placeholder="例如：以專業嚴謹且具同理心的態度接待，多引導客戶說明專案時程與預算範圍，強調我具備 10 年實戰經驗且有平台款項託管保證。"
+                placeholder="例如：以嚴謹具同理心態度接待，引導說明時程與預算，強調 10 年實戰經驗與平台款項託管保證。"
                 rows={2}
                 className="w-full text-xs p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 focus:ring-2 focus:ring-amber-500 outline-hidden"
               />
@@ -273,9 +214,9 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black text-stone-900 dark:text-stone-100 flex items-center gap-2">
                 <HelpCircle className="w-4 h-4 text-amber-500" />
-                2. 專家自訂 FAQ 與期望回答庫 ({config.faqList.length})
+                2. 常見 FAQ 知識庫 ({config.faqList.length})
               </h3>
-              <span className="text-[11px] text-stone-400">當客戶問及相符問題時優先參考</span>
+              <span className="text-[11px] text-stone-400">提問相符時優先引用</span>
             </div>
 
             {/* 現有 FAQ 清單 */}
@@ -307,7 +248,7 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
 
             {/* 新增 FAQ 表單 */}
             <div className="pt-2 border-t border-stone-100 dark:border-stone-800 space-y-2">
-              <span className="text-xs font-bold text-stone-700 dark:text-stone-300">新增一筆常見問題：</span>
+              <span className="text-xs font-bold text-stone-700 dark:text-stone-300">新增常見問題：</span>
               <input
                 type="text"
                 value={newFaqQ}
@@ -318,7 +259,7 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
               <textarea
                 value={newFaqA}
                 onChange={(e) => setNewFaqA(e.target.value)}
-                placeholder="期望特助回答的方向，例如：可提供標準 NDA 協議，所有委託資料在平台皆受到加密與保密條款保護。"
+                placeholder="期望特助回答方向，例如：可提供標準 NDA 協議，所有委託資料在平台皆受到加密與保密條款保護。"
                 rows={2}
                 className="w-full text-xs p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200"
               />
@@ -329,7 +270,7 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
                 className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 disabled:opacity-50 text-stone-950 font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <Plus className="w-4 h-4" />
-                <span>加入 FAQ 知識庫</span>
+                <span>加入知識庫</span>
               </button>
             </div>
           </div>
@@ -339,9 +280,9 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black text-stone-900 dark:text-stone-100 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                3. 其他自訂 Prompt 指令庫 ({config.customPrompts.length})
+                3. 自訂指令庫 ({config.customPrompts.length})
               </h3>
-              <span className="text-[11px] text-stone-400">AI 特助代答時會嚴格遵守</span>
+              <span className="text-[11px] text-stone-400">特助代答時嚴格遵循</span>
             </div>
 
             <div className="space-y-2">
@@ -398,7 +339,7 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
           <div className="bg-white dark:bg-stone-900 rounded-2xl p-5 border border-stone-200 dark:border-stone-800 shadow-xs space-y-3">
             <h3 className="text-sm font-black text-stone-900 dark:text-stone-100 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              4. 交易邊界與權限約制
+              4. 交易確認與權限約制
             </h3>
 
             <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 space-y-2">
@@ -411,10 +352,10 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
                 />
                 <div className="text-xs">
                   <span className="font-bold text-amber-900 dark:text-amber-200 block">
-                    產出交易/報價草案仍要專家事後親自確認
+                    報價與合約草案需專家確認
                   </span>
                   <span className="text-[11px] text-amber-800 dark:text-amber-400 leading-relaxed block mt-0.5">
-                    強烈建議開啟：AI 特助只負責記錄時程與需求規格，任何正式具有法律約束力的報價與合約，皆須您親自確認簽字才生效，嚴防擅自承諾。
+                    特助僅協助記錄需求與時程，任何正式具法律約束力之報價合約需專家親自確認，防止未授權承諾。
                   </span>
                 </div>
               </label>
@@ -425,46 +366,46 @@ export const AiAssistantSettingsPanel: React.FC<AiAssistantSettingsPanelProps> =
           <div className="bg-white dark:bg-stone-900 rounded-2xl p-5 border border-stone-200 dark:border-stone-800 shadow-xs space-y-3">
             <h3 className="text-sm font-black text-stone-900 dark:text-stone-100 flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-rose-500" />
-              5. 風險控管與雙重防火牆
+              5. 安全防火牆
             </h3>
 
             {/* 防火牆 1: 商業機密與個資洩漏防護 */}
             <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 space-y-1">
               <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>商業機密與個資防火牆：運作中</span>
+                <span>個資與商業機密防火牆：運行中</span>
               </div>
               <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
-                系統嚴格遮蔽身分證字號、銀行帳號、私人聯絡方式（電話/LINE），並隔離其他客戶案件機密，同時具備防 Prompt Injection 提示詞注入攻擊防禦。
+                自動遮蔽身分證、銀行帳號、私人聯絡方式（電話/LINE），隔離客戶案件機密並防範 Prompt 注入。
               </p>
             </div>
 
             {/* 防火牆 2: 避免惡意消耗 Tokens */}
             <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-stone-800 dark:text-stone-200">
-                <span>單對話單日代答上限保護</span>
+                <span>單對話每日代答上限</span>
                 <span className="text-amber-600 dark:text-amber-400 font-mono font-bold">
-                  {config.dailyMessageLimitPerChat || 30} 則 / 日 / 聊天室
+                  {config.dailyMessageLimitPerChat || 30} 則 / 日 / 室
                 </span>
               </div>
               <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
-                保護對話不被惡意消耗 Tokens。每間聊天室每日最高 30 則代答，超額時委婉提醒客戶靜候專家上線。
+                每間聊天室每日最高 30 則代答，超額時委婉提醒客戶靜候專家上線，避免惡意消耗。
               </p>
               <div className="flex items-center gap-2 pt-1 text-[11px] text-stone-400">
                 <Zap className="w-3 h-3 text-amber-500" />
-                <span>累計協助接待次數：{config.totalAssistedCount || 0} 次</span>
+                <span>累計接待：{config.totalAssistedCount || 0} 次</span>
               </div>
             </div>
           </div>
 
-          {/* 模組 6: 聊天室在線召喚教學卡 */}
+          {/* 模組 6: AI-CRM 特助代操與 24hr巡航雷達說明卡 */}
           <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-2xl p-5 border border-amber-400/40 space-y-2">
             <h4 className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-              <MessageSquare className="w-4 h-4 text-amber-500" />
-              專家在線功能：聊天室中「召喚 AI 特助建議」
+              <Bot className="w-4 h-4 text-amber-500" />
+              AI-CRM 特助代操與離線接待
             </h4>
             <p className="text-[11px] text-stone-600 dark:text-stone-300 leading-relaxed">
-              當您親自在線與客戶洽談時，在聊天室輸入框上方點擊<strong>「✨ 召喚 AI 特助」</strong>，輸入您面臨的談判瓶頸（例如客戶嫌貴或時程太趕），AI 會即刻為您量身產出 3 組專業談判策略與發送草稿，讓您一鍵帶入微調！
+              專家離線或忙碌時，AI 特助全天候在線為您接待客戶、釐清痛點時程；配合<strong>「24hr巡航雷達」</strong>排定之代操任務，在最佳商業時點自動發送破冰提案。
             </p>
           </div>
         </div>

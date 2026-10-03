@@ -23,6 +23,7 @@ import {
   SearchMode,
   DeviceAccount,
   Assistant24hrConfig,
+  AIPreliminaryReport,
 } from '../types';
 import {
   MOCK_QUESTIONS,
@@ -246,6 +247,15 @@ interface AppContextType {
   // AI Auto-Tagging & Categorization
   autoTagQuestionWithAI: (questionId: string) => Promise<{ success: boolean; data?: AIAnalysisResult }>;
   autoTagAllMyQuestionsWithAI: () => Promise<number>;
+  saveQuestionPreliminaryReport: (
+    questionId: string,
+    report: AIPreliminaryReport,
+    unlockUserId?: string
+  ) => Promise<Question | null>;
+  unlockQuestionPreliminaryReport: (
+    questionId: string,
+    userId: string
+  ) => Promise<boolean>;
 
   // Chat actions
   startDirectChat: (targetUser: { id: string; name: string; avatar: string; title: string }, question?: Question) => string;
@@ -352,6 +362,7 @@ interface AppContextType {
   ) => void;
   hideCenterToast: () => void;
   promptLogin: (customSubtitle?: string) => void;
+  openRechargePage: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -613,10 +624,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return list;
         });
 
+        const deletedQIds = getDeletedQuestionIds();
         setQuestions((prev) => {
           const merged = [...prev];
           MOCK_QUESTIONS.forEach((q) => {
-            if (!merged.some((m) => m.id === q.id)) merged.push(q);
+            if (!deletedQIds.has(q.id) && !merged.some((m) => m.id === q.id)) merged.push(q);
           });
           return merged;
         });
@@ -678,7 +690,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             password: isAdmin ? 'John930521' : parsed.password,
             name: isAdmin ? 'IdeaX 管理團隊' : parsed.name,
             role: isAdmin ? ('admin' as const) : (parsed.role || 'questioner'),
-            balance: typeof parsed.balance === 'number' ? parsed.balance : 0,
+            balance: isAdmin
+              ? (typeof parsed.balance === 'number' && parsed.balance > 0 ? parsed.balance : 50000)
+              : (typeof parsed.balance === 'number' ? parsed.balance : 0),
             withheldPoints: typeof parsed.withheldPoints === 'number' ? parsed.withheldPoints : 0,
             pendingEarnings: typeof parsed.pendingEarnings === 'number' ? parsed.pendingEarnings : 0,
             reputation: typeof parsed.reputation === 'number' ? parsed.reputation : 100,
@@ -695,6 +709,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return GUEST_USER;
   });
 
+  const openRechargePage = useCallback(() => {
+    if (currentUser.id === 'user-guest') {
+      openAuthModal('login', 'email');
+      return;
+    }
+    window.dispatchEvent(new CustomEvent('ideax_open_recharge'));
+  }, [currentUser.id, openAuthModal]);
+
   const [availableUsers, setAvailableUsers] = useState<User[]>(() => {
     const isDemo = getInitialIsDemoMode();
     try {
@@ -710,7 +732,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               password: isAdmin ? 'John930521' : u.password,
               name: isAdmin ? 'IdeaX 管理團隊' : u.name,
               role: isAdmin ? ('admin' as const) : u.role,
-              balance: typeof u.balance === 'number' ? u.balance : 0,
+              balance: isAdmin
+                ? (typeof u.balance === 'number' && u.balance > 0 ? u.balance : 50000)
+                : (typeof u.balance === 'number' ? u.balance : 0),
               withheldPoints: typeof u.withheldPoints === 'number' ? u.withheldPoints : 0,
             };
           });
@@ -1449,13 +1473,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (cloudData.users && cloudData.users.length > 0) {
-        const cleanUsers = !isDemo ? cloudData.users.filter((u) => !isTestAccountUserId(u.id)) : cloudData.users;
+        const rawUsers = !isDemo ? cloudData.users.filter((u) => !isTestAccountUserId(u.id)) : cloudData.users;
+        const cleanUsers = rawUsers.map((u) => {
+          if (u.id === 'user-admin' || u.role === 'admin') {
+            return {
+              ...u,
+              balance: typeof u.balance === 'number' && u.balance > 0 ? u.balance : 50000,
+            };
+          }
+          return u;
+        });
         setAvailableUsers(cleanUsers.length > 0 ? cleanUsers : CLEAN_CORE_USERS);
         try {
           localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(cleanUsers));
         } catch {}
-        const found = cloudData.users.find((u) => u.id === currentUser.id);
-        if (found) setCurrentUser(found);
+        const found = cleanUsers.find((u) => u.id === currentUser.id);
+        if (found) {
+          const effectiveUser = (found.id === 'user-admin' || found.role === 'admin')
+            ? { ...found, balance: typeof found.balance === 'number' && found.balance > 0 ? found.balance : 50000 }
+            : found;
+          setCurrentUser(effectiveUser);
+        }
       }
 
       if (cloudData.answers && cloudData.answers.length > 0) {
@@ -1548,14 +1586,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (cloudData && ((cloudData.questions && cloudData.questions.length > 0) || (cloudData.users && cloudData.users.length > 0))) {
           if (cloudData.users && cloudData.users.length > 0) {
-            if (!isDemo) {
-              const cleanUsers = cloudData.users.filter((u) => !isTestAccountUserId(u.id));
-              setAvailableUsers(cleanUsers.length > 0 ? cleanUsers : CLEAN_CORE_USERS);
-            } else {
-              setAvailableUsers(cloudData.users);
+            const rawUsers = !isDemo ? cloudData.users.filter((u) => !isTestAccountUserId(u.id)) : cloudData.users;
+            const cleanUsers = rawUsers.map((u) => {
+              if (u.id === 'user-admin' || u.role === 'admin') {
+                return {
+                  ...u,
+                  balance: typeof u.balance === 'number' && u.balance > 0 ? u.balance : 50000,
+                };
+              }
+              return u;
+            });
+            setAvailableUsers(cleanUsers.length > 0 ? cleanUsers : CLEAN_CORE_USERS);
+            const foundUser = cleanUsers.find((u) => u.id === currentUser.id);
+            if (foundUser) {
+              const effectiveUser = (foundUser.id === 'user-admin' || foundUser.role === 'admin')
+                ? { ...foundUser, balance: typeof foundUser.balance === 'number' && foundUser.balance > 0 ? foundUser.balance : 50000 }
+                : foundUser;
+              setCurrentUser(effectiveUser);
             }
-            const foundUser = cloudData.users.find((u) => u.id === currentUser.id);
-            if (foundUser) setCurrentUser(foundUser);
           }
           if (cloudData.questions && cloudData.questions.length > 0) {
             const currentDeleted = getDeletedQuestionIds();
@@ -1695,8 +1743,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (
           parsed.authority?.monthlyPrice === 599 &&
           parsed.authority?.platformFeeRate === 0.05 &&
-          parsed.master?.monthlyPrice === 1490 &&
-          parsed.master?.platformFeeRate === 0.00
+          parsed.master?.monthlyPrice === 1980 &&
+          parsed.master?.platformFeeRate === 0.02 &&
+          (parsed.expert?.monthlyPrice === 299 || parsed.pro?.monthlyPrice === 299)
         ) {
           return parsed;
         }
@@ -2171,6 +2220,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(`${STORAGE_KEY_PREFIX}admin_daily_grants`, JSON.stringify(updatedGrants));
     } catch (e) {}
 
+    // Update admin currentUser balance to match remaining quota
+    const newRemainingQuota = Math.max(0, DAILY_ADMIN_GRANT_QUOTA - newUsed);
+    setCurrentUser((prev) => ({
+      ...prev,
+      balance: newRemainingQuota,
+    }));
+
     // 3. Create Immutable Ledger / Transaction Log
     const auditTx: Transaction = {
       id: `tx-admin-grant-${Date.now()}`,
@@ -2586,7 +2642,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }));
     }
 
-    setQuestions((prev) => [q, ...prev]);
+    setQuestions((prev) => {
+      const next = [q, ...prev];
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    // 關鍵同步：立即寫入 Firebase Firestore 雲端資料庫
+    syncQuestionToFirestore(q);
 
     // Add notification
     setNotifications((prev) => [
@@ -3136,7 +3201,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Action: spend points for platform services (e.g. AI report unlocking)
   const spendPoints = (amount: number, note?: string): boolean => {
-    if ((currentUser.balance || 0) < amount || amount <= 0) return false;
+    if ((currentUser.balance || 0) < amount || amount <= 0) {
+      showCenterToast('點數餘額不足', `可用餘額為 ${currentUser.balance || 0} 點，本功能需 ${amount} 點，請先去儲值後再使用。`, {
+        type: 'warning',
+        actionLabel: '先去儲值',
+        onAction: openRechargePage,
+        duration: 3500,
+      });
+      return false;
+    }
     setCurrentUser((prev) => ({
       ...prev,
       balance: Math.max(0, (prev.balance || 0) - amount),
@@ -4457,16 +4530,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newConv.id;
   };
 
+  // Helper: 判定是否為特邀人員「貝拉」或管理員身份（除了管理員身份或貝拉入群組外，其餘用戶不會加入平台核心管理群）
+  const isBellaUser = (user?: { name?: string; username?: string; id?: string; email?: string } | null): boolean => {
+    if (!user) return false;
+    const name = (user.name || '').toLowerCase();
+    const username = (user.username || '').toLowerCase();
+    const id = (user.id || '').toLowerCase();
+    const email = (user.email || '').toLowerCase();
+    return (
+      name.includes('貝拉') ||
+      name.includes('bella') ||
+      username.includes('bella') ||
+      id === 'user-bella' ||
+      email.includes('bella')
+    );
+  };
+
+  const isQualifiedForCoreAdminGroup = (user?: { role?: string; name?: string; username?: string; id?: string; email?: string } | null): boolean => {
+    if (!user) return false;
+    return user.role === 'admin' || isBellaUser(user);
+  };
+
   // Action: Create Group Conversation (for vendors, admins, and users)
   const createGroupConversation = (groupName: string, participantIds: string[]): string => {
-    const allParticipantIds = Array.from(new Set([currentUser.id, ...participantIds]));
+    const isCoreName = groupName.includes('平台核心管理群') || groupName.includes('平台管理員核心協作群組');
+    let targetParticipantIds = participantIds;
+
+    // 嚴格規則：若為平台核心管理群，除管理員與貝拉外，其餘用戶一律不可加入
+    if (isCoreName) {
+      targetParticipantIds = participantIds.filter((id) => {
+        const u = availableUsers.find((user) => user.id === id) || (id === currentUser.id ? currentUser : null);
+        return isQualifiedForCoreAdminGroup(u);
+      });
+    }
+
+    const allParticipantIds = Array.from(new Set([currentUser.id, ...targetParticipantIds]));
     const details = allParticipantIds.map((id) => {
       const u = availableUsers.find((user) => user.id === id) || (id === currentUser.id ? currentUser : { id, name: '平台成員', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', title: '協作成員' });
+      const isAdminUser = 'role' in u && u.role === 'admin';
       return {
         id: u.id,
         name: u.name,
         avatar: u.avatar,
-        title: u.title || '平台成員',
+        title: isAdminUser ? (u.title || '平台管理員') : isBellaUser(u) ? (u.title || '特邀成員・貝拉') : (u.title || '平台成員'),
       };
     });
 
@@ -4497,49 +4603,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newGroupConv.id;
   };
 
-  // Ensure Automatic Admin Group Conversation Exists for Admin
+  // Ensure Automatic Admin Group Conversation Exists: 僅管理員身份與貝拉可加入平台核心管理群
   useEffect(() => {
-    if (currentUser?.role === 'admin') {
-      const adminGroupExists = conversations.some((c) => c.isGroup && c.groupName === '平台管理員核心協作群組');
-      if (!adminGroupExists) {
-        const allAdmins = availableUsers.filter((u) => u.role === 'admin');
-        const adminIds = allAdmins.map((a) => a.id);
-        const allIds = Array.from(new Set([currentUser.id, ...adminIds]));
-        const details = allIds.map((id) => {
-          const u = availableUsers.find((user) => user.id === id) || currentUser;
-          return {
-            id: u.id,
-            name: u.name,
-            avatar: u.avatar,
-            title: u.title || '平台管理員',
-          };
-        });
+    const isCurrentUserQualified = isQualifiedForCoreAdminGroup(currentUser);
 
-        const adminGroupConv: ChatConversation = {
-          id: 'group-admin-core',
-          participantIds: allIds,
-          participantDetails: details,
-          isGroup: true,
-          groupName: '平台管理員核心協作群組',
-          lastMessage: '系統自動建立：平台全體管理員核心協作群組',
-          lastMessageTime: '剛剛',
-          unreadCount: 0,
-          messages: [
-            {
-              id: 'msg-admin-group-init',
-              senderId: 'system',
-              senderName: 'IdeaX 系統核心',
-              senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150',
-              text: '【系統公告】平台管理員核心協作群組已自動建立，所有平台管理員已加入此群組，便於跨席位稽核、點數調撥與審核同步。',
-              createdAt: new Date().toISOString(),
-              isSystem: true,
-            },
-          ],
+    if (isCurrentUserQualified) {
+      // 找出全站符合資格的管理員與貝拉
+      const qualifiedUsers = availableUsers.filter((u) => isQualifiedForCoreAdminGroup(u));
+      const qualifiedIds = Array.from(new Set([currentUser.id, ...qualifiedUsers.map((a) => a.id)]));
+      const details = qualifiedIds.map((id) => {
+        const u = availableUsers.find((user) => user.id === id) || currentUser;
+        return {
+          id: u.id,
+          name: u.name,
+          avatar: u.avatar,
+          title: u.role === 'admin' ? (u.title || '平台管理員') : (u.title || '特邀營運代表・貝拉'),
         };
-        setConversations((prev) => [adminGroupConv, ...prev]);
-      }
+      });
+
+      setConversations((prev) => {
+        const existingIdx = prev.findIndex(
+          (c) => c.id === 'group-admin-core' || (c.isGroup && (c.groupName === '平台核心管理群' || c.groupName === '平台管理員核心協作群組'))
+        );
+
+        if (existingIdx >= 0) {
+          const existing = prev[existingIdx];
+          // 嚴格過濾清洗：確保參與者清單中只存在管理員與貝拉，其餘非管理員/非貝拉用戶全數排除
+          const sanitizedIds = existing.participantIds.filter((id) => {
+            const u = availableUsers.find((user) => user.id === id) || (id === currentUser.id ? currentUser : null);
+            return isQualifiedForCoreAdminGroup(u);
+          });
+          const mergedIds = Array.from(new Set([...sanitizedIds, ...qualifiedIds]));
+          const updatedDetails = mergedIds.map((id) => {
+            const u = availableUsers.find((user) => user.id === id) || currentUser;
+            return {
+              id: u.id,
+              name: u.name,
+              avatar: u.avatar,
+              title: u.role === 'admin' ? (u.title || '平台管理員') : (u.title || '特邀營運代表・貝拉'),
+            };
+          });
+
+          const updatedConv: ChatConversation = {
+            ...existing,
+            groupName: '平台核心管理群',
+            participantIds: mergedIds,
+            participantDetails: updatedDetails,
+          };
+          const next = [...prev];
+          next[existingIdx] = updatedConv;
+          return next;
+        } else {
+          const adminGroupConv: ChatConversation = {
+            id: 'group-admin-core',
+            participantIds: qualifiedIds,
+            participantDetails: details,
+            isGroup: true,
+            groupName: '平台核心管理群',
+            lastMessage: '系統公告：平台核心管理群已啟動（僅限管理員與貝拉入群協作）',
+            lastMessageTime: '剛剛',
+            unreadCount: 0,
+            messages: [
+              {
+                id: 'msg-admin-group-init',
+                senderId: 'system',
+                senderName: 'IdeaX 系統核心',
+                senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150',
+                text: '【系統公告】平台核心管理群已自動建立，本群組僅限管理員身份與特邀代表（貝拉）入群協作，其餘一般用戶不會加入平台核心管理群，確保平台治理機密與審核安全。',
+                createdAt: new Date().toISOString(),
+                isSystem: true,
+              },
+            ],
+          };
+          return [adminGroupConv, ...prev];
+        }
+      });
+    } else {
+      // 若非管理員且非貝拉，嚴格確保對話列表不包含「平台核心管理群」
+      setConversations((prev) => {
+        return prev.filter(
+          (c) => !(c.id === 'group-admin-core' || (c.isGroup && (c.groupName === '平台核心管理群' || c.groupName === '平台管理員核心協作群組')))
+        );
+      });
     }
-  }, [currentUser?.role]);
+  }, [currentUser?.role, currentUser?.name, currentUser?.id]);
 
   // Action: Send message in chat (with optional custom offer or image/file attachment)
   const sendMessage = (
@@ -5190,10 +5337,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Merge tags preserving uniqueness
         const newTags = Array.from(new Set([...(res.tags || []), ...(q.tags || [])])).filter(Boolean);
 
-        setQuestions((prev) =>
-          prev.map((item) => {
+        let updatedQ: Question | null = null;
+        setQuestions((prev) => {
+          const next = prev.map((item) => {
             if (item.id !== questionId) return item;
-            return {
+            updatedQ = {
               ...item,
               category: res.category || item.category,
               subcategory: res.subcategory || item.subcategory,
@@ -5202,11 +5350,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 summary: res.summary || item.aiAnalysis?.summary || '',
                 structuredNeed: res.structuredNeed || item.aiAnalysis?.structuredNeed || [],
                 solverProfileAdvice: res.solverProfileAdvice || item.aiAnalysis?.solverProfileAdvice || '',
-                marketFitRating: item.aiAnalysis?.marketFitRating || 'A (高價值潛力)',
+                marketFitRating: item.aiAnalysis?.marketFitRating || '高商業價值',
               },
             };
-          })
-        );
+            return updatedQ;
+          });
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+
+        if (updatedQ) {
+          syncQuestionToFirestore(updatedQ);
+        }
 
         setSelectedQuestion((prev) => {
           if (!prev || prev.id !== questionId) return prev;
@@ -5219,7 +5376,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               summary: res.summary || prev.aiAnalysis?.summary || '',
               structuredNeed: res.structuredNeed || prev.aiAnalysis?.structuredNeed || [],
               solverProfileAdvice: res.solverProfileAdvice || prev.aiAnalysis?.solverProfileAdvice || '',
-              marketFitRating: prev.aiAnalysis?.marketFitRating || 'A (高價值潛力)',
+              marketFitRating: prev.aiAnalysis?.marketFitRating || '高商業價值',
             },
           };
         });
@@ -5254,6 +5411,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.success) count++;
     }
     return count;
+  };
+
+  // Action: Save & Cache AI Preliminary Report to Question and sync to Firestore
+  const saveQuestionPreliminaryReport = async (
+    questionId: string,
+    report: AIPreliminaryReport,
+    unlockUserId?: string
+  ): Promise<Question | null> => {
+    let updatedTarget: Question | null = null;
+
+    setQuestions((prev) => {
+      const next = prev.map((q) => {
+        if (q.id !== questionId) return q;
+        const currentUnlocked = q.aiPreliminaryReport?.unlockedUserIds || report.unlockedUserIds || [];
+        const nextUnlocked = unlockUserId && !currentUnlocked.includes(unlockUserId)
+          ? [...currentUnlocked, unlockUserId]
+          : currentUnlocked;
+
+        updatedTarget = {
+          ...q,
+          aiPreliminaryReport: {
+            ...report,
+            unlockedUserIds: nextUnlocked,
+          },
+        };
+        return updatedTarget;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    if (updatedTarget) {
+      syncQuestionToFirestore(updatedTarget);
+      setSelectedQuestion((prev) => (prev?.id === questionId ? updatedTarget : prev));
+    }
+
+    return updatedTarget;
+  };
+
+  // Action: Unlock an already cached preliminary report for a user
+  const unlockQuestionPreliminaryReport = async (
+    questionId: string,
+    userId: string
+  ): Promise<boolean> => {
+    let updatedTarget: Question | null = null;
+
+    setQuestions((prev) => {
+      const next = prev.map((q) => {
+        if (q.id !== questionId) return q;
+        if (!q.aiPreliminaryReport) return q;
+        const currentUnlocked = q.aiPreliminaryReport.unlockedUserIds || [];
+        if (currentUnlocked.includes(userId)) return q;
+
+        updatedTarget = {
+          ...q,
+          aiPreliminaryReport: {
+            ...q.aiPreliminaryReport,
+            unlockedUserIds: [...currentUnlocked, userId],
+          },
+        };
+        return updatedTarget;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    if (updatedTarget) {
+      syncQuestionToFirestore(updatedTarget);
+      setSelectedQuestion((prev) => (prev?.id === questionId ? updatedTarget : prev));
+      return true;
+    }
+
+    return false;
   };
 
   // Action: Toggle agreement on AI Mediation Card in Chat
@@ -5508,9 +5742,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // 開啟測試環境就同時公開測試帳號
       setIsHideTestAccounts(false);
       // 測試環境加回所有模擬資料（題目、專家、方案、交易、對話與測試帳號），並保留用戶自訂資料
+      const deletedQIdsOnReset = getDeletedQuestionIds();
       setQuestions((prev) => {
-        const custom = prev.filter((q) => !isMockQuestionId(q.id, q.authorId));
-        return [...MOCK_QUESTIONS, ...custom];
+        const custom = prev.filter((q) => !isMockQuestionId(q.id, q.authorId) && !deletedQIdsOnReset.has(q.id));
+        const filteredMock = MOCK_QUESTIONS.filter((mq) => !deletedQIdsOnReset.has(mq.id));
+        return [...filteredMock, ...custom];
       });
       setSolvers((prev) => {
         const custom = prev.filter((s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id));
@@ -5714,6 +5950,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         incrementQuestionViews,
         autoTagQuestionWithAI,
         autoTagAllMyQuestionsWithAI,
+        saveQuestionPreliminaryReport,
+        unlockQuestionPreliminaryReport,
         startDirectChat,
         createGroupConversation,
         sendMessage,
@@ -5756,6 +5994,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showCenterToast,
         hideCenterToast,
         promptLogin,
+        openRechargePage,
       }}
     >
       {children}

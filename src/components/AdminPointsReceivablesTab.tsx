@@ -189,7 +189,7 @@ export const AdminPointsReceivablesTab: React.FC = () => {
                 <div className="min-w-0">
                   <span className="block text-xs font-bold truncate">{u.name}</span>
                   <span className={`text-[10px] block truncate ${isSelected ? 'text-purple-200' : 'text-stone-400'}`}>
-                    {(u.balance || 0).toLocaleString()} 點
+                    {(u.role === 'admin' ? remainingQuota : (u.balance || 0)).toLocaleString()} 點
                   </span>
                 </div>
               </button>
@@ -226,11 +226,15 @@ export const AdminPointsReceivablesTab: React.FC = () => {
             {/* 用戶 3 大帳務指標 (多格面板) */}
             <div className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-2.5 sm:gap-3.5">
               <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
-                <span className="text-xs font-bold text-amber-900 block truncate">可用點數餘額</span>
-                <span className="text-xl sm:text-2xl font-black text-amber-950 font-mono mt-1 block">
-                  {(selectedUser.balance || 0).toLocaleString()} <span className="text-xs font-normal">點</span>
+                <span className="text-xs font-bold text-amber-900 block truncate">
+                  {selectedUser.role === 'admin' ? '今日剩餘可撥配額' : '可用點數餘額'}
                 </span>
-                <span className="text-[10px] text-amber-800 mt-0.5 block truncate">發布懸賞隨時抵用</span>
+                <span className="text-xl sm:text-2xl font-black text-amber-950 font-mono mt-1 block">
+                  {(selectedUser.role === 'admin' ? remainingQuota : (selectedUser.balance || 0)).toLocaleString()} <span className="text-xs font-normal">點</span>
+                </span>
+                <span className="text-[10px] text-amber-800 mt-0.5 block truncate">
+                  {selectedUser.role === 'admin' ? '每日上限 50,000 點' : '發布懸賞隨時抵用'}
+                </span>
               </div>
 
               <div className="p-3.5 sm:p-4 rounded-2xl bg-blue-50/70 border border-blue-200">

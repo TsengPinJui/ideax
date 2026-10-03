@@ -617,7 +617,7 @@ export const SubscriptionPlanCard: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse min-w-[640px]">
             <thead>
               <tr className="border-b-2 border-stone-200 bg-stone-50/90 text-stone-900 font-black">
-                <th className="py-3 px-3.5 w-28 sm:w-32 text-stone-500 font-bold">項目/方案</th>
+                <th colSpan={2} className="py-3 px-3.5 w-36 sm:w-44 text-stone-500 font-bold">項目/方案</th>
                 {activePlanList.map((plan) => {
                   const isCurrent =
                     currentTier === plan.id ||
@@ -655,7 +655,7 @@ export const SubscriptionPlanCard: React.FC = () => {
             <tbody className="divide-y divide-stone-100 text-xs">
               {/* 橫列 1: 訂閱費用 */}
               <tr className="hover:bg-stone-50/60 transition-colors">
-                <td className="py-3.5 px-3.5 font-bold text-stone-600 bg-stone-50/40">
+                <td colSpan={2} className="py-3.5 px-3.5 font-bold text-stone-600 bg-stone-50/40">
                   訂閱費用
                 </td>
                 {activePlanList.map((plan) => {
@@ -681,7 +681,7 @@ export const SubscriptionPlanCard: React.FC = () => {
 
               {/* 橫列 2: 平台服務費率 (達人 8%、權威 5%、大師 0%) */}
               <tr className="hover:bg-stone-50/60 transition-colors">
-                <td className="py-3.5 px-3.5 font-bold text-stone-600 bg-stone-50/40">
+                <td colSpan={2} className="py-3.5 px-3.5 font-bold text-stone-600 bg-stone-50/40">
                   平台服務費率
                 </td>
                 {activePlanList.map((plan) => {
@@ -729,8 +729,8 @@ export const SubscriptionPlanCard: React.FC = () => {
                       ) : isMaster ? (
                         <div className="space-y-1">
                           <div className="flex items-center justify-center gap-1 flex-wrap">
-                            <span className="font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 text-[11px]">
-                              0% 免服務費
+                            <span className="font-black text-amber-950 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300 text-[11px]">
+                              極低 2% 服務費
                             </span>
                           </div>
                         </div>
@@ -750,7 +750,7 @@ export const SubscriptionPlanCard: React.FC = () => {
 
               {/* 橫列 3: 解答者實收撥款 */}
               <tr className="hover:bg-stone-50/60 transition-colors">
-                <td className="py-3.5 px-3.5 font-bold text-stone-600 bg-stone-50/40">
+                <td colSpan={2} className="py-3.5 px-3.5 font-bold text-stone-600 bg-stone-50/40">
                   解答者實收撥款
                 </td>
                 {activePlanList.map((plan) => {
@@ -776,7 +776,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                         </span>
                         {isMaster && (
                           <span className="text-[10px] font-black text-amber-950 bg-amber-200/90 px-1.5 py-0.2 rounded mt-0.5">
-                            全額 100% 入帳
+                            實收高達 98%
                           </span>
                         )}
                       </div>
@@ -872,43 +872,9 @@ export const SubscriptionPlanCard: React.FC = () => {
                     );
                   },
                 },
-                {
-                  id: 'ai_crm',
-                  name: 'AI-CRM 主動客戶關係管理',
-                  renderCell: (plan: SubscriptionPlan) => {
-                    const hasIt =
-                      plan.id === 'master' ||
-                      plan.benefits?.some((b) => b.includes('CRM') || b.includes('客戶關係') || b.includes('小秘書'));
-                    if (!hasIt) return <span className="text-stone-300 font-bold">—</span>;
-                    return (
-                      <div className="flex flex-col items-center justify-center gap-0.5">
-                        <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-300 to-orange-300 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
-                          ＋ 👑 管理案件小秘書(大師專屬)
-                        </span>
-                      </div>
-                    );
-                  },
-                },
-                {
-                  id: 'ai_assistant',
-                  name: '24hr AI客服特助',
-                  renderCell: (plan: SubscriptionPlan) => {
-                    const hasIt =
-                      plan.id === 'master' ||
-                      plan.benefits?.some((b) => b.includes('特助') || b.includes('客服特助'));
-                    if (!hasIt) return <span className="text-stone-300 font-bold">—</span>;
-                    return (
-                      <div className="flex flex-col items-center justify-center gap-0.5">
-                        <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-orange-400 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
-                          ＋ 🤖 離線代客對談 ＋ 聊天室策略建議
-                        </span>
-                      </div>
-                    );
-                  },
-                },
               ].map((feat) => (
                 <tr key={feat.id} className="hover:bg-stone-50/60 transition-colors">
-                  <td className="py-3 px-3.5 bg-stone-50/40 text-stone-900">
+                  <td colSpan={2} className="py-3 px-3.5 bg-stone-50/40 text-stone-900">
                     <strong className="font-black text-stone-900 block">{feat.name}</strong>
                   </td>
                   {activePlanList.map((plan) => {
@@ -935,6 +901,170 @@ export const SubscriptionPlanCard: React.FC = () => {
                   })}
                 </tr>
               ))}
+
+              {/* AI-CRM 客戶關係管理 群組項目 (左側垂直標記 AI-CRM客戶關係管理，右側分 4 項目) */}
+              {/* 項目 1: 24hr巡航雷達 */}
+              <tr key="ai_crm_radar" className="hover:bg-stone-50/60 transition-colors border-t-2 border-amber-200/80">
+                <td
+                  rowSpan={4}
+                  className="py-3 px-1.5 sm:px-2 bg-gradient-to-b from-amber-500/20 via-amber-400/15 to-orange-500/20 text-amber-950 border-r-2 border-amber-300 text-center font-black align-middle select-none w-8 sm:w-10"
+                >
+                  <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                    <span className="text-[11px] font-black tracking-widest text-amber-950 [writing-mode:vertical-lr] select-none py-1">
+                      AI-CRM客戶關係管理
+                    </span>
+                  </div>
+                </td>
+                <td className="py-3 px-3 bg-stone-50/40 text-stone-900 border-b border-stone-100">
+                  <strong className="font-black text-stone-900 block">24hr巡航雷達</strong>
+                </td>
+                {activePlanList.map((plan) => {
+                  const isMaster = plan.id === 'master';
+                  const isAuth = plan.id === 'authority';
+                  const isPro = plan.id === 'expert' || plan.id === 'pro';
+
+                  return (
+                    <td
+                      key={plan.id}
+                      className={`py-3 px-3.5 text-center border-b border-stone-100 ${
+                        isMaster
+                          ? 'bg-amber-50/30'
+                          : isAuth
+                          ? 'bg-purple-50/20'
+                          : isPro
+                          ? 'bg-blue-50/20'
+                          : ''
+                      }`}
+                    >
+                      {isMaster ? (
+                        <div className="flex flex-col items-center justify-center gap-0.5">
+                          <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-300 to-yellow-300 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
+                            ＋ 🎯 24hr巡航・意向偵測
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-stone-300 font-bold">—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* 項目 2: 優質提案推薦您來賺 */}
+              <tr key="ai_crm_bounty_hunter" className="hover:bg-stone-50/60 transition-colors">
+                <td className="py-3 px-3 bg-stone-50/40 text-stone-900 border-b border-stone-100">
+                  <strong className="font-black text-stone-900 block">優質提案推薦您來賺</strong>
+                </td>
+                {activePlanList.map((plan) => {
+                  const isMaster = plan.id === 'master';
+                  const isAuth = plan.id === 'authority';
+                  const isPro = plan.id === 'expert' || plan.id === 'pro';
+
+                  return (
+                    <td
+                      key={plan.id}
+                      className={`py-3 px-3.5 text-center border-b border-stone-100 ${
+                        isMaster
+                          ? 'bg-amber-50/30'
+                          : isAuth
+                          ? 'bg-purple-50/20'
+                          : isPro
+                          ? 'bg-blue-50/20'
+                          : ''
+                      }`}
+                    >
+                      {isMaster || isAuth ? (
+                        <div className="flex flex-col items-center justify-center gap-0.5">
+                          <span className={`inline-block font-black px-2 py-0.5 rounded-md text-[11px] shadow-2xs ${
+                            isMaster
+                              ? 'text-amber-950 bg-gradient-to-r from-amber-300 to-orange-300'
+                              : 'text-purple-950 bg-purple-200'
+                          }`}>
+                            ＋ 💰 AI-CRM 智能推播高賞好題
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-stone-300 font-bold">—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* 項目 2: 24hr策略軍師 */}
+              <tr key="ai_crm_strategist" className="hover:bg-stone-50/60 transition-colors">
+                <td className="py-3 px-3 bg-stone-50/40 text-stone-900 border-b border-stone-100">
+                  <strong className="font-black text-stone-900 block">24hr策略軍師</strong>
+                </td>
+                {activePlanList.map((plan) => {
+                  const isMaster = plan.id === 'master';
+                  const isAuth = plan.id === 'authority';
+                  const isPro = plan.id === 'expert' || plan.id === 'pro';
+
+                  return (
+                    <td
+                      key={plan.id}
+                      className={`py-3 px-3.5 text-center border-b border-stone-100 ${
+                        isMaster
+                          ? 'bg-amber-50/30'
+                          : isAuth
+                          ? 'bg-purple-50/20'
+                          : isPro
+                          ? 'bg-blue-50/20'
+                          : ''
+                      }`}
+                    >
+                      {isMaster ? (
+                        <div className="flex flex-col items-center justify-center gap-0.5">
+                          <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-300 via-orange-200 to-amber-300 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
+                            ＋ 🧠 心理學談判推演・話術排程代操
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-stone-300 font-bold">—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+
+              {/* 項目 3: 24hr AI客服特助 */}
+              <tr key="ai_crm_assistant" className="hover:bg-stone-50/60 transition-colors border-b-2 border-amber-200/80">
+                <td className="py-3 px-3 bg-stone-50/40 text-stone-900">
+                  <strong className="font-black text-stone-900 block">24hr AI客服特助</strong>
+                </td>
+                {activePlanList.map((plan) => {
+                  const isMaster = plan.id === 'master';
+                  const isAuth = plan.id === 'authority';
+                  const isPro = plan.id === 'expert' || plan.id === 'pro';
+
+                  return (
+                    <td
+                      key={plan.id}
+                      className={`py-3 px-3.5 text-center ${
+                        isMaster
+                          ? 'bg-amber-50/30'
+                          : isAuth
+                          ? 'bg-purple-50/20'
+                          : isPro
+                          ? 'bg-blue-50/20'
+                          : ''
+                      }`}
+                    >
+                      {isMaster ? (
+                        <div className="flex flex-col items-center justify-center gap-0.5">
+                          <span className="inline-block font-black text-amber-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-orange-400 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
+                            ＋ 🤖 離線代客對談 ＋ 聊天室策略建議
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-stone-300 font-bold">—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
             </tbody>
           </table>
         </div>
@@ -947,17 +1077,23 @@ export const SubscriptionPlanCard: React.FC = () => {
           </span>
           <div className="flex items-center gap-1.5 flex-wrap justify-center text-xs">
             <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-black text-[11px]">
-              🤖 24hr AI客服特助(大師專屬)
+              🎯 24hr巡航雷達
             </span>
-            <span className="w-5 h-5 rounded-full bg-amber-400 text-stone-950 font-black text-xs flex items-center justify-center shadow-2xs border border-amber-500/60">
+            <span className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 font-black text-xs flex items-center justify-center shadow-2xs">
               +
             </span>
             <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-black text-[11px]">
-              👑 管理案件小秘書(大師專屬)
+              🧠 24hr策略軍師
+            </span>
+            <span className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 font-black text-xs flex items-center justify-center shadow-2xs">
+              +
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-950 font-black text-[11px]">
+              🤖 24hr AI客服特助
             </span>
             <span className="font-black text-amber-700 text-sm px-0.5">＝</span>
             <span className="text-amber-950 font-black text-[11px] sm:text-xs bg-white/90 px-2.5 py-0.5 rounded-md border border-amber-300/80 shadow-2xs">
-              0% 免服務費全額入帳 ＋ 主動接案轉單飛輪！
+              極低 2% 服務費（實收 98%）＋ AI-CRM 主動接案轉單飛輪！
             </span>
           </div>
         </div>

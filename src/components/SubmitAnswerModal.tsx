@@ -1105,7 +1105,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                 </>
               ) : (
                 <>
-                  <div>• 平台服務費 0%（全額 100% 撥款到帳）</div>
+                  <div>• 平台服務費降至 2%（極低服務費，實收 98% 撥款到帳）</div>
                   <div>• 全站懸賞「AI 初步問題分析報告」享免費無限次查看及下載報告</div>
                   <div>• 優先向高價值商業大案發問者推薦您的個人檔案</div>
                 </>

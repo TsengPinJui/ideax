@@ -25,6 +25,13 @@ import {
   Plus,
   Trash2,
   Check,
+  HelpCircle,
+  Coins,
+  Flame,
+  ShieldCheck,
+  Lock,
+  ArrowRight,
+  Zap,
 } from 'lucide-react';
 
 interface AiCrmViewProps {
@@ -123,7 +130,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
   // 體驗模式解鎖狀態：預設先用毛玻璃遮蓋，點擊「體驗看看」後才解鎖；離開版面即重置
   const [isDemoUnlocked, setIsDemoUnlocked] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'leads' | 'assistant' | 'analytics'>('leads');
+  const [activeTab, setActiveTab] = useState<'leads' | 'bounties' | 'assistant' | 'analytics'>('leads');
   const [assistantSubTab, setAssistantSubTab] = useState<'queue' | 'settings'>('queue');
 
   // Leads
@@ -240,6 +247,33 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     setTimeout(() => setFeedbackToast(null), 3500);
   };
 
+  // 軍師拓客巡航與特助開關連線狀態
+  const [isRadarActive, setIsRadarActive] = useState(true);
+  const [isAssistantActive, setIsAssistantActive] = useState<boolean>(() => {
+    return currentUser.assistant24hrConfig?.isEnabled ?? true;
+  });
+
+  useEffect(() => {
+    if (currentUser.assistant24hrConfig?.isEnabled !== undefined) {
+      setIsAssistantActive(currentUser.assistant24hrConfig.isEnabled);
+    }
+  }, [currentUser.assistant24hrConfig?.isEnabled]);
+
+  const handleToggleRadar = () => {
+    const next = !isRadarActive;
+    setIsRadarActive(next);
+    showToast(next ? '🟢 24hr巡航雷達已啟動' : '⚪ 24hr巡航雷達已暫停');
+  };
+
+  const handleToggleAssistant = () => {
+    const next = !isAssistantActive;
+    setIsAssistantActive(next);
+    const currConf = currentUser.assistant24hrConfig || DEFAULT_ASSISTANT_24HR_CONFIG;
+    const updated = { ...currConf, isEnabled: next };
+    updateAssistant24hrConfig(updated);
+    showToast(next ? '🟣 24hr 特助代操已連線啟用' : '⚪ 24hr 特助代操已關閉休眠');
+  };
+
   // 任務同步：體驗模式不影響實際設定，僅正式方案才持久化寫入
   const syncTasks = (tasks: AssistantScheduledTask[]) => {
     setScheduledTasks(tasks);
@@ -252,10 +286,10 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     }
   };
 
-  // Radar view sub-filter (待排定 vs 已轉移特助佇列)
+  // Radar view sub-filter (待排定 vs 已轉移軍師佇列)
   const [radarFilter, setRadarFilter] = useState<'pending' | 'transferred' | 'all'>('pending');
 
-  // 檢核某個客戶之策略是否已排定並轉移至特助佇列
+  // 檢核某個客戶之策略是否已排定並轉移至軍師佇列
   const isLeadTransferred = (lead: AiCrmLead) => {
     return !!(lead.isScheduled || scheduledTasks.some((t) => t.clientId === lead.clientId && t.status === 'pending'));
   };
@@ -548,9 +582,12 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-bold text-amber-300 bg-amber-950/80 border border-amber-600/40 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-amber-400" />
-                <span>AI-CRM 拓客軍師 × 24hr 特助代操</span>
+                <span className="sm:hidden">24hr巡航雷達 × 特助代操</span>
+                <span className="hidden sm:inline">24hr巡航雷達 × 24hr 特助代操</span>
               </span>
-              <span className="text-[10px] text-stone-400">大師方案專屬</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-400/30">
+                24hr 離線全天巡航 (自動化代操)
+              </span>
               {onBack && !isAdmin && (
                 <button
                   type="button"
@@ -566,29 +603,90 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               客戶關係管理與自動化代操
             </h1>
             <p className="text-xs text-stone-300 max-w-xl leading-relaxed">
-              AI-CRM 擔任軍師分析客情意向與切入時機，24hr 特助全天候在線代操發送、接待諮詢並守護商機。
+              AI-CRM 智能分析客情意向與切入時機，24hr 特助全天候自動化發送與接待守護。
             </p>
           </div>
 
-          {/* Quick Metrics (手機 3 欄 / 電腦緊湊) */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 shrink-0 text-center">
-            <div className="p-2 sm:p-2.5 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-[10px] sm:text-[11px] text-stone-400 block">待跟進客情</span>
-              <span className="text-sm sm:text-base font-black text-amber-400 font-mono mt-0.5 block">
-                {leads.filter((l) => !l.hasSent).length} 位
-              </span>
+          {/* 雷達與特助連線狀態 ＋ 開關控制區 (整合面板) */}
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-white/5 border border-white/10 shrink-0 backdrop-blur-xs space-y-2.5 min-w-[260px] sm:min-w-[280px]">
+            {/* 24hr巡航雷達狀態 ＋ 開關 */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${isRadarActive ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'}`} />
+                <div>
+                  <span className="text-xs font-bold text-stone-200 block">
+                    <span className="sm:hidden">巡航雷達</span>
+                    <span className="hidden sm:inline">24hr巡航雷達</span>
+                  </span>
+                  <span className={`text-[10px] font-medium block ${isRadarActive ? 'text-emerald-400' : 'text-stone-400'}`}>
+                    {isRadarActive ? '正常・即時全天巡航' : '已暫停巡航'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleRadar}
+                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                  isRadarActive ? 'bg-emerald-500' : 'bg-stone-700'
+                }`}
+                title={isRadarActive ? '點擊暫停 24hr巡航雷達' : '點擊啟用 24hr巡航雷達'}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full bg-white shadow-md transition-transform absolute top-1 ${
+                    isRadarActive ? 'left-6' : 'left-1'
+                  }`}
+                />
+              </button>
             </div>
-            <div className="p-2 sm:p-2.5 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-[10px] sm:text-[11px] text-stone-400 block">特助代操佇列</span>
-              <span className="text-sm sm:text-base font-black text-emerald-400 font-mono mt-0.5 block">
-                {pendingTaskCount} 件
-              </span>
-            </div>
-            <div className="p-2 sm:p-2.5 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-[10px] sm:text-[11px] text-stone-400 block">代答保護上限</span>
-              <span className="text-sm sm:text-base font-black text-purple-300 font-mono mt-0.5 block">
-                30則/日/室
-              </span>
+
+            <div className="h-px bg-white/10" />
+
+            {/* 特助連線狀態 ＋ 開關 */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${isAssistantActive ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'}`} />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-stone-200">特助連線狀態</span>
+                    {/* ? 說明提示 */}
+                    <div className="relative inline-block group">
+                      <button
+                        type="button"
+                        className="w-3.5 h-3.5 rounded-full bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white flex items-center justify-center text-[9px] font-bold cursor-pointer"
+                        title="特助功能說明"
+                        aria-label="特助功能說明"
+                      >
+                        ?
+                      </button>
+                      <div className="hidden group-hover:block absolute right-0 sm:left-0 sm:right-auto top-5 z-50 w-72 sm:w-80 p-3 rounded-2xl bg-stone-900/95 text-stone-200 text-xs leading-relaxed border border-stone-700 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex items-start gap-2">
+                          <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <p className="text-xs text-stone-200 leading-relaxed font-medium">
+                            協助專家離線時主動與客戶交談維持客戶關係，自動梳理時程與痛點規格；並依排程時段自主代發破冰提案，確保潛在訂單零流失！
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-medium block ${isAssistantActive ? 'text-emerald-400' : 'text-stone-400'}`}>
+                    {isAssistantActive ? '正常・24hr 自動代操' : '已關閉休眠'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleAssistant}
+                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                  isAssistantActive ? 'bg-amber-500' : 'bg-stone-700'
+                }`}
+                title={isAssistantActive ? '點擊關閉特助代操' : '點擊啟用特助代操'}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full bg-white shadow-md transition-transform absolute top-1 ${
+                    isAssistantActive ? 'left-6' : 'left-1'
+                  }`}
+                />
+              </button>
             </div>
           </div>
         </div>
@@ -618,12 +716,12 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                 <span className="text-xs font-black text-sky-950 bg-sky-100 border border-sky-300 px-2 py-0.5 rounded-md">
                   【AI-CRM × 24hr 特助代操】
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-amber-200 text-amber-900">
-                  大師方案專屬
+                <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-sky-100 text-sky-900 border border-sky-300">
+                  實機體驗模式
                 </span>
               </div>
               <p className="text-[11px] text-stone-600 mt-1">
-                大師方案實機體驗，操作不影響實際資料。
+                可自由操作體驗，操作不影響實際資料。
               </p>
             </div>
           </div>
@@ -682,20 +780,20 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
             <div className="bg-white/95 backdrop-blur-md border-2 border-sky-400 rounded-3xl p-5 sm:p-7 max-w-md w-full text-center shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
               <div className="space-y-1">
                 <h3 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight">
-                  體驗 AI-CRM 拓客軍師 & 特助代操
+                  體驗 AI-CRM 24hr巡航雷達 & 特助代操
                 </h3>
                 <p className="text-xs text-stone-600">
-                  全自動意向診斷、時段智能排定、24hr 自動化代操發送
+                  意向診斷、時段智能排定、24hr 自動代操發送
                 </p>
               </div>
 
               {/* 體驗說明框 */}
               <div className="p-3 sm:p-3.5 rounded-2xl bg-sky-50/80 border border-sky-200 text-left space-y-1">
                 <p className="text-xs text-sky-950 font-bold">
-                  點擊下方按鍵即可解鎖實機體驗：
+                  點擊解鎖實機體驗：
                 </p>
                 <p className="text-[11px] text-sky-900 leading-relaxed">
-                  排程與代操發送為本地模擬示範，不影響實際真實資料。離開本版面後即自動復原。
+                  排程與代操發送為模擬示範，不影響真實資料，離開本頁自動復原。
                 </p>
               </div>
 
@@ -737,9 +835,27 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               }`}
             >
               <Target className="w-4 h-4 text-amber-600" />
-              <span>拓客雷達 (軍師策略)</span>
+              <span className="sm:hidden">巡航雷達</span>
+              <span className="hidden sm:inline">24hr巡航雷達</span>
               <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-stone-950 text-[10px] font-black">
                 {leads.filter((l) => !l.hasSent).length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('bounties')}
+              className={`pb-3 px-3.5 border-b-2 transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+                activeTab === 'bounties'
+                  ? 'border-amber-500 text-stone-900 font-black'
+                  : 'border-transparent text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <span className="sm:hidden">優質提案</span>
+              <span className="hidden sm:inline">優質提案推薦您來賺</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 text-[10px] font-black shadow-2xs">
+                {isAuthorityOrAbove ? '高賞' : '權威專屬'}
               </span>
             </button>
 
@@ -753,7 +869,8 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               }`}
             >
               <Bot className="w-4 h-4 text-amber-600" />
-              <span>24hr 特助 (代操排程 & 設定)</span>
+              <span className="sm:hidden">特助代操</span>
+              <span className="hidden sm:inline">24hr 特助代操</span>
               {pendingTaskCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-white text-[10px] font-black">
                   {pendingTaskCount}
@@ -775,16 +892,17 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
             </button>
           </div>
 
-          {/* TAB 1: 拓客雷達 (軍師策略) */}
+          {/* TAB 1: 24hr巡航雷達 */}
           {activeTab === 'leads' && (
             <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-5">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <h3 className="font-extrabold text-sm sm:text-base text-stone-900">
-                    即時高意向客情雷達
+                    <span className="sm:hidden">24hr巡航雷達・客情診斷</span>
+                    <span className="hidden sm:inline">24hr巡航雷達・客情診斷</span>
                   </h3>
                   <p className="text-[11px] sm:text-xs text-stone-500">
-                    AI-CRM 軍師診斷客戶痛點並擬定話術，可一鍵委託 24hr 特助排定代操或親自發送。
+                    全天候巡航發案客戶痛點與猶豫期，一鍵委託特助排程代操或親自發送。
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -840,7 +958,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                               {relatedTask && (
                                 <span className="text-[10px] font-bold px-2 py-0.2 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                                   <Clock className="w-2.5 h-2.5" />
-                                  <span>特助已排定：{relatedTask.scheduledTime}</span>
+                                  <span>軍師已排定：{relatedTask.scheduledTime}</span>
                                 </span>
                               )}
                             </div>
@@ -864,7 +982,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                             onClick={() => toggleDiagnostics(lead.id)}
                             className="p-1 px-2 rounded-lg border border-stone-200 hover:bg-stone-50 text-stone-600 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                           >
-                            <span>{isExpanded ? '收合' : '軍師分析'}</span>
+                            <span>{isExpanded ? '收合' : '客情診斷'}</span>
                             {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                           </button>
                         </div>
@@ -876,7 +994,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-amber-950 flex items-center gap-1.5">
                               <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-                              <span>AI-CRM 軍師診斷報告</span>
+                              <span>客情診斷報告</span>
                             </span>
                             <span className="text-[11px] font-mono text-amber-800">
                               預算評估：{lead.clientNeedsAnalysis.budgetIntent}
@@ -911,7 +1029,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-stone-800 flex items-center gap-1.5">
                             <MessageSquare className="w-3.5 h-3.5 text-amber-600" />
-                            <span>軍師推薦話術：</span>
+                            <span>推薦話術</span>
                           </span>
                           {!lead.hasSent && editingLeadId !== lead.id && (
                             <button
@@ -960,7 +1078,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                         {/* Actions (電腦水平排列 / 手機自適應) */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-1 gap-2.5">
                           <span className="text-[11px] text-stone-500">
-                            💡 軍師建議：<strong className="text-stone-700">{lead.aiRecommendedAction}</strong>
+                            💡 建議行動：<strong className="text-stone-700">{lead.aiRecommendedAction}</strong>
                           </span>
 
                           {lead.hasSent ? (
@@ -1002,21 +1120,250 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
             </div>
           )}
 
-          {/* TAB 2: 24hr 特助 (代操排程 & 設定) */}
+          {/* TAB 2: 💰 優質提案推薦您來賺 (權威方案以上專屬) */}
+          {activeTab === 'bounties' && (
+            <div className="p-3.5 sm:p-6 space-y-5 animate-in fade-in duration-200">
+              {/* Header Banner */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-yellow-400/10 to-transparent border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-400 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Sparkles className="w-5 h-5 fill-stone-950" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-black text-sm sm:text-base text-stone-900">
+                        💰 優質提案推薦您來賺
+                      </h3>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-200 text-stone-950 border border-amber-300">
+                        權威方案 95% 實收 • 大師方案 98% 實收
+                      </span>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-stone-600 mt-0.5">
+                      AI-CRM 演算法全天候巡弋全站題庫，主動過濾高賞高回報難題，為您估算實收淨利與破局方針。
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-mono font-black px-3 py-1.5 rounded-xl bg-white border border-amber-200 text-amber-950 shadow-2xs">
+                    精選高賞池：{questions.filter((q) => q.bounty >= 500 && q.status === 'open').length} 題
+                  </span>
+                </div>
+              </div>
+
+              {/* 非權威方案以上時的解鎖推廣卡 */}
+              {!isAuthorityOrAbove ? (
+                <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-stone-900 to-stone-950 text-white border border-amber-500/30 text-center space-y-5 shadow-xl">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-400 text-stone-950 flex items-center justify-center mx-auto shadow-md">
+                    <Lock className="w-6 h-6 stroke-[2.5]" />
+                  </div>
+
+                  <div className="space-y-1.5 max-w-lg mx-auto">
+                    <span className="text-[11px] font-bold text-amber-400 tracking-wider uppercase">
+                      AUTHORITY & MASTER EXCLUSIVE
+                    </span>
+                    <h4 className="text-lg sm:text-2xl font-black text-white tracking-tight">
+                      升級權威方案，解鎖「優質提案推薦您來賺」
+                    </h4>
+                    <p className="text-xs text-stone-300 leading-relaxed">
+                      AI-CRM Agent 將依照您的專業認證領域，智能過濾 S 級高額懸賞（NT$ 1,000 ~ 50,000+）並自動分析客戶心理抗拒與提案切入點，搭配超低 5% ~ 2% 平台服務費，讓您每案實收高達 95% ~ 98%！
+                    </p>
+                  </div>
+
+                  {/* 核心優勢亮點 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl mx-auto text-left text-xs">
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                        <Coins className="w-4 h-4" /> 實收 95% ~ 98%
+                      </span>
+                      <p className="text-[11px] text-stone-400">大師方案服務費僅 2%、權威方案僅 5%，收益全額直落您的帳戶。</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                        <Flame className="w-4 h-4" /> 高賞好題優先推播
+                      </span>
+                      <p className="text-[11px] text-stone-400">第一時間捕捉高賞、急件發案方，搶先私聊破冰贏得委託。</p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                        <Zap className="w-4 h-4" /> AI 破局提案切入點
+                      </span>
+                      <p className="text-[11px] text-stone-400">自動拆解發案者深層驗收標準，生成高勝率 3 階段報價策略。</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => subscribePlan('authority', 'monthly')}
+                      className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-md active:scale-95 transition-all cursor-pointer"
+                    >
+                      👑 升級權威方案（服務費 5% • NT$ 599/月）
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => subscribePlan('master', 'monthly')}
+                      className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-md active:scale-95 transition-all cursor-pointer"
+                    >
+                      ⭐ 升級頂級大師方案（服務費 2% • NT$ 1,980/月）
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* 已解鎖狀態：展示高額懸賞好題列表與獲利試算 */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {questions
+                      .filter((q) => q.bounty >= 500 && q.status === 'open')
+                      .sort((a, b) => b.bounty - a.bounty)
+                      .map((q) => {
+                        const payoutRate = isMaster ? 0.98 : 0.95;
+                        const feePercent = isMaster ? '2%' : '5%';
+                        const estimatedPayout = Math.round(q.bounty * payoutRate);
+                        const savedFee = Math.round(q.bounty * (0.25 - (1 - payoutRate)));
+                        const isHighTier = q.bounty >= 5000;
+
+                        return (
+                          <div
+                            key={q.id}
+                            className="p-4 sm:p-5 rounded-2xl border border-stone-200 bg-white hover:border-amber-400 hover:shadow-md transition-all flex flex-col justify-between space-y-3.5 group"
+                          >
+                            <div className="space-y-2.5">
+                              {/* Top Bar: Bounty & Tier Badge */}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                    isHighTier
+                                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 shadow-2xs'
+                                      : 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  }`}>
+                                    {isHighTier ? '💎 S級高賞好題' : '🔥 熱門高單商機'}
+                                  </span>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-600">
+                                    {q.category}
+                                  </span>
+                                </div>
+
+                                <span className="text-[10px] font-bold text-stone-400">
+                                  難度 {q.level}
+                                </span>
+                              </div>
+
+                              {/* Title */}
+                              <h4 className="font-black text-sm text-stone-900 group-hover:text-amber-700 transition-colors line-clamp-2 leading-snug">
+                                {q.title}
+                              </h4>
+
+                              {/* Profit Earnings Card */}
+                              <div className="p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 flex items-center justify-between">
+                                <div>
+                                  <span className="text-[10px] text-stone-500 block">懸賞總額</span>
+                                  <span className="text-xs font-bold text-stone-700 font-mono">
+                                    NT$ {q.bounty.toLocaleString()}
+                                  </span>
+                                </div>
+
+                                <div className="text-right">
+                                  <span className="text-[10px] font-bold text-amber-900 block flex items-center gap-1 justify-end">
+                                    <Sparkles className="w-3 h-3 text-amber-600" />
+                                    <span>預估實收入帳（抽成僅 {feePercent}）</span>
+                                  </span>
+                                  <span className="text-base font-black text-amber-600 font-mono">
+                                    NT$ {estimatedPayout.toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* AI-CRM Strategy Insight */}
+                              <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-100 text-[11px] text-stone-600 space-y-1">
+                                <span className="font-bold text-stone-800 flex items-center gap-1">
+                                  <Target className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>AI-CRM 破局切入建議：</span>
+                                </span>
+                                <p className="leading-relaxed line-clamp-2">
+                                  發案客戶尋求明確驗收標準與可落地方案。建議於第一段直接梳理關鍵痛點指標，第二段附上里程碑交付進度，提高搶案勝率！
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-2">
+                              <span className="text-[10px] text-stone-400">
+                                發案方：{q.authorName}
+                              </span>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    startDirectChat({
+                                      id: q.authorId,
+                                      name: q.authorName,
+                                      avatar: q.authorAvatar,
+                                      title: '發案提問方',
+                                    });
+                                    if (onOpenDirectChat) {
+                                      onOpenDirectChat({
+                                        id: q.authorId,
+                                        name: q.authorName,
+                                        avatar: q.authorAvatar,
+                                        title: '發案提問方',
+                                      });
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-amber-100 text-stone-800 hover:text-amber-950 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>私聊破冰</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: 24hr 特助代操 */}
           {activeTab === 'assistant' && (
             <div className="p-3.5 sm:p-6 space-y-5">
-              {/* Architecture Banner: AI-CRM軍師 × 24hr特助代操 */}
+              {/* Architecture Banner: AI-CRM策略 × 24hr特助代操 */}
               <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-900/10 via-amber-500/10 to-transparent border border-purple-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-800 border border-purple-300 flex items-center justify-center shrink-0">
                     <Bot className="w-5 h-5 text-purple-700" />
                   </div>
                   <div>
-                    <h4 className="font-black text-xs sm:text-sm text-stone-900 flex items-center gap-1.5">
-                      <span>AI-CRM (軍師策略) ➔ 24hr AI特助 (全自動代操者)</span>
-                    </h4>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="font-black text-xs sm:text-sm text-stone-900">
+                        AI-CRM 策略規劃 ➔ 24hr 特助自動代操
+                      </h4>
+                      <div className="relative inline-block group">
+                        <button
+                          type="button"
+                          className="w-4 h-4 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-800 border border-purple-300 flex items-center justify-center text-[10px] font-black cursor-pointer transition-all"
+                          title="說明"
+                          aria-label="功能說明"
+                        >
+                          ?
+                        </button>
+                        <div className="hidden group-hover:block absolute left-0 top-6 z-50 w-72 sm:w-80 p-3 rounded-2xl bg-stone-900/95 text-stone-200 text-xs leading-relaxed border border-stone-700 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                          <div className="flex items-start gap-2">
+                            <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                            <p className="text-xs text-stone-200 leading-relaxed font-medium">
+                              協助專家離線時主動與客戶交談維持客戶關係，自動梳理時程與痛點規格；並依排程時段自主代發破冰提案，確保潛在訂單零流失！
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                     <p className="text-[11px] text-stone-500 mt-0.5">
-                      軍師負責分析客戶時程並擬定策略，24hr 特助 7x24 在線代操發送訊息、聊天室接待與守護。
+                      軍師分析最佳切入時機，24hr 特助全天候代發訊息與接待守護。
                     </p>
                   </div>
                 </div>
@@ -1033,7 +1380,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                     }`}
                   >
                     <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                    <span>特助排定佇列 ({pendingTaskCount})</span>
+                    <span>代操排程佇列 ({pendingTaskCount})</span>
                   </button>
 
                   <button
@@ -1046,7 +1393,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                     }`}
                   >
                     <Sliders className="w-3.5 h-3.5 text-amber-600" />
-                    <span>特助接待設定</span>
+                    <span>特助設定</span>
                   </button>
                 </div>
               </div>
@@ -1057,10 +1404,10 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div>
                       <h4 className="font-extrabold text-xs sm:text-sm text-stone-900">
-                        特助自動化排程任務佇列
+                        代操任務佇列
                       </h4>
                       <p className="text-[11px] text-stone-500">
-                        時間到達時，24hr 特助將全自動進入客戶聊天室代操發送。
+                        預定時程抵達時，特助全自動進入聊天室代發。
                       </p>
                     </div>
                     <button
@@ -1069,16 +1416,16 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                       className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>新增特助代操任務</span>
+                      <span>新增代操任務</span>
                     </button>
                   </div>
 
                   {scheduledTasks.length === 0 ? (
                     <div className="p-8 text-center bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
                       <Bot className="w-8 h-8 text-stone-400 mx-auto" />
-                      <p className="text-xs font-bold text-stone-700">目前尚無排定中的特助代操任務</p>
+                      <p className="text-xs font-bold text-stone-700">目前尚無排定代操任務</p>
                       <p className="text-[11px] text-stone-500">
-                        前往「拓客雷達」點選任一客戶卡片上的「排定發送」，軍師將自動建立排程！
+                        前往「24hr巡航雷達」點選「排定發送」，系統將自動建立排程。
                       </p>
                     </div>
                   ) : (
@@ -1127,10 +1474,10 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                                     }`}
                                   >
                                     {task.status === 'completed'
-                                      ? '✅ 特助已代操發送'
+                                      ? '✅ 已代發'
                                       : task.status === 'cancelled'
                                       ? '已取消'
-                                      : '⏳ 待代操發送'}
+                                      : '⏳ 待代發'}
                                   </span>
                                 </div>
                                 <span className="text-[11px] text-purple-900 font-semibold block mt-0.5">
@@ -1157,7 +1504,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                               {task.status === 'completed' && task.executionResult ? (
                                 <span className="text-emerald-700 font-bold">{task.executionResult}</span>
                               ) : (
-                                <span>特助模式：全自動代操發送</span>
+                                <span>模式：全自動代操</span>
                               )}
                             </span>
 
@@ -1171,7 +1518,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                                     title="立即由 24hr 特助代操發送"
                                   >
                                     <Play className="w-3 h-3 fill-white" />
-                                    <span>特助立即代操</span>
+                                    <span>立即代操</span>
                                   </button>
 
                                   <button
@@ -1201,14 +1548,14 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                 </div>
               )}
 
-              {/* Sub-View B: 特助設定與防護 (含 30則/日/聊天室) */}
+              {/* Sub-View B: 特助設定與防護 */}
               {assistantSubTab === 'settings' && (
                 <div className="space-y-4">
                   <AiAssistantSettingsPanel
                     currentUser={currentUser}
                     onUpdateConfig={(newConfig) => {
                       updateAssistant24hrConfig(newConfig);
-                      showToast('✨ 24hr 特助接待設定已儲存！');
+                      showToast('✨ 24hr 特助設定已儲存！');
                     }}
                     onUpgradePlan={handleUpgradeMaster}
                   />
@@ -1290,7 +1637,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
           {/* Footer Disclaimer */}
           <div className="p-3.5 sm:p-4 border-t border-stone-200 bg-stone-50/70 text-[11px] text-stone-500 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span>
-              創點子 IdeaX • AI-CRM 客戶關係管理 (含 24hr AI特助代操)
+              創點子 IdeaX • AI-CRM 客戶關係管理
             </span>
             {onBack && (
               <button
@@ -1304,7 +1651,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
           </div>
         </div>
 
-      {/* Schedule Modal (軍師擬定 -> 特助代操) */}
+      {/* Schedule Modal (策略擬定 -> 特助代操) */}
       {schedulingLead && (
         <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-stone-200 max-h-[92vh] overflow-y-auto">
@@ -1315,10 +1662,10 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                 </div>
                 <div>
                   <h3 className="font-black text-sm text-stone-900">
-                    排定發送（特助代操）
+                    排定特助代操發送
                   </h3>
                   <p className="text-[10px] text-stone-500">
-                    AI-CRM 軍師擬定策略 ➔ 24hr 特助自動化排程發送
+                    策略擬定 ➔ 24hr 特助自動代發
                   </p>
                 </div>
               </div>
@@ -1352,12 +1699,12 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                         </span>
                       </div>
                       <p className="text-[11px] text-purple-800">
-                        軍師建議行動：{schedulingLead.aiRecommendedAction}
+                        建議行動：{schedulingLead.aiRecommendedAction}
                       </p>
                       <div className="pt-1.5 border-t border-purple-200/80 flex items-center justify-between flex-wrap gap-1 text-[11px]">
                         <span className="text-purple-900 font-bold flex items-center gap-1">
                           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                          <span>AICRM 最適時間：</span>
+                          <span>推薦時段：</span>
                         </span>
                         <span className="font-black text-purple-950 bg-white/80 px-2 py-0.5 rounded-md border border-purple-200">
                           {optimalTime}
@@ -1373,7 +1720,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                         </label>
                         <span className="text-[10px] text-purple-700 font-bold flex items-center gap-1">
                           <Sparkles className="w-3 h-3 text-amber-500" />
-                          <span>默認為 AICRM 最適時間</span>
+                          <span>AICRM 推薦時段</span>
                         </span>
                       </div>
 
@@ -1407,7 +1754,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                                     : 'bg-purple-200 text-purple-900'
                                 }`}
                               >
-                                AICRM 最適推薦
+                                精選推薦
                               </span>
                             </div>
                             <span
@@ -1417,7 +1764,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                                   : 'text-stone-500'
                               }`}
                             >
-                              依客戶作息習慣與決策窗口精算
+                              依客戶作息與決策窗口精算
                             </span>
                           </div>
                         </div>
@@ -1429,7 +1776,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                       {/* 其他時段點選面板（免打字，提供豐富選項） */}
                       <div className="pt-1 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-stone-600">更多時段選項（點選切換）：</span>
+                          <span className="text-[11px] font-bold text-stone-600">時段自選：</span>
                           <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-lg border border-stone-200 text-[10px]">
                             <button
                               type="button"
@@ -1440,7 +1787,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                                   : 'text-stone-600 hover:text-stone-900'
                               }`}
                             >
-                              精選情境時段
+                              常用時段
                             </button>
                             <button
                               type="button"
@@ -1451,7 +1798,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                                   : 'text-stone-600 hover:text-stone-900'
                               }`}
                             >
-                              日期＋時刻組合
+                              自訂日期時刻
                             </button>
                           </div>
                         </div>
@@ -1546,7 +1893,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               {/* Message to send */}
               <div className="space-y-1.5">
                 <label className="font-bold text-stone-700 block">
-                  特助代操發送話術：
+                  代發訊息話術：
                 </label>
                 <textarea
                   rows={3}
@@ -1559,9 +1906,9 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               {/* Mode Toggle */}
               <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-stone-800 block">全自動特助代操</span>
+                  <span className="font-bold text-stone-800 block">全自動代操</span>
                   <span className="text-[10px] text-stone-500">
-                    到達時程時，24hr 特助全自動進入聊天室發送
+                    時程抵達時自動進入聊天室代發
                   </span>
                 </div>
                 <input
@@ -1587,7 +1934,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                 className="px-4 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>確認排定發送</span>
+                <span>確認排定</span>
               </button>
             </div>
           </div>
@@ -1601,7 +1948,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <h3 className="font-black text-sm text-stone-900 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-purple-600" />
-                <span>新增特助代操任務</span>
+                <span>新增代操任務</span>
               </h3>
               <button
                 type="button"
@@ -1636,7 +1983,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-bold text-stone-700 block">排定時間（點選選擇）：</label>
+                <label className="font-bold text-stone-700 block">排定時間：</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {[
                     '30 分鐘後',
@@ -1667,12 +2014,12 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-stone-700">特助代操訊息內容：</label>
+                <label className="font-bold text-stone-700">代操訊息內容：</label>
                 <textarea
                   rows={3}
                   value={manualMsg}
                   onChange={(e) => setManualMsg(e.target.value)}
-                  placeholder="輸入特助代發之客製化訊息..."
+                  placeholder="輸入軍師代發訊息..."
                   className="w-full p-2.5 rounded-xl border border-stone-300 text-xs text-stone-800 focus:outline-none focus:ring-1 focus:ring-purple-500 leading-relaxed"
                 />
               </div>

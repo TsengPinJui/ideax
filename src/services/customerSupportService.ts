@@ -11,141 +11,20 @@ const STORAGE_CONVERSATIONS_KEY = 'ideax_cs_conversations';
 const STORAGE_TICKETS_KEY = 'ideax_cs_tickets';
 const STORAGE_FAQS_KEY = 'ideax_cs_faqs';
 
-const DIFY_CLIENT_API_KEY = 'app-VQ8gZUuZuDe08fm3pn75oeI6';
-const DIFY_CLIENT_BASE_URL = 'https://api.dify.ai/v1';
-
-// Direct Client-Side Dify Fallback for Static Hostings (Firebase Hosting, Vercel, Netlify, GitHub Pages)
-async function queryDifyDirectFromClient(
-  query: string,
-  user: User | null,
-  conversationId?: string,
-  dealsCount: number = 0
-): Promise<{ replyText: string; difyConversationId?: string } | null> {
-  try {
-    const userRoleLabel = user?.role === 'solver'
-      ? '專家顧問'
-      : user?.role === 'admin'
-      ? '平台管理員'
-      : '一般會員';
-
-    const inputs: Record<string, string> = {
-      current_user_id: user?.id || '訪客未登入',
-      current_user_email: user?.email || (user?.id ? `${user.id}@ideax.tw` : '訪客未提供信箱'),
-      current_user_role: user ? userRoleLabel : '訪客瀏覽模式',
-      current_user_name: user?.name || '訪客用戶',
-      current_user_balance: user?.balance ? `NT$ ${user.balance.toLocaleString()} 點` : '0 點',
-      current_user_deals: `${dealsCount} 筆`,
-      平台名稱: 'IdeaX',
-      platform_name: 'IdeaX',
-    };
-
-    const pricingKnowledge = `【IdeaX 平台懸賞提問定價規範（1 點 = NT$ 1）】：
-- L0 免費交流：0 點（免費公開討論，完全不扣點，可無限次提問發案）
-- L1 基礎懸賞：100 ~ 300 點（實務建議 / 痛點排查 / 基礎診斷）
-- L2 進階懸賞：301 ~ 899 點（商業架構 / 產品驗證 / 增長模型）
-- L3 高階挑戰：900 ~ 2,999 點（跨領域技術突破 / 產業級重大難題）
-- L4 資深顧問級：3,000 點以上（關鍵技術突破 / 重磅顧問專案）
-※ 注意：平台絕無「每次扣 10 點」的提問規則！若用戶詢問可用點數還能提問幾次，請依據上述 L0~L4 各等級分別試算說明（例如 1,000 點可發布 L0 免費提問無限次、L1 基礎懸賞約 3~10 次、L2 約 1~3 次、L3 約 1 次）。`;
-
-    const queryWithContext = user?.id
-      ? `[系統環境驗證 - 當前已安全登入用戶資訊：用戶ID=${user.id}，用戶名稱=${user.name || '用戶'}，登入信箱=${user.email || user.id + '@ideax.tw'}，帳戶身份=${userRoleLabel}，可用點數=${user.balance || 0} 點，已成交方案=${dealsCount} 筆]\n${pricingKnowledge}\n\n用戶諮詢問題：${query}`
-      : `[系統環境驗證：當前為訪客瀏覽模式（尚未登入）]\n${pricingKnowledge}\n\n用戶諮詢問題：${query}`;
-
-    const endUserId = user?.id
-      ? `usr_${String(user.id).replace(/[^a-zA-Z0-9_-]/g, '_')}`
-      : 'guest_visitor';
-
-    const res = await fetch(`${DIFY_CLIENT_BASE_URL}/chat-messages`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${DIFY_CLIENT_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs,
-        query: queryWithContext,
-        response_mode: 'streaming',
-        conversation_id: conversationId || '',
-        user: endUserId,
-      }),
-    });
-
-    if (!res.ok || !res.body) return null;
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let agentMessageChunks = '';
-    let standardMessageChunks = '';
-    let resultConvId = conversationId || '';
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data: ')) continue;
-        try {
-          const evt = JSON.parse(trimmed.slice(6));
-          if (evt.event === 'agent_message') {
-            agentMessageChunks += evt.answer || '';
-          } else if (evt.event === 'message') {
-            standardMessageChunks += evt.answer || '';
-          }
-          if (evt.conversation_id) {
-            resultConvId = evt.conversation_id;
-          }
-        } catch (e) {}
-      }
-    }
-
-    if (buffer.trim().startsWith('data: ')) {
-      try {
-        const evt = JSON.parse(buffer.trim().slice(6));
-        if (evt.event === 'agent_message') agentMessageChunks += evt.answer || '';
-        else if (evt.event === 'message') standardMessageChunks += evt.answer || '';
-        if (evt.conversation_id) resultConvId = evt.conversation_id;
-      } catch (e) {}
-    }
-
-    const fullAnswer = agentMessageChunks.trim() || standardMessageChunks.trim();
-    if (fullAnswer.length > 0) {
-      let cleaned = fullAnswer;
-      for (const [k, v] of Object.entries(inputs)) {
-        const regex1 = new RegExp(`\\{\\{${k}\\}\\}`, 'g');
-        const regex2 = new RegExp(`\\{${k}\\}`, 'g');
-        cleaned = cleaned.replace(regex1, v).replace(regex2, v);
-      }
-      return { replyText: cleaned, difyConversationId: resultConvId };
-    }
-    return null;
-  } catch (err) {
-    console.warn('Direct client Dify call failed:', err);
-    return null;
-  }
-}
-
 export interface CustomerSupportContext {
   currentUser: User | null;
   userTransactions?: Transaction[];
   userQuestions?: Question[];
   acceptedDealsCount?: number;
-  openTickets?: CustomerSupportTicket[];
+  conversationId?: string;
   difyConversationId?: string;
 }
 
-// Read/Write Local Storage helpers
 export function getStoredConversations(): CustomerSupportConversation[] {
   try {
     const raw = localStorage.getItem(STORAGE_CONVERSATIONS_KEY);
     if (raw) return JSON.parse(raw);
-  } catch (err) {
-    console.warn('Failed to parse stored cs conversations:', err);
-  }
+  } catch (e) {}
   return [];
 }
 
@@ -258,7 +137,7 @@ export function approveFaqCandidate(candidate: { question: string; answer: strin
 }
 
 /**
- * Sends a message to the AI Customer Service Agent with contextual database querying.
+ * Sends a message to the AI Customer Service with native internal intelligence & context.
  */
 export async function sendCustomerSupportMessage(
   inputText: string,
@@ -278,19 +157,59 @@ export async function sendCustomerSupportMessage(
   const lower = query.toLowerCase();
   const user = ctx.currentUser;
 
-  // 1. Check for Direct Tool Calls based on user intent (Personal queries)
-  // Tool A: Check Balance / Points
-  if (lower.includes('餘額') || lower.includes('點數') || lower.includes('查點數') || lower.includes('我的錢')) {
-    if (!user) {
+  // 1. Prioritize Dify AI Customer Support Agent via Backend
+  try {
+    const res = await fetch('/api/ai/customer-support-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: query,
+        conversationId: ctx.difyConversationId || undefined,
+        history: history.slice(-6).map((m) => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          text: m.text,
+        })),
+        userContext: user
+          ? {
+              userId: user.id,
+              userName: user.name,
+              userEmail: user.email,
+              userRole: user.role,
+              balance: user.balance || 0,
+              withheldPoints: user.withheldPoints || 0,
+              dealsCount: ctx.acceptedDealsCount || 0,
+            }
+          : null,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.reply) {
+        return {
+          replyText: data.reply,
+          difyConversationId: data.difyConversationId || ctx.difyConversationId,
+          quickOptions: data.quickOptions || ['查詢點數餘額', '提問分級說明', 'AI 獵頭找專家', '常見問題 FAQ'],
+          extractedFaqCandidate: data.extractedFaqCandidate,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('AI Support Agent call failed, falling back to local handlers:', err);
+  }
+
+  // 2. Fallback: Direct Intent for Balance / Points Query (Offline / Failover only)
+  if (lower.includes('餘額') || lower.includes('點數') || lower.includes('查點數') || lower.includes('我的錢') || lower.includes('點數餘額')) {
+    if (!user || user.id === 'user-guest') {
       return {
         replyText: '您好！查詢個人點數餘額需先登入您的 IdeaX 帳號。請先點擊右上角登入後再進行查詢。',
-        quickOptions: ['點擊登入帳號', '常見問題 FAQ', '平台收費標準'],
+        quickOptions: ['前往登入帳號', '常見問題 FAQ', '平台收費標準'],
       };
     }
     const balance = user.balance || 0;
     const withheld = user.withheldPoints || 0;
     return {
-      replyText: `已為您查詢到專屬帳號資料！\n\n您目前的可用點數餘額為 **NT$ ${balance.toLocaleString()} 點**。\n託管中待結算金額為 **NT$ ${withheld.toLocaleString()} 點**。點數可直接用於問題懸賞發案或聊天室專家客製化委託。`,
+      replyText: `已為您查詢到最新帳號數據！\n\n• **可用點數餘額**：**${balance.toLocaleString()} 點**\n• **託管中待結算**：**NT$ ${withheld.toLocaleString()}**\n\n點數可用於問題懸賞、AI 獵頭專家延攬或客製化委託。若需補足點數，可隨時點擊會員中心進行儲值！`,
       toolUsed: 'getUserProfile(balance)',
       dataCard: {
         type: 'balance',
@@ -298,20 +217,20 @@ export async function sendCustomerSupportMessage(
         details: [
           { label: '會員名稱', value: user.name },
           { label: '專屬 UID', value: `#${user.id}` },
-          { label: '可用餘額', value: `NT$ ${balance.toLocaleString()} 點` },
-          { label: '託管中收益', value: `NT$ ${withheld.toLocaleString()} 點` },
+          { label: '可用餘額', value: `${balance.toLocaleString()} 點` },
+          { label: '託管中款項', value: `NT$ ${withheld.toLocaleString()}` },
         ],
       },
       quickOptions: ['如何申請提領？', '查詢最近交易紀錄', '查詢成案紀錄', '開立客服工單'],
     };
   }
 
-  // Tool B: Check Orders / Transactions
+  // 2. Direct Intent: Orders / Transactions
   if (lower.includes('訂單') || lower.includes('交易') || lower.includes('扣款') || lower.includes('發票') || lower.includes('明細')) {
-    if (!user) {
+    if (!user || user.id === 'user-guest') {
       return {
         replyText: '您好！查詢交易與訂單紀錄需先登入您的帳號以保護隱私。請先登入後由我為您查詢。',
-        quickOptions: ['點擊登入帳號', '金流交易規則', '發票開立說明'],
+        quickOptions: ['前往登入帳號', '金流交易規則', '發票開立說明'],
       };
     }
     const txs = ctx.userTransactions || [];
@@ -323,7 +242,7 @@ export async function sendCustomerSupportMessage(
     }));
 
     return {
-      replyText: `已為您檢索帳戶近期的交易紀錄！\n\n您的帳號累計共有 **${count}** 筆交易紀錄。平台所有交易皆由託管金流保護，若有扣款異常或發票疑問，可隨時點擊下方開立排查工單。`,
+      replyText: `已為您檢索帳戶近期的交易紀錄！\n\n您的帳號累計共有 **${count}** 筆交易明細。平台所有委託款項均享有第三方金流代管保障，保障雙方交付與驗收安全。`,
       toolUsed: 'getUserOrders',
       dataCard: {
         type: 'orders',
@@ -334,35 +253,25 @@ export async function sendCustomerSupportMessage(
     };
   }
 
-  // Tool C: Check Proposals & Answers
-  if (lower.includes('提案') || lower.includes('成案') || lower.includes('接案') || lower.includes('問題進度')) {
-    if (!user) {
-      return {
-        replyText: '您好！查詢提案與問題成案進度請先登入帳號。',
-        quickOptions: ['登入帳號', '提案流程介紹'],
-      };
-    }
-    const deals = ctx.acceptedDealsCount || 0;
-    const questions = ctx.userQuestions?.length || 0;
+  // 3. Direct Intent: Question Levels & Pricing (L0 ~ L4)
+  if (lower.includes('分級') || lower.includes('提問收費') || lower.includes('多少點') || lower.includes('l0') || lower.includes('l1') || lower.includes('l2') || lower.includes('l3') || lower.includes('l4') || lower.includes('扣點規則')) {
+    const userBalance = user?.balance || 0;
     return {
-      replyText: `已為您查詢到專屬專案履約數據：\n\n您目前累計發布/參與的問題共 **${questions}** 則，已驗收成案之方案共 **${deals}** 筆。\n所有成案項目皆享有平台合約與驗收保證！`,
-      toolUsed: 'getUserProposals',
-      dataCard: {
-        type: 'proposals',
-        title: '專案與成案進度總覽',
-        details: [
-          { label: '會員名稱', value: user.name },
-          { label: '身分角色', value: user.role === 'solver' ? '解答者' : user.role === 'admin' ? '管理員' : '提問者' },
-          { label: '發布問題數', value: `${questions} 則` },
-          { label: '已驗收成交數', value: `${deals} 筆` },
-        ],
-      },
-      quickOptions: ['如何確認驗收？', '申請爭議仲裁', '查詢點數餘額'],
+      replyText: `【IdeaX 平台懸賞提問分級與點數折抵標準】：\n\n• **L0 免費交流（0 點）**：完全免費，開放社群公開交流與初步探討。\n• **L1 基礎懸賞（100 ~ 300 點）**：實務建議、痛點排查與基礎診斷。\n• **L2 進階懸賞（301 ~ 899 點）**：商業架構、產品驗證與增長模型。\n• **L3 高階挑戰（900 ~ 2,499 點）**：深度顧問報告、破局方案與專家會談。\n• **L4 企業級顧問（2,500 點以上）**：產業級關鍵技術與重磅專案交付。\n\n您目前帳戶餘額為 **${userBalance.toLocaleString()} 點**，可直接發布相應等級之問題或直接委託專家！`,
+      quickOptions: ['查詢點數餘額', '如何儲值點數', 'AI 獵頭找專家規則', '開立客服工單'],
     };
   }
 
-  // Tool D: Escalate to Support Ticket
-  if (lower.includes('退款') || lower.includes('申訴') || lower.includes('工單') || lower.includes('真人') || lower.includes('人工') || lower.includes('被騙') || lower.includes('糾紛') || lower.includes('詐騙') || lower.includes('bug')) {
+  // 4. Direct Intent: AI Headhunter Rules
+  if (lower.includes('獵頭') || lower.includes('找專家') || lower.includes('深度媒合')) {
+    return {
+      replyText: `【AI 獵頭智慧找專家機制說明】：\n\n• **計費標準**：首次搜尋特惠 **30 點**，第二回起每次 **40 點**。\n• **推薦不重複**：每次搜尋自動排除已推薦人選，確保推薦 4 位全新頂尖專家。\n• **未滿 4 位不扣點**：若智庫中符合條件之專家不足 4 位，本次搜尋**完全免費（不扣點）**。\n• **安心防護**：若餘額不足將嚴格阻斷執行，並可直接點擊「［先去儲值］」前往儲值。`,
+      quickOptions: ['前往認證專家智庫', '查詢點數餘額', '如何成為認證專家'],
+    };
+  }
+
+  // 5. Direct Intent: Dispute & Human Support Escalation
+  if (lower.includes('退款') || lower.includes('申訴') || lower.includes('工單') || lower.includes('真人') || lower.includes('人工') || lower.includes('被騙') || lower.includes('糾紛') || lower.includes('詐騙') || lower.includes('bug') || lower.includes('客服')) {
     const ticketId = `TK-${Date.now().toString(36).toUpperCase()}`;
     const newTicket: CustomerSupportTicket = {
       id: ticketId,
@@ -397,7 +306,7 @@ export async function sendCustomerSupportMessage(
     };
   }
 
-  // 2. Try Calling Backend Dify / Gemini API (or Direct Client-side Dify if deployed as Static SPA)
+  // 6. Call Backend Native Gemini AI Support Agent for Natural Language understanding
   try {
     const res = await fetch('/api/ai/customer-support-chat', {
       method: 'POST',
@@ -428,32 +337,16 @@ export async function sendCustomerSupportMessage(
       if (data && data.reply) {
         return {
           replyText: data.reply,
-          difyConversationId: data.conversationId,
-          quickOptions: data.quickOptions || ['查詢點數餘額', '查詢交易紀錄', '常見問題 FAQ', '轉交專人工單'],
+          quickOptions: data.quickOptions || ['查詢點數餘額', '提問分級說明', 'AI 獵頭找專家', '常見問題 FAQ'],
           extractedFaqCandidate: data.extractedFaqCandidate,
         };
       }
     }
   } catch (err) {
-    // If backend proxy fails or is not present (static deployment), try direct client call
+    console.warn('Native Gemini CS chat error, falling back to local matcher:', err);
   }
 
-  // 2.5 Direct Client-Side Dify Fallback (Guarantees Dify works on static hosts / Firebase Hosting / Vercel)
-  const clientDifyResult = await queryDifyDirectFromClient(
-    query,
-    user,
-    ctx.difyConversationId,
-    ctx.acceptedDealsCount || 0
-  );
-  if (clientDifyResult && clientDifyResult.replyText) {
-    return {
-      replyText: clientDifyResult.replyText,
-      difyConversationId: clientDifyResult.difyConversationId,
-      quickOptions: ['查詢我的點數餘額', '查詢我的訂單紀錄', '平台收費與金流規則', '常見問題 FAQ'],
-    };
-  }
-
-  // 3. Local Intelligent Matcher (FAQ Search & Fallback)
+  // 7. Local Intelligent Matcher (FAQ Search Fallback)
   const matchedFaqs = searchFaqs(query);
   if (matchedFaqs.length > 0) {
     const topFaq = matchedFaqs[0];
@@ -471,9 +364,17 @@ export async function sendCustomerSupportMessage(
     };
   }
 
-  // General helpful fallback response
+  // 8. Conversational Fallback
+  if (lower.includes('愛') || lower.includes('喜歡') || lower.includes('你好') || lower.includes('哈囉') || lower.includes('hi') || lower.includes('hello')) {
+    return {
+      replyText: `謝謝您的溫暖心意！🥰\n\n我是 IdeaX 平台 AI 客服特助，隨時都在這裡為您服務。無論您是想發案找專家、解答疑難雜症、或是查詢帳戶點數與金流，我都能竭誠為您解答！\n\n請問今天有什麼我可以協助您的嗎？`,
+      quickOptions: ['查詢我的點數餘額', '如何發布問題懸賞', 'AI 獵頭找專家', '常見問題 FAQ'],
+    };
+  }
+
+  // General helpful internal AI assistant response
   return {
-    replyText: `您好！我是 IdeaX 平台官方 AI 客服助理。\n\n我能直接為您查詢：\n1. 💰 **帳戶點數與餘額**\n2. 📦 **訂單扣款與交易紀錄**\n3. 🤝 **提案驗收成案進度**\n4. ⚖️ **開立爭議仲裁與專人工單**\n\n請問有什麼具體問題我可以協助您？您也可以點選下方快捷按鈕快速查詢。`,
-    quickOptions: ['查詢我的點數餘額', '查詢我的訂單紀錄', '平台收費與金流規則', '常見問題 FAQ', '轉交人工工單'],
+    replyText: `您好！我是 IdeaX 平台原生 AI 智能客服特助。\n\n我能直接為您服務：\n1. 💰 **帳戶點數與餘額即時查詢**\n2. 📦 **訂單明細與金流紀錄**\n3. 🎯 **提問分級（L0~L4）與 AI 獵頭找專家規則**\n4. 🛡️ **專家認證資格與會員分潤**\n5. ⚖️ **開立爭議仲裁與專人工單**\n\n請問有什麼我可以為您解答的？`,
+    quickOptions: ['查詢我的點數餘額', '提問分級與點數標準', 'AI 獵頭找專家規則', '常見問題 FAQ', '開立專人工單'],
   };
 }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Solver, Category, ProblemLevel, isCertifiedExpert } from '../types';
 import { useApp } from '../context/AppContext';
 import { HelpTooltip } from './HelpTooltip';
+import { AiHeadhunterModal } from './AiHeadhunterModal';
 import {
   ShieldCheck,
   Star,
@@ -17,6 +18,8 @@ import {
   ArrowRight,
   Coins,
   Plus,
+  Zap,
+  Bot,
 } from 'lucide-react';
 
 interface SolversViewProps {
@@ -25,6 +28,7 @@ interface SolversViewProps {
   onOpenChat?: (solver: Solver) => void;
   onNavigateToLeaderboard?: () => void;
   onPostQuestion?: () => void;
+  onOpenExpertCertification?: () => void;
 }
 
 export const SolversView: React.FC<SolversViewProps> = ({
@@ -33,10 +37,22 @@ export const SolversView: React.FC<SolversViewProps> = ({
   onOpenChat,
   onNavigateToLeaderboard,
   onPostQuestion,
+  onOpenExpertCertification,
 }) => {
-  const { solvers, startDirectChat } = useApp();
+  const { solvers, startDirectChat, currentUser, openAuthModal } = useApp();
   const [selectedDomain, setSelectedDomain] = useState<string>('全部');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isHeadhunterOpen, setIsHeadhunterOpen] = useState(false);
+
+  const handleOpenCertification = () => {
+    if (currentUser.id === 'user-guest') {
+      openAuthModal('login');
+      return;
+    }
+    if (onOpenExpertCertification) {
+      onOpenExpertCertification();
+    }
+  };
 
   const handleStartChatWithSolver = (e: React.MouseEvent, solver: Solver) => {
     e.stopPropagation();
@@ -75,34 +91,63 @@ export const SolversView: React.FC<SolversViewProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Top Banner */}
-      <div className="p-4 sm:p-7 rounded-3xl bg-white border border-stone-200 relative overflow-hidden shadow-2xs">
-        <div className="flex items-end sm:items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] sm:text-xs font-bold mb-1.5 sm:mb-2 border border-amber-200">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span className="truncate">IdeaX 認證專家智庫 • 讓想法發光</span>
+      <div className="p-4 sm:p-6 md:p-7 rounded-3xl bg-white border border-stone-200 relative overflow-hidden shadow-2xs space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-2">
+            {/* Tag Badges Row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 text-xs font-bold border border-amber-200/80 whitespace-nowrap">
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>IdeaX 認證專家智庫 • 讓想法發光</span>
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-3xl font-black text-stone-900 tracking-tight truncate">
+
+            {/* Title & Tooltip & 認證專家優先曝光 (帶箭頭) */}
+            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-stone-900 tracking-tight">
                 認證專家智庫
               </h2>
               <HelpTooltip
                 title="認證專家標準說明"
-                content="認證專家資格：通過平台專業認證（實名審核與資歷核驗），或 採納方案 ≥ 50 份且評分 ≥ 4 星。公開透明展示專業領域、方案採納次數與客戶評分口碑，為您的難題提供破局關鍵方案。"
+                content="認證專家資格：通過平台專業認證（實名審核與資歷核驗），或 採納方案 ≥ 50 份且評分 ≥ 4 星。成為專家優先獲得曝光，公開展示專業領域、方案採納次數與客戶評分口碑，為您的難題提供破局關鍵方案。"
               />
+              <button
+                type="button"
+                onClick={handleOpenCertification}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-200 active:scale-95 text-stone-950 border border-amber-400 shadow-2xs text-xs font-black whitespace-nowrap cursor-pointer transition-all group ml-1"
+                title="前往申請認證專家，優先獲得官方曝光"
+              >
+                <Sparkles className="w-3.5 h-3.5 fill-stone-950 shrink-0 group-hover:scale-110 transition-transform" />
+                <span>認證專家優先曝光</span>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-950 stroke-[2.5] group-hover:translate-x-0.5 transition-transform shrink-0" />
+              </button>
             </div>
+            <p className="text-xs text-stone-500 hidden sm:block">
+              匯聚各領域資深實務專家與技術顧問，為您的商業問題提供落地破局方案。
+            </p>
           </div>
 
-          {/* Right Section: [提問懸賞] + 排行榜入口 (右上角) */}
-          <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0">
+          {/* Action Buttons Toolbar: [AI 獵頭找專家] + [提問懸賞] + [榮譽榜] */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap overflow-x-auto pb-1 sm:pb-0 scrollbar-none shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsHeadhunterOpen(true)}
+              className="px-3.5 py-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-stone-900 via-stone-850 to-stone-900 hover:from-stone-800 hover:to-stone-750 active:scale-95 text-amber-300 font-black text-xs sm:text-sm shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer border border-amber-500/40 group shrink-0 whitespace-nowrap"
+              title="啟動 AI 獵頭搜尋，首搜特惠 30 點（次回 40 點），精準推薦 4 位專家，未滿 4 位不扣點"
+            >
+              <Bot className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform shrink-0" />
+              <span>AI 獵頭找專家</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-950 font-black">首搜30點</span>
+            </button>
+
             {onPostQuestion && (
               <button
                 type="button"
                 onClick={onPostQuestion}
-                className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs sm:text-sm shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer border border-amber-400 group shrink-0"
+                className="px-3.5 py-2 rounded-xl sm:rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs sm:text-sm shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer border border-amber-400 group shrink-0 whitespace-nowrap"
                 title="立即發布問題懸賞或需求委託"
               >
-                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3] text-stone-950 group-hover:rotate-90 transition-transform" />
+                <Plus className="w-4 h-4 stroke-[3] text-stone-950 group-hover:rotate-90 transition-transform shrink-0" />
                 <span>提問懸賞</span>
               </button>
             )}
@@ -111,25 +156,25 @@ export const SolversView: React.FC<SolversViewProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToLeaderboard}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-850 font-bold text-xs sm:text-sm shadow-2xs hover:shadow-xs transition-all flex items-center gap-1.5 cursor-pointer border border-stone-200/80 group shrink-0"
+                className="px-3.5 py-2 rounded-xl sm:rounded-2xl bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-850 font-bold text-xs sm:text-sm shadow-2xs hover:shadow-xs transition-all flex items-center gap-1.5 cursor-pointer border border-stone-200/80 group shrink-0 whitespace-nowrap"
                 title="查看全平台交易榮譽榜與專家排名"
               >
-                <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 group-hover:scale-110 transition-transform" />
+                <Trophy className="w-4 h-4 text-amber-600 group-hover:scale-110 transition-transform shrink-0" />
                 <span>榮譽榜</span>
-                <ArrowRight className="w-3 h-3 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="w-3 h-3 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
               </button>
             )}
           </div>
         </div>
 
         {/* Filter Toolbar */}
-        <div className="mt-3.5 pt-3.5 sm:mt-5 sm:pt-5 border-t border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
             {domains.map((dom) => (
               <button
                 key={dom}
                 onClick={() => setSelectedDomain(dom)}
-                className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   selectedDomain === dom
                     ? 'bg-amber-500 text-stone-950 font-black shadow-2xs'
                     : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -140,14 +185,14 @@ export const SolversView: React.FC<SolversViewProps> = ({
             ))}
           </div>
 
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-stone-400 absolute left-3 top-2.5" />
+          <div className="relative w-full sm:w-72 shrink-0">
+            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="搜尋標題、內文、問題、人物帳號..."
+              placeholder="搜尋標題、專長、顧問姓名..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 sm:pl-9 pr-3 py-1.5 sm:py-2 rounded-xl border border-stone-300 text-xs font-medium outline-none focus:border-amber-500 bg-white"
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-200 text-xs font-medium outline-hidden focus:ring-2 focus:ring-amber-500/50 bg-stone-50 focus:bg-white transition-all shadow-2xs"
             />
           </div>
         </div>
@@ -301,6 +346,14 @@ export const SolversView: React.FC<SolversViewProps> = ({
           );
         })}
       </div>
+
+      {/* AI 獵頭找專家彈窗 */}
+      <AiHeadhunterModal
+        isOpen={isHeadhunterOpen}
+        onClose={() => setIsHeadhunterOpen(false)}
+        onSelectSolver={onSelectSolver}
+        onOpenChat={onOpenChat}
+      />
     </div>
   );
 };

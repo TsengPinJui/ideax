@@ -130,9 +130,9 @@ export const MechanismView: React.FC = () => {
     {
       id: 'ch_other_3',
       num: '四',
-      title: '會員訂閱方案與費率減免（最高 100% 全額入帳）',
+      title: '會員訂閱方案與費率減免（最高 98% 實收入帳）',
       summary:
-        '達人方案（8% 費率）、權威方案（5% 費率＋高賞提案優先推薦）與大師方案（0% 免服務費全額入帳）。',
+        '提供達人方案、權威方案與大師方案等多階會員特權，享有各級服務費大幅減免與專屬工具，各方案即時費用與減免優惠依平台公告為準。',
       badge: '會員與費率',
     },
     {
@@ -871,7 +871,7 @@ export const MechanismView: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-4">
                     <h2 className="text-xl font-black text-stone-900 flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-amber-600" />
-                      <span>新版會員方案（費率減免與最高 100% 全額入帳）</span>
+                      <span>新版會員方案（費率減免與最高 98% 實收入帳）</span>
                     </h2>
                     <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
                       費率直接折抵 • 自動撥款結算
@@ -888,7 +888,7 @@ export const MechanismView: React.FC = () => {
                         </span>
                       </div>
                       <p className="font-mono text-blue-950 font-extrabold text-sm">
-                        6 個月 $1,499（$249/月）
+                        $299/月 或 半年 $1,499
                       </p>
                       <p className="text-[11px] text-blue-800 leading-relaxed">
                         費率僅 8%（僅收 8% 服務費，<strong>解答者實收 92%</strong>）。
@@ -916,14 +916,14 @@ export const MechanismView: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <span className="font-black text-sm text-stone-950">大師方案</span>
                         <span className="text-[10px] font-black bg-gradient-to-r from-amber-500 to-orange-500 text-stone-950 px-2 py-0.5 rounded-full">
-                          0% 免服務費
+                          極低 2% 服務費
                         </span>
                       </div>
                       <p className="font-mono text-stone-950 font-extrabold text-sm">
-                        $1,490/月 或 $14,900/年
+                        $1,980/月 或 $19,800/年
                       </p>
                       <p className="text-[11px] text-stone-700 leading-relaxed">
-                        <strong>0% 免服務費（100% 全額入帳）</strong>，享 24hr AI客服特助 ＋ AI-CRM 客戶關係管理。
+                        <strong>極低 2% 服務費（98% 實收入帳）</strong>，享 24hr AI客服特助 ＋ AI-CRM 客戶關係管理。
                       </p>
                     </div>
                   </div>

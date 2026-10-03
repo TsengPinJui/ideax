@@ -256,6 +256,10 @@ export const ExpertCertificationTab: React.FC = () => {
                 <h3 className="text-base sm:text-lg font-black text-stone-900">
                   IdeaX 認證專家資格審查
                 </h3>
+                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-200/90 text-amber-950 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
+                  <Sparkles className="w-3 h-3 text-amber-700" />
+                  <span>成為專家優先獲得曝光</span>
+                </span>
                 {isApproved ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                     <CheckCircle2 className="w-3.5 h-3.5" /> 認證專家

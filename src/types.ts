@@ -268,10 +268,11 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     // 相容別名導向達人方案
     id: 'pro',
     name: '達人方案',
-    pricingText: '6 個月 $1,499（$249/月）',
-    monthlyPrice: 249,
+    pricingText: '$299/月 或 $1,499/半年',
+    monthlyPrice: 299,
     billingCycles: [
-      { cycle: 'semi_annual', price: 1499, label: '6 個月 $1,499', savingsText: '約 $249/月', durationMonths: 6 },
+      { cycle: 'monthly', price: 299, label: '月繳 NT$ 299/月', durationMonths: 1 },
+      { cycle: 'semi_annual', price: 1499, label: '半年繳 NT$ 1,499/半年', savingsText: '約 $249/月，現省 $295', durationMonths: 6 },
     ],
     platformFeeRate: 0.08,
     feeDiscountText: '費率 8%（實收 92%）',
@@ -290,10 +291,11 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   expert: {
     id: 'expert',
     name: '達人方案',
-    pricingText: '6 個月 $1,499（$249/月）',
-    monthlyPrice: 249,
+    pricingText: '$299/月 或 $1,499/半年',
+    monthlyPrice: 299,
     billingCycles: [
-      { cycle: 'semi_annual', price: 1499, label: '6 個月 $1,499', savingsText: '約 $249/月', durationMonths: 6 },
+      { cycle: 'monthly', price: 299, label: '月繳 NT$ 299/月', durationMonths: 1 },
+      { cycle: 'semi_annual', price: 1499, label: '半年繳 NT$ 1,499/半年', savingsText: '約 $249/月，現省 $295', durationMonths: 6 },
     ],
     platformFeeRate: 0.08,
     feeDiscountText: '費率 8%（實收 92%）',
@@ -331,38 +333,41 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
       'AI 初步問題分析報告：全站免費無限次查看及下載報告（升級無限次＋下載）',
       'AI 提案架構整理：一鍵整理為 4 層架構',
       '✨ 升級高賞提案優先推薦曝光',
+      '💰 優質提案推薦您來賺：AI-CRM 智能推播高額懸賞好題(權威方案以上)',
     ],
   },
   master: {
     id: 'master',
     name: '大師方案',
-    pricingText: '$1,490/月 或 $14,900/年',
-    monthlyPrice: 1490,
+    pricingText: '$1,980/月 或 $19,800/年',
+    monthlyPrice: 1980,
     billingCycles: [
-      { cycle: 'monthly', price: 1490, label: '月繳 NT$ 1,490/月', durationMonths: 1 },
-      { cycle: 'annual', price: 14900, label: '年繳 NT$ 14,900/年', savingsText: '年繳現省 NT$ 2,980', durationMonths: 12 },
+      { cycle: 'monthly', price: 1980, label: '月繳 NT$ 1,980/月', durationMonths: 1 },
+      { cycle: 'annual', price: 19800, label: '年繳 NT$ 19,800/年', savingsText: '年繳現省 NT$ 3,960', durationMonths: 12 },
     ],
-    platformFeeRate: 0.00,
-    feeDiscountText: '免服務費（0% 服務費，全額實收 100%）',
-    sellerPayoutRate: 1.00,
-    sellerPayoutText: '100%',
-    effectiveRateText: '0%',
-    rebatePercent: 10,
+    platformFeeRate: 0.02,
+    feeDiscountText: '服務費僅 2%（-8% 減免，實收 98%）',
+    sellerPayoutRate: 0.98,
+    sellerPayoutText: '98%',
+    effectiveRateText: '2%',
+    rebatePercent: 8,
     badgeClass: 'bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-500 text-stone-950 border-amber-500 font-black shadow-sm',
-    tagline: '0% 服務費！全額實收 100% ＋ 24hr AI客服特助',
+    tagline: '極低 2% 服務費！實收高達 98% ＋ AI-CRM 客戶關係管理',
     benefits: [
       '全站發問與解答提案',
       'AI 初步問題分析報告：全站免費無限次查看及下載報告',
       'AI 提案架構整理：一鍵整理為 4 層架構',
       '高賞提案優先推薦',
-      '🤖 24hr AI客服特助：離線主動對談維護客戶＋聊天室召喚談判策略建議(大師專屬)',
-      'AI-CRM 主動客戶關係管理系統：管理案件小秘書(大師專屬)',
-      '⚡ 雙效 BUFF：24hr AI客服特助 ＋ AI-CRM 客戶關係管理，打造高轉單接案飛輪',
+      '🎯 24hr巡航雷達：即時客情意向偵測與高潛在客戶巡航(大師專屬)',
+      '💰 優質提案推薦您來賺：AI-CRM 智能推播高額懸賞好題(大師專屬)',
+      '🧠 24hr策略軍師：心理學談判推演與話術擬定排程代操(大師專屬)',
+      '🤖 24hr AI客服特助：離線主動對談維護客戶＋24hr 自動化代操發送(大師專屬)',
+      '⚡ AI-CRM 客戶關係管理：24hr巡航雷達 ＋ 策略軍師 ＋ 24hr AI客服特助，打造高轉單接案飛輪',
     ],
   },
 };
 
-// 24hr AI特助代客服務相關結構
+// 24hr AI軍師代客服務相關結構
 export interface AssistantFaqItem {
   id: string;
   question: string;
@@ -395,8 +400,8 @@ export interface AssistantScheduledTask {
 }
 
 export interface Assistant24hrConfig {
-  isEnabled: boolean; // 是否啟用 24hr AI特助代客服務
-  tone: 'professional' | 'warm' | 'technical' | 'authoritative'; // 交談語氣
+  isEnabled: boolean; // 是否啟用 24hr AI軍師代客服務
+  tone: 'adaptive' | 'professional' | 'warm' | 'technical' | 'authoritative'; // 交談語氣 (adaptive: 依AI判定客戶習慣客製語氣)
   toneDescription?: string; // 希望的回答方向（自然語言）
   faqList: AssistantFaqItem[]; // 客戶常見問題 FAQ 與期望回答
   offlineTriggerMinutes: number; // 專家離線召喚時間 (預設 20 分鐘)
@@ -580,7 +585,7 @@ export interface User {
     images?: Array<{ url: string; caption?: string }>;
   };
   showRecentSolutions?: boolean;
-  assistant24hrConfig?: Assistant24hrConfig; // 24hr AI特助代客服務設定 (權威方案以上)
+  assistant24hrConfig?: Assistant24hrConfig; // 24hr AI軍師代客服務設定 (權威方案以上)
 
   // 默認隱藏顯示（可選擇公開）
   reputationPoints?: number; // 榮譽點數
@@ -1079,7 +1084,7 @@ export interface ChatMessage {
     size?: string;
   };
   userCard?: ChatUserCard;
-  isAiAssistant?: boolean; // 是否為 24hr AI特助代答
+  isAiAssistant?: boolean; // 是否為 24hr AI軍師代答
 }
 
 export interface ChatConversation {

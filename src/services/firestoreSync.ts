@@ -24,37 +24,15 @@ import {
   CustomerSupportConversation,
 } from '../types';
 
-let isQuotaExhausted = (() => {
-  try {
-    const stored = localStorage.getItem('ideax_firestore_quota_exhausted_date');
-    const today = new Date().toISOString().slice(0, 10);
-    return stored === today;
-  } catch {
-    return false;
-  }
-})();
+// Clear any stale local quota flag so Firestore writes are always active
+try {
+  localStorage.removeItem('ideax_firestore_quota_exhausted_date');
+} catch {}
+
+let isQuotaExhausted = false;
 
 function handleFirestoreError(context: string, err: any) {
   const errMsg = err?.message || String(err);
-  const isQuota =
-    errMsg.includes('resource-exhausted') ||
-    errMsg.includes('Quota limit exceeded') ||
-    errMsg.includes('Quota exceeded') ||
-    err?.code === 'resource-exhausted';
-
-  if (isQuota) {
-    if (!isQuotaExhausted) {
-      isQuotaExhausted = true;
-      console.warn(`[Firestore] Daily write quota reached for free tier project. Seamlessly falling back to local storage persistence.`);
-    }
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      localStorage.setItem('ideax_firestore_quota_exhausted_date', today);
-    } catch {
-      // ignore
-    }
-    return;
-  }
   console.warn(`[Firestore] ${context}:`, errMsg);
 }
 
@@ -123,35 +101,39 @@ export async function deleteQuestionsFromFirestore(questionIds: string[]): Promi
 export async function deleteQuestionAndRelatedDataFromFirestore(questionId: string): Promise<void> {
   if (!questionId || isQuotaExhausted) return;
   try {
-    const batch = writeBatch(db);
-    
-    // 1. Delete question doc
+    // 1. Delete question doc directly and immediately
     const qRef = doc(db, 'questions', questionId);
-    batch.delete(qRef);
+    await deleteDoc(qRef);
 
     // 2. Find and delete related answers
     try {
       const answersSnap = await getDocs(collection(db, 'answers'));
+      const batch = writeBatch(db);
+      let ansCount = 0;
       answersSnap.docs.forEach((d) => {
         const data = d.data();
         if (data.questionId === questionId) {
           batch.delete(d.ref);
+          ansCount++;
         }
       });
+      if (ansCount > 0) await batch.commit();
     } catch {}
 
     // 3. Find and delete related conversations
     try {
       const convsSnap = await getDocs(collection(db, 'conversations'));
+      const batch = writeBatch(db);
+      let convCount = 0;
       convsSnap.docs.forEach((d) => {
         const data = d.data();
         if (data.questionId === questionId) {
           batch.delete(d.ref);
+          convCount++;
         }
       });
+      if (convCount > 0) await batch.commit();
     } catch {}
-
-    await batch.commit();
   } catch (err) {
     handleFirestoreError(`Failed to delete question and related data for ${questionId}`, err);
   }
