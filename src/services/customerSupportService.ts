@@ -12,6 +12,7 @@ export interface CustomerSupportContext {
   userQuestions?: Question[];
   acceptedDealsCount?: number;
   openTickets?: CustomerSupportTicket[];
+  difyConversationId?: string;
 }
 
 // Read/Write Local Storage helpers
@@ -117,6 +118,7 @@ export async function sendCustomerSupportMessage(
   isEscalated?: boolean;
   ticket?: CustomerSupportTicket;
   extractedFaqCandidate?: CustomerSupportConversation['extractedFaqCandidate'];
+  difyConversationId?: string;
 }> {
   const query = inputText.trim();
   const lower = query.toLowerCase();
@@ -241,13 +243,14 @@ export async function sendCustomerSupportMessage(
     };
   }
 
-  // 2. Try Calling Backend Gemini API
+  // 2. Try Calling Backend Dify / Gemini API
   try {
     const res = await fetch('/api/ai/customer-support-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: query,
+        conversationId: ctx.difyConversationId || undefined,
         history: history.slice(-6).map((m) => ({
           role: m.role === 'user' ? 'user' : 'model',
           text: m.text,
@@ -256,6 +259,7 @@ export async function sendCustomerSupportMessage(
           ? {
               userId: user.id,
               userName: user.name,
+              userEmail: user.email,
               userRole: user.role,
               balance: user.balance || 0,
               withheldPoints: user.withheldPoints || 0,
@@ -270,6 +274,7 @@ export async function sendCustomerSupportMessage(
       if (data && data.reply) {
         return {
           replyText: data.reply,
+          difyConversationId: data.conversationId,
           quickOptions: data.quickOptions || ['查詢點數餘額', '查詢交易紀錄', '常見問題 FAQ', '轉交專人工單'],
           extractedFaqCandidate: data.extractedFaqCandidate,
         };

@@ -1226,13 +1226,166 @@ ${historyText || '（剛開始交流）'}
   });
 });
 
-// AI Customer Support Agent Endpoint
+// Helper to query Dify streaming agent and assemble reply
+async function queryDifyAgent(params: {
+  apiKey: string;
+  baseUrl: string;
+  query: string;
+  conversationId?: string;
+  userContext?: any;
+}): Promise<{ reply: string; conversationId: string } | null> {
+  const { apiKey, baseUrl, query, conversationId, userContext } = params;
+
+  // Format inputs according to the prompt variables configured in Dify
+  const inputs: Record<string, string> = {
+    current_user_id: userContext?.userId || '訪客未登入',
+    current_user_email: userContext?.userEmail || (userContext?.userId ? `${userContext.userId}@ideax.tw` : '訪客未提供信箱'),
+    current_user_role: userContext?.userRole
+      ? (userContext.userRole === 'solver' ? '專家顧問' : userContext.userRole === 'admin' ? '平台管理員' : '一般會員')
+      : '訪客瀏覽模式',
+    current_user_name: userContext?.userName || '訪客用戶',
+    current_user_balance: userContext?.balance ? `NT$ ${userContext.balance.toLocaleString()} 點` : '0 點',
+    current_user_deals: userContext?.dealsCount ? `${userContext.dealsCount} 筆` : '0 筆',
+    平台名稱: 'IdeaX',
+    platform_name: 'IdeaX',
+  };
+
+  const endUserId = userContext?.userId
+    ? `usr_${String(userContext.userId).replace(/[^a-zA-Z0-9_-]/g, '_')}`
+    : 'guest_visitor';
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for tools
+
+  try {
+    const res = await fetch(`${baseUrl}/chat-messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inputs,
+        query,
+        response_mode: 'streaming',
+        conversation_id: conversationId || '',
+        user: endUserId,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn('Dify API returned error:', res.status, errText);
+      return null;
+    }
+
+    if (!res.body) return null;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullAnswer = '';
+    let resultConvId = conversationId || '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const jsonStr = trimmed.slice(6);
+        try {
+          const evt = JSON.parse(jsonStr);
+          if (evt.event === 'agent_message' || evt.event === 'message') {
+            fullAnswer += evt.answer || '';
+          }
+          if (evt.conversation_id) {
+            resultConvId = evt.conversation_id;
+          }
+        } catch (e) {
+          // ignore chunk parse error
+        }
+      }
+    }
+
+    if (buffer.trim().startsWith('data: ')) {
+      try {
+        const evt = JSON.parse(buffer.trim().slice(6));
+        if (evt.event === 'agent_message' || evt.event === 'message') {
+          fullAnswer += evt.answer || '';
+        }
+        if (evt.conversation_id) {
+          resultConvId = evt.conversation_id;
+        }
+      } catch (e) {}
+    }
+
+    if (fullAnswer.trim().length > 0) {
+      let cleaned = fullAnswer.trim();
+      // Replace any raw template variables if Dify outputted them verbatim
+      for (const [k, v] of Object.entries(inputs)) {
+        const regex1 = new RegExp(`\\{\\{${k}\\}\\}`, 'g');
+        const regex2 = new RegExp(`\\{${k}\\}`, 'g');
+        cleaned = cleaned.replace(regex1, v).replace(regex2, v);
+      }
+      return { reply: cleaned, conversationId: resultConvId };
+    }
+    return null;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.warn('Dify agent query failed:', err);
+    return null;
+  }
+}
+
+// AI Customer Support Agent Endpoint (Supports Dify Agent with Gemini Fallback)
 app.post('/api/ai/customer-support-chat', async (req: Request, res: Response) => {
-  const { message, history, userContext } = req.body;
+  const { message, conversationId, history, userContext } = req.body;
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
   }
 
+  // 1. Try Dify Agent if key is available
+  const difyApiKey = process.env.DIFY_API_KEY || 'app-VQ8gZUuZuDe08fm3pn75oeI6';
+  const difyBaseUrl = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
+
+  if (difyApiKey) {
+    try {
+      const difyResult = await queryDifyAgent({
+        apiKey: difyApiKey,
+        baseUrl: difyBaseUrl,
+        query: message,
+        conversationId,
+        userContext,
+      });
+
+      if (difyResult && difyResult.reply) {
+        return res.json({
+          reply: difyResult.reply,
+          conversationId: difyResult.conversationId,
+          source: 'dify',
+          quickOptions: [
+            '查詢我的點數餘額',
+            '查詢我的訂單紀錄',
+            '平台收費與金流規則',
+            '常見問題 FAQ',
+          ],
+          extractedFaqCandidate: null,
+        });
+      }
+    } catch (difyErr) {
+      console.warn('Dify Agent execution error, fallback to Gemini:', difyErr);
+    }
+  }
+
+  // 2. Fallback to Gemini AI Support Agent
   const prompt = `你現在是「IdeaX」創新創業與專業問題媒合平台的官方 AI 智能客服助理。
 你的任務：以親切、專業、結構化（繁體中文台灣語境）回答用戶問題，並協助解答平台使用、點數收費、提案成案規則、爭議仲裁與個人帳號諮詢。
 

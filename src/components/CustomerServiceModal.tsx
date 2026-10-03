@@ -70,6 +70,7 @@ export const CustomerServiceModal: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>('');
+  const [difyConversationId, setDifyConversationId] = useState<string | undefined>(undefined);
   const [satisfaction, setSatisfaction] = useState<'positive' | 'negative' | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -91,6 +92,7 @@ export const CustomerServiceModal: React.FC = () => {
     if (isCustomerServiceOpen) {
       setSubmittedTicket(null);
       setSatisfaction(null);
+      setDifyConversationId(undefined);
       setFaqList(getPlatformFaqs());
       setTicketName(currentUser?.name || '');
       setTicketEmail(currentUser?.email || '');
@@ -166,7 +168,12 @@ export const CustomerServiceModal: React.FC = () => {
         ),
         userQuestions: questions?.filter((q) => q.authorId === currentUser?.id),
         acceptedDealsCount: userDealsCount,
+        difyConversationId,
       });
+
+      if (response.difyConversationId) {
+        setDifyConversationId(response.difyConversationId);
+      }
 
       const assistantMsg: CustomerSupportMessage = {
         id: `msg-ai-${Date.now()}`,
