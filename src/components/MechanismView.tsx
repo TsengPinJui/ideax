@@ -33,6 +33,8 @@ import {
   MessageSquare,
   RotateCcw,
   ShieldAlert,
+  Crown,
+  Bot,
 } from 'lucide-react';
 
 type MechanismTab = 'architecture' | 'contract' | 'tiers';
@@ -950,53 +952,82 @@ export const MechanismView: React.FC = () => {
                 <div className="p-6 sm:p-8 rounded-3xl bg-purple-50/60 border border-purple-200 space-y-6 animate-in fade-in">
                   <div className="flex items-center gap-2.5 border-b border-purple-200 pb-4">
                     <Sparkles className="w-6 h-6 text-purple-700" />
-                    <h2 className="text-xl font-black text-stone-900">
-                      AI 智慧引擎賦能與高效溝通工具
-                    </h2>
+                    <div>
+                      <h2 className="text-xl font-black text-stone-900">
+                        AI 智慧引擎賦能與高效協同系統
+                      </h2>
+                      <p className="text-xs text-stone-500 mt-0.5">
+                        人機協同 • 智能代操 • 交易安全
+                      </p>
+                    </div>
                   </div>
 
                   <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                    IdeaX 整合最前沿 AI 語意與專家大語言模型，全面賦能提問者、解答者與平台營運管理，打造無縫高效的知識與解決方案交易生態：
+                    創點子 IdeaX 打造全方位的 AI Agent 智慧賦能矩陣，為發案提問者、智庫解答專家及交易保障提供精準、高效且安全的人機協同體驗：
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
-                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 text-purple-600" />
-                        <span>1. AI 客服特助 Agent</span>
-                      </span>
-                      <p className="text-stone-600 leading-relaxed">
-                        全天候解答全站機制、規範與金流，支援智能引導並主動受理與升級官方專人工單。
+                    {/* 1. AICRM 業務顧問與 24hr 特助 */}
+                    <div className="p-4 bg-white rounded-2xl border border-amber-200 space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-amber-950 block text-sm flex items-center gap-1.5">
+                          <Crown className="w-4 h-4 text-amber-600" />
+                          <span>1. 💼 AICRM 業務顧問與 24hr 特助</span>
+                        </span>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-200 text-stone-900">
+                          專家賦能
+                        </span>
+                      </div>
+                      <p className="text-stone-600 leading-relaxed text-[11px]">
+                        24hr 巡航雷達掃描全站待認領商機，分析發案方痛點與成案意向 (0~100%)；專家離線時特助主動接待並擬定 3 款破冰話術。
                       </p>
                     </div>
 
+                    {/* 2. 市場顧問 Agent */}
                     <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
-                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
-                        <Layers className="w-4 h-4 text-purple-600" />
-                        <span>2. AICRM 24hr 特助 Agent</span>
-                      </span>
-                      <p className="text-stone-600 leading-relaxed">
-                        為專家拆解潛在客戶痛點、計算意向評分與跟進時機，定時自主代操發送破冰訊息與接待。
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
+                          <Scale className="w-4 h-4 text-purple-600" />
+                          <span>2. 📊 市場顧問 Agent</span>
+                        </span>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900">
+                          媒合與仲裁
+                        </span>
+                      </div>
+                      <p className="text-stone-600 leading-relaxed text-[11px]">
+                        自動對問題進行分類與標籤萃取，精準獵頭媒合認證專家；遇驗收爭議時客觀比對履約紀錄，即時產出《雙軌和解協議書》。
                       </p>
                     </div>
 
-                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
-                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
-                        <Users className="w-4 h-4 text-purple-600" />
-                        <span>3. AI 專家智慧媒合推播 Agent</span>
-                      </span>
-                      <p className="text-stone-600 leading-relaxed">
-                        即時分析專家領域、認證資歷與歷史評價，主動推播高適配度問題給專屬專家。
+                    {/* 3. 官方客服特助 Agent */}
+                    <div className="p-4 bg-white rounded-2xl border border-stone-200 space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-stone-900 block text-sm flex items-center gap-1.5">
+                          <Bot className="w-4 h-4 text-purple-600" />
+                          <span>3. 🤖 官方客服特助 Agent</span>
+                        </span>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                          全體免費
+                        </span>
+                      </div>
+                      <p className="text-stone-600 leading-relaxed text-[11px]">
+                        全天候 24hr 即時解答第三方價金託管、驗收放款、專家認證審核與儲值流程；複雜問題無縫升級官方專人工單處理。
                       </p>
                     </div>
 
-                    <div className="p-4 bg-white rounded-2xl border border-purple-200 space-y-2 shadow-2xs">
-                      <span className="font-extrabold text-purple-900 block text-sm flex items-center gap-1.5">
-                        <Scale className="w-4 h-4 text-purple-600" />
-                        <span>4. AI 智慧爭議調解報告 Agent</span>
-                      </span>
-                      <p className="text-stone-600 leading-relaxed">
-                        爭議發生時，調閱聊天室對話與交付紀錄，生成中立客觀的調解報告與和解協議。
+                    {/* 4. 雙重隱私與安全防護 */}
+                    <div className="p-4 bg-white rounded-2xl border border-emerald-200 space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-emerald-950 block text-sm flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                          <span>4. 🛡️ 雙重隱私與安全防護</span>
+                        </span>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                          安全守護
+                        </span>
+                      </div>
+                      <p className="text-stone-600 leading-relaxed text-[11px]">
+                        對話中自動脫敏遮蔽電話、LINE、身分證等敏感個資防範受騙；全站採人機協同把關，合約簽署與資金放款均由用戶自主確認。
                       </p>
                     </div>
                   </div>

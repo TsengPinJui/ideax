@@ -1,4 +1,14 @@
-import { CustomerSupportConversation, CustomerSupportMessage, CustomerSupportTicket, FaqItem, User, Transaction, Question } from '../types';
+import {
+  CustomerSupportConversation,
+  CustomerSupportMessage,
+  CustomerSupportTicket,
+  FaqItem,
+  User,
+  Transaction,
+  Question,
+  CollectedUserQuestion,
+  DraftFaqItem,
+} from '../types';
 import { INITIAL_FAQS, searchFaqs } from '../data/faqData';
 import {
   syncAuditLogsToFirestore,
@@ -10,6 +20,8 @@ import {
 const STORAGE_CONVERSATIONS_KEY = 'ideax_cs_conversations';
 const STORAGE_TICKETS_KEY = 'ideax_cs_tickets';
 const STORAGE_FAQS_KEY = 'ideax_cs_faqs';
+const STORAGE_COLLECTED_QUESTIONS_KEY = 'ideax_collected_cs_questions';
+const STORAGE_DRAFT_FAQS_KEY = 'ideax_draft_faqs';
 
 export interface CustomerSupportContext {
   currentUser: User | null;
@@ -117,7 +129,323 @@ export function getPlatformFaqs(): FaqItem[] {
 export function savePlatformFaqs(faqs: FaqItem[]) {
   try {
     localStorage.setItem(STORAGE_FAQS_KEY, JSON.stringify(faqs));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('customer_faqs_updated'));
+    }
   } catch (e) {}
+}
+
+export function deletePlatformFaq(faqId: string): void {
+  const list = getPlatformFaqs();
+  const updated = list.filter((f) => f.id !== faqId);
+  savePlatformFaqs(updated);
+}
+
+const INITIAL_COLLECTED_QUESTIONS: CollectedUserQuestion[] = [
+  {
+    id: 'q-seed-01',
+    userId: 'user-02',
+    userName: '林彥廷 (創業者)',
+    question: '請問我購買的點數發案如果沒有專家被採納，懸賞點數會不會全額退款？',
+    category: '金流與點數',
+    timestamp: '2026-10-02 14:20',
+    aiAnswerSnippet: '發案若招募期滿未採納，託管之點數將全額返還至帳戶餘額，可再次發案或申請退款。',
+    status: 'collected',
+    resolvedByAi: true,
+  },
+  {
+    id: 'q-seed-02',
+    userId: 'user-03',
+    userName: '陳美玲 (企業採購)',
+    question: 'L0 痛點免費提出與懸賞發案有什麼差別？提問需要事先簽 NDA 保密合約嗎？',
+    category: '提問與媒合',
+    timestamp: '2026-10-02 16:45',
+    aiAnswerSnippet: 'L0 痛點完全免費提出，專家主動報價；若需商業保密可於企業專區簽署雙向 NDA。',
+    status: 'collected',
+    resolvedByAi: true,
+  },
+  {
+    id: 'q-seed-03',
+    userId: 'user-04',
+    userName: '張家瑋 (AI 技術顧問)',
+    question: '專家接案完成成果交付後，收益什麼時候會撥款到我的銀行帳戶？手續費是多少？',
+    category: '金流與點數',
+    timestamp: '2026-10-03 09:12',
+    aiAnswerSnippet: '委託人確認驗收並經過 7 日猶豫期後，平台於每月 5 號由合作銀行電匯撥付至實名綁定帳戶。',
+    status: 'collected',
+    resolvedByAi: true,
+  },
+  {
+    id: 'q-seed-04',
+    userId: 'user-05',
+    userName: '趙偉倫 (獨立開發者)',
+    question: 'AI 獵頭智慧找專家是怎麼收費的？如果推薦的名單都不符合需求會扣點數嗎？',
+    category: '提問與媒合',
+    timestamp: '2026-10-03 11:30',
+    aiAnswerSnippet: '首次 30 點、後續每次 40 點，推薦 4 位頂尖人選不重複；若智庫符合條件不足 4 位則完全不扣點。',
+    status: 'collected',
+    resolvedByAi: true,
+  },
+  {
+    id: 'q-seed-05',
+    userId: 'user-06',
+    userName: '李欣穎 (品牌總監)',
+    question: '如果解答方交付的內容與原本約定嚴重不符，平台有爭議仲裁與退款保障機制嗎？',
+    category: '爭議與仲裁',
+    timestamp: '2026-10-03 12:05',
+    aiAnswerSnippet: '可透過專人工單申請爭議仲裁，款項將立即凍結，由平台法務與仲裁委員調閱紀錄公正裁決。',
+    status: 'collected',
+    resolvedByAi: true,
+  },
+];
+
+export function getCollectedQuestions(): CollectedUserQuestion[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_COLLECTED_QUESTIONS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return INITIAL_COLLECTED_QUESTIONS;
+}
+
+export function saveCollectedQuestions(questions: CollectedUserQuestion[]): void {
+  try {
+    localStorage.setItem(STORAGE_COLLECTED_QUESTIONS_KEY, JSON.stringify(questions.slice(0, 150)));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('collected_questions_updated'));
+    }
+  } catch (e) {}
+}
+
+export function recordCollectedQuestion(
+  item: Omit<CollectedUserQuestion, 'id' | 'timestamp' | 'status'>
+): CollectedUserQuestion {
+  const questions = getCollectedQuestions();
+  const newQuestion: CollectedUserQuestion = {
+    ...item,
+    id: `cq-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    timestamp: new Date().toLocaleString([], {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    status: 'collected',
+  };
+  saveCollectedQuestions([newQuestion, ...questions]);
+  return newQuestion;
+}
+
+export function getDraftFaqs(): DraftFaqItem[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_DRAFT_FAQS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {}
+  return [];
+}
+
+export function saveDraftFaqs(drafts: DraftFaqItem[]): void {
+  try {
+    localStorage.setItem(STORAGE_DRAFT_FAQS_KEY, JSON.stringify(drafts));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('draft_faqs_updated'));
+    }
+  } catch (e) {}
+}
+
+export async function aggregateQuestionsWithAi(
+  questions: CollectedUserQuestion[]
+): Promise<DraftFaqItem[]> {
+  const payloadQuestions = (questions.length > 0 ? questions : getCollectedQuestions()).map((q) => ({
+    id: q.id,
+    question: q.question,
+    category: q.category,
+    userName: q.userName,
+    aiAnswerSnippet: q.aiAnswerSnippet,
+  }));
+
+  try {
+    const res = await fetch('/api/admin/aggregate-faqs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questions: payloadQuestions }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.faqs) && data.faqs.length > 0) {
+        const currentDrafts = getDraftFaqs();
+        const newDrafts: DraftFaqItem[] = data.faqs.map((f: any, idx: number) => ({
+          id: `draft-faq-${Date.now()}-${idx}`,
+          category: f.category || '一般諮詢',
+          question: f.question,
+          answer: f.answer,
+          tags: Array.isArray(f.tags) ? f.tags : ['AI彙整', '常見問題'],
+          status: 'pending_review' as const,
+          createdAt: new Date().toISOString(),
+          sourceQuestions: Array.isArray(f.sourceQuestions) ? f.sourceQuestions : [],
+          isAiGenerated: true,
+        }));
+
+        const merged = [...newDrafts, ...currentDrafts];
+        saveDraftFaqs(merged);
+
+        // Mark questions as aggregated
+        const currentQuestions = getCollectedQuestions();
+        const updatedQuestions = currentQuestions.map((cq) => ({
+          ...cq,
+          status: 'aggregated' as const,
+        }));
+        saveCollectedQuestions(updatedQuestions);
+
+        return newDrafts;
+      }
+    }
+  } catch (err) {
+    console.warn('aggregateQuestionsWithAi API failed, creating fallback draft FAQs:', err);
+  }
+
+  // Fallback generation if backend API is offline
+  const fallbackDrafts: DraftFaqItem[] = [
+    {
+      id: `draft-faq-${Date.now()}-1`,
+      category: '金流與點數',
+      question: '平台發案若無滿意解答或未採納，託管之懸賞點數會如何退還？',
+      answer: 'IdeaX 採全額託管防護機制。提問者發案後款項安全託管；招募期滿若未採納合意方案，點數將 100% 全額返還至帳戶餘額，可再次發案或申請退款。',
+      tags: ['點數退款', '未成案保障', '金流託管'],
+      status: 'pending_review',
+      createdAt: new Date().toISOString(),
+      sourceQuestions: questions.slice(0, 2).map((q) => q.question),
+      isAiGenerated: true,
+    },
+    {
+      id: `draft-faq-${Date.now()}-2`,
+      category: '提問與媒合',
+      question: '「L0 痛點 0 元提出」如何運作？專家如何提供客製報價？',
+      answer: '「L0 痛點提出」完全免費（0 點），提問者可無負擔拋出真實問題，由感興趣的專家自行評估並提供客製報價與解法；雙方確認後再委託成案。',
+      tags: ['L0免費', '痛點提出', '客製報價'],
+      status: 'pending_review',
+      createdAt: new Date().toISOString(),
+      sourceQuestions: questions.slice(2, 4).map((q) => q.question),
+      isAiGenerated: true,
+    },
+  ];
+
+  const currentDrafts = getDraftFaqs();
+  saveDraftFaqs([...fallbackDrafts, ...currentDrafts]);
+  return fallbackDrafts;
+}
+
+export function approveDraftFaq(draftId: string): FaqItem | null {
+  const drafts = getDraftFaqs();
+  const target = drafts.find((d) => d.id === draftId);
+  if (!target) return null;
+
+  // 1. Mark draft as approved
+  const updatedDrafts = drafts.map((d) =>
+    d.id === draftId ? { ...d, status: 'approved' as const, updatedAt: new Date().toISOString() } : d
+  );
+  saveDraftFaqs(updatedDrafts);
+
+  // 2. Publish directly into platform FAQs
+  const currentFaqs = getPlatformFaqs();
+  const newFaq: FaqItem = {
+    id: `faq-appr-${Date.now()}`,
+    category: target.category || '一般諮詢',
+    question: target.question,
+    answer: target.answer,
+    tags: target.tags || ['審核發布'],
+    helpfulCount: 1,
+    source: 'auto_mined',
+    recommendedByAdmin: true,
+  };
+
+  const updatedFaqs = [newFaq, ...currentFaqs];
+  savePlatformFaqs(updatedFaqs);
+  return newFaq;
+}
+
+export function rejectDraftFaq(draftId: string): void {
+  const drafts = getDraftFaqs();
+  const updatedDrafts = drafts.filter((d) => d.id !== draftId);
+  saveDraftFaqs(updatedDrafts);
+}
+
+export function updateDraftFaq(updated: DraftFaqItem): void {
+  const drafts = getDraftFaqs();
+  const next = drafts.map((d) => (d.id === updated.id ? { ...updated, updatedAt: new Date().toISOString() } : d));
+  saveDraftFaqs(next);
+}
+
+export interface FaqAgentConsultResult {
+  success: boolean;
+  source: string;
+  agentName: string;
+  explanation: string;
+  conversationId?: string;
+  messageId?: string;
+  latencyMs?: number;
+  quickOptions?: string[];
+}
+
+export async function consultFaqWithAiAgent(params: {
+  faqId?: string;
+  question: string;
+  category?: string;
+  answer?: string;
+  userQuery?: string;
+  userContext?: any;
+}): Promise<FaqAgentConsultResult> {
+  try {
+    const res = await fetch('/api/ai/faq-agent-consult', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+  } catch (e) {
+    console.warn('consultFaqWithAiAgent error:', e);
+  }
+
+  return {
+    success: true,
+    source: 'inhouse_agent',
+    agentName: 'IdeaX 官方客服 Agent',
+    explanation:
+      params.answer ||
+      '已為您調閱智庫相關條款，若需了解細節可隨時點選下方按鈕轉入 AI 對話。',
+    quickOptions: ['轉入 24hr AI 智能客服深度對話', '開立專屬客服工單'],
+  };
+}
+
+export function addManualDraftFaq(item: {
+  category: string;
+  question: string;
+  answer: string;
+  tags?: string[];
+}): DraftFaqItem {
+  const currentDrafts = getDraftFaqs();
+  const newDraft: DraftFaqItem = {
+    id: `draft-manual-${Date.now()}`,
+    category: item.category || '一般諮詢',
+    question: item.question.trim(),
+    answer: item.answer.trim(),
+    tags: item.tags || ['管理員自訂'],
+    status: 'pending_review',
+    createdAt: new Date().toISOString(),
+    isAiGenerated: false,
+  };
+  saveDraftFaqs([newDraft, ...currentDrafts]);
+  return newDraft;
 }
 
 export function approveFaqCandidate(candidate: { question: string; answer: string; category: string }): FaqItem {

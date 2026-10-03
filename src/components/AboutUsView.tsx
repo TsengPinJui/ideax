@@ -50,6 +50,8 @@ import { IdeaXLogo } from './IdeaXLogo';
 import { PlatformRolesSpectrumView } from './PlatformRolesSpectrumView';
 import { APP_VERSION } from '../data/versionData';
 import { triggerDirectAppDownloadOrInstall, downloadAppLauncherFile } from '../services/pwaInstaller';
+import { getPlatformFaqs } from '../services/customerSupportService';
+import { FaqItem } from '../types';
 
 interface AboutUsViewProps {
   initialSection?: AboutSection | string;
@@ -58,7 +60,7 @@ interface AboutUsViewProps {
   onStartOnboarding?: () => void;
 }
 
-type MainTab = 'story' | 'download_app' | 'contact' | 'terms' | 'finance' | 'others';
+type MainTab = 'download_app' | 'contact' | 'terms' | 'others';
 
 export const AboutUsView: React.FC<AboutUsViewProps> = ({
   initialSection = 'list',
@@ -69,31 +71,30 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
   const { currentUser, openCustomerService, addNotification, openPwaInstallModal } = useApp();
   const [copiedAppUrl, setCopiedAppUrl] = useState(false);
   const [selectedAppGuide, setSelectedAppGuide] = useState<'all' | 'android' | 'ios' | 'desktop'>('all');
+  const [platformFaqs, setPlatformFaqs] = useState<FaqItem[]>(() => getPlatformFaqs());
+
+  useEffect(() => {
+    const handleFaqsUpdated = () => {
+      setPlatformFaqs(getPlatformFaqs());
+    };
+    window.addEventListener('customer_faqs_updated', handleFaqsUpdated);
+    return () => window.removeEventListener('customer_faqs_updated', handleFaqsUpdated);
+  }, []);
 
   // Determine initial state based on initialSection prop
   const [activeTab, setActiveTab] = useState<MainTab>(() => {
     if (initialSection === 'download_app' || initialSection === 'app' || initialSection === 'pwa') return 'download_app';
     if (initialSection === 'contact') return 'contact';
-    if (initialSection === 'finance' || initialSection === 'architecture') return 'finance';
-    if (
-      initialSection === 'others' ||
-      initialSection === 'tiers' ||
-      initialSection === 'other_1' ||
-      initialSection === 'other_2' ||
-      initialSection === 'other_3' ||
-      initialSection === 'other_4' ||
-      initialSection === 'other_5'
-    ) return 'others';
     if (
       initialSection === 'terms' ||
       initialSection === 'general_terms' ||
       initialSection === 'privacy_policy' ||
       initialSection === 'disclaimer' ||
       initialSection === 'questioner_terms' ||
-      initialSection === 'solver_terms'
+      initialSection === 'solver_terms' ||
+      (initialSection && initialSection !== 'list' && TERMS_DATA[initialSection])
     ) return 'terms';
-    if (initialSection === 'about_ideax' || initialSection === 'story' || initialSection === 'about') return 'story';
-    return 'story';
+    return 'others';
   });
 
   const [selectedTermKey, setSelectedTermKey] = useState<string | null>(() => {
@@ -114,12 +115,19 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
 
   const [selectedFinanceChapterId, setSelectedFinanceChapterId] = useState<string | null>(null);
   const [selectedOtherChapterId, setSelectedOtherChapterId] = useState<string | null>(() => {
+    if (initialSection === 'finance' || initialSection === 'architecture') return 'other_finance';
     if (
       initialSection === 'other_1' ||
       initialSection === 'other_2' ||
       initialSection === 'other_3' ||
       initialSection === 'other_4' ||
-      initialSection === 'other_5'
+      initialSection === 'other_5' ||
+      initialSection === 'other_roles' ||
+      initialSection === 'other_finance' ||
+      initialSection === 'other_painpoints' ||
+      initialSection === 'other_levels' ||
+      initialSection === 'other_membership' ||
+      initialSection === 'other_ai'
     ) {
       return initialSection;
     }
@@ -136,30 +144,36 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       setSelectedTermKey(null);
       setSelectedFinanceChapterId(null);
       setSelectedOtherChapterId(null);
-    } else if (initialSection === 'finance' || initialSection === 'architecture') {
-      setActiveTab('finance');
+    } else if (initialSection === 'download_app' || initialSection === 'app' || initialSection === 'pwa') {
+      setActiveTab('download_app');
       setSelectedTermKey(null);
       setSelectedFinanceChapterId(null);
       setSelectedOtherChapterId(null);
+    } else if (initialSection === 'finance' || initialSection === 'architecture' || initialSection === 'other_finance') {
+      setActiveTab('others');
+      setSelectedOtherChapterId('other_finance');
+      setSelectedTermKey(null);
+      setSelectedFinanceChapterId(null);
     } else if (
       initialSection === 'other_1' ||
       initialSection === 'other_2' ||
       initialSection === 'other_3' ||
       initialSection === 'other_4' ||
-      initialSection === 'other_5'
+      initialSection === 'other_5' ||
+      initialSection === 'other_roles' ||
+      initialSection === 'other_painpoints' ||
+      initialSection === 'other_levels' ||
+      initialSection === 'other_membership' ||
+      initialSection === 'other_ai'
     ) {
       setActiveTab('others');
       setSelectedOtherChapterId(initialSection);
       setSelectedTermKey(null);
       setSelectedFinanceChapterId(null);
-    } else if (initialSection === 'others' || initialSection === 'tiers') {
+    } else if (initialSection === 'others' || initialSection === 'tiers' || initialSection === 'about_ideax' || initialSection === 'story' || initialSection === 'about') {
       setActiveTab('others');
       setSelectedOtherChapterId(null);
       setSelectedTermKey(null);
-    } else if (initialSection === 'about_ideax' || initialSection === 'story') {
-      setActiveTab('story');
-      setSelectedTermKey(null);
-      setSelectedOtherChapterId(null);
     } else if (initialSection && initialSection !== 'list' && TERMS_DATA[initialSection]) {
       setActiveTab('terms');
       setSelectedTermKey(initialSection);
@@ -299,41 +313,48 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
     },
   ];
 
-  // 其他說明章節
+  // 其他說明章節（第二項為平台金流運作）
   const OTHER_CHAPTERS = [
     {
-      id: 'other_4',
+      id: 'other_roles',
       num: '01',
       title: '平台用戶與社群規範',
       summary: '企業機構、提問者、平台管理、解答者、認證專家與一般討論之身分定位、權能規範與各角色專屬守則。',
       badge: '用戶角色與社群',
     },
     {
-      id: 'other_2',
+      id: 'other_finance',
       num: '02',
+      title: '平台金流運作',
+      summary: '非電支執照合規設計、兩段式閉路金流、T+0 預扣託管、D0 核銷、7 日猶豫期、每月 5 號定期撥款與異議風控。',
+      badge: '金流與履約',
+    },
+    {
+      id: 'other_painpoints',
+      num: '03',
       title: '痛點免費提出與專家解鎖機制',
       summary: '提問者 NT$ 0 元免費上架痛點，專家自訂解鎖定價交付落地解法，兼顧無門檻與合理收益。',
       badge: '痛點機制',
     },
     {
-      id: 'other_1',
-      num: '03',
+      id: 'other_levels',
+      num: '04',
       title: '五級問題分級體系（L0 ~ L4）',
       summary: '由 L0 免費閒聊激盪到 L4 深度商業顧問方案之各級定位與懸賞建議範圍。',
       badge: '問題分級',
     },
     {
-      id: 'other_3',
-      num: '04',
+      id: 'other_membership',
+      num: '05',
       title: '會員訂閱方案與費率減免',
       summary: '提供達人、權威與大師等會員方案，享有專屬服務費減免與 AI-CRM 工具特權。',
       badge: '會員權益',
     },
     {
-      id: 'other_5',
-      num: '05',
-      title: 'AI 智慧功能與全流程賦能',
-      summary: '24hr 官方客服特助、AI-CRM 24hr 特助代操、AI 策略軍師人機協同、專家智慧媒合與爭議調解報告。',
+      id: 'other_ai',
+      num: '06',
+      title: 'AI 智慧引擎賦能與高效協同系統',
+      summary: 'AICRM 業務顧問與 24hr 特助、市場顧問精準媒合與仲裁、官方客服特助、雙引擎無縫備援與隱私防火牆。',
       badge: 'AI 智慧賦能',
     },
   ];
@@ -442,20 +463,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
         <div className="mb-4">
           <div className="flex items-center justify-start sm:justify-center overflow-x-auto scrollbar-none pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
             <div className="inline-flex p-1 rounded-2xl bg-stone-100/90 border border-stone-200/70 min-w-max gap-1 shadow-2xs">
-              {/* 1. 平台介紹 */}
-              <button
-                onClick={() => setActiveTab('story')}
-                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
-                  activeTab === 'story'
-                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <Info className="w-4 h-4 text-stone-700" />
-                <span>平台介紹</span>
-              </button>
-
-              {/* 2. 下載 APP (位於平台介紹與聯絡我們之間) */}
+              {/* 1. 下載 APP */}
               <button
                 onClick={() => setActiveTab('download_app')}
                 className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
@@ -468,7 +476,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 <span>下載 APP</span>
               </button>
 
-              {/* 3. 聯絡我們 & 常見問題 */}
+              {/* 2. 聯絡我們 & 常見問題 */}
               <button
                 onClick={() => setActiveTab('contact')}
                 className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
@@ -494,22 +502,12 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 <span>條款與聲明</span>
               </button>
 
-              {/* 4. 平台金流運作 */}
+              {/* 4. 其他說明（含平台金流運作、問題分級、角色規範與 AI 賦能） */}
               <button
-                onClick={() => setActiveTab('finance')}
-                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
-                  activeTab === 'finance'
-                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <CreditCard className="w-4 h-4 text-amber-600" />
-                <span>平台金流運作</span>
-              </button>
-
-              {/* 5. 其他說明 */}
-              <button
-                onClick={() => setActiveTab('others')}
+                onClick={() => {
+                  setActiveTab('others');
+                  setSelectedOtherChapterId(null);
+                }}
                 className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   activeTab === 'others'
                     ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
@@ -525,154 +523,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 1. 平台介紹 (Clean Modern Card & Hero) */}
-      {/* ========================================================================= */}
-      {activeTab === 'story' && !isSubPage && (
-        <div className="space-y-4 animate-in fade-in duration-150">
-          {/* 品牌視覺頂部卡片 (改為純白極簡現代卡片) */}
-          <div className="bg-white text-stone-900 rounded-3xl p-5 sm:p-7 shadow-xs border border-stone-200/80 relative overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 inline-flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-600" />
-                    <span>IdeaX 平台介紹與願景</span>
-                  </span>
-                </div>
-                <h2 className="text-lg sm:text-xl font-black text-stone-900">
-                  關於創點子（IdeaX）
-                </h2>
-                <p className="text-xs sm:text-sm text-stone-500 leading-relaxed max-w-xl">
-                  一個問題，找到更多可能・全台灣最具實戰力的新型態問題解決市集
-                </p>
-              </div>
-
-              <div className="shrink-0 p-3 bg-stone-50 rounded-2xl border border-stone-200/70 flex items-center justify-center shadow-2xs">
-                <IdeaXLogo variant="chuangdianzi" size="md" className="h-10 sm:h-12 w-auto object-contain" />
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3.5 border-t border-stone-100 text-xs text-stone-600 leading-relaxed">
-              在傳統顧問高門檻、搜尋引擎資訊雜亂的時代，創業者與各領域實作者每天都在面對真實又棘手的未知難題。「創點子 IdeaX」應運而生——讓每一個痛點都能自由提出，讓每一份具備實戰智慧的破局方案都能獲得應有的實質回報。
-            </div>
-          </div>
-
-          {/* 三大核心運作機制 */}
-          <div className="bg-white rounded-3xl border border-stone-200/80 p-5 sm:p-6 shadow-xs space-y-3.5">
-            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-stone-700" />
-              <span>三大核心機制</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-4 rounded-2xl bg-stone-50/80 border border-stone-200/70 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black">
-                    💡
-                  </div>
-                  <span className="font-bold text-stone-900 text-xs sm:text-sm">痛點免費提出</span>
-                </div>
-                <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
-                  $0 元零門檻上架真實難題，各界專家自由提案並自訂解鎖定價，隨時探索落地解法。
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-stone-50/80 border border-stone-200/70 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-black">
-                    🎯
-                  </div>
-                  <span className="font-bold text-stone-900 text-xs sm:text-sm">分級精準對接</span>
-                </div>
-                <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
-                  從社群靈感激盪到深度商業顧問方案，透過 L0～L4 分級體系精準媒合專業人才。
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-stone-50/80 border border-stone-200/70 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black">
-                    🛡️
-                  </div>
-                  <span className="font-bold text-stone-900 text-xs sm:text-sm">安全履約與託管</span>
-                </div>
-                <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
-                  兩段式獨立交易與閉路點數託管，提問者採納滿意始直匯解答者，保障買賣雙方。
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* 快捷導覽入口按鈕群 */}
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
-            <button
-              type="button"
-              onClick={() => {
-                if (onStartOnboarding) {
-                  onStartOnboarding();
-                } else if (onBack) {
-                  onBack();
-                }
-              }}
-              className="p-3.5 rounded-2xl bg-white border border-stone-200/80 hover:border-stone-400 hover:shadow-xs flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
-            >
-              <Compass className="w-5 h-5 text-amber-600" />
-              <span className="text-xs font-bold text-stone-800">使用教學導覽</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('download_app')}
-              className="p-3.5 rounded-2xl bg-white border border-stone-200/80 hover:border-amber-400 hover:shadow-xs flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
-            >
-              <Download className="w-5 h-5 text-amber-600" />
-              <span className="text-xs font-bold text-stone-800">下載 APP</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('contact')}
-              className="p-3.5 rounded-2xl bg-white border border-stone-200/80 hover:border-stone-400 hover:shadow-xs flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
-            >
-              <Headphones className="w-5 h-5 text-emerald-600" />
-              <span className="text-xs font-bold text-stone-800">聯絡我們 & 常見問題</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('terms')}
-              className="p-3.5 rounded-2xl bg-white border border-stone-200/80 hover:border-stone-400 hover:shadow-xs flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
-            >
-              <FileText className="w-5 h-5 text-indigo-600" />
-              <span className="text-xs font-bold text-stone-800">條款與聲明</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('finance')}
-              className="p-3.5 rounded-2xl bg-white border border-stone-200/80 hover:border-stone-400 hover:shadow-xs flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
-            >
-              <CreditCard className="w-5 h-5 text-amber-600" />
-              <span className="text-xs font-bold text-stone-800">平台金流運作</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('others');
-                setSelectedOtherChapterId(null);
-              }}
-              className="p-3.5 rounded-2xl bg-white border border-stone-200/80 hover:border-stone-400 hover:shadow-xs flex flex-col items-center justify-center text-center gap-1.5 transition-all cursor-pointer active:scale-95"
-            >
-              <Layers className="w-5 h-5 text-purple-600" />
-              <span className="text-xs font-bold text-stone-800">其他說明</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 2. 下載 APP (直接下載鍵與安裝教學卡片) */}
+      {/* 1. 下載 APP (直接下載鍵與安裝教學卡片) */}
       {/* ========================================================================= */}
       {activeTab === 'download_app' && !isSubPage && (
         <div className="space-y-6 animate-in fade-in duration-200">
@@ -1113,19 +964,24 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
             </div>
           </div>
 
-          {/* 常見問題自主排查 (FAQ Accordion) */}
+          {/* 常見問題自主排查 (FAQ Accordion - 即時同步後台審核發布之 FAQ) */}
           <div className="bg-white rounded-3xl border border-stone-200/80 p-5 sm:p-6 shadow-xs space-y-3">
-            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-stone-700" />
-              <span>常見問題 FAQ</span>
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-stone-700" />
+                <span>常見問題 FAQ ({platformFaqs.length})</span>
+              </h3>
+              <span className="text-[10px] font-bold text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
+                AI 客服智庫即時同步
+              </span>
+            </div>
 
             <div className="space-y-2">
-              {FAQ_LIST.map((faq, idx) => {
+              {platformFaqs.map((faq, idx) => {
                 const isOpen = openFaqIndex === idx;
                 return (
                   <div
-                    key={idx}
+                    key={faq.id || idx}
                     className="rounded-2xl border border-stone-200/70 overflow-hidden transition-all bg-stone-50/50"
                   >
                     <button
@@ -1133,9 +989,18 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                       onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
                       className="w-full p-3.5 text-left flex items-center justify-between gap-2 font-bold text-xs text-stone-900 hover:bg-stone-100/60 transition-colors cursor-pointer"
                     >
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-2 flex-wrap">
                         <span className="text-stone-400 font-mono text-[11px]">Q{idx + 1}.</span>
-                        <span>{faq.q}</span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60">
+                          {faq.category || '一般諮詢'}
+                        </span>
+                        <span>{faq.question}</span>
+                        {(faq.recommendedByAdmin || faq.source === 'auto_mined') && (
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-0.5">
+                            <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>官方審核</span>
+                          </span>
+                        )}
                       </span>
                       {isOpen ? (
                         <ChevronUp className="w-4 h-4 text-stone-400 shrink-0" />
@@ -1144,8 +1009,18 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                       )}
                     </button>
                     {isOpen && (
-                      <div className="px-3.5 pb-3.5 pt-1 text-[11px] text-stone-600 leading-relaxed border-t border-stone-200/50 bg-white">
-                        {faq.a}
+                      <div className="px-3.5 pb-3.5 pt-2 text-[11px] text-stone-600 leading-relaxed border-t border-stone-200/50 bg-white space-y-2.5">
+                        <p className="whitespace-pre-line leading-relaxed">{faq.answer}</p>
+                        <div className="pt-2 border-t border-stone-100 flex items-center justify-between flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openCustomerService({ message: `我想深入諮詢常見問題：【${faq.question}】` })}
+                            className="text-[11px] font-bold text-amber-800 hover:text-amber-950 bg-amber-50 hover:bg-amber-100/90 active:scale-95 px-3 py-1.5 rounded-xl border border-amber-200/90 flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
+                          >
+                            <Bot className="w-3.5 h-3.5 text-amber-700" />
+                            <span>🤖 讓 24hr AI 客服 Agent 深入解答</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1259,344 +1134,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 4. 平台金流運作 (Timeline & Clean Chapters) */}
-      {/* ========================================================================= */}
-      {activeTab === 'finance' && (
-        <div className="space-y-4 animate-in fade-in duration-150">
-          {!selectedFinanceChapterId ? (
-            <div className="space-y-4">
-              {/* 金流生命週期時間軸卡片 */}
-              <div className="p-5 rounded-3xl bg-white border border-stone-200/80 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-amber-600" />
-                    <span>四階段金流生命週期（非電支執照合規設計）</span>
-                  </h3>
-                  <span className="text-[11px] font-mono font-bold text-stone-400">
-                    ≤ D0+21 日入帳
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-                  {[
-                    { step: '1', title: 'T+0 預扣託管', desc: '發布時扣除閉路點數' },
-                    { step: '2', title: 'D0 採納核銷', desc: '點數消滅轉為應付報酬' },
-                    { step: '3', title: '7 日猶豫期', desc: '提問者異議調解期' },
-                    { step: '4', title: '每月 5 號撥款', desc: '電匯轉入銀行帳戶' },
-                  ].map((item, i) => (
-                    <div
-                      key={i}
-                      className="p-3 rounded-2xl bg-stone-50 border border-stone-200/70 space-y-0.5"
-                    >
-                      <span className="w-5 h-5 rounded-full bg-stone-200 text-stone-800 text-[10px] font-bold mx-auto flex items-center justify-center font-mono">
-                        {item.step}
-                      </span>
-                      <span className="font-bold text-stone-900 block text-xs mt-1">
-                        {item.title}
-                      </span>
-                      <span className="text-[10px] text-stone-500 block leading-tight">
-                        {item.desc}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 金流運作目錄清單 */}
-              <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs divide-y divide-stone-100 overflow-hidden">
-                {FINANCE_CHAPTERS.map((ch) => (
-                  <button
-                    key={ch.id}
-                    onClick={() => setSelectedFinanceChapterId(ch.id)}
-                    className="w-full min-h-[60px] p-4 sm:p-5 flex items-center justify-between text-left hover:bg-stone-50/80 transition-colors cursor-pointer group active:bg-stone-100/70"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0 pr-3">
-                      <span className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center font-bold text-xs shrink-0 font-mono">
-                        {ch.num}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs sm:text-sm font-bold text-stone-900 group-hover:text-stone-950 transition-colors">
-                            {ch.title}
-                          </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200/60">
-                            {ch.badge}
-                          </span>
-                        </div>
-                        <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 line-clamp-1">
-                          {ch.summary}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-stone-400 group-hover:text-stone-700 group-hover:translate-x-0.5 transition-all shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            /* 金流章節詳查頁 */
-            <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs overflow-hidden animate-in fade-in duration-150">
-              {/* 章節一 */}
-              {selectedFinanceChapterId === 'fin_1' && (
-                <div className="p-5 sm:p-7 space-y-4">
-                  <div className="border-b border-stone-100 pb-3">
-                    <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
-                      第一章 • 合規策略
-                    </span>
-                    <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
-                      設計目標與非電支執照合規策略
-                    </h3>
-                  </div>
-
-                  <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 leading-relaxed space-y-1.5">
-                    <p className="font-bold text-stone-900">
-                      切斷使用者對使用者（P2P）直接資金移轉，以兩段獨立交易架構符合法規：
-                    </p>
-                    <p className="text-stone-600">
-                      在無需申請電子支付機構執照門檻下，保留「懸賞預扣、即時鎖定預算、事後核算撥款」的使用體驗。
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 space-y-1">
-                      <h4 className="font-bold text-stone-900 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>提問階段（購買預付服務點數）</span>
-                      </h4>
-                      <p className="text-stone-600 leading-relaxed text-[11px]">
-                        提問者透過信用卡或 IAP 取得閉路點數，為單一目的服務對價，不可折現、不可轉讓。
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 space-y-1">
-                      <h4 className="font-bold text-stone-900 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>撥款階段（平台應付勞務報酬）</span>
-                      </h4>
-                      <p className="text-stone-600 leading-relaxed text-[11px]">
-                        採納後點數核銷消滅；平台以自有營運資金透過第三方金流電匯直接撥付解答者法定貨幣現金。
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 章節二 */}
-              {selectedFinanceChapterId === 'fin_2' && (
-                <div className="p-5 sm:p-7 space-y-4">
-                  <div className="border-b border-stone-100 pb-3">
-                    <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
-                      第二章 • 資金流向
-                    </span>
-                    <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
-                      點數與收益架構
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                    <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">
-                      <span className="font-mono text-[10px] text-amber-700 font-bold block">
-                        步驟 1 • 提問付現買點
-                      </span>
-                      <h5 className="font-bold text-stone-900">閉路點數預扣</h5>
-                      <p className="text-stone-600 text-[11px] leading-relaxed">
-                        提問者付現取得平台閉路點數，發布懸賞時系統預扣點數鎖定預算。
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
-                      <span className="font-mono text-[10px] text-rose-700 font-bold block">
-                        分界點 • 採納即核銷
-                      </span>
-                      <h5 className="font-bold text-stone-900">點數核銷 ➔ 應付帳款</h5>
-                      <p className="text-stone-600 text-[11px] leading-relaxed">
-                        採納當下點數全數核銷消滅，轉化為平台對解答者之應付服務報酬。未採納點數原路退回。
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">
-                      <span className="font-mono text-[10px] text-emerald-700 font-bold block">
-                        步驟 2 • 解答領現金
-                      </span>
-                      <h5 className="font-bold text-stone-900">平台自有資金撥款</h5>
-                      <p className="text-stone-600 text-[11px] leading-relaxed">
-                        經猶豫期核算後，由平台自有營運帳戶以銀行轉帳批次撥付解答者法定貨幣現金。
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 章節三 */}
-              {selectedFinanceChapterId === 'fin_3' && (
-                <div className="p-5 sm:p-7 space-y-4">
-                  <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
-                        第三章 • 時間軸
-                      </span>
-                      <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
-                        懸賞生命週期與撥款時間軸
-                      </h3>
-                    </div>
-                    <span className="text-xs font-mono font-bold text-stone-500">
-                      ≤ D0+21 日入帳
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-                    {[
-                      { step: 1, title: '發布懸賞', time: 'T+0', desc: '預扣點數' },
-                      { step: 2, title: '提交解答', time: 'T+n', desc: '專家提交方案' },
-                      { step: 3, title: '採納解答', time: 'D0 採納日', desc: '點數核銷' },
-                      { step: 4, title: '猶豫期', time: 'D0 ~ +7', desc: '提問者異議' },
-                      { step: 5, title: '核算緩衝', time: 'D0+7 ~ +9', desc: '系統覆核' },
-                      { step: 6, title: '進入排程', time: 'D0+9 起', desc: '撥款排程' },
-                      { step: 7, title: '定期撥款', time: '每月 5 號', desc: '固定結算' },
-                      { step: 8, title: '實際入帳', time: '每月 5 號', desc: '電匯轉入銀行' },
-                    ].map((item) => (
-                      <div
-                        key={item.step}
-                        onClick={() => setActiveTimelineStep(item.step)}
-                        className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                          activeTimelineStep === item.step
-                            ? 'border-stone-900 bg-stone-100 font-bold'
-                            : 'border-stone-200 bg-stone-50/50'
-                        }`}
-                      >
-                        <span className="text-[10px] text-stone-400 block font-mono">
-                          階段 {item.step}
-                        </span>
-                        <span className="text-stone-900 block mt-0.5 text-xs">{item.title}</span>
-                        <span className="text-[10px] text-stone-500 font-mono block mt-0.5">
-                          {item.time}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 章節四 */}
-              {selectedFinanceChapterId === 'fin_4' && (
-                <div className="p-5 sm:p-7 space-y-4">
-                  <div className="border-b border-stone-100 pb-3">
-                    <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
-                      第四章 • 帳款與異議
-                    </span>
-                    <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
-                      解答者應收帳款介面規範與異議分流
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">1. 獲得懸賞點數</span>
-                      <p className="text-stone-500 text-[11px]">
-                        各筆採納獲得之點數統計，純為平台計分與榮譽參考，非可提領資產。
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">2. 平台應撥款</span>
-                      <p className="text-stone-600 text-[11px]">
-                        已核算之應付服務報酬帳款，排程於每月 5 號合併定期撥出。
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">3. 累計撥款</span>
-                      <p className="text-stone-500 text-[11px]">
-                        歷史已實際撥付之金額報表，解答者在平台無儲值帳戶。
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3.5 rounded-xl border border-stone-200 bg-stone-50 space-y-1">
-                      <span className="font-bold text-stone-900 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                        <span>猶豫期內（D0 ~ D0+7）</span>
-                      </span>
-                      <p className="text-stone-600 text-[11px]">
-                        若異議成立直接自「平台應撥款」欄位扣除，不涉及事後追回程序。
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl border border-stone-200 bg-stone-50 space-y-1">
-                      <span className="font-bold text-stone-900 flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                        <span>猶豫期外（已核算撥出）</span>
-                      </span>
-                      <p className="text-stone-600 text-[11px]">
-                        查核屬實者自解答者下一次批次撥款中扣抵，無款項則依催告程序處理。
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 章節五 */}
-              {selectedFinanceChapterId === 'fin_5' && (
-                <div className="p-5 sm:p-7 space-y-4">
-                  <div className="border-b border-stone-100 pb-3">
-                    <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
-                      第五章 • 風控查核
-                    </span>
-                    <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
-                      事後查核與追回機制
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">1. 暫停與 7 日申覆</span>
-                      <p className="text-stone-500 text-[11px]">
-                        接獲檢舉或異常時先暫停撥款，通知解答者於 7 日內提出申覆說明。
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">2. 批次扣抵機制</span>
-                      <p className="text-stone-500 text-[11px]">
-                        查核屬實者自後續應撥款批次抵扣，不成立則立即恢復撥款排程。
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">3. 14 日書面催告</span>
-                      <p className="text-stone-500 text-[11px]">
-                        若解答者無足額款項供扣抵，平台以書面通知於 14 日內返還。
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
-                      <span className="font-bold text-stone-900 block">4. 30 日除斥期間</span>
-                      <p className="text-stone-500 text-[11px]">
-                        平台追回權利以原定撥款日起算 30 日內為限，逾期不得再行追回。
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 底部返回按鈕 */}
-              <div className="p-3.5 border-t border-stone-100 bg-stone-50/50 flex justify-center">
-                <button
-                  onClick={() => setSelectedFinanceChapterId(null)}
-                  className="min-h-[40px] inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition-colors cursor-pointer active:scale-95"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>返回金流章節目錄</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 5. 其他說明 (Clean Chapter Index & Sub-Views) */}
+      {/* 4. 其他說明 (Clean Chapter Index & Sub-Views，含第二項平台金流運作) */}
       {/* ========================================================================= */}
       {activeTab === 'others' && (
         <div className="space-y-4 animate-in fade-in duration-150">
@@ -1634,13 +1172,396 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
           ) : (
             /* 其他說明詳查頁 */
             <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs overflow-hidden animate-in fade-in duration-150">
-              {/* 說明 1: 五級問題分級體系 */}
-              {selectedOtherChapterId === 'other_1' && (
+              {/* 說明 1: 平台用戶角色與社群 */}
+              {(selectedOtherChapterId === 'other_roles' || selectedOtherChapterId === 'other_4') && (
+                <div className="p-4 sm:p-6">
+                  <PlatformRolesSpectrumView
+                    showBackToList={true}
+                    onBack={() => setSelectedOtherChapterId(null)}
+                    onOpenCommunityGuidelines={() => {
+                      setSelectedOtherChapterId(null);
+                      setActiveTab('terms');
+                      setSelectedTermKey('community_guidelines');
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* 說明 2: 平台金流運作 (第二項：包含時間軸與五大章節) */}
+              {(selectedOtherChapterId === 'other_finance' || selectedOtherChapterId === 'finance' || selectedOtherChapterId === 'architecture') && (
+                <div className="space-y-4">
+                  {!selectedFinanceChapterId ? (
+                    <div className="p-5 sm:p-7 space-y-5">
+                      {/* 金流生命週期時間軸卡片 */}
+                      <div className="p-5 rounded-2xl bg-stone-50/80 border border-stone-200/80 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-amber-600" />
+                            <span>四階段金流生命週期（非電支執照合規設計）</span>
+                          </h3>
+                          <span className="text-[11px] font-mono font-bold text-stone-400">
+                            ≤ D0+21 日入帳
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                          {[
+                            { step: '1', title: 'T+0 預扣託管', desc: '發布時扣除閉路點數' },
+                            { step: '2', title: 'D0 採納核銷', desc: '點數消滅轉為應付報酬' },
+                            { step: '3', title: '7 日猶豫期', desc: '提問者異議調解期' },
+                            { step: '4', title: '每月 5 號撥款', desc: '電匯轉入銀行帳戶' },
+                          ].map((item, i) => (
+                            <div
+                              key={i}
+                              className="p-3 rounded-xl bg-white border border-stone-200/70 space-y-0.5 shadow-2xs"
+                            >
+                              <span className="w-5 h-5 rounded-full bg-stone-200 text-stone-800 text-[10px] font-bold mx-auto flex items-center justify-center font-mono">
+                                {item.step}
+                              </span>
+                              <span className="font-bold text-stone-900 block text-xs mt-1">
+                                {item.title}
+                              </span>
+                              <span className="text-[10px] text-stone-500 block leading-tight">
+                                {item.desc}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 金流運作目錄清單 */}
+                      <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200/80 overflow-hidden">
+                        {FINANCE_CHAPTERS.map((ch) => (
+                          <button
+                            key={ch.id}
+                            onClick={() => setSelectedFinanceChapterId(ch.id)}
+                            className="w-full min-h-[56px] p-3.5 sm:p-4 flex items-center justify-between text-left hover:bg-stone-50/80 transition-colors cursor-pointer group active:bg-stone-100/70"
+                          >
+                            <div className="flex items-center gap-3 min-w-0 pr-3">
+                              <span className="w-7 h-7 rounded-lg bg-stone-100 text-stone-800 flex items-center justify-center font-bold text-xs shrink-0 font-mono">
+                                {ch.num}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs sm:text-sm font-bold text-stone-900 group-hover:text-stone-950 transition-colors">
+                                    {ch.title}
+                                  </span>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200/60">
+                                    {ch.badge}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-stone-500 mt-0.5 line-clamp-1">
+                                  {ch.summary}
+                                </p>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-stone-700 group-hover:translate-x-0.5 transition-all shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    /* 金流章節詳查頁 */
+                    <div className="overflow-hidden animate-in fade-in duration-150">
+                      {/* 章節一 */}
+                      {selectedFinanceChapterId === 'fin_1' && (
+                        <div className="p-5 sm:p-7 space-y-4">
+                          <div className="border-b border-stone-100 pb-3">
+                            <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
+                              第一章 • 合規策略
+                            </span>
+                            <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
+                              設計目標與非電支執照合規策略
+                            </h3>
+                          </div>
+
+                          <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 leading-relaxed space-y-1.5">
+                            <p className="font-bold text-stone-900">
+                              切斷使用者對使用者（P2P）直接資金移轉，以兩段獨立交易架構符合法規：
+                            </p>
+                            <p className="text-stone-600">
+                              在無需申請電子支付機構執照門檻下，保留「懸賞預扣、即時鎖定預算、事後核算撥款」的使用體驗。
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 space-y-1">
+                              <h4 className="font-bold text-stone-900 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>提問階段（購買預付服務點數）</span>
+                              </h4>
+                              <p className="text-stone-600 leading-relaxed text-[11px]">
+                                提問者透過信用卡或 IAP 取得閉路點數，為單一目的服務對價，不可折現、不可轉讓。
+                              </p>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 space-y-1">
+                              <h4 className="font-bold text-stone-900 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>撥款階段（平台應付勞務報酬）</span>
+                              </h4>
+                              <p className="text-stone-600 leading-relaxed text-[11px]">
+                                採納後點數核銷消滅；平台以自有營運資金透過第三方金流電匯直接撥付解答者法定貨幣現金。
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 章節二 */}
+                      {selectedFinanceChapterId === 'fin_2' && (
+                        <div className="p-5 sm:p-7 space-y-4">
+                          <div className="border-b border-stone-100 pb-3">
+                            <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
+                              第二章 • 資金流向
+                            </span>
+                            <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
+                              點數與收益架構
+                            </h3>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">
+                              <span className="font-mono text-[10px] text-amber-700 font-bold block">
+                                步驟 1 • 提問付現買點
+                              </span>
+                              <h5 className="font-bold text-stone-900">閉路點數預扣</h5>
+                              <p className="text-stone-600 text-[11px] leading-relaxed">
+                                提問者付現取得平台閉路點數，發布懸賞時系統預扣點數鎖定預算。
+                              </p>
+                            </div>
+
+                            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
+                              <span className="font-mono text-[10px] text-rose-700 font-bold block">
+                                分界點 • 採納即核銷
+                              </span>
+                              <h5 className="font-bold text-stone-900">點數核銷 ➔ 應付帳款</h5>
+                              <p className="text-stone-600 text-[11px] leading-relaxed">
+                                採納當下點數全數核銷消滅，轉化為平台對解答者之應付服務報酬。未採納點數原路退回。
+                              </p>
+                            </div>
+
+                            <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">
+                              <span className="font-mono text-[10px] text-emerald-700 font-bold block">
+                                步驟 2 • 解答領現金
+                              </span>
+                              <h5 className="font-bold text-stone-900">平台自有資金撥款</h5>
+                              <p className="text-stone-600 text-[11px] leading-relaxed">
+                                經猶豫期核算後，由平台自有營運帳戶以銀行轉帳批次撥付解答者法定貨幣現金。
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 章節三 */}
+                      {selectedFinanceChapterId === 'fin_3' && (
+                        <div className="p-5 sm:p-7 space-y-4">
+                          <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
+                            <div>
+                              <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
+                                第三章 • 時間軸
+                              </span>
+                              <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
+                                懸賞生命週期與撥款時間軸
+                              </h3>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-stone-500">
+                              ≤ D0+21 日入帳
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                            {[
+                              { step: 1, title: '發布懸賞', time: 'T+0', desc: '預扣點數' },
+                              { step: 2, title: '提交解答', time: 'T+n', desc: '專家提交方案' },
+                              { step: 3, title: '採納解答', time: 'D0 採納日', desc: '點數核銷' },
+                              { step: 4, title: '猶豫期', time: 'D0 ~ +7', desc: '提問者異議' },
+                              { step: 5, title: '核算緩衝', time: 'D0+7 ~ +9', desc: '系統覆核' },
+                              { step: 6, title: '進入排程', time: 'D0+9 起', desc: '撥款排程' },
+                              { step: 7, title: '定期撥款', time: '每月 5 號', desc: '固定結算' },
+                              { step: 8, title: '實際入帳', time: '每月 5 號', desc: '電匯轉入銀行' },
+                            ].map((item) => (
+                              <div
+                                key={item.step}
+                                onClick={() => setActiveTimelineStep(item.step)}
+                                className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                                  activeTimelineStep === item.step
+                                    ? 'border-stone-900 bg-stone-100 font-bold'
+                                    : 'border-stone-200 bg-stone-50/50'
+                                }`}
+                              >
+                                <span className="text-[10px] text-stone-400 block font-mono">
+                                  階段 {item.step}
+                                </span>
+                                <span className="text-stone-900 block mt-0.5 text-xs">{item.title}</span>
+                                <span className="text-[10px] text-stone-500 font-mono block mt-0.5">
+                                  {item.time}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 章節四 */}
+                      {selectedFinanceChapterId === 'fin_4' && (
+                        <div className="p-5 sm:p-7 space-y-4">
+                          <div className="border-b border-stone-100 pb-3">
+                            <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
+                              第四章 • 帳款與異議
+                            </span>
+                            <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
+                              解答者應收帳款介面規範與異議分流
+                            </h3>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                            <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
+                              <span className="font-bold text-stone-900 block">1. 獲得懸賞點數</span>
+                              <p className="text-stone-500 text-[11px]">
+                                各筆採納獲得之點數統計，純為平台計分與榮譽參考，非可提領資產。
+                              </p>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
+                              <span className="font-bold text-stone-900 block">2. 平台應撥款</span>
+                              <p className="text-stone-600 text-[11px]">
+                                已核算之應付服務報酬帳款，排程於每月 5 號合併定期撥出。
+                              </p>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
+                              <span className="font-bold text-stone-900 block">3. 累計撥款</span>
+                              <p className="text-stone-500 text-[11px]">
+                                歷史已實際撥付之金額報表，解答者在平台無儲值帳戶。
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div className="p-3.5 rounded-xl border border-stone-200 bg-stone-50 space-y-1">
+                              <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                                <span>猶豫期內（D0 ~ D0+7）</span>
+                              </span>
+                              <p className="text-stone-600 text-[11px]">
+                                若異議成立直接自「平台應撥款」欄位扣除，不涉及事後追回程序。
+                              </p>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl border border-stone-200 bg-stone-50 space-y-1">
+                              <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                                <span>猶豫期外（已核算撥出）</span>
+                              </span>
+                              <p className="text-stone-600 text-[11px]">
+                                查核屬實者自解答者下一次批次撥款中扣抵，無款項則依催告程序處理。
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 章節五 */}
+                      {selectedFinanceChapterId === 'fin_5' && (
+                        <div className="p-5 sm:p-7 space-y-4">
+                          <div className="border-b border-stone-100 pb-3">
+                            <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
+                              第五章 • 風控查核
+                            </span>
+                            <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
+                              事後查核與追回機制
+                            </h3>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
+                              <span className="font-bold text-stone-900 block">1. 暫停與 7 日申覆</span>
+                              <p className="text-stone-500 text-[11px]">
+                                接獲檢舉或異常時先暫停撥款，通知解答者於 7 日內提出申覆說明。
+                              </p>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
+                              <span className="font-bold text-stone-900 block">2. 批次扣抵機制</span>
+                              <p className="text-stone-500 text-[11px]">
+                                查核屬實者自後續應撥款批次抵扣，不成立則立即恢復撥款排程。
+                              </p>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
+                              <span className="font-bold text-stone-900 block">3. 14 日書面催告</span>
+                              <p className="text-stone-500 text-[11px]">
+                                若解答者無足額款項供扣抵，平台以書面通知於 14 日內返還。
+                              </p>
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
+                              <span className="font-bold text-stone-900 block">4. 30 日除斥期間</span>
+                              <p className="text-stone-500 text-[11px]">
+                                平台追回權利以原定撥款日起算 30 日內為限，逾期不得再行追回。
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 金流子頁返回按鈕 */}
+                      <div className="p-3.5 border-t border-stone-100 bg-stone-50/50 flex justify-center">
+                        <button
+                          onClick={() => setSelectedFinanceChapterId(null)}
+                          className="min-h-[40px] inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition-colors cursor-pointer active:scale-95"
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5" />
+                          <span>返回金流章節目錄</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 說明 3: 痛點免費提出與專家解鎖 */}
+              {(selectedOtherChapterId === 'other_painpoints' || selectedOtherChapterId === 'other_2') && (
+                <div className="p-5 sm:p-7 space-y-4">
+                  <div className="border-b border-stone-100 pb-3">
+                    <span className="text-xs font-bold text-rose-800 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+                      說明三 • 痛點機制
+                    </span>
+                    <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
+                      痛點免費提出與專家解鎖機制
+                    </h3>
+                  </div>
+
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    在 IdeaX 上，<strong>提問者可 NT$ 0 元免費上架生活與產業痛點</strong>，無預扣款項；各領域專家在下方提交專屬落地解法，並<strong>自訂解鎖金額</strong>，提問者或社群付費解鎖查閱完整方案。
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 space-y-1">
+                      <span className="font-bold text-stone-900 block">1. 痛點 0 元提出</span>
+                      <p className="text-stone-500 text-[11px]">零門檻快速提出瓶頸難題，吸引多方專家關注。</p>
+                    </div>
+                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 space-y-1">
+                      <span className="font-bold text-stone-900 block">2. 專家自訂解鎖價</span>
+                      <p className="text-stone-500 text-[11px]">針對痛點提出深度方案，自訂合理定價解鎖。</p>
+                    </div>
+                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 space-y-1">
+                      <span className="font-bold text-stone-900 block">3. 批次安全撥款</span>
+                      <p className="text-stone-500 text-[11px]">買方付費解鎖後，平台扣除服務費後批次撥入專家帳戶。</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 說明 4: 五級問題分級體系 */}
+              {(selectedOtherChapterId === 'other_levels' || selectedOtherChapterId === 'other_1') && (
                 <div className="p-5 sm:p-7 space-y-4">
                   <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
-                        說明一 • 問題分級
+                        說明四 • 問題分級
                       </span>
                       <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
                         五級問題分級體系（L0 ~ L4）
@@ -1676,46 +1597,13 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 </div>
               )}
 
-              {/* 說明 2: 痛點免費提出與專家解鎖 */}
-              {selectedOtherChapterId === 'other_2' && (
-                <div className="p-5 sm:p-7 space-y-4">
-                  <div className="border-b border-stone-100 pb-3">
-                    <span className="text-xs font-bold text-rose-800 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
-                      說明二 • 痛點機制
-                    </span>
-                    <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
-                      痛點免費提出與專家解鎖機制
-                    </h3>
-                  </div>
-
-                  <p className="text-xs text-stone-600 leading-relaxed">
-                    在 IdeaX 上，<strong>提問者可 NT$ 0 元免費上架生活與產業痛點</strong>，無預扣款項；各領域專家在下方提交專屬落地解法，並<strong>自訂解鎖金額</strong>，提問者或社群付費解鎖查閱完整方案。
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 space-y-1">
-                      <span className="font-bold text-stone-900 block">1. 痛點 0 元提出</span>
-                      <p className="text-stone-500 text-[11px]">零門檻快速提出瓶頸難題，吸引多方專家關注。</p>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 space-y-1">
-                      <span className="font-bold text-stone-900 block">2. 專家自訂解鎖價</span>
-                      <p className="text-stone-500 text-[11px]">針對痛點提出深度方案，自訂合理定價解鎖。</p>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 space-y-1">
-                      <span className="font-bold text-stone-900 block">3. 批次安全撥款</span>
-                      <p className="text-stone-500 text-[11px]">買方付費解鎖後，平台扣除服務費後批次撥入專家帳戶。</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 說明 3: 會員方案費率 */}
-              {selectedOtherChapterId === 'other_3' && (
+              {/* 說明 5: 會員訂閱方案與費率減免 */}
+              {(selectedOtherChapterId === 'other_membership' || selectedOtherChapterId === 'other_3') && (
                 <div className="p-5 sm:p-7 space-y-4">
                   <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-stone-800 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
-                        說明三 • 會員方案
+                        說明五 • 會員方案
                       </span>
                       <h3 className="text-base sm:text-lg font-black text-stone-900 mt-1.5">
                         會員訂閱方案與費率減免
@@ -1761,23 +1649,8 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 </div>
               )}
 
-              {/* 說明 4: 平台用戶角色與社群 */}
-              {selectedOtherChapterId === 'other_4' && (
-                <div className="p-4 sm:p-6">
-                  <PlatformRolesSpectrumView
-                    showBackToList={true}
-                    onBack={() => setSelectedOtherChapterId(null)}
-                    onOpenCommunityGuidelines={() => {
-                      setSelectedOtherChapterId(null);
-                      setActiveTab('terms');
-                      setSelectedTermKey('community_guidelines');
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* 說明 5: AI 功能介紹與智慧賦能 */}
-              {selectedOtherChapterId === 'other_5' && (
+              {/* 說明 6: AI 智慧引擎賦能與高效協同系統 */}
+              {(selectedOtherChapterId === 'other_ai' || selectedOtherChapterId === 'other_5') && (
                 <div className="p-5 sm:p-7 space-y-6 animate-in fade-in">
                   {/* Header Title */}
                   <div className="border-b border-stone-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1785,7 +1658,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200 inline-flex items-center gap-1">
                           <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                          <span>說明五 • AI 智慧賦能</span>
+                          <span>說明六 • AI 智慧賦能</span>
                         </span>
                         <span className="text-[11px] font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md">
                           全流程生態體系
@@ -1800,158 +1673,181 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                     </span>
                   </div>
 
+                  {/* 雙引擎高可用無縫備援機制說明框 */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-stone-100 border border-amber-500/30 space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs font-black text-stone-900">
+                      <Zap className="w-4 h-4 text-amber-600" />
+                      <span>雙引擎無縫切換與高可用架構保障</span>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-stone-700 leading-relaxed">
+                      當 Dify 伺服器發生連線逾時（超過 20 秒）、服務中斷（502/503/404 等異常），系統會立即無縫切換為 Google Gemini 備援引擎 執行推論與分析。不要沒回傳就切換，僅以連線狀態判定，因為有些指令需要多一點時間，確保 24 小時智慧服務零中斷。
+                    </p>
+                  </div>
+
                   <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                    IdeaX 深度整合自然語言語意理解、人機協同決策模型與主動特助機制，為提問發案者、智庫解答專家及平台交易治理打造全方位智慧賦能矩陣：
+                    創點子 IdeaX 打造全方位的 AI Agent 智慧賦能矩陣，為發案提問者、智庫解答專家及交易保障提供精準、高效且安全的人機協同體驗：
                   </p>
 
-                  {/* 核心架構三大維度 */}
+                  {/* 核心架構三大 Agent 與安全防護 */}
                   <div className="space-y-5">
-                    {/* 維度一：AI 智能 Agent 體系 (全天候自主運作) */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-purple-600" />
-                        <h4 className="text-xs sm:text-sm font-black text-stone-900 flex items-center gap-1.5">
-                          <span>一、AI 智能特助 Agent 體系（全天候自動化運作）</span>
-                        </h4>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-                        {/* 1. 官方客服特助 */}
-                        <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2 hover:border-purple-300 transition-all shadow-2xs">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-                              <Bot className="w-4 h-4 text-purple-600" />
-                              <span>1. 24hr 官方客服特助</span>
-                            </span>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              全體用戶標配
-                            </span>
+                    {/* Agent 1: AICRM 業務顧問與 24hr 特助 */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-3 shadow-2xs hover:border-amber-300 transition-all">
+                      <div className="flex items-center justify-between gap-2 border-b border-amber-200/60 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black">
+                            <Crown className="w-4 h-4" />
                           </div>
-                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
-                            全天候解答全站機制、點數金流、問題發布規範與認證流程；支援多輪意圖引導，並能自主受理、分類與升級專人工單。
-                          </p>
-                          <div className="pt-1.5 border-t border-stone-200/60 flex items-center gap-1 text-[11px] text-purple-800 font-bold">
-                            <span>⚡ 適用：平台疑難排解、點數儲值與申訴引導</span>
+                          <div>
+                            <h4 className="font-black text-stone-900 text-sm flex items-center gap-1.5">
+                              <span>1. 💼 AICRM 業務顧問與 24hr 特助</span>
+                            </h4>
+                            <span className="text-[10px] text-amber-800 font-bold">專屬賦能解答專家 • 拓展商機與智能代操</span>
                           </div>
                         </div>
-
-                        {/* 2. AI-CRM 24hr 特助代操 */}
-                        <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2 hover:border-amber-400 transition-all shadow-2xs">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-                              <Crown className="w-4 h-4 text-amber-600" />
-                              <span>2. AI-CRM 24hr 特助代操</span>
-                            </span>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-200 text-stone-900 border border-amber-300">
-                              大師方案專屬
-                            </span>
-                          </div>
-                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
-                            即時巡航潛在發案客戶，智能分析痛點與猶豫期；於專家離線時主動接待維繫關係，並在最佳商業時段自主排程發送破冰提案。
-                          </p>
-                          <div className="pt-1.5 border-t border-amber-200/70 flex items-center gap-1 text-[11px] text-amber-900 font-bold">
-                            <span>🎯 包含：離線接待、自訂語氣風格與 FAQ 知識庫</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 維度二：AI 智慧輔助與決策軍師 (人機協同模式) */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-indigo-600" />
-                        <h4 className="text-xs sm:text-sm font-black text-stone-900 flex items-center gap-1.5">
-                          <span>二、AI 智慧決策與軍師輔助（專家在線人機協同）</span>
-                        </h4>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-200 text-stone-900 border border-amber-300 shrink-0">
+                          大師 / 權威方案專屬
+                        </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-                        {/* 3. AI-CRM 24hr巡航雷達(軍師) */}
-                        <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2 hover:border-indigo-300 transition-all shadow-2xs">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-                              <MessageSquare className="w-4 h-4 text-indigo-600" />
-                              <span>3. AI-CRM 24hr巡航雷達(軍師)</span>
-                            </span>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
-                              策略與排程
-                            </span>
-                          </div>
-                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
-                            深度剖析潛在客戶的痛點意向與猶豫期心理，自動擬定 3 組心理學破冰對策與專屬時程排定，無縫移轉至 24hr 特助代操佇列。
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                        <div className="p-3 bg-white/90 rounded-xl border border-amber-100 space-y-1">
+                          <span className="font-bold text-amber-950 block text-[11px] flex items-center gap-1">
+                            <span>📡 24hr 巡航雷達</span>
+                          </span>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            全天候自動掃描全站待認領與高額懸賞案件，深度分析客戶痛點與成案意向指數 (0~100%)，精準推薦最佳聯繫時段。
                           </p>
-                          <div className="pt-1.5 border-t border-stone-200/60 flex items-center gap-1 text-[11px] text-indigo-800 font-bold">
-                            <span>💡 特點：專家可自由審閱微調，掌握精準成案契機</span>
-                          </div>
                         </div>
 
-                        {/* 4. AI 專家智慧媒合與題意多維標籤 */}
-                        <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2 hover:border-indigo-300 transition-all shadow-2xs">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-                              <Target className="w-4 h-4 text-indigo-600" />
-                              <span>4. 專家精準媒合與題意標籤</span>
-                            </span>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-200 text-stone-800">
-                              智慧運算
-                            </span>
-                          </div>
-                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
-                            自動對新發布問題進行語意維度剖析，精準比對智庫專家專長技能、實名認證與歷史評價，主動向合適專家精準推播高契合度案件。
+                        <div className="p-3 bg-white/90 rounded-xl border border-amber-100 space-y-1">
+                          <span className="font-bold text-amber-950 block text-[11px] flex items-center gap-1">
+                            <span>💰 收益試算與提案方針</span>
+                          </span>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            即時試算大師 (98%) 與權威 (95%) 實收淨利，並自動生成三階段破局切入方針與交付里程碑規劃。
                           </p>
-                          <div className="pt-1.5 border-t border-stone-200/60 flex items-center gap-1 text-[11px] text-indigo-800 font-bold">
-                            <span>🚀 效果：大幅縮短解題等待週期，提升成交率</span>
-                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/90 rounded-xl border border-amber-100 space-y-1">
+                          <span className="font-bold text-amber-950 block text-[11px] flex items-center gap-1">
+                            <span>🤖 24hr 特助代操與破冰</span>
+                          </span>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            專家離線時由特助自主接待維繫客戶，並根據客戶心理學產出 3 款直擊痛點的破冰話術（沉穩顧問/專業精闢/熱情親和）。
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* 維度三：爭議調解與交易安全守護 (治理與風控) */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-600" />
-                        <h4 className="text-xs sm:text-sm font-black text-stone-900 flex items-center gap-1.5">
-                          <span>三、爭議調解與安全防火牆（交易安全與治理）</span>
-                        </h4>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-                        {/* 5. 智慧爭議調解報告 */}
-                        <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2 hover:border-emerald-300 transition-all shadow-2xs">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-                              <Scale className="w-4 h-4 text-emerald-600" />
-                              <span>5. 爭議客觀調解與分析報告</span>
-                            </span>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              爭議自動介入
-                            </span>
+                    {/* Agent 2: 市場顧問 Agent */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-purple-50/60 border border-purple-200 space-y-3 shadow-2xs hover:border-purple-300 transition-all">
+                      <div className="flex items-center justify-between gap-2 border-b border-purple-200/60 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-xl bg-purple-900 text-white flex items-center justify-center font-black">
+                            <Scale className="w-4 h-4 text-amber-400" />
                           </div>
-                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
-                            雙方發起申訴或意見分歧時，自動調閱完整溝通脈絡與落地方案交付紀錄，客觀梳理雙方履約事實與爭議點，產出中立調解建議與和解方案。
-                          </p>
-                          <div className="pt-1.5 border-t border-stone-200/60 flex items-center gap-1 text-[11px] text-emerald-800 font-bold">
-                            <span>⚖️ 保障：杜絕各說各話，加速管理團隊裁決放款</span>
+                          <div>
+                            <h4 className="font-black text-stone-900 text-sm flex items-center gap-1.5">
+                              <span>2. 📊 市場顧問 Agent</span>
+                            </h4>
+                            <span className="text-[10px] text-purple-800 font-bold">精準媒合 • 履約仲裁 • 市場情報</span>
                           </div>
                         </div>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200 shrink-0">
+                          全體發案方與智庫標配
+                        </span>
+                      </div>
 
-                        {/* 6. 個資與商業機密防火牆 */}
-                        <div className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2 hover:border-emerald-300 transition-all shadow-2xs">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-                              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                              <span>6. 雙重隱私與機密安全防火牆</span>
-                            </span>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              全站常駐保護
-                            </span>
-                          </div>
-                          <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
-                            自動遮蔽電話、LINE、身分證與銀行帳號等敏感私密聯絡方式；建立嚴密隔離牆防範 Prompt 注入惡意攻擊，並設有單室每日代答上限防止惡意刷量。
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                        <div className="p-3 bg-white/90 rounded-xl border border-purple-100 space-y-1">
+                          <span className="font-bold text-purple-950 block text-[11px] flex items-center gap-1">
+                            <span>🎯 題目分類與標籤萃取</span>
+                          </span>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            發布問題時即時識別所屬領域、萃取關鍵標籤，並建議合理的懸賞難度等級 (L0~L4) 與市場定價行情。
                           </p>
-                          <div className="pt-1.5 border-t border-stone-200/60 flex items-center gap-1 text-[11px] text-emerald-800 font-bold">
-                            <span>🛡️ 保護：捍衛商業營業秘密與平台交易合規</span>
+                        </div>
+
+                        <div className="p-3 bg-white/90 rounded-xl border border-purple-100 space-y-1">
+                          <span className="font-bold text-purple-950 block text-[11px] flex items-center gap-1">
+                            <span>🏆 智慧獵頭與專家媒合</span>
+                          </span>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            根據需求痛點比對智庫專家資歷與評價，主動向契合度最高的實名專家推播題目，大幅縮短等待解答週期。
+                          </p>
+                        </div>
+
+                        <div className="p-3 bg-white/90 rounded-xl border border-purple-100 space-y-1">
+                          <span className="font-bold text-purple-950 block text-[11px] flex items-center gap-1">
+                            <span>⚖️ 爭議調解與雙軌和解書</span>
+                          </span>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            專案若有驗收爭議，自動調閱原始約定、交付成果與對話紀錄，中立判定責任並產出具約束力之《雙軌和解協議書》。
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Agent 3: 官方客服特助 Agent */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3 shadow-2xs hover:border-stone-300 transition-all">
+                      <div className="flex items-center justify-between gap-2 border-b border-stone-200/80 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-xl bg-stone-800 text-white flex items-center justify-center font-black">
+                            <Bot className="w-4 h-4 text-purple-300" />
                           </div>
+                          <div>
+                            <h4 className="font-black text-stone-900 text-sm flex items-center gap-1.5">
+                              <span>3. 🤖 官方客服特助 Agent</span>
+                            </h4>
+                            <span className="text-[10px] text-stone-500 font-bold">24hr 全站指引 • 機制 FAQ • 智慧工單升級</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                          全體會員免費即時支援
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                        <div className="p-3 bg-white rounded-xl border border-stone-200 space-y-1">
+                          <span className="font-bold text-stone-900 block text-[11px] flex items-center gap-1">
+                            <span>💬 全站機制與常見問題解答</span>
+                          </span>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            全天候即時解答第三方價金託管、驗收撥款時程、專家認證審核、儲值與提領流程等各類操作指引。
+                          </p>
+                        </div>
+
+                        <div className="p-3 bg-white rounded-xl border border-stone-200 space-y-1">
+                          <span className="font-bold text-stone-900 block text-[11px] flex items-center gap-1">
+                            <span>🎫 智慧導流與專人工單升級</span>
+                          </span>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            遇特殊帳務或深層複雜諮詢時，自動整理問題重點並無縫轉交由官方真人客服專案處理，保障服務品質。
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 安全與隱私防火牆 */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-5 h-5 text-emerald-700" />
+                        <h4 className="font-black text-stone-900 text-sm">
+                          4. 🛡️ 雙重隱私與交易安全守護體系
+                        </h4>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                        <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-1">
+                          <span className="font-bold text-emerald-950 block text-[11px]">🔒 私密個資自動遮蔽</span>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            對話與留言中自動識別並脫敏遮蔽電話、LINE、身分證及銀行帳戶等聯絡方式，防範私下交易衍生詐騙風險。
+                          </p>
+                        </div>
+                        <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-1">
+                          <span className="font-bold text-emerald-950 block text-[11px]">🤝 人機協同最終把關</span>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            AI 專注於高效輔助與數據洞察，所有合約簽署、定價授權與資金放款均由用戶與專家親自確認，確保完全掌控權。
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -1961,10 +1857,10 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                   <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-stone-50 to-amber-50 border border-purple-200/70 space-y-1.5 text-xs text-stone-700">
                     <div className="flex items-center gap-2 font-black text-stone-900">
                       <Sparkles className="w-4 h-4 text-purple-600" />
-                      <span>IdeaX AI 核心設計哲學：人機協同（Human-in-the-loop）</span>
+                      <span>IdeaX 核心理念：以科技賦能專家，用智慧守護交易</span>
                     </div>
                     <p className="text-[11px] sm:text-xs text-stone-600 leading-relaxed">
-                      AI 負責繁瑣的客情巡航、即時接待、數據洞察與草案擬定，而最終的專業深度洞見、合約定價授權與解題成果，始終由人類專家親自把關決策，發揮科技與真人智慧的最強加乘效應。
+                      透過 24 小時不間斷的智能代理與人機協同架構，發案者能以最短時間獲得高質量解答，專家能最大化發揮專業商業價值，實現高效、公平且放心的知識協作生態。
                     </p>
                   </div>
                 </div>

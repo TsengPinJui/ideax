@@ -1321,3 +1321,31 @@ export interface FaqItem {
   recommendedByAdmin?: boolean;
 }
 
+export interface CollectedUserQuestion {
+  id: string;
+  conversationId?: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  question: string;
+  category: string;
+  timestamp: string;
+  aiAnswerSnippet?: string;
+  status: 'collected' | 'aggregated';
+  resolvedByAi?: boolean;
+}
+
+export interface DraftFaqItem {
+  id: string;
+  category: string;
+  question: string;
+  answer: string;
+  tags?: string[];
+  status: 'pending_review' | 'approved' | 'rejected';
+  createdAt: string;
+  updatedAt?: string;
+  sourceQuestions?: string[];
+  isAiGenerated?: boolean;
+  adminNotes?: string;
+}
+

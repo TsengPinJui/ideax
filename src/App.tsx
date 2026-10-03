@@ -285,7 +285,7 @@ function MainContent() {
   // Specific sub-view flag when submitting answer to a question in full page mode
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [submitInitialType, setSubmitInitialType] = useState<'discussion' | 'solution'>('solution');
-  const [aboutPageSection, setAboutPageSection] = useState<string>('story');
+  const [aboutPageSection, setAboutPageSection] = useState<string>('others');
 
   // Scroll to top when switching activeTab
   useEffect(() => {
@@ -789,7 +789,7 @@ function MainContent() {
         setIsCategorySidebarOpen={setIsCategorySidebarOpen}
         onStartOnboarding={() => setIsOnboardingOpen(true)}
         onNavigateToAbout={(section) => {
-          setAboutPageSection(section || 'story');
+          setAboutPageSection(section || 'others');
           setActiveTab('about');
           setSelectedQuestion(null);
           setSelectedSolver(null);
@@ -1554,7 +1554,7 @@ function MainContent() {
           if (section) {
             setAboutPageSection(section);
           } else if (tab === 'about') {
-            setAboutPageSection('story');
+            setAboutPageSection('others');
           }
           setActiveTab(tab);
         }}

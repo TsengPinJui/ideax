@@ -38,6 +38,9 @@ import {
   getPlatformFaqs,
   savePlatformFaqs,
   saveTicketToStorage,
+  recordCollectedQuestion,
+  consultFaqWithAiAgent,
+  FaqAgentConsultResult,
 } from '../services/customerSupportService';
 import { searchFaqs } from '../data/faqData';
 import { CopyableUserId } from './CopyableUserId';
@@ -80,6 +83,13 @@ export const CustomerServiceModal: React.FC = () => {
   const [selectedFaqCategory, setSelectedFaqCategory] = useState<string>('all');
   const [openFaqId, setOpenFaqId] = useState<string | null>(null);
 
+  // FAQ AI Agent Deep Consult State (實體 Agent 接入)
+  const [consultingFaqId, setConsultingFaqId] = useState<string | null>(null);
+  const [faqConsultResults, setFaqConsultResults] = useState<Record<string, FaqAgentConsultResult>>({});
+  const [faqCustomQuery, setFaqCustomQuery] = useState('');
+  const [isConsultingCustom, setIsConsultingCustom] = useState(false);
+  const [customConsultResult, setCustomConsultResult] = useState<FaqAgentConsultResult | null>(null);
+
   // Ticket Form State
   const [ticketCategory, setTicketCategory] = useState<ServiceCategory>('delivery_dispute');
   const [ticketName, setTicketName] = useState('');
@@ -88,6 +98,14 @@ export const CustomerServiceModal: React.FC = () => {
   const [submittedTicket, setSubmittedTicket] = useState<CustomerSupportTicket | null>(null);
 
   // Initialize or reset session
+  useEffect(() => {
+    const handleFaqsUpdated = () => {
+      setFaqList(getPlatformFaqs());
+    };
+    window.addEventListener('customer_faqs_updated', handleFaqsUpdated);
+    return () => window.removeEventListener('customer_faqs_updated', handleFaqsUpdated);
+  }, []);
+
   useEffect(() => {
     if (isCustomerServiceOpen) {
       setSubmittedTicket(null);
@@ -207,6 +225,27 @@ export const CustomerServiceModal: React.FC = () => {
         extractedFaqCandidate: response.extractedFaqCandidate || undefined,
       };
       saveConversationToStorage(convRecord);
+
+      // Record collected user question for Admin AI FAQ Mining
+      recordCollectedQuestion({
+        conversationId,
+        userId: currentUser?.id || 'guest',
+        userName: currentUser?.name || '訪客用戶',
+        userAvatar: currentUser?.avatar,
+        question: text.trim(),
+        category:
+          text.includes('點數') || text.includes('款') || text.includes('費')
+            ? '金流與點數'
+            : text.includes('提問') || text.includes('懸賞') || text.includes('痛點')
+            ? '提問與媒合'
+            : text.includes('爭議') || text.includes('退款') || text.includes('申訴')
+            ? '爭議與仲裁'
+            : text.includes('身分') || text.includes('UID') || text.includes('專家')
+            ? '身分與認證'
+            : '平台操作',
+        aiAnswerSnippet: response.replyText ? response.replyText.slice(0, 100) : undefined,
+        resolvedByAi: !response.isEscalated,
+      });
     } catch (err) {
       setMessages((prev) => [
         ...prev,
@@ -241,6 +280,68 @@ export const CustomerServiceModal: React.FC = () => {
       satisfaction: val,
     };
     saveConversationToStorage(convRecord);
+  };
+
+  // 實體 FAQ AI Agent 深入諮詢
+  const handleConsultFaqWithAgent = async (faq: FaqItem) => {
+    if (consultingFaqId === faq.id) return;
+    setConsultingFaqId(faq.id);
+    try {
+      const result = await consultFaqWithAiAgent({
+        faqId: faq.id,
+        question: faq.question,
+        category: faq.category,
+        answer: faq.answer,
+        userContext: currentUser ? { userId: currentUser.id, userName: currentUser.name, userRole: currentUser.role } : null,
+      });
+      setFaqConsultResults((prev) => ({ ...prev, [faq.id]: result }));
+    } catch (e) {
+      console.warn('FAQ Agent consult error:', e);
+    } finally {
+      setConsultingFaqId(null);
+    }
+  };
+
+  // 在 FAQ 區向 AI Agent 提出自訂問題
+  const handleAskAgentCustomFaq = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = faqCustomQuery.trim();
+    if (!query || isConsultingCustom) return;
+
+    setIsConsultingCustom(true);
+    setCustomConsultResult(null);
+
+    try {
+      const result = await consultFaqWithAiAgent({
+        question: query,
+        userQuery: query,
+        category: 'FAQ延伸發問',
+        userContext: currentUser ? { userId: currentUser.id, userName: currentUser.name, userRole: currentUser.role } : null,
+      });
+      setCustomConsultResult(result);
+
+      // 自動記錄至後台收集池供管理員 AI 聚類彙整
+      recordCollectedQuestion({
+        conversationId,
+        userId: currentUser?.id || 'guest',
+        userName: currentUser?.name || '訪客用戶',
+        userAvatar: currentUser?.avatar,
+        question: query,
+        category: 'FAQ延伸發問',
+        aiAnswerSnippet: result.explanation ? result.explanation.slice(0, 100) : undefined,
+        resolvedByAi: true,
+      });
+    } catch (e) {
+      console.warn('Custom FAQ consult error:', e);
+    } finally {
+      setIsConsultingCustom(false);
+    }
+  };
+
+  // 自 FAQ 轉入 24hr AI 智能客服對話
+  const handleTransferToChat = (text: string) => {
+    setActiveTab('ai_agent');
+    handleSendMessage(text);
   };
 
   // Manual ticket submission
@@ -497,9 +598,9 @@ export const CustomerServiceModal: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 2: FAQ Knowledge Base */}
+        {/* Tab 2: FAQ Knowledge Base (實體 AI Agent 深度接入) */}
         {activeTab === 'faq' && (
-          <div className="flex-1 flex flex-col overflow-hidden p-4 sm:p-5 space-y-4">
+          <div className="flex-1 flex flex-col overflow-hidden p-4 sm:p-5 space-y-3.5">
             {/* Search Input */}
             <div className="relative">
               <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -510,6 +611,72 @@ export const CustomerServiceModal: React.FC = () => {
                 placeholder="搜尋平台常見問題（例如：點數、退款、成案、UID、手續費...）"
                 className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-amber-500 outline-none"
               />
+            </div>
+
+            {/* AI Agent Ask Anything in FAQ (實體 Agent 檢索發問區) */}
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-purple-500/10 border border-amber-300/80 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>找不到想查的問題？讓 24hr AI 客服 Agent 即時解答</span>
+                </span>
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
+                  ⚡ Dify Live Agent
+                </span>
+              </div>
+              <form onSubmit={handleAskAgentCustomFaq} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={faqCustomQuery}
+                  onChange={(e) => setFaqCustomQuery(e.target.value)}
+                  placeholder="輸入您的任何問題（例如：如果發案逾期沒有專家投標，託管點數何時自動退回錢包？）"
+                  className="flex-1 px-3 py-1.5 rounded-xl border border-stone-200 bg-white text-xs outline-none focus:border-amber-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isConsultingCustom || !faqCustomQuery.trim()}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 disabled:opacity-50 text-stone-950 text-xs font-black flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs transition-all"
+                >
+                  {isConsultingCustom ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>AI解答中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bot className="w-3.5 h-3.5" />
+                      <span>問問 Agent</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {customConsultResult && (
+                <div className="p-3 rounded-xl bg-white border border-amber-300 text-xs space-y-2 animate-in fade-in shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-stone-100 pb-1.5">
+                    <span className="font-bold text-amber-950 flex items-center gap-1.5 text-xs">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{customConsultResult.agentName}</span>
+                      {customConsultResult.latencyMs && (
+                        <span className="font-mono text-[9.5px] text-stone-400">
+                          ({customConsultResult.latencyMs}ms)
+                        </span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleTransferToChat(faqCustomQuery)}
+                      className="text-[11px] font-bold text-amber-700 hover:text-amber-900 cursor-pointer flex items-center gap-1"
+                    >
+                      <span>轉入完整交談視窗</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <p className="text-stone-700 whitespace-pre-line leading-relaxed text-[11.5px] font-sans">
+                    {customConsultResult.explanation}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Category Pills */}
@@ -534,11 +701,14 @@ export const CustomerServiceModal: React.FC = () => {
             <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
               {filteredFaqs.length === 0 ? (
                 <div className="py-12 text-center text-stone-400 text-xs">
-                  查無相關常見問題，您可以切換至「24hr 智能客服」由專屬助理為您即時解答！
+                  查無相關常見問題，您可以點擊上方「問問 Agent」由專屬客服特助為您即時解答！
                 </div>
               ) : (
                 filteredFaqs.map((faq, idx) => {
                   const isOpen = openFaqId === faq.id;
+                  const consultData = faqConsultResults[faq.id];
+                  const isConsultingThis = consultingFaqId === faq.id;
+
                   return (
                     <div
                       key={faq.id}
@@ -566,10 +736,10 @@ export const CustomerServiceModal: React.FC = () => {
                       </button>
 
                       {isOpen && (
-                        <div className="px-4 pb-4 pt-1 text-xs text-stone-600 leading-relaxed border-t border-stone-100 bg-stone-50/40 space-y-2">
-                          <p>{faq.answer}</p>
+                        <div className="px-4 pb-4 pt-1 text-xs text-stone-600 leading-relaxed border-t border-stone-100 bg-stone-50/40 space-y-2.5">
+                          <p className="whitespace-pre-line leading-relaxed">{faq.answer}</p>
                           {faq.tags && (
-                            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                               {faq.tags.map((t, tIdx) => (
                                 <span key={tIdx} className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-500 border border-stone-200/80">
                                   #{t}
@@ -577,6 +747,59 @@ export const CustomerServiceModal: React.FC = () => {
                               ))}
                             </div>
                           )}
+
+                          {/* Agent Deep Consult Button & Panel */}
+                          <div className="pt-2 border-t border-stone-200/60 space-y-2">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleConsultFaqWithAgent(faq)}
+                                disabled={isConsultingThis}
+                                className="px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200/90 active:scale-95 text-amber-950 font-black text-[11px] flex items-center gap-1.5 cursor-pointer border border-amber-300 transition-all disabled:opacity-50"
+                              >
+                                {isConsultingThis ? (
+                                  <>
+                                    <RefreshCw className="w-3 h-3 animate-spin text-amber-700" />
+                                    <span>AI 客服 Agent 正在即時深度調閱智庫...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Bot className="w-3.5 h-3.5 text-amber-700" />
+                                    <span>🤖 讓 AI 客服 Agent 深入解答此問題</span>
+                                  </>
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleTransferToChat(`我想深入諮詢常見問題：【${faq.question}】`)}
+                                className="text-[11px] font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1 cursor-pointer"
+                              >
+                                <span>💬 轉入 24hr 客服交談</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            {/* Rendered Agent Deep Consultation Result */}
+                            {consultData && (
+                              <div className="p-3.5 rounded-xl bg-white border border-amber-300 shadow-2xs space-y-2 animate-in fade-in">
+                                <div className="flex items-center justify-between text-[11px] font-bold text-amber-900 border-b border-amber-100 pb-1.5">
+                                  <span className="flex items-center gap-1.5">
+                                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>{consultData.agentName}</span>
+                                  </span>
+                                  {consultData.latencyMs && (
+                                    <span className="font-mono text-[10px] text-stone-400">
+                                      {consultData.latencyMs} ms
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11.5px] text-stone-700 whitespace-pre-line leading-relaxed font-sans">
+                                  {consultData.explanation}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

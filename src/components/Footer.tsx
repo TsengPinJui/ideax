@@ -7,6 +7,7 @@ import {
   Info,
   Download,
   Compass,
+  Layers,
 } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
 import { AppTab, AboutSection } from '../types';
@@ -143,17 +144,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             </ul>
           </div>
 
-          {/* 關於與支援：關於我們、條款與聲明、客服服務、聯繫我們（移至平台導覽右側） */}
+          {/* 關於與支援：其他說明、條款與聲明、客服服務、聯繫我們（移至平台導覽右側） */}
           <div className="space-y-3">
             <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">關於與支援</h4>
             <ul className="space-y-2 text-stone-400">
               <li>
                 <button
-                  onClick={() => onNavClick('about', 'story')}
+                  onClick={() => onNavClick('about', 'others')}
                   className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5"
                 >
-                  <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>關於我們</span>
+                  <Layers className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>其他說明</span>
                 </button>
               </li>
               <li>
@@ -251,7 +252,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 if (onStartOnboarding) {
                   onStartOnboarding();
                 } else {
-                  onNavClick('about', 'story');
+                  onNavClick('about', 'others');
                 }
               }}
               className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer inline-flex items-center gap-1"
@@ -261,10 +262,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             </button>
             <span>•</span>
             <button
-              onClick={() => onNavClick('about', 'story')}
+              onClick={() => onNavClick('about', 'others')}
               className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
             >
-              關於我們
+              其他說明
             </button>
             <span>•</span>
             <button

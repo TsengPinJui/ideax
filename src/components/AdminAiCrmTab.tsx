@@ -178,7 +178,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
   // 0. Dify 全功能直連實測台狀態
   const [difyTestAgentType, setDifyTestAgentType] = useState<'market_advisor' | 'aicrm_agent' | 'cs_agent'>('aicrm_agent');
   const [difyTestQuery, setDifyTestQuery] = useState(
-    '你是 AICRM 業務顧問 Agent，請對全站待認領高額案件進行 24hr 巡航雷達掃描，剖析客戶核心痛點、預算心理與防備點，輸出 0~100% 成案意向指數 (Intent Score) 與推薦最適跟進時段。請以 JSON 輸出。'
+    '你是 AICRM Agent，請對全站待認領高額案件進行 24hr 巡航雷達掃描，剖析客戶核心痛點、預算心理與防備點，輸出 0~100% 成案意向指數 (Intent Score) 與推薦最適跟進時段。請以 JSON 輸出。'
   );
   const [difyTesting, setDifyTesting] = useState(false);
   const [difyLiveResponse, setDifyLiveResponse] = useState<any>(null);
@@ -272,19 +272,78 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
     setTimeout(() => setSaveSuccessMsg(null), 3500);
   };
 
-  const handleTriggerRescan = () => {
+  const handleTriggerRescan = async () => {
     setIsScanning(true);
-    setTimeout(() => {
-      const refreshed = getAiCrmLeadsForSolver(
-        currentUser?.domain || '資訊工程',
-        currentUser?.skills || ['AI', '行銷'],
-        questions
-      );
-      setLeadsPool(refreshed);
+    setScanNotice(null);
+    try {
+      const res = await fetch('/api/agent/aicrm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'radar_scan',
+          payload: {
+            solverDomain: currentUser?.domain || '資訊科技與全端架構',
+            solverSkills: currentUser?.skills || ['AI', '商業架構', '行銷增長'],
+            questions,
+          },
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.data && json.data.leads && Array.isArray(json.data.leads)) {
+          const transformedLeads: AiCrmLead[] = json.data.leads.map((l: any, idx: number) => ({
+            id: l.id || `lead-rescan-${idx}`,
+            questionId: l.questionId || `q-${idx}`,
+            questionTitle: l.questionTitle || '高價值專案商機',
+            questionBounty: l.bounty || 2500,
+            questionCategory: l.category || '商業策略',
+            questionCreatedAt: '3天前 (猶豫評估期)',
+            clientName: l.clientName || '發案者',
+            clientAvatar: l.clientAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            clientRole: '提問發案會員',
+            clientHistoryDealsCount: 2,
+            lastInteractionAt: '1天前',
+            aiRecommendedAction: l.aiRecommendedStrategy || '主動發送三階段里程碑破冰信',
+            urgency: l.urgency || (l.intentScore >= 88 ? 'high' : 'medium'),
+            assignedAgentStatus: 'monitoring',
+            strategyBlueprint: {
+              dealProbability: l.intentScore || 90,
+              bestContactTime: l.recommendedTimeSlot?.label || '午後深度思考期 (14:30~16:00)',
+              suggestedPriceMin: Math.round((l.bounty || 3000) * 0.9),
+              suggestedPriceMax: Math.round((l.bounty || 3000) * 1.5),
+              clientPainPoints: l.clientPsychology?.corePainPoint
+                ? [l.clientPsychology.corePainPoint, l.clientPsychology.defensePoint].filter(Boolean)
+                : ['缺乏明確驗收標準', '擔憂時程延宕'],
+              suggestedPitches: [
+                `您好！針對您的需求，我們具備豐富同業落地經驗，可先為您提供三階段里程碑藍圖。`,
+              ],
+            },
+          }));
+
+          setLeadsPool(transformedLeads);
+          setScanNotice(
+            `⚡ AICRM 巡航雷達即時探測完畢！由 Dify AICRM Agent 掃描全站 ${questions.length} 個題目，探測出 ${transformedLeads.length} 筆高價值客情！`
+          );
+          setTimeout(() => setScanNotice(null), 5000);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('handleTriggerRescan API call error:', err);
+    } finally {
       setIsScanning(false);
-      setScanNotice(`全站商機池已完成重新探測！共掃描 ${questions.length} 個題目，偵測出 ${refreshed.length} 筆高價值潛在客情。`);
-      setTimeout(() => setScanNotice(null), 4000);
-    }, 600);
+    }
+
+    // Fallback local leads
+    const refreshed = getAiCrmLeadsForSolver(
+      currentUser?.domain || '資訊工程',
+      currentUser?.skills || ['AI', '行銷'],
+      questions
+    );
+    setLeadsPool(refreshed);
+    setScanNotice(`全站商機池已完成重新探測！共掃描 ${questions.length} 個題目，偵測出 ${refreshed.length} 筆高價值潛在客情。`);
+    setTimeout(() => setScanNotice(null), 4000);
   };
 
   // 0. 執行 Dify Direct API 全通道直連實測
@@ -688,7 +747,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               }`}
             >
               <Zap className="w-4 h-4 text-amber-600" />
-              <span>⚡ Dify API 直連全通道實測台 (統一控制台)</span>
+              <span>Dify 連線測試</span>
             </button>
 
             <button
@@ -725,7 +784,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                 <div>
                   <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
                     <Zap className="w-5 h-5 text-amber-600" />
-                    <span>⚡ Dify API 直連全通道即時實測台</span>
+                    <span>Dify 連線測試</span>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
                       LIVE 直連 Dify
                     </span>
@@ -741,7 +800,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       type="button"
                       onClick={() => {
                         setDifyTestAgentType('aicrm_agent');
-                        const defaultPrompt = '你是 AICRM 業務顧問 Agent，請對全站待認領高額案件進行 24hr 巡航雷達掃描，剖析客戶核心痛點、預算心理與防備點，輸出 0~100% 成案意向指數 (Intent Score) 與推薦最適跟進時段（上午黃金決策期 10:00~11:30 / 午後深度思考期 14:30~16:00 / 晚間沉澱期 19:30~21:00）。請以 JSON 輸出。';
+                        const defaultPrompt = '你是 AICRM Agent，請對全站待認領高額案件進行 24hr 巡航雷達掃描，剖析客戶核心痛點、預算心理與防備點，輸出 0~100% 成案意向指數 (Intent Score) 與推薦最適跟進時段（上午黃金決策期 10:00~11:30 / 午後深度思考期 14:30~16:00 / 晚間沉澱期 19:30~21:00）。請以 JSON 輸出。';
                         setDifyTestQuery(defaultPrompt);
                         setDifyLiveResponse(null);
                       }}
@@ -751,7 +810,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      💼 AICRM 業務顧問 Agent
+                      💼 AICRM Agent
                     </button>
                     <button
                       type="button"
@@ -795,7 +854,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                   <span className="text-xs font-black text-stone-800 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                     <span>
-                      {difyTestAgentType === 'aicrm_agent' && '💼 AICRM 業務顧問專屬實測 Prompt 範本（三大核心模組）：'}
+                      {difyTestAgentType === 'aicrm_agent' && '💼 AICRM Agent實測 Prompt範本：'}
                       {difyTestAgentType === 'market_advisor' && '📊 市場顧問專屬實測 Prompt 範本（五大業務核心）：'}
                       {difyTestAgentType === 'cs_agent' && '🤖 官方客服專屬實測 Prompt 範本（高頻 FAQ 與機制）：'}
                     </span>
@@ -810,19 +869,19 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         badge: '模組 1',
                         label: '📡 24hr 巡航雷達與意向指數',
                         desc: '掃描 >3 天未採納題庫，剖析 Intent Score 與黃金時段',
-                        query: '你是 AICRM 業務顧問 Agent，請對全站待認領高額案件進行 24hr 巡航雷達掃描，剖析客戶核心痛點、預算心理與防備點，輸出 0~100% 成案意向指數 (Intent Score) 與推薦最適跟進時段（上午黃金決策期 10:00~11:30 / 午後深度思考期 14:30~16:00 / 晚間沉澱期 19:30~21:00）。請以 JSON 輸出。',
+                        query: '你是 AICRM Agent，請對全站待認領高額案件進行 24hr 巡航雷達掃描，剖析客戶核心痛點、預算心理與防備點，輸出 0~100% 成案意向指數 (Intent Score) 與推薦最適跟進時段（上午黃金決策期 10:00~11:30 / 午後深度思考期 14:30~16:00 / 晚間沉澱期 19:30~21:00）。請以 JSON 輸出。',
                       },
                       {
                         badge: '模組 2',
                         label: '💰 優質提案推薦與三階段破局方針',
                         desc: '大師 98% / 權威 95% 淨利試算 vs 25% 抽成 & 破局藍圖',
-                        query: '你是 AICRM 業務顧問 Agent，請為「大師方案 (實收 98%)」專家計算高額懸賞案件（NT$ 10,000）扣除 2% 服務費後之實收淨利，並與 25% 傳統抽成對比。同時生成「AI 破局切入方針」（第一階段：關鍵痛點指標對焦、第二階段：核心架構藍圖與里程碑進度、第三階段：交付清單與驗收放款保證）。請以 JSON 輸出。',
+                        query: '你是 AICRM Agent，請為「大師方案 (實收 98%)」專家計算高額懸賞案件（NT$ 10,000）扣除 2% 服務費後之實收淨利，並與 25% 傳統抽成對比。同時生成「AI 破局切入方針」（第一階段：關鍵痛點指標對焦、第二階段：核心架構藍圖與里程碑進度、第三階段：交付清單與驗收放款保證）。請以 JSON 輸出。',
                       },
                       {
                         badge: '模組 3',
                         label: '🤖 24hr 特助代操與 3 款心理學破冰',
                         desc: '沉穩顧問風 / 專業精闢風 / 熱情親和風話術與時程排定',
-                        query: '你是 AICRM 業務顧問 Agent，專家目前離線，請針對發案者在懸賞案件的猶豫期，依客戶心理學生成 3 款直擊痛點的破冰話術（沉穩顧問風 / 專業精闢風 / 熱情親和風），並排定最佳發送時間。請以 JSON 輸出。',
+                        query: '你是 AICRM Agent，專家目前離線，請針對發案者在懸賞案件的猶豫期，依客戶心理學生成 3 款直擊痛點的破冰話術（沉穩顧問風 / 專業精闢風 / 熱情親和風），並排定最佳發送時間。請以 JSON 輸出。',
                       },
                       {
                         badge: '戰略分析',
@@ -834,7 +893,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         badge: '商機洞察',
                         label: '🎯 專家客製化開發信與痛點盲區',
                         desc: '剖析客戶真實痛點盲區、最佳推進策略與專屬破冰信',
-                        query: '你是 AICRM 業務顧問 Agent，專家領域為「跨國跨境電商與架構顧問」，發案客戶提出「跨國電商退貨率高於 35%」，請產出客戶真正的痛點盲區、專家應採取的最佳推進策略與專屬開發破冰信。請以 JSON 輸出。',
+                        query: '你是 AICRM Agent，專家領域為「跨國跨境電商與架構顧問」，發案客戶提出「跨國電商退貨率高於 35%」，請產出客戶真正的痛點盲區、專家應採取的最佳推進策略與專屬開發破冰信。請以 JSON 輸出。',
                       },
                     ].map((preset, idx) => {
                       const isSelected = difyTestQuery === preset.query;
@@ -1001,7 +1060,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       {difyTestAgentType === 'market_advisor'
                         ? 'Market Advisor Agent (市場顧問)'
                         : difyTestAgentType === 'aicrm_agent'
-                        ? 'AICRM Agent (業務顧問)'
+                        ? 'AICRM Agent'
                         : 'CS Agent (官方客服)'}
                     </code>
                   </span>
@@ -1020,7 +1079,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     ) : (
                       <>
                         <Play className="w-3.5 h-3.5 fill-stone-950" />
-                        <span>立即直連 Dify 實測</span>
+                        <span>連線測試</span>
                       </>
                     )}
                   </button>
@@ -1065,12 +1124,20 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     {/* 頂部狀態列與切換分頁 */}
                     <div className="p-4 sm:p-5 bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 border-b border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className={`w-2.5 h-2.5 rounded-full ${difyLiveResponse.source === 'gemini-fallback' ? 'bg-amber-400' : 'bg-emerald-400'} animate-pulse`} />
                         <span className="text-xs font-black text-amber-300">
-                          {difyLiveResponse.success ? '✓ Dify API 連線呼叫成功' : '✕ Dify 呼叫失敗'}
+                          {difyLiveResponse.source === 'gemini-fallback'
+                            ? '⚡ 已自動切換 Gemini 智慧備援'
+                            : difyLiveResponse.success
+                            ? '✓ Dify API 直連呼叫成功'
+                            : '✕ 調用失敗'}
                         </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-bold">
-                          狀態：200 OK
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+                          difyLiveResponse.source === 'gemini-fallback'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                        }`}>
+                          {difyLiveResponse.source === 'gemini-fallback' ? 'Gemini 2.5 Flash' : 'Dify Live API'}
                         </span>
                         <span className="text-xs text-stone-400">
                           耗時：<strong className="text-amber-300 font-mono">{difyLiveResponse.latencyMs || 0} ms</strong>
@@ -1108,6 +1175,14 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         </button>
                       </div>
                     </div>
+
+                    {/* 備援提示橫幅 */}
+                    {difyLiveResponse.notice && (
+                      <div className="mx-4 mt-3 sm:mx-6 sm:mt-4 p-3 rounded-2xl bg-amber-500/15 border border-amber-400/40 text-amber-200 text-xs flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>{difyLiveResponse.notice}</span>
+                      </div>
+                    )}
 
                     {difyLiveResponse.error && (
                       <div className="m-4 sm:m-5 p-4 rounded-2xl bg-rose-950/80 border border-rose-500 text-rose-200 text-xs flex items-center gap-2">
