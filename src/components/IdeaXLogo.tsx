@@ -103,7 +103,7 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
   let imageSrc = '/logo-chuangdianzi.png';
 
   if (variant === 'bulb' || variant === 'mark') {
-    imageSrc = '/圓角正向黃底燈泡.png'; // 網站專屬 圓角正向黃底燈泡
+    imageSrc = '/logo-topleft-3.png'; // 3.png transparent
   } else if (variant === 'chuangdianzi') {
     imageSrc = '/logo-chuangdianzi.png'; // 創點子 + IdeaX (2.png transparent)
   } else if (variant === 'ideax-6') {

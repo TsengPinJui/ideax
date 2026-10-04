@@ -1,13 +1,12 @@
 // IdeaX 創點子 - Progressive Web App Service Worker
-const CACHE_NAME = 'ideax-pwa-v5';
+const CACHE_NAME = 'ideax-pwa-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon-32x32.png',
   '/favicon-16x16.png',
-  '/圓角正向黃底燈泡.png',
-  '/APP用縮圖.jpg',
+  '/去背圓角縮圖.png',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
   '/apple-touch-icon.png',
