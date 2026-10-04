@@ -58,5 +58,10 @@ export const db = firestoreDb;
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);
+auth.languageCode = 'zh-TW'; // 啟用台灣繁體中文簡訊與驗證範本
+
+// Initialize Firebase Storage
+import { getStorage } from 'firebase/storage';
+export const storage = getStorage(app);
 
 export default app;

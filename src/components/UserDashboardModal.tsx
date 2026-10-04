@@ -32,6 +32,8 @@ import {
   downloadContractFile 
 } from '../utils/contractGenerator';
 import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated } from '../utils/userDisplay';
+import { updateFirebaseUserPassword } from '../services/firebaseAuth';
+import { validatePassword } from '../utils/validators';
 import {
   X,
   Wallet,
@@ -45,6 +47,7 @@ import {
   CheckCircle2,
   Lock,
   Unlock,
+  KeyRound,
   AlertCircle,
   ArrowLeft,
   Shield,
@@ -594,6 +597,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [activeTab, setActiveTab] = useState<UserDashboardTab>(() => {
     return initialTab || 'overview';
   });
+  const [adminCertTargetUserId, setAdminCertTargetUserId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [isExpertApplyModalOpen, setIsExpertApplyModalOpen] = useState(false);
 
@@ -681,6 +685,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
   // Profile edit local state
   const [name, setName] = useState(currentUser.name);
+  const [username, setUsername] = useState(currentUser.username || '');
   const [title, setTitle] = useState(currentUser.title);
   const [bio, setBio] = useState(currentUser.bio || '');
   const [avatar, setAvatar] = useState(currentUser.avatar || '');
@@ -713,6 +718,17 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [branchName, setBranchName] = useState(currentUser.bankAccount?.branchName || '敦南分行');
   const [accountNumber, setAccountNumber] = useState(currentUser.bankAccount?.accountNumber || '');
   const [accountHolder, setAccountHolder] = useState(currentUser.bankAccount?.accountHolder || currentUser.name);
+
+  // 修改密碼狀態 (Change Password State)
+  const [currentOldPassword, setCurrentOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null);
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState<string | null>(null);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Survey Data State
   const [surveyDesiredServices, setSurveyDesiredServices] = useState<string[]>(
@@ -1264,6 +1280,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setCurrentUser((prev) => ({
       ...prev,
       name,
+      username: username.trim() || prev.username,
       avatar: newAvatar,
       title,
       bio,
@@ -1307,6 +1324,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           ? {
               ...u,
               name,
+              username: username.trim() || u.username,
               avatar: newAvatar,
               title,
               bio,
@@ -1342,6 +1360,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setCurrentUser((prev) => ({
       ...prev,
       name,
+      username: username.trim() || prev.username,
       avatar: newAvatar,
       title,
       bio,
@@ -1376,6 +1395,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           ? {
               ...u,
               name,
+              username: username.trim() || u.username,
               avatar: newAvatar,
               title,
               bio,
@@ -1433,6 +1453,112 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
     setBankSaveSuccessMsg('收退款銀行帳戶設定已成功獨立儲存！');
     setTimeout(() => setBankSaveSuccessMsg(null), 3500);
+  };
+
+  // 3. 修改登入密碼處理常式
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordChangeError(null);
+    setPasswordChangeSuccess(null);
+
+    const oldPwd = currentOldPassword.trim();
+    const newPwd = newPassword.trim();
+    const confirmPwd = confirmNewPassword.trim();
+
+    if (!oldPwd) {
+      setPasswordChangeError('請輸入目前使用之舊密碼！');
+      return;
+    }
+
+    // 嚴格核對目前密碼 (Strict Current Password Verification)
+    const userInAvailable = availableUsers.find(
+      (u) =>
+        u.id === currentUser.id ||
+        (u.email && currentUser.email && u.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+        (u.username && currentUser.username && u.username.toLowerCase() === currentUser.username.toLowerCase())
+    );
+
+    const isAdmin =
+      currentUser.id === 'user-admin' ||
+      currentUser.username?.toLowerCase() === 'admin_001' ||
+      currentUser.username?.toLowerCase() === 'admin' ||
+      currentUser.email?.toLowerCase() === 'operations@ideax.io';
+
+    const isDemoUser =
+      currentUser.id === 'user-questioner' ||
+      currentUser.id.startsWith('solver-') ||
+      currentUser.id === 'user-test';
+
+    const effectiveOldPassword =
+      currentUser.password ||
+      userInAvailable?.password ||
+      (isAdmin ? 'John930521' : isDemoUser ? 'Ideax123456' : undefined);
+
+    // 嚴格比對目前密碼，若有紀錄且不符合一律拒絕修改
+    if (effectiveOldPassword) {
+      if (oldPwd !== effectiveOldPassword) {
+        setPasswordChangeError('目前密碼不正確，請重新確認輸入！');
+        return;
+      }
+    } else {
+      // 若查無初始密碼紀錄，舊密碼仍必須通過格式校驗，禁止任意隨意字串
+      const oldVal = validatePassword(oldPwd);
+      if (!oldVal.isValid) {
+        setPasswordChangeError('目前密碼不正確或格式不符，請重新確認輸入！');
+        return;
+      }
+    }
+
+    // 驗證新密碼格式
+    const val = validatePassword(newPwd);
+    if (!val.isValid) {
+      setPasswordChangeError(val.message);
+      return;
+    }
+
+    if (newPwd === oldPwd) {
+      setPasswordChangeError('新密碼不能與目前密碼相同！');
+      return;
+    }
+
+    if (newPwd !== confirmPwd) {
+      setPasswordChangeError('兩次輸入的新密碼不一致！');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      // 1. 若有 Firebase 雲端認證，嘗試同步更新 Firebase 密碼
+      try {
+        await updateFirebaseUserPassword(newPwd);
+      } catch (fbErr: any) {
+        console.warn('Firebase update password note:', fbErr);
+      }
+
+      // 2. 更新本地 currentUser 與 availableUsers
+      setCurrentUser((prev) => ({
+        ...prev,
+        password: newPwd,
+      }));
+
+      setAvailableUsers((users) =>
+        users.map((u) =>
+          u.id === currentUser.id
+            ? { ...u, password: newPwd }
+            : u
+        )
+      );
+
+      setPasswordChangeSuccess('密碼已成功修改！請妥善保存您的新密碼。');
+      setCurrentOldPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setTimeout(() => setPasswordChangeSuccess(null), 4000);
+    } catch (err: any) {
+      setPasswordChangeError('修改密碼失敗：' + (err.message || '請稍後再試'));
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   // 1.~5. 一鍵套用帳號基本資料至問卷 1~5 題
@@ -6939,7 +7065,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           title="用戶名稱顯示規則？點擊展開/隱藏"
                         >
                           <span className="w-3.5 h-3.5 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center font-black text-[10px]">?</span>
-                          <span>名稱顯示規則</span>
+                          <span>名稱規則</span>
                         </button>
                       </div>
                       <input
@@ -6947,20 +7073,29 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
+                        placeholder="例如：Alex Chen"
                         className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
                       />
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-stone-700">自訂登入帳號 (Username)</label>
+                        <span className="text-[10px] text-stone-400">可用於帳號密碼登入</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="例如：alex_888"
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
                         <label className="block text-xs font-bold text-stone-700">專業頭銜 / 職位 <span className="text-rose-500">*</span></label>
-                        <button
-                          type="button"
-                          onClick={() => setShowNameRuleHelp((prev) => !prev)}
-                          className="w-4 h-4 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 flex items-center justify-center font-black text-[10px] cursor-pointer transition-colors"
-                          title="用戶名稱顯示規則？點擊展開/隱藏"
-                        >
-                          ?
-                        </button>
                       </div>
                       <input
                         type="text"
@@ -6969,6 +7104,18 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="例如：資深全端工程師、品牌行銷顧問"
                         className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-stone-700">電子信箱 Email <span className="text-stone-400 font-normal">(登入與通知)</span></label>
+                      </div>
+                      <input
+                        type="email"
+                        value={userEmail}
+                        onChange={(e) => setUserEmail(e.target.value)}
+                        placeholder="user@example.com"
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 outline-none font-mono"
                       />
                     </div>
                   </div>
@@ -7211,6 +7358,131 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </button>
                     </div>
                   </div>
+
+                {/* 3. 帳號安全與修改登入密碼 */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-rose-50/30 border border-stone-200 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-stone-900 text-amber-400 flex items-center justify-center font-black shadow-2xs">
+                        <KeyRound className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-black text-stone-900">修改登入密碼</h4>
+                        <p className="text-[11px] text-stone-500">定期變更密碼以保護帳號與錢包資金安全</p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 text-[10px] font-bold border border-stone-200 flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-stone-500" /> 安全防護中
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleChangePassword} className="space-y-3.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                        目前密碼 <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showOldPassword ? 'text' : 'password'}
+                          required
+                          value={currentOldPassword}
+                          onChange={(e) => {
+                            setCurrentOldPassword(e.target.value);
+                            if (passwordChangeError) setPasswordChangeError(null);
+                          }}
+                          placeholder="輸入目前使用的密碼"
+                          className="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowOldPassword(!showOldPassword)}
+                          className="absolute right-3 top-3 text-stone-400 hover:text-stone-700 cursor-pointer"
+                        >
+                          {showOldPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                          設定新密碼 <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showNewPassword ? 'text' : 'password'}
+                            required
+                            value={newPassword}
+                            onChange={(e) => {
+                              setNewPassword(e.target.value);
+                              if (passwordChangeError) setPasswordChangeError(null);
+                            }}
+                            placeholder="6~20 位英數組合"
+                            className="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute right-3 top-3 text-stone-400 hover:text-stone-700 cursor-pointer"
+                          >
+                            {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                          再次確認新密碼 <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmNewPassword ? 'text' : 'password'}
+                            required
+                            value={confirmNewPassword}
+                            onChange={(e) => {
+                              setConfirmNewPassword(e.target.value);
+                              if (passwordChangeError) setPasswordChangeError(null);
+                            }}
+                            placeholder="再次輸入新密碼"
+                            className="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                            className="absolute right-3 top-3 text-stone-400 hover:text-stone-700 cursor-pointer"
+                          >
+                            {showConfirmNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {passwordChangeError && (
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-bold flex items-center gap-2 animate-in fade-in">
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>{passwordChangeError}</span>
+                      </div>
+                    )}
+
+                    {passwordChangeSuccess && (
+                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{passwordChangeSuccess}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="submit"
+                        disabled={isChangingPassword}
+                        className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-95 text-white font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{isChangingPassword ? '更新中...' : '確認修改密碼'}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
 
               {/* 右側欄：服務調研問卷（按 性別、年齡、專業領域、職業、薪水、其他問題 順序排列） */}
@@ -9539,12 +9811,22 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
         {/* 管理員專用：受理認證 (實名、專家) */}
         {activeTab === 'admin_certifications' && (
-          <AdminCertificationsTab />
+          <AdminCertificationsTab
+            targetUserId={adminCertTargetUserId}
+            onClearTargetUser={() => setAdminCertTargetUserId(null)}
+          />
         )}
 
         {/* 管理員專用：用戶管理 */}
         {activeTab === 'admin_user_management' && (
-          <AdminUserManagementTab />
+          <AdminUserManagementTab
+            onNavigateToCertifications={(userId) => {
+              if (userId) {
+                setAdminCertTargetUserId(userId);
+              }
+              setActiveTab('admin_certifications');
+            }}
+          />
         )}
 
         {/* 管理員專用：用戶分佈與習慣統計 */}

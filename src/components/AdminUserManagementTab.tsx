@@ -18,9 +18,17 @@ import {
   Sparkles,
   UserPlus,
   RefreshCw,
+  ShieldCheck,
+  Image as ImageIcon,
 } from 'lucide-react';
 
-export const AdminUserManagementTab: React.FC = () => {
+interface AdminUserManagementTabProps {
+  onNavigateToCertifications?: (userId?: string) => void;
+}
+
+export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
+  onNavigateToCertifications,
+}) => {
   const {
     availableUsers,
     blockUser,
@@ -188,6 +196,34 @@ export const AdminUserManagementTab: React.FC = () => {
         </div>
       </div>
 
+      {/* 快捷通道：直接連線至受理認證與身分證照頁 */}
+      {onNavigateToCertifications && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50/60 to-white border border-purple-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-black text-purple-950 flex items-center gap-1.5">
+                <span>受理認證與身分證照核驗通道</span>
+                <span className="text-[10px] bg-purple-200 text-purple-900 px-1.5 py-0.2 rounded font-bold">已連線</span>
+              </div>
+              <p className="text-[11px] text-stone-500 mt-0.5">
+                解答者上傳之身分證正反面相片已安全壓縮並存於 Firebase Storage，可隨時前往受理認證頁查閱並核准資格。
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateToCertifications()}
+            className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+            <span>前往受理認證頁 ↗</span>
+          </button>
+        </div>
+      )}
+
       {/* 篩選與搜尋列 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* 狀態切換按鈕 */}
@@ -321,6 +357,27 @@ export const AdminUserManagementTab: React.FC = () => {
                             目前登入本人
                           </span>
                         )}
+
+                        {/* 實名狀態徽章 */}
+                        {u.realNameAuthStatus === 'verified' ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3 text-emerald-700" />
+                            <span>實名已認證</span>
+                          </span>
+                        ) : u.realNameAuthStatus === 'pending' ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 animate-pulse">
+                            <Clock className="w-3 h-3 text-amber-700" />
+                            <span>實名待受理</span>
+                          </span>
+                        ) : null}
+
+                        {/* 身分證件照存檔標籤 */}
+                        {(u.realNameAuthData?.idCardFrontFile || u.realNameAuthData?.idCardBackFile) && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-1 shadow-2xs">
+                            <ImageIcon className="w-3 h-3 text-purple-700" />
+                            <span>已附證件照 (Storage)</span>
+                          </span>
+                        )}
                       </div>
 
                       <p className="text-xs text-stone-500 truncate mt-0.5">
@@ -335,7 +392,18 @@ export const AdminUserManagementTab: React.FC = () => {
                   </div>
 
                   {/* 動作按鈕 */}
-                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+                    {/* 直接跳轉至受理認證與證件照 */}
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToCertifications?.(u.id)}
+                      className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-purple-200 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      title="前往受理認證頁查閱此用戶之身分證正反面照片與核准認證"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
+                      <span>受理認證 / 證件照 ↗</span>
+                    </button>
+
                     {isBlocked ? (
                       <button
                         type="button"

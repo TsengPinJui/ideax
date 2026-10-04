@@ -19,10 +19,15 @@ import {
   MapPin,
   Save,
   Check,
+  Camera,
+  Image as ImageIcon,
+  ZoomIn,
+  X,
 } from 'lucide-react';
 import { User } from '../types';
 import { useApp } from '../context/AppContext';
 import { HelpTooltip } from './HelpTooltip';
+import { processIdCardImage, processAndUploadIdCardImage } from '../utils/idCardImageHelper';
 
 export const RealNameAuthTab: React.FC = () => {
   const { currentUser, setCurrentUser, addNotification, openAboutModal } = useApp();
@@ -53,13 +58,29 @@ export const RealNameAuthTab: React.FC = () => {
     initialData?.email || currentUser.email || 'user@ideax.tw'
   );
 
-  // Uploaded ID files (Front & Back)
-  const [frontFile, setFrontFile] = useState<{ name: string; size?: string } | null>(
-    initialData?.idCardFrontFile || { name: '國民身分證_正面彩色掃描.jpg', size: '1.8 MB' }
+  // Uploaded ID files (Front & Back) with photo URL
+  const [frontFile, setFrontFile] = useState<{
+    name: string;
+    size?: string;
+    url?: string;
+    storagePath?: string;
+    isStorage?: boolean;
+    uploadedAt?: string;
+  } | null>(
+    initialData?.idCardFrontFile || { name: '國民身分證_正面彩色掃描.jpg', size: '240 KB' }
   );
-  const [backFile, setBackFile] = useState<{ name: string; size?: string } | null>(
-    initialData?.idCardBackFile || { name: '國民身分證_反面彩色掃描.jpg', size: '1.9 MB' }
+  const [backFile, setBackFile] = useState<{
+    name: string;
+    size?: string;
+    url?: string;
+    storagePath?: string;
+    isStorage?: boolean;
+    uploadedAt?: string;
+  } | null>(
+    initialData?.idCardBackFile || { name: '國民身分證_反面彩色掃描.jpg', size: '235 KB' }
   );
+  const [previewModalImg, setPreviewModalImg] = useState<{ title: string; url: string } | null>(null);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState<'front' | 'back' | null>(null);
 
   // Optional & Registered Address Fields
   const [idAddress, setIdAddress] = useState(
@@ -86,20 +107,39 @@ export const RealNameAuthTab: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  const handleFileUpload = (
+  const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     side: 'front' | 'back'
   ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
-    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-    const fileData = { name: file.name, size: `${sizeMb} MB` };
-
-    if (side === 'front') {
-      setFrontFile(fileData);
-    } else {
-      setBackFile(fileData);
+    setIsProcessingPhoto(side);
+    try {
+      const processed = await processAndUploadIdCardImage(file, side, currentUser.id);
+      if (side === 'front') {
+        setFrontFile({
+          name: processed.name,
+          size: processed.size,
+          url: processed.url,
+          storagePath: processed.storagePath,
+          isStorage: processed.isStorage,
+          uploadedAt: processed.uploadedAt,
+        });
+      } else {
+        setBackFile({
+          name: processed.name,
+          size: processed.size,
+          url: processed.url,
+          storagePath: processed.storagePath,
+          isStorage: processed.isStorage,
+          uploadedAt: processed.uploadedAt,
+        });
+      }
+    } catch (err: any) {
+      alert(err.message || '相片處理失敗，請重新拍攝或選擇相片');
+    } finally {
+      setIsProcessingPhoto(null);
     }
   };
 
@@ -403,17 +443,17 @@ export const RealNameAuthTab: React.FC = () => {
                 身分證明文件影像
               </h4>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
-                （僅供平台認證使用）
+                （僅供實名認證與建檔備查）
               </span>
               <HelpTooltip
-                title="【認證照片隱私規則】審核完畢即永久刪除"
+                title="【實名認證個資保護規範】用戶個資絕不外洩"
                 content={
                   <div className="space-y-1.5 text-[11px] leading-relaxed">
                     <p>
-                      • <strong>證件安全與即刻銷毀：</strong>您上傳的身分證件彩色影像<strong>僅供官方平台認證使用</strong>，一旦審核完畢（無論通過與否），系統即<strong>永久自雲端伺服器徹底刪除證件影像檔案</strong>，絕不長期留存，全面保障個人隱私。
+                      • <strong>個資安全與建檔備查：</strong>為保平台用戶權益，解答者須提供個人資訊與國民身分證彩色影像。以下內容<strong>絕不外洩，僅供實名認證與建檔備查</strong>，全程由系統進行安全加密保護。
                     </p>
                     <p>
-                      • <strong>自行備份提醒：</strong>平台對用戶上傳資料不負保管責任，請自行妥善留存原始備份；大型佐證或作品請善用 Google Drive、Dropbox、Figma 等外部雲端共享連結。
+                      • <strong>自行備份提醒：</strong>平台對貼文與通訊中上傳之外部專案檔案不負長期保管責任，請用戶自行妥善留存原始備份。
                     </p>
                   </div>
                 }

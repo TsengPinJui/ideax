@@ -669,8 +669,22 @@ export interface User {
     birthDate: string; // 出生年月日 (必填)
     phoneNumber: string; // 聯絡電話 / 手機 (必填)
     email: string; // 聯絡電子信箱 (必填)
-    idCardFrontFile?: { name: string; size?: string; url?: string }; // 身分證正面 (必填)
-    idCardBackFile?: { name: string; size?: string; url?: string }; // 身分證反面 (必填)
+    idCardFrontFile?: {
+      name: string;
+      size?: string;
+      url?: string;
+      storagePath?: string;
+      isStorage?: boolean;
+      uploadedAt?: string;
+    }; // 身分證正面 (必填)
+    idCardBackFile?: {
+      name: string;
+      size?: string;
+      url?: string;
+      storagePath?: string;
+      isStorage?: boolean;
+      uploadedAt?: string;
+    }; // 身分證反面 (必填)
     idAddress?: string; // 身分證住址（戶籍住址）
     address?: string; // 戶籍 / 通訊地址 (選填)
     emergencyContactName?: string; // 緊急聯絡人姓名 (選填)
@@ -695,9 +709,23 @@ export interface User {
     subdomains?: string[]; // 申請之複選子領域 (1~5個)
     professionalTitle: string;
     yearsOfExperience?: string;
-    credentialsFiles: Array<{ name: string; size?: string; url?: string }>;
+    credentialsFiles: Array<{
+      name: string;
+      size?: string;
+      url?: string;
+      storagePath?: string;
+      isStorage?: boolean;
+      uploadedAt?: string;
+    }>;
     proofDescription: string;
-    proofFiles: Array<{ name: string; size?: string; url?: string }>;
+    proofFiles: Array<{
+      name: string;
+      size?: string;
+      url?: string;
+      storagePath?: string;
+      isStorage?: boolean;
+      uploadedAt?: string;
+    }>;
     portfolioLink?: string;
     agreedPrivacy: boolean;
     appliedAt: string;

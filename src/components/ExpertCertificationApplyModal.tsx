@@ -14,10 +14,13 @@ import {
   Link as LinkIcon,
   HelpCircle,
   Check,
+  ZoomIn,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { User, Category, CATEGORY_HIERARCHY } from '../types';
 import { useApp } from '../context/AppContext';
 import { HelpTooltip } from './HelpTooltip';
+import { processAndUploadExpertCredentialImage } from '../utils/idCardImageHelper';
 
 interface ExpertCertificationApplyModalProps {
   isOpen: boolean;
@@ -96,21 +99,49 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
     }
   };
 
-  // Uploaded credentials files (證件/證照)
+  // Uploaded credentials files (專家專屬專業證照，非身分證)
   const [credentialsFiles, setCredentialsFiles] = useState<
-    Array<{ name: string; size?: string; url?: string }>
+    Array<{
+      name: string;
+      size?: string;
+      url?: string;
+      storagePath?: string;
+      isStorage?: boolean;
+      uploadedAt?: string;
+    }>
   >(
     currentUser.expertApplicationData?.credentialsFiles || [
-      { name: '專業證照與在職證明_實名掃描本.pdf', size: '2.4 MB' },
+      {
+        name: '國家專技與專業執業證照.jpg',
+        size: '280 KB',
+        url: 'https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=1000&auto=format&fit=crop&q=80',
+        storagePath: 'expert_credentials/solver_cert.jpg',
+        isStorage: true,
+      },
     ]
   );
+  const [isProcessingCredential, setIsProcessingCredential] = useState(false);
+  const [previewCredentialImg, setPreviewCredentialImg] = useState<{
+    title: string;
+    url: string;
+    size?: string;
+    isStorage?: boolean;
+    storagePath?: string;
+  } | null>(null);
 
   // Proof & Portfolio (有利證明與案例)
   const [proofDescription, setProofDescription] = useState(
     currentUser.expertApplicationData?.proofDescription || ''
   );
   const [proofFiles, setProofFiles] = useState<
-    Array<{ name: string; size?: string; url?: string }>
+    Array<{
+      name: string;
+      size?: string;
+      url?: string;
+      storagePath?: string;
+      isStorage?: boolean;
+      uploadedAt?: string;
+    }>
   >(
     currentUser.expertApplicationData?.proofFiles || []
   );
@@ -127,26 +158,61 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (
+  const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     type: 'credential' | 'proof'
   ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newFiles: Array<{ name: string; size?: string }> = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-      newFiles.push({
-        name: file.name,
-        size: `${sizeMb} MB`,
-      });
-    }
-
     if (type === 'credential') {
-      setCredentialsFiles((prev) => [...prev, ...newFiles]);
+      setIsProcessingCredential(true);
+      try {
+        const added: Array<{
+          name: string;
+          size?: string;
+          url?: string;
+          storagePath?: string;
+          isStorage?: boolean;
+          uploadedAt?: string;
+        }> = [];
+
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          if (file.type.startsWith('image/')) {
+            const processed = await processAndUploadExpertCredentialImage(file, currentUser.id);
+            added.push({
+              name: file.name,
+              size: processed.size,
+              url: processed.url,
+              storagePath: processed.storagePath,
+              isStorage: processed.isStorage,
+              uploadedAt: processed.uploadedAt,
+            });
+          } else {
+            const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+            added.push({
+              name: file.name,
+              size: `${sizeMb} MB`,
+            });
+          }
+        }
+        setCredentialsFiles((prev) => [...prev, ...added]);
+      } catch (err) {
+        console.error('Expert credential upload failed:', err);
+      } finally {
+        setIsProcessingCredential(false);
+      }
     } else {
+      const newFiles: Array<{ name: string; size?: string }> = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+        newFiles.push({
+          name: file.name,
+          size: `${sizeMb} MB`,
+        });
+      }
       setProofFiles((prev) => [...prev, ...newFiles]);
     }
   };
@@ -466,56 +532,58 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
                 </div>
               </div>
 
-              {/* 2. 上傳相關證件 (身分與專業資格) */}
-              <div className="space-y-3 p-4 rounded-2xl bg-stone-50 border border-stone-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-200 pb-2 gap-2">
+              {/* 2. 上傳相關證件 (專家專業資格證照，非身分證) */}
+              <div className="space-y-3 p-4 rounded-2xl bg-amber-50/40 border border-amber-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-amber-200/80 pb-2 gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="w-5 h-5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-black flex items-center justify-center shrink-0">
                       2
                     </span>
-                    <h3 className="text-xs font-black text-stone-900">上傳相關證件與資歷證明</h3>
+                    <h3 className="text-xs font-black text-stone-900">上傳【專家專業證照與專技執照】</h3>
                     <span className="text-rose-500 text-xs">*</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                      （僅供平台認證使用）
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                      👑 專業資歷 · 非身分證
                     </span>
-                    <HelpTooltip
-                      title="【認證隱私安全政策】認證照片僅供認證使用，審核完畢即永久刪除"
-                      content={
-                        <div className="space-y-1.5 text-[11px] leading-relaxed">
-                          <p>
-                            • <strong>內部專屬審查：</strong>所上傳之證照與學經歷證明文件僅供官方審查人員內部審驗，絕不公開；<strong>審核完成後即自伺服器永久刪除證件檔案</strong>。
-                          </p>
-                          <p>
-                            • <strong>自行備份提醒：</strong>平台不對用戶上傳檔案負保管責任。大型專案檔案或高畫質作品集，<strong>請善用 Google Drive、Dropbox、Figma、GitHub 等外部雲端工具之共享連結</strong>。
-                          </p>
-                        </div>
-                      }
-                    />
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
+                      ☁️ Firebase Storage
+                    </span>
                   </div>
-                  <span className="text-[10px] text-stone-400 font-mono">支援 PDF, JPG, PNG (單檔 10MB 內)</span>
+                  <span className="text-[10px] text-stone-400 font-mono">支援 JPG, PNG, PDF (智慧安全壓縮)</span>
                 </div>
 
-                <p className="text-[11px] text-stone-500">
-                  請上傳可佐證您專業能力與實名身分之文件（如：<strong>國家級/國際專業證照、畢業學位證書、在職或離職證明、名片、受聘合約</strong>等，證件敏感個資請自行遮蔽）。
-                </p>
+                <div className="p-3 rounded-xl bg-white border border-amber-200 text-[11px] text-stone-600 leading-relaxed space-y-1">
+                  <p>
+                    請上傳可佐證您專業能力與執業資格之憑證（如：<strong>國家級/國際專技執照、律師證、醫師執照、建築師執照、會計師執照、PMP、技術認證、畢業證書、在職證明</strong>等）。
+                  </p>
+                  <p className="text-amber-800 font-bold">
+                    💡 提醒：本處為「專家專業證照」，請勿上傳身分證。實名身分核驗請至「實名認證」獨立辦理。
+                  </p>
+                </div>
 
                 {/* Upload Box */}
-                <label className="border-2 border-dashed border-stone-300 hover:border-amber-500 bg-white hover:bg-amber-50/30 rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer transition-colors group">
-                  <Upload className="w-6 h-6 text-stone-400 group-hover:text-amber-600 transition-colors" />
-                  <span className="text-xs font-bold text-stone-800">
-                    點擊或拖曳上傳專業證件檔案
+                <label className="border-2 border-dashed border-amber-300 hover:border-amber-500 bg-white hover:bg-amber-50/40 rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer transition-colors group">
+                  <Upload className="w-6 h-6 text-amber-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-black text-stone-800">
+                    點擊或拖曳上傳【專業證照 / 執照】檔案
                   </span>
-                  <span className="text-[10px] text-stone-400">
-                    支援多檔上傳，審核人員將嚴格保密您的個資
+                  <span className="text-[10px] text-stone-500">
+                    支援 JPG/PNG 照片（自動安全壓縮至約 200~350KB 存入 Storage）及 PDF 文件
                   </span>
                   <input
                     type="file"
                     multiple
-                    accept=".pdf,.png,.jpg,.jpeg"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp"
                     onChange={(e) => handleFileUpload(e, 'credential')}
                     className="hidden"
                   />
                 </label>
+
+                {isProcessingCredential && (
+                  <div className="p-2.5 rounded-xl bg-amber-100 text-amber-900 text-xs font-bold flex items-center justify-center gap-2 animate-pulse">
+                    <Clock className="w-4 h-4 animate-spin" />
+                    <span>正在執行安全清晰壓縮並存入雲端 Storage (expert_credentials/)...</span>
+                  </div>
+                )}
 
                 {/* File List */}
                 {credentialsFiles.length > 0 && (
@@ -523,27 +591,71 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
                     {credentialsFiles.map((file, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-200 text-xs"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-stone-200 text-xs hover:border-amber-300 transition-colors shadow-2xs group"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="w-4 h-4 text-amber-600 shrink-0" />
-                          <span className="font-semibold text-stone-800 truncate">{file.name}</span>
-                          {file.size && (
-                            <span className="text-[10px] text-stone-400 font-mono shrink-0">
-                              ({file.size})
-                            </span>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {file.url ? (
+                            <div
+                              onClick={() =>
+                                setPreviewCredentialImg({
+                                  title: file.name,
+                                  url: file.url!,
+                                  size: file.size,
+                                  isStorage: file.isStorage,
+                                  storagePath: file.storagePath,
+                                })
+                              }
+                              className="w-10 h-8 rounded-lg overflow-hidden bg-stone-900 shrink-0 relative cursor-pointer group-hover:ring-2 group-hover:ring-amber-400"
+                            >
+                              <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white">
+                                <ZoomIn className="w-3 h-3" />
+                              </div>
+                            </div>
+                          ) : (
+                            <FileText className="w-4 h-4 text-amber-600 shrink-0" />
                           )}
+                          <div className="min-w-0">
+                            <span className="font-semibold text-stone-800 truncate block max-w-[200px]">
+                              {file.name}
+                            </span>
+                            <div className="flex items-center gap-1.5 text-[10px] text-stone-400 font-mono">
+                              <span className="text-emerald-700 font-bold">{file.size || '安全清晰壓縮'}</span>
+                              <span>•</span>
+                              <span>{file.isStorage ? '☁️ Storage' : '安全加密'}</span>
+                            </div>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCredentialsFiles((prev) => prev.filter((_, i) => i !== idx))
-                          }
-                          className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer"
-                          title="移除檔案"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {file.url && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewCredentialImg({
+                                  title: file.name,
+                                  url: file.url!,
+                                  size: file.size,
+                                  isStorage: file.isStorage,
+                                  storagePath: file.storagePath,
+                                })
+                              }
+                              className="p-1 text-stone-400 hover:text-amber-700 cursor-pointer"
+                              title="放大檢視證照"
+                            >
+                              <ZoomIn className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCredentialsFiles((prev) => prev.filter((_, i) => i !== idx))
+                            }
+                            className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer"
+                            title="移除檔案"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -720,6 +832,60 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
                 </button>
               </div>
             </form>
+          )}
+
+          {/* 專家專業證照照片放大檢視彈窗 */}
+          {previewCredentialImg && (
+            <div className="fixed inset-0 z-[70] bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+              <div className="bg-white rounded-3xl max-w-xl w-full p-5 space-y-4 shadow-2xl border border-stone-200 animate-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0">
+                      <Award className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-black text-sm text-stone-900 truncate">
+                        {previewCredentialImg.title}
+                      </h4>
+                      <div className="flex items-center gap-2 text-[10px] text-stone-500 font-mono mt-0.5">
+                        <span className="text-emerald-700 font-bold">{previewCredentialImg.size || '安全清晰壓縮'}</span>
+                        <span>•</span>
+                        <span>{previewCredentialImg.isStorage ? '☁️ Firebase Storage' : '本地安全加密'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewCredentialImg(null)}
+                    className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="rounded-2xl overflow-hidden bg-stone-900 border border-stone-200 flex items-center justify-center max-h-[60vh]">
+                  <img
+                    src={previewCredentialImg.url}
+                    alt={previewCredentialImg.title}
+                    className="max-h-[60vh] w-auto object-contain select-none"
+                  />
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>專家專業證照建檔（非身分證，文字與防偽印章清晰可辨）</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewCredentialImg(null)}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs cursor-pointer shadow-2xs"
+                  >
+                    完成檢視
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

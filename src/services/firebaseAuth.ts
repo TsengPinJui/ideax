@@ -10,6 +10,7 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
   ConfirmationResult,
+  updatePassword,
   User as FirebaseUser,
 } from 'firebase/auth';
 import { auth } from './firebase';
@@ -82,16 +83,24 @@ export async function loginWithFirebaseGoogle(): Promise<FirebaseUser> {
 export async function loginWithFirebaseFacebook(): Promise<FirebaseUser> {
   try {
     const provider = new FacebookAuthProvider();
-    provider.addScope('email');
-    provider.addScope('public_profile');
+    // 不主動強制要求 email scope，避免 Meta 應用程式未啟用 email 權限時噴出 Invalid Scopes: email 錯誤
     const cred = await signInWithPopup(auth, provider);
     return cred.user;
   } catch (error: any) {
     console.warn('Firebase Facebook login error:', error);
     if (error.code === 'auth/account-exists-with-different-credential') {
-      throw new Error('此 Facebook 帳號綁定的 Email 已在平台使用其他方式（例如 Google 或密碼）註冊，請使用原方式登入！');
-    } else if (error.code === 'auth/popup-closed-by-user') {
-      throw new Error('您已取消 Facebook 登入視窗。');
+      const customErr: any = new Error('此 Facebook 帳號綁定的 Email 已在平台使用其他方式（例如 Google 或密碼）註冊！');
+      customErr.code = error.code;
+      customErr.email = error.customData?.email;
+      customErr.customData = error.customData;
+      throw customErr;
+    } else if (
+      error.code === 'auth/popup-closed-by-user' ||
+      error.code === 'auth/cancelled-popup-request'
+    ) {
+      const cancelErr: any = new Error('您已取消 Facebook 登入視窗。');
+      cancelErr.code = error.code;
+      throw cancelErr;
     } else if (error.code === 'auth/popup-blocked') {
       throw new Error('登入彈出視窗已被瀏覽器封鎖，請允許快顯視窗後重試！');
     } else if (error.code === 'auth/operation-not-allowed') {
@@ -167,5 +176,24 @@ export async function logoutFromFirebase(): Promise<void> {
     await signOut(auth);
   } catch (err) {
     console.warn('Firebase signout warning:', err);
+  }
+}
+
+export async function updateFirebaseUserPassword(newPassword: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) {
+    console.log('Firebase currentUser not found in memory, skipping Firebase updatePassword');
+    return;
+  }
+  try {
+    await updatePassword(user, newPassword.trim());
+  } catch (error: any) {
+    console.warn('Firebase update password error:', error);
+    if (error.code === 'auth/requires-recent-login') {
+      throw new Error('基於安全考量，更新密碼前請重新登入！');
+    } else if (error.code === 'auth/weak-password') {
+      throw new Error('新密碼強度不足，請設定至少 6 位元密碼！');
+    }
+    throw new Error(error.message || '更新雲端密碼失敗，請稍後再試');
   }
 }
