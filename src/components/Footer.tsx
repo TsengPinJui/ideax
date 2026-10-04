@@ -199,6 +199,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                     • 退款與爭議調解
                   </button>
                 </div>
+                <div>
+                  <button
+                    onClick={() => onNavClick('about', 'community_guidelines')}
+                    className="hover:text-amber-300 transition-colors text-left cursor-pointer"
+                  >
+                    • 社群守則與規範
+                  </button>
+                </div>
               </li>
               <li>
                 <button
@@ -306,6 +314,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               className="text-stone-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer"
             >
               爭議與退款
+            </button>
+            <span>•</span>
+            <button
+              onClick={() => onNavClick('about', 'community_guidelines')}
+              className="text-stone-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer"
+            >
+              社群守則
             </button>
             <span>•</span>
             <button

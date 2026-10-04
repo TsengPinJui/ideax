@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EyeOff } from 'lucide-react';
+import { EyeOff, X } from 'lucide-react';
 
 interface FloatingOnboardingCompassProps {
   onStartOnboarding: () => void;
@@ -203,22 +203,35 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="fixed right-3 sm:right-5 top-[220px] sm:top-[252px] z-40 flex items-center justify-end select-none group pointer-events-auto"
+      className="relative flex items-center justify-end select-none group pointer-events-auto"
     >
-      {/* 金黃外框、白錶盤、紅白藍指針的經典羅盤按鈕 */}
-      <button
-        type="button"
-        onClick={onStartOnboarding}
-        className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full p-0.5 bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center shadow-[0_6px_22px_rgba(217,119,6,0.45)] hover:shadow-[0_8px_28px_rgba(217,119,6,0.65)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer border-2 border-white/90 ring-2 ring-amber-400/50 shrink-0"
-        aria-label="開啟使用導覽（含聊天室教學）"
-        title="開啟使用教學導覽"
-      >
-        {/* 呼吸光環 (Pulse Ring) */}
-        <span className="absolute -inset-1 rounded-full bg-amber-400 opacity-30 animate-ping pointer-events-none" />
+      <div className="relative flex flex-col items-center">
+        {/* 關閉/隱藏教學按鈕 */}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-stone-900/90 hover:bg-stone-800 text-stone-300 hover:text-white flex items-center justify-center shadow border border-stone-600 transition-all z-20 cursor-pointer hover:scale-110 active:scale-90"
+          title="隱藏教學提示（可隨時於頁尾開啟）"
+          aria-label="隱藏教學提示"
+        >
+          <X className="w-2.5 h-2.5 stroke-[2.5]" />
+        </button>
 
-        {/* 擬真 🧭 羅盤圖示 */}
-        <RealisticCompassIcon className="w-full h-full object-contain drop-shadow-xs" />
-      </button>
+        {/* 金黃外框、白錶盤、紅白藍指針的經典羅盤按鈕 (與下方下載按鈕保持一致黃金尺寸) */}
+        <button
+          type="button"
+          onClick={onStartOnboarding}
+          className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-full p-0.5 bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center shadow-[0_6px_22px_rgba(217,119,6,0.45)] hover:shadow-[0_8px_28px_rgba(217,119,6,0.65)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer border-2 border-white/90 ring-2 ring-amber-400/50 shrink-0"
+          aria-label="開啟使用導覽（含聊天室教學）"
+          title="開啟使用教學導覽"
+        >
+          {/* 呼吸光環 (Pulse Ring) */}
+          <span className="absolute -inset-1 rounded-full bg-amber-400 opacity-30 animate-ping pointer-events-none" />
+
+          {/* 擬真 🧭 羅盤圖示 */}
+          <RealisticCompassIcon className="w-full h-full object-contain drop-shadow-xs" />
+        </button>
+      </div>
 
       {/* 滑鼠懸停對話氣泡 (向左冒出 Speech Bubble，指向右側羅盤按鈕) */}
       <div
