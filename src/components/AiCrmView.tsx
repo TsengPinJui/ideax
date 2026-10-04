@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { getAiCrmLeadsForSolver, getCurrentTimeSlotInfo } from '../services/aiService';
-import { AiCrmLead, AssistantScheduledTask, DEFAULT_ASSISTANT_24HR_CONFIG } from '../types';
+import { calculateTwoWayMatchesForSolver, TwoWayMatchData } from '../services/twoWayMatchingService';
+import { AiCrmLead, AssistantScheduledTask, DEFAULT_ASSISTANT_24HR_CONFIG, Solver } from '../types';
 import { AiAssistantSettingsPanel } from './AiAssistantSettingsPanel';
 import {
   Crown,
@@ -32,6 +33,8 @@ import {
   Lock,
   ArrowRight,
   Zap,
+  ArrowLeftRight,
+  Copy,
 } from 'lucide-react';
 
 interface AiCrmViewProps {
@@ -39,7 +42,192 @@ interface AiCrmViewProps {
   onOpenDirectChat?: (targetUser: { id: string; name: string; avatar: string; title: string }) => void;
 }
 
-export const SCHEDULE_PRESET_OPTIONS = [
+// 🧪 虛擬實戰沙盒示範資料（體驗模式專屬：真實情境、虛擬資料、功能全開放）
+export const VIRTUAL_SANDBOX_LEADS: AiCrmLead[] = [
+  {
+    id: 'demo-lead-1',
+    clientId: 'demo-client-1',
+    clientName: '林執行長 (AI SaaS 創辦人)',
+    clientAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    questionId: 'demo-q-1',
+    questionTitle: '【懸賞 NT$ 120,000】B2B 企業級 AI Agent 自動化流暢落地 SOP 與架構規劃',
+    clientIntentScore: 98,
+    category: '創新創業',
+    clientPainPoint: '內部缺乏大型模型微調與企業私有化部署經驗，急需具備高併發與資料安全實戰架構師進場輔導。',
+    hesitationReason: '曾與外部接案者溝通但缺乏明確驗收里程碑，擔心專案延宕或架構難以維護。',
+    recommendedPitchAngle: '以「兩週 POC 驗收里程碑 ＋ 企業私有化架構防護」為切入點，並附帶過往類似落地成效。',
+    aiCustomMessage: '林執行長您好！看到貴司正在評估 B2B AI Agent 落地，我們曾主導類似規模的企業級微調架構，能在 2 週內完成 POC 驗證並交付完整 SOP，若您方便今晚可先為您評估可行性！',
+    bestContactTime: '今晚 20:00 (黃金洽談尖峰)',
+    urgency: 'high',
+    hasSent: false,
+    lastInteraction: '10 分鐘前瀏覽過您的專家檔案',
+    aiRecommendedAction: '建議排定於今晚 20:00 由特助代操發送破冰提案',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'demo-lead-2',
+    clientId: 'demo-client-2',
+    clientName: '陳策略長 (D2C 跨境電商總經理)',
+    clientAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    questionId: 'demo-q-2',
+    questionTitle: '【懸賞 NT$ 85,000】歐美與東南亞跨國金流與稅務法規架構設計',
+    clientIntentScore: 94,
+    category: '法規稅務',
+    clientPainPoint: '正在拓展北美 Shopify 與東南亞 Shopee 跨境金流，面臨各國第三方支付拆帳與反洗錢法規疑慮。',
+    hesitationReason: '法規條文繁瑣，擔心顧問僅給出泛泛理論，缺乏在地合作金流商具體管道。',
+    recommendedPitchAngle: '直接提供「美國 Stripe/Shopify Payments ＋ 東南亞在現金流對接矩陣」範例。',
+    aiCustomMessage: '陳策略長您好！我們長期輔導跨境 D2C 電商金流合規，可直接為貴司梳理跨國金流與稅務架構矩陣，避開高額跨國手續費與稅務卡點，歡迎隨時交流！',
+    bestContactTime: '平日下午 14:30',
+    urgency: 'high',
+    hasSent: false,
+    lastInteraction: '25 分鐘前發布懸賞案件',
+    aiRecommendedAction: '推薦親自發送客製化金流範本直擊痛點',
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+  },
+  {
+    id: 'demo-lead-3',
+    clientId: 'demo-client-3',
+    clientName: '黃合夥人 (FinTech 區塊鏈資深總監)',
+    clientAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    questionId: 'demo-q-3',
+    questionTitle: '【懸賞 NT$ 60,000】分散式高併發資料庫效能調優與故障轉移容災',
+    clientIntentScore: 91,
+    category: '技術研發',
+    clientPainPoint: '流量尖峰期資料庫讀寫延遲飆高至 1200ms，需在不停機情況下完成分庫分表與快取架構重構。',
+    hesitationReason: '核心資料庫風險極高，不敢輕易授權外部工程師操作。',
+    recommendedPitchAngle: '出具「零停機灰度遷移 SOP ＋ 壓測模擬指標」，建立高度信任。',
+    aiCustomMessage: '黃總監您好！針對高併發資料庫調優，我們擁有金融級零停機分庫分表遷移經驗，可先為您診斷讀寫分離瓶頸，保障核心資產安全！',
+    bestContactTime: '平日上午 10:30',
+    urgency: 'medium',
+    hasSent: false,
+    lastInteraction: '1 小時前查看解答列表',
+    aiRecommendedAction: '建議排定明日上午由特助發送技術診斷切入話術',
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+  },
+];
+
+export const VIRTUAL_SANDBOX_HANDSHAKE_MATCHES: TwoWayMatchData[] = [
+  {
+    question: {
+      id: 'demo-q-1',
+      authorId: 'demo-client-1',
+      authorName: '林執行長 (AI SaaS 創辦人)',
+      authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      title: '【懸賞 NT$ 120,000】B2B 企業級 AI Agent 自動化流暢落地 SOP 與架構規劃',
+      description: '徵求具備大語言模型私有化部署、Agentic Workflow 與企業資安防護實戰經驗之架構師，協助梳理完整落地 SOP、選型比較與 POC 驗收指標。',
+      category: '創新創業',
+      subcategory: '人工智慧',
+      bounty: 120000,
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      views: 342,
+      answersCount: 2,
+    },
+    demandSideScore: 97,
+    supplySideScore: 98,
+    twoWayFitScore: 98,
+    isHandshake: true,
+    estimatedProfit: 117600, // 98% 實收
+    recommendedPitchAngle: '以「兩週 POC 原型驗證 ＋ 3 階段企業落地里程碑」為提案核心，強調資安隔離防護。',
+    icebreakerPitches: {
+      calm: '林執行長您好，研讀貴司提出的 AI Agent 落地需求，我們擁有多年大型金融與企業私有化模型架構經驗，能為您規劃兩週快速驗收 POC 與資安合規架構，期待深入交流。',
+      sharp: '林執行長您好！企業導入 AI Agent 最大痛點在於資安隔離與調用延遲。我們已有一套成型的標準架構模組，可在 14 天內完成對接並確保 99.9% 可用性，隨時可提供架構範例。',
+      warm: '林執行長好！看到這道題目非常興奮，我們團隊正好剛完成一套類似的企業級 Agent Workflow，很樂意與您分享落地避坑經驗與最佳架構設計！',
+    },
+  },
+  {
+    question: {
+      id: 'demo-q-2',
+      authorId: 'demo-client-2',
+      authorName: '陳策略長 (D2C 跨境電商總經理)',
+      authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      title: '【懸賞 NT$ 85,000】歐美與東南亞跨國金流與稅務法規架構設計',
+      description: '尋求跨境電商金流與合規專家，協助規劃 Shopify 與在地多渠道金流結算路徑，降低跨境匯損與稅務稽核風險。',
+      category: '法規稅務',
+      subcategory: '跨境金流',
+      bounty: 85000,
+      status: 'open',
+      createdAt: new Date(Date.now() - 3600000).toISOString(),
+      updatedAt: new Date(Date.now() - 3600000).toISOString(),
+      views: 215,
+      answersCount: 1,
+    },
+    demandSideScore: 95,
+    supplySideScore: 94,
+    twoWayFitScore: 95,
+    isHandshake: true,
+    estimatedProfit: 83300,
+    recommendedPitchAngle: '直接出具美金與東南亞本幣結算架構圖，說明如何降低 3.5% 跨國交易手續費。',
+    icebreakerPitches: {
+      calm: '陳策略長您好，針對歐美與東南亞跨境結算架構，我們可協助您梳理在地合規金流與外匯申報架構，歡迎查閱方案。',
+      sharp: '陳策略長您好！多數跨境賣家在換匯與反洗錢常被凍結資金。我們可提供最優多幣別結算路徑，立省 3% 以上手續費與合規風險。',
+      warm: '陳策略長您好！恭喜貴司積極拓展跨國版圖！我們過去輔導過多家年收億級賣家對接金流，很樂意為您客製化最順暢的結算架構！',
+    },
+  },
+  {
+    question: {
+      id: 'demo-q-3',
+      authorId: 'demo-client-3',
+      authorName: '黃合夥人 (FinTech 區塊鏈資深總監)',
+      authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      title: '【懸賞 NT$ 60,000】分散式高併發資料庫效能調優與故障轉移容災',
+      description: '針對尖峰期資料庫延遲與死鎖問題，徵求資深資料庫專家提供分庫分表、讀寫分離與高可用容災架構方案。',
+      category: '技術研發',
+      subcategory: '架構性能',
+      bounty: 60000,
+      status: 'open',
+      createdAt: new Date(Date.now() - 7200000).toISOString(),
+      updatedAt: new Date(Date.now() - 7200000).toISOString(),
+      views: 180,
+      answersCount: 0,
+    },
+    demandSideScore: 92,
+    supplySideScore: 90,
+    twoWayFitScore: 91,
+    isHandshake: true,
+    estimatedProfit: 58800,
+    recommendedPitchAngle: '出具金融級零停機灰度遷移 SOP，強調壓測驗證與即時回滾機制。',
+    icebreakerPitches: {
+      calm: '黃總監您好，針對高併發資料庫讀寫延遲與分庫分表，我們有豐富金融級灰度遷移經驗，隨時可為您進行初步架構診斷。',
+      sharp: '黃總監您好！分庫分表最重一致性與不停機過渡。我們有一套經過百萬 QPS 壓測的容災藍圖，可在最短時間排除瓶頸。',
+      warm: '黃總監好！看到貴司正在衝刺業務規模，能理解資料庫面臨的瓶頸壓力，很樂意以過去調優經驗為您提供具體解法！',
+    },
+  },
+];
+
+export const VIRTUAL_SANDBOX_TASKS: AssistantScheduledTask[] = [
+  {
+    id: 'demo-task-1',
+    leadId: 'demo-lead-1',
+    clientId: 'demo-client-1',
+    clientName: '林執行長 (AI SaaS 創辦人)',
+    clientAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    questionTitle: '【懸賞 NT$ 120,000】B2B 企業級 AI Agent 自動化流暢落地 SOP 與架構規劃',
+    customMessage: '林執行長您好！看到貴司正在評估 B2B AI Agent 落地，我們曾主導類似規模的企業級微調架構，能在 2 週內完成 POC 驗證並交付完整 SOP，若您方便今晚可先為您評估可行性！',
+    scheduledTime: '今晚 20:00 (黃金洽談尖峰)',
+    scheduledTimestamp: Date.now() + 1000 * 60 * 45,
+    autoExecute: true,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'demo-task-2',
+    leadId: 'demo-lead-2',
+    clientId: 'demo-client-2',
+    clientName: '陳策略長 (D2C 跨境電商總經理)',
+    clientAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    questionTitle: '【懸賞 NT$ 85,000】歐美與東南亞跨國金流與稅務法規架構設計',
+    customMessage: '陳策略長您好！我們長期輔導跨境 D2C 電商金流合規，可直接為貴司梳理跨國金流與稅務架構矩陣，避開高額跨國手續費與稅務卡點，歡迎隨時交流！',
+    scheduledTime: '明天 14:30 (業務決策期)',
+    scheduledTimestamp: Date.now() + 1000 * 60 * 60 * 20,
+    autoExecute: true,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  },
+];
+
+export const SCHEDULE_TIME_SLOTS = [
   { id: '30m', label: '30 分鐘後', desc: '即刻快速預熱' },
   { id: '1h', label: '1 小時後', desc: '初步沉澱發送' },
   { id: 'today_1530', label: '今日 15:30', desc: '午後思考時段' },
@@ -130,7 +318,30 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
   // 體驗模式解鎖狀態：預設先用毛玻璃遮蓋，點擊「體驗看看」後才解鎖；離開版面即重置
   const [isDemoUnlocked, setIsDemoUnlocked] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'leads' | 'bounties' | 'assistant' | 'analytics'>('leads');
+  const [activeTab, setActiveTab] = useState<'leads' | 'handshake' | 'bounties' | 'assistant' | 'analytics'>('leads');
+  const [selectedPitchStyle, setSelectedPitchStyle] = useState<Record<string, 'calm' | 'sharp' | 'warm'>>({});
+  const [copiedPitchId, setCopiedPitchId] = useState<string | null>(null);
+
+  const currentSolver: Solver = {
+    id: currentUser.id,
+    userId: currentUser.id,
+    name: currentUser.name,
+    avatar: currentUser.avatar,
+    title: currentUser.title || '認證專家顧問',
+    domain: currentUser.domain || '創新創業',
+    domains: currentUser.domains || [currentUser.domain || '創新創業'],
+    skills: currentUser.skills || ['創新解題'],
+    bio: currentUser.bio || '',
+    rating: currentUser.rating || 5.0,
+    reviewCount: currentUser.reviewCount || 10,
+    acceptedSolutionsCount: currentUser.acceptedSolutionsCount || 5,
+    verified: currentUser.verifiedExpert || currentUser.realNameAuthStatus === 'verified',
+    badge: currentUser.verifiedBadge || '認證專家',
+    pricePerSession: 1500,
+    completedProjects: 8,
+  };
+
+  const twoWayHandshakeMatches = calculateTwoWayMatchesForSolver(currentSolver, questions);
   const [assistantSubTab, setAssistantSubTab] = useState<'queue' | 'settings'>('queue');
 
   // Leads
@@ -166,9 +377,26 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     initialTasksRef.current = JSON.parse(JSON.stringify(rawTasks));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 體驗沙盒模式的專屬虛擬數據狀態
+  const [sandboxLeads, setSandboxLeads] = useState<AiCrmLead[]>(() =>
+    JSON.parse(JSON.stringify(VIRTUAL_SANDBOX_LEADS))
+  );
+  const [sandboxTasks, setSandboxTasks] = useState<AssistantScheduledTask[]>(() =>
+    JSON.parse(JSON.stringify(VIRTUAL_SANDBOX_TASKS))
+  );
+
+  const isSandboxDemo = !isAuthorityOrAbove && isDemoUnlocked;
+
+  // 動態切換資料集：體驗模式下使用虛擬實戰數據與擬真情境，功能 100% 全開放；正式方案使用真實資料
+  const activeLeadsList = isSandboxDemo ? sandboxLeads : leads;
+  const activeTwoWayMatches = isSandboxDemo ? VIRTUAL_SANDBOX_HANDSHAKE_MATCHES : twoWayHandshakeMatches;
+  const activeTasksList = isSandboxDemo ? sandboxTasks : scheduledTasks;
+
   // 重置體驗模式：恢復初始狀態，毛玻璃重新遮蓋
   const resetDemoState = () => {
     setIsDemoUnlocked(false);
+    setSandboxLeads(JSON.parse(JSON.stringify(VIRTUAL_SANDBOX_LEADS)));
+    setSandboxTasks(JSON.parse(JSON.stringify(VIRTUAL_SANDBOX_TASKS)));
     if (initialLeadsRef.current && initialLeadsRef.current.length > 0) {
       setLeads(JSON.parse(JSON.stringify(initialLeadsRef.current)));
     } else {
@@ -276,13 +504,17 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
 
   // 任務同步：體驗模式不影響實際設定，僅正式方案才持久化寫入
   const syncTasks = (tasks: AssistantScheduledTask[]) => {
-    setScheduledTasks(tasks);
-    if (isAuthorityOrAbove) {
-      const currConf = currentUser.assistant24hrConfig || DEFAULT_ASSISTANT_24HR_CONFIG;
-      updateAssistant24hrConfig({
-        ...currConf,
-        scheduledTasks: tasks,
-      });
+    if (isSandboxDemo) {
+      setSandboxTasks(tasks);
+    } else {
+      setScheduledTasks(tasks);
+      if (isAuthorityOrAbove) {
+        const currConf = currentUser.assistant24hrConfig || DEFAULT_ASSISTANT_24HR_CONFIG;
+        updateAssistant24hrConfig({
+          ...currConf,
+          scheduledTasks: tasks,
+        });
+      }
     }
   };
 
@@ -291,15 +523,15 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
 
   // 檢核某個客戶之策略是否已排定並轉移至軍師佇列
   const isLeadTransferred = (lead: AiCrmLead) => {
-    return !!(lead.isScheduled || scheduledTasks.some((t) => t.clientId === lead.clientId && t.status === 'pending'));
+    return !!(lead.isScheduled || activeTasksList.some((t) => t.clientId === lead.clientId && t.status === 'pending'));
   };
 
-  const pendingRadarLeads = leads.filter((l) => !l.hasSent && !isLeadTransferred(l));
-  const transferredRadarLeads = leads.filter((l) => isLeadTransferred(l));
-  const pendingTaskCount = scheduledTasks.filter((t) => t.status === 'pending').length;
+  const pendingRadarLeads = activeLeadsList.filter((l) => !l.hasSent && !isLeadTransferred(l));
+  const transferredRadarLeads = activeLeadsList.filter((l) => isLeadTransferred(l));
+  const pendingTaskCount = activeTasksList.filter((t) => t.status === 'pending').length;
 
   // 佇列任務：按照時程「由近到遠」嚴格排序 (Nearest upcoming first)
-  const sortedScheduledTasks = [...scheduledTasks].sort((a, b) => {
+  const sortedScheduledTasks = [...activeTasksList].sort((a, b) => {
     // 待代操發送 (pending) 排在前面，已完成或取消排在後面
     if (a.status === 'pending' && b.status !== 'pending') return -1;
     if (a.status !== 'pending' && b.status === 'pending') return 1;
@@ -313,7 +545,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       ? pendingRadarLeads
       : radarFilter === 'transferred'
       ? transferredRadarLeads
-      : leads;
+      : activeLeadsList;
 
   const toggleDiagnostics = (leadId: string) => {
     setExpandedDiagnostics((prev) => ({
@@ -334,6 +566,19 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
         title: lead.clientRole,
       };
 
+      if (isSandboxDemo) {
+        setSandboxLeads((prev) =>
+          prev.map((item) =>
+            item.id === lead.id
+              ? { ...item, hasSent: true, sentAt: '剛剛', suggestedMessage: textToSend }
+              : item
+          )
+        );
+        setEditingLeadId(null);
+        showToast(`💬【沙盒模擬對接】已向「${lead.clientName}」發送破冰提案！（模擬演練）`);
+        return;
+      }
+
       // 僅在正式方案下才發送至真實對話，體驗模式下不影響實際
       if (isAuthorityOrAbove) {
         const targetQ = questions.find((q) => q.id === lead.questionId);
@@ -352,11 +597,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       );
 
       setEditingLeadId(null);
-      showToast(
-        isAuthorityOrAbove
-          ? `已向「${lead.clientName}」發送跟進訊息！`
-          : `🚀【體驗模式】已模擬發送跟進訊息（不影響實際對話）！`
-      );
+      showToast(`已向「${lead.clientName}」發送跟進訊息！`);
 
       if (onOpenDirectChat && isAuthorityOrAbove) {
         setTimeout(() => {
@@ -407,6 +648,25 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       createdAt: '剛剛',
     };
 
+    if (isSandboxDemo) {
+      setSandboxLeads((prev) =>
+        prev.map((l) =>
+          l.id === schedulingLead.id
+            ? {
+                ...l,
+                isScheduled: true,
+                scheduledTaskId: taskId,
+                scheduledTime: timeToUse,
+              }
+            : l
+        )
+      );
+      setSandboxTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
+      setSchedulingLead(null);
+      showToast(`🤖【沙盒特助排程】「${schedulingLead.clientName}」已排入 24hr 特助佇列！（虛擬演練）`);
+      return;
+    }
+
     // 標註客戶策略已排定並轉移
     setLeads((prev) =>
       prev.map((l) =>
@@ -426,11 +686,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     setSchedulingLead(null);
 
     // 核心流轉：已經排定的策略轉移到右邊佇列，並依時程由近到遠排序
-    showToast(
-      isAuthorityOrAbove
-        ? `🤖「${schedulingLead.clientName}」策略已轉移至右側 24hr 特助佇列！已依時程由近到遠排序。`
-        : `🤖【體驗模式】「${schedulingLead.clientName}」策略已轉移至 24hr 特助佇列！`
-    );
+    showToast(`🤖「${schedulingLead.clientName}」策略已轉移至右側 24hr 特助佇列！已依時程由近到遠排序。`);
   };
 
   // Execute Scheduled Task right now by Assistant
@@ -441,6 +697,23 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       avatar: task.clientAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       title: '發案客戶',
     };
+
+    if (isSandboxDemo) {
+      setSandboxTasks((prev) =>
+        prev.map((t) =>
+          t.id === task.id
+            ? {
+                ...t,
+                status: 'completed' as const,
+                executedAt: '剛剛',
+                executionResult: '【沙盒演練】特助模擬代操發送成功（不影響真實資料）！',
+              }
+            : t
+        )
+      );
+      showToast(`⚡【沙盒特助執行】24hr 特助模擬代操發送完成！已成功對接「${task.clientName}」`);
+      return;
+    }
 
     // 僅在正式方案下才發送真實訊息，體驗模式下不影響實際
     if (isAuthorityOrAbove) {
@@ -466,15 +739,18 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     );
 
     syncTasks(updatedTasks);
-    showToast(
-      isAuthorityOrAbove
-        ? `⚡ 24hr 特助已成功代操發送至「${task.clientName}」的聊天室！`
-        : `⚡【體驗模式】24hr 特助模擬代操發送完成！`
-    );
+    showToast(`⚡ 24hr 特助已成功代操發送至「${task.clientName}」的聊天室！`);
   };
 
   // Cancel Scheduled Task
   const handleCancelScheduledTask = (taskId: string) => {
+    if (isSandboxDemo) {
+      setSandboxTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: 'cancelled' as const } : t))
+      );
+      showToast('【沙盒演練】已取消此特助排程代操任務。');
+      return;
+    }
     const updated = scheduledTasks.map((t) =>
       t.id === taskId ? { ...t, status: 'cancelled' as const } : t
     );
@@ -484,6 +760,11 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
 
   // Delete Task
   const handleDeleteTask = (taskId: string) => {
+    if (isSandboxDemo) {
+      setSandboxTasks((prev) => prev.filter((t) => t.id !== taskId));
+      showToast('【沙盒演練】已刪除此排程任務。');
+      return;
+    }
     const updated = scheduledTasks.filter((t) => t.id !== taskId);
     syncTasks(updated);
     showToast('已刪除此排程任務。');
@@ -507,6 +788,16 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
       createdAt: '剛剛',
     };
 
+    if (isSandboxDemo) {
+      setSandboxTasks((prev) => [newTask, ...prev]);
+      setIsManualTaskModalOpen(false);
+      setManualClientName('');
+      setManualQuestionTitle('');
+      setManualMsg('');
+      showToast(`🤖【沙盒演練】特助代操任務已新增！將於「${manualTime}」發送。`);
+      return;
+    }
+
     syncTasks([newTask, ...scheduledTasks]);
     setIsManualTaskModalOpen(false);
     setManualClientName('');
@@ -522,6 +813,16 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
 
   const handleSaveEdit = (leadId: string) => {
     if (!editedMessage.trim()) return;
+    if (isSandboxDemo) {
+      setSandboxLeads((prev) =>
+        prev.map((item) =>
+          item.id === leadId ? { ...item, suggestedMessage: editedMessage.trim() } : item
+        )
+      );
+      setEditingLeadId(null);
+      showToast('【沙盒演練】已更新跟進話術！');
+      return;
+    }
     setLeads((prev) =>
       prev.map((item) =>
         item.id === leadId ? { ...item, suggestedMessage: editedMessage.trim() } : item
@@ -823,6 +1124,38 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
           </div>
         )}
 
+        {/* 體驗模式頂部沙盒橫幅 */}
+        {isSandboxDemo && (
+          <div className="p-3 sm:px-6 bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs border-b border-sky-400/40">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded-full bg-white/20 text-white text-[11px] font-black border border-white/30 flex items-center gap-1 shadow-2xs">
+                <Sparkles className="w-3 h-3 text-yellow-300" />
+                <span>沙盒實戰演練中</span>
+              </span>
+              <span className="text-xs font-bold">
+                AICRM 虛擬實戰數據與情境演練 • 功能 100% 全開放點選體驗（操作不影響真實帳號）
+              </span>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={resetDemoState}
+                className="text-[11px] font-bold text-sky-100 hover:text-white underline cursor-pointer"
+              >
+                結束體驗
+              </button>
+              <button
+                type="button"
+                onClick={handleUpgradeMaster}
+                className="px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs cursor-pointer shadow-xs flex items-center gap-1 active:scale-95 transition-all"
+              >
+                <Crown className="w-3 h-3 fill-stone-950" />
+                <span>升級大師正式開通</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Top Segmented Navigation Tabs */}
         <div className="px-3 sm:px-6 pt-3 border-b border-stone-200 flex items-center gap-1.5 bg-stone-50/70 overflow-x-auto text-xs font-bold">
             <button
@@ -838,7 +1171,24 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               <span className="sm:hidden">巡航雷達</span>
               <span className="hidden sm:inline">24hr巡航雷達</span>
               <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-stone-950 text-[10px] font-black">
-                {leads.filter((l) => !l.hasSent).length}
+                {activeLeadsList.filter((l) => !l.hasSent).length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('handshake')}
+              className={`pb-3 px-3.5 border-b-2 transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+                activeTab === 'handshake'
+                  ? 'border-purple-600 text-purple-950 font-black'
+                  : 'border-transparent text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              <ArrowLeftRight className="w-4 h-4 text-purple-600" />
+              <span className="sm:hidden">雙向撮合</span>
+              <span className="hidden sm:inline">🤝 雙向智能撮合池</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-black shadow-2xs">
+                {activeTwoWayMatches.length} 題
               </span>
             </button>
 
@@ -897,9 +1247,13 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
             <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-5">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                  <h3 className="font-extrabold text-sm sm:text-base text-stone-900">
-                    <span className="sm:hidden">24hr巡航雷達・客情診斷</span>
-                    <span className="hidden sm:inline">24hr巡航雷達・客情診斷</span>
+                  <h3 className="font-extrabold text-sm sm:text-base text-stone-900 flex items-center gap-1.5">
+                    <span>24hr巡航雷達・客情診斷</span>
+                    {isSandboxDemo && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-300">
+                        沙盒模擬資料
+                      </span>
+                    )}
                   </h3>
                   <p className="text-[11px] sm:text-xs text-stone-500">
                     全天候巡航發案客戶痛點與猶豫期，一鍵委託特助排程代操或親自發送。
@@ -907,16 +1261,16 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-mono font-bold text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
-                    待跟進：{leads.filter((l) => !l.hasSent).length} 位
+                    待跟進：{activeLeadsList.filter((l) => !l.hasSent).length} 位
                   </span>
                 </div>
               </div>
 
               {/* Leads List */}
               <div className="space-y-3.5">
-                {leads.map((lead) => {
+                {displayedLeads.map((lead) => {
                   const isExpanded = expandedDiagnostics[lead.id] !== false;
-                  const relatedTask = scheduledTasks.find(
+                  const relatedTask = activeTasksList.find(
                     (t) => t.clientId === lead.clientId && t.status === 'pending'
                   );
 
@@ -1117,6 +1471,234 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* TAB: 🤝 雙向智能撮合池 (市場顧問 × AICRM 特助) */}
+          {activeTab === 'handshake' && (
+            <div className="p-3.5 sm:p-6 space-y-5 animate-in fade-in duration-200">
+              {/* Header Banner */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/15 via-indigo-400/10 to-transparent border border-purple-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <ArrowLeftRight className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-black text-sm sm:text-base text-stone-900">
+                        🤝 AI 雙向智能撮合池（市場顧問 × AICRM 特助）
+                      </h3>
+                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-950 border border-purple-200">
+                        由題找人 ∩ 由人找題 雙向握手
+                      </span>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-stone-600 mt-0.5">
+                      需求端市場顧問深入剖析題意痛點，供給端 AICRM Agent 評估專家勝任力與投標獲利，雙向即時握手撮合！
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-mono font-black px-3 py-1.5 rounded-xl bg-white border border-purple-200 text-purple-950 shadow-2xs">
+                    精準握手好題：{activeTwoWayMatches.length} 題
+                  </span>
+                </div>
+              </div>
+
+              {activeTwoWayMatches.length === 0 ? (
+                <div className="p-8 text-center bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+                  <Sparkles className="w-8 h-8 text-stone-400 mx-auto" />
+                  <h4 className="font-bold text-stone-700 text-sm">目前全站無新的雙向握手題目</h4>
+                  <p className="text-xs text-stone-500">
+                    AICRM Agent 正在全天候掃描新題庫，一旦有與您領域高度適配之高額懸賞將第一時間撮合！
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {activeTwoWayMatches.map((match) => {
+                    const q = match.question;
+                    const style = selectedPitchStyle[q.id] || 'sharp';
+                    const pitchText = match.icebreakerPitches[style];
+
+                    return (
+                      <div
+                        key={q.id}
+                        className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 hover:border-purple-300 hover:shadow-xs transition-all flex flex-col justify-between space-y-4"
+                      >
+                        <div className="space-y-3">
+                          {/* Top Score Bar */}
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-purple-700 to-indigo-700 text-white flex items-center gap-1 shadow-2xs">
+                                <ArrowLeftRight className="w-3 h-3" />
+                                <span>雙向契合 {match.twoWayFitScore}%</span>
+                              </span>
+                              {match.isHandshake && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                  <Zap className="w-3 h-3 text-emerald-600" />
+                                  <span>雙向握手成立</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="text-right">
+                              <span className="text-xs font-mono font-black text-amber-700">
+                                NT$ {(q.bounty || 0).toLocaleString()}
+                              </span>
+                              <span className="text-[10px] text-emerald-700 font-bold ml-1.5">
+                                (大師實收 98%: NT$ {match.estimatedProfit.toLocaleString()})
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Dual Scores Indicator */}
+                          <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-purple-50/50 border border-purple-100 text-[11px] font-mono">
+                            <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-white border border-purple-100">
+                              <span className="text-purple-900 font-bold">🎯 市場顧問 (題找人)</span>
+                              <span className="font-black text-purple-950">{match.demandSideScore}%</span>
+                            </div>
+                            <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-white border border-indigo-100">
+                              <span className="text-indigo-900 font-bold">💼 AICRM (人找題)</span>
+                              <span className="font-black text-indigo-950">{match.supplySideScore}%</span>
+                            </div>
+                          </div>
+
+                          {/* Question Info */}
+                          <div>
+                            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                              {q.category} {q.subcategory ? `• ${q.subcategory}` : ''}
+                            </span>
+                            <h4 className="font-extrabold text-sm sm:text-base text-stone-900 mt-0.5 line-clamp-1">
+                              {q.title}
+                            </h4>
+                            <p className="text-xs text-stone-600 mt-1 line-clamp-2">
+                              {q.description || '無詳細說明'}
+                            </p>
+                          </div>
+
+                          {/* Pitch Direction */}
+                          <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200 text-xs text-amber-950 leading-relaxed">
+                            <strong>💡 破局策略推薦：</strong>
+                            <span>{match.recommendedPitchAngle}</span>
+                          </div>
+
+                          {/* Pitch Style Tabs */}
+                          <div className="space-y-1.5 pt-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-black text-stone-700">
+                                🤖 AI 客製破冰話術建議：
+                              </span>
+                              <div className="inline-flex p-0.5 rounded-lg bg-stone-100 border border-stone-200 text-[10px]">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedPitchStyle((prev) => ({ ...prev, [q.id]: 'calm' }))}
+                                  className={`px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer ${
+                                    style === 'calm' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-500'
+                                  }`}
+                                >
+                                  沉穩顧問
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedPitchStyle((prev) => ({ ...prev, [q.id]: 'sharp' }))}
+                                  className={`px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer ${
+                                    style === 'sharp' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-500'
+                                  }`}
+                                >
+                                  專業精闢
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedPitchStyle((prev) => ({ ...prev, [q.id]: 'warm' }))}
+                                  className={`px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer ${
+                                    style === 'warm' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-500'
+                                  }`}
+                                >
+                                  熱情親和
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-800 leading-relaxed font-sans relative group">
+                              <p className="line-clamp-3">{pitchText}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card Actions */}
+                        <div className="flex items-center justify-between pt-2 border-t border-stone-100 gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(pitchText);
+                              setCopiedPitchId(q.id);
+                              setTimeout(() => setCopiedPitchId(null), 2500);
+                            }}
+                            className="px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                          >
+                            {copiedPitchId === q.id ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-emerald-700">已複製話術</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5 text-stone-400" />
+                                <span>複製話術</span>
+                              </>
+                            )}
+                          </button>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const targetAuthor = {
+                                  id: q.authorId,
+                                  name: q.authorName || '發案者',
+                                  avatar: q.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                                  title: '發案客戶',
+                                };
+                                const convId = startDirectChat(targetAuthor, q);
+                                if (convId) {
+                                  sendMessage(convId, pitchText);
+                                }
+                                if (onOpenDirectChat) {
+                                  onOpenDirectChat(targetAuthor);
+                                }
+                                showToast('💬 已發送破冰話術並開啟專屬私聊！');
+                              }}
+                              className="px-3.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-950 border border-purple-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-purple-700" />
+                              <span>私聊對接</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const targetAuthor = {
+                                  id: q.authorId,
+                                  name: q.authorName || '發案者',
+                                  avatar: q.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                                  title: '發案客戶',
+                                };
+                                if (onOpenDirectChat) {
+                                  onOpenDirectChat(targetAuthor);
+                                }
+                              }}
+                              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-white font-black text-xs flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                            >
+                              <Zap className="w-3.5 h-3.5" />
+                              <span>破局投標</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

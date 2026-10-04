@@ -44,6 +44,7 @@ import {
   Lightbulb,
   ArrowRight,
   TrendingUp,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { TERMS_DATA, TermItem } from '../data/termsData';
 import { AboutSection, ProblemLevel } from '../types';
@@ -75,6 +76,32 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
   const [copiedAppUrl, setCopiedAppUrl] = useState(false);
   const [selectedAppGuide, setSelectedAppGuide] = useState<'all' | 'android' | 'ios' | 'desktop'>('all');
   const [platformFaqs, setPlatformFaqs] = useState<FaqItem[]>(() => getPlatformFaqs());
+  const [detectedOs, setDetectedOs] = useState<'ios' | 'android' | 'desktop_mac' | 'desktop_win' | 'desktop_other'>('desktop_other');
+  const [faqSearchQuery, setFaqSearchQuery] = useState('');
+  const [selectedFaqCategory, setSelectedFaqCategory] = useState<string>('all');
+
+  useEffect(() => {
+    try {
+      const ua = navigator.userAgent || navigator.vendor || '';
+      if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+        setDetectedOs('ios');
+        setSelectedAppGuide('ios');
+      } else if (/android/i.test(ua)) {
+        setDetectedOs('android');
+        setSelectedAppGuide('android');
+      } else if (/Macintosh|Mac OS X/i.test(ua)) {
+        setDetectedOs('desktop_mac');
+        setSelectedAppGuide('desktop');
+      } else if (/Windows/i.test(ua)) {
+        setDetectedOs('desktop_win');
+        setSelectedAppGuide('desktop');
+      } else {
+        setDetectedOs('desktop_other');
+      }
+    } catch {
+      setDetectedOs('desktop_other');
+    }
+  }, []);
 
   useEffect(() => {
     const handleFaqsUpdated = () => {
@@ -369,7 +396,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       id: 'other_ai',
       num: '06',
       title: 'AI 智慧引擎賦能與高效協同系統',
-      summary: 'AICRM 業務顧問與 24hr 特助、市場顧問精準媒合與仲裁、官方客服特助、雙引擎無縫備援與隱私防火牆。',
+      summary: 'AICRM 業務顧問與 24hr 巡航、市場顧問精準媒合與仲裁、官方客服 Agent、雙通道高可用備援與隱私防火牆。',
       badge: 'AI 智慧賦能',
     },
   ];
@@ -445,7 +472,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
 
   return (
     <div
-      className={`w-full max-w-4xl mx-auto font-sans ${
+      className={`w-full max-w-4xl mx-auto font-sans pb-28 sm:pb-12 ${
         isModal ? 'p-1 sm:p-3' : 'py-4 px-3 sm:px-6'
       }`}
     >
@@ -475,90 +502,101 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
 
       {/* 📱 輕量 Segmented Control 分頁導覽列（滑動橫列、極簡優雅、點擊無負擔） */}
       {!isSubPage && (
-        <div className="mb-4">
+        <div className="mb-5 space-y-2.5">
+          {/* Main Segmented Control */}
           <div className="flex items-center justify-start sm:justify-center overflow-x-auto scrollbar-none pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
             <div className="inline-flex p-1 rounded-2xl bg-stone-100/90 border border-stone-200/70 min-w-max gap-1 shadow-2xs">
               {/* 1. 平台介紹 */}
               <button
+                type="button"
                 onClick={() => {
                   setActiveTab('intro');
                   setSelectedOtherChapterId(null);
                   setSelectedTermKey(null);
                 }}
-                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                className={`min-h-[44px] sm:min-h-[38px] px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   activeTab === 'intro'
-                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/60'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/50'
                 }`}
               >
-                <Lightbulb className="w-4 h-4 text-amber-500" />
+                <Lightbulb className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>平台介紹</span>
               </button>
 
               {/* 2. 下載 APP */}
               <button
+                type="button"
                 onClick={() => {
                   setActiveTab('download_app');
                   setSelectedOtherChapterId(null);
                   setSelectedTermKey(null);
                 }}
-                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                className={`min-h-[44px] sm:min-h-[38px] px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   activeTab === 'download_app'
-                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/60'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/50'
                 }`}
               >
-                <Download className="w-4 h-4 text-amber-600" />
+                <Download className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>下載 APP</span>
+                {(detectedOs === 'ios' || detectedOs === 'android') && (
+                  <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900">
+                    手機推薦
+                  </span>
+                )}
               </button>
 
               {/* 3. 聯絡我們 & 常見問題 */}
               <button
+                type="button"
                 onClick={() => {
                   setActiveTab('contact');
                   setSelectedOtherChapterId(null);
                   setSelectedTermKey(null);
                 }}
-                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                className={`min-h-[44px] sm:min-h-[38px] px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   activeTab === 'contact'
-                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/60'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/50'
                 }`}
               >
-                <Headphones className="w-4 h-4 text-emerald-600" />
-                <span>聯絡我們 & 常見問題</span>
+                <Headphones className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>常見問題 FAQ</span>
               </button>
 
               {/* 4. 條款與聲明 */}
               <button
+                type="button"
                 onClick={() => {
                   setActiveTab('terms');
                   setSelectedOtherChapterId(null);
                 }}
-                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                className={`min-h-[44px] sm:min-h-[38px] px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   activeTab === 'terms'
-                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/60'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/50'
                 }`}
               >
-                <FileText className="w-4 h-4 text-indigo-600" />
-                <span>條款與聲明</span>
+                <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span>條款與規範</span>
               </button>
 
-              {/* 5. 其他說明（含平台金流運作、問題分級、角色規範與 AI 賦能） */}
+              {/* 5. 其他說明 */}
               <button
+                type="button"
                 onClick={() => {
                   setActiveTab('others');
                   setSelectedOtherChapterId(null);
                   setSelectedTermKey(null);
                 }}
-                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                className={`min-h-[44px] sm:min-h-[38px] px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   activeTab === 'others'
-                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/60'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/50'
                 }`}
               >
-                <Layers className="w-4 h-4 text-purple-600" />
+                <Layers className="w-4 h-4 text-purple-600 shrink-0" />
                 <span>其他說明</span>
               </button>
             </div>
@@ -1380,67 +1418,158 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
           </div>
 
           {/* 常見問題自主排查 (FAQ Accordion - 即時同步後台審核發布之 FAQ) */}
-          <div className="bg-white rounded-3xl border border-stone-200/80 p-5 sm:p-6 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+          <div className="bg-white rounded-3xl border border-stone-200/80 p-4 sm:p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="text-sm sm:text-base font-black text-stone-900 flex items-center gap-2">
                 <HelpCircle className="w-4 h-4 text-stone-700" />
-                <span>常見問題 FAQ ({platformFaqs.length})</span>
+                <span>常見問題 FAQ</span>
+                <span className="text-xs font-mono font-bold text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
+                  {platformFaqs.length} 題智庫
+                </span>
               </h3>
-              <span className="text-[10px] font-bold text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold text-stone-400 bg-stone-100 px-2.5 py-1 rounded-full w-fit">
                 AI 客服智庫即時同步
               </span>
             </div>
 
+            {/* 🔍 移動端 & 桌面端即時快搜欄位 */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <HelpCircle className="w-4 h-4 text-stone-400" />
+              </div>
+              <input
+                type="text"
+                value={faqSearchQuery}
+                onChange={(e) => setFaqSearchQuery(e.target.value)}
+                placeholder="搜尋常見問題（例如：提領、發票、實名認證、退款、雙向媒合...）"
+                className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm bg-stone-50 border border-stone-200/80 rounded-2xl focus:bg-white focus:outline-hidden focus:border-amber-500 transition-colors"
+              />
+              {faqSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setFaqSearchQuery('')}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-stone-400 hover:text-stone-700 cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* 分類快速篩選標籤 */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
+              {[
+                { id: 'all', label: '全部問題' },
+                { id: '提問與發案', label: '提問與發案' },
+                { id: '解答與收款', label: '解答與收款' },
+                { id: '帳號與認證', label: '帳號與認證' },
+                { id: '安全與法規', label: '安全與法規' },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedFaqCategory(cat.id)}
+                  className={`min-h-[34px] px-3 py-1 rounded-xl text-[11px] sm:text-xs font-bold whitespace-nowrap cursor-pointer transition-all active:scale-95 ${
+                    selectedFaqCategory === cat.id
+                      ? 'bg-stone-900 text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* FAQ List */}
             <div className="space-y-2">
-              {platformFaqs.map((faq, idx) => {
-                const isOpen = openFaqIndex === idx;
-                return (
-                  <div
-                    key={faq.id || idx}
-                    className="rounded-2xl border border-stone-200/70 overflow-hidden transition-all bg-stone-50/50"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                      className="w-full p-3.5 text-left flex items-center justify-between gap-2 font-bold text-xs text-stone-900 hover:bg-stone-100/60 transition-colors cursor-pointer"
+              {platformFaqs
+                .filter((faq) => {
+                  const query = faqSearchQuery.toLowerCase().trim();
+                  const matchesSearch =
+                    !query ||
+                    faq.question.toLowerCase().includes(query) ||
+                    faq.answer.toLowerCase().includes(query) ||
+                    (faq.category && faq.category.toLowerCase().includes(query));
+                  const matchesCategory =
+                    selectedFaqCategory === 'all' ||
+                    (selectedFaqCategory === '提問與發案' &&
+                      (faq.category?.includes('提問') ||
+                        faq.category?.includes('發案') ||
+                        faq.category?.includes('痛點') ||
+                        faq.question.includes('提問') ||
+                        faq.question.includes('痛點'))) ||
+                    (selectedFaqCategory === '解答與收款' &&
+                      (faq.category?.includes('解答') ||
+                        faq.category?.includes('收款') ||
+                        faq.category?.includes('撥款') ||
+                        faq.category?.includes('金流') ||
+                        faq.question.includes('解答') ||
+                        faq.question.includes('撥款') ||
+                        faq.question.includes('收益'))) ||
+                    (selectedFaqCategory === '帳號與認證' &&
+                      (faq.category?.includes('認證') ||
+                        faq.category?.includes('帳號') ||
+                        faq.category?.includes('會員') ||
+                        faq.question.includes('認證') ||
+                        faq.question.includes('會員'))) ||
+                    (selectedFaqCategory === '安全與法規' &&
+                      (faq.category?.includes('法規') ||
+                        faq.category?.includes('安全') ||
+                        faq.category?.includes('條款') ||
+                        faq.category?.includes('退費') ||
+                        faq.question.includes('爭議') ||
+                        faq.question.includes('授權') ||
+                        faq.question.includes('合約')));
+                  return matchesSearch && matchesCategory;
+                })
+                .map((faq, idx) => {
+                  const isOpen = openFaqIndex === idx;
+                  return (
+                    <div
+                      key={faq.id || idx}
+                      className="rounded-2xl border border-stone-200/70 overflow-hidden transition-all bg-stone-50/50"
                     >
-                      <span className="flex items-center gap-2 flex-wrap">
-                        <span className="text-stone-400 font-mono text-[11px]">Q{idx + 1}.</span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60">
-                          {faq.category || '一般諮詢'}
-                        </span>
-                        <span>{faq.question}</span>
-                        {(faq.recommendedByAdmin || faq.source === 'auto_mined') && (
-                          <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-0.5">
-                            <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
-                            <span>官方審核</span>
+                      <button
+                        type="button"
+                        onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                        className="w-full min-h-[48px] p-3.5 sm:p-4 text-left flex items-center justify-between gap-3 font-bold text-xs sm:text-sm text-stone-900 hover:bg-stone-100/60 transition-colors cursor-pointer active:bg-stone-100"
+                      >
+                        <span className="flex items-center gap-2 flex-wrap">
+                          <span className="text-stone-400 font-mono text-[11px]">Q{idx + 1}.</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60">
+                            {faq.category || '一般諮詢'}
                           </span>
+                          <span>{faq.question}</span>
+                          {(faq.recommendedByAdmin || faq.source === 'auto_mined') && (
+                            <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-0.5">
+                              <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
+                              <span>官方審核</span>
+                            </span>
+                          )}
+                        </span>
+                        {isOpen ? (
+                          <ChevronUp className="w-4 h-4 text-stone-400 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-stone-400 shrink-0" />
                         )}
-                      </span>
-                      {isOpen ? (
-                        <ChevronUp className="w-4 h-4 text-stone-400 shrink-0" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-stone-400 shrink-0" />
-                      )}
-                    </button>
-                    {isOpen && (
-                      <div className="px-3.5 pb-3.5 pt-2 text-[11px] text-stone-600 leading-relaxed border-t border-stone-200/50 bg-white space-y-2.5">
-                        <p className="whitespace-pre-line leading-relaxed">{faq.answer}</p>
-                        <div className="pt-2 border-t border-stone-100 flex items-center justify-between flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openCustomerService({ message: `我想深入諮詢常見問題：【${faq.question}】` })}
-                            className="text-[11px] font-bold text-amber-800 hover:text-amber-950 bg-amber-50 hover:bg-amber-100/90 active:scale-95 px-3 py-1.5 rounded-xl border border-amber-200/90 flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
-                          >
-                            <Bot className="w-3.5 h-3.5 text-amber-700" />
-                            <span>🤖 讓 24hr AI 客服 Agent 深入解答</span>
-                          </button>
+                      </button>
+                      {isOpen && (
+                        <div className="px-3.5 sm:px-4 pb-4 pt-2 text-xs sm:text-sm text-stone-600 leading-relaxed border-t border-stone-200/50 bg-white space-y-3">
+                          <p className="whitespace-pre-line leading-relaxed">{faq.answer}</p>
+                          <div className="pt-2 border-t border-stone-100 flex items-center justify-between flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openCustomerService({ message: `我想深入諮詢常見問題：【${faq.question}】` })}
+                              className="text-xs font-bold text-amber-800 hover:text-amber-950 bg-amber-50 hover:bg-amber-100/90 active:scale-95 px-3.5 py-2 rounded-xl border border-amber-200/90 flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
+                            >
+                              <Bot className="w-3.5 h-3.5 text-amber-700" />
+                              <span>🤖 讓 24hr AI 客服 Agent 深入解答</span>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>
@@ -2068,43 +2197,269 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
               {(selectedOtherChapterId === 'other_ai' || selectedOtherChapterId === 'other_5') && (
                 <div className="p-5 sm:p-7 space-y-6 animate-in fade-in">
                   {/* Header Title */}
-                  <div className="border-b border-stone-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200 inline-flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                          <span>說明六 • AI 智慧賦能</span>
-                        </span>
-                        <span className="text-[11px] font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md">
-                          全流程生態體系
+                  <div className="border-b border-stone-100 pb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200 inline-flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                        <span>說明六 • AI 智慧賦能</span>
+                      </span>
+                    </div>
+                    <h3 className="text-base sm:text-xl font-black text-stone-900 mt-2 flex items-center gap-2 tracking-tight">
+                      AI 智慧引擎賦能與高效協同系統
+                    </h3>
+                  </div>
+
+                  {/* 平台 AI 全景架構圖 (Platform AI Architecture Flowchart) */}
+                  <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-b from-stone-900 via-stone-900 to-stone-950 text-white shadow-xl border border-stone-800 space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-800 pb-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-400/40 text-purple-300 flex items-center justify-center shrink-0">
+                          <Layers className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-sm sm:text-base text-stone-100 flex items-center gap-2">
+                            <span>IdeaX 平台 AI 全景架構圖</span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                              雙向主動媒合體系
+                            </span>
+                          </h4>
+                          <p className="text-[11px] text-stone-400">
+                            發案方需求端 ↔ 雙向智能媒合樞紐 ↔ 智庫專家供給端 ＋ 治理守護層
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 架構圖主流程：左(提問發案) ➔ 中(雙向媒合樞紐) ➔ 右(專家智庫) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+                      {/* 左欄：發案提問端 */}
+                      <div className="lg:col-span-4 p-4 rounded-2xl bg-stone-800/80 border border-stone-700/80 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-purple-300 flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5" />
+                            <span>發案提問端（需求側）</span>
+                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60">
+                            痛點輸入
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 text-xs">
+                          {/* 模組 1 */}
+                          <div className="p-2.5 rounded-xl bg-stone-900/90 border border-purple-500/30 space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-stone-200 text-[11px]">
+                              <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                              <span>發問結構化智能潤飾</span>
+                            </div>
+                            <p className="text-[10px] text-stone-400 leading-relaxed">
+                              痛點梳理、補充必備背景資訊、明確交付期待。
+                            </p>
+                          </div>
+
+                          {/* 模組 2 */}
+                          <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-400/30 space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-purple-200 text-[11px]">
+                              <Scale className="w-3.5 h-3.5 text-purple-400" />
+                              <span>市場顧問 Agent（由題找人）</span>
+                            </div>
+                            <p className="text-[10px] text-stone-300 leading-relaxed">
+                              提取關鍵標籤、L0~L4 定價難度建議、向契合專家主動推播。
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 中欄：雙向主動智能媒合樞紐 (核心撮合) */}
+                      <div className="lg:col-span-4 p-4 rounded-2xl bg-gradient-to-b from-purple-950/60 via-amber-950/40 to-stone-900/90 border-2 border-amber-400/40 space-y-3 relative overflow-hidden shadow-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                            <ArrowLeftRight className="w-3.5 h-3.5 text-amber-400" />
+                            <span>雙向智能媒合樞紐</span>
+                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40 animate-pulse">
+                            主動撮合握手
+                          </span>
+                        </div>
+
+                        {/* 雙向動態流程卡 */}
+                        <div className="p-3 rounded-xl bg-stone-900/95 border border-amber-400/30 space-y-2 text-xs">
+                          <div className="flex items-center justify-between text-[11px] font-bold">
+                            <span className="text-purple-300">市場顧問（由題找人）</span>
+                            <ArrowLeftRight className="w-3.5 h-3.5 text-amber-400" />
+                            <span className="text-amber-300">AICRM（由人找題）</span>
+                          </div>
+
+                          <div className="py-2 px-2.5 rounded-lg bg-stone-950/80 border border-stone-800 text-[10px] space-y-1 text-stone-300">
+                            <div className="flex items-center justify-between text-stone-400">
+                              <span>契合度交叉運算：</span>
+                              <span className="font-mono text-emerald-400 font-bold">領域 x 標籤 x 意向度</span>
+                            </div>
+                            <div className="flex items-center justify-between text-stone-400">
+                              <span>觸發條件：</span>
+                              <span className="font-mono text-amber-300 font-bold">相符指數 ≥ 85%</span>
+                            </div>
+                          </div>
+
+                          <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-400/30 text-[10px] text-amber-200 text-center font-bold">
+                            ⚡️ 雙向即時推播 ＋ 生成直擊痛點破冰切入案
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-stone-400 text-center leading-tight">
+                          大幅縮短 70% 尋找週期，冷啟動零等待
+                        </p>
+                      </div>
+
+                      {/* 右欄：智庫專家端 */}
+                      <div className="lg:col-span-4 p-4 rounded-2xl bg-stone-800/80 border border-stone-700/80 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                            <Crown className="w-3.5 h-3.5" />
+                            <span>智庫專家端（供給側）</span>
+                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60">
+                            專業變現
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 text-xs">
+                          {/* 模組 1 */}
+                          <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-400/30 space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-amber-200 text-[11px]">
+                              <Target className="w-3.5 h-3.5 text-amber-400" />
+                              <span>AICRM 業務特助（由人找題）</span>
+                            </div>
+                            <p className="text-[10px] text-stone-300 leading-relaxed">
+                              24hr 巡航雷達掃描全站高額懸賞、計算成案意向指數。
+                            </p>
+                          </div>
+
+                          {/* 模組 2 */}
+                          <div className="p-2.5 rounded-xl bg-stone-900/90 border border-amber-500/30 space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-stone-200 text-[11px]">
+                              <Bot className="w-3.5 h-3.5 text-amber-400" />
+                              <span>智能代操與離線接待</span>
+                            </div>
+                            <p className="text-[10px] text-stone-400 leading-relaxed">
+                              生成 3 款破冰話術、收益試算與離線自主接待客情。
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 下方：全流程治理、審核與交易安全基石層 */}
+                    <div className="pt-3.5 border-t border-stone-800/80">
+                      <div className="flex items-center gap-2 mb-3">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <span className="text-xs font-black text-emerald-300">
+                          平台治理、智能審核與交易安全基石層
                         </span>
                       </div>
-                      <h3 className="text-base sm:text-xl font-black text-stone-900 mt-2 flex items-center gap-2 tracking-tight">
-                        AI 智慧引擎賦能與高效協同系統
-                      </h3>
-                    </div>
-                    <span className="text-xs text-stone-500 hidden sm:inline-block">
-                      人機協同 • 智能代操 • 交易安全
-                    </span>
-                  </div>
 
-                  {/* 雙引擎高可用無縫備援機制說明框 */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-stone-100 border border-amber-500/30 space-y-1.5">
-                    <div className="flex items-center gap-2 text-xs font-black text-stone-900">
-                      <Zap className="w-4 h-4 text-amber-600" />
-                      <span>雙引擎無縫切換與高可用架構保障</span>
-                    </div>
-                    <p className="text-[11px] sm:text-xs text-stone-700 leading-relaxed">
-                      當 Dify 伺服器發生連線逾時（超過 20 秒）、服務中斷（502/503/404 等異常），系統會立即無縫切換為 Google Gemini 備援引擎 執行推論與分析。不要沒回傳就切換，僅以連線狀態判定，因為有些指令需要多一點時間，確保 24 小時智慧服務零中斷。
-                    </p>
-                  </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+                        <div className="p-2.5 rounded-xl bg-stone-800/60 border border-stone-700 space-y-1">
+                          <span className="text-stone-200 font-bold text-[11px] block flex items-center gap-1">
+                            <Bot className="w-3.5 h-3.5 text-purple-400" />
+                            <span>官方客服 Agent</span>
+                          </span>
+                          <p className="text-stone-400 text-[10px] leading-relaxed">
+                            24hr 機制指引、FAQ 解答與自動專人工單升級。
+                          </p>
+                        </div>
 
-                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                    創點子 IdeaX 打造全方位的 AI Agent 智慧賦能矩陣，為發案提問者、智庫解答專家及交易保障提供精準、高效且安全的人機協同體驗：
-                  </p>
+                        <div className="p-2.5 rounded-xl bg-stone-800/60 border border-stone-700 space-y-1">
+                          <span className="text-stone-200 font-bold text-[11px] block flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>AI 智慧審核 Copilot</span>
+                          </span>
+                          <p className="text-stone-400 text-[10px] leading-relaxed">
+                            實名證件 OCR 防偽檢測、專家專技執照資歷智慧比對。
+                          </p>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-stone-800/60 border border-stone-700 space-y-1">
+                          <span className="text-stone-200 font-bold text-[11px] block flex items-center gap-1">
+                            <Scale className="w-3.5 h-3.5 text-amber-400" />
+                            <span>AI 履約爭議調解</span>
+                          </span>
+                          <p className="text-stone-400 text-[10px] leading-relaxed">
+                            調閱交付與約定脈絡，中立判定責任並草擬和解書。
+                          </p>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-stone-800/60 border border-stone-700 space-y-1">
+                          <span className="text-stone-200 font-bold text-[11px] block flex items-center gap-1">
+                            <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>敏感個資自動遮蔽</span>
+                          </span>
+                          <p className="text-stone-400 text-[10px] leading-relaxed">
+                            即時脫敏電話、LINE、帳戶，阻絕私下交易詐騙。
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* 核心架構三大 Agent 與安全防護 */}
                   <div className="space-y-5">
+                    {/* Feature 0: 🤝 AI 雙向特邀與智能撮合系統 (提問端與解答端全體免費) */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-amber-500/10 border-2 border-purple-300 space-y-3 shadow-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-200/80 pb-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center font-black shadow-2xs">
+                            <ArrowLeftRight className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="font-black text-stone-900 text-sm sm:text-base flex items-center gap-1.5">
+                              <span>🤝 AI 雙向特邀與智能撮合系統</span>
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                全方案通用 • 免費撮合
+                              </span>
+                            </h4>
+                            <span className="text-[11px] text-purple-900 font-bold">
+                              提問端（由題找人） × 解答端（由人找題）即時雙向握手，全站會員皆享免費媒合服務
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-purple-700 text-white shadow-2xs self-start sm:self-auto">
+                          零門檻 • 自由特邀
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div className="p-3.5 bg-white rounded-xl border border-purple-200 space-y-1.5 shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-purple-950 text-xs flex items-center gap-1.5">
+                              <Users className="w-4 h-4 text-purple-600" />
+                              <span>發案提問端：由題找人 ＋ 一鍵雙向特邀</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              免費特邀
+                            </span>
+                          </div>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            發布問題後，AI 市場顧問深入剖析題意與核心癥結，自動從智庫中推薦最契合的認證專家。提問者可<strong>「一鍵發送官方雙向特邀」</strong>並展開專屬私聊對接，不再被動等待！
+                          </p>
+                        </div>
+
+                        <div className="p-3.5 bg-white rounded-xl border border-amber-200 space-y-1.5 shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-amber-950 text-xs flex items-center gap-1.5">
+                              <Crown className="w-4 h-4 text-amber-600" />
+                              <span>智庫解答端：由人找題 ＋ 破局話術生成</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                              免費撮合
+                            </span>
+                          </div>
+                          <p className="text-stone-600 text-[11px] leading-relaxed">
+                            解答者可隨時於「雙向智能撮合池」檢視與自己專長高度吻合的懸賞好題。AI 即時評估成案獲利與痛點切入方針，並自動生成 3 款客製化破冰話術，一鍵私聊接案！
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Agent 1: AICRM 業務顧問與 24hr 特助 */}
                     <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-3 shadow-2xs hover:border-amber-300 transition-all">
                       <div className="flex items-center justify-between gap-2 border-b border-amber-200/60 pb-2.5">
@@ -2203,7 +2558,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Agent 3: 官方客服特助 Agent */}
+                    {/* Agent 3: 官方客服 Agent */}
                     <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3 shadow-2xs hover:border-stone-300 transition-all">
                       <div className="flex items-center justify-between gap-2 border-b border-stone-200/80 pb-2.5">
                         <div className="flex items-center gap-2">
@@ -2212,7 +2567,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                           </div>
                           <div>
                             <h4 className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-                              <span>3. 🤖 官方客服特助 Agent</span>
+                              <span>3. 🤖 官方客服 Agent</span>
                             </h4>
                             <span className="text-[10px] text-stone-500 font-bold">24hr 全站指引 • 機制 FAQ • 智慧工單升級</span>
                           </div>

@@ -262,6 +262,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     tagline: '標準費率，由解答者吸收 10% 服務費',
     benefits: [
       '全站發問與解答提案',
+      '🤝 AI 雙向特邀與智能撮合：提問端與解答端皆享平台免費智能媒合',
     ],
   },
   pro: {
@@ -284,6 +285,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     tagline: '費率僅 8%！解答者實收高達 92%',
     benefits: [
       '全站發問與解答提案',
+      '🤝 AI 雙向特邀與智能撮合：提問端與解答端皆享平台免費智能媒合',
       'AI 初步問題分析報告：免費查看 50 次',
       'AI 提案架構整理：一鍵整理為 4 層架構',
     ],
@@ -307,6 +309,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     tagline: '費率僅 8%！解答者實收高達 92%',
     benefits: [
       '全站發問與解答提案',
+      '🤝 AI 雙向特邀與智能撮合：提問端與解答端皆享平台免費智能媒合',
       'AI 初步問題分析報告：免費查看 50 次',
       'AI 提案架構整理：一鍵整理為 4 層架構',
     ],
@@ -330,6 +333,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     tagline: '服務費僅 5%（-5%）！實收 95% ＋ 升級無限次 AI 分析報告 ＋ 優先推薦曝光',
     benefits: [
       '全站發問與解答提案',
+      '🤝 AI 雙向特邀與智能撮合：提問端與解答端皆享平台免費智能媒合',
       'AI 初步問題分析報告：全站免費無限次查看及下載報告（升級無限次＋下載）',
       'AI 提案架構整理：一鍵整理為 4 層架構',
       '✨ 升級高賞提案優先推薦曝光',
@@ -355,6 +359,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     tagline: '極低 2% 服務費！實收高達 98% ＋ AI-CRM 客戶關係管理',
     benefits: [
       '全站發問與解答提案',
+      '🤝 AI 雙向特邀與智能撮合：提問端與解答端皆享平台免費智能媒合（含 24hr 撮合池雷達）',
       'AI 初步問題分析報告：全站免費無限次查看及下載報告',
       'AI 提案架構整理：一鍵整理為 4 層架構',
       '高賞提案優先推薦',

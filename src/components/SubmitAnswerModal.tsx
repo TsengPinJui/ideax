@@ -224,7 +224,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
       return;
     }
 
-    // 提交落地方案 (提案) 檢核：個人資料與實名認證為必要條件
+    // 提交落地方案 (提案) 檢核：個人資料與實名認證為收費必要條件（專家認證為提升公信力之加分標章）
     if (answerType === 'solution') {
       const isProfileComplete = Boolean(
         currentUser.gender &&
@@ -235,8 +235,8 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
         setTermsError('⚠️ 個人資料為提案之必要條件！請先前往「帳號設定 → 基本資料」填寫完成個人資料。');
         return;
       }
-      if (currentUser.realNameAuthStatus !== 'verified') {
-        setTermsError('⚠️ 實名認證為提案之必要條件！請先前往「帳號設定 → 實名認證」通過審核。');
+      if (currentUser.realNameAuthStatus !== 'verified' && isPaid) {
+        setTermsError('⚠️ 依第三方金流與洗錢防制法規，解答者需先通過【實名認證】方可設定付費落地方案並申請收款提領！請先前往「帳號設定 → 實名認證」送審（未認證前可切換為「公開討論」免費交流）。');
         return;
       }
 
@@ -395,7 +395,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             }`}
           >
             <Award className="w-4 h-4 text-amber-600" />
-            <span>提出方案（可付費、可附件）</span>
+            <span>提出方案（付費收款）</span>
           </button>
           <button
             type="button"
@@ -407,23 +407,35 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             }`}
           >
             <MessageSquare className="w-4 h-4 text-stone-600" />
-            <span>公開討論（無賞金留言）</span>
+            <span>公開討論（免費交流）</span>
           </button>
+        </div>
+
+        {/* 規範提醒：解答者收錢需實名認證，專家認證為加分標章 */}
+        <div className="p-2.5 sm:p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-[11px] text-amber-950 flex items-start gap-2">
+          <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <strong className="font-bold">平台收款與認證說明：</strong>
+            <span>解答者只要完成<strong>【實名認證】</strong>即可提出付費落地方案並申請收款提領；若欲提升個人公信力、專業度標章與獲得 AI 優先推薦，可向平台申請<strong>【專家認證】</strong>。未完成實名認證前可參與「公開討論」免費交流。</span>
+          </div>
         </div>
 
         {answerType === 'discussion' ? (
           /* Discussion Mode Form */
           <div className="space-y-4">
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                <div className="flex items-center gap-2 flex-wrap">
                   <label className="text-xs font-bold text-stone-700">留言討論內容 *</label>
                   <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/70 border border-amber-300/80 px-1.5 py-0.2 rounded">
                     至少 30 字
                   </span>
+                  <span className="text-[10px] text-stone-500 font-medium">
+                    （提示：若超過字數請善用外部連結補充）
+                  </span>
                   <HelpTooltip
                     title="公開討論說明"
-                    content="像留言一樣無賞金，適合提問者與社群針對問題背景、延伸疑難或經驗反饋進行公開交流。"
+                    content="像留言一樣無賞金，適合提問者與社群針對問題背景、延伸疑難或經驗反饋進行公開交流。若內容較長或有外部專案檔案，請善用外部雲端連結補充。"
                   />
                 </div>
                 <span className={`text-[11px] font-mono ${freePreview.trim().length < 30 ? 'text-amber-600 font-bold' : 'text-stone-400'}`}>
@@ -569,12 +581,15 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
 
             {/* 公開精華摘要 (Free Preview) - 所有形式共通 */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5 flex-wrap">
                   <Unlock className="w-3.5 h-3.5 text-emerald-600" />
                   <span>公開顯示部分（免費精華預覽 / 診斷思路）*</span>
                   <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/70 border border-amber-300/80 px-1.5 py-0.2 rounded">
                     至少 30 字
+                  </span>
+                  <span className="text-[10px] text-stone-500 font-medium">
+                    （提示：若超過字數請善用外部連結補充）
                   </span>
                 </label>
                 <span className={`text-[11px] font-mono ${freePreview.trim().length < 30 ? 'text-amber-600 font-bold' : 'text-stone-400'}`}>
@@ -598,10 +613,13 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             {/* 1. 文字交付：付費解鎖內容 */}
             {deliveryFormats.includes('text') && (
               <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5 flex-wrap">
                     <FileText className="w-3.5 h-3.5 text-amber-600" />
                     <span>【文字建議】付費專屬完整落地內容 *</span>
+                    <span className="text-[10px] text-stone-500 font-medium">
+                      （提示：若超過字數請善用外部連結補充）
+                    </span>
                   </label>
                   <span className="text-[11px] text-amber-700 font-semibold">付費解鎖後方可閱讀完整文字</span>
                 </div>

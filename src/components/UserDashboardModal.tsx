@@ -3770,7 +3770,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           type="button"
                           onClick={() => {
                             const payload = {
-                              version: '1.4.5',
+                              version: APP_VERSION,
                               exportedAt: new Date().toISOString(),
                               databaseId: 'ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c',
                               questions,
@@ -4384,8 +4384,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           </div>
                           <span className="truncate">實名認證</span>
                         </span>
-                        {currentUser.realNameAuthStatus === 'verified' || currentUser.bankAccount?.isVerified ? (
+                        {currentUser.realNameAuthStatus === 'verified' ? (
                           <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold border border-emerald-200 shrink-0">已認證</span>
+                        ) : currentUser.realNameAuthStatus === 'pending' ? (
+                          <span className="text-[10px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md font-bold border border-amber-200 shrink-0">審核中</span>
                         ) : (
                           <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-sky-700 transition-colors shrink-0 hidden xs:block" />
                         )}

@@ -61,26 +61,25 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
   const [selectedDomains, setSelectedDomains] = useState<string[]>(() => {
     if (initialData?.domains && initialData.domains.length > 0) return initialData.domains;
     if (initialData?.domain && initialData.domain !== 'auto' && initialData.domain !== '由平台為您分類') return [initialData.domain];
-    if (currentUser.domains && currentUser.domains.length > 0) return currentUser.domains;
-    if (currentUser.domain) return [currentUser.domain];
-    return ['創新創業'];
+    return [];
   });
   const [selectedSubdomains, setSelectedSubdomains] = useState<string[]>(() => {
     if (initialData?.subdomains && initialData.subdomains.length > 0) return initialData.subdomains;
     if (initialData?.subdomain) return [initialData.subdomain];
-    if (currentUser.subdomains && currentUser.subdomains.length > 0) return currentUser.subdomains;
-    return ['資訊科技'];
+    return [];
   });
   const [professionalTitle, setProfessionalTitle] = useState(
-    currentUser.expertApplicationData?.professionalTitle || currentUser.title || ''
+    currentUser.expertApplicationData?.professionalTitle || ''
   );
   const [yearsOfExperience, setYearsOfExperience] = useState(
-    currentUser.expertApplicationData?.yearsOfExperience || '5-8 年'
+    currentUser.expertApplicationData?.yearsOfExperience || ''
   );
 
   const toggleSubdomain = (sub: string, parentCat: Category) => {
     if (selectedSubdomains.includes(sub)) {
       if (selectedSubdomains.length > 1) {
+        setSelectedSubdomains(selectedSubdomains.filter((s) => s !== sub));
+      } else {
         setSelectedSubdomains(selectedSubdomains.filter((s) => s !== sub));
       }
     } else {
@@ -94,9 +93,7 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
   };
 
   const removeSubdomain = (sub: string) => {
-    if (selectedSubdomains.length > 1) {
-      setSelectedSubdomains(selectedSubdomains.filter((s) => s !== sub));
-    }
+    setSelectedSubdomains(selectedSubdomains.filter((s) => s !== sub));
   };
 
   // Uploaded credentials files (專家專屬專業證照，非身分證)
@@ -110,15 +107,7 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
       uploadedAt?: string;
     }>
   >(
-    currentUser.expertApplicationData?.credentialsFiles || [
-      {
-        name: '國家專技與專業執業證照.jpg',
-        size: '280 KB',
-        url: 'https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=1000&auto=format&fit=crop&q=80',
-        storagePath: 'expert_credentials/solver_cert.jpg',
-        isStorage: true,
-      },
-    ]
+    currentUser.expertApplicationData?.credentialsFiles || []
   );
   const [isProcessingCredential, setIsProcessingCredential] = useState(false);
   const [previewCredentialImg, setPreviewCredentialImg] = useState<{
@@ -150,8 +139,8 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
   );
 
   // Policy Agreement
-  const [agreedPrivacy, setAgreedPrivacy] = useState(true);
-  const [agreedHonesty, setAgreedHonesty] = useState(true);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [agreedHonesty, setAgreedHonesty] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -812,24 +801,35 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
                   取消
                 </button>
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting || isWithinCooldown}
-                  className={`px-6 py-2.5 rounded-xl font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer ${
-                    isWithinCooldown
-                      ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
-                      : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>
-                    {isSubmitting
-                      ? '資料加密傳輸中...'
-                      : isWithinCooldown
-                      ? `7 日冷卻中 (剩 ${remainingDays} 天)`
-                      : '正式送出專家認證審查'}
-                  </span>
-                </button>
+                {isApproved ? (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-6 py-2.5 rounded-xl font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>已通過認證（完成檢視）</span>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || isWithinCooldown}
+                    className={`px-6 py-2.5 rounded-xl font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer ${
+                      isWithinCooldown
+                        ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95'
+                    }`}
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>
+                      {isSubmitting
+                        ? '資料加密傳輸中...'
+                        : isWithinCooldown
+                        ? `7 日冷卻中 (剩 ${remainingDays} 天)`
+                        : '正式送出專家認證審查'}
+                    </span>
+                  </button>
+                )}
               </div>
             </form>
           )}

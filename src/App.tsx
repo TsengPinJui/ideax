@@ -1509,17 +1509,27 @@ function MainContent() {
         </div>
       )}
 
-      {/* 網頁版左側羅盤浮動懸停導覽入口 */}
-      <FloatingOnboardingCompass
-        isVisible={!isOnboardingOpen}
-        onStartOnboarding={() => {
-          setIsOnboardingFromAbout(true);
-          setSelectedQuestion(null);
-          setSelectedSolver(null);
-          setActiveTab('explore');
-          setIsOnboardingOpen(true);
-        }}
-      />
+      {/* 畫面右側中上浮動操作氣泡群（下載 App ＋ 教學導覽羅盤，手機端與桌面端統一右側中上位置） */}
+      <aside
+        aria-label="浮動捷徑工具"
+        className="fixed right-2.5 sm:right-4 top-[32%] sm:top-[35%] -translate-y-1/2 z-40 flex flex-col items-end gap-3 pointer-events-none select-none"
+      >
+        <div className="pointer-events-auto">
+          <FloatingOnboardingCompass
+            isVisible={!isOnboardingOpen}
+            onStartOnboarding={() => {
+              setIsOnboardingFromAbout(true);
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+              setActiveTab('explore');
+              setIsOnboardingOpen(true);
+            }}
+          />
+        </div>
+        <div className="pointer-events-auto">
+          <MobilePwaDownloadWidget />
+        </div>
+      </aside>
 
       {/* Footer */}
       <Footer
@@ -1567,8 +1577,23 @@ function MainContent() {
             setActiveTab('my_projects');
             return;
           }
-          if (tab === 'explore' && activeTab === 'explore') {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+          if (tab === 'explore') {
+            if (activeTab === 'explore') {
+              const el = document.getElementById('market-grid');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth' });
+              } else {
+                window.scrollTo({ top: 500, behavior: 'smooth' });
+              }
+            } else {
+              setActiveTab('explore');
+              setTimeout(() => {
+                const el = document.getElementById('market-grid');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, 60);
+            }
             return;
           }
           setActiveTab(tab);

@@ -194,8 +194,8 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
     }
   };
 
-  // 核心規則：若在已安裝 App 模式、或已被隱藏、或已完成導覽教學，羅盤浮動鈕不再出現！
-  if (!isVisible || isAppMode || isDismissed || isCompleted) {
+  // 核心規則：若在已安裝 App 模式、或已被手動隱藏，浮動鈕不再出現
+  if (!isVisible || isAppMode || isDismissed) {
     return null;
   }
 

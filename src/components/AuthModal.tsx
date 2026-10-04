@@ -1200,10 +1200,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         interests: chosenDomains,
         hasCompletedProfile: !isQuestionerSkipped,
         subscriptionTier: 'free',
-        verifiedExpert: isExpert,
-        verifiedBadge: isExpert ? '認證專家' : undefined,
-        realNameAuthStatus: isExpert ? 'verified' : 'none',
-        realNameAuthData: isExpert
+        verifiedExpert: false,
+        verifiedBadge: undefined,
+        expertApplicationStatus: isExpert ? 'pending' : 'none',
+        realNameAuthStatus: (regIdNumber.trim() || idCardFront) ? 'pending' : 'none',
+        realNameAuthData: (regIdNumber.trim() || idCardFront)
           ? {
               legalName: regRealLegalName.trim() || regName.trim(),
               idNumber: regIdNumber.trim(),
@@ -1214,7 +1215,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               idCardFrontFile: idCardFront || undefined,
               idCardBackFile: idCardBack || undefined,
               appliedAt: new Date().toISOString(),
-              verifiedAt: new Date().toISOString(),
             }
           : undefined,
         rating: 5.0,

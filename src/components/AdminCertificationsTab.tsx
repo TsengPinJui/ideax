@@ -986,26 +986,55 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                 </div>
 
                 {/* AI 智能審查 Copilot 診斷面板 */}
-                <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs space-y-1.5 text-indigo-950">
-                  <div className="flex items-center gap-1.5 font-black text-indigo-900">
-                    <Bot className="w-4 h-4 text-indigo-600" />
-                    <span>AI 實名認證預審助手 (Copilot 診斷建議)</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
-                    <div className="p-2 rounded-xl bg-white/80 border border-indigo-200">
-                      <span className="text-stone-500 block">清晰度與反光：</span>
-                      <span className="font-bold text-emerald-700">✓ 文字銳利、無強光遮蔽</span>
+                {(() => {
+                  const hasFront = Boolean(inspectUser.realNameAuthData?.idCardFrontFile?.url);
+                  const hasBack = Boolean(inspectUser.realNameAuthData?.idCardBackFile?.url);
+                  const hasName = Boolean(inspectUser.realNameAuthData?.legalName);
+                  const hasId = Boolean(inspectUser.realNameAuthData?.idNumber);
+                  const isPendingOrVerified = inspectUser.realNameAuthStatus === 'pending' || inspectUser.realNameAuthStatus === 'verified';
+                  const isFullyUploaded = hasFront && hasBack && hasName && hasId;
+
+                  return (
+                    <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs space-y-1.5 text-indigo-950">
+                      <div className="flex items-center gap-1.5 font-black text-indigo-900">
+                        <Bot className="w-4 h-4 text-indigo-600" />
+                        <span>AI 實名認證預審助手 (Copilot 診斷建議)</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
+                        <div className="p-2 rounded-xl bg-white/80 border border-indigo-200">
+                          <span className="text-stone-500 block">清晰度與反光：</span>
+                          {isFullyUploaded ? (
+                            <span className="font-bold text-emerald-700">✓ 文字銳利、無強光遮蔽</span>
+                          ) : hasFront || hasBack ? (
+                            <span className="font-bold text-amber-700">⚠️ 正反面照片未齊全</span>
+                          ) : (
+                            <span className="font-bold text-stone-400">尚未上傳證件圖檔</span>
+                          )}
+                        </div>
+                        <div className="p-2 rounded-xl bg-white/80 border border-indigo-200">
+                          <span className="text-stone-500 block">OCR 比對一致性：</span>
+                          {isFullyUploaded ? (
+                            <span className="font-bold text-emerald-700">✓ 姓名與身分證號 100% 吻合</span>
+                          ) : hasName && hasId ? (
+                            <span className="font-bold text-amber-700">⚠️ 格式已填寫，待證件比對</span>
+                          ) : (
+                            <span className="font-bold text-stone-400">待上傳資料後自動比對</span>
+                          )}
+                        </div>
+                        <div className="p-2 rounded-xl bg-white/80 border border-indigo-200">
+                          <span className="text-stone-500 block">系統建議：</span>
+                          {inspectUser.realNameAuthStatus === 'verified' ? (
+                            <span className="font-bold text-emerald-700">🟢 已核准通過認證</span>
+                          ) : isFullyUploaded ? (
+                            <span className="font-bold text-indigo-700">🟢 格式完整，建議核准通過</span>
+                          ) : (
+                            <span className="font-bold text-amber-700">🟡 資料尚待補齊</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="p-2 rounded-xl bg-white/80 border border-indigo-200">
-                      <span className="text-stone-500 block">OCR 比對一致性：</span>
-                      <span className="font-bold text-emerald-700">✓ 姓名與身分證號 100% 吻合</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-white/80 border border-indigo-200">
-                      <span className="text-stone-500 block">系統建議：</span>
-                      <span className="font-bold text-indigo-700">🟢 格式正確，建議核准通過</span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* 實名快速操作工具列 */}
                 <div className="flex items-center justify-between pt-2 border-t border-stone-100">
@@ -1264,26 +1293,54 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                   )}
 
                 {/* AI 專家審查 Copilot 診斷面板 */}
-                <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs space-y-1.5 text-amber-950">
-                  <div className="flex items-center gap-1.5 font-black text-amber-900">
-                    <Bot className="w-4 h-4 text-amber-600" />
-                    <span>AI 專家資格預審助手 (Copilot 診斷建議)</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
-                    <div className="p-2 rounded-xl bg-white/80 border border-amber-200">
-                      <span className="text-stone-500 block">專業證照相符度：</span>
-                      <span className="font-bold text-emerald-700">✓ 執照與申請領域高度吻合</span>
+                {(() => {
+                  const hasCredentials = (inspectUser.expertApplicationData?.credentialsFiles?.length || 0) > 0;
+                  const hasProofs = (inspectUser.expertApplicationData?.proofFiles?.length || 0) > 0;
+                  const hasTitle = Boolean(inspectUser.expertApplicationData?.professionalTitle);
+                  const hasExp = Boolean(inspectUser.expertApplicationData?.yearsOfExperience);
+                  const hasDomains = (inspectUser.expertApplicationData?.domains?.length || 0) > 0;
+                  const isVerified = inspectUser.verifiedExpert;
+                  const isReady = hasCredentials && hasTitle && hasExp && hasDomains;
+
+                  return (
+                    <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs space-y-1.5 text-amber-950">
+                      <div className="flex items-center gap-1.5 font-black text-amber-900">
+                        <Bot className="w-4 h-4 text-amber-600" />
+                        <span>AI 專家資格預審助手 (Copilot 診斷建議)</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
+                        <div className="p-2 rounded-xl bg-white/80 border border-amber-200">
+                          <span className="text-stone-500 block">專業證照相符度：</span>
+                          {hasCredentials ? (
+                            <span className="font-bold text-emerald-700">✓ 執照與申請領域相符</span>
+                          ) : (
+                            <span className="font-bold text-stone-400">尚未檢附證照檔案</span>
+                          )}
+                        </div>
+                        <div className="p-2 rounded-xl bg-white/80 border border-amber-200">
+                          <span className="text-stone-500 block">資歷與成果完整度：</span>
+                          {hasProofs || (hasTitle && hasExp) ? (
+                            <span className="font-bold text-emerald-700">
+                              {hasProofs ? '✓ 年資佐證與案例齊全' : '✓ 已填列職銜與年資'}
+                            </span>
+                          ) : (
+                            <span className="font-bold text-stone-400">尚未填列資歷或上傳案例</span>
+                          )}
+                        </div>
+                        <div className="p-2 rounded-xl bg-white/80 border border-amber-200">
+                          <span className="text-stone-500 block">審查裁決建議：</span>
+                          {isVerified ? (
+                            <span className="font-bold text-amber-800">🟢 已具備官方智庫大師身分</span>
+                          ) : isReady ? (
+                            <span className="font-bold text-amber-800">🟢 具備深厚實戰力，建議通過</span>
+                          ) : (
+                            <span className="font-bold text-stone-500">🟡 待申請人補充專業佐證</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="p-2 rounded-xl bg-white/80 border border-amber-200">
-                      <span className="text-stone-500 block">資歷與成果完整度：</span>
-                      <span className="font-bold text-emerald-700">✓ 年資佐證與案例齊全</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-white/80 border border-amber-200">
-                      <span className="text-stone-500 block">審查裁決建議：</span>
-                      <span className="font-bold text-amber-800">🟢 具備深厚實戰力，建議通過</span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* 專家快速操作工具列 */}
                 <div className="flex items-center justify-between pt-2 border-t border-stone-100">

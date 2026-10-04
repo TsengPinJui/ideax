@@ -14,6 +14,7 @@ import { IdeaXLogo } from './IdeaXLogo';
 import { AppTab, AboutSection } from '../types';
 import { useApp } from '../context/AppContext';
 import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
+import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
 
 interface FooterProps {
   onNavClick: (tab: AppTab, section?: AboutSection | string) => void;
@@ -40,7 +41,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
   };
 
   return (
-    <footer className="hidden md:block bg-stone-950 text-stone-300 border-t border-stone-800 pt-12 pb-8">
+    <footer className="bg-stone-950 text-stone-300 border-t border-stone-800 pt-10 sm:pt-12 pb-24 md:pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pb-10 border-b border-stone-800 text-xs">
           {/* Brand info - 頁尾 IdeaX 左側去背燈泡 + IdeaX 品牌識別 */}
@@ -51,7 +52,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 onNavClick('explore');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              title="回到首頁並滑動至頂部"
+              title="回到首頁最頂處"
               className="inline-flex items-center gap-2.5 py-1 hover:opacity-90 active:scale-98 transition-all text-left cursor-pointer focus:outline-none group"
             >
               <div className="w-12 h-12 sm:w-13 sm:h-13 shrink-0 flex items-center justify-center">
@@ -308,8 +309,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           <div className="flex items-center gap-2.5 flex-wrap text-stone-500 font-mono text-[10px] sm:text-[11px] select-none tracking-tight shrink-0 justify-center md:justify-end">
             <span className="text-stone-600 font-sans">Powered by AI Engine</span>
             <span>•</span>
-            <span className="text-stone-500">
-              v1.4.5 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+            <span className="text-stone-400 font-semibold">
+              v{APP_VERSION} • {APP_RELEASE_DATE} • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
             </span>
           </div>
         </div>

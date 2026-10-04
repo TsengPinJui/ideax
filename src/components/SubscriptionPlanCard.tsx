@@ -798,6 +798,24 @@ export const SubscriptionPlanCard: React.FC = () => {
                   ),
                 },
                 {
+                  id: 'two_way_handshake',
+                  name: '🤝 AI 雙向特邀與智能撮合',
+                  renderCell: (plan: SubscriptionPlan) => {
+                    return (
+                      <div className="space-y-0.5">
+                        <span className="inline-block font-black px-2 py-0.5 rounded-md text-[11px] bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-2xs">
+                          全站免費媒合
+                        </span>
+                        <div className="text-[10px] text-stone-500 font-medium">
+                          {plan.id === 'master'
+                            ? '含24hr雙向撮合池'
+                            : '提問端/解答端皆享免費撮合'}
+                        </div>
+                      </div>
+                    );
+                  },
+                },
+                {
                   id: 'ai_analysis',
                   name: 'AI 初步問題分析報告',
                   renderCell: (plan: SubscriptionPlan) => {

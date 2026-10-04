@@ -598,6 +598,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               }`}>
                 {postType === 'chat_discussion' ? '20 ~ 300 字' : '30 ~ 3000 字'}
               </span>
+              <span className="text-[10px] text-stone-500 font-medium">
+                （提示：若超過字數請善用外部連結補充）
+              </span>
             </label>
             <span className={`text-[11px] font-mono ${
               description.trim().length < (postType === 'chat_discussion' ? 20 : 30) || description.trim().length > (postType === 'chat_discussion' ? 300 : 3000)

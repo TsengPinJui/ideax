@@ -999,12 +999,12 @@ export const MechanismView: React.FC = () => {
                       </p>
                     </div>
 
-                    {/* 3. 官方客服特助 Agent */}
+                    {/* 3. 官方客服 Agent */}
                     <div className="p-4 bg-white rounded-2xl border border-stone-200 space-y-2 shadow-2xs">
                       <div className="flex items-center justify-between">
                         <span className="font-extrabold text-stone-900 block text-sm flex items-center gap-1.5">
                           <Bot className="w-4 h-4 text-purple-600" />
-                          <span>3. 🤖 官方客服特助 Agent</span>
+                          <span>3. 🤖 官方客服 Agent</span>
                         </span>
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                           全體免費
