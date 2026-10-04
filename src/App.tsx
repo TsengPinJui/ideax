@@ -1603,6 +1603,9 @@ function MainContent() {
         onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
       />
 
+      {/* PWA 下載提示懸浮圓形按鈕 (圓形按鈕快捷下載 / 安裝) */}
+      <MobilePwaDownloadWidget />
+
       {/* PWA 安裝與下載指引彈窗 */}
       <PwaInstallModal
         isOpen={isPwaInstallModalOpen}
