@@ -229,19 +229,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         {/* Hero Visual Spotlight with IdeaX - 創點子+IdeaX品牌焦點與關鍵字 */}
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* Official IdeaX Brand Display */}
-          <div className="relative mb-7 sm:mb-8 group inline-flex max-w-2xl sm:max-w-3xl mx-auto">
+          <div className="relative mb-6 sm:mb-7 group inline-flex max-w-2xl mx-auto">
             {/* Ambient backlight ring */}
-            <div className="absolute inset-0 rounded-[36px] bg-amber-300/30 blur-2xl scale-110 pointer-events-none" />
-            <div className="relative py-4 px-6 sm:py-6.5 sm:px-11 md:py-8 md:px-14 rounded-3xl sm:rounded-[32px] bg-gradient-to-b from-amber-50/85 via-white/95 to-white/95 border border-amber-200/75 shadow-sm flex items-center justify-center gap-5 sm:gap-8 md:gap-10">
+            <div className="absolute inset-0 rounded-3xl bg-amber-300/25 blur-xl scale-105 pointer-events-none" />
+            <div className="relative py-3.5 px-5.5 sm:py-5.5 sm:px-9 md:py-6 md:px-11 rounded-3xl bg-gradient-to-b from-amber-50/85 via-white/95 to-white/95 border border-amber-200/70 shadow-xs flex items-center justify-center gap-4 sm:gap-7 md:gap-8">
               <img
-                src="/logo-bulb.png?v=trans-bulb-7"
+                src="/logo-bulb.png?v=trans-bulb-8"
                 alt="IdeaX 創點子燈泡"
-                className="h-19 sm:h-25 md:h-29 lg:h-31 w-auto object-contain shrink-0 drop-shadow-sm group-hover:scale-105 transition-transform"
+                className="h-17 sm:h-22 md:h-26 lg:h-27.5 w-auto object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-transform"
               />
               <img
                 src="/logo-chuangdianzi-text.png"
                 alt="創點子 IdeaX 讓想法發光"
-                className="h-21 sm:h-27 md:h-31 lg:h-33 w-auto object-contain shrink-0 group-hover:scale-102 transition-transform"
+                className="h-19 sm:h-24 md:h-28 lg:h-29.5 w-auto object-contain shrink-0 group-hover:scale-102 transition-transform"
               />
             </div>
           </div>
