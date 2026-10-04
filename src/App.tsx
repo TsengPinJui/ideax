@@ -718,10 +718,33 @@ function MainContent() {
     setActiveTab('create_question');
   };
 
+  // 平滑滾動至「探索問題市場」標題與問題清單區塊（頂部貼齊導覽列下方）
+  const scrollToExploreMarket = () => {
+    const el = document.getElementById('market-grid');
+    if (el) {
+      const navbar = document.querySelector('header');
+      const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 64;
+      const elementTop = el.getBoundingClientRect().top + window.scrollY;
+      const targetY = Math.max(0, elementTop - navbarHeight);
+      window.scrollTo({
+        top: targetY,
+        behavior: 'smooth',
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-50/50 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
       {/* App 開啟淡入淡出畫面 (Splash Screen) */}
-      <SplashScreen minDurationMs={1400} />
+      <SplashScreen
+        minDurationMs={1400}
+        onDismiss={() => {
+          // 起始畫面加載完畢、完全關閉之後，停留 2 秒再平滑滾動到探索問題市場
+          setTimeout(() => {
+            scrollToExploreMarket();
+          }, 2000);
+        }}
+      />
 
       {/* Navigation */}
       <Navbar
@@ -816,19 +839,15 @@ function MainContent() {
               setSelectedCategory={setSelectedCategory}
               onPostClick={() => handleOpenCreateWithType('seek_solution')}
               onPostPainPointClick={() => handleOpenCreateWithType('pain_point')}
-              onExploreClick={() => {
-                const el = document.getElementById('market-grid');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
+              onExploreClick={scrollToExploreMarket}
               onLeaderboardClick={() => {
                 handleSetSortBy('highest_bounty');
-                const el = document.getElementById('market-grid');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                scrollToExploreMarket();
               }}
             />
 
             {/* Questions Market Grid Section */}
-            <div id="market-grid" className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 pb-8 sm:py-10">
+            <div id="market-grid" className="scroll-mt-14 sm:scroll-mt-16 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 pb-8 sm:py-10">
               <div className="space-y-3 sm:space-y-6">
                 {/* Special Zone Banners */}
                 {specialZone === 'pain_points' && (
@@ -1579,19 +1598,11 @@ function MainContent() {
           }
           if (tab === 'explore') {
             if (activeTab === 'explore') {
-              const el = document.getElementById('market-grid');
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth' });
-              } else {
-                window.scrollTo({ top: 500, behavior: 'smooth' });
-              }
+              scrollToExploreMarket();
             } else {
               setActiveTab('explore');
               setTimeout(() => {
-                const el = document.getElementById('market-grid');
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth' });
-                }
+                scrollToExploreMarket();
               }, 60);
             }
             return;

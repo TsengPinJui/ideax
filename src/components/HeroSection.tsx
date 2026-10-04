@@ -455,7 +455,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <button
                 id="highest-bounty-section"
                 onClick={onLeaderboardClick}
-                className={`scroll-mt-14 sm:scroll-mt-20 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-300/80 hover:border-amber-500 hover:shadow-xs transition-all text-center flex flex-col items-center justify-center cursor-pointer group ${
+                className={`scroll-mt-16 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-300/80 hover:border-amber-500 hover:shadow-xs transition-all text-center flex flex-col items-center justify-center cursor-pointer group ${
                   activeMetricsCount % 2 === 1 ? 'col-span-2 sm:col-span-1' : ''
                 }`}
                 title="點擊查看全平台最高懸賞排行榜"

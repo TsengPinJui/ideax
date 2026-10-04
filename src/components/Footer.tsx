@@ -92,7 +92,21 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               </li>
               <li>
                 <button
-                  onClick={() => onNavClick('explore')}
+                  onClick={() => {
+                    onNavClick('explore');
+                    setTimeout(() => {
+                      const el = document.getElementById('market-grid');
+                      if (el) {
+                        const navbar = document.querySelector('header');
+                        const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 64;
+                        const elementTop = el.getBoundingClientRect().top + window.scrollY;
+                        window.scrollTo({
+                          top: Math.max(0, elementTop - navbarHeight),
+                          behavior: 'smooth',
+                        });
+                      }
+                    }, 60);
+                  }}
                   className="hover:text-amber-400 transition-colors cursor-pointer text-left"
                 >
                   探索問題

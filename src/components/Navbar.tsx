@@ -462,23 +462,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           <nav className="hidden md:flex items-center gap-1 text-sm font-semibold">
             <button
               onClick={() => {
-                if (activeTab === 'explore') {
+                const scrollDown = () => {
                   const el = document.getElementById('market-grid');
                   if (el) {
-                    el.scrollIntoView({ behavior: 'smooth' });
-                  } else {
-                    window.scrollTo({ top: 500, behavior: 'smooth' });
+                    const navbar = document.querySelector('header');
+                    const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 64;
+                    const elementTop = el.getBoundingClientRect().top + window.scrollY;
+                    window.scrollTo({
+                      top: Math.max(0, elementTop - navbarHeight),
+                      behavior: 'smooth',
+                    });
                   }
+                };
+                if (activeTab === 'explore') {
+                  scrollDown();
                 } else {
                   setActiveTab('explore');
                   setSelectedQuestion(null);
                   setSelectedSolver(null);
-                  setTimeout(() => {
-                    const el = document.getElementById('market-grid');
-                    if (el) {
-                      el.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  }, 50);
+                  setTimeout(scrollDown, 50);
                 }
               }}
               className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
