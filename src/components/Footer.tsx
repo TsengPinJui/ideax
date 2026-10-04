@@ -47,15 +47,18 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           <div className="col-span-2 lg:col-span-1 space-y-3.5">
             <button
               type="button"
-              onClick={() => onNavClick('explore')}
-              title="回到首頁"
-              className="inline-flex items-center gap-2.5 py-1 hover:opacity-90 transition-opacity text-left cursor-pointer focus:outline-none group"
+              onClick={() => {
+                onNavClick('explore');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              title="回到首頁並滑動至頂部"
+              className="inline-flex items-center gap-2.5 py-1 hover:opacity-90 active:scale-98 transition-all text-left cursor-pointer focus:outline-none group"
             >
-              <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center">
+              <div className="w-12 h-12 sm:w-13 sm:h-13 shrink-0 flex items-center justify-center">
                 <img
-                  src="/logo-bulb.png"
+                  src="/logo-bulb.png?v=trans-bulb-3"
                   alt="創點子燈泡"
-                  className="w-full h-full object-contain drop-shadow-xs group-hover:scale-105 transition-transform rounded-xl"
+                  className="w-full h-full object-contain drop-shadow-xs group-hover:scale-105 transition-transform"
                 />
               </div>
               <IdeaXLogo variant="ideax-6" size="sm" theme="dark" />

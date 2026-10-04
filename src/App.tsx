@@ -1524,12 +1524,17 @@ function MainContent() {
       {/* Footer */}
       <Footer
         onNavClick={(tab, section) => {
+          setSelectedQuestion(null);
+          setSelectedSolver(null);
           if (section) {
             setAboutPageSection(section);
           } else if (tab === 'about') {
             setAboutPageSection('others');
           }
           setActiveTab(tab);
+          setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }, 30);
         }}
         onPostClick={() => setActiveTab('create_question')}
         onSearchTag={(tag) => setSearchQuery(tag)}

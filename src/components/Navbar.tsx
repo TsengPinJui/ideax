@@ -1498,30 +1498,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ) : (
                   <div className="py-1 divide-y divide-stone-100">
 
-                  {/* 若當前登入為測試模擬帳號（非真實普通用戶），在頂部提供一鍵返回管理員身分 */}
-                  {(isTestAccountUserId(currentUser.id) || ['solver-1', 'solver-2', 'user-questioner'].includes(currentUser.id)) && (
-                    <div className="p-2 m-1.5 bg-gradient-to-r from-purple-950 via-stone-900 to-indigo-950 rounded-2xl border border-purple-500/50 text-white shadow-xs space-y-1.5">
-                      <div className="flex items-center justify-between px-1">
-                        <span className="text-[10px] font-black text-amber-300 flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-amber-400" />
-                          <span>測試模擬身分進行中</span>
-                        </span>
-                        <span className="text-[9px] text-purple-300">管理員專用</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const adminUser = availableUsers.find((u) => u.id === 'user-admin' || u.role === 'admin');
-                          if (adminUser) handleSwitchUser(adminUser);
-                        }}
-                        className="w-full py-1.5 px-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-black text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer border border-purple-400/40"
-                      >
-                        <Crown className="w-3.5 h-3.5 text-amber-300" />
-                        <span>👑 一鍵返回管理員身分 (Admin)</span>
-                      </button>
-                    </div>
-                  )}
-
                   {/* 區塊 1：資產與帳務 (全模式配置同步) */}
                   <div className="py-1.5 px-1.5 space-y-0.5">
                     <p className="px-2 pt-0.5 pb-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider">

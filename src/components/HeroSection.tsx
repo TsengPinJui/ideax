@@ -229,16 +229,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         {/* Hero Visual Spotlight with IdeaX - 創點子+IdeaX品牌焦點與關鍵字 */}
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* Official IdeaX Brand Display */}
-          <div className="relative mb-5 group inline-flex max-w-lg mx-auto">
+          <div className="relative mb-6 group inline-flex max-w-2xl mx-auto">
             {/* Ambient backlight ring */}
-            <div className="absolute inset-0 rounded-2xl bg-amber-300/25 blur-lg scale-100 pointer-events-none" />
-            <div className="relative py-3 px-5 sm:py-4 sm:px-8 rounded-2xl bg-gradient-to-b from-amber-50/80 via-white/95 to-white/95 border border-amber-200/60 shadow-xs flex items-center justify-center gap-3 sm:gap-4.5">
+            <div className="absolute inset-0 rounded-3xl bg-amber-300/25 blur-xl scale-105 pointer-events-none" />
+            <div className="relative py-3.5 px-5.5 sm:py-5 sm:px-9 rounded-3xl bg-gradient-to-b from-amber-50/85 via-white/95 to-white/95 border border-amber-200/70 shadow-xs flex items-center justify-center gap-4 sm:gap-6">
               <img
-                src="/logo-bulb.png"
-                alt="IdeaX 燈泡"
-                className="w-11 h-11 sm:w-14 sm:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-transform rounded-xl"
+                src="/logo-bulb.png?v=trans-bulb-6"
+                alt="IdeaX 創點子燈泡"
+                className="h-16.5 sm:h-20 md:h-23 w-auto object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-transform"
               />
-              <IdeaXLogo variant="chuangdianzi-text" size="md" />
+              <img
+                src="/logo-chuangdianzi-text.png"
+                alt="創點子 IdeaX 讓想法發光"
+                className="h-18 sm:h-22 md:h-25 w-auto object-contain shrink-0 group-hover:scale-102 transition-transform"
+              />
             </div>
           </div>
 
