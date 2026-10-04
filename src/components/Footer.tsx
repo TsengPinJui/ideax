@@ -52,7 +52,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             >
               <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center">
                 <img
-                  src="/logo-topleft-3.png"
+                  src="/圓角正向黃底燈泡.png"
                   alt="創點子燈泡"
                   className="w-full h-full object-contain drop-shadow-xs group-hover:scale-105 transition-transform"
                 />

@@ -174,7 +174,7 @@ export const SeoPreviewModal: React.FC<SeoPreviewModalProps> = ({
               <div className="flex flex-col sm:flex-row">
                 <div className="w-full sm:w-44 h-36 sm:h-auto bg-stone-100 shrink-0 flex items-center justify-center overflow-hidden border-b sm:border-b-0 sm:border-r border-stone-200">
                   <img
-                    src="/去背圓角縮圖.png"
+                    src="/圓角正向黃底燈泡.png"
                     alt="IdeaX 縮圖"
                     className="w-full h-full object-contain p-2"
                     referrerPolicy="no-referrer"
