@@ -112,47 +112,47 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/70 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-sm sm:max-w-md bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-stone-200 overflow-hidden space-y-0 text-stone-800 animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden space-y-0 text-stone-800 animate-in zoom-in-95 duration-200">
         
         {/* Header Header Pattern */}
-        <div className="bg-gradient-to-br from-stone-900 via-stone-950 to-purple-950 p-4 sm:p-5 text-white relative">
+        <div className="bg-gradient-to-br from-stone-900 via-stone-950 to-purple-950 p-6 text-white relative">
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-3.5 right-3.5 p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white transition-colors cursor-pointer"
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white transition-colors cursor-pointer"
             title="關閉"
           >
-            <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg overflow-hidden border border-amber-400/40 bg-white/95 p-0.5 flex items-center justify-center shrink-0 shadow-sm">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-400/40 bg-white/95 p-0.5 flex items-center justify-center shrink-0 shadow-sm">
               <img
-                src="/pwa-192x192.png"
+                src="/pwa-192x192.png?v=pwa-app-15"
                 alt="IdeaX創點子"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain rounded-lg"
               />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <IdeaXLogo variant="ideax-6" size="xs" theme="dark" />
-                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                  PWA
+              <div className="flex items-center gap-2">
+                <IdeaXLogo variant="ideax-6" size="sm" theme="dark" />
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  PWA 應用程式
                 </span>
               </div>
-              <p className="text-[11px] text-stone-300 font-bold mt-0.5">高價值問題與解方交易市場</p>
+              <p className="text-xs text-stone-300 font-bold mt-0.5">高價值問題與解決方案交易市場</p>
             </div>
           </div>
 
-          <h3 className="text-base sm:text-lg font-black text-white">安裝 IdeaX App 到主畫面</h3>
-          <p className="text-xs text-stone-300/90 leading-relaxed mt-0.5">
-            享受獨立全螢幕、秒速開啟、無瀏覽器導航列干擾！
+          <h3 className="text-lg font-black text-white">安裝 IdeaX創點子 App 到主畫面</h3>
+          <p className="text-xs text-stone-300/90 leading-relaxed mt-1">
+            享受獨立全螢幕視窗、秒速開啟、無廣告列干擾的原生 App 體驗！
           </p>
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-5 space-y-4 max-h-[72vh] overflow-y-auto">
+        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           
           {/* 原生觸發安裝按鈕 (若支援及觸發) */}
           {deferredPrompt ? (
