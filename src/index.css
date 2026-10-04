@@ -1,7 +1,53 @@
 @import "tailwindcss";
 
-html {
-  scrollbar-gutter: stable;
+/* 僅在桌面大螢幕保持穩定滾動條，避免行動裝置產生多餘寬度與水平滑動 */
+@media (min-width: 1024px) {
+  html {
+    scrollbar-gutter: stable;
+  }
+}
+
+/* 全域防止水平溢出與左右晃動，鎖定手機版面穩定性 */
+html,
+body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  -webkit-overflow-scrolling: touch;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* 行動版與手機直式觸控防亂滑設定 */
+@media (max-width: 768px) {
+  html, body {
+    touch-action: pan-y;
+  }
+}
+
+/* PWA / 獨立 App 專屬沈浸式體驗優化：徹底固定外層視窗，杜絕空白彈跳與非預期拖曳 */
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  html, body {
+    overscroll-behavior-y: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  /* 允許表單輸入框及文章內文正常進行文字選取與編輯 */
+  input, textarea, [contenteditable="true"], .selectable-text {
+    user-select: text;
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
+  }
 }
 
 @keyframes splash-progress {

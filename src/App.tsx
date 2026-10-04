@@ -718,38 +718,10 @@ function MainContent() {
     setActiveTab('create_question');
   };
 
-  // 手機版起始自動平滑滾動至「當前最高賞金」卡片（頂部完整貼齊導覽列下方，其餘數據在上方上滑可見）
-  const scrollToHighestBounty = (smooth = true) => {
-    if (typeof window === 'undefined') return;
-    const isMobile = window.innerWidth < 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (!isMobile) return;
-
-    const el = document.getElementById('highest-bounty-section');
-    if (el) {
-      const navEl = document.querySelector('header') || document.querySelector('nav');
-      const navHeight = navEl ? navEl.offsetHeight : 54;
-      const elementPosition = el.getBoundingClientRect().top + window.pageYOffset;
-      const offsetPosition = elementPosition - navHeight - 6;
-      window.scrollTo({
-        top: Math.max(0, offsetPosition),
-        behavior: smooth ? 'smooth' : 'auto',
-      });
-    }
-  };
-
-  useEffect(() => {
-    const timer1 = setTimeout(() => scrollToHighestBounty(true), 250);
-    const timer2 = setTimeout(() => scrollToHighestBounty(true), 600);
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
-  }, []);
-
   return (
-    <div className="min-h-screen bg-stone-50/50 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-50/50 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
       {/* App 開啟淡入淡出畫面 (Splash Screen) */}
-      <SplashScreen minDurationMs={1400} onDismiss={scrollToHighestBounty} />
+      <SplashScreen minDurationMs={1400} />
 
       {/* Navigation */}
       <Navbar
@@ -1537,6 +1509,18 @@ function MainContent() {
         </div>
       )}
 
+      {/* 網頁版左側羅盤浮動懸停導覽入口 */}
+      <FloatingOnboardingCompass
+        isVisible={!isOnboardingOpen}
+        onStartOnboarding={() => {
+          setIsOnboardingFromAbout(true);
+          setSelectedQuestion(null);
+          setSelectedSolver(null);
+          setActiveTab('explore');
+          setIsOnboardingOpen(true);
+        }}
+      />
+
       {/* Footer */}
       <Footer
         onNavClick={(tab, section) => {
@@ -1578,36 +1562,14 @@ function MainContent() {
             setActiveTab('my_projects');
             return;
           }
-          setActiveTab(tab);
-          if (tab === 'explore') {
-            setTimeout(() => {
-              const el = document.getElementById('market-grid');
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth' });
-              }
-            }, 60);
+          if (tab === 'explore' && activeTab === 'explore') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
           }
+          setActiveTab(tab);
         }}
         onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
       />
-
-      {/* 頁面右下角懸浮按鈕群 (圓形教學提示鍵移到下載鍵上方) */}
-      <div className="fixed right-3 bottom-20 sm:bottom-6 z-40 flex flex-col items-center gap-2.5 pointer-events-none select-none">
-        {/* 上方：圓形教學提示鍵 (羅盤導覽) */}
-        <FloatingOnboardingCompass
-          isVisible={!isOnboardingOpen}
-          onStartOnboarding={() => {
-            setIsOnboardingFromAbout(true);
-            setSelectedQuestion(null);
-            setSelectedSolver(null);
-            setActiveTab('explore');
-            setIsOnboardingOpen(true);
-          }}
-        />
-
-        {/* 下方：PWA 下載提示懸浮圓形按鈕 */}
-        <MobilePwaDownloadWidget />
-      </div>
 
       {/* PWA 安裝與下載指引彈窗 */}
       <PwaInstallModal
