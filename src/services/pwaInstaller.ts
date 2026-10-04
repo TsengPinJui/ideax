@@ -38,7 +38,7 @@ export function downloadAppLauncherFile() {
   </script>
 </head>
 <body style="margin:0; background:#f59e0b; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
-  <img src="${origin}/pwa-192x192.png" style="width:96px;height:96px;border-radius:20px;box-shadow:0 8px 24px rgba(0,0,0,0.15);" alt="IdeaX創點子">
+  <img src="${origin}/pwa-192x192.png" style="width:56px;height:56px;border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,0.15);" alt="IdeaX創點子">
   <p style="margin-top:16px;font-weight:bold;font-size:16px;color:#18181b;">正在啟動 IdeaX創點子...</p>
   <a href="${origin}/" style="color:#78350f; text-decoration:underline; font-size:13px; margin-top:8px;">點此直接進入平台</a>
 </body>

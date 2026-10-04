@@ -3,6 +3,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  FacebookAuthProvider,
+  sendPasswordResetEmail,
+  sendEmailVerification,
   signOut,
   RecaptchaVerifier,
   signInWithPhoneNumber,
@@ -13,7 +16,7 @@ import { auth } from './firebase';
 
 export async function loginWithFirebaseEmail(email: string, password: string): Promise<FirebaseUser> {
   try {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
     return cred.user;
   } catch (error: any) {
     console.warn('Firebase email login error:', error);
@@ -30,7 +33,7 @@ export async function loginWithFirebaseEmail(email: string, password: string): P
 
 export async function registerWithFirebaseEmail(email: string, password: string): Promise<FirebaseUser> {
   try {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
     return cred.user;
   } catch (error: any) {
     console.warn('Firebase email register error:', error);
@@ -42,6 +45,20 @@ export async function registerWithFirebaseEmail(email: string, password: string)
       throw new Error('電子郵件格式不正確！');
     }
     throw new Error(error.message || '註冊失敗，請稍後再試');
+  }
+}
+
+export async function sendFirebasePasswordReset(email: string): Promise<void> {
+  try {
+    await sendPasswordResetEmail(auth, email.trim());
+  } catch (error: any) {
+    console.warn('Firebase password reset error:', error);
+    if (error.code === 'auth/user-not-found') {
+      throw new Error('找不到此電子郵件註冊的帳號，請確認後再試！');
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error('電子郵件格式不正確！');
+    }
+    throw new Error(error.message || '發送密碼重設信失敗，請稍後再試');
   }
 }
 
@@ -59,6 +76,28 @@ export async function loginWithFirebaseGoogle(): Promise<FirebaseUser> {
       throw new Error('登入彈出視窗已被瀏覽器封鎖，請允許快顯視窗後重試！');
     }
     throw new Error(error.message || 'Google 登入失敗');
+  }
+}
+
+export async function loginWithFirebaseFacebook(): Promise<FirebaseUser> {
+  try {
+    const provider = new FacebookAuthProvider();
+    provider.addScope('email');
+    provider.addScope('public_profile');
+    const cred = await signInWithPopup(auth, provider);
+    return cred.user;
+  } catch (error: any) {
+    console.warn('Firebase Facebook login error:', error);
+    if (error.code === 'auth/account-exists-with-different-credential') {
+      throw new Error('此 Facebook 帳號綁定的 Email 已在平台使用其他方式（例如 Google 或密碼）註冊，請使用原方式登入！');
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error('您已取消 Facebook 登入視窗。');
+    } else if (error.code === 'auth/popup-blocked') {
+      throw new Error('登入彈出視窗已被瀏覽器封鎖，請允許快顯視窗後重試！');
+    } else if (error.code === 'auth/operation-not-allowed') {
+      throw new Error('Firebase 控制台尚未啟用「Facebook」提供者，請於 Firebase Console > Authentication > Sign-in method 填寫 Facebook App ID & App Secret 啟用。');
+    }
+    throw new Error(error.message || 'Facebook 登入失敗');
   }
 }
 
@@ -95,7 +134,7 @@ export async function loginWithFirebasePhone(
     } else if (error.code === 'auth/missing-phone-number') {
       throw new Error('請輸入手機號碼！');
     } else if (error.code === 'auth/quota-exceeded') {
-      throw new Error('簡訊發送額度已滿，請稍後再試或使用 Google / 密碼登入');
+      throw new Error('簡訊發送額度已滿，請稍後再試或使用 Google / Facebook / 密碼登入');
     } else if (error.code === 'auth/operation-not-allowed') {
       throw new Error('Firebase 控制台尚未啟用「電話 (Phone)」提供者，請於 Firebase Console > Authentication > Sign-in method 開啟電話登入');
     } else if (error.code === 'auth/captcha-check-failed') {

@@ -535,8 +535,8 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
 
             <div className="relative z-10 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-amber-400/50 bg-white p-1.5 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden border border-amber-400/40 bg-white/95 p-1 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/10">
                     <img
                       src="/pwa-192x192.png"
                       alt="IdeaX創點子"

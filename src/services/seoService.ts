@@ -118,7 +118,7 @@ export function updateSEOForQuestion(question: Question | null, answers: Answer[
  * Returns the direct canonical share URL for a question.
  */
 export function getQuestionShareUrl(questionId: string): string {
-  if (typeof window === 'undefined') return `https://ideax.tw/?q=${questionId}`;
+  if (typeof window === 'undefined') return `https://www.ideax.tw/?q=${questionId}`;
   const base = `${window.location.origin}${window.location.pathname}`.replace(/\/+$/, '');
   return `${base}/?q=${questionId}`;
 }

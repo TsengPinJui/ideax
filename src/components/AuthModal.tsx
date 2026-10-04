@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -25,6 +25,8 @@ import {
   Compass,
   KeyRound,
   Check,
+  Smartphone,
+  Send,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
@@ -34,7 +36,13 @@ import {
   loginWithFirebaseEmail,
   registerWithFirebaseEmail,
   loginWithFirebaseGoogle,
+  loginWithFirebaseFacebook,
+  loginWithFirebasePhone,
+  verifyFirebasePhoneCode,
+  sendFirebasePasswordReset,
+  createRecaptchaVerifier,
 } from '../services/firebaseAuth';
+import { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth';
 import { syncUserToFirestore, getUserFromFirestore } from '../services/firestoreSync';
 import { recordUserBoard, recordUserSpecialZone } from '../services/recommendationService';
 
@@ -106,6 +114,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot_password'>(initialMode);
 
+  // Login method tabs: 'password' = Account/Email & Password, 'sms' = Phone SMS Login
+  const [loginMethod, setLoginMethod] = useState<'password' | 'sms'>(
+    initialMethod === 'phone' ? 'sms' : 'password'
+  );
+
+  // Phone SMS Login states
+  const [smsPhone, setSmsPhone] = useState('');
+  const [smsCode, setSmsCode] = useState('');
+  const [smsConfirmation, setSmsConfirmation] = useState<ConfirmationResult | null>(null);
+  const [isSmsSending, setIsSmsSending] = useState(false);
+  const [smsCountdown, setSmsCountdown] = useState(0);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+
   // Login inputs (Username / Phone / Email & Password)
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -117,7 +138,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [regStep, setRegStep] = useState<1 | 2>(1);
 
   // Step 1: Account registration fields
-  const [regAuthProvider, setRegAuthProvider] = useState<'email' | 'google'>('email');
+  const [regAuthProvider, setRegAuthProvider] = useState<'email' | 'google' | 'facebook' | 'phone'>('email');
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
@@ -134,13 +155,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [regIdNumber, setRegIdNumber] = useState('');
   const [regInterests, setRegInterests] = useState<string[]>(['創新創業', '資訊科技']);
 
-  // Forgot password fields
+  // Forgot password fields & method ('email' | 'sms')
+  const [forgotMethod, setForgotMethod] = useState<'email' | 'sms'>('email');
   const [forgotIdentifier, setForgotIdentifier] = useState('');
   const [forgotSmsCode, setForgotSmsCode] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
   const [isForgotCodeSent, setIsForgotCodeSent] = useState(false);
   const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
+
+  // SMS countdown timer
+  useEffect(() => {
+    let timer: any = null;
+    if (smsCountdown > 0) {
+      timer = setInterval(() => {
+        setSmsCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [smsCountdown]);
 
   // Step 2: Personal Profile & Survey
   const [gender, setGender] = useState<'male' | 'female' | 'other' | 'undisclosed'>('male');
@@ -547,6 +582,175 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  // Facebook Fast Login
+  const handleFacebookAuth = async () => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setIsLoading(true);
+    try {
+      const fbUser = await loginWithFirebaseFacebook();
+      const firestoreUser = await getUserFromFirestore(fbUser.uid);
+      const existing =
+        firestoreUser ||
+        availableUsers.find(
+          (u) =>
+            u.id === fbUser.uid ||
+            (fbUser.email && u.email?.toLowerCase() === fbUser.email.toLowerCase())
+        );
+      if (existing) {
+        const checkRes = checkUserDeactivationStatus(existing);
+        if (!checkRes.canLogin) {
+          setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已註銷。'));
+          return;
+        }
+        const effectiveUser = checkRes.restoredUser || existing;
+        setCurrentUser(effectiveUser);
+        setSuccessMsg('Facebook 登入成功。');
+        setTimeout(() => onClose(), 400);
+      } else {
+        // 新用戶：設置 Facebook 授權資訊，引導進入身分選擇與專屬後續程序
+        setAuthUid(fbUser.uid);
+        setRegAuthProvider('facebook');
+        setRegName(fbUser.displayName || 'Facebook 用戶');
+        setRegRealLegalName(fbUser.displayName || '');
+        setRegEmail(fbUser.email || '');
+        setRegUsername(fbUser.email ? fbUser.email.split('@')[0] : `fb_${fbUser.uid.slice(0, 8)}`);
+        setMode('register');
+        setRegStep(1);
+        setSuccessMsg('Facebook 授權成功！請選擇您的平台身分以完成註冊程序。');
+      }
+    } catch (err: any) {
+      console.warn('Facebook auth error:', err);
+      setErrorMsg('Facebook 登入失敗：' + (err.message || '請確認網路連線或稍後再試。'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper to get or create reCAPTCHA verifier for Phone Auth
+  const getOrCreateRecaptcha = (containerId: string) => {
+    if (recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current.clear();
+      } catch (e) {
+        // ignore
+      }
+    }
+    const verifier = createRecaptchaVerifier(containerId);
+    recaptchaVerifierRef.current = verifier;
+    return verifier;
+  };
+
+  // Send SMS verification code for Phone Login
+  const handleSendSmsLogin = async () => {
+    const raw = smsPhone.trim();
+    if (!raw) {
+      setErrorMsg('請輸入手機號碼！');
+      return;
+    }
+    const clean = raw.replace(/[\s-]/g, '');
+    if (!clean.startsWith('09') && !clean.startsWith('+') && clean.length < 9) {
+      setErrorMsg('手機號碼格式不正確，請輸入台灣手機 09xx 或包含國碼 +886 的國際門號');
+      return;
+    }
+
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setIsSmsSending(true);
+
+    try {
+      const verifier = getOrCreateRecaptcha('recaptcha-sms-container');
+      const confirmationResult = await loginWithFirebasePhone(raw, verifier);
+      setSmsConfirmation(confirmationResult);
+      setSmsCountdown(60);
+      setSuccessMsg('驗證碼簡訊已發送至您的手機，請於 60 秒內輸入！');
+    } catch (err: any) {
+      console.warn('Firebase SMS send error:', err);
+      setErrorMsg('發送簡訊驗證碼失敗：' + (err.message || '請確認門號格式'));
+    } finally {
+      setIsSmsSending(false);
+    }
+  };
+
+  // Confirm SMS verification code for Phone Login
+  const handleVerifySmsLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!smsCode.trim() || smsCode.trim().length < 6) {
+      setErrorMsg('請輸入完整的 6 位數簡訊驗證碼！');
+      return;
+    }
+
+    if (!smsConfirmation) {
+      setErrorMsg('請先點擊發送簡訊驗證碼！');
+      return;
+    }
+
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setIsLoading(true);
+
+    try {
+      const fbUser = await verifyFirebasePhoneCode(smsConfirmation, smsCode.trim());
+      const cleanPhone = smsPhone.trim().replace(/[\s-]/g, '');
+      const firestoreUser = await getUserFromFirestore(fbUser.uid);
+      const existing =
+        firestoreUser ||
+        availableUsers.find(
+          (u) =>
+            u.id === fbUser.uid ||
+            (u.phone && u.phone.replace(/[\s-]/g, '') === cleanPhone)
+        );
+
+      if (existing) {
+        const checkRes = checkUserDeactivationStatus(existing);
+        if (!checkRes.canLogin) {
+          setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已完成註銷。'));
+          return;
+        }
+        const effectiveUser = checkRes.restoredUser || existing;
+        setCurrentUser(effectiveUser);
+        setSuccessMsg('手機簡訊登入成功。');
+        setTimeout(() => onClose(), 400);
+      } else {
+        // 新用戶手機簡訊授權成功，導向填寫身分
+        setAuthUid(fbUser.uid);
+        setRegPhone(cleanPhone);
+        setRegAuthProvider('phone');
+        setRegName(`用戶_${cleanPhone.slice(-4)}`);
+        setRegUsername(`phone_${cleanPhone.slice(-6)}`);
+        setMode('register');
+        setRegStep(1);
+        setSuccessMsg('手機驗證成功！請填寫暱稱並選擇平台身分以完成註冊。');
+      }
+    } catch (err: any) {
+      console.warn('Firebase SMS verify error:', err);
+      setErrorMsg('驗證碼確認失敗：' + (err.message || '代碼不正確或已過期，請重新發送！'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Send Firebase Email Password Reset
+  const handleSendEmailReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = forgotIdentifier.trim();
+    if (!email || !email.includes('@')) {
+      setErrorMsg('請輸入有效的電子郵件地址！');
+      return;
+    }
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setIsLoading(true);
+    try {
+      await sendFirebasePasswordReset(email);
+      setSuccessMsg(`已成功發送密碼重設信至 ${email}，請至信箱點擊連結設定新密碼！`);
+    } catch (err: any) {
+      setErrorMsg('發送失敗：' + (err.message || '請確認 Email 是否正確'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Step 1: Advance to Step 2 in Registration
   const handleStep1Next = (e: React.FormEvent) => {
     e.preventDefault();
@@ -947,149 +1151,263 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* ============================================================== */}
-        {/* MODE 1: LOGIN (滿版簡潔版面，舒展大氣，無表情符號、欄位內亮出規則) */}
+        {/* MODE 1: LOGIN (支援電郵/密碼、手機簡訊驗證碼、Google與FB登入) */}
         {/* ============================================================== */}
         {mode === 'login' && (
-          <div className="space-y-6 sm:space-y-7 w-full">
-            <form onSubmit={handleAccountPasswordLogin} className="space-y-4 sm:space-y-4.5">
-              {/* 1. 帳號輸入框 (在欄位內亮出帳號規則) */}
-              <div
-                className={`rounded-2xl border transition-all ${
-                  isLoginIdentifierInvalid
-                    ? 'border-rose-400 bg-rose-50/40 text-rose-950'
-                    : 'border-stone-200 bg-[#f0f4f8] focus-within:border-amber-500 focus-within:bg-white'
-                }`}
-              >
-                <div className="relative flex items-center">
-                  <div className={`pl-4 pr-2 ${isLoginIdentifierInvalid ? 'text-rose-500' : 'text-stone-400'}`}>
-                    <UserIcon className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={loginIdentifier}
-                    onChange={(e) => {
-                      setLoginIdentifier(e.target.value);
-                      if (errorMsg) setErrorMsg(null);
-                    }}
-                    placeholder="輸入帳號 / 手機號碼 / Email"
-                    className="w-full pr-4 py-3.5 sm:py-4 bg-transparent text-stone-900 placeholder:text-stone-400 text-sm font-medium outline-none"
-                  />
-                </div>
-                {isLoginIdentifierInvalid && (
-                  <div className="px-4 pb-2.5 text-[11px] text-rose-600 font-medium border-t border-rose-200/60 pt-1.5 flex items-center justify-between animate-in fade-in">
-                    <span>帳號規則：4 ~ 20 位英數字或底線，或輸入正確手機號碼 / Email</span>
-                  </div>
-                )}
-              </div>
-
-              {/* 2. 密碼輸入框 (在欄位內亮出密碼規則) */}
-              <div
-                className={`rounded-2xl border transition-all ${
-                  isLoginPasswordInvalid
-                    ? 'border-rose-400 bg-rose-50/40 text-rose-950'
-                    : 'border-stone-200 bg-[#f0f4f8] focus-within:border-amber-500 focus-within:bg-white'
-                }`}
-              >
-                <div className="relative flex items-center">
-                  <div className={`pl-4 pr-2 ${isLoginPasswordInvalid ? 'text-rose-500' : 'text-stone-400'}`}>
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={loginPassword}
-                    onChange={(e) => {
-                      setLoginPassword(e.target.value);
-                      if (errorMsg) setErrorMsg(null);
-                    }}
-                    placeholder="輸入密碼"
-                    className="w-full pr-10 py-3.5 sm:py-4 bg-transparent text-stone-900 placeholder:text-stone-400 text-sm font-medium outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="pr-4 text-stone-400 hover:text-stone-700 cursor-pointer"
-                    title={showPassword ? '隱藏密碼' : '顯示密碼'}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {isLoginPasswordInvalid && (
-                  <div className="px-4 pb-2.5 text-[11px] text-rose-600 font-medium border-t border-rose-200/60 pt-1.5 flex items-center justify-between animate-in fade-in">
-                    <span>密碼錯誤（需為 6 ~ 20 位英數組合）</span>
-                  </div>
-                )}
-              </div>
-
-              {/* 3. 保持登入 ＋ 右側 忘記密碼 / 快速註冊 */}
-              <div className="flex items-center justify-between pt-1 px-0.5">
-                <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 accent-rose-600 cursor-pointer"
-                  />
-                  <span className="text-xs font-bold text-stone-600">
-                    保持登入
-                  </span>
-                </label>
-
-                <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('forgot_password');
-                      setErrorMsg(null);
-                      setSuccessMsg(null);
-                    }}
-                    className="hover:text-rose-600 transition-colors cursor-pointer"
-                  >
-                    忘記密碼
-                  </button>
-                  <span className="text-stone-300 font-normal">|</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('register');
-                      setRegStep(1);
-                      setErrorMsg(null);
-                      setSuccessMsg(null);
-                    }}
-                    className="hover:text-rose-600 transition-colors cursor-pointer font-black text-rose-600"
-                  >
-                    快速註冊
-                  </button>
-                </div>
-              </div>
-
-              {/* 4. 主要登入按鈕 */}
+          <div className="space-y-5 sm:space-y-6 w-full">
+            {/* 登入方式切換分頁標籤 */}
+            <div className="grid grid-cols-2 p-1 bg-stone-100 rounded-2xl border border-stone-200">
               <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3.5 sm:py-4 rounded-2xl bg-rose-600 hover:bg-rose-500 active:scale-[0.99] text-white font-black text-sm shadow-md transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+                type="button"
+                onClick={() => {
+                  setLoginMethod('password');
+                  setErrorMsg(null);
+                }}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  loginMethod === 'password'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80 font-black'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
               >
-                {isLoading ? '登入中...' : '登入'}
+                <Mail className="w-3.5 h-3.5 text-amber-600" />
+                <span>帳號 / 電郵密碼</span>
               </button>
-            </form>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMethod('sms');
+                  setErrorMsg(null);
+                }}
+                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  loginMethod === 'sms'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80 font-black'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <Phone className="w-3.5 h-3.5 text-rose-600" />
+                <span>手機簡訊驗證碼</span>
+              </button>
+            </div>
 
-            {/* 6. 分隔線：或 */}
-            <div className="flex items-center gap-3 pt-3">
+            {/* 登入表單：依切換顯示電郵密碼或手機簡訊驗證 */}
+            {loginMethod === 'sms' ? (
+              <form onSubmit={handleVerifySmsLogin} className="space-y-4 sm:space-y-4.5">
+                {/* 1. 手機號碼輸入 + 發送簡訊按鈕 */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-stone-700">
+                      手機門號 <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-stone-400">支援台灣手機 09xx 或 +886</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1 flex items-center rounded-2xl border border-stone-200 bg-[#f0f4f8] focus-within:border-amber-500 focus-within:bg-white transition-all">
+                      <div className="pl-3.5 pr-2 text-stone-400">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="tel"
+                        required
+                        value={smsPhone}
+                        onChange={(e) => {
+                          setSmsPhone(e.target.value);
+                          if (errorMsg) setErrorMsg(null);
+                        }}
+                        placeholder="例如 0912-345-678"
+                        className="w-full pr-3 py-3.5 bg-transparent text-stone-900 placeholder:text-stone-400 text-sm font-medium outline-none"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSmsSending || smsCountdown > 0 || !smsPhone.trim()}
+                      onClick={handleSendSmsLogin}
+                      className="px-3.5 sm:px-4 rounded-2xl bg-amber-500 hover:bg-amber-600 disabled:bg-stone-200 text-white font-black text-xs shrink-0 transition-all cursor-pointer disabled:cursor-not-allowed shadow-2xs active:scale-[0.99]"
+                    >
+                      {isSmsSending ? '發送中...' : smsCountdown > 0 ? `${smsCountdown} 秒` : '發送簡訊'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. 6 位數簡訊驗證碼 */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-stone-700">
+                      簡訊驗證碼 <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-stone-400">請輸入 6 位數字</span>
+                  </div>
+                  <div className="relative flex items-center rounded-2xl border border-stone-200 bg-[#f0f4f8] focus-within:border-amber-500 focus-within:bg-white transition-all">
+                    <div className="pl-3.5 pr-2 text-stone-400">
+                      <KeyRound className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      value={smsCode}
+                      onChange={(e) => {
+                        setSmsCode(e.target.value.replace(/\D/g, ''));
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      placeholder="請輸入簡訊 6 位代碼"
+                      className="w-full pr-4 py-3.5 bg-transparent text-stone-900 placeholder:text-stone-400 text-sm font-mono tracking-widest outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* reCAPTCHA 隱藏容器 */}
+                <div id="recaptcha-sms-container"></div>
+
+                {/* 簡訊登入按鈕 */}
+                <button
+                  type="submit"
+                  disabled={isLoading || !smsCode || smsCode.length < 6}
+                  className="w-full py-3.5 sm:py-4 rounded-2xl bg-rose-600 hover:bg-rose-500 active:scale-[0.99] text-white font-black text-sm shadow-md transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+                >
+                  {isLoading ? '驗證中...' : '確認驗證並登入'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleAccountPasswordLogin} className="space-y-4 sm:space-y-4.5">
+                {/* 1. 帳號輸入框 (在欄位內亮出帳號規則) */}
+                <div
+                  className={`rounded-2xl border transition-all ${
+                    isLoginIdentifierInvalid
+                      ? 'border-rose-400 bg-rose-50/40 text-rose-950'
+                      : 'border-stone-200 bg-[#f0f4f8] focus-within:border-amber-500 focus-within:bg-white'
+                  }`}
+                >
+                  <div className="relative flex items-center">
+                    <div className={`pl-4 pr-2 ${isLoginIdentifierInvalid ? 'text-rose-500' : 'text-stone-400'}`}>
+                      <UserIcon className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={loginIdentifier}
+                      onChange={(e) => {
+                        setLoginIdentifier(e.target.value);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      placeholder="輸入帳號 / 手機號碼 / Email"
+                      className="w-full pr-4 py-3.5 sm:py-4 bg-transparent text-stone-900 placeholder:text-stone-400 text-sm font-medium outline-none"
+                    />
+                  </div>
+                  {isLoginIdentifierInvalid && (
+                    <div className="px-4 pb-2.5 text-[11px] text-rose-600 font-medium border-t border-rose-200/60 pt-1.5 flex items-center justify-between animate-in fade-in">
+                      <span>帳號規則：4 ~ 20 位英數字或底線，或輸入正確手機號碼 / Email</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. 密碼輸入框 (在欄位內亮出密碼規則) */}
+                <div
+                  className={`rounded-2xl border transition-all ${
+                    isLoginPasswordInvalid
+                      ? 'border-rose-400 bg-rose-50/40 text-rose-950'
+                      : 'border-stone-200 bg-[#f0f4f8] focus-within:border-amber-500 focus-within:bg-white'
+                  }`}
+                >
+                  <div className="relative flex items-center">
+                    <div className={`pl-4 pr-2 ${isLoginPasswordInvalid ? 'text-rose-500' : 'text-stone-400'}`}>
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={loginPassword}
+                      onChange={(e) => {
+                        setLoginPassword(e.target.value);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      placeholder="輸入密碼"
+                      className="w-full pr-10 py-3.5 sm:py-4 bg-transparent text-stone-900 placeholder:text-stone-400 text-sm font-medium outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="pr-4 text-stone-400 hover:text-stone-700 cursor-pointer"
+                      title={showPassword ? '隱藏密碼' : '顯示密碼'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {isLoginPasswordInvalid && (
+                    <div className="px-4 pb-2.5 text-[11px] text-rose-600 font-medium border-t border-rose-200/60 pt-1.5 flex items-center justify-between animate-in fade-in">
+                      <span>密碼錯誤（需為 6 ~ 20 位英數組合）</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. 保持登入 ＋ 右側 忘記密碼 / 快速註冊 */}
+                <div className="flex items-center justify-between pt-1 px-0.5">
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 accent-rose-600 cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-stone-600">
+                      保持登入
+                    </span>
+                  </label>
+
+                  <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('forgot_password');
+                        setErrorMsg(null);
+                        setSuccessMsg(null);
+                      }}
+                      className="hover:text-rose-600 transition-colors cursor-pointer"
+                    >
+                      忘記密碼
+                    </button>
+                    <span className="text-stone-300 font-normal">|</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('register');
+                        setRegStep(1);
+                        setErrorMsg(null);
+                        setSuccessMsg(null);
+                      }}
+                      className="hover:text-rose-600 transition-colors cursor-pointer font-black text-rose-600"
+                    >
+                      快速註冊
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. 主要登入按鈕 */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3.5 sm:py-4 rounded-2xl bg-rose-600 hover:bg-rose-500 active:scale-[0.99] text-white font-black text-sm shadow-md transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+                >
+                  {isLoading ? '登入中...' : '登入'}
+                </button>
+              </form>
+            )}
+
+            {/* 6. 分隔線：或使用第三方服務登入 */}
+            <div className="flex items-center gap-3 pt-2">
               <div className="flex-1 h-px bg-stone-200" />
-              <span className="text-xs text-stone-400 font-bold">或</span>
+              <span className="text-xs text-stone-400 font-bold">或使用第三方帳號登入</span>
               <div className="flex-1 h-px bg-stone-200" />
             </div>
 
-            {/* 7. Google 快速登入 */}
-            <div className="pt-1 flex flex-col items-center">
+            {/* 7. 第三方快速登入 (Google & Facebook) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={handleGoogleAuth}
-                className="w-full py-3 sm:py-3.5 px-4 rounded-2xl border border-stone-200 hover:border-amber-400 hover:bg-stone-50 bg-white flex items-center justify-center gap-3 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.99] group"
+                className="w-full py-3 px-3 rounded-2xl border border-stone-200 hover:border-amber-400 hover:bg-stone-50 bg-white flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.99] group"
                 title="使用 Google 帳號登入"
               >
-                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -1107,7 +1425,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                <span className="text-xs sm:text-sm font-bold text-stone-700 group-hover:text-stone-900">使用 Google 帳號登入</span>
+                <span className="text-xs font-bold text-stone-700 group-hover:text-stone-900">Google 登入</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleFacebookAuth}
+                className="w-full py-3 px-3 rounded-2xl border border-stone-200 hover:border-blue-400 hover:bg-blue-50/40 bg-white flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.99] group"
+                title="使用 Facebook 帳號登入"
+              >
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#1877F2">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                <span className="text-xs font-bold text-stone-700 group-hover:text-blue-900">Facebook 登入</span>
               </button>
             </div>
 
@@ -1202,6 +1532,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
                     <span>Google 帳號授權成功（{regEmail || regName}），請選擇您的平台身分</span>
+                  </div>
+                )}
+                {regAuthProvider === 'facebook' && (
+                  <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-300 text-blue-950 text-xs font-bold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#1877F2] animate-pulse" />
+                    <span>Facebook 帳號授權成功（{regName}），請選擇您的平台身分</span>
+                  </div>
+                )}
+                {regAuthProvider === 'phone' && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 text-xs font-bold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                    <span>手機簡訊驗證成功（{regPhone}），請設定暱稱並選擇您的平台身分</span>
                   </div>
                 )}
 
@@ -1812,7 +2154,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* ============================================================== */}
-        {/* MODE 3: FORGOT PASSWORD                                         */}
+        {/* MODE 3: FORGOT PASSWORD (支援 Firebase 電郵重設信與手機簡訊驗證) */}
         {/* ============================================================== */}
         {mode === 'forgot_password' && (
           <div className="space-y-4 pt-1 flex-1 flex flex-col justify-center my-auto">
@@ -1834,80 +2176,149 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleForgotPasswordSubmit} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
-                  帳號 / 手機號碼 / Email
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={forgotIdentifier}
-                  onChange={(e) => setForgotIdentifier(e.target.value)}
-                  placeholder="輸入註冊帳號或手機"
-                  className="w-full px-3.5 py-3 bg-[#f0f4f8] focus:bg-white text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none"
-                />
-              </div>
+            {/* 重設方式切換 */}
+            <div className="grid grid-cols-2 p-1 bg-stone-100 rounded-xl border border-stone-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotMethod('email');
+                  setErrorMsg(null);
+                }}
+                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                  forgotMethod === 'email'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80 font-black'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <Mail className="w-3.5 h-3.5 text-amber-600" />
+                <span>電郵重設信件</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotMethod('sms');
+                  setErrorMsg(null);
+                }}
+                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                  forgotMethod === 'sms'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80 font-black'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <Phone className="w-3.5 h-3.5 text-rose-600" />
+                <span>簡訊驗證重設</span>
+              </button>
+            </div>
 
-              {isForgotCodeSent && (
-                <>
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">驗證碼</label>
+            {forgotMethod === 'email' ? (
+              <form onSubmit={handleSendEmailReset} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    註冊電子郵件 (Email) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative flex items-center rounded-2xl border border-stone-200 bg-[#f0f4f8] focus-within:border-amber-500 focus-within:bg-white transition-all">
+                    <div className="pl-3.5 pr-2 text-stone-400">
+                      <Mail className="w-4 h-4" />
+                    </div>
                     <input
-                      type="text"
+                      type="email"
                       required
-                      value={forgotSmsCode}
-                      onChange={(e) => setForgotSmsCode(e.target.value)}
-                      placeholder="輸入驗證碼（測試環境：123456）"
-                      className="w-full px-3 py-2.5 bg-amber-50/50 border border-amber-300 text-xs rounded-xl text-center font-mono tracking-widest outline-none"
+                      value={forgotIdentifier}
+                      onChange={(e) => setForgotIdentifier(e.target.value)}
+                      placeholder="輸入您註冊的 Email"
+                      className="w-full pr-3 py-3 bg-transparent text-xs text-stone-900 placeholder:text-stone-400 outline-none font-medium"
                     />
                   </div>
+                  <p className="text-[11px] text-stone-400 mt-1 pl-1">
+                    系統將透過 Firebase 發送安全密碼重設連結至您的信箱。
+                  </p>
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      設定新密碼 (6~20 位英數字)
-                    </label>
-                    <div className="relative">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isLoading ? '發送中...' : '發送 Firebase 密碼重設信'}</span>
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleForgotPasswordSubmit} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    手機門號或註冊帳號 <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={forgotIdentifier}
+                    onChange={(e) => setForgotIdentifier(e.target.value)}
+                    placeholder="輸入註冊帳號或手機"
+                    className="w-full px-3.5 py-3 bg-[#f0f4f8] focus:bg-white text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none"
+                  />
+                </div>
+
+                {isForgotCodeSent && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">簡訊驗證碼</label>
                       <input
-                        type={showForgotNewPassword ? 'text' : 'password'}
+                        type="text"
                         required
-                        value={forgotNewPassword}
-                        onChange={(e) => setForgotNewPassword(e.target.value)}
-                        placeholder="輸入 6~20 位新密碼"
+                        value={forgotSmsCode}
+                        onChange={(e) => setForgotSmsCode(e.target.value)}
+                        placeholder="輸入驗證碼（測試環境：123456）"
+                        className="w-full px-3 py-2.5 bg-amber-50/50 border border-amber-300 text-xs rounded-xl text-center font-mono tracking-widest outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        設定新密碼 (6~20 位英數字)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showForgotNewPassword ? 'text' : 'password'}
+                          required
+                          value={forgotNewPassword}
+                          onChange={(e) => setForgotNewPassword(e.target.value)}
+                          placeholder="輸入 6~20 位新密碼"
+                          className="w-full px-3.5 py-3 bg-[#f0f4f8] focus:bg-white text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
+                          className="absolute right-3 top-3 text-stone-400 hover:text-stone-700 cursor-pointer"
+                        >
+                          {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">再次確認新密碼</label>
+                      <input
+                        type="password"
+                        required
+                        value={forgotConfirmPassword}
+                        onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                        placeholder="再次輸入新密碼"
                         className="w-full px-3.5 py-3 bg-[#f0f4f8] focus:bg-white text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                        className="absolute right-3 top-3 text-stone-400 hover:text-stone-700"
-                      >
-                        {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
                     </div>
-                  </div>
+                  </>
+                )}
 
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">再次確認新密碼</label>
-                    <input
-                      type="password"
-                      required
-                      value={forgotConfirmPassword}
-                      onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                      placeholder="再次輸入新密碼"
-                      className="w-full px-3.5 py-3 bg-[#f0f4f8] focus:bg-white text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none"
-                    />
-                  </div>
-                </>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isLoading ? '處理中...' : isForgotCodeSent ? '重設密碼並儲存' : '發送安全驗證碼'}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isLoading ? '處理中...' : isForgotCodeSent ? '重設密碼並儲存' : '發送安全簡訊驗證碼'}
+                </button>
+              </form>
+            )}
           </div>
         )}
       </div>
