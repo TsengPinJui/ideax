@@ -41,8 +41,9 @@ import {
   Target,
   Users,
   Lock,
-  Search,
-  Printer,
+  Lightbulb,
+  ArrowRight,
+  TrendingUp,
 } from 'lucide-react';
 import { TERMS_DATA, TermItem } from '../data/termsData';
 import { AboutSection, ProblemLevel } from '../types';
@@ -62,7 +63,7 @@ interface AboutUsViewProps {
   onStartOnboarding?: () => void;
 }
 
-type MainTab = 'download_app' | 'contact' | 'terms' | 'others';
+type MainTab = 'intro' | 'download_app' | 'contact' | 'terms' | 'others';
 
 export const AboutUsView: React.FC<AboutUsViewProps> = ({
   initialSection = 'list',
@@ -96,7 +97,14 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       initialSection === 'solver_terms' ||
       (initialSection && initialSection !== 'list' && TERMS_DATA[initialSection])
     ) return 'terms';
-    return 'others';
+    if (
+      initialSection === 'others' ||
+      initialSection === 'tiers' ||
+      initialSection === 'finance' ||
+      initialSection === 'architecture' ||
+      initialSection?.startsWith('other_')
+    ) return 'others';
+    return 'intro';
   });
 
   const [selectedTermKey, setSelectedTermKey] = useState<string | null>(() => {
@@ -138,9 +146,6 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
   const [activeTimelineStep, setActiveTimelineStep] = useState<number>(3);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
-  const [termsCategoryFilter, setTermsCategoryFilter] = useState<'all' | 'general' | 'transaction' | 'compliance' | 'about'>('all');
-  const [termsSearchQuery, setTermsSearchQuery] = useState('');
-  const [copiedTermSuccess, setCopiedTermSuccess] = useState(false);
 
   // Sync if initialSection changes externally
   useEffect(() => {
@@ -151,6 +156,11 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       setSelectedOtherChapterId(null);
     } else if (initialSection === 'download_app' || initialSection === 'app' || initialSection === 'pwa') {
       setActiveTab('download_app');
+      setSelectedTermKey(null);
+      setSelectedFinanceChapterId(null);
+      setSelectedOtherChapterId(null);
+    } else if (initialSection === 'intro' || initialSection === 'about_ideax' || initialSection === 'about' || initialSection === 'story' || initialSection === 'list') {
+      setActiveTab('intro');
       setSelectedTermKey(null);
       setSelectedFinanceChapterId(null);
       setSelectedOtherChapterId(null);
@@ -175,7 +185,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       setSelectedOtherChapterId(initialSection);
       setSelectedTermKey(null);
       setSelectedFinanceChapterId(null);
-    } else if (initialSection === 'others' || initialSection === 'tiers' || initialSection === 'about_ideax' || initialSection === 'story' || initialSection === 'about') {
+    } else if (initialSection === 'others' || initialSection === 'tiers') {
       setActiveTab('others');
       setSelectedOtherChapterId(null);
       setSelectedTermKey(null);
@@ -195,106 +205,87 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
     setTimeout(() => setCopiedEmail(null), 2500);
   };
 
-  // 條款與聲明清單（完整 11 項定型化契約與政策聲明）
+  // 條款與聲明清單
   const TERMS_LIST = [
     {
       key: 'general_terms',
-      title: '一般服務條款（通用條款）',
-      subtitle: '通用基本協議、用戶與會員身分權益、兩段式閉路點數與民法管轄規範',
+      title: '一般條款',
+      subtitle: '通用基本協議、帳號規範、閉路點數與平台服務原則',
       badge: '全站通用',
-      category: 'general' as const,
       icon: FileText,
       tagColor: 'bg-stone-100 text-stone-700',
     },
     {
-      key: 'recharge_subscription_terms',
-      title: '點數儲值與會員方案訂閱條款',
-      subtitle: '點數購買折抵、消保法數位內容七日鑑賞期排除聲明、自動續款扣繳與身分回歸保障',
-      badge: '儲值與訂閱',
-      category: 'general' as const,
-      icon: CreditCard,
-      tagColor: 'bg-amber-50 text-amber-700',
-    },
-    {
       key: 'questioner_terms',
-      title: '提問服務條款（提問者條款）',
-      subtitle: '懸賞發布、NT$0痛點免費上架、款項第三方託管、採納驗收與商用實施授權',
-      badge: '提問發案',
-      category: 'transaction' as const,
+      title: '提問者條款',
+      subtitle: '懸賞發布、痛點提出、款項託管、採納驗收與商用授權',
+      badge: '提問規範',
       icon: Scale,
       tagColor: 'bg-indigo-50 text-indigo-700',
     },
     {
       key: 'solver_terms',
-      title: '接案服務條款（解答者條款）',
-      subtitle: '方案交付、實名認證防制洗錢、每月5號第三方定期撥款、稅務扣繳與原創擔保',
-      badge: '專家接案',
-      category: 'transaction' as const,
+      title: '解答者條款',
+      subtitle: '方案交付、實名認證、銀行自動撥付與原創擔保',
+      badge: '接案規範',
       icon: Award,
       tagColor: 'bg-emerald-50 text-emerald-700',
     },
     {
+      key: 'recharge_subscription_terms',
+      title: '儲值與訂閱條款',
+      subtitle: '點數購買折抵、會員方案週期訂閱、自動續約管理與款項原則',
+      badge: '儲值與訂閱',
+      icon: CreditCard,
+      tagColor: 'bg-amber-50 text-amber-700',
+    },
+    {
+      key: 'community_guidelines',
+      title: '社群守則與內容管理規範',
+      subtitle: '文明問答交流、各角色專屬守則、專家執業倫理與檢舉機制',
+      badge: '社群守則',
+      icon: MessageSquare,
+      tagColor: 'bg-purple-50 text-purple-700',
+    },
+    {
+      key: 'copyright_policy',
+      title: '著作權保護政策',
+      subtitle: '智慧財產權歸屬、採納商用實施授權與檢舉下架程序',
+      badge: '智財政策',
+      icon: ShieldCheck,
+      tagColor: 'bg-blue-50 text-blue-700',
+    },
+    {
       key: 'refund_dispute_policy',
-      title: '退款政策與爭議調解處理辦法',
-      subtitle: '懸賞未採納100%全額退還、方案解鎖爭議審議、多階段交付驗收異議與原路退款',
+      title: '退款政策與爭議調解辦法',
+      subtitle: '懸賞未採納退還規則、方案解鎖爭議審議與原路退款路徑',
       badge: '交易保障',
-      category: 'transaction' as const,
       icon: RotateCcw,
       tagColor: 'bg-rose-50 text-rose-700',
     },
     {
+      key: 'anti_fraud_aml_policy',
+      title: '反詐騙與洗錢防制政策',
+      subtitle: '洗錢防制合規、異常交易即時風控與可疑帳號通報機制',
+      badge: '法規與資安',
+      icon: ShieldAlert,
+      tagColor: 'bg-red-50 text-red-700',
+    },
+    {
       key: 'privacy_policy',
-      title: '隱私權聲明與個人資料保護政策',
-      subtitle: '個資法合規、付費會員身分僅本人可見、敏感銀行資料加密與7日帳號註銷反悔期',
+      title: '隱私權聲明',
+      subtitle: '個人資料保護法合規、會員隱私專屬顯示與資料加密防護',
       badge: '隱私保護',
-      category: 'compliance' as const,
       icon: ShieldCheck,
       tagColor: 'bg-cyan-50 text-cyan-700',
     },
     {
       key: 'disclaimer',
-      title: '免責聲明與風險告知',
-      subtitle: '資料檔案免保管聲明、AI智能生成分析工具免責、解答者獨立第三方自負全責原則',
+      title: '免責聲明',
+      subtitle: '資料檔案免保管聲明、商業決策風險告知、非特許顧問聲明與系統不可抗力',
       badge: '法律免責',
-      category: 'compliance' as const,
       icon: AlertCircle,
       tagColor: 'bg-stone-100 text-stone-600',
-    },
-    {
-      key: 'copyright_policy',
-      title: '智慧財產權與著作權保護政策',
-      subtitle: '原創著作權歸屬、採納付費即視為全球商用授權、侵權迅速下架反通知機制',
-      badge: '智財政策',
-      category: 'compliance' as const,
-      icon: ShieldCheck,
-      tagColor: 'bg-blue-50 text-blue-700',
-    },
-    {
-      key: 'anti_fraud_aml_policy',
-      title: '反詐騙與洗錢防制政策 (AML/KYC)',
-      subtitle: '遵循洗錢防制法、嚴禁無實質對價虛假交易刷單、異常金流即時風控與司法通報',
-      badge: '法規與資安',
-      category: 'compliance' as const,
-      icon: ShieldAlert,
-      tagColor: 'bg-red-50 text-red-700',
-    },
-    {
-      key: 'community_guidelines',
-      title: '社群守則與內容管理規範',
-      subtitle: '文明理性問答交流、企業/提問/專家等六大角色專屬守則、專家執業倫理與檢舉機制',
-      badge: '社群守則',
-      category: 'compliance' as const,
-      icon: MessageSquare,
-      tagColor: 'bg-purple-50 text-purple-700',
-    },
-    {
-      key: 'about_ideax',
-      title: '關於創點子（IdeaX 平台介紹）',
-      subtitle: '一個問題，找到更多可能・全台灣最具實戰力的新型態問題解決與智慧交易市集',
-      badge: '平台使命',
-      category: 'about' as const,
-      icon: Info,
-      tagColor: 'bg-amber-100 text-amber-800',
     },
   ];
 
@@ -487,9 +478,30 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
         <div className="mb-4">
           <div className="flex items-center justify-start sm:justify-center overflow-x-auto scrollbar-none pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
             <div className="inline-flex p-1 rounded-2xl bg-stone-100/90 border border-stone-200/70 min-w-max gap-1 shadow-2xs">
-              {/* 1. 下載 APP */}
+              {/* 1. 平台介紹 */}
               <button
-                onClick={() => setActiveTab('download_app')}
+                onClick={() => {
+                  setActiveTab('intro');
+                  setSelectedOtherChapterId(null);
+                  setSelectedTermKey(null);
+                }}
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                  activeTab === 'intro'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <Lightbulb className="w-4 h-4 text-amber-500" />
+                <span>平台介紹</span>
+              </button>
+
+              {/* 2. 下載 APP */}
+              <button
+                onClick={() => {
+                  setActiveTab('download_app');
+                  setSelectedOtherChapterId(null);
+                  setSelectedTermKey(null);
+                }}
                 className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   activeTab === 'download_app'
                     ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
@@ -500,9 +512,13 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 <span>下載 APP</span>
               </button>
 
-              {/* 2. 聯絡我們 & 常見問題 */}
+              {/* 3. 聯絡我們 & 常見問題 */}
               <button
-                onClick={() => setActiveTab('contact')}
+                onClick={() => {
+                  setActiveTab('contact');
+                  setSelectedOtherChapterId(null);
+                  setSelectedTermKey(null);
+                }}
                 className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   activeTab === 'contact'
                     ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
@@ -513,9 +529,12 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 <span>聯絡我們 & 常見問題</span>
               </button>
 
-              {/* 3. 條款與聲明 */}
+              {/* 4. 條款與聲明 */}
               <button
-                onClick={() => setActiveTab('terms')}
+                onClick={() => {
+                  setActiveTab('terms');
+                  setSelectedOtherChapterId(null);
+                }}
                 className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   activeTab === 'terms'
                     ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
@@ -526,11 +545,12 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 <span>條款與聲明</span>
               </button>
 
-              {/* 4. 其他說明（含平台金流運作、問題分級、角色規範與 AI 賦能） */}
+              {/* 5. 其他說明（含平台金流運作、問題分級、角色規範與 AI 賦能） */}
               <button
                 onClick={() => {
                   setActiveTab('others');
                   setSelectedOtherChapterId(null);
+                  setSelectedTermKey(null);
                 }}
                 className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   activeTab === 'others'
@@ -540,6 +560,377 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
               >
                 <Layers className="w-4 h-4 text-purple-600" />
                 <span>其他說明</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 0. 平台介紹 (IdeaX 核心願景、三大獨創機制、運作流程與適合族群) */}
+      {/* ========================================================================= */}
+      {activeTab === 'intro' && !isSubPage && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* 主視覺品牌卡片 (Hero Brand Presentation Card) */}
+          <div className="bg-gradient-to-br from-amber-50/90 via-white to-amber-100/40 rounded-3xl p-6 sm:p-8 border border-amber-200/80 shadow-xs relative overflow-hidden">
+            {/* 暖黃環境光暈裝飾 */}
+            <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+            <div className="absolute bottom-0 left-0 w-60 h-60 bg-yellow-300/15 rounded-full blur-2xl pointer-events-none -ml-20 -mb-20" />
+
+            <div className="relative z-10 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] font-black tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-amber-500 text-stone-950 whitespace-nowrap shadow-2xs">
+                      IdeaX 創點子
+                    </span>
+                    <span className="text-xs font-bold text-amber-800 font-mono tracking-wide">
+                      讓想法發光 • IDEAS CONNECT POSSIBILITIES
+                    </span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+                    創新方案與破局痛點智庫平台
+                  </h2>
+                </div>
+
+                <div className="shrink-0 flex items-center gap-2">
+                  <IdeaXLogo variant="chuangdianzi" size="md" />
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-stone-600 leading-relaxed max-w-3xl">
+                在 AI 越來越普及、答案唾手可得的時代，資訊真偽與落地可行性卻更難考證；面對重大計畫與關鍵決策，更需要真實專家的實戰背書與深度見解。而創業者在面臨缺乏靈感、跨域夥伴或成長瓶頸時，正好能在此尋找破局 Idea，與優秀人才們展開深度腦力激盪——讓每一個痛點都能自由提出，讓每一份具備實戰智慧的破局方案都能獲得應有的實質回報。
+              </p>
+            </div>
+          </div>
+
+          {/* 三大獨創破局機制 (Three Core Breakthrough Mechanisms) */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <h3 className="text-sm font-bold text-stone-900 tracking-tight">三大核心獨創機制</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              {/* 1. 痛點免費提出 */}
+              <div className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs space-y-2 hover:border-amber-400/60 transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">
+                  💡
+                </div>
+                <h4 className="text-sm font-bold text-stone-900">痛點 NT$ 0 元免費提出</h4>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  打破提問資金門檻，任何創業卡點或業務瓶頸皆可免費上架；專家自訂解鎖金額交付落地解法，社群與提問者皆可解鎖，兼顧零門檻與合理收益。
+                </p>
+              </div>
+
+              {/* 2. L0~L4 五級精密分級 */}
+              <div className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs space-y-2 hover:border-amber-400/60 transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                  🎯
+                </div>
+                <h4 className="text-sm font-bold text-stone-900">L0 ~ L4 五級精密問題架構</h4>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  從免費社群激盪交流（L0），到實戰破局技巧（L1）、專業落地顧問（L2），乃至百萬企業級深度戰略專案（L3/L4），層級清晰、懸賞透明。
+                </p>
+              </div>
+
+              {/* 3. 第三方合規託管 */}
+              <div className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs space-y-2 hover:border-amber-400/60 transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                  🛡️
+                </div>
+                <h4 className="text-sm font-bold text-stone-900">第三方閉路合法合規託管</h4>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  非電支執照合規設計，懸賞款項發布時由第三方安全暫存託管，提問者驗收滿意採納後方直撥專家銀行帳號，未獲採納原路全額返還點數。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 四大步驟運作流程 (How IdeaX Works: 4 Steps) */}
+          <div className="bg-white rounded-3xl border border-stone-200/80 p-5 sm:p-7 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                <Target className="w-4 h-4 text-amber-600" />
+                <span>四步驟極簡運作流程</span>
+              </h3>
+              <span className="text-[11px] text-stone-400 font-bold font-mono">
+                HOW IT WORKS
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              {[
+                {
+                  step: '01',
+                  title: '提出痛點或懸賞',
+                  desc: '清晰描述背景與驗收指標，自由選擇 0 元痛點模式或高額懸賞激勵。',
+                  icon: Lightbulb,
+                },
+                {
+                  step: '02',
+                  title: '智庫專家遞交方案',
+                  desc: '認證專家與各界高手精準接案，提交結構化、具備落地可行性的企劃。',
+                  icon: Sparkles,
+                },
+                {
+                  step: '03',
+                  title: '滿意驗收與商用授權',
+                  desc: '審閱後點選採納最優方案，即刻取得專屬商業實施授權與智慧財產保障。',
+                  icon: CheckCircle2,
+                },
+                {
+                  step: '04',
+                  title: '合規撥付直達帳戶',
+                  desc: '系統核銷後，依約由第三方安全直匯至專家金融機構帳號，買賣安心。',
+                  icon: Award,
+                },
+              ].map((item, idx) => {
+                const IconComponent = item.icon;
+                return (
+                  <div
+                    key={idx}
+                    className="p-4 rounded-2xl bg-stone-50/80 border border-stone-200/70 space-y-2 relative"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-black text-amber-600 text-sm">
+                        {item.step}
+                      </span>
+                      <IconComponent className="w-4 h-4 text-stone-400" />
+                    </div>
+                    <h4 className="font-bold text-stone-900 text-xs sm:text-sm">
+                      {item.title}
+                    </h4>
+                    <p className="text-[11px] text-stone-500 leading-relaxed">
+                      {item.desc}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 什麼人適合使用 IdeaX？ (Personas) */}
+          <div className="bg-white rounded-3xl border border-stone-200/80 p-5 sm:p-7 shadow-xs space-y-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-amber-600" />
+              <h3 className="text-sm font-bold text-stone-900">什麼人適合使用 IdeaX？</h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+              <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/60 space-y-1.5">
+                <span className="font-bold text-stone-900 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span>🚀</span>
+                  <span>提問者 & 創業者</span>
+                </span>
+                <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                  用極高性價比快速獲得關鍵突破口與落地企劃，少走半年試錯彎路，告別單打獨鬥。
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/60 space-y-1.5">
+                <span className="font-bold text-stone-900 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span>🎓</span>
+                  <span>解答者 & 顧問專家</span>
+                </span>
+                <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                  將多年實戰經驗精準變現，建立專屬領域公信力榮譽榜，拓展長期高價值企業客源。
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-200/60 space-y-1.5">
+                <span className="font-bold text-stone-900 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span>🏢</span>
+                  <span>企業機構 & 專案決策者</span>
+                </span>
+                <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                  支援統一編號發票報帳、簽署雙向 NDA 保密協議，安全引入外部頂尖智庫腦力。
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-200/60 space-y-1.5">
+                <span className="font-bold text-stone-900 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span>🔍</span>
+                  <span>終身學習與跨域探索者</span>
+                </span>
+                <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                  藉由真實世界的商業與技術難題拆解，洞察產業前沿動態，學習高階解決問題思維。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 平台資訊其他頁面入口與導覽教學 (Platform Navigation Hub & Guides) */}
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <Compass className="w-4 h-4 text-amber-600" />
+                <h3 className="text-sm font-bold text-stone-900 tracking-tight">平台專區入口與導覽教學</h3>
+              </div>
+              <span className="text-[11px] text-stone-400 font-bold font-mono">
+                NAVIGATION & GUIDES
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {/* 1. 導覽教學 */}
+              {onStartOnboarding && (
+                <button
+                  type="button"
+                  onClick={onStartOnboarding}
+                  className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/15 via-white to-amber-100/40 border-2 border-amber-400/80 shadow-xs hover:shadow-md hover:border-amber-500 transition-all text-left flex flex-col justify-between cursor-pointer group active:scale-[0.98]"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-xs">
+                        <Compass className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400/30 text-amber-800 border border-amber-400/40">
+                        新手必備
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-900 group-hover:text-amber-700 transition-colors flex items-center gap-1.5">
+                        <span>新手導覽教學</span>
+                        <ChevronRight className="w-4 h-4 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
+                      </h4>
+                      <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">
+                        啟動 10 步驟手把手功能引導，快速掌握發布提問、痛點解鎖與變現操作。
+                      </p>
+                    </div>
+                  </div>
+                  <div className="pt-3 mt-1 border-t border-amber-200/60 flex items-center justify-between text-xs font-bold text-amber-700">
+                    <span>立即啟動互動引導</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
+                </button>
+              )}
+
+              {/* 2. 下載 APP */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('download_app')}
+                className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs hover:shadow-xs hover:border-amber-400/60 transition-all text-left flex flex-col justify-between cursor-pointer group active:scale-[0.98]"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                      <Download className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200/60">
+                      PWA 免商店
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900 group-hover:text-stone-950 transition-colors flex items-center gap-1.5">
+                      <span>下載 APP 專區</span>
+                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-stone-700 group-hover:translate-x-0.5 transition-all" />
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">
+                      支援 Android、iOS 與電腦桌面端直接安裝，享受全螢幕秒開極速體驗。
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-3 mt-1 border-t border-stone-100 flex items-center justify-between text-xs font-bold text-stone-600 group-hover:text-amber-700 transition-colors">
+                  <span>查看安裝指南與下載</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </button>
+
+              {/* 3. 聯絡我們 & 常見問題 */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('contact')}
+                className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs hover:shadow-xs hover:border-amber-400/60 transition-all text-left flex flex-col justify-between cursor-pointer group active:scale-[0.98]"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                      <Headphones className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200/60">
+                      真人客服 & FAQ
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900 group-hover:text-stone-950 transition-colors flex items-center gap-1.5">
+                      <span>聯絡我們 & 常見問題</span>
+                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-stone-700 group-hover:translate-x-0.5 transition-all" />
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">
+                      提供平台常見問題排解、客服信箱與線上即時專人支援服務。
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-3 mt-1 border-t border-stone-100 flex items-center justify-between text-xs font-bold text-stone-600 group-hover:text-emerald-700 transition-colors">
+                  <span>查看問答與聯繫客服</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </button>
+
+              {/* 4. 條款與聲明 */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('terms')}
+                className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs hover:shadow-xs hover:border-amber-400/60 transition-all text-left flex flex-col justify-between cursor-pointer group active:scale-[0.98]"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200/60">
+                      法務規範
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900 group-hover:text-stone-950 transition-colors flex items-center gap-1.5">
+                      <span>條款與聲明規範</span>
+                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-stone-700 group-hover:translate-x-0.5 transition-all" />
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">
+                      一般服務條款、提問者與解答者規範、著作權保護政策與爭議調解辦法。
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-3 mt-1 border-t border-stone-100 flex items-center justify-between text-xs font-bold text-stone-600 group-hover:text-indigo-700 transition-colors">
+                  <span>閱讀全站條款聲明</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </button>
+
+              {/* 5. 其他說明 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('others');
+                  setSelectedOtherChapterId(null);
+                }}
+                className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs hover:shadow-xs hover:border-amber-400/60 transition-all text-left flex flex-col justify-between cursor-pointer group active:scale-[0.98] sm:col-span-2 lg:col-span-2"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                      <Layers className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200/60">
+                      架構詳解
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900 group-hover:text-stone-950 transition-colors flex items-center gap-1.5">
+                      <span>其他說明（金流運作、問題分級與 AI 賦能）</span>
+                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-stone-700 group-hover:translate-x-0.5 transition-all" />
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">
+                      深入了解兩段式閉路金流生命週期、L0~L4 五級問題分級體系、各角色專屬權能與 AI 智能協同系統。
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-3 mt-1 border-t border-stone-100 flex items-center justify-between text-xs font-bold text-stone-600 group-hover:text-purple-700 transition-colors">
+                  <span>查看其他說明目錄</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
               </button>
             </div>
           </div>
@@ -1061,238 +1452,78 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       {activeTab === 'terms' && (
         <div className="space-y-4 animate-in fade-in duration-150">
           {!selectedTermKey ? (
-            <div className="space-y-4">
-              {/* 頂部搜尋與分類過濾卡片 */}
-              <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200/80 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600">
-                        <Scale className="w-4 h-4" />
-                      </span>
-                      <h3 className="text-base sm:text-lg font-black text-stone-900">
-                        平台定型化契約與法定聲明規範庫
-                      </h3>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                        v2026-v3.1
-                      </span>
-                    </div>
-                    <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-                      嚴格恪遵中華民國《民法》、《消費者保護法》、《個人資料保護法》、《電子簽章法》、《著作權法》及《洗錢防制法》之定型化契約規範。
-                    </p>
-                  </div>
-
-                  {/* 關鍵字即時搜尋 */}
-                  <div className="relative w-full sm:w-64 shrink-0">
-                    <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={termsSearchQuery}
-                      onChange={(e) => setTermsSearchQuery(e.target.value)}
-                      placeholder="搜尋條款關鍵字（退款、發票、AI...）"
-                      className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-stone-50 border border-stone-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all text-stone-800 placeholder:text-stone-400"
-                    />
-                    {termsSearchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setTermsSearchQuery('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 rounded-full cursor-pointer"
-                        title="清除搜尋"
-                      >
-                        <AlertCircle className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* 分類標籤切換 */}
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-stone-100">
-                  {[
-                    { id: 'all', label: '全部規範', count: TERMS_LIST.length },
-                    { id: 'general', label: '核心通用', count: TERMS_LIST.filter(t => t.category === 'general').length },
-                    { id: 'transaction', label: '發案與接案', count: TERMS_LIST.filter(t => t.category === 'transaction').length },
-                    { id: 'compliance', label: '法規與安全', count: TERMS_LIST.filter(t => t.category === 'compliance').length },
-                    { id: 'about', label: '平台使命', count: TERMS_LIST.filter(t => t.category === 'about').length },
-                  ].map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setTermsCategoryFilter(cat.id as any)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                        termsCategoryFilter === cat.id
-                          ? 'bg-amber-500 text-stone-950 shadow-xs'
-                          : 'bg-stone-100 hover:bg-stone-200/80 text-stone-600'
-                      }`}
-                    >
-                      <span>{cat.label}</span>
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                        termsCategoryFilter === cat.id ? 'bg-stone-950/20 text-stone-950' : 'bg-stone-200 text-stone-600'
-                      }`}>
-                        {cat.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 條款目錄清單 (Mobile-friendly rows) */}
-              <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs divide-y divide-stone-100 overflow-hidden">
-                {TERMS_LIST
-                  .filter((term) => {
-                    if (termsCategoryFilter !== 'all' && term.category !== termsCategoryFilter) return false;
-                    if (termsSearchQuery.trim()) {
-                      const q = termsSearchQuery.toLowerCase();
-                      const matchMeta =
-                        term.title.toLowerCase().includes(q) ||
-                        term.subtitle.toLowerCase().includes(q) ||
-                        term.badge.toLowerCase().includes(q);
-                      const termData = TERMS_DATA[term.key];
-                      const matchContent = termData
-                        ? termData.summary.toLowerCase().includes(q) ||
-                          termData.content.some((c) => c.toLowerCase().includes(q))
-                        : false;
-                      return matchMeta || matchContent;
-                    }
-                    return true;
-                  })
-                  .map((term) => {
-                    const Icon = term.icon;
-                    return (
-                      <button
-                        key={term.key}
-                        onClick={() => setSelectedTermKey(term.key)}
-                        className="w-full min-h-[60px] p-4 sm:p-5 flex items-center justify-between text-left hover:bg-stone-50/80 transition-colors cursor-pointer group active:bg-stone-100/70"
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0 pr-3">
-                          <div className="p-2.5 rounded-xl bg-stone-100 text-stone-700 group-hover:bg-amber-500 group-hover:text-stone-950 transition-colors shrink-0">
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs sm:text-sm font-bold text-stone-900 group-hover:text-amber-800 transition-colors">
-                                {term.title}
-                              </span>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border border-stone-200/60 ${term.tagColor}`}>
-                                {term.badge}
-                              </span>
-                            </div>
-                            <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 line-clamp-1">
-                              {term.subtitle}
-                            </p>
-                          </div>
+            /* 條款目錄清單 (Mobile-friendly rows) */
+            <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs divide-y divide-stone-100 overflow-hidden">
+              {TERMS_LIST.map((term) => {
+                const Icon = term.icon;
+                return (
+                  <button
+                    key={term.key}
+                    onClick={() => setSelectedTermKey(term.key)}
+                    className="w-full min-h-[60px] p-4 sm:p-5 flex items-center justify-between text-left hover:bg-stone-50/80 transition-colors cursor-pointer group active:bg-stone-100/70"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0 pr-3">
+                      <div className="p-2.5 rounded-xl bg-stone-100 text-stone-700 group-hover:bg-stone-200/70 transition-colors shrink-0">
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-bold text-stone-900 group-hover:text-stone-950 transition-colors">
+                            {term.title}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border border-stone-200/60 ${term.tagColor}`}>
+                            {term.badge}
+                          </span>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-stone-400 group-hover:text-stone-700 group-hover:translate-x-0.5 transition-all shrink-0" />
-                      </button>
-                    );
-                  })}
-              </div>
+                        <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 line-clamp-1">
+                          {term.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-stone-400 group-hover:text-stone-700 group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </button>
+                );
+              })}
             </div>
           ) : (
             /* 條款內容詳讀頁 */
             <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs overflow-hidden animate-in fade-in duration-150">
-              {/* 頂部操作工具列 */}
-              <div className="px-5 py-3.5 border-b border-stone-100 bg-stone-50/80 flex items-center justify-between flex-wrap gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTermKey(null)}
-                  className="inline-flex items-center gap-1.5 text-stone-600 hover:text-stone-950 font-bold transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-stone-200/60"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>返回條款總覽</span>
-                </button>
-
-                <div className="flex items-center gap-2">
-                  {/* 一鍵複製條款全文 */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!activeTerm) return;
-                      const text = `【${activeTerm.title}】\n版本：v${activeTerm.version}（最近修訂：${activeTerm.updatedAt}）\n摘要：${activeTerm.summary}\n\n` + activeTerm.content.join('\n\n');
-                      navigator.clipboard.writeText(text);
-                      setCopiedTermSuccess(true);
-                      if (addNotification) {
-                        addNotification(`已複製「${activeTerm.title}」全文至剪貼簿`, 'success');
-                      }
-                      setTimeout(() => setCopiedTermSuccess(false), 2500);
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-2xs ${
-                      copiedTermSuccess
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                        : 'bg-white border-stone-200 hover:bg-stone-100 text-stone-700'
-                    }`}
-                    title="複製此條款全文至剪貼簿"
-                  >
-                    {copiedTermSuccess ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>已複製全文</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5 text-stone-500" />
-                        <span>複製全文</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* 列印存檔 */}
-                  <button
-                    type="button"
-                    onClick={() => window.print()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 text-xs font-bold transition-all cursor-pointer shadow-2xs"
-                    title="列印或另存為 PDF"
-                  >
-                    <Printer className="w-3.5 h-3.5 text-stone-500" />
-                    <span className="hidden sm:inline">列印 / 存為文件</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 條款標題與摘要 */}
-              <div className="p-5 sm:p-7 border-b border-stone-100 bg-white">
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/20">
+              <div className="p-5 sm:p-7 border-b border-stone-100 bg-stone-50/60">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-stone-200 text-stone-800">
                     {activeTerm?.badge}
                   </span>
-                  <span className="text-xs font-mono font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md">
-                    版本：v{activeTerm?.version}
-                  </span>
-                  <span className="text-xs text-stone-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    最近修訂：{activeTerm?.updatedAt}
+                  <span className="text-xs font-mono text-stone-400">
+                    v{activeTerm?.version}
                   </span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+                <h2 className="text-lg sm:text-xl font-black text-stone-900">
                   {activeTerm?.title}
                 </h2>
-                <p className="text-xs sm:text-sm text-stone-600 mt-1 leading-relaxed">
+                <p className="text-xs sm:text-sm text-stone-600 mt-1">
                   {activeTerm?.subtitle}
                 </p>
 
-                {/* 簡明法律摘要重點 */}
-                <div className="mt-4 p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-950 leading-relaxed font-medium flex items-start gap-2.5">
-                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold block mb-0.5">條款重點摘要：</span>
-                    <p className="text-stone-700 leading-relaxed">{activeTerm?.summary}</p>
-                  </div>
+                {/* 簡明摘要 */}
+                <div className="mt-3 p-3.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 leading-relaxed font-medium">
+                  {activeTerm?.summary}
                 </div>
               </div>
 
               {/* 條款本文 */}
-              <div className="p-5 sm:p-7 space-y-4 text-xs text-stone-700 leading-relaxed max-h-[620px] overflow-y-auto">
+              <div className="p-5 sm:p-7 space-y-3.5 text-xs text-stone-700 leading-relaxed max-h-[600px] overflow-y-auto">
                 {activeTerm?.content.map((paragraph, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/80 space-y-1.5 hover:border-amber-300 transition-colors"
+                    className="p-3.5 rounded-xl bg-stone-50/80 border border-stone-200/70 space-y-1"
                   >
                     {paragraph.split('\n').map((line, lIdx) => (
                       <p
                         key={lIdx}
                         className={
                           lIdx === 0
-                            ? 'font-black text-stone-900 text-sm mb-1.5 text-amber-950'
-                            : 'text-stone-600 leading-relaxed pl-1'
+                            ? 'font-bold text-stone-900 text-xs mb-1'
+                            : 'text-stone-600 leading-relaxed'
                         }
                       >
                         {line}
@@ -1302,44 +1533,14 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 ))}
               </div>
 
-              {/* 底部前後條款導覽列 */}
-              <div className="p-4 border-t border-stone-100 bg-stone-50/70 flex items-center justify-between flex-wrap gap-2">
+              {/* 底部返回按鈕 */}
+              <div className="p-3.5 border-t border-stone-100 bg-stone-50/50 flex justify-center">
                 <button
-                  type="button"
-                  onClick={() => {
-                    const currentIndex = TERMS_LIST.findIndex(t => t.key === selectedTermKey);
-                    if (currentIndex > 0) {
-                      setSelectedTermKey(TERMS_LIST[currentIndex - 1].key);
-                    }
-                  }}
-                  disabled={TERMS_LIST.findIndex(t => t.key === selectedTermKey) <= 0}
-                  className="px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-100 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                  <span>上一則規範</span>
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => setSelectedTermKey(null)}
-                  className="px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition-colors cursor-pointer active:scale-95 shadow-xs"
+                  className="min-h-[40px] inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition-colors cursor-pointer active:scale-95"
                 >
-                  返回條款規範總覽
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const currentIndex = TERMS_LIST.findIndex(t => t.key === selectedTermKey);
-                    if (currentIndex >= 0 && currentIndex < TERMS_LIST.length - 1) {
-                      setSelectedTermKey(TERMS_LIST[currentIndex + 1].key);
-                    }
-                  }}
-                  disabled={TERMS_LIST.findIndex(t => t.key === selectedTermKey) >= TERMS_LIST.length - 1}
-                  className="px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-100 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                >
-                  <span>下一則規範</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>返回條款列表</span>
                 </button>
               </div>
             </div>

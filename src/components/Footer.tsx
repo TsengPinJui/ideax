@@ -8,6 +8,7 @@ import {
   Download,
   Compass,
   Layers,
+  Lightbulb,
 } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
 import { AppTab, AboutSection } from '../types';
@@ -52,7 +53,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             >
               <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center">
                 <img
-                  src="/圓角正向黃底燈泡.png"
+                  src="/logo-topleft-3.png"
                   alt="創點子燈泡"
                   className="w-full h-full object-contain drop-shadow-xs group-hover:scale-105 transition-transform"
                 />
@@ -144,10 +145,19 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             </ul>
           </div>
 
-          {/* 關於與支援：其他說明、條款與聲明、客服服務、聯繫我們（移至平台導覽右側） */}
+          {/* 關於我們：平台介紹、其他說明、條款與聲明、客服與回報、下載 APP */}
           <div className="space-y-3">
-            <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">關於與支援</h4>
-            <ul className="space-y-1.5 text-stone-400">
+            <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">關於我們</h4>
+            <ul className="space-y-2 text-stone-400">
+              <li>
+                <button
+                  onClick={() => onNavClick('about', 'intro')}
+                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>平台介紹</span>
+                </button>
+              </li>
               <li>
                 <button
                   onClick={() => onNavClick('about', 'others')}
@@ -169,7 +179,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               <li>
                 <button
                   onClick={() => openCustomerService({ subject: '平台一般客服諮詢與支援' })}
-                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 pt-1"
+                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5"
                 >
                   <Headphones className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>客服與回報</span>
@@ -247,52 +257,46 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             <span>© {new Date().getFullYear()} 創點子 IdeaX. All rights reserved.</span>
             <span>•</span>
             <button
-              onClick={() => onNavClick('about', 'general_terms')}
-              className="text-stone-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer"
+              type="button"
+              onClick={() => {
+                if (onStartOnboarding) {
+                  onStartOnboarding();
+                } else {
+                  onNavClick('about', 'intro');
+                }
+              }}
+              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer inline-flex items-center gap-1"
             >
-              服務條款
+              <Compass className="w-3 h-3 text-amber-400" />
+              <span>導覽教學</span>
             </button>
             <span>•</span>
             <button
-              onClick={() => onNavClick('about', 'privacy_policy')}
-              className="text-stone-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer"
+              onClick={() => onNavClick('about', 'intro')}
+              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
             >
-              隱私權政策
+              平台介紹
             </button>
             <span>•</span>
             <button
-              onClick={() => onNavClick('about', 'disclaimer')}
-              className="text-stone-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer"
+              onClick={() => onNavClick('about', 'others')}
+              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
             >
-              免責聲明
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => onNavClick('about', 'refund_dispute_policy')}
-              className="text-stone-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer"
-            >
-              爭議與退款
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => onNavClick('about', 'community_guidelines')}
-              className="text-stone-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer"
-            >
-              社群守則
+              其他說明
             </button>
             <span>•</span>
             <button
               onClick={() => onNavClick('about', 'terms')}
               className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
             >
-              條款規範庫
+              條款與聲明
             </button>
             <span>•</span>
             <button
               onClick={() => openCustomerService({ subject: '頁尾客服諮詢與支援' })}
-              className="text-stone-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer"
+              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
             >
-              客服支援
+              客服與回報
             </button>
             <span>•</span>
             <span>讓創新想法化為真實商業價值。</span>

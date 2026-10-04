@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface IdeaXLogoProps {
-  variant?: 'horizontal' | 'compact' | 'stacked' | 'mark' | 'dark' | 'card' | 'bulb' | 'chuangdianzi' | 'horizontal-ideax' | 'footer-combined' | 'ideax-6';
+  variant?: 'horizontal' | 'compact' | 'stacked' | 'mark' | 'dark' | 'card' | 'bulb' | 'chuangdianzi' | 'chuangdianzi-text' | 'horizontal-ideax' | 'footer-combined' | 'ideax-6';
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   theme?: 'light' | 'dark' | 'auto';
   className?: string;
@@ -48,18 +48,25 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
       '2xl': 'w-20 h-20 sm:w-24 sm:h-24',
     },
     bulb: {
-      xs: 'w-7 h-7',
-      sm: 'w-8 h-8 sm:w-9 sm:h-9',
-      md: 'w-10 h-10 sm:w-11 sm:h-11 md:w-11.5 md:h-11.5',
-      lg: 'w-13 h-13 sm:w-15 sm:h-15',
-      xl: 'w-18 h-18 sm:w-22 sm:h-22',
-      '2xl': 'w-22 h-22 sm:w-26 sm:h-26',
+      xs: 'w-6 h-6',
+      sm: 'w-7 h-7 sm:w-8 sm:h-8',
+      md: 'w-8 h-8 sm:w-9 sm:h-9',
+      lg: 'w-12 h-12 sm:w-14 sm:h-14',
+      xl: 'w-16 h-16 sm:w-20 sm:h-20',
+      '2xl': 'w-20 h-20 sm:w-24 sm:h-24',
     },
     chuangdianzi: {
       xs: 'w-36 h-auto',
       sm: 'w-44 h-auto',
       md: 'w-56 sm:w-64 h-auto',
       lg: 'w-64 sm:w-72 md:w-80 max-w-full h-auto',
+      xl: 'w-full max-w-md h-auto',
+    },
+    'chuangdianzi-text': {
+      xs: 'w-28 sm:w-32 h-auto',
+      sm: 'w-36 sm:w-44 h-auto',
+      md: 'w-48 sm:w-56 md:w-64 h-auto',
+      lg: 'w-56 sm:w-64 md:w-72 max-w-full h-auto',
       xl: 'w-full max-w-md h-auto',
     },
     'horizontal-ideax': {
@@ -103,9 +110,11 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
   let imageSrc = '/logo-chuangdianzi.png';
 
   if (variant === 'bulb' || variant === 'mark') {
-    imageSrc = '/去背正向燈泡.png'; // 網站專屬 去背正向燈泡
+    imageSrc = '/logo-topleft-3.png'; // 3.png transparent
   } else if (variant === 'chuangdianzi') {
     imageSrc = '/logo-chuangdianzi.png'; // 創點子 + IdeaX (2.png transparent)
+  } else if (variant === 'chuangdianzi-text') {
+    imageSrc = '/logo-chuangdianzi-text.png'; // 創點子 + IdeaX 純字體版（無燈泡）
   } else if (variant === 'ideax-6') {
     imageSrc = isDark ? '/logo-6-trans-dark.png' : '/logo-6-trans.png'; // 去背 6.jpg (IdeaX)
   } else if (variant === 'footer-combined' || variant === 'horizontal-ideax') {
@@ -132,7 +141,7 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
         decoding="async"
         referrerPolicy="no-referrer"
         onError={(e) => {
-          if (variant === 'bulb' || variant === 'mark') {
+          if (variant === 'bulb') {
             e.currentTarget.src = '/logo-bulb.png';
           } else {
             e.currentTarget.src = '/logo-chuangdianzi.png';

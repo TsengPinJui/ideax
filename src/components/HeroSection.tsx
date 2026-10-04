@@ -229,16 +229,16 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         {/* Hero Visual Spotlight with IdeaX - 創點子+IdeaX品牌焦點與關鍵字 */}
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* Official IdeaX Brand Display */}
-          <div className="relative mb-6 group max-w-lg w-full px-4">
+          <div className="relative mb-5 group inline-flex max-w-md mx-auto">
             {/* Ambient backlight ring */}
-            <div className="absolute inset-0 rounded-2xl bg-amber-300/25 blur-xl scale-100 pointer-events-none animate-pulse" />
-            <div className="relative py-4 px-6 sm:py-5 sm:px-8 rounded-2xl bg-gradient-to-b from-amber-50/70 via-white/95 to-white/95 border border-amber-200/60 shadow-xs flex items-center justify-center">
-              <IdeaXLogo variant="chuangdianzi" size="lg" />
+            <div className="absolute inset-0 rounded-2xl bg-amber-300/25 blur-lg scale-100 pointer-events-none" />
+            <div className="relative py-3.5 px-7 sm:py-4 sm:px-10 rounded-2xl bg-gradient-to-b from-amber-50/80 via-white/95 to-white/95 border border-amber-200/60 shadow-xs flex items-center justify-center">
+              <IdeaXLogo variant="chuangdianzi-text" size="md" />
             </div>
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-stone-900 tracking-tight leading-[1.18] mt-2">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-stone-900 tracking-tight leading-snug sm:leading-tight mt-1">
             一個問題，<br className="hidden sm:inline" />
             找到<span className="text-amber-500 underline decoration-amber-300 decoration-wavy decoration-2">更多可能</span>。
           </h1>
