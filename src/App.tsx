@@ -270,19 +270,6 @@ function MainContent() {
     }
   };
 
-  // 手機app模式，開啟後會自動滾動到探索市場位置
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      const timer = setTimeout(() => {
-        const el = document.getElementById('market-grid');
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
   // Specific sub-view flag when submitting answer to a question in full page mode
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [submitInitialType, setSubmitInitialType] = useState<'discussion' | 'solution'>('solution');
@@ -718,14 +705,15 @@ function MainContent() {
     setActiveTab('create_question');
   };
 
-  // 平滑滾動至「探索問題市場」標題與問題清單區塊（頂部貼齊導覽列下方）
+  // 平滑滾動至「探索問題市場」標題與問題清單區塊（再往上一點點，保留頂部舒適留白與視覺呼吸空間）
   const scrollToExploreMarket = () => {
     const el = document.getElementById('market-grid');
     if (el) {
       const navbar = document.querySelector('header');
       const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 64;
       const elementTop = el.getBoundingClientRect().top + window.scrollY;
-      const targetY = Math.max(0, elementTop - navbarHeight);
+      // 再往上一點點（留出 42px 舒適間隔與呼吸空間）
+      const targetY = Math.max(0, elementTop - navbarHeight - 42);
       window.scrollTo({
         top: targetY,
         behavior: 'smooth',
@@ -739,10 +727,8 @@ function MainContent() {
       <SplashScreen
         minDurationMs={1400}
         onDismiss={() => {
-          // 起始畫面加載完畢、完全關閉之後，停留 2 秒再平滑滾動到探索問題市場
-          setTimeout(() => {
-            scrollToExploreMarket();
-          }, 2000);
+          // 起始畫面加載完畢、完全關閉之後，0 秒立即平滑滾動到探索問題市場
+          scrollToExploreMarket();
         }}
       />
 

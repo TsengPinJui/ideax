@@ -52,7 +52,7 @@ import { LEVEL_CONFIGS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
 import { PlatformRolesSpectrumView } from './PlatformRolesSpectrumView';
-import { APP_VERSION } from '../data/versionData';
+import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
 import { triggerDirectAppDownloadOrInstall, downloadAppLauncherFile } from '../services/pwaInstaller';
 import { getPlatformFaqs } from '../services/customerSupportService';
 import { FaqItem } from '../types';
@@ -1011,7 +1011,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
 
                 {/* 平台版本與即時更新標籤 */}
                 <div className="hidden sm:flex flex-col items-end text-xs text-stone-400">
-                  <span className="font-mono text-stone-300 font-bold">版本 v{APP_VERSION}</span>
+                  <span className="font-mono text-stone-300 font-bold">版本 v{APP_VERSION} ({APP_RELEASE_DATE})</span>
                   <span className="text-emerald-400 flex items-center gap-1 font-semibold text-[11px] mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
                     即時雲端版本・免繁瑣審核

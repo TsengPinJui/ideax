@@ -469,7 +469,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 64;
                     const elementTop = el.getBoundingClientRect().top + window.scrollY;
                     window.scrollTo({
-                      top: Math.max(0, elementTop - navbarHeight),
+                      top: Math.max(0, elementTop - navbarHeight - 42),
                       behavior: 'smooth',
                     });
                   }
