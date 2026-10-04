@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
 
@@ -9,6 +9,12 @@ export const MobilePwaDownloadWidget: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(
     () => (typeof window !== 'undefined' ? (window as any).deferredPwaPrompt || null : null)
   );
+
+  // 判斷是否曾手動關閉此提示
+  const [isDismissed, setIsDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('ideax_pwa_widget_dismissed') === 'true';
+  });
 
   // 判斷是否為既有 App 開啟 (PWA / Standalone / WebAPK / iOS Home Screen / source=pwa)
   const [isAppMode, setIsAppMode] = useState<boolean>(() => {
@@ -30,10 +36,7 @@ export const MobilePwaDownloadWidget: React.FC = () => {
     return false;
   });
 
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-
   useEffect(() => {
-    // 即時檢測是否處於既有 App 模式
     const checkAppMode = () => {
       try {
         const matchStandalone = window.matchMedia('(display-mode: standalone)').matches;
@@ -52,7 +55,6 @@ export const MobilePwaDownloadWidget: React.FC = () => {
 
     checkAppMode();
 
-    // 監聽模式動態切換
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
     const handleMediaChange = (e: MediaQueryListEvent) => {
       if (e.matches) {
@@ -64,7 +66,6 @@ export const MobilePwaDownloadWidget: React.FC = () => {
       mediaQuery.addEventListener('change', handleMediaChange);
     }
 
-    // 監聽已成功安裝事件 (一旦安裝成功，立即停止提示)
     const handleAppInstalled = () => {
       sessionStorage.setItem('ideax_is_app', 'true');
       localStorage.setItem('ideax_pwa_installed', 'true');
@@ -72,7 +73,6 @@ export const MobilePwaDownloadWidget: React.FC = () => {
     };
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // 監聽 PWA 原生安裝事件
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -98,52 +98,45 @@ export const MobilePwaDownloadWidget: React.FC = () => {
     };
   }, []);
 
-  // 核心規則：如果是從既有已安裝的 App 開啟，全面隱藏下載提示！
-  if (isAppMode) {
+  // 已安裝或已手動關閉則不顯示
+  if (isAppMode || isDismissed) {
     return null;
   }
 
-  // 點擊執行「直接呼叫瀏覽器原生安裝 / 或提供指引」
   const handleDownloadClick = async () => {
     triggerDirectAppDownloadOrInstall(openPwaInstallModal);
   };
 
-  return (
-    <div className="fixed right-3 sm:right-5 top-[130px] sm:top-[160px] z-40 transition-all duration-300 ease-in-out pointer-events-auto">
-      {isCollapsed ? (
-        /* 收合狀態：靠右邊框的純跳動下載圖示標籤 */
-        <button
-          onClick={() => setIsCollapsed(false)}
-          className="flex items-center justify-center bg-gradient-to-l from-amber-500 via-amber-600 to-orange-500 text-white pl-2.5 pr-1.5 py-1.5 rounded-l-xl shadow-lg border-y border-l border-white/80 active:scale-90 transition-transform cursor-pointer"
-          title="點擊展開下載安裝"
-        >
-          <div className="animate-bounce">
-            <Download className="w-4 h-4 text-white" />
-          </div>
-        </button>
-      ) : (
-        /* 展開狀態：縮小圓圈與字體規格 */
-        <div className="flex flex-col items-center gap-1.5 animate-in fade-in slide-in-from-right duration-300">
-          {/* 上下跳動的圓形下載按鈕 */}
-          <button
-            onClick={handleDownloadClick}
-            className="w-11 h-11 sm:w-12 sm:h-12 bg-gradient-to-tr from-amber-500 via-amber-600 to-orange-500 text-white rounded-full shadow-lg shadow-amber-500/35 border-2 border-white ring-2 ring-amber-400/40 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-            title="下載安裝 IdeaX創點子 App"
-          >
-            <div className="animate-bounce">
-              <Download className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-xs" />
-            </div>
-          </button>
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    sessionStorage.setItem('ideax_pwa_widget_dismissed', 'true');
+    setIsDismissed(true);
+  };
 
-          {/* 下方獨立先不要按鈕 */}
-          <button
-            onClick={() => setIsCollapsed(true)}
-            className="bg-stone-800 hover:bg-stone-900 active:scale-95 text-stone-100 text-[10px] font-bold py-0.5 px-2.5 rounded-full shadow-md border border-stone-700 transition-all cursor-pointer whitespace-nowrap"
-          >
-            先不要
-          </button>
-        </div>
-      )}
+  return (
+    <div className="fixed right-2.5 bottom-20 sm:bottom-6 z-40 transition-all duration-200 pointer-events-auto">
+      {/* 輕量精簡膠囊按鈕 (小巧精緻、不擋畫面) */}
+      <div className="flex items-center gap-1 bg-stone-900/90 hover:bg-stone-900 backdrop-blur-md text-white pl-2 pr-1.5 py-1 rounded-full shadow-md border border-stone-700/80 text-[11px] font-bold transition-all">
+        <button
+          type="button"
+          onClick={handleDownloadClick}
+          className="flex items-center gap-1.5 hover:text-amber-300 transition-colors cursor-pointer"
+          title="安裝 IdeaX App"
+        >
+          <div className="w-5 h-5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center text-white shrink-0">
+            <Download className="w-3 h-3" />
+          </div>
+          <span className="hidden xs:inline font-bold">下載 App</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="p-1 text-stone-400 hover:text-stone-200 rounded-full hover:bg-stone-800 transition-colors cursor-pointer ml-0.5"
+          title="關閉提示"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
     </div>
   );
 };
