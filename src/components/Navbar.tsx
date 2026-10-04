@@ -466,7 +466,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }
             }}
             title="點擊滑動至問題市場"
-            className="hidden sm:flex items-center text-left group transition-transform active:scale-95 cursor-pointer p-1 rounded-xl hover:bg-amber-50/80 transition-colors"
+            className="flex items-center text-left group transition-transform active:scale-95 cursor-pointer p-0.5 sm:p-1 rounded-xl hover:bg-amber-50/80 transition-colors"
           >
             <IdeaXLogo variant="bulb" size="md" />
           </div>

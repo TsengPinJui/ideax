@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
 
@@ -9,6 +9,12 @@ export const MobilePwaDownloadWidget: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(
     () => (typeof window !== 'undefined' ? (window as any).deferredPwaPrompt || null : null)
   );
+
+  // 判斷是否曾手動關閉此提示
+  const [isDismissed, setIsDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('ideax_pwa_widget_dismissed') === 'true';
+  });
 
   // 判斷是否為既有 App 開啟 (PWA / Standalone / WebAPK / iOS Home Screen / source=pwa)
   const [isAppMode, setIsAppMode] = useState<boolean>(() => {
@@ -30,10 +36,7 @@ export const MobilePwaDownloadWidget: React.FC = () => {
     return false;
   });
 
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-
   useEffect(() => {
-    // 即時檢測是否處於既有 App 模式
     const checkAppMode = () => {
       try {
         const matchStandalone = window.matchMedia('(display-mode: standalone)').matches;
@@ -52,7 +55,6 @@ export const MobilePwaDownloadWidget: React.FC = () => {
 
     checkAppMode();
 
-    // 監聽模式動態切換
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
     const handleMediaChange = (e: MediaQueryListEvent) => {
       if (e.matches) {
@@ -64,7 +66,6 @@ export const MobilePwaDownloadWidget: React.FC = () => {
       mediaQuery.addEventListener('change', handleMediaChange);
     }
 
-    // 監聽已成功安裝事件 (一旦安裝成功，立即停止提示)
     const handleAppInstalled = () => {
       sessionStorage.setItem('ideax_is_app', 'true');
       localStorage.setItem('ideax_pwa_installed', 'true');
@@ -72,7 +73,6 @@ export const MobilePwaDownloadWidget: React.FC = () => {
     };
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // 監聽 PWA 原生安裝事件
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -98,52 +98,55 @@ export const MobilePwaDownloadWidget: React.FC = () => {
     };
   }, []);
 
-  // 核心規則：如果是從既有已安裝的 App 開啟，全面隱藏下載提示！
-  if (isAppMode) {
+  // 已安裝或已手動關閉則不顯示
+  if (isAppMode || isDismissed) {
     return null;
   }
 
-  // 點擊執行「直接呼叫瀏覽器原生安裝 / 或提供指引」
   const handleDownloadClick = async () => {
     triggerDirectAppDownloadOrInstall(openPwaInstallModal);
   };
 
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    sessionStorage.setItem('ideax_pwa_widget_dismissed', 'true');
+    setIsDismissed(true);
+  };
+
   return (
-    <div className="fixed right-3 sm:right-5 top-[130px] sm:top-[160px] z-40 transition-all duration-300 ease-in-out pointer-events-auto">
-      {isCollapsed ? (
-        /* 收合狀態：靠右邊框的純跳動下載圖示標籤 */
+    <div className="relative transition-all duration-300 pointer-events-auto select-none">
+      <div className="relative flex flex-col items-center group">
+        {/* 關閉按鈕 */}
         <button
-          onClick={() => setIsCollapsed(false)}
-          className="flex items-center justify-center bg-gradient-to-l from-amber-500 via-amber-600 to-orange-500 text-white pl-2.5 pr-1.5 py-1.5 rounded-l-xl shadow-lg border-y border-l border-white/80 active:scale-90 transition-transform cursor-pointer"
-          title="點擊展開下載安裝"
+          type="button"
+          onClick={handleDismiss}
+          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-stone-900/90 hover:bg-stone-800 text-stone-300 hover:text-white flex items-center justify-center shadow border border-stone-600 transition-all z-20 cursor-pointer hover:scale-110 active:scale-90"
+          title="關閉下載提示"
+          aria-label="關閉下載提示"
         >
-          <div className="animate-bounce">
-            <Download className="w-4 h-4 text-white" />
+          <X className="w-2.5 h-2.5 stroke-[2.5]" />
+        </button>
+
+        {/* 下載提示圓形按鈕 (精緻黃金比例，介於原本與精巧版之間) */}
+        <button
+          type="button"
+          onClick={handleDownloadClick}
+          className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-orange-500 text-white shadow-md hover:shadow-lg hover:shadow-amber-500/30 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 border border-white/80 ring-2 ring-amber-400/25"
+          title="下載 / 安裝 IdeaX App"
+          aria-label="下載 IdeaX App"
+        >
+          {/* 外圍輕柔擴散動畫 */}
+          <span className="absolute -inset-0.5 rounded-full bg-amber-400/30 animate-pulse pointer-events-none -z-10" />
+
+          {/* 圓形內部圖示與文字 */}
+          <div className="flex flex-col items-center justify-center -space-y-0.5 pointer-events-none">
+            <Download className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-white drop-shadow-xs stroke-[2.4]" />
+            <span className="text-[9.5px] sm:text-[10px] font-black tracking-tight text-white drop-shadow-xs leading-none select-none">
+              App
+            </span>
           </div>
         </button>
-      ) : (
-        /* 展開狀態：縮小圓圈與字體規格 */
-        <div className="flex flex-col items-center gap-1.5 animate-in fade-in slide-in-from-right duration-300">
-          {/* 上下跳動的圓形下載按鈕 */}
-          <button
-            onClick={handleDownloadClick}
-            className="w-11 h-11 sm:w-12 sm:h-12 bg-gradient-to-tr from-amber-500 via-amber-600 to-orange-500 text-white rounded-full shadow-lg shadow-amber-500/35 border-2 border-white ring-2 ring-amber-400/40 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-            title="下載安裝 IdeaX創點子 App"
-          >
-            <div className="animate-bounce">
-              <Download className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-xs" />
-            </div>
-          </button>
-
-          {/* 下方獨立先不要按鈕 */}
-          <button
-            onClick={() => setIsCollapsed(true)}
-            className="bg-stone-800 hover:bg-stone-900 active:scale-95 text-stone-100 text-[10px] font-bold py-0.5 px-2.5 rounded-full shadow-md border border-stone-700 transition-all cursor-pointer whitespace-nowrap"
-          >
-            先不要
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 };

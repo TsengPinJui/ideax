@@ -48,12 +48,12 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
       '2xl': 'w-20 h-20 sm:w-24 sm:h-24',
     },
     bulb: {
-      xs: 'w-6 h-6',
-      sm: 'w-7 h-7 sm:w-8 sm:h-8',
-      md: 'w-8 h-8 sm:w-9 sm:h-9',
-      lg: 'w-12 h-12 sm:w-14 sm:h-14',
-      xl: 'w-16 h-16 sm:w-20 sm:h-20',
-      '2xl': 'w-20 h-20 sm:w-24 sm:h-24',
+      xs: 'w-7 h-7',
+      sm: 'w-8 h-8 sm:w-9 sm:h-9',
+      md: 'w-10 h-10 sm:w-11 sm:h-11 md:w-11.5 md:h-11.5',
+      lg: 'w-13 h-13 sm:w-15 sm:h-15',
+      xl: 'w-18 h-18 sm:w-22 sm:h-22',
+      '2xl': 'w-22 h-22 sm:w-26 sm:h-26',
     },
     chuangdianzi: {
       xs: 'w-36 h-auto',
@@ -103,7 +103,7 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
   let imageSrc = '/logo-chuangdianzi.png';
 
   if (variant === 'bulb' || variant === 'mark') {
-    imageSrc = '/logo-topleft-3.png'; // 3.png transparent
+    imageSrc = '/去背正向燈泡.png'; // 網站專屬 去背正向燈泡
   } else if (variant === 'chuangdianzi') {
     imageSrc = '/logo-chuangdianzi.png'; // 創點子 + IdeaX (2.png transparent)
   } else if (variant === 'ideax-6') {
@@ -132,7 +132,7 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
         decoding="async"
         referrerPolicy="no-referrer"
         onError={(e) => {
-          if (variant === 'bulb') {
+          if (variant === 'bulb' || variant === 'mark') {
             e.currentTarget.src = '/logo-bulb.png';
           } else {
             e.currentTarget.src = '/logo-chuangdianzi.png';

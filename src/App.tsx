@@ -1537,18 +1537,6 @@ function MainContent() {
         </div>
       )}
 
-      {/* 網頁版左側羅盤浮動懸停導覽入口 */}
-      <FloatingOnboardingCompass
-        isVisible={!isOnboardingOpen}
-        onStartOnboarding={() => {
-          setIsOnboardingFromAbout(true);
-          setSelectedQuestion(null);
-          setSelectedSolver(null);
-          setActiveTab('explore');
-          setIsOnboardingOpen(true);
-        }}
-      />
-
       {/* Footer */}
       <Footer
         onNavClick={(tab, section) => {
@@ -1602,6 +1590,24 @@ function MainContent() {
         }}
         onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
       />
+
+      {/* 頁面右下角懸浮按鈕群 (圓形教學提示鍵移到下載鍵上方) */}
+      <div className="fixed right-3 bottom-20 sm:bottom-6 z-40 flex flex-col items-center gap-2.5 pointer-events-none select-none">
+        {/* 上方：圓形教學提示鍵 (羅盤導覽) */}
+        <FloatingOnboardingCompass
+          isVisible={!isOnboardingOpen}
+          onStartOnboarding={() => {
+            setIsOnboardingFromAbout(true);
+            setSelectedQuestion(null);
+            setSelectedSolver(null);
+            setActiveTab('explore');
+            setIsOnboardingOpen(true);
+          }}
+        />
+
+        {/* 下方：PWA 下載提示懸浮圓形按鈕 */}
+        <MobilePwaDownloadWidget />
+      </div>
 
       {/* PWA 安裝與下載指引彈窗 */}
       <PwaInstallModal

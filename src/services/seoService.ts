@@ -28,8 +28,8 @@ export function updateSEOForQuestion(question: Question | null, answers: Answer[
     if (metaDesc) metaDesc.setAttribute('content', defaultDesc);
     if (ogTitle) ogTitle.setAttribute('content', defaultTitle);
     if (ogDesc) ogDesc.setAttribute('content', defaultDesc);
-    if (ogImage) ogImage.setAttribute('content', '/ideax-thumbnail.png');
-    if (twitterImage) twitterImage.setAttribute('content', '/ideax-thumbnail.png');
+    if (ogImage) ogImage.setAttribute('content', '/logo-6-trans.png');
+    if (twitterImage) twitterImage.setAttribute('content', '/logo-6-trans.png');
     if (jsonLdScript) {
       jsonLdScript.remove();
     }
@@ -51,10 +51,10 @@ export function updateSEOForQuestion(question: Question | null, answers: Answer[
     ogUrl.setAttribute('content', pageUrl);
   }
   if (ogImage) {
-    ogImage.setAttribute('content', '/ideax-thumbnail.png');
+    ogImage.setAttribute('content', '/logo-6-trans.png');
   }
   if (twitterImage) {
-    twitterImage.setAttribute('content', '/ideax-thumbnail.png');
+    twitterImage.setAttribute('content', '/logo-6-trans.png');
   }
 
   // Schema.org QAPage generation (Google Search official format for Q&A platforms)
