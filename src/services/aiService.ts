@@ -1239,3 +1239,5 @@ export async function generateExpertChatAdvice(options: {
     quickTips: '保持專業自信，不要輕易直接降價；透過調整範圍或分階段交付來維持專業價值。',
   };
 }
+
+export * from './aiCrmAgent';

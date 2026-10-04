@@ -27,6 +27,7 @@ import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
 import { PwaInstallModal } from './components/PwaInstallModal';
 import { CenterToast } from './components/CenterToast';
 import { SplashScreen } from './components/SplashScreen';
+import { RatingModal } from './components/RatingModal';
 import { HelpTooltip } from './components/HelpTooltip';
 import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnboardingGuide';
 import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompass';
@@ -1652,6 +1653,9 @@ function MainContent() {
         viewMode={viewMode}
         onSetViewMode={handleSetViewMode}
       />
+
+      {/* 專家評分回饋彈窗 */}
+      <RatingModal />
 
       {/* 螢幕正中央提示浮窗 (Center Toast HUD: 中間跳出提示再消失) */}
       <CenterToast toast={centerToast} onDismiss={hideCenterToast} />
