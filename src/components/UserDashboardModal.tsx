@@ -26,6 +26,7 @@ import { AboutUsView } from './AboutUsView';
 import { AiAssistantSettingsPanel } from './AiAssistantSettingsPanel';
 import { CopyableUserId } from './CopyableUserId';
 import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
+import { AdminPlatformManualCard } from './AdminPlatformManualCard';
 import { 
   ContractData, 
   buildContractFromProposalItem, 
@@ -43,6 +44,7 @@ import {
   Briefcase,
   FileCheck,
   MessageSquare,
+  FolderArchive,
   Clock,
   CheckCircle2,
   Lock,
@@ -286,6 +288,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [isUserConsolidatedModalOpen, setIsUserConsolidatedModalOpen] = useState(false);
   const [taxCertificateYear, setTaxCertificateYear] = useState<number>(2025);
   const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
+  const [isPlatformManualOpen, setIsPlatformManualOpen] = useState(false);
   const [isRechargeExpanded, setIsRechargeExpanded] = useState(false);
   const [isCloudDbExpanded, setIsCloudDbExpanded] = useState(false);
 
@@ -10259,11 +10262,22 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       )}
 
       {/* Footer */}
-      <div className="p-4 border-t border-stone-200 bg-stone-50 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-stone-500">
+      <div className="p-4 border-t border-stone-200 bg-stone-50 flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-xs text-stone-600 font-semibold">
             創點子 IdeaX • {currentUser.role === 'admin' ? '管理員控制台' : '個人中心'}
           </span>
+          {currentUser.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => setIsPlatformManualOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer border border-amber-400/80 group"
+              title="開啟 平台內部清單（僅限管理員權限可見）"
+            >
+              <FolderArchive className="w-3.5 h-3.5 text-stone-950 group-hover:scale-110 transition-transform" />
+              <span>平台內部清單</span>
+            </button>
+          )}
         </div>
         {!isFullPage && (
           <button
@@ -10279,6 +10293,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       <div className="py-2 text-center bg-stone-50/70 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
         v{APP_VERSION} • {APP_RELEASE_DATE} • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
+
+      {/* 平台內部清單獨立視窗 (僅管理員身分可見) */}
+      {currentUser.role === 'admin' && isPlatformManualOpen && (
+        <AdminPlatformManualCard
+          isModal={true}
+          onClose={() => setIsPlatformManualOpen(false)}
+        />
+      )}
 
       {/* 商業契約與和解協議書檢視/下載 Modal */}
       {previewContract && (
