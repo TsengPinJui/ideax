@@ -137,6 +137,24 @@
         "commissionRate": { "type": "number" },
         "updatedAt": { "type": "string" }
       }
+    },
+    "PlatformManualFile": {
+      "title": "PlatformManualFile",
+      "description": "Custom files, documentation, and manuals uploaded to IdeaX platform list",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "fileType": { "type": "string" },
+        "content": { "type": "string" },
+        "dataUrl": { "type": "string" },
+        "sizeFormatted": { "type": "string" },
+        "uploadedAt": { "type": "string" },
+        "isCustom": { "type": "boolean" }
+      },
+      "required": ["id", "name", "title", "fileType", "isCustom"]
     }
   },
   "firestore": {
@@ -187,6 +205,10 @@
     "/platform_settings/{settingId}": {
       "schema": "PlatformSetting",
       "description": "Stores system configurations, subscription plans, and admin grants"
+    },
+    "/platform_manual_files/{fileId}": {
+      "schema": "PlatformManualFile",
+      "description": "Stores custom uploaded documents and manuals in IdeaX platform list"
     }
   }
 }

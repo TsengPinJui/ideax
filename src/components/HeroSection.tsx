@@ -4,6 +4,7 @@ import { Category } from '../types';
 import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { useApp } from '../context/AppContext';
+import { calculatePlatformSatisfactionRate } from '../utils/metricsHelper';
 
 interface HeroSectionProps {
   searchQuery?: string;
@@ -175,24 +176,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     }
   }, [questions, answers]);
 
-  // 12. 方案採納滿意度 (依據真實狀況：全站解答專家與方案真實綜合星級換算)
+  // 12. 方案採納滿意度 (統一單一真相來源：與管理後台完全一致)
   const satisfactionRateFormatted = useMemo(() => {
-    const ratedSolvers = solvers.filter((s) => typeof s.rating === 'number' && s.rating > 0);
-    if (ratedSolvers.length === 0) return '-';
-
-    let totalWeightedRating = 0;
-    let totalWeight = 0;
-
-    ratedSolvers.forEach((s) => {
-      const weight = Math.max(1, s.reviewCount || 1);
-      totalWeightedRating += s.rating * weight;
-      totalWeight += weight;
-    });
-
-    const avgRating = totalWeight > 0 ? totalWeightedRating / totalWeight : 5.0;
-    const percentage = Math.min(100, Math.max(0, (avgRating / 5) * 100));
-    return `${percentage.toFixed(1)}%`;
-  }, [solvers]);
+    const stats = calculatePlatformSatisfactionRate(solvers, answers);
+    return stats.percentageFormatted;
+  }, [solvers, answers]);
 
   // 13. 當前全站最高懸賞題目金額 (即時從真實問題列表抓取最高值，正式模式與無金流模式歸零)
   const currentHighestBounty = useMemo(() => {

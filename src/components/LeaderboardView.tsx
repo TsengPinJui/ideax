@@ -214,7 +214,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
               <Trophy className="w-6 h-6 text-amber-500" />
-              <span>全站排行榜</span>
+              <span>點子王</span>
             </h2>
             <p className="mt-1 text-stone-600 text-xs sm:text-sm">
               公開展示解答者解題成效、提問委託活躍度與本週全站熱門問題

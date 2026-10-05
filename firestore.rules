@@ -53,6 +53,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // 5. 平台手冊與自訂清單檔案 (Platform Manual & Custom Uploaded Files)
+    match /platform_manual_files/{fileId} {
+      allow read, write: if true;
+    }
+
     // Default fallback
     match /{document=**} {
       allow read, write: if true;

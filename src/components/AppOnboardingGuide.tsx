@@ -34,7 +34,7 @@ export interface OnboardingStepConfig {
 const ONBOARDING_STEPS: OnboardingStepConfig[] = [
   {
     id: 1,
-    title: '1. 探索問題市場 - 選擇問題主題',
+    title: '1. 徵點子 - 選擇問題主題',
     targetId: 'onboarding-step-1-categories',
     icon: Layers,
     targetTab: 'explore',
@@ -43,7 +43,7 @@ const ONBOARDING_STEPS: OnboardingStepConfig[] = [
   },
   {
     id: 2,
-    title: '2. 探索問題市場 - 搜尋與話題標籤',
+    title: '2. 徵點子 - 搜尋與話題標籤',
     targetId: 'onboarding-step-2-search',
     icon: Search,
     targetTab: 'explore',
@@ -52,7 +52,7 @@ const ONBOARDING_STEPS: OnboardingStepConfig[] = [
   },
   {
     id: 3,
-    title: '3. 探索問題市場 - 問題分級與懸賞',
+    title: '3. 徵點子 - 問題分級與懸賞',
     targetId: 'onboarding-step-3-levels',
     icon: Sparkles,
     targetTab: 'explore',
@@ -61,7 +61,7 @@ const ONBOARDING_STEPS: OnboardingStepConfig[] = [
   },
   {
     id: 4,
-    title: '4. 探索問題市場 - 切換排列方式',
+    title: '4. 徵點子 - 切換排列方式',
     targetId: 'onboarding-step-4-viewmode',
     icon: LayoutGrid,
     targetTab: 'explore',

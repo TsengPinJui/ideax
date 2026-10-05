@@ -1,7 +1,7 @@
 {
-  "name": "創點子 IdeaX",
-  "description": "IdeaX 創點子 — 讓想法發光！高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，Ideas Connect Possibilities。",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "創點子 IdeaX - 商業智庫與問題解決平台",
+  "description": "全台最具實戰力的新型態商業問題解決市集。提問者免費提出痛點或懸賞發案，專家與社群提供落地解法，支援 AI-CRM 智慧客情巡航與 24hr 特助代操。",
+  "version": "1.0.0",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
-

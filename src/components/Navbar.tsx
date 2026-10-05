@@ -488,7 +488,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'bg-amber-50/90 text-amber-950 font-black border-amber-400 ring-2 ring-amber-200 shadow-2xs'
                   : 'bg-white text-stone-800 border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 hover:text-amber-950 shadow-2xs'
               }`}
-              title="滑動至探索問題市場"
+              title="滑動至徵點子區塊"
             >
               <Compass className="w-4 h-4 text-amber-600 shrink-0" />
               <span>探索問題</span>

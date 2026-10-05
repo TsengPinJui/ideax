@@ -73,7 +73,7 @@ export function calculateTwoWayMatchesForQuestion(
 
       // 供給側分數（AICRM 由專家巡航獵題）
       const bountyAppeal = qBounty >= 1000 ? 95 : qBounty >= 500 ? 88 : qBounty >= 200 ? 80 : 70;
-      const urgencyAppeal = question.urgency === 'urgent' || question.specialZone === 'bounty' ? 95 : 82;
+      const urgencyAppeal = ((question as any).urgency === 'urgent' || (question as any).specialZone === 'bounty' || question.level === 'L4' || question.level === 'L3') ? 95 : 82;
       const supplySideScore = Math.min(99, Math.round(domainScore * 0.45 + bountyAppeal * 0.35 + urgencyAppeal * 0.2));
 
       // 雙向交集握手總分

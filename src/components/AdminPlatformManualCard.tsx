@@ -23,6 +23,8 @@ import {
   FileUp,
   Tag,
   Bookmark,
+  Cloud,
+  RefreshCw,
 } from 'lucide-react';
 import {
   loadAllManualDocuments,
@@ -30,13 +32,20 @@ import {
   deleteManualFileById,
   restoreAllSystemDefaultFiles,
   getDeletedSystemIds,
+  initManualFilesFromFirestore,
   PlatformManualDoc,
 } from '../data/platformManual/fileStorage';
+import { subscribeToCustomManualFiles } from '../services/firestoreSync';
 import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
 import {
   downloadEntireManualFolderZip,
+  downloadEntireManualFolderTar,
+  downloadEntireManualFolderWord,
+  downloadEntireManualFolderPdf,
+  downloadEntireManualFolderJson,
   getPlatformManualFolderName,
   downloadDocAsWord,
+  downloadDocAsPdf,
   downloadDocAsText,
   formatDocToMarkdown,
 } from '../utils/zipManualDownloader';
@@ -77,7 +86,32 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
   // Delete confirmation modal state
   const [fileToDelete, setFileToDelete] = useState<PlatformManualDoc | null>(null);
 
+  // Cloud Sync state
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+
+  // Multi-format folder download & PDF download state
+  const [downloadingFormat, setDownloadingFormat] = useState<string | null>(null);
+  const [folderMenuOpen, setFolderMenuOpen] = useState<boolean>(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
+  const folderMenuRef = useRef<HTMLDivElement>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 點擊外部關閉資料夾格式選單
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (folderMenuRef.current && !folderMenuRef.current.contains(event.target as Node)) {
+        setFolderMenuOpen(false);
+      }
+    };
+    if (folderMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [folderMenuOpen]);
 
   // 載入當前文件清單
   const refreshDocuments = () => {
@@ -89,8 +123,50 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
     }
   };
 
+  // 手動自雲端重新同步
+  const handleManualCloudSync = async () => {
+    setIsSyncingCloud(true);
+    setSyncStatusMsg('正在自 Firebase 雲端資料庫同步手冊檔案...');
+    try {
+      const docs = await initManualFilesFromFirestore();
+      setDocuments(docs);
+      setDeletedSystemCount(getDeletedSystemIds().length);
+      setSyncStatusMsg(`雲端同步完成！共載入 ${docs.length} 份文件檔案`);
+    } catch (e) {
+      setSyncStatusMsg('雲端同步失敗，已切回本機快取');
+    } finally {
+      setIsSyncingCloud(false);
+      setTimeout(() => setSyncStatusMsg(null), 3500);
+    }
+  };
+
   useEffect(() => {
     refreshDocuments();
+
+    // 啟動時自動自 Firebase 雲端資料庫加載最新自訂檔案與刪除設定
+    setIsSyncingCloud(true);
+    initManualFilesFromFirestore()
+      .then((docs) => {
+        setDocuments(docs);
+        setDeletedSystemCount(getDeletedSystemIds().length);
+      })
+      .catch((e) => {
+        console.warn('Initial cloud manual sync failed:', e);
+      })
+      .finally(() => {
+        setIsSyncingCloud(false);
+      });
+
+    // 即時監聽 Firestore 雲端集合變化
+    const unsub = subscribeToCustomManualFiles((cloudFiles) => {
+      if (cloudFiles && Array.isArray(cloudFiles)) {
+        refreshDocuments();
+      }
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
   }, []);
 
   const currentDoc = documents.find((d) => d.id === selectedDocId) || documents[0];
@@ -108,6 +184,12 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
     if (!files || files.length === 0) return;
 
     Array.from(files).forEach((file) => {
+      if (file.size > 850 * 1024) {
+        alert(
+          `提醒：檔案「${file.name}」大小為 ${(file.size / 1024).toFixed(0)} KB，超出 Firestore 雲端資料庫單筆文檔 1MB 建議上限。建議轉為純文字/Markdown 或壓縮至 800KB 以下，以確保完整持久化存入資料庫！`
+        );
+      }
+
       const isText = file.type.startsWith('text/') ||
         file.name.endsWith('.md') ||
         file.name.endsWith('.txt') ||
@@ -140,6 +222,8 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
           saveCustomManualFile(newDoc);
           refreshDocuments();
           setSelectedDocId(newDoc.id);
+          setSyncStatusMsg(`檔案「${newDoc.name}」已儲存並自動同步至雲端資料庫！`);
+          setTimeout(() => setSyncStatusMsg(null), 4000);
         };
         reader.readAsText(file);
       } else {
@@ -158,6 +242,8 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
           saveCustomManualFile(newDoc);
           refreshDocuments();
           setSelectedDocId(newDoc.id);
+          setSyncStatusMsg(`檔案「${newDoc.name}」已儲存並自動同步至雲端資料庫！`);
+          setTimeout(() => setSyncStatusMsg(null), 4000);
         };
         reader.readAsDataURL(file);
       }
@@ -190,6 +276,8 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
     setNewDocTitle('');
     setNewDocDesc('');
     setNewDocContent('');
+    setSyncStatusMsg(`檔案「${newDoc.name}」已建立並自動同步至雲端資料庫！`);
+    setTimeout(() => setSyncStatusMsg(null), 4000);
   };
 
   // 執行刪除檔案
@@ -233,6 +321,47 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
       return;
     }
     downloadDocAsWord(doc);
+  };
+
+  // 單檔下載 PDF 檔 (.pdf)
+  const handleDownloadPdfFile = async (doc: PlatformManualDoc) => {
+    setIsDownloadingPdf(true);
+    try {
+      await downloadDocAsPdf(doc);
+    } catch (e) {
+      console.error('Failed to download PDF', e);
+      downloadDocAsText(doc, 'txt');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  // 下載整個資料夾（支援 ZIP, TAR, Word全手冊, PDF全手冊, JSON備份）
+  const handleDownloadEntireFolder = async (format: 'zip' | 'tar' | 'word' | 'pdf' | 'json') => {
+    if (documents.length === 0 || downloadingFormat) return;
+    setDownloadingFormat(format);
+    setFolderMenuOpen(false);
+    try {
+      if (format === 'zip') {
+        await downloadEntireManualFolderZip(documents);
+      } else if (format === 'tar') {
+        await downloadEntireManualFolderTar(documents);
+      } else if (format === 'word') {
+        downloadEntireManualFolderWord(documents);
+      } else if (format === 'pdf') {
+        await downloadEntireManualFolderPdf(documents);
+      } else if (format === 'json') {
+        downloadEntireManualFolderJson(documents);
+      }
+      setSyncStatusMsg(`已成功下載「${format.toUpperCase()}」格式的資料夾清單！`);
+      setTimeout(() => setSyncStatusMsg(null), 3500);
+    } catch (e) {
+      console.error(`Download folder ${format} failed`, e);
+      setSyncStatusMsg(`下載 ${format.toUpperCase()} 失敗，請重試`);
+      setTimeout(() => setSyncStatusMsg(null), 3500);
+    } finally {
+      setDownloadingFormat(null);
+    }
   };
 
   // 複製全文文字
@@ -292,6 +421,20 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
                 共 {documents.length} 份文件檔案
               </span>
+              {isSyncingCloud ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 animate-pulse">
+                  <RefreshCw className="w-3 h-3 animate-spin text-amber-600" />
+                  雲端同步中...
+                </span>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200"
+                  title="所有新增與上傳之手冊檔案均自動持久化儲存至 Firebase Firestore 雲端資料庫"
+                >
+                  <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+                  Firestore 雲端持久儲存
+                </span>
+              )}
             </div>
             <div className="text-[11px] text-stone-500 mt-1 flex items-center gap-1.5 flex-wrap">
               <span className="text-stone-400 font-medium">資料夾名稱：</span>
@@ -300,42 +443,148 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
               </code>
             </div>
             <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
-              可自由在線查閱、<strong>上傳新增檔案</strong>、<strong>手動建立文件</strong>或<strong>刪除不需要的檔案</strong>。
+              可自由在線查閱、<strong>上傳新增檔案</strong>、<strong>手動建立文件</strong>或<strong>刪除不需要的檔案</strong>。檔案會自動同步保存至 Firebase 雲端資料庫。
             </p>
           </div>
         </div>
 
         {/* 頂部管理按鈕群組 */}
         <div className="flex items-center gap-2 flex-wrap shrink-0">
-          {/* 一鍵直接下載整個資料夾 (.zip) */}
+          {/* 手動自雲端重新同步按鈕 */}
           <button
             type="button"
-            disabled={isZipping || documents.length === 0}
-            onClick={async () => {
-              try {
-                setIsZipping(true);
-                await downloadEntireManualFolderZip(documents);
-              } catch (e) {
-                console.error('Download folder zip failed', e);
-              } finally {
-                setIsZipping(false);
-              }
-            }}
-            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 text-xs font-black flex items-center gap-1.5 shadow-xs transition-all cursor-pointer border border-amber-300 disabled:opacity-60"
-            title="一鍵將所有手冊與上傳檔案打包為 ZIP 資料夾直接下載"
+            disabled={isSyncingCloud}
+            onClick={handleManualCloudSync}
+            className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 active:scale-95 text-stone-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs border border-stone-200 transition-all cursor-pointer disabled:opacity-60"
+            title="自 Firebase Firestore 雲端資料庫重新同步手冊與檔案清單"
           >
-            {isZipping ? (
-              <>
-                <RotateCcw className="w-3.5 h-3.5 animate-spin" />
-                <span>正在打包資料夾...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-3.5 h-3.5" />
-                <span>下載整個資料夾 (.zip)</span>
-              </>
-            )}
+            <RefreshCw className={`w-3.5 h-3.5 text-stone-600 ${isSyncingCloud ? 'animate-spin text-amber-600' : ''}`} />
+            <span className="hidden sm:inline">重新同步雲端</span>
           </button>
+
+          {/* 下載整個資料夾按鈕（支援 ZIP, TAR, Word全手冊, PDF全手冊, JSON備份） */}
+          <div className="relative" ref={folderMenuRef}>
+            <div className="inline-flex rounded-xl shadow-xs">
+              <button
+                type="button"
+                disabled={!!downloadingFormat || documents.length === 0}
+                onClick={() => handleDownloadEntireFolder('zip')}
+                className="px-3.5 py-1.5 rounded-l-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border-t border-b border-l border-amber-400 disabled:opacity-60"
+                title="一鍵打包下載整個資料夾 (.zip)"
+              >
+                {downloadingFormat === 'zip' ? (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                    <span>打包 ZIP 中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5" />
+                    <span>下載整個資料夾 (.zip)</span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                disabled={!!downloadingFormat || documents.length === 0}
+                onClick={() => setFolderMenuOpen(!folderMenuOpen)}
+                className="px-2.5 py-1.5 rounded-r-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 text-xs font-black flex items-center justify-center border-t border-b border-r border-amber-400 transition-all cursor-pointer disabled:opacity-60 border-l border-amber-600/20"
+                title="選擇其他資料夾下載格式 (.tar, .doc, .pdf, .json)"
+              >
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${folderMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+
+            {/* 下拉選單：多種類型的資料夾下載 */}
+            {folderMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-72 rounded-2xl bg-white border border-stone-200 shadow-xl py-1.5 z-50 text-xs animate-in fade-in slide-in-from-top-1">
+                <div className="px-3.5 py-1.5 text-[10px] font-bold text-stone-400 uppercase tracking-wider border-b border-stone-100 flex items-center justify-between">
+                  <span>📁 資料夾打包格式</span>
+                  <span className="text-[10px] font-mono text-stone-500">共 {documents.length} 份文件</span>
+                </div>
+
+                {/* 1. ZIP */}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadEntireFolder('zip')}
+                  className="w-full px-3.5 py-2.5 text-left hover:bg-amber-50/80 text-stone-800 font-bold flex items-center justify-between cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 font-mono text-[10px] font-black border border-amber-300">ZIP</span>
+                    <div>
+                      <div className="text-xs font-bold text-stone-900">ZIP 壓縮資料夾 (.zip)</div>
+                      <div className="text-[10px] text-stone-500 font-normal">標準壓縮包，包含 Word 與純文字檔</div>
+                    </div>
+                  </div>
+                  {downloadingFormat === 'zip' && <RotateCcw className="w-3.5 h-3.5 animate-spin text-amber-600" />}
+                </button>
+
+                {/* 2. TAR */}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadEntireFolder('tar')}
+                  className="w-full px-3.5 py-2.5 text-left hover:bg-amber-50/80 text-stone-800 font-bold flex items-center justify-between cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="px-1.5 py-0.5 rounded-md bg-stone-200 text-stone-900 font-mono text-[10px] font-black border border-stone-300">TAR</span>
+                    <div>
+                      <div className="text-xs font-bold text-stone-900">TAR 歸檔資料夾 (.tar)</div>
+                      <div className="text-[10px] text-stone-500 font-normal">POSIX / Linux 標準免解壓直接歸檔</div>
+                    </div>
+                  </div>
+                  {downloadingFormat === 'tar' && <RotateCcw className="w-3.5 h-3.5 animate-spin text-amber-600" />}
+                </button>
+
+                {/* 3. Word 全手冊 */}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadEntireFolder('word')}
+                  className="w-full px-3.5 py-2.5 text-left hover:bg-blue-50/80 text-stone-800 font-bold flex items-center justify-between cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-900 font-mono text-[10px] font-black border border-blue-300">DOC</span>
+                    <div>
+                      <div className="text-xs font-bold text-stone-900">全手冊彙整 Word 檔 (.doc)</div>
+                      <div className="text-[10px] text-stone-500 font-normal">全部章節與文件合併為單一完整 Word</div>
+                    </div>
+                  </div>
+                  {downloadingFormat === 'word' && <RotateCcw className="w-3.5 h-3.5 animate-spin text-blue-600" />}
+                </button>
+
+                {/* 4. PDF 全手冊 */}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadEntireFolder('pdf')}
+                  className="w-full px-3.5 py-2.5 text-left hover:bg-rose-50/80 text-stone-800 font-bold flex items-center justify-between cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-900 font-mono text-[10px] font-black border border-rose-300">PDF</span>
+                    <div>
+                      <div className="text-xs font-bold text-stone-900">全手冊彙整 PDF 檔 (.pdf)</div>
+                      <div className="text-[10px] text-stone-500 font-normal">全部章節合併為單一 A4 完整列印手冊</div>
+                    </div>
+                  </div>
+                  {downloadingFormat === 'pdf' && <RotateCcw className="w-3.5 h-3.5 animate-spin text-rose-600" />}
+                </button>
+
+                {/* 5. JSON 備份 */}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadEntireFolder('json')}
+                  className="w-full px-3.5 py-2.5 text-left hover:bg-purple-50/80 text-stone-800 font-bold flex items-center justify-between cursor-pointer transition-colors border-t border-stone-100"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-900 font-mono text-[10px] font-black border border-purple-300">JSON</span>
+                    <div>
+                      <div className="text-xs font-bold text-stone-900">全清單備份資料 (.json)</div>
+                      <div className="text-[10px] text-stone-500 font-normal">包含所有手冊內容與系統結構備份</div>
+                    </div>
+                  </div>
+                  {downloadingFormat === 'json' && <RotateCcw className="w-3.5 h-3.5 animate-spin text-purple-600" />}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* 上傳檔案按鈕 */}
           <button
@@ -384,6 +633,23 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
           )}
         </div>
       </div>
+
+      {/* 雲端即時同步提示條 */}
+      {syncStatusMsg && (
+        <div className="px-3.5 py-2 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-semibold flex items-center justify-between shadow-2xs animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <Cloud className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{syncStatusMsg}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSyncStatusMsg(null)}
+            className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* 📁 互動式檔案資料夾與檔案預覽區 */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -461,37 +727,6 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
             })}
           </div>
 
-          {/* 下載整個資料夾卡片 */}
-          <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent border border-amber-300/80 flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                <FolderArchive className="w-4 h-4 text-amber-600" />
-                <span>一鍵下載整個資料夾</span>
-              </div>
-              <div className="text-[10px] text-stone-500 font-mono mt-0.5 truncate max-w-[200px]" title={`${getPlatformManualFolderName()}.zip`}>
-                {getPlatformManualFolderName()}.zip
-              </div>
-            </div>
-            <button
-              type="button"
-              disabled={isZipping || documents.length === 0}
-              onClick={async () => {
-                try {
-                  setIsZipping(true);
-                  await downloadEntireManualFolderZip(documents);
-                } catch (e) {
-                  console.error('Download folder zip failed', e);
-                } finally {
-                  setIsZipping(false);
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 text-xs font-black shrink-0 shadow-xs cursor-pointer flex items-center gap-1 border border-amber-400/80 disabled:opacity-50"
-            >
-              {isZipping ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              <span>{isZipping ? '打包中' : '下載 ZIP'}</span>
-            </button>
-          </div>
-
           {/* 拖曳或點擊上傳提示區域 */}
           <div
             onClick={() => fileInputRef.current?.click()}
@@ -560,15 +795,20 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
                     <span>下載 Word 檔</span>
                   </button>
 
-                  {/* 下載純文字檔 (.txt) */}
+                  {/* 下載 PDF 檔 (.pdf) */}
                   <button
                     type="button"
-                    onClick={() => handleDownloadTextFile(currentDoc, 'txt')}
-                    className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                    title="以純文字檔 (.txt) 下載此檔案"
+                    disabled={isDownloadingPdf}
+                    onClick={() => handleDownloadPdfFile(currentDoc)}
+                    className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
+                    title="以 PDF 格式 (.pdf) 下載此文件"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>下載文字檔</span>
+                    {isDownloadingPdf ? (
+                      <RotateCcw className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5 text-rose-400" />
+                    )}
+                    <span>{isDownloadingPdf ? '產生中...' : '下載PDF'}</span>
                   </button>
 
                   {/* 刪除此檔 */}
@@ -602,7 +842,7 @@ export const AdminPlatformManualCard: React.FC<AdminPlatformManualCardProps> = (
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleDownloadSingleFile(currentDoc)}
+                      onClick={() => handleDownloadTextFile(currentDoc)}
                       className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <Download className="w-4 h-4" />

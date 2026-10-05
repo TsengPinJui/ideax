@@ -1,4 +1,11 @@
 import { getPlatformManualManifest } from './index';
+import {
+  syncCustomManualFileToFirestore,
+  deleteCustomManualFileFromFirestore,
+  getCustomManualFilesFromFirestore,
+  syncDeletedSystemManualIdsToFirestore,
+  getDeletedSystemManualIdsFromFirestore,
+} from '../../services/firestoreSync';
 
 export interface PlatformManualDoc {
   id: string;
@@ -33,7 +40,7 @@ export const getDeletedSystemIds = (): string[] => {
 };
 
 /**
- * 取得所有自訂上傳的檔案
+ * 取得所有自訂上傳的檔案 (自快取)
  */
 export const getCustomUploadedFiles = (): PlatformManualDoc[] => {
   try {
@@ -74,29 +81,87 @@ export const loadAllManualDocuments = (): PlatformManualDoc[] => {
 };
 
 /**
- * 儲存/新增一個自訂上傳檔案
+ * 自 Firestore 雲端資料庫初始化與同步最新檔案與設定
+ */
+export const initManualFilesFromFirestore = async (): Promise<PlatformManualDoc[]> => {
+  try {
+    const [cloudFiles, cloudDeletedIds] = await Promise.all([
+      getCustomManualFilesFromFirestore(),
+      getDeletedSystemManualIdsFromFirestore(),
+    ]);
+
+    if (cloudFiles && Array.isArray(cloudFiles)) {
+      // 合併本地與雲端檔案，以雲端為主但保留最新
+      const localFiles = getCustomUploadedFiles();
+      const map = new Map<string, PlatformManualDoc>();
+      localFiles.forEach((f) => map.set(f.id, f));
+      cloudFiles.forEach((f) => map.set(f.id, f));
+      const merged = Array.from(map.values());
+      try {
+        localStorage.setItem(STORAGE_CUSTOM_FILES_KEY, JSON.stringify(merged));
+      } catch (err) {
+        console.warn('localStorage full, skipping cache save', err);
+      }
+    }
+
+    if (cloudDeletedIds && Array.isArray(cloudDeletedIds)) {
+      try {
+        localStorage.setItem(STORAGE_DELETED_SYSTEM_KEY, JSON.stringify(cloudDeletedIds));
+      } catch (err) {
+        console.warn('localStorage full', err);
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to sync manual files from Firestore, fallback to local', e);
+  }
+
+  return loadAllManualDocuments();
+};
+
+/**
+ * 儲存/新增一個自訂上傳檔案（雙向同步寫入本地快取與雲端 Firestore 資料庫）
  */
 export const saveCustomManualFile = (newFile: PlatformManualDoc) => {
   const current = getCustomUploadedFiles();
   const filtered = current.filter((f) => f.id !== newFile.id);
   const updated = [newFile, ...filtered];
-  localStorage.setItem(STORAGE_CUSTOM_FILES_KEY, JSON.stringify(updated));
+  try {
+    localStorage.setItem(STORAGE_CUSTOM_FILES_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('Failed to save to localStorage (quota exceeded?), will still sync to cloud Firestore', err);
+  }
+
+  // 自動非同步持久化存入雲端 Firestore 資料庫
+  syncCustomManualFileToFirestore(newFile).catch((err) => {
+    console.warn('Background sync to Firestore failed:', err);
+  });
+
   return updated;
 };
 
 /**
- * 刪除指定檔案（若為系統檔案則加入黑名單；若為自訂檔案則自本機儲存移除）
+ * 刪除指定檔案（若為系統檔案則加入黑名單；若為自訂檔案則自本機快取與雲端 Firestore 移除）
  */
 export const deleteManualFileById = (id: string, isCustom: boolean) => {
   if (isCustom) {
     const current = getCustomUploadedFiles();
     const updated = current.filter((f) => f.id !== id);
-    localStorage.setItem(STORAGE_CUSTOM_FILES_KEY, JSON.stringify(updated));
+    try {
+      localStorage.setItem(STORAGE_CUSTOM_FILES_KEY, JSON.stringify(updated));
+    } catch {}
+    deleteCustomManualFileFromFirestore(id).catch((err) => {
+      console.warn('Failed to delete from Firestore:', err);
+    });
   } else {
     const deleted = getDeletedSystemIds();
     if (!deleted.includes(id)) {
       const updated = [...deleted, id];
-      localStorage.setItem(STORAGE_DELETED_SYSTEM_KEY, JSON.stringify(updated));
+      try {
+        localStorage.setItem(STORAGE_DELETED_SYSTEM_KEY, JSON.stringify(updated));
+      } catch {}
+      syncDeletedSystemManualIdsToFirestore(updated).catch((err) => {
+        console.warn('Failed to sync deleted ids to Firestore:', err);
+      });
     }
   }
 };
@@ -105,5 +170,11 @@ export const deleteManualFileById = (id: string, isCustom: boolean) => {
  * 恢復所有被刪除之系統預設檔案
  */
 export const restoreAllSystemDefaultFiles = () => {
-  localStorage.removeItem(STORAGE_DELETED_SYSTEM_KEY);
+  try {
+    localStorage.removeItem(STORAGE_DELETED_SYSTEM_KEY);
+  } catch {}
+  syncDeletedSystemManualIdsToFirestore([]).catch((err) => {
+    console.warn('Failed to restore default system files in Firestore:', err);
+  });
 };
+

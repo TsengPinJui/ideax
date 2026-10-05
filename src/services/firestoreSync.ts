@@ -853,4 +853,104 @@ export function subscribeToCustomerSupportConversations(callback: (convs: Custom
   }
 }
 
+// =========================================================================
+// 平台清單與自訂手冊檔案雲端同步 (Platform Manual Custom Files & System Config)
+// =========================================================================
+
+export async function syncCustomManualFileToFirestore(file: import('../data/platformManual/fileStorage').PlatformManualDoc): Promise<boolean> {
+  if (!file || !file.id || isQuotaExhausted) return false;
+  try {
+    const docRef = doc(db, 'platform_manual_files', file.id);
+    const cleanDoc = JSON.parse(JSON.stringify(file));
+    await setDoc(docRef, {
+      ...cleanDoc,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    handleFirestoreError(`syncCustomManualFileToFirestore(${file.id})`, err);
+    return false;
+  }
+}
+
+export async function deleteCustomManualFileFromFirestore(fileId: string): Promise<boolean> {
+  if (!fileId || isQuotaExhausted) return false;
+  try {
+    const docRef = doc(db, 'platform_manual_files', fileId);
+    await deleteDoc(docRef);
+    return true;
+  } catch (err) {
+    handleFirestoreError(`deleteCustomManualFileFromFirestore(${fileId})`, err);
+    return false;
+  }
+}
+
+export async function getCustomManualFilesFromFirestore(): Promise<import('../data/platformManual/fileStorage').PlatformManualDoc[] | null> {
+  if (isQuotaExhausted) return null;
+  try {
+    const snap = await getDocs(collection(db, 'platform_manual_files'));
+    if (!snap.empty) {
+      return snap.docs.map((d) => d.data() as import('../data/platformManual/fileStorage').PlatformManualDoc);
+    }
+    return [];
+  } catch (err) {
+    handleFirestoreError('getCustomManualFilesFromFirestore', err);
+    return null;
+  }
+}
+
+export function subscribeToCustomManualFiles(callback: (files: import('../data/platformManual/fileStorage').PlatformManualDoc[]) => void): Unsubscribe | null {
+  if (isQuotaExhausted) return null;
+  try {
+    return onSnapshot(
+      collection(db, 'platform_manual_files'),
+      (snapshot) => {
+        const list: import('../data/platformManual/fileStorage').PlatformManualDoc[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as import('../data/platformManual/fileStorage').PlatformManualDoc);
+        });
+        callback(list);
+      },
+      (err) => {
+        handleFirestoreError('subscribeToCustomManualFiles', err);
+      }
+    );
+  } catch (err) {
+    handleFirestoreError('subscribeToCustomManualFiles', err);
+    return null;
+  }
+}
+
+export async function syncDeletedSystemManualIdsToFirestore(ids: string[]): Promise<boolean> {
+  if (isQuotaExhausted) return false;
+  try {
+    const docRef = doc(db, 'platform_settings', 'deleted_manual_system_ids');
+    await setDoc(docRef, {
+      ids,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    handleFirestoreError('syncDeletedSystemManualIdsToFirestore', err);
+    return false;
+  }
+}
+
+export async function getDeletedSystemManualIdsFromFirestore(): Promise<string[] | null> {
+  if (isQuotaExhausted) return null;
+  try {
+    const docRef = doc(db, 'platform_settings', 'deleted_manual_system_ids');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      return Array.isArray(data?.ids) ? data.ids : [];
+    }
+    return [];
+  } catch (err) {
+    handleFirestoreError('getDeletedSystemManualIdsFromFirestore', err);
+    return null;
+  }
+}
+
+
 

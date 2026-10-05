@@ -102,7 +102,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
               </span>
             </div>
 
-            {/* Title & Tooltip & 認證專家優先曝光 (帶箭頭) */}
+            {/* Title & Tooltip & 去認證享優先曝光 (帶箭頭) */}
             <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-stone-900 tracking-tight">
                 認證專家智庫
@@ -118,7 +118,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
                 title="前往申請認證專家，優先獲得官方曝光"
               >
                 <Sparkles className="w-3.5 h-3.5 fill-stone-950 shrink-0 group-hover:scale-110 transition-transform" />
-                <span>認證專家優先曝光</span>
+                <span>去認證享優先曝光</span>
                 <ArrowRight className="w-3.5 h-3.5 text-stone-950 stroke-[2.5] group-hover:translate-x-0.5 transition-transform shrink-0" />
               </button>
             </div>

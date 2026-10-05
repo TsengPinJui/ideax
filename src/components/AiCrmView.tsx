@@ -43,7 +43,7 @@ interface AiCrmViewProps {
 }
 
 // 🧪 虛擬實戰沙盒示範資料（體驗模式專屬：真實情境、虛擬資料、功能全開放）
-export const VIRTUAL_SANDBOX_LEADS: AiCrmLead[] = [
+export const VIRTUAL_SANDBOX_LEADS: any[] = [
   {
     id: 'demo-lead-1',
     clientId: 'demo-client-1',
@@ -106,7 +106,7 @@ export const VIRTUAL_SANDBOX_LEADS: AiCrmLead[] = [
   },
 ];
 
-export const VIRTUAL_SANDBOX_HANDSHAKE_MATCHES: TwoWayMatchData[] = [
+export const VIRTUAL_SANDBOX_HANDSHAKE_MATCHES: any[] = [
   {
     question: {
       id: 'demo-q-1',
@@ -196,7 +196,7 @@ export const VIRTUAL_SANDBOX_HANDSHAKE_MATCHES: TwoWayMatchData[] = [
   },
 ];
 
-export const VIRTUAL_SANDBOX_TASKS: AssistantScheduledTask[] = [
+export const VIRTUAL_SANDBOX_TASKS: any[] = [
   {
     id: 'demo-task-1',
     leadId: 'demo-lead-1',
@@ -241,6 +241,8 @@ export const SCHEDULE_TIME_SLOTS = [
   { id: '3days_1430', label: '3 天後 14:30', desc: '三天猶豫期破冰' },
   { id: 'next_mon_0930', label: '下週一 09:30', desc: '下週開工首選' },
 ];
+
+export const SCHEDULE_PRESET_OPTIONS = SCHEDULE_TIME_SLOTS;
 
 export const SCHEDULE_DAYS = ['今天', '明天', '後天', '3天後', '本週末', '下週一'];
 export const SCHEDULE_HOURS = ['09:30', '11:00', '12:30', '14:30', '16:30', '19:30', '21:00'];
@@ -322,7 +324,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
   const [selectedPitchStyle, setSelectedPitchStyle] = useState<Record<string, 'calm' | 'sharp' | 'warm'>>({});
   const [copiedPitchId, setCopiedPitchId] = useState<string | null>(null);
 
-  const currentSolver: Solver = {
+  const currentSolver: any = {
     id: currentUser.id,
     userId: currentUser.id,
     name: currentUser.name,
@@ -334,9 +336,13 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
     bio: currentUser.bio || '',
     rating: currentUser.rating || 5.0,
     reviewCount: currentUser.reviewCount || 10,
-    acceptedSolutionsCount: currentUser.acceptedSolutionsCount || 5,
+    answerCount: (currentUser as any).answerCount || 12,
+    acceptedAnswersCount: currentUser.acceptedSolutionsCount || 5,
+    acceptedRate: 88,
+    tier: '認證專家',
     verified: currentUser.verifiedExpert || currentUser.realNameAuthStatus === 'verified',
-    badge: currentUser.verifiedBadge || '認證專家',
+    verifiedBadge: Boolean(currentUser.verifiedBadge),
+    earnings: (currentUser as any).points || 0,
     pricePerSession: 1500,
     completedProjects: 8,
   };

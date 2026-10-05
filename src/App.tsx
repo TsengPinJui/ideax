@@ -948,7 +948,7 @@ function MainContent() {
                     <div className="flex sm:flex-row items-center justify-between gap-1.5 sm:gap-4 mb-1.5 sm:mb-3">
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 sm:gap-2">
-                          <span>探索問題市場</span>
+                          <span>徵點子</span>
                           <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 font-mono">
                             {filteredQuestions.length} 則待解
                           </span>
@@ -1166,11 +1166,9 @@ function MainContent() {
                           }}
                           onSearchTag={handleSearchTag}
                           onClick={() => {
-                            incrementQuestionViews(q.id, 1);
                             recordUserViewedQuestion(currentUser.id, q);
                             setUserProfileVersion((v) => v + 1);
-                            const nextV = (q.views || 0) + 1;
-                            setSelectedQuestion({ ...q, views: nextV, viewsCount: nextV });
+                            setSelectedQuestion(q);
                             setActiveTab('question_detail');
                           }}
                         />
@@ -1236,9 +1234,7 @@ function MainContent() {
               onSelectQuestion={(qId: string) => {
                 const found = questions.find((q) => q.id === qId);
                 if (found) {
-                  incrementQuestionViews(found.id, 1);
-                  const nextV = (found.views || 0) + 1;
-                  setSelectedQuestion({ ...found, views: nextV, viewsCount: nextV });
+                  setSelectedQuestion(found);
                   setActiveTab('question_detail');
                 }
               }}
@@ -1274,9 +1270,7 @@ function MainContent() {
               onOpenQuestion={(qId: string) => {
                 const found = questions.find((q) => q.id === qId);
                 if (found) {
-                  incrementQuestionViews(found.id, 1);
-                  const nextV = (found.views || 0) + 1;
-                  setSelectedQuestion({ ...found, views: nextV, viewsCount: nextV });
+                  setSelectedQuestion(found);
                   setActiveTab('question_detail');
                 }
               }}
