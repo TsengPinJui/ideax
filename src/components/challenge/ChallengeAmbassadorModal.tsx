@@ -114,7 +114,7 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
   };
 
   const handleCopyShareText = (code: string) => {
-    const text = `🔥【IdeaX 創新挑戰季】你的創新idea值得被看見！
+    const text = `🔥【IdeaX 創新挑戰季】你的創業想法值得被看見！
 現在投稿即可接受全網虛擬支持金市場驗證與認證專家 300 萬投資評選，過審即獲官方金色認證標章！
 👉 投稿時填寫專屬推薦碼：${code}
 輸入此推薦碼還可獲得 100 點競賽專用投票點數！一起提出創新解方！`;
@@ -134,7 +134,7 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
             </div>
             <div>
               <h2 className="text-base font-black text-stone-900 flex items-center gap-2">
-                <span>推廣大使與分享獎勵</span>
+                <span>校園宣傳大使與分享獎勵</span>
               </h2>
             </div>
           </div>
@@ -160,7 +160,7 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
             }`}
           >
             <Users className="w-3.5 h-3.5 text-emerald-600" />
-            <span>推廣大使 ($400/過審)</span>
+            <span>宣傳大使推廣 ($800/過審)</span>
           </button>
 
           <button
@@ -185,10 +185,10 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
               <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2">
                 <h3 className="font-black text-sm text-emerald-950 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-emerald-600" />
-                  <span>推廣大使獎勵說明</span>
+                  <span>校園大使推廣獎勵說明</span>
                 </h3>
                 <p className="text-xs text-stone-700 leading-relaxed">
-                  <strong>獎勵規則：</strong>推廣大使每成功推薦一位創作者投稿且<strong>該提案通過管理員審核</strong>，大使可獲得<strong> NT$ 400 元</strong> 實體推廣費（只按推薦且過審計算，投稿者不領取此款；未通過審核之提案不計入）。
+                  <strong>獎勵規則：</strong>校園宣傳大使每成功推薦一位創作者投稿且<strong>該提案通過管理員審核</strong>，大使可獲得<strong> NT$ 800 元</strong> 實體宣傳推廣費（只按推薦且過審計算，投稿者不領取此款；未通過審核之提案不計入）。
                 </p>
               </div>
 
@@ -200,7 +200,7 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div>
                         <span className="text-[11px] text-stone-400 block font-mono">
-                          PROMOTION AMBASSADOR
+                          CAMPUS AMBASSADOR
                         </span>
                         <span className="text-lg font-black text-white">{myAmbassador.name}</span>
                         <span className="text-xs text-emerald-400 block mt-0.5">
@@ -242,7 +242,7 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-stone-400 block">累計推廣費 ($400/件)</span>
+                        <span className="text-[10px] text-stone-400 block">累計推廣費 ($800/件)</span>
                         <span className="text-xl font-black text-amber-400 font-mono">
                           ${totalBonus.toLocaleString()}
                         </span>
@@ -267,7 +267,7 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
                   <div className="space-y-3 pt-2">
                     <h4 className="text-xs font-black text-stone-900 flex items-center justify-between">
                       <span>推薦投稿紀錄 ({myReferredProposals.length})</span>
-                      <span className="text-[10px] text-stone-400">過審即自動核發 $400</span>
+                      <span className="text-[10px] text-stone-400">過審即自動核發 $800</span>
                     </h4>
 
                     {myReferredProposals.length > 0 ? (
@@ -287,7 +287,7 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
                             <div>
                               {prop.status === 'approved' ? (
                                 <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                                  已過審 +$400
+                                  已過審 +$800
                                 </span>
                               ) : (
                                 <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
@@ -310,10 +310,10 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
                 <form onSubmit={handleRegister} className="space-y-4 p-5 rounded-2xl bg-stone-50 border border-stone-200">
                   <h4 className="text-sm font-black text-stone-900 flex items-center gap-2">
                     <Building className="w-4 h-4 text-emerald-600" />
-                    <span>申請成為 IdeaX 推廣大使</span>
+                    <span>申請成為 IdeaX 校園宣傳大使</span>
                   </h4>
                   <p className="text-xs text-stone-500">
-                    成為推廣領袖，邀請創作者參賽，每過審一案即享 $400 推廣獎勵金！
+                    成為校園推廣領袖，拉下線創作者參賽，每過審一案即享 $800 推廣獎勵金！
                   </p>
 
                   {regError && (
@@ -351,7 +351,7 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
                     type="submit"
                     className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold text-xs shadow-sm cursor-pointer transition-all"
                   >
-                    立即生成推廣大使專屬推薦碼
+                    立即生成校園大使專屬推薦碼
                   </button>
                 </form>
               )}
@@ -366,7 +366,7 @@ export const ChallengeAmbassadorModal: React.FC<ChallengeAmbassadorModalProps> =
                   <span>推薦分享獎勵領取（每人 100 點競賽支持金）</span>
                 </h3>
                 <p className="text-xs text-stone-700 leading-relaxed">
-                  輸入朋友或推廣大使分享給你的推薦碼，即可領取 <strong>100 點</strong> 競賽虛擬點數！
+                  輸入朋友或校園大使分享給你的推薦碼，即可領取 <strong>100 點</strong> 競賽虛擬點數！
                   <strong className="text-amber-800 block mt-1">發放條件與限制：每個帳號限領一次，僅作為競賽專用投票點數，不可兌現或移轉主站。</strong>
                 </p>
               </div>

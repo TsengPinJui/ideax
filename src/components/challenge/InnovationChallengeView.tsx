@@ -38,7 +38,6 @@ import {
   subscribeChallengeProposals,
 } from '../../services/challengeService';
 import { CHALLENGE_CONSTANTS } from '../../data/challengeData';
-import { useApp } from '../../context/AppContext';
 
 import { ChallengeNavbar } from './ChallengeNavbar';
 import { ChallengeHero } from './ChallengeHero';
@@ -49,11 +48,6 @@ import { ChallengeSubmitModal } from './ChallengeSubmitModal';
 import { ChallengeAmbassadorModal } from './ChallengeAmbassadorModal';
 import { ChallengeCertificateModal } from './ChallengeCertificateModal';
 import { ChallengeAdminModal } from './ChallengeAdminModal';
-import { ChallengeFooter } from './ChallengeFooter';
-import { ChallengeRegulationsModal } from './ChallengeRegulationsModal';
-import { ChallengeGooglePreviewModal } from './ChallengeGooglePreviewModal';
-import { ChallengeExpertApplyModal } from './ChallengeExpertApplyModal';
-import { ChallengeRoleSelectModal } from './ChallengeRoleSelectModal';
 
 interface InnovationChallengeViewProps {
   onBackToMainPlatform: () => void;
@@ -64,14 +58,11 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
   onBackToMainPlatform,
   currentUser,
 }) => {
-  const { openAuthModal } = useApp();
   const [activeTab, setActiveTab] = useState<ChallengeTab>('home');
   const [proposals, setProposals] = useState<ChallengeProposal[]>(() =>
     getChallengeProposals(currentUser.id, currentUser.role === 'admin')
   );
   const [experts] = useState<ChallengeExpert[]>(() => getChallengeExperts());
-
-  const isGuest = currentUser.id === 'user-guest' || currentUser.id.startsWith('guest_');
 
   // Wallet
   const userRoleType =
@@ -92,87 +83,6 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
   const [isAmbassadorOpen, setIsAmbassadorOpen] = useState(false);
   const [certificateProposal, setCertificateProposal] = useState<ChallengeProposal | null>(null);
-
-  // New Modals: 競賽辦法、SEO預覽、成為專家審核、身分選擇
-  const [isRegulationsOpen, setIsRegulationsOpen] = useState(false);
-  const [regulationsInitialTab, setRegulationsInitialTab] = useState<'regulations' | 'participant_terms' | 'expert_terms' | 'faq'>('regulations');
-  const [isGooglePreviewOpen, setIsGooglePreviewOpen] = useState(false);
-  const [isExpertApplyOpen, setIsExpertApplyOpen] = useState(false);
-  const [isRoleSelectOpen, setIsRoleSelectOpen] = useState(false);
-
-  // Track login transition to trigger role selection
-  const prevIsGuestRef = React.useRef(isGuest);
-
-  useEffect(() => {
-    if (prevIsGuestRef.current && !isGuest) {
-      // User just logged in while on Challenge site: prompt role selection
-      setIsRoleSelectOpen(true);
-    }
-    prevIsGuestRef.current = isGuest;
-  }, [isGuest]);
-
-  const handleOpenSubmit = () => {
-    if (isGuest) {
-      openAuthModal(
-        'login',
-        'email',
-        '參賽網若點「我要投稿」或「成為專家」需先登入帳號，登入後即可選擇「參賽者」或「成為專家」。若尚無帳號請點擊立即註冊。',
-        'creator'
-      );
-      return;
-    }
-    // If user is already logged in, show role select or submit directly
-    if (!(currentUser as any).isCreator && !currentUser.title?.includes('參賽')) {
-      setIsRoleSelectOpen(true);
-    } else {
-      setIsSubmitOpen(true);
-    }
-  };
-
-  const handleOpenExpertApply = () => {
-    if (isGuest) {
-      openAuthModal(
-        'login',
-        'email',
-        '參賽網若點「我要投稿」或「成為專家」需先登入帳號，登入後即可選擇「參賽者」或「成為專家」。若尚無帳號請點擊立即註冊。',
-        'expert'
-      );
-      return;
-    }
-    setIsExpertApplyOpen(true);
-  };
-
-  const handleOpenRegulationsModal = (tab: 'regulations' | 'participant_terms' | 'expert_terms' | 'faq' = 'regulations') => {
-    setRegulationsInitialTab(tab);
-    setIsRegulationsOpen(true);
-  };
-
-  // URL parameters routing support (e.g. from Google Search Sitelinks)
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get('tab');
-      const actionParam = params.get('action');
-
-      if (tabParam === 'proposals') {
-        setActiveTab('proposals');
-      } else if (tabParam === 'rules') {
-        handleOpenRegulationsModal('regulations');
-      } else if (tabParam === 'leaderboard') {
-        setActiveTab('leaderboard');
-      } else if (tabParam === 'experts') {
-        setActiveTab('experts');
-      }
-
-      if (actionParam === 'submit') {
-        handleOpenSubmit();
-      } else if (actionParam === 'expert') {
-        handleOpenExpertApply();
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
 
   // Firestore Sync & Subscription on mount
   useEffect(() => {
@@ -225,7 +135,7 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
   const mySubmissions = proposals.filter((p) => p.authorId === currentUser.id);
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col font-sans selection:bg-emerald-400 selection:text-stone-950">
+    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col font-sans selection:bg-amber-400 selection:text-stone-950">
       {/* 1. Competition Navbar */}
       <ChallengeNavbar
         activeTab={activeTab}
@@ -233,8 +143,7 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
         onBackToMainPlatform={onBackToMainPlatform}
         currentUser={currentUser}
         wallet={wallet}
-        onOpenSubmit={handleOpenSubmit}
-        onOpenExpertApply={handleOpenExpertApply}
+        onOpenSubmit={() => setIsSubmitOpen(true)}
         onOpenAmbassador={() => setIsAmbassadorOpen(true)}
         pendingReviewCount={pendingReviewCount}
       />
@@ -246,10 +155,9 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
           <div className="space-y-12 pb-20">
             {/* Hero Section */}
             <ChallengeHero
-              onOpenSubmit={handleOpenSubmit}
+              onOpenSubmit={() => setIsSubmitOpen(true)}
               onExploreProposals={() => handleSelectTab('proposals')}
               onOpenAmbassador={() => setIsAmbassadorOpen(true)}
-              onOpenExpertApply={handleOpenExpertApply}
               proposals={proposals}
             />
 
@@ -260,7 +168,7 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
                   <h3 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
                     <span>🔥 熱門參賽提案焦點</span>
                     <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
-                      創星季
+                      創新季
                     </span>
                   </h3>
                   <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
@@ -292,7 +200,7 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
                           <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-300">
-                            創星季
+                            創新季
                           </span>
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-bold text-stone-500">
@@ -436,9 +344,9 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
                   </h4>
                   <div className="text-xs text-stone-600 space-y-2 leading-relaxed">
                     <div>
-                      <strong className="text-emerald-800 block font-black">1. 推廣大使推廣費 ($400/件)：</strong>
+                      <strong className="text-emerald-800 block font-black">1. 校園大使推廣費 ($800/件)：</strong>
                       <span className="text-[11px]">
-                        推廣大使每推薦一位創作者且其「<strong>提案審核通過</strong>」，大使可獲得 <strong>NT$ 400 元</strong> 實體推廣費（只按推薦且過審計算，投稿者不領取此款）。
+                        校園大使每推薦一位創作者且其「<strong>提案審核通過</strong>」，大使可獲得 <strong>NT$ 800 元</strong> 實體推廣費（只按推薦且過審計算，投稿者不領取此款）。
                       </span>
                     </div>
                     <div>
@@ -468,19 +376,6 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
                     </p>
                   </div>
                 </div>
-
-                {/* 4. 賽事主辦單位 */}
-                <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-2 shadow-2xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    <h4 className="font-black text-sm text-amber-950">
-                      主辦單位：IdeaX創點子團隊
-                    </h4>
-                  </div>
-                  <p className="text-xs text-amber-900/80 leading-relaxed text-[11px]">
-                    本活動由 <strong>IdeaX創點子團隊</strong> 全權主辦與運營，提供創新想法驗證、專家顧問庫資源與早期點數募資評估服務。
-                  </p>
-                </div>
               </div>
             </div>
           </div>
@@ -493,7 +388,7 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
             onSelectProposal={(p) => setSelectedProposal(p)}
             onToggleLike={handleToggleLike}
             currentUserId={currentUser.id}
-            onOpenSubmit={handleOpenSubmit}
+            onOpenSubmit={() => setIsSubmitOpen(true)}
           />
         )}
 
@@ -578,8 +473,8 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
 
               <button
                 type="button"
-                onClick={handleOpenSubmit}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                onClick={() => setIsSubmitOpen(true)}
+                className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-sm"
               >
                 <FilePlus className="w-4 h-4" />
                 <span>我要投稿新專案</span>
@@ -591,12 +486,12 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
                 <FilePlus className="w-10 h-10 text-stone-400 mx-auto" />
                 <h3 className="font-bold text-stone-700">您尚未提交任何參賽提案</h3>
                 <p className="text-xs text-stone-500">
-                  立即提出你的創新idea，讓全網大眾與認證專家為你驗證！
+                  立即提出你的創業想法，讓全網大眾與認證專家為你驗證！
                 </p>
                 <button
                   type="button"
-                  onClick={handleOpenSubmit}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-xl font-bold text-xs transition-all active:scale-95 cursor-pointer"
+                  onClick={() => setIsSubmitOpen(true)}
+                  className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-xl font-bold text-xs"
                 >
                   立即投稿
                 </button>
@@ -676,17 +571,6 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
         )}
       </main>
 
-      {/* Official Challenge Footer with 競賽辦法放在新站頁尾 & SEO Sitelinks 預覽 */}
-      <ChallengeFooter
-        onOpenRegulations={handleOpenRegulationsModal}
-        onOpenGooglePreview={() => setIsGooglePreviewOpen(true)}
-        onSelectTab={handleSelectTab}
-        onOpenSubmit={handleOpenSubmit}
-        onOpenExpertApply={handleOpenExpertApply}
-        onOpenAmbassador={() => setIsAmbassadorOpen(true)}
-        onBackToMainPlatform={onBackToMainPlatform}
-      />
-
       {/* 3. Modals */}
       {selectedProposal && (
         <ChallengeProposalDetailModal
@@ -723,60 +607,6 @@ export const InnovationChallengeView: React.FC<InnovationChallengeViewProps> = (
         <ChallengeCertificateModal
           onClose={() => setCertificateProposal(null)}
           proposal={certificateProposal}
-        />
-      )}
-
-      {/* 4. 創星季競賽辦法與規章專屬彈窗 */}
-      {isRegulationsOpen && (
-        <ChallengeRegulationsModal
-          isOpen={isRegulationsOpen}
-          onClose={() => setIsRegulationsOpen(false)}
-          initialTab={regulationsInitialTab}
-          onOpenSubmit={handleOpenSubmit}
-        />
-      )}
-
-      {/* 5. Google 搜尋結果與 Sitelinks (提案總覽、我要提案、成為專家、活動辦法) 預覽彈窗 */}
-      {isGooglePreviewOpen && (
-        <ChallengeGooglePreviewModal
-          isOpen={isGooglePreviewOpen}
-          onClose={() => setIsGooglePreviewOpen(false)}
-          onNavigateTo={(target) => {
-            if (target === 'proposals') handleSelectTab('proposals');
-            else if (target === 'submit') handleOpenSubmit();
-            else if (target === 'expert') handleOpenExpertApply();
-            else if (target === 'rules') handleOpenRegulationsModal('regulations');
-          }}
-        />
-      )}
-
-      {/* 6. 成為特聘專家：需上傳相關證明或專業證件彈窗 */}
-      {isExpertApplyOpen && (
-        <ChallengeExpertApplyModal
-          isOpen={isExpertApplyOpen}
-          onClose={() => setIsExpertApplyOpen(false)}
-          currentUser={currentUser}
-          onSuccess={(updated) => {
-            setWallet(getChallengeUserWallet(updated.id, 'expert'));
-          }}
-          onOpenRegulations={handleOpenRegulationsModal}
-        />
-      )}
-
-      {/* 7. 參賽網登入後之身分選擇彈窗（選擇參賽者或專家） */}
-      {isRoleSelectOpen && (
-        <ChallengeRoleSelectModal
-          isOpen={isRoleSelectOpen}
-          onClose={() => setIsRoleSelectOpen(false)}
-          currentUser={currentUser}
-          onSelectCreator={() => {
-            setIsRoleSelectOpen(false);
-            setIsSubmitOpen(true);
-          }}
-          onSelectExpert={() => {
-            setIsRoleSelectOpen(false);
-            setIsExpertApplyOpen(true);
-          }}
         />
       )}
     </div>

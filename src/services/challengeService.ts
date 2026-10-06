@@ -1,5 +1,5 @@
 /**
- * IdeaX 創新挑戰季 (IdeaX Innovation Challenge / 創星季) 核心業務邏輯與 Firebase Firestore 整合服務
+ * IdeaX 創新挑戰季 (IdeaX Innovation Challenge) 核心業務邏輯與 Firebase Firestore 整合服務
  * 遵循教育部大專校院創新創業平台架構精神：提案總覽、模擬支持、教練/評審指導與完整企劃專頁
  */
 
@@ -22,8 +22,6 @@ import {
   ChallengeInvestment,
   ChallengeExpertReview,
   ChallengeComment,
-  ChallengeContestStatus,
-  ChallengeFinalAwardRecord,
 } from '../types/challengeTypes';
 import {
   CHALLENGE_CONSTANTS,
@@ -32,15 +30,14 @@ import {
   INITIAL_CHALLENGE_AMBASSADORS,
 } from '../data/challengeData';
 
-const PROPOSALS_KEY = 'ideax_challenge_proposals_v10';
-const WALLETS_KEY = 'ideax_challenge_wallets_v10';
-const AMBASSADORS_KEY = 'ideax_challenge_ambassadors_v10';
-const EXPERTS_KEY = 'ideax_challenge_experts_v10';
-const CONTEST_STATUS_KEY = 'ideax_challenge_contest_status_v10';
+const PROPOSALS_KEY = 'ideax_challenge_proposals_v9';
+const WALLETS_KEY = 'ideax_challenge_wallets_v9';
+const AMBASSADORS_KEY = 'ideax_challenge_ambassadors_v9';
+const EXPERTS_KEY = 'ideax_challenge_experts_v9';
 
 // 清除舊版快取
 try {
-  for (let i = 1; i <= 9; i++) {
+  for (let i = 1; i <= 8; i++) {
     localStorage.removeItem(`ideax_challenge_proposals_v${i}`);
     localStorage.removeItem(`ideax_challenge_experts_v${i}`);
     localStorage.removeItem(`ideax_challenge_ambassadors_v${i}`);
@@ -142,9 +139,6 @@ export const normalizeProposal = (p: any): ChallengeProposal => {
     likes: typeof p.likes === 'number' ? p.likes : 0,
     likedUserIds: Array.isArray(p.likedUserIds) ? p.likedUserIds : [],
     isCertified: p.isCertified ?? true,
-    isTop10Winner: p.isTop10Winner ?? false,
-    top10Rank: p.top10Rank,
-    starOfCreationAwarded: p.starOfCreationAwarded ?? false,
     expertReviews,
     investments,
     comments: Array.isArray(p.comments) ? p.comments : [],
@@ -183,117 +177,7 @@ export const isCategoryMatch = (pCategory: string, selectedCategory: string): bo
 };
 
 // ==========================================
-// 3. 舊站用戶名單安全同步 (User Sync & Badges)
-// ==========================================
-
-/**
- * 帳號與舊站用戶名單安全同步：
- * - 新站（競賽）建立的帳號同步建立/更新舊站用戶名單中的對應用戶資料，避免重複帳號。
- * - 以同一個可信身份 ID 作為關聯鍵。
- * - 保留舊站一般用戶身份與舊站原有點數/欄位，絕不把競賽虛擬點數混入舊站點數。
- * - 提案者額外帶有「創新盃」徽章/標記（hasInnovationCupBadge: true, badges: ['創新盃']）。
- * - 專家也仍是普通用戶，不建立或提升成舊站特殊權限角色（不提升為 admin）。
- * - 絕不自動替換既有使用者密碼/登入憑證。
- */
-export const syncUserToMainPlatformUsers = (
-  userData: {
-    id: string;
-    name: string;
-    email?: string;
-    phone?: string;
-    avatar?: string;
-    title?: string;
-    schoolOrOccupation?: string;
-  },
-  roleType: 'user' | 'creator' | 'expert' = 'user',
-  options?: {
-    hasInnovationCupBadge?: boolean;
-    hasStarOfCreationBadge?: boolean;
-    starOfCreationRank?: number;
-  }
-): void => {
-  try {
-    const keys = ['ideax_v5_users', 'ideax_v5_available_users'];
-    for (const key of keys) {
-      const raw = localStorage.getItem(key);
-      let list: any[] = [];
-      if (raw) {
-        try {
-          list = JSON.parse(raw);
-        } catch {}
-      }
-      if (!Array.isArray(list)) list = [];
-
-      const idx = list.findIndex(
-        (u) => u && (u.id === userData.id || (userData.email && u.email === userData.email))
-      );
-
-      const badgesSet = new Set<string>();
-
-      if (idx >= 0) {
-        const existing = list[idx];
-        (existing.badges || []).forEach((b: string) => badgesSet.add(b));
-        if (options?.hasInnovationCupBadge || roleType === 'creator') {
-          badgesSet.add('創新盃');
-        }
-        if (options?.hasStarOfCreationBadge) {
-          badgesSet.add('創之星');
-        }
-
-        list[idx] = {
-          ...existing,
-          name: existing.name || userData.name,
-          phone: existing.phone || userData.phone,
-          email: existing.email || userData.email,
-          avatar: existing.avatar || userData.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
-          // 保持舊站普通角色，不提升權限
-          role: existing.role || 'questioner',
-          // 保持原有主站點數，絕不混入競賽點數
-          balance: typeof existing.balance === 'number' ? existing.balance : 0,
-          badges: Array.from(badgesSet),
-          hasInnovationCupBadge: existing.hasInnovationCupBadge || options?.hasInnovationCupBadge || roleType === 'creator',
-          hasStarOfCreationBadge: existing.hasStarOfCreationBadge || options?.hasStarOfCreationBadge || false,
-          starOfCreationRank: options?.starOfCreationRank || existing.starOfCreationRank,
-        };
-      } else {
-        // 新建帳號同步至舊站普通用戶名單
-        if (options?.hasInnovationCupBadge || roleType === 'creator') {
-          badgesSet.add('創新盃');
-        }
-        if (options?.hasStarOfCreationBadge) {
-          badgesSet.add('創之星');
-        }
-
-        const newUser = {
-          id: userData.id,
-          username: userData.email?.split('@')[0] || `user_${userData.id.slice(-6)}`,
-          name: userData.name,
-          title: userData.title || (roleType === 'creator' ? '創新參賽創作者' : roleType === 'expert' ? '領域專家導師' : '一般會員'),
-          avatar: userData.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
-          role: 'questioner', // 基礎普通用戶
-          balance: 0, // 主站點數為 0，與競賽隔離
-          pendingEarnings: 0,
-          reputation: 80,
-          joinedDate: new Date().toISOString().split('T')[0],
-          email: userData.email || '',
-          phone: userData.phone || '',
-          badges: Array.from(badgesSet),
-          hasInnovationCupBadge: options?.hasInnovationCupBadge || roleType === 'creator',
-          hasStarOfCreationBadge: options?.hasStarOfCreationBadge || false,
-          starOfCreationRank: options?.starOfCreationRank,
-        };
-        list.push(newUser);
-      }
-
-      localStorage.setItem(key, JSON.stringify(list));
-    }
-  } catch (err) {
-    console.warn('Sync user to main platform users notice:', err);
-  }
-};
-
-// ==========================================
-// 4. 初始化與 Firestore 監聽 (絕不寫入假種子資料)
+// 3. 初始化與 Firestore 監聽 (絕不寫入假種子資料)
 // ==========================================
 
 export const initChallengeFirestoreSync = async () => {
@@ -353,7 +237,7 @@ export const subscribeChallengeProposals = (
 };
 
 // ==========================================
-// 5. 提案資料存取與敏感資料保護 (Privacy & RBAC)
+// 4. 提案資料存取與敏感資料保護 (Privacy & RBAC)
 // ==========================================
 
 export const getChallengeProposals = (
@@ -412,7 +296,7 @@ export const sanitizeProposalsForViewer = (
 };
 
 // ==========================================
-// 6. 虛擬點數系統 (與主站完全隔離，不可兌現、不可轉帳)
+// 5. 虛擬點數系統 (與主站完全隔離，不可兌現、不可轉帳)
 // ==========================================
 
 export const getChallengeUserWallet = (
@@ -591,7 +475,7 @@ export const investInChallengeProposal = async (
 };
 
 // ==========================================
-// 7. 提案投稿 (Submit Proposal)
+// 6. 提案投稿 (Submit Proposal)
 // ==========================================
 
 export const submitChallengeProposal = async (
@@ -645,8 +529,6 @@ export const submitChallengeProposal = async (
       likedUserIds: [],
       isCertified: false,
       isDemo: false,
-      isTop10Winner: false,
-      starOfCreationAwarded: false,
       investments: [],
       comments: [],
       expertReviews: [],
@@ -658,23 +540,7 @@ export const submitChallengeProposal = async (
     const updatedList = [newProposal, ...currentList];
     await saveChallengeProposals(updatedList);
 
-    // 2. 同步建立/更新舊站用戶名單 (帶有「創新盃」標記，普通用戶角色)
-    syncUserToMainPlatformUsers(
-      {
-        id: proposalInput.authorId,
-        name: proposalInput.authorName,
-        email: proposalInput.email,
-        phone: proposalInput.phone,
-        avatar: proposalInput.authorAvatar,
-        schoolOrOccupation: proposalInput.schoolOrOccupation,
-      },
-      'creator',
-      {
-        hasInnovationCupBadge: true,
-      }
-    );
-
-    // 3. 寫入 Firestore 集合 challenge_proposals
+    // 2. 寫入 Firestore 集合 challenge_proposals
     try {
       const docRef = doc(db, 'challenge_proposals', id);
       await setDoc(docRef, newProposal);
@@ -682,7 +548,7 @@ export const submitChallengeProposal = async (
       console.warn('Firestore save notice:', fsErr);
     }
 
-    // 4. 若有使用推薦碼，記錄推薦
+    // 3. 若有使用推薦碼，記錄推薦
     if (proposalInput.referralCode) {
       await recordAmbassadorReferral(proposalInput.referralCode, id, proposalInput.title, proposalInput.authorName);
     }
@@ -703,7 +569,7 @@ export const submitChallengeProposal = async (
 };
 
 // ==========================================
-// 8. 管理員審核與下架 (Admin Review)
+// 7. 管理員審核與下架 (Admin Review)
 // ==========================================
 
 export const reviewChallengeProposal = async (
@@ -753,132 +619,7 @@ export const reviewChallengeProposal = async (
 };
 
 // ==========================================
-// 9. 賽後結算前十名與「創之星」徽章發放 (Contest Finalization)
-// ==========================================
-
-export const getChallengeContestStatus = (): ChallengeContestStatus => {
-  try {
-    const raw = localStorage.getItem(CONTEST_STATUS_KEY);
-    if (raw) {
-      return JSON.parse(raw);
-    }
-  } catch {}
-  return {
-    isFinalized: false,
-    top10Winners: [],
-  };
-};
-
-export const finalizeChallengeTop10 = async (
-  adminId: string
-): Promise<{ success: boolean; message: string; contestStatus: ChallengeContestStatus; winners: ChallengeFinalAwardRecord[] }> => {
-  const proposals = getChallengeProposals(adminId, true);
-  const approvedList = proposals.filter((p) => p.status === 'approved');
-
-  // 按虛擬募資金額 (以及按讚收藏) 嚴格排序
-  const sorted = [...approvedList].sort((a, b) => {
-    const diff = (b.fundingRaised || 0) - (a.fundingRaised || 0);
-    if (diff !== 0) return diff;
-    return (b.likes || 0) - (a.likes || 0);
-  });
-
-  const top10 = sorted.slice(0, 10);
-  const finalizedAt = new Date().toISOString();
-
-  const top10Winners: ChallengeFinalAwardRecord[] = top10.map((p, idx) => ({
-    rank: idx + 1,
-    proposalId: p.id,
-    proposalTitle: p.title,
-    authorId: p.authorId,
-    authorName: p.authorName,
-    teamName: p.teamName,
-    category: p.category,
-    fundingRaised: p.fundingRaised || 0,
-    likes: p.likes || 0,
-    badgeName: '創之星',
-    finalizedAt,
-  }));
-
-  const contestStatus: ChallengeContestStatus = {
-    isFinalized: true,
-    finalizedAt,
-    finalizedByAdminId: adminId,
-    top10Winners,
-  };
-
-  localStorage.setItem(CONTEST_STATUS_KEY, JSON.stringify(contestStatus));
-
-  // 更新獲獎提案之標記
-  const updatedProposals = proposals.map((p) => {
-    const winnerIdx = top10Winners.findIndex((w) => w.proposalId === p.id);
-    if (winnerIdx >= 0) {
-      return {
-        ...p,
-        isTop10Winner: true,
-        top10Rank: winnerIdx + 1,
-        starOfCreationAwarded: true,
-      };
-    }
-    return {
-      ...p,
-      isTop10Winner: false,
-      top10Rank: undefined,
-      starOfCreationAwarded: false,
-    };
-  });
-
-  await saveChallengeProposals(updatedProposals);
-
-  // 同步獲獎用戶舊站名單「創之星」徽章
-  for (const winner of top10Winners) {
-    syncUserToMainPlatformUsers(
-      {
-        id: winner.authorId,
-        name: winner.authorName,
-      },
-      'creator',
-      {
-        hasInnovationCupBadge: true,
-        hasStarOfCreationBadge: true,
-        starOfCreationRank: winner.rank,
-      }
-    );
-  }
-
-  return {
-    success: true,
-    message: `賽事結果已由管理員正式核定公布！前 ${top10Winners.length} 名優勝提案已獲頒「創之星」徽章，並同步更新至用戶名單。`,
-    contestStatus,
-    winners: top10Winners,
-  };
-};
-
-export const resetChallengeFinalization = async (
-  adminId: string
-): Promise<{ success: boolean; message: string }> => {
-  const contestStatus: ChallengeContestStatus = {
-    isFinalized: false,
-    top10Winners: [],
-  };
-  localStorage.setItem(CONTEST_STATUS_KEY, JSON.stringify(contestStatus));
-
-  const proposals = getChallengeProposals(adminId, true);
-  const updatedProposals = proposals.map((p) => ({
-    ...p,
-    isTop10Winner: false,
-    top10Rank: undefined,
-    starOfCreationAwarded: false,
-  }));
-  await saveChallengeProposals(updatedProposals);
-
-  return {
-    success: true,
-    message: '已將賽事結算狀態重置為進行中（尚未公布前十名）。',
-  };
-};
-
-// ==========================================
-// 10. 專家評審團 (Experts)
+// 8. 專家評審團 (Experts)
 // ==========================================
 
 export const getChallengeExperts = (): ChallengeExpert[] => {
@@ -966,7 +707,7 @@ export const addExpertReview = async (
 export const addChallengeExpertReview = addExpertReview;
 
 // ==========================================
-// 11. 宣傳大使與推薦碼 ($800/審核通過案)
+// 9. 宣傳大使與推薦碼 ($800/審核通過案)
 // ==========================================
 
 export const getChallengeAmbassadors = (): ChallengeAmbassador[] => {
@@ -1028,18 +769,6 @@ export const registerAsAmbassador = (
     localStorage.setItem(AMBASSADORS_KEY, JSON.stringify(ambassadors));
   } catch {}
 
-  // 同步普通用戶身份至舊站
-  syncUserToMainPlatformUsers(
-    {
-      id: opts.userId,
-      name: opts.name,
-      email: opts.email,
-      phone: opts.phone,
-      schoolOrOccupation: opts.schoolOrOrg,
-    },
-    'user'
-  );
-
   return { success: true, ambassador: newAmbassador };
 };
 
@@ -1066,7 +795,7 @@ export const recordAmbassadorReferral = async (
 };
 
 // ==========================================
-// 12. 點讚、瀏覽、留言與分享獎勵
+// 10. 點讚、瀏覽、留言與分享獎勵
 // ==========================================
 
 export const incrementChallengeProposalViews = async (proposalId: string): Promise<void> => {

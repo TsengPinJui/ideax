@@ -6,12 +6,6 @@ import confetti from 'canvas-confetti';
 
 interface CreateQuestionModalProps {
   onClose: () => void;
-  isFullPage?: boolean;
-  initialPostType?: any;
-  initialPublishIdentity?: 'admin' | 'platform';
-  initialCategory?: Category | undefined;
-  initialSubcategory?: string | undefined;
-  onSuccess?: (newQ: any) => void;
 }
 
 export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({ onClose }) => {

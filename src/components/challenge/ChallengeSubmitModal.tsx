@@ -17,8 +17,6 @@ import { User } from '../../types';
 import { ChallengeCategory, ChallengeProposal } from '../../types/challengeTypes';
 import { submitChallengeProposal } from '../../services/challengeService';
 import { CHALLENGE_CONSTANTS } from '../../data/challengeData';
-import { useApp } from '../../context/AppContext';
-import { syncUserToFirestore } from '../../services/firestoreSync';
 
 interface ChallengeSubmitModalProps {
   onClose: () => void;
@@ -41,23 +39,15 @@ export const ChallengeSubmitModal: React.FC<ChallengeSubmitModalProps> = ({
   currentUser,
   onSuccess,
 }) => {
-  const { setCurrentUser, setAvailableUsers } = useApp();
-
-  const isAlreadyRegisteredAsCreator = !!(
-    currentUser.isCreator ||
-    currentUser.hasCompletedCreatorSurvey ||
-    (currentUser.teamName && currentUser.schoolOrOccupation)
-  );
-
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // Step 1: 參賽者表單 (若已有填寫則帶入，若從 Google / FB / 其他方式註冊則引導補齊)
+  // Step 1: 基本資料
   const [accountName, setAccountName] = useState(currentUser.name || '');
-  const [teamName, setTeamName] = useState(currentUser.teamName || '');
+  const [teamName, setTeamName] = useState('');
   const [email, setEmail] = useState((currentUser as any).email || '');
-  const [phone, setPhone] = useState(currentUser.phone || '');
-  const [schoolOrOccupation, setSchoolOrOccupation] = useState(currentUser.schoolOrOccupation || '');
-  const [referralCode, setReferralCode] = useState(currentUser.challengeReferralCode || '');
+  const [phone, setPhone] = useState('');
+  const [schoolOrOccupation, setSchoolOrOccupation] = useState('');
+  const [referralCode, setReferralCode] = useState('');
 
   // Step 2: 提案資料
   const [title, setTitle] = useState('');
@@ -103,20 +93,12 @@ export const ChallengeSubmitModal: React.FC<ChallengeSubmitModalProps> = ({
         setErrorMsg('請填寫帳號名稱');
         return;
       }
-      if (!teamName.trim()) {
-        setErrorMsg('請填寫姓名或參賽團隊名稱（參賽者表單必填）');
-        return;
-      }
       if (!email.trim() || !email.includes('@')) {
         setErrorMsg('請填寫正確的聯絡 Email');
         return;
       }
       if (!phone.trim()) {
-        setErrorMsg('請填寫聯絡電話 / 手機（參賽者表單必填）');
-        return;
-      }
-      if (!schoolOrOccupation.trim()) {
-        setErrorMsg('請填寫就讀學校或現職所屬組織（參賽者表單必填）');
+        setErrorMsg('請填寫聯絡電話');
         return;
       }
       setStep(2);
@@ -193,28 +175,6 @@ export const ChallengeSubmitModal: React.FC<ChallengeSubmitModalProps> = ({
       return;
     }
 
-    // 參賽者身分與名單即時同步更新至 Context 與 Firestore
-    const updatedUser: User = {
-      ...currentUser,
-      name: currentUser.name || accountName,
-      isCreator: true,
-      hasCompletedCreatorSurvey: true,
-      teamName: teamName.trim(),
-      schoolOrOccupation: schoolOrOccupation.trim(),
-      phone: phone.trim() || currentUser.phone,
-      hasInnovationCupBadge: true,
-      badges: Array.from(new Set([...(currentUser.badges || []), '創新盃'])),
-    };
-    setCurrentUser(updatedUser);
-    setAvailableUsers((prev) =>
-      prev.map((u) => (u.id === updatedUser.id ? { ...u, ...updatedUser } : u))
-    );
-    try {
-      syncUserToFirestore(updatedUser);
-    } catch (e) {
-      console.warn('Sync updated contestant to firestore notice:', e);
-    }
-
     onSuccess(res.proposal);
   };
 
@@ -280,34 +240,22 @@ export const ChallengeSubmitModal: React.FC<ChallengeSubmitModalProps> = ({
             </div>
           )}
 
-          {/* STEP 1: 基本資料 / 參賽者表單 */}
+          {/* STEP 1: 基本資料 */}
           {step === 1 && (
             <form id="step-1-form" onSubmit={handleNextStep} className="space-y-4">
-              {!isAlreadyRegisteredAsCreator ? (
-                <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-xs text-emerald-950 space-y-1.5 animate-in fade-in">
-                  <span className="font-black flex items-center gap-1.5 text-emerald-900">
-                    <Sparkles className="w-4 h-4 text-emerald-600" />
-                    <span>填寫參賽者表單（初賽資格建檔）</span>
-                  </span>
-                  <p className="text-emerald-800 leading-relaxed text-[11px]">
-                    您目前使用的帳號尚未完成「創星季參賽者登記」。依賽事規範，使用其他方式註冊的帳號在發布提案前，須先補齊參賽團隊與基本資料，提案成功後將自動獲頒「創新盃」初賽認證標章！
-                  </p>
-                </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 text-xs text-emerald-900 space-y-1">
-                  <span className="font-bold flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>已完成參賽者登記 • 資料已自動帶入</span>
-                  </span>
-                  <p className="text-stone-600 leading-relaxed text-[11px]">
-                    以下為您於「創星季」登記之參賽團隊與基本聯絡資料，可依本次提案需求微調。
-                  </p>
-                </div>
-              )}
+              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 text-xs text-amber-900 space-y-1">
+                <span className="font-bold flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span>帳號連結說明</span>
+                </span>
+                <p className="text-stone-600 leading-relaxed">
+                  以上填寫之基本資訊與聯絡方式，完賽後將自動轉為 IdeaX 舊平台帳號資料與商業化履歷。
+                </p>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700">帳號名稱 <span className="text-rose-500">*</span></label>
+                  <label className="text-xs font-bold text-stone-700">帳號名稱 *</label>
                   <input
                     type="text"
                     required
@@ -319,13 +267,12 @@ export const ChallengeSubmitModal: React.FC<ChallengeSubmitModalProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700">姓名／團隊名稱 <span className="text-rose-500">*</span></label>
+                  <label className="text-xs font-bold text-stone-700">姓名／團隊名稱</label>
                   <input
                     type="text"
-                    required
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
-                    placeholder="個人姓名或團隊全名（必填）"
+                    placeholder="個人姓名或團隊全名"
                     className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 focus:border-amber-500 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-200"
                   />
                 </div>
@@ -371,8 +318,8 @@ export const ChallengeSubmitModal: React.FC<ChallengeSubmitModalProps> = ({
 
               <div className="space-y-1 pt-2">
                 <label className="text-xs font-bold text-stone-700 flex items-center justify-between">
-                  <span>推廣大使推薦碼（選填）</span>
-                  <span className="text-[10px] text-emerald-600 font-bold">提案審核通過後，該推廣大使可得 $800 推廣費</span>
+                  <span>宣傳大使推薦碼（選填）</span>
+                  <span className="text-[10px] text-emerald-600 font-bold">提案審核通過後，該推薦大使可得 $800 推廣費</span>
                 </label>
                 <input
                   type="text"

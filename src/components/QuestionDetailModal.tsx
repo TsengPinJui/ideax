@@ -9,12 +9,6 @@ import confetti from 'canvas-confetti';
 interface QuestionDetailModalProps {
   question: Question;
   onClose: () => void;
-  isFullPage?: boolean;
-  onOpenSubmitAnswer?: (initialType?: any) => void;
-  onSelectSolver?: (solver: any) => void;
-  onOpenChatWithUser?: () => void;
-  onSelectCategory?: (cat: any, sub?: string) => void;
-  onSearchTag?: (tag: string) => void;
 }
 
 export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({ question, onClose }) => {
@@ -265,7 +259,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({ questi
                         <span className="flex items-center text-emerald-700">
                           <FileText className="w-3.5 h-3.5 mr-1" /> 完整方案文字
                         </span>
-                        {(typeof sol.deliverables === 'object' && sol.deliverables !== null && (sol.deliverables as any).hasMeeting || Array.isArray(sol.deliverables) && sol.deliverables.some((d: string) => d.includes('會談') || d.includes('線上'))) && (
+                        {sol.deliverables?.hasMeeting && (
                           <span className="flex items-center text-indigo-700 font-bold">
                             <Video className="w-3.5 h-3.5 mr-1" /> 60 分鐘一對一線上會談
                           </span>

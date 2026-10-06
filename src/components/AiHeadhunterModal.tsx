@@ -4,19 +4,10 @@ import { resolveUserAvatar } from '../utils/userDisplay';
 import { X, Sparkles, UserCheck, ShieldCheck, ArrowRight, MessageSquare } from 'lucide-react';
 
 interface AiHeadhunterModalProps {
-  isOpen?: boolean;
   onClose: () => void;
-  onSelectSolver?: (solver: any) => void;
-  onOpenChat?: (solver: any) => void;
 }
 
-export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
-  isOpen,
-  onClose,
-  onSelectSolver,
-  onOpenChat,
-}) => {
-  if (isOpen === false) return null;
+export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({ onClose }) => {
   const { solvers, startDirectChat, showToast } = useApp();
   const [demandQuery, setDemandQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);

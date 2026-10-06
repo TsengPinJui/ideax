@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Headphones,
   Mail,
@@ -10,26 +10,22 @@ import {
   Layers,
   Lightbulb,
   Sparkles,
-  Search,
 } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
 import { AppTab, AboutSection } from '../types';
 import { useApp } from '../context/AppContext';
 import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
 import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
-import { MainGooglePreviewModal } from './MainGooglePreviewModal';
 
 interface FooterProps {
   onNavClick: (tab: AppTab, section?: AboutSection | string) => void;
   onPostClick: () => void;
   onSearchTag?: (tag: string) => void;
   onStartOnboarding?: () => void;
-  onOpenGooglePreview?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearchTag, onStartOnboarding, onOpenGooglePreview }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearchTag, onStartOnboarding }) => {
   const { openCustomerService, openPwaInstallModal, isDemoMode, isNoPaymentMode, isHideTestAccounts } = useApp();
-  const [isGooglePreviewOpen, setIsGooglePreviewOpen] = useState(false);
 
   const handleTagClick = (tagWithHash: string) => {
     const rawTag = tagWithHash.replace('#', '').trim();
@@ -82,11 +78,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 <button
                   type="button"
                   onClick={() => onNavClick('innovation_challenge')}
-                  className="hover:text-emerald-300 transition-colors text-left font-black text-emerald-400 cursor-pointer flex items-center gap-1.5 active:scale-95 group"
-                  title="進入 11月 IdeaX 創星季競賽專區"
+                  className="hover:text-amber-300 transition-colors text-left font-black text-amber-400 cursor-pointer flex items-center gap-1.5 active:scale-95 group"
+                  title="進入 11月 IdeaX 創新挑戰季競賽網站"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span>IdeaX創星季挑戰賽</span>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <span>IdeaX創新季挑戰賽</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40">
+                    競賽
+                  </span>
                 </button>
               </li>
               <li>
@@ -162,13 +161,18 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               </li>
               <li>
                 <button
-                  type="button"
-                  onClick={() => setIsGooglePreviewOpen(true)}
-                  className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-950/80 hover:bg-blue-900/90 text-blue-300 hover:text-blue-200 border border-blue-800/80 font-bold text-[11px] transition-colors cursor-pointer"
-                  title="檢視 Google 搜尋結果與 4 大快捷子連結（問題市場、我要提問、創新點子、成為專家）"
+                  onClick={() => {
+                    onNavClick('about', 'other_4');
+                    setTimeout(() => {
+                      const el = document.getElementById('suitable-personas-section');
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }, 120);
+                  }}
+                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
                 >
-                  <Search className="w-3 h-3 text-blue-400" />
-                  <span>Google 搜尋捷徑預覽 (SEO)</span>
+                  什麼人適合使用IdeaX？
                 </button>
               </li>
             </ul>
@@ -340,29 +344,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           </div>
         </div>
       </div>
-
-      {/* Google 搜尋結果與快捷條目 (問題市場、我要提問、創新點子、成為專家) 預覽彈窗 */}
-      <MainGooglePreviewModal
-        isOpen={isGooglePreviewOpen}
-        onClose={() => setIsGooglePreviewOpen(false)}
-        onNavigateTo={(target) => {
-          if (target === 'explore') {
-            onNavClick('explore');
-            setTimeout(() => {
-              const el = document.getElementById('market-grid');
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth' });
-              }
-            }, 60);
-          } else if (target === 'create_question') {
-            onPostClick();
-          } else if (target === 'innovation_challenge' || target === 'proposals' || target === 'submit' || target === 'rules') {
-            onNavClick('innovation_challenge');
-          } else if (target === 'solvers') {
-            onNavClick('solvers');
-          }
-        }}
-      />
     </footer>
   );
 };
