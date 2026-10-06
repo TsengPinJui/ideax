@@ -40,22 +40,22 @@ export const RealNameAuthTab: React.FC = () => {
   // Form State
   const initialData = currentUser.realNameAuthData;
   const [legalName, setLegalName] = useState(
-    initialData?.legalName || currentUser.bankAccount?.accountHolder || currentUser.name || ''
+    initialData?.legalName || ''
   );
   const [idNumber, setIdNumber] = useState(
-    initialData?.idNumber || 'A123456789'
+    initialData?.idNumber || ''
   );
   const [nationality, setNationality] = useState(
-    initialData?.nationality || '中華民國 (台灣)'
+    initialData?.nationality || ''
   );
   const [birthDate, setBirthDate] = useState(
-    initialData?.birthDate || '1990-05-15'
+    initialData?.birthDate || ''
   );
   const [phoneNumber, setPhoneNumber] = useState(
-    initialData?.phoneNumber || '0912-345-678'
+    initialData?.phoneNumber || ''
   );
   const [email, setEmail] = useState(
-    initialData?.email || currentUser.email || 'user@ideax.tw'
+    initialData?.email || currentUser.email || ''
   );
 
   // Uploaded ID files (Front & Back) with photo URL
@@ -67,7 +67,7 @@ export const RealNameAuthTab: React.FC = () => {
     isStorage?: boolean;
     uploadedAt?: string;
   } | null>(
-    initialData?.idCardFrontFile || { name: '國民身分證_正面彩色掃描.jpg', size: '240 KB' }
+    initialData?.idCardFrontFile || null
   );
   const [backFile, setBackFile] = useState<{
     name: string;
@@ -77,23 +77,23 @@ export const RealNameAuthTab: React.FC = () => {
     isStorage?: boolean;
     uploadedAt?: string;
   } | null>(
-    initialData?.idCardBackFile || { name: '國民身分證_反面彩色掃描.jpg', size: '235 KB' }
+    initialData?.idCardBackFile || null
   );
   const [previewModalImg, setPreviewModalImg] = useState<{ title: string; url: string } | null>(null);
   const [isProcessingPhoto, setIsProcessingPhoto] = useState<'front' | 'back' | null>(null);
 
   // Optional & Registered Address Fields
   const [idAddress, setIdAddress] = useState(
-    initialData?.idAddress || initialData?.address || '台北市大安區敦化南路二段 100 號 12 樓'
+    initialData?.idAddress || ''
   );
   const [address, setAddress] = useState(
-    initialData?.address || '台北市大安區敦化南路二段 100 號 12 樓'
+    initialData?.address || ''
   );
   const [idIssueDate, setIdIssueDate] = useState(
-    initialData?.idIssueDate || '2020-08-20'
+    initialData?.idIssueDate || ''
   );
   const [idIssueType, setIdIssueType] = useState(
-    initialData?.idIssueType || '換發'
+    initialData?.idIssueType || ''
   );
   const [emergencyContactName, setEmergencyContactName] = useState(
     initialData?.emergencyContactName || ''
@@ -103,7 +103,7 @@ export const RealNameAuthTab: React.FC = () => {
   );
 
   // Compliance Checkbox
-  const [agreedAml, setAgreedAml] = useState(true);
+  const [agreedAml, setAgreedAml] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -343,8 +343,10 @@ export const RealNameAuthTab: React.FC = () => {
               <select
                 value={idIssueType}
                 onChange={(e) => setIdIssueType(e.target.value)}
+                required
                 className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-blue-500 focus:bg-white"
               >
+                <option value="">請選擇發證類別...</option>
                 <option value="換發">換發</option>
                 <option value="初發">初發</option>
                 <option value="補發">補發</option>
@@ -373,8 +375,10 @@ export const RealNameAuthTab: React.FC = () => {
               <select
                 value={nationality}
                 onChange={(e) => setNationality(e.target.value)}
+                required
                 className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-blue-500 focus:bg-white"
               >
+                <option value="">請選擇國籍...</option>
                 <option value="中華民國 (台灣)">中華民國 (台灣)</option>
                 <option value="香港">香港 (Hong Kong)</option>
                 <option value="日本">日本 (Japan)</option>

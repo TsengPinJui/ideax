@@ -39,6 +39,8 @@ import {
   CLEAN_CORE_QUESTIONS,
   CLEAN_CORE_ANSWERS,
   CLEAN_CORE_SOLVERS,
+  CORE_TEST_ACCOUNTS,
+  CORE_PRESERVED_USER_IDS,
   isTestAccountUserId,
   isMockQuestionId,
   isMockAnswerId,
@@ -523,10 +525,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setConversations((prev) => prev.filter((c) => !isMockConversationId(c.id)));
     setBookmarkedQuestionIds((prev) => prev.filter((id) => !isMockQuestionId(id)));
 
-    const testAccountIds = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
+    // 拋棄式測試帳號清單（排除固定保留供切換之 1~3 核心測試角色）
+    const disposableTestAccountIds = ['solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
     setAvailableUsers((prev) => {
       const cleanList = prev
-        .filter((u) => (!testAccountIds.includes(u.id) && !u.id.startsWith('solver-')) || u.id === 'user-admin');
+        .filter((u) => !disposableTestAccountIds.includes(u.id));
+
+      // 確保 1~3 個核心測試角色始終保留
+      CORE_TEST_ACCOUNTS.forEach((cta) => {
+        if (!cleanList.some((u) => u.id === cta.id)) {
+          cleanList.push(cta);
+        }
+      });
 
       const adminIdx = cleanList.findIndex((u) => u.id === 'user-admin');
       if (adminIdx === -1) {
@@ -540,12 +550,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setCurrentUser((curr) => {
       if (curr.id === 'user-guest') return curr;
-      if ((testAccountIds.includes(curr.id) || curr.id.startsWith('solver-')) && curr.id !== 'user-admin') {
-        return GUEST_USER;
+      // 保留之 1~3 核心測試身分絕不強制切至訪客，維持正常登入操作
+      if (CORE_PRESERVED_USER_IDS.includes(curr.id)) {
+        if (curr.id === 'user-admin' && !enabled && (!curr.balance || curr.balance === 0)) {
+          return { ...curr, balance: 50000 };
+        }
+        return curr;
       }
-      if (curr.id === 'user-admin' && !enabled && (!curr.balance || curr.balance === 0)) {
-        // 切換回正式營運模式 (NORM) 時，管理員點數恢復原樣 (50,000 點)
-        return { ...curr, balance: 50000 };
+      if (disposableTestAccountIds.includes(curr.id)) {
+        return GUEST_USER;
       }
       return curr;
     });
@@ -576,21 +589,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    const testAccountIds = ['user-questioner', 'solver-2', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
+    const disposableTestAccountIds = ['solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
     if (enabled) {
-      // 1. 隱藏測試帳號（用戶列表）
+      // 1. 隱藏拋棄式模擬帳號，但永久保留 1~3 個核心測試身分
       setAvailableUsers((prev) => {
-        const filtered = prev.filter((u) => (!testAccountIds.includes(u.id) && !u.id.startsWith('solver-') && !isTestAccountUserId(u.id)) || u.id === 'user-admin' || u.id === 'user-guest');
-        if (!filtered.some((u) => u.id === 'user-admin')) {
-          filtered.unshift(CLEAN_CORE_USERS[0]);
-        }
+        const filtered = prev.filter((u) => !disposableTestAccountIds.includes(u.id));
+        CORE_TEST_ACCOUNTS.forEach((cta) => {
+          if (!filtered.some((u) => u.id === cta.id)) {
+            filtered.push(cta);
+          }
+        });
         return filtered;
       });
 
-      // 2. 當前使用者若為測試帳號，自動切換至訪客
+      // 2. 當前使用者若為拋棄式測試帳號才自動切換至訪客；核心測試帳號維持登入
       setCurrentUser((curr) => {
-        if (curr.id === 'user-guest') return curr;
-        if ((testAccountIds.includes(curr.id) || curr.id.startsWith('solver-') || isTestAccountUserId(curr.id)) && curr.id !== 'user-admin') {
+        if (curr.id === 'user-guest' || CORE_PRESERVED_USER_IDS.includes(curr.id)) return curr;
+        if (disposableTestAccountIds.includes(curr.id)) {
           return GUEST_USER;
         }
         return curr;
@@ -741,25 +756,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             };
           });
 
+          const disposableTestAccountIds = ['solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
           if (!isDemo) {
-            // 正式模式（營運模式與無金流模式）：絕不添加模擬帳號，僅保留真實用戶
-            const testBlacklist = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
-            const cleanList = usersList.filter((u: any) => (!testBlacklist.includes(u.id) && !u.id.startsWith('solver-') && !isTestAccountUserId(u.id)) || u.id === 'user-admin');
-            if (!cleanList.some((u: any) => u.id === 'user-admin')) {
-              cleanList.unshift(CLEAN_CORE_USERS[0]);
-            }
+            // 正式模式：過濾拋棄式測試帳號，永久保留 1~3 個核心測試身分
+            const cleanList = usersList.filter((u: any) => !disposableTestAccountIds.includes(u.id));
+            CORE_TEST_ACCOUNTS.forEach((cta) => {
+              if (!cleanList.some((u: any) => u.id === cta.id)) {
+                cleanList.push(cta);
+              }
+            });
             return cleanList;
           }
 
           // 測試環境 (TEST)：加回所有模擬用戶與測試帳號，並保留自訂用戶
           const customUsers = usersList.filter((u: any) => !isTestAccountUserId(u.id) && !u.id.startsWith('solver-') && u.id !== 'user-admin');
-          return [...MOCK_USERS, ...customUsers];
+          const testList = [...MOCK_USERS, ...customUsers];
+          CORE_TEST_ACCOUNTS.forEach((cta) => {
+            if (!testList.some((u: any) => u.id === cta.id)) {
+              testList.push(cta);
+            }
+          });
+          return testList;
         }
       }
     } catch {
       // ignore
     }
-    return isDemo ? MOCK_USERS : CLEAN_CORE_USERS;
+    return isDemo ? MOCK_USERS : [...CORE_TEST_ACCOUNTS];
   });
 
   const DEVICE_ACCOUNTS_KEY = `${STORAGE_KEY_PREFIX}device_accounts`;
@@ -2424,7 +2447,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const switchAccount = (userId: string): boolean => {
-    const target = availableUsers.find((u) => u.id === userId);
+    let target = availableUsers.find((u) => u.id === userId);
+    if (!target) {
+      // 找不到時自動自固定保留之核心測試帳號或模擬名單中尋找並補齊
+      target =
+        CORE_TEST_ACCOUNTS.find((u) => u.id === userId) ||
+        DEMO_CORE_TEST_USERS.find((u) => u.id === userId) ||
+        MOCK_USERS.find((u) => u.id === userId) ||
+        CLEAN_CORE_USERS.find((u) => u.id === userId);
+
+      if (target) {
+        setAvailableUsers((prev) => {
+          if (!prev.some((u) => u.id === target!.id)) {
+            const updated = [...prev, target!];
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          }
+          return prev;
+        });
+      }
+    }
     if (!target) return false;
 
     // 檢查是否有註銷猶豫期狀態：只要這 7 日內有再登入這個帳號，就自動視為取消註銷！
@@ -2436,6 +2480,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const effectiveUser = restoredUser;
     setCurrentUser(effectiveUser);
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}is_authenticated`, 'true');
     localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(effectiveUser));
     localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(effectiveUser));
 

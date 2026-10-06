@@ -54,8 +54,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               title="回到首頁頂部"
               className="inline-flex items-center gap-2.5 py-1 hover:opacity-90 transition-opacity text-left cursor-pointer focus:outline-none group"
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center">
-                <IdeaXLogo variant="bulb" size="sm" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                <IdeaXLogo variant="bulb" size="lg" />
               </div>
               <IdeaXLogo variant="ideax-6" size="sm" theme="dark" />
             </button>

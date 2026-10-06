@@ -954,7 +954,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl overflow-hidden border border-amber-400/40 bg-white/95 p-1 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/10">
                     <img
-                      src="/pwa-192x192.png"
+                      src="/pwa-maskable-512x512.png"
                       alt="IdeaX創點子"
                       className="w-full h-full object-contain"
                     />

@@ -61,21 +61,18 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
   const [selectedDomains, setSelectedDomains] = useState<string[]>(() => {
     if (initialData?.domains && initialData.domains.length > 0) return initialData.domains;
     if (initialData?.domain && initialData.domain !== 'auto' && initialData.domain !== '由平台為您分類') return [initialData.domain];
-    if (currentUser.domains && currentUser.domains.length > 0) return currentUser.domains;
-    if (currentUser.domain) return [currentUser.domain];
-    return ['創新創業'];
+    return [];
   });
   const [selectedSubdomains, setSelectedSubdomains] = useState<string[]>(() => {
     if (initialData?.subdomains && initialData.subdomains.length > 0) return initialData.subdomains;
     if (initialData?.subdomain) return [initialData.subdomain];
-    if (currentUser.subdomains && currentUser.subdomains.length > 0) return currentUser.subdomains;
-    return ['資訊科技'];
+    return [];
   });
   const [professionalTitle, setProfessionalTitle] = useState(
-    currentUser.expertApplicationData?.professionalTitle || currentUser.title || ''
+    currentUser.expertApplicationData?.professionalTitle || ''
   );
   const [yearsOfExperience, setYearsOfExperience] = useState(
-    currentUser.expertApplicationData?.yearsOfExperience || '5-8 年'
+    currentUser.expertApplicationData?.yearsOfExperience || ''
   );
 
   const toggleSubdomain = (sub: string, parentCat: Category) => {
@@ -110,15 +107,7 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
       uploadedAt?: string;
     }>
   >(
-    currentUser.expertApplicationData?.credentialsFiles || [
-      {
-        name: '國家專技與專業執業證照.jpg',
-        size: '280 KB',
-        url: 'https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=1000&auto=format&fit=crop&q=80',
-        storagePath: 'expert_credentials/solver_cert.jpg',
-        isStorage: true,
-      },
-    ]
+    currentUser.expertApplicationData?.credentialsFiles || []
   );
   const [isProcessingCredential, setIsProcessingCredential] = useState(false);
   const [previewCredentialImg, setPreviewCredentialImg] = useState<{
@@ -150,8 +139,8 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
   );
 
   // Policy Agreement
-  const [agreedPrivacy, setAgreedPrivacy] = useState(true);
-  const [agreedHonesty, setAgreedHonesty] = useState(true);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [agreedHonesty, setAgreedHonesty] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -504,8 +493,10 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
                       <select
                         value={yearsOfExperience}
                         onChange={(e) => setYearsOfExperience(e.target.value)}
+                        required
                         className="w-full px-3 py-2 rounded-xl bg-white border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-amber-500"
                       >
+                        <option value="">請選擇實務年資...</option>
                         <option value="1-3 年">1-3 年 實務經驗</option>
                         <option value="3-5 年">3-5 年 專業資深</option>
                         <option value="5-8 年">5-8 年 資深顧問/技術主管</option>

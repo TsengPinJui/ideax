@@ -22,6 +22,7 @@ import {
   ShieldAlert,
   Info,
   ExternalLink,
+  Eye,
 } from 'lucide-react';
 import {
   PlatformDocument,
@@ -36,7 +37,6 @@ import {
   formatDocumentToMarkdown,
   downloadAllDocumentsZip,
   downloadDocumentAsWord,
-  downloadDocumentAsPdf,
   VersionState,
 } from '../services/platformManualService';
 
@@ -68,12 +68,15 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
       const docs = getPlatformDocuments();
       setDocuments(docs);
       setVersionState(getCalculatedVersionState());
+      if (docs.length > 0) {
+        setSelectedDocId((prev) => (prev && docs.some((d) => d.id === prev) ? prev : docs[0].id));
+      }
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const currentDoc = documents.find((d) => d.id === selectedDocId);
+  const currentDoc = documents.find((d) => d.id === selectedDocId) || documents[0];
   const folderName = getStandardFolderName(versionState);
 
   const handleDownloadZip = async () => {
@@ -100,11 +103,6 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
   const handleDownloadWord = (doc: PlatformDocument) => {
     downloadDocumentAsWord(doc, versionState);
     if (showToast) showToast(`已下載【${doc.title}】Word 格式檔案`, 'success');
-  };
-
-  const handleDownloadPdf = (doc: PlatformDocument) => {
-    downloadDocumentAsPdf(doc, versionState);
-    if (showToast) showToast(`已下載【${doc.title}】PDF 格式檔案`, 'success');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -245,7 +243,7 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-6xl bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col h-[92vh] max-h-[92vh]">
         {/* Hidden File Input for Upload */}
         <input
           ref={fileInputRef}
@@ -256,37 +254,26 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
         />
 
         {/* Header Section */}
-        <div className="p-4 sm:p-6 border-b border-stone-100 bg-gradient-to-b from-amber-50/50 to-white flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
-              <Folder className="w-6 h-6" />
+        <div className="p-4 sm:p-5 border-b border-stone-100 bg-gradient-to-b from-amber-50/50 to-white flex items-start justify-between gap-3 shrink-0">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
+              <Folder className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+                <h2 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight">
                   平台內部清單
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full bg-stone-900 text-amber-400 font-mono text-xs font-bold shadow-2xs">
                   {versionState.currentVersion}
                 </span>
-              </div>
-              <div className="flex items-center gap-2 mt-1 text-xs text-stone-500 font-medium flex-wrap">
-                <span className="px-2 py-0.5 rounded-md bg-amber-100/80 text-amber-900 font-bold">
+                <span className="px-2 py-0.5 rounded-md bg-amber-100/80 text-amber-900 font-bold text-xs">
                   {versionState.lastReleaseDate}
                 </span>
-                <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700">
-                  共 {documents.length} 份文件檔案
+                <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 font-medium text-xs">
+                  共 {documents.length} 份文件
                 </span>
               </div>
-              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-stone-600">
-                <span className="text-stone-400">資料夾名稱：</span>
-                <span className="font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 select-all">
-                  {folderName}
-                </span>
-              </div>
-              <p className="text-xs text-stone-500 mt-1">
-                可自由在線查閱、上傳新增檔案、手動建立文件或刪除不需要的檔案。
-              </p>
             </div>
           </div>
 
@@ -300,12 +287,12 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
         </div>
 
         {/* Top Actions Bar (Zip / Upload / New Doc) */}
-        <div className="px-4 sm:px-6 py-3 bg-stone-50/80 border-b border-stone-200/80 flex items-center justify-between gap-2 flex-wrap">
+        <div className="px-4 sm:px-5 py-2.5 bg-stone-50/90 border-b border-stone-200/80 flex items-center justify-between gap-2 flex-wrap shrink-0">
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={handleDownloadZip}
               disabled={isZipping}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
             >
               <Download className="w-4 h-4" />
               <span>{isZipping ? '打包中...' : '下載整個資料夾 (.zip)'}</span>
@@ -313,133 +300,156 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-3.5 py-2 rounded-xl bg-white hover:bg-stone-50 text-stone-800 font-bold text-xs border border-stone-200 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 text-stone-800 font-bold text-xs border border-stone-200 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
-              <Upload className="w-4 h-4 text-stone-500" />
+              <Upload className="w-3.5 h-3.5 text-stone-500" />
               <span>上傳檔案</span>
             </button>
 
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>新增文件</span>
             </button>
           </div>
-
-          {selectedDocId && (
-            <button
-              onClick={() => setSelectedDocId(null)}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold text-stone-600 hover:bg-stone-200/70 transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>返回目錄</span>
-            </button>
-          )}
         </div>
 
-        {/* Content Body: Catalog View vs Detail View */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-          {!selectedDocId ? (
-            /* Catalog List View */
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1 text-xs font-bold text-stone-500">
-                <span className="flex items-center gap-1.5">
-                  <Folder className="w-4 h-4 text-amber-500" />
-                  檔案目錄（點擊切換查閱）
-                </span>
-                <span
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-amber-600 hover:text-amber-700 cursor-pointer flex items-center gap-1"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  快速上傳
-                </span>
-              </div>
+        {/* Master-Detail Body: Desktop side-by-side (Left: List, Right: Preview), Mobile stacked (Top: List, Bottom: Preview) */}
+        <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden divide-y md:divide-y-0 md:divide-x divide-stone-200">
+          {/* 1. 平台清單目錄區 (Desktop on Left, Mobile on Top) */}
+          <div className="w-full md:w-80 lg:w-96 shrink-0 bg-stone-50/70 flex flex-col min-h-0 max-h-60 md:max-h-none overflow-hidden">
+            <div className="px-3.5 py-2 bg-stone-100/90 border-b border-stone-200 flex items-center justify-between text-xs shrink-0">
+              <span className="font-black text-stone-900 flex items-center gap-1.5">
+                <Folder className="w-3.5 h-3.5 text-amber-600" />
+                <span>平台清單目錄 ({documents.length})</span>
+              </span>
+              <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full md:hidden">
+                點選下方即時預覽
+              </span>
+              <span className="text-[10px] font-bold text-stone-500 hidden md:inline">
+                點選右側即時預覽
+              </span>
+            </div>
 
-              <div className="grid gap-2.5">
-                {documents.map((doc) => {
-                  const isSelected = selectedDocId === doc.id;
-                  const isSpecialVersion = doc.code === '00_版本資訊';
+            <div className="flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-2">
+              {documents.map((doc) => {
+                const isSelected = (currentDoc?.id === doc.id);
+                const isSpecialVersion = doc.code === '00_版本資訊';
 
-                  return (
-                    <div
-                      key={doc.id}
-                      onClick={() => setSelectedDocId(doc.id)}
-                      className={`group p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                        isSpecialVersion
-                          ? 'bg-amber-50/60 hover:bg-amber-50 border-amber-300 ring-1 ring-amber-300/40'
-                          : 'bg-white hover:bg-stone-50 border-stone-200 hover:border-stone-300 shadow-2xs'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                            isSpecialVersion
-                              ? 'bg-amber-500 text-white shadow-xs'
-                              : 'bg-stone-100 group-hover:bg-stone-200/80 transition-colors'
-                          }`}
-                        >
-                          {renderIcon(doc.icon, doc.color)}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm sm:text-base font-bold text-stone-900 truncate">
-                              {doc.code}
-                            </h3>
-                            {doc.isCustom && (
-                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
-                                自訂
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-stone-500 truncate mt-0.5">
-                            {doc.modules.length} 個模組 • {doc.subtitle}
-                          </p>
-                        </div>
+                return (
+                  <div
+                    key={doc.id}
+                    onClick={() => {
+                      setSelectedDocId(doc.id);
+                      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                        setTimeout(() => {
+                          const previewEl = document.getElementById('platform-manual-preview-section');
+                          if (previewEl) {
+                            previewEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                          }
+                        }, 50);
+                      }
+                    }}
+                    className={`group p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 active:scale-98 ${
+                      isSelected
+                        ? 'bg-amber-100/90 border-amber-400 ring-2 ring-amber-400/50 text-stone-950 font-bold shadow-xs'
+                        : isSpecialVersion
+                        ? 'bg-amber-50/50 hover:bg-amber-50 border-amber-200/80 text-stone-800'
+                        : 'bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          isSelected
+                            ? 'bg-amber-500 text-stone-950 shadow-xs'
+                            : isSpecialVersion
+                            ? 'bg-amber-400/30 text-amber-800'
+                            : 'bg-stone-100 group-hover:bg-stone-200/80 text-stone-600'
+                        }`}
+                      >
+                        {renderIcon(doc.icon, doc.color)}
                       </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {doc.isCustom && (
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteDoc(doc.id, e)}
-                            className="p-2 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            title="刪除此檔案"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                        <ChevronRight className="w-5 h-5 text-stone-400 group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-xs sm:text-sm font-bold text-stone-900 truncate">
+                            {doc.code}
+                          </h4>
+                          {doc.isCustom && (
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-800">
+                              自訂
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-stone-500 truncate mt-0.5">
+                          {doc.modules.length} 個模組 • {doc.subtitle}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {doc.isCustom && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteDoc(doc.id, e)}
+                          className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="刪除此檔案"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <ChevronRight className={`w-4 h-4 transition-all ${
+                        isSelected ? 'text-amber-800 translate-x-0.5 font-bold' : 'text-stone-300 group-hover:text-amber-600'
+                      }`} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ) : (
-            /* Document Detail View */
-            currentDoc && (
+          </div>
+
+          {/* 2. 文件內容即時預覽區 (Desktop on Right, Mobile on Bottom) */}
+          <div
+            id="platform-manual-preview-section"
+            className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-7 space-y-4 sm:space-y-5 bg-white min-h-0"
+          >
+            {/* 預覽提示標頭 */}
+            <div className="flex items-center justify-between pb-2.5 border-b border-stone-200 text-xs text-stone-500">
+              <span className="font-bold flex items-center gap-1.5 text-stone-800">
+                <Eye className="w-4 h-4 text-amber-500" />
+                <span className="hidden md:inline">平台清單即時預覽（電腦版在右側）</span>
+                <span className="md:hidden">平台清單即時預覽（手機板在下方）</span>
+              </span>
+              {currentDoc && (
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 font-black text-xs border border-amber-300 shadow-2xs">
+                  正在預覽：{currentDoc.code}
+                </span>
+              )}
+            </div>
+
+            {currentDoc ? (
               <div className="space-y-5 animate-in fade-in duration-150">
                 {/* Document Top Header & Action Controls */}
-                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-amber-50/20 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
                   <div>
-                    <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">
+                    <span className="text-xs font-black text-amber-600 uppercase tracking-wider">
                       {currentDoc.code.slice(0, 2)} • 規格模組
                     </span>
                     <h3 className="text-lg sm:text-xl font-black text-stone-900 mt-0.5">
                       【{currentDoc.title.replace(/^[0-9]+_/, '')}】 與維護規則
                     </h3>
-                    <p className="text-xs text-stone-500 mt-0.5">
+                    <p className="text-xs text-stone-500 mt-1">
                       {currentDoc.subtitle}
                     </p>
                   </div>
 
+                  {/* Action Buttons: 複製文字、下載 Word 檔（移除已劃叉之文字檔下載） */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
                       onClick={() => handleCopyText(currentDoc)}
-                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-800 border border-stone-200 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-stone-50 text-stone-800 border border-stone-200 hover:border-amber-300 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                       title="複製全文 Markdown"
                     >
                       {copiedDocId === currentDoc.id ? (
@@ -452,20 +462,11 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
 
                     <button
                       onClick={() => handleDownloadWord(currentDoc)}
-                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                       title="下載 Word (.doc) 檔"
                     >
                       <FileText className="w-3.5 h-3.5" />
                       <span>下載 Word 檔</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleDownloadPdf(currentDoc)}
-                      className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-                      title="下載 PDF 檔"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>下載 PDF 檔</span>
                     </button>
 
                     {currentDoc.isCustom && (
@@ -482,7 +483,7 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
 
                 {/* Special Production Version Card for 00_版本資訊 */}
                 {currentDoc.code === '00_版本資訊' && (
-                  <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-3">
                     <span className="text-xs font-bold text-amber-900 block">
                       當前運行版本 (Production)
                     </span>
@@ -505,11 +506,11 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
                 )}
 
                 {/* Modules List */}
-                <div className="space-y-4">
+                <div className="space-y-3.5 sm:space-y-4">
                   {currentDoc.modules.map((mod, idx) => (
                     <div
                       key={mod.id}
-                      className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5"
+                      className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5 hover:border-amber-200 transition-colors"
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="w-6 h-6 rounded-full bg-amber-500 text-stone-950 font-black text-xs flex items-center justify-center shrink-0">
@@ -533,8 +534,12 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
                   ))}
                 </div>
               </div>
-            )
-          )}
+            ) : (
+              <div className="py-16 text-center text-stone-400 text-sm">
+                請由目錄選取文件以預覽內容
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}

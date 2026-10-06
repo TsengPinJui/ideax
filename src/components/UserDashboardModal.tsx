@@ -124,6 +124,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
+import { CORE_TEST_ACCOUNTS } from '../data/mockData';
 import { AiCrmView } from './AiCrmView';
 
 export type UserDashboardTab =
@@ -716,11 +717,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [userEmail, setUserEmail] = useState(currentUser.email || '');
 
   // Bank Account State (解答者與撥退款專用帳戶)
-  const [bankCode, setBankCode] = useState(currentUser.bankAccount?.bankCode || '822');
-  const [bankName, setBankName] = useState(currentUser.bankAccount?.bankName || '822 中國信託商業銀行');
-  const [branchName, setBranchName] = useState(currentUser.bankAccount?.branchName || '敦南分行');
+  const [bankCode, setBankCode] = useState(currentUser.bankAccount?.bankCode || '');
+  const [bankName, setBankName] = useState(currentUser.bankAccount?.bankName || '');
+  const [branchName, setBranchName] = useState(currentUser.bankAccount?.branchName || '');
   const [accountNumber, setAccountNumber] = useState(currentUser.bankAccount?.accountNumber || '');
-  const [accountHolder, setAccountHolder] = useState(currentUser.bankAccount?.accountHolder || currentUser.name);
+  const [accountHolder, setAccountHolder] = useState(currentUser.bankAccount?.accountHolder || currentUser.name || '');
 
   // 修改密碼狀態 (Change Password State)
   const [currentOldPassword, setCurrentOldPassword] = useState('');
@@ -763,9 +764,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setUserCompany(currentUser.company || '');
     setUserPhone(currentUser.phone || '');
     setUserEmail(currentUser.email || '');
-    setBankCode(currentUser.bankAccount?.bankCode || '822');
-    setBankName(currentUser.bankAccount?.bankName || '822 中國信託商業銀行');
-    setBranchName(currentUser.bankAccount?.branchName || '敦南分行');
+    setBankCode(currentUser.bankAccount?.bankCode || '');
+    setBankName(currentUser.bankAccount?.bankName || '');
+    setBranchName(currentUser.bankAccount?.branchName || '');
     setAccountNumber(currentUser.bankAccount?.accountNumber || '');
     setAccountHolder(currentUser.bankAccount?.accountHolder || currentUser.name || '');
     setSurveyDesiredServices(currentUser.surveyData?.desiredServices || []);
@@ -8771,25 +8772,44 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </button>
               </div>
 
-              {/* 帳號卡片清單 */}
+              {/* 帳號卡片清單（整合本機已登錄帳號與固定保留之 1~3 核心測試身分） */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {deviceAccounts.map((da) => {
-                  const u = availableUsers.find((user) => user.id === da.userId);
-                  if (!u) return null;
-                  const isCurrent = currentUser.id === u.id;
-                  const isLogged = da.isLoggedIn;
+                {(() => {
+                  const displayedUserIds = new Set<string>();
+                  const accountsToRender: { user: User; isLoggedIn: boolean }[] = [];
 
-                  return (
-                    <div
-                      key={u.id}
-                      className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
-                        isCurrent
-                          ? 'bg-amber-100/90 border-amber-400 ring-2 ring-amber-400/40 shadow-xs'
-                          : isLogged
-                          ? 'bg-white border-stone-200 hover:border-amber-300 hover:bg-amber-50/30 shadow-2xs'
-                          : 'bg-stone-50/80 border-stone-200 opacity-80'
-                      }`}
-                    >
+                  // 1. 本機登入過的裝置帳號
+                  deviceAccounts.forEach((da) => {
+                    const u = availableUsers.find((user) => user.id === da.userId);
+                    if (u && !displayedUserIds.has(u.id)) {
+                      displayedUserIds.add(u.id);
+                      accountsToRender.push({ user: u, isLoggedIn: da.isLoggedIn });
+                    }
+                  });
+
+                  // 2. 固定保留之 1~3 核心測試身分（未列入者自動補齊，供免密碼隨時切換驗證）
+                  CORE_TEST_ACCOUNTS.forEach((cta) => {
+                    if (!displayedUserIds.has(cta.id)) {
+                      const u = availableUsers.find((user) => user.id === cta.id) || cta;
+                      displayedUserIds.add(cta.id);
+                      accountsToRender.push({ user: u, isLoggedIn: cta.id === currentUser.id });
+                    }
+                  });
+
+                  return accountsToRender.map(({ user: u, isLoggedIn: isLogged }) => {
+                    const isCurrent = currentUser.id === u.id;
+
+                    return (
+                      <div
+                        key={u.id}
+                        className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                          isCurrent
+                            ? 'bg-amber-100/90 border-amber-400 ring-2 ring-amber-400/40 shadow-xs'
+                            : isLogged
+                            ? 'bg-white border-stone-200 hover:border-amber-300 hover:bg-amber-50/30 shadow-2xs'
+                            : 'bg-stone-50/80 border-stone-200 opacity-80'
+                        }`}
+                      >
                       <div className="flex items-start gap-3">
                         <img
                           src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
@@ -8907,7 +8927,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </div>
                     </div>
                   );
-                })}
+                });
+                })()}
               </div>
             </div>
 
@@ -10258,18 +10279,20 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
           <span className="text-xs text-stone-500 font-medium">
             創點子 IdeaX • {currentUser.role === 'admin' ? '管理員控制台' : '個人中心'}
           </span>
-          <button
-            type="button"
-            onClick={() => setIsPlatformManualModalOpen(true)}
-            className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
-            title="開啟平台內部清單與版本維護中心"
-          >
-            <Folder className="w-3.5 h-3.5 text-amber-700" />
-            <span>平台內部清單</span>
-            <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500 text-stone-950 font-black">
-              v{APP_VERSION}
-            </span>
-          </button>
+          {currentUser.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => setIsPlatformManualModalOpen(true)}
+              className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
+              title="開啟平台內部清單與版本維護中心"
+            >
+              <Folder className="w-3.5 h-3.5 text-amber-700" />
+              <span>平台內部清單</span>
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500 text-stone-950 font-black">
+                v{APP_VERSION}
+              </span>
+            </button>
+          )}
         </div>
         {!isFullPage && (
           <button

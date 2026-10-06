@@ -37,6 +37,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
+import { CORE_TEST_ACCOUNTS } from '../data/mockData';
 import { User as UserType, UserSurveyData, Category } from '../types';
 import {
   processIdCardImage,
@@ -315,69 +316,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const sortedAvailableUsers = useMemo(() => {
     const deviceUserIds = new Set(deviceAccounts.map((d) => d.userId));
 
-    if (hasAdminOnThisDevice) {
-      // 本地有管理員登入紀錄：在膠囊式切換區提供 1~3 核心測試角色（管理員、認證專家、發案者）與本地其他已登入帳號
-      const testPersonas: UserType[] = [
-        availableUsers.find((u) => u.id === 'user-admin' || u.role === 'admin') || ({
-          id: 'user-admin',
-          name: '管理員',
-          role: 'admin',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          balance: 50000,
-        } as UserType),
-        availableUsers.find((u) => u.id === 'solver-1') || availableUsers.find((u) => u.role === 'solver' && u.verifiedExpert) || ({
-          id: 'solver-1',
-          name: '柯育任',
-          title: '智慧零售架構師',
-          role: 'solver',
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-          verifiedExpert: true,
-        } as UserType),
-        availableUsers.find((u) => u.id === 'user-questioner') || availableUsers.find((u) => u.role === 'questioner') || ({
-          id: 'user-questioner',
-          name: '林書豪',
-          title: '發案提問者',
-          role: 'questioner',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          balance: 3000,
-        } as UserType),
-      ].filter(Boolean) as UserType[];
+    // 固定保留 1~3 個核心測試角色（管理員、認證專家、發案提問者），供隨時切換
+    const testPersonas: UserType[] = CORE_TEST_ACCOUNTS.map((cta) => {
+      const existing = availableUsers.find((u) => u.id === cta.id);
+      return existing || cta;
+    });
 
-      const otherDeviceUsers = availableUsers.filter(
-        (u) =>
-          u.id !== 'user-guest' &&
-          deviceUserIds.has(u.id) &&
-          !testPersonas.some((tp) => tp.id === u.id)
-      );
+    const otherDeviceUsers = availableUsers.filter(
+      (u) =>
+        u.id !== 'user-guest' &&
+        deviceUserIds.has(u.id) &&
+        !testPersonas.some((tp) => tp.id === u.id)
+    );
 
-      return [...testPersonas, ...otherDeviceUsers];
-    }
-
-    // 一般非管理員訪客/用戶：僅顯示本機裝置曾登入之一般帳號，絕不外露測試角色與管理員
-    return availableUsers
-      .filter((u) => {
-        if (u.id === 'user-guest') return false;
-        if (!deviceUserIds.has(u.id)) return false;
-        if (
-          u.id === 'user-admin' ||
-          u.id.startsWith('solver-') ||
-          u.id === 'user-questioner' ||
-          u.id.startsWith('user-test-')
-        ) {
-          return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        const devA = deviceAccounts.find((d) => d.userId === a.id);
-        const devB = deviceAccounts.find((d) => d.userId === b.id);
-
-        const timeA = devA?.lastLoginAt ? new Date(devA.lastLoginAt).getTime() : 0;
-        const timeB = devB?.lastLoginAt ? new Date(devB.lastLoginAt).getTime() : 0;
-
-        return timeB - timeA;
-      });
-  }, [availableUsers, hasAdminOnThisDevice, deviceAccounts]);
+    return [...testPersonas, ...otherDeviceUsers];
+  }, [availableUsers, deviceAccounts]);
 
   // Validation helpers for Username and Password
   const validateUsername = (uname: string): { isValid: boolean; message: string } => {
@@ -1462,9 +1415,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
     const effectiveUser = checkRes.restoredUser || u;
-    switchAccount(effectiveUser.id);
-    setSuccessMsg('切換成功。');
-    setTimeout(() => onClose(), 400);
+    const ok = switchAccount(effectiveUser.id);
+    if (ok) {
+      setSuccessMsg(`已成功切換身分為「${effectiveUser.name}」！`);
+      setTimeout(() => onClose(), 350);
+    } else {
+      setErrorMsg('切換身分失敗，請重試。');
+    }
   };
 
   const DESIRED_SERVICES_OPTIONS = [
@@ -1567,7 +1524,61 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* MODE 1: LOGIN (支援電郵/密碼、手機簡訊驗證碼、Google與FB登入) */}
         {/* ============================================================== */}
         {mode === 'login' && (
-          <div className="space-y-5 sm:space-y-6 w-full">
+          <div className="space-y-4 sm:space-y-5 w-full">
+            {/* 快速切換測試帳號 (固定保留 1~3 個核心身分：管理員、認證專家、發案提問者) */}
+            <div className={`p-3 sm:p-3.5 rounded-2xl border transition-all space-y-2 ${
+              initialMethod === 'switch'
+                ? 'bg-amber-50/90 border-amber-300 ring-2 ring-amber-300/60 shadow-xs'
+                : 'bg-stone-50/90 border-stone-200'
+            }`}>
+              <div className="flex items-center justify-between px-0.5">
+                <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-amber-600" />
+                  <span>切換測試帳號 (保留 1~3 個核心身分)</span>
+                </span>
+                <span className="text-[10px] text-amber-800 bg-amber-100 font-bold px-1.5 py-0.5 rounded-md">
+                  免密碼即點即換
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {CORE_TEST_ACCOUNTS.map((cta) => {
+                  const existing = availableUsers.find((u) => u.id === cta.id) || cta;
+                  const isCurrent = currentUser.id === existing.id;
+                  const roleBadge = existing.role === 'admin' ? '管理員' : existing.role === 'solver' ? '認證專家' : '提問者';
+                  const roleBadgeColor = existing.role === 'admin' ? 'bg-purple-100 text-purple-900 border border-purple-200' : existing.role === 'solver' ? 'bg-blue-100 text-blue-900 border border-blue-200' : 'bg-amber-100 text-amber-900 border border-amber-200';
+
+                  return (
+                    <button
+                      key={existing.id}
+                      type="button"
+                      onClick={() => handleSwitchAccount(existing)}
+                      className={`p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between gap-1 shadow-2xs active:scale-95 ${
+                        isCurrent
+                          ? 'bg-amber-100/90 border-amber-400 ring-2 ring-amber-400 text-amber-950 font-black'
+                          : 'bg-white hover:bg-amber-50/60 border-stone-200 hover:border-amber-300 text-stone-800'
+                      }`}
+                      title={`點擊立即切換為「${existing.name}」`}
+                    >
+                      <div className="relative">
+                        <img
+                          src={existing.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                          alt={existing.name}
+                          className="w-8 h-8 rounded-full object-cover ring-1 ring-stone-200"
+                        />
+                        {isCurrent && (
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-1.5 ring-white" />
+                        )}
+                      </div>
+                      <span className="text-[11px] font-black truncate w-full">{existing.name.split(' ')[0]}</span>
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-bold ${roleBadgeColor}`}>
+                        {roleBadge}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* 登入方式切換分頁標籤 */}
             <div className="grid grid-cols-2 p-1 bg-stone-100 rounded-2xl border border-stone-200">
               <button

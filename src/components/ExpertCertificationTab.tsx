@@ -62,21 +62,18 @@ export const ExpertCertificationTab: React.FC = () => {
   const [selectedDomains, setSelectedDomains] = useState<string[]>(() => {
     if (initialData?.domains && initialData.domains.length > 0) return initialData.domains;
     if (initialData?.domain && initialData.domain !== 'auto' && initialData.domain !== '由平台為您分類') return [initialData.domain];
-    if (currentUser.domains && currentUser.domains.length > 0) return currentUser.domains;
-    if (currentUser.domain) return [currentUser.domain];
-    return ['創新創業'];
+    return [];
   });
   const [selectedSubdomains, setSelectedSubdomains] = useState<string[]>(() => {
     if (initialData?.subdomains && initialData.subdomains.length > 0) return initialData.subdomains;
     if (initialData?.subdomain) return [initialData.subdomain];
-    if (currentUser.subdomains && currentUser.subdomains.length > 0) return currentUser.subdomains;
-    return ['資訊科技'];
+    return [];
   });
   const [professionalTitle, setProfessionalTitle] = useState(
-    initialData?.professionalTitle || currentUser.title || '資深架構師 / 商業顧問'
+    initialData?.professionalTitle || ''
   );
   const [yearsOfExperience, setYearsOfExperience] = useState(
-    initialData?.yearsOfExperience || '5-8 年'
+    initialData?.yearsOfExperience || ''
   );
 
   const toggleSubdomain = (sub: string, parentCat: Category) => {
@@ -120,15 +117,7 @@ export const ExpertCertificationTab: React.FC = () => {
       uploadedAt?: string;
     }>
   >(
-    initialData?.credentialsFiles || [
-      {
-        name: '國家專技與國際架構師認證執照.jpg',
-        size: '280 KB',
-        url: 'https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=1000&auto=format&fit=crop&q=80',
-        storagePath: 'expert_credentials/solver_cert.jpg',
-        isStorage: true,
-      },
-    ]
+    initialData?.credentialsFiles || []
   );
   const [isProcessingCredential, setIsProcessingCredential] = useState(false);
   const [previewCredentialImg, setPreviewCredentialImg] = useState<{
@@ -141,8 +130,7 @@ export const ExpertCertificationTab: React.FC = () => {
 
   // Proof & Portfolio
   const [proofDescription, setProofDescription] = useState(
-    initialData?.proofDescription ||
-      '具備 8 年以上跨國企業數位轉型與大型高併發架構落地經驗，曾輔導 10+ 團隊成功交付商業落地專案。'
+    initialData?.proofDescription || ''
   );
   const [proofFiles, setProofFiles] = useState<
     Array<{
@@ -154,17 +142,15 @@ export const ExpertCertificationTab: React.FC = () => {
       uploadedAt?: string;
     }>
   >(
-    initialData?.proofFiles || [
-      { name: '代表性商業解決方案成果報告.pdf', size: '4.2 MB' },
-    ]
+    initialData?.proofFiles || []
   );
   const [portfolioLink, setPortfolioLink] = useState(
-    initialData?.portfolioLink || 'https://linkedin.com/in/expert-profile'
+    initialData?.portfolioLink || ''
   );
 
   // Policy Agreement
-  const [agreedPrivacy, setAgreedPrivacy] = useState(true);
-  const [agreedHonesty, setAgreedHonesty] = useState(true);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [agreedHonesty, setAgreedHonesty] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -589,8 +575,10 @@ export const ExpertCertificationTab: React.FC = () => {
                 <select
                   value={yearsOfExperience}
                   onChange={(e) => setYearsOfExperience(e.target.value)}
+                  required
                   className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-300 text-stone-900 font-medium focus:outline-none focus:border-amber-500 focus:bg-white"
                 >
+                  <option value="">請選擇實務年資...</option>
                   <option value="1-3 年">1-3 年 實務經驗</option>
                   <option value="3-5 年">3-5 年 專業資深</option>
                   <option value="5-8 年">5-8 年 資深顧問/技術主管</option>

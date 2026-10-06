@@ -2164,15 +2164,27 @@ export const CLEAN_CORE_ANSWERS: Answer[] = [];
 export const CLEAN_CORE_SOLVERS: Solver[] = [];
 
 /**
- * 判定使用者帳號是否為測試或模擬帳號（僅保留唯一官方超級管理員 user-admin 為真實系統管理者）
+ * 系統固定保留供隨時免註冊切換的 1~3 個核心測試帳號（涵蓋三大關鍵角色）：
+ * 1. 平台管理員 (user-admin) - IdeaX 管理團隊
+ * 2. 認證專家解答者 (solver-2) - 陳怡君
+ * 3. 發案提問者 (user-questioner) - 林書豪
+ */
+export const CORE_TEST_ACCOUNTS: User[] = [
+  CLEAN_CORE_USERS[0],
+  DEMO_CORE_TEST_USERS[1],
+  DEMO_CORE_TEST_USERS[0],
+];
+
+export const CORE_PRESERVED_USER_IDS: string[] = ['user-admin', 'solver-2', 'user-questioner', 'solver-1'];
+
+/**
+ * 判定使用者帳號是否為測試或模擬帳號（保留之 1~3 個核心測試身分不列入拋棄式測試帳號）
  */
 export const isTestAccountUserId = (userId?: string): boolean => {
   if (!userId) return false;
-  if (userId === 'user-admin') return false; // 官方超級管理員
+  if (userId === 'user-admin' || userId === 'solver-2' || userId === 'user-questioner' || userId === 'solver-1') return false; // 官方超級管理員與固定保留之核心測試帳號
   if (
-    userId === 'user-questioner' ||
     userId === 'user-guest' ||
-    userId === 'solver-2' ||
     userId.startsWith('user-author-') ||
     userId.startsWith('solver-') ||
     userId.startsWith('test-') ||

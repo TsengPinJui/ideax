@@ -674,7 +674,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
         </div>
 
         {/* Sort & View Mode selector */}
-        <div className="flex items-center gap-2 text-xs self-start sm:self-auto flex-wrap justify-between sm:justify-end w-full sm:w-auto">
+        <div className="flex items-center gap-2 text-xs self-start sm:self-auto flex-wrap justify-between sm:justify-end w-full sm:w-auto sm:mr-2 md:mr-4">
           <span className="text-stone-400 font-mono hidden lg:inline">
             共 {totalCount} 則難題
           </span>
