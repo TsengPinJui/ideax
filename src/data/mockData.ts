@@ -1964,7 +1964,9 @@ export const MOCK_CONVERSATIONS: import('../types').ChatConversation[] = [
  */
 export const CLEAN_CORE_USERS: User[] = [
   {
-    id: 'user-admin',
+    id: 'a000000001',
+    memberId: 'a000000001',
+    accountType: 'admin',
     username: 'Admin_001',
     password: 'John930521',
     name: 'IdeaX 管理團隊',
@@ -2007,14 +2009,17 @@ export const CLEAN_CORE_USERS: User[] = [
 ];
 
 /**
- * 測試環境專用模擬測試帳號（僅在示範測試模式 demoMode 或手動公開測試帳號時使用）：
- * 1. 測試提問者 (user-questioner) - 林書豪
- * 2. 測試解答者 (solver-2) - 陳怡君
- * 3. 訪客探索身分 (user-guest)
+ * 測試環境專用模擬測試帳號（涵蓋三大 ID 類別：管理員 a、企業機構 b、一般用戶 c）：
+ * 1. 一般用戶 - 測試提問者 (c100000001) - 林書豪
+ * 2. 一般用戶 - 測試解答者 (c200000002) - 陳怡君
+ * 3. 企業機構 - 測試企業法人 (b100000001) - 傘動科技
+ * 4. 訪客探索身分 (c000000000)
  */
 export const DEMO_CORE_TEST_USERS: User[] = [
   {
-    id: 'user-questioner',
+    id: 'c100000001',
+    memberId: 'c100000001',
+    accountType: 'user',
     username: 'user_questioner',
     password: 'Ideax123456',
     name: '林書豪 (測試提問者)',
@@ -2051,7 +2056,9 @@ export const DEMO_CORE_TEST_USERS: User[] = [
     surveyData: undefined,
   },
   {
-    id: 'solver-2',
+    id: 'c200000002',
+    memberId: 'c200000002',
+    accountType: 'user',
     username: 'solver_yichun',
     password: 'Ideax123456',
     name: '陳怡君 (測試專家/解答者)',
@@ -2151,7 +2158,61 @@ export const DEMO_CORE_TEST_USERS: User[] = [
       appliedAt: '2025-04-10T11:00:00.000Z',
     },
   },
-  GUEST_USER,
+  {
+    id: 'b100000001',
+    memberId: 'b100000001',
+    accountType: 'enterprise',
+    username: 'enterprise_sandong',
+    password: 'Ideax123456',
+    name: '傘動科技 (企業機構)',
+    title: '新創企業法人委託端',
+    avatar: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=150&auto=format&fit=crop&q=80',
+    role: 'questioner',
+    balance: 50000,
+    pendingEarnings: 0,
+    reputation: 100,
+    joinedDate: '2025-06-15',
+    bio: '專注智慧物聯網硬體整合之企業法人機構，測試企業提問委託、大額懸賞與專案驗收。',
+    email: 'contact@sandong.tech',
+    phone: '02-2345-6789',
+    gender: 'undisclosed',
+    ageGroup: '35_44',
+    industry: '資訊科技',
+    jobTitle: '營運研發處',
+    company: '傘動科技股份有限公司',
+    totalWithdrawn: 0,
+    totalPaidOut: 0,
+    totalRevenue: 0,
+    escrowedEarnings: 0,
+    withheldPoints: 0,
+    reputationPoints: 0,
+    honorTitle: '企業夥伴',
+    honorLevel: 1,
+    achievementsCount: 0,
+    subscriptionTier: 'enterprise',
+    domain: '創新創業',
+    skills: ['企業轉型', 'IoT 物聯網'],
+    verifiedExpert: false,
+    rating: 5.0,
+    reviewCount: 0,
+    surveyData: undefined,
+  },
+  {
+    id: 'c000000000',
+    memberId: 'c000000000',
+    accountType: 'user',
+    name: '訪客探索身分',
+    username: 'guest_user',
+    password: 'Ideax123456',
+    title: '一般訪客',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    role: 'questioner',
+    balance: 0,
+    pendingEarnings: 0,
+    reputation: 100,
+    joinedDate: '2026-01-01',
+    email: 'guest@ideax.user',
+  },
 ];
 
 /**
@@ -2164,27 +2225,40 @@ export const CLEAN_CORE_ANSWERS: Answer[] = [];
 export const CLEAN_CORE_SOLVERS: Solver[] = [];
 
 /**
- * 系統固定保留供隨時免註冊切換的 1~3 個核心測試帳號（涵蓋三大關鍵角色）：
- * 1. 平台管理員 (user-admin) - IdeaX 管理團隊
- * 2. 認證專家解答者 (solver-2) - 陳怡君
- * 3. 發案提問者 (user-questioner) - 林書豪
+ * 系統固定保留供隨時免註冊切換的 1~3 個核心測試帳號（涵蓋三大 ID 類別：管理員 a、一般用戶 c、企業機構 b）：
+ * 1. 平台管理員 (a000000001) - IdeaX 管理團隊 (a)
+ * 2. 認證專家解答者 (c200000002) - 陳怡君 (c)
+ * 3. 發案提問者 (c100000001) - 林書豪 (c)
+ * 4. 企業機構 (b100000001) - 傘動科技 (b)
  */
 export const CORE_TEST_ACCOUNTS: User[] = [
   CLEAN_CORE_USERS[0],
   DEMO_CORE_TEST_USERS[1],
   DEMO_CORE_TEST_USERS[0],
+  DEMO_CORE_TEST_USERS[2],
 ];
 
-export const CORE_PRESERVED_USER_IDS: string[] = ['user-admin', 'solver-2', 'user-questioner', 'solver-1'];
+export const CORE_PRESERVED_USER_IDS: string[] = [
+  'a000000001',
+  'c100000001',
+  'c200000002',
+  'b100000001',
+  'c100000003',
+  'user-admin',
+  'solver-2',
+  'user-questioner',
+  'solver-1',
+];
 
 /**
  * 判定使用者帳號是否為測試或模擬帳號（保留之 1~3 個核心測試身分不列入拋棄式測試帳號）
  */
 export const isTestAccountUserId = (userId?: string): boolean => {
   if (!userId) return false;
-  if (userId === 'user-admin' || userId === 'solver-2' || userId === 'user-questioner' || userId === 'solver-1') return false; // 官方超級管理員與固定保留之核心測試帳號
+  if (CORE_PRESERVED_USER_IDS.includes(userId)) return false; // 官方超級管理員與固定保留之核心測試帳號
   if (
     userId === 'user-guest' ||
+    userId === 'c000000000' ||
     userId.startsWith('user-author-') ||
     userId.startsWith('solver-') ||
     userId.startsWith('test-') ||

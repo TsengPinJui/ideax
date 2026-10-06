@@ -1525,60 +1525,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* ============================================================== */}
         {mode === 'login' && (
           <div className="space-y-4 sm:space-y-5 w-full">
-            {/* 快速切換測試帳號 (固定保留 1~3 個核心身分：管理員、認證專家、發案提問者) */}
-            <div className={`p-3 sm:p-3.5 rounded-2xl border transition-all space-y-2 ${
-              initialMethod === 'switch'
-                ? 'bg-amber-50/90 border-amber-300 ring-2 ring-amber-300/60 shadow-xs'
-                : 'bg-stone-50/90 border-stone-200'
-            }`}>
-              <div className="flex items-center justify-between px-0.5">
-                <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
-                  <ArrowLeftRight className="w-3.5 h-3.5 text-amber-600" />
-                  <span>切換測試帳號 (保留 1~3 個核心身分)</span>
-                </span>
-                <span className="text-[10px] text-amber-800 bg-amber-100 font-bold px-1.5 py-0.5 rounded-md">
-                  免密碼即點即換
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {CORE_TEST_ACCOUNTS.map((cta) => {
-                  const existing = availableUsers.find((u) => u.id === cta.id) || cta;
-                  const isCurrent = currentUser.id === existing.id;
-                  const roleBadge = existing.role === 'admin' ? '管理員' : existing.role === 'solver' ? '認證專家' : '提問者';
-                  const roleBadgeColor = existing.role === 'admin' ? 'bg-purple-100 text-purple-900 border border-purple-200' : existing.role === 'solver' ? 'bg-blue-100 text-blue-900 border border-blue-200' : 'bg-amber-100 text-amber-900 border border-amber-200';
-
-                  return (
-                    <button
-                      key={existing.id}
-                      type="button"
-                      onClick={() => handleSwitchAccount(existing)}
-                      className={`p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between gap-1 shadow-2xs active:scale-95 ${
-                        isCurrent
-                          ? 'bg-amber-100/90 border-amber-400 ring-2 ring-amber-400 text-amber-950 font-black'
-                          : 'bg-white hover:bg-amber-50/60 border-stone-200 hover:border-amber-300 text-stone-800'
-                      }`}
-                      title={`點擊立即切換為「${existing.name}」`}
-                    >
-                      <div className="relative">
-                        <img
-                          src={existing.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                          alt={existing.name}
-                          className="w-8 h-8 rounded-full object-cover ring-1 ring-stone-200"
-                        />
-                        {isCurrent && (
-                          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-1.5 ring-white" />
-                        )}
-                      </div>
-                      <span className="text-[11px] font-black truncate w-full">{existing.name.split(' ')[0]}</span>
-                      <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-bold ${roleBadgeColor}`}>
-                        {roleBadge}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* 登入方式切換分頁標籤 */}
             <div className="grid grid-cols-2 p-1 bg-stone-100 rounded-2xl border border-stone-200">
               <button

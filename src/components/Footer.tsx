@@ -40,10 +40,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
   };
 
   return (
-    <footer className="hidden md:block bg-stone-950 text-stone-300 border-t border-stone-800 pt-12 pb-8">
+    <footer className="block bg-stone-950 text-stone-300 border-t border-stone-800 pt-10 sm:pt-12 pb-24 md:pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pb-10 border-b border-stone-800 text-xs">
-          {/* Brand info - 頁尾 IdeaX 左側去背低飽和燈泡 + IdeaX 品牌識別 */}
+          {/* Brand info - 頁尾 IdeaX 左下角去背低飽和燈泡 + IdeaX 品牌識別 */}
           <div className="col-span-2 lg:col-span-1 space-y-3.5">
             <button
               type="button"
@@ -52,12 +52,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               title="回到首頁頂部"
-              className="inline-flex items-center gap-2.5 py-1 hover:opacity-90 transition-opacity text-left cursor-pointer focus:outline-none group"
+              className="inline-flex items-center gap-3 py-1 hover:opacity-95 transition-all text-left cursor-pointer focus:outline-none group"
             >
-              <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
-                <IdeaXLogo variant="bulb" size="lg" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center p-0.5">
+                <IdeaXLogo variant="bulb" size="xl" className="group-hover:scale-108 transition-transform duration-200" />
               </div>
-              <IdeaXLogo variant="ideax-6" size="sm" theme="dark" />
+              <IdeaXLogo variant="ideax-6" size="md" theme="dark" />
             </button>
             <p className="text-stone-400 leading-relaxed pt-1">
               一個問題，找到更多可能。專為新創團隊、商業領袖與技術探索者打造的高價值問題與解決方案交易市場。讓想法發光，連結無限可能。

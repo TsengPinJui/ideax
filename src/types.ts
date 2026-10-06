@@ -546,6 +546,8 @@ export interface UserSurveyData {
 
 export interface User {
   id: string;
+  memberId?: string; // 規範ID（首字英文字母+亂數編排9碼，共10碼，例如 c123456789, a000000001, b987654321）
+  accountType?: 'user' | 'admin' | 'enterprise'; // ID種類：一般用戶 (c) | 管理員 (a) | 企業機構 (b)
   username?: string; // 註冊帳號 (4~20 位英數字或底線)
   password?: string; // 帳號密碼 (6~20 位英數組合)
   rememberLogin?: boolean; // 記得並保持登入狀態

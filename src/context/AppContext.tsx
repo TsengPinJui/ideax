@@ -742,9 +742,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
           const usersList = parsed.map((u: any) => {
-            const isAdmin = u.id === 'user-admin' || (typeof u.username === 'string' && u.username.toLowerCase() === 'admin_001') || (typeof u.name === 'string' && (u.name.includes('IdeaX') || u.name.includes('管理') || u.name.includes('營運')));
+            const isAdmin =
+              u.id === 'user-admin' ||
+              u.id === 'a000000001' ||
+              u.memberId === 'a000000001' ||
+              (typeof u.username === 'string' && u.username.toLowerCase() === 'admin_001') ||
+              (typeof u.name === 'string' && (u.name.includes('IdeaX') || u.name.includes('管理') || u.name.includes('營運')));
             return {
               ...u,
+              id: isAdmin ? (u.id === 'user-admin' ? 'a000000001' : u.id) : u.id,
+              memberId: isAdmin ? 'a000000001' : (u.memberId || u.id),
+              accountType: isAdmin ? ('admin' as const) : u.accountType,
               username: isAdmin ? 'Admin_001' : u.username,
               password: isAdmin ? 'John930521' : u.password,
               name: isAdmin ? 'IdeaX 管理團隊' : u.name,

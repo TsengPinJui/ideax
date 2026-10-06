@@ -220,7 +220,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     return count;
   }, [publicMetricsConfig]);
   return (
-    <section className="relative overflow-hidden bg-white border-b border-stone-200 pt-4 pb-2 sm:pt-12 sm:pb-12">
+    <section className="relative overflow-hidden bg-white border-b border-stone-200 pt-4 pb-2 sm:pt-8 sm:pb-8 md:pt-9 md:pb-8">
       {/* Radiant ambient glow matching the IdeaX yellow/gold brand aura */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-amber-200/35 via-yellow-100/20 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="absolute top-28 right-10 w-80 h-80 bg-amber-100/30 rounded-full blur-2xl pointer-events-none -z-10" />
@@ -229,25 +229,25 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         {/* Hero Visual Spotlight with IdeaX - 創點子+IdeaX品牌焦點與關鍵字 */}
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* Official IdeaX Brand Display */}
-          <div className="relative mb-5 sm:mb-6 group inline-flex max-w-[90%] sm:max-w-2xl lg:max-w-3xl mx-auto justify-center">
+          <div className="relative mb-4 sm:mb-5 group inline-flex max-w-[90%] sm:max-w-xl lg:max-w-2xl mx-auto justify-center">
             {/* Ambient backlight ring */}
             <div className="absolute inset-0 rounded-3xl bg-amber-300/35 blur-2xl scale-105 pointer-events-none" />
-            <div className="relative py-1.5 px-3 sm:py-1.5 sm:px-5 md:py-2 md:px-6 rounded-3xl bg-gradient-to-b from-amber-50/90 via-white/95 to-white/95 border border-amber-200/80 shadow-md flex items-center justify-center gap-2.5 sm:gap-5 md:gap-6">
+            <div className="relative py-2 px-3.5 sm:py-2 sm:px-5 md:py-2 md:px-5 rounded-2xl sm:rounded-3xl bg-gradient-to-b from-amber-50/90 via-white/95 to-white/95 border border-amber-200/80 shadow-md flex items-center justify-center gap-3 sm:gap-4 md:gap-5">
               <img
                 src="/logo-bulb.png"
                 alt="IdeaX 燈泡"
-                className="h-16 xs:h-20 sm:h-34 md:h-36 lg:h-42 xl:h-48 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform drop-shadow-sm"
+                className="h-26 xs:h-30 sm:h-24 md:h-26 lg:h-28 xl:h-30 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform drop-shadow-sm"
               />
               <img
                 src="/logo-chuangdianzi-text.png"
                 alt="創點子 IdeaX"
-                className="h-11 xs:h-13 sm:h-22 md:h-25 lg:h-29 xl:h-33 w-auto object-contain shrink-0"
+                className="h-15 xs:h-18 sm:h-14 md:h-15 lg:h-17 xl:h-18 w-auto object-contain shrink-0"
               />
             </div>
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 tracking-tight leading-tight sm:leading-tight mt-2 sm:mt-3">
+          <h1 className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-black text-stone-900 tracking-tight leading-snug sm:leading-snug mt-1.5 sm:mt-2">
             一個問題，<br className="hidden sm:inline" />
             找到<span className="text-amber-500 underline decoration-amber-300 decoration-wavy decoration-2">更多可能</span>。
           </h1>
@@ -288,7 +288,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               onClick={onPostClick}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 active:from-amber-600 active:to-amber-600 text-stone-950 font-black text-sm sm:text-base shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer group border border-amber-300/80 ring-2 ring-amber-400/20"
             >
-              <IdeaXLogo variant="bulb" size="xs" />
+              <IdeaXLogo variant="bulb" size="sm" />
               <span>我有難題，發布懸賞！</span>
             </button>
 
