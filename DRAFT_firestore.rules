@@ -1,0 +1,123 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // 0. 全域安全基礎函式 (Global Zero-Trust Helpers)
+    // =========================================================================
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'john25893619@gmail.com' ||
+        exists(/databases/$(database)/documents/challenge_admins/$(request.auth.uid))
+      );
+    }
+
+    // =========================================================================
+    // 1. 創星季提案集合 (Challenge Proposals)
+    // =========================================================================
+    match /challenge_proposals/{proposalId} {
+      // 公開讀取已通過審核的提案；未過審提案僅作者本人與管理員/評審可見
+      allow get: if isValidId(proposalId) && (
+        resource.data.status == 'approved' ||
+        (isSignedIn() && resource.data.authorId == request.auth.uid) ||
+        isAdmin()
+      );
+
+      allow list: if 
+        resource.data.status == 'approved' ||
+        (isSignedIn() && resource.data.authorId == request.auth.uid) ||
+        isAdmin();
+
+      // 投稿創建：必須為登入用戶且指定自己為作者，初次提交狀態必須為 pending 且金額為 0
+      allow create: if isSignedIn() && isValidId(proposalId) &&
+        request.resource.data.authorId == request.auth.uid &&
+        request.resource.data.status in ['pending', 'draft'] &&
+        request.resource.data.fundingRaised == 0 &&
+        request.resource.data.title is string && request.resource.data.title.size() <= 200 &&
+        request.resource.data.category is string;
+
+      // 提案更新：作者僅能修改提案文案，不可自行修改審核狀態、募資金額或名次標記
+      allow update: if isValidId(proposalId) && (
+        isAdmin() ||
+        (
+          isSignedIn() && resource.data.authorId == request.auth.uid &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'status', 'fundingRaised', 'fundingSupportersCount', 'isTop10Winner', 'top10Rank', 'starOfCreationAwarded'
+          ])
+        ) ||
+        (
+          // 互動更新（點讚/瀏覽數增加）：僅允許更新 likes, views, likedUserIds
+          isSignedIn() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'views', 'likedUserIds'])
+        )
+      );
+
+      // 刪除：僅管理員有權執行
+      allow delete: if isValidId(proposalId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 2. 創星季虛擬錢包 (Challenge Point Wallets)
+    // =========================================================================
+    match /challenge_wallets/{walletId} {
+      // 僅本人或管理員可查閱錢包
+      allow get, list: if isOwner(walletId) || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+
+      // 創建：僅限登入者為自己創建錢包
+      allow create: if isOwner(walletId) && request.resource.data.userId == request.auth.uid;
+
+      // 更新：限本人或管理員（投點扣款交易需驗證點數合法性）
+      allow update: if (isOwner(walletId) || (isSignedIn() && resource.data.userId == request.auth.uid)) || isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // 3. 校園宣傳大使 (Challenge Ambassadors)
+    // =========================================================================
+    match /challenge_ambassadors/{ambassadorId} {
+      // 大使個人資料（含銀行資訊）嚴格限制僅本人或管理員可見
+      allow get, list: if isOwner(ambassadorId) || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+
+      // 申請註冊：登入用戶填寫自身資料
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+
+      // 修改：本人或管理員
+      allow update: if (isOwner(ambassadorId) || (isSignedIn() && resource.data.userId == request.auth.uid)) || isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // 4. 評審專家團 (Challenge Experts)
+    // =========================================================================
+    match /challenge_experts/{expertId} {
+      // 專家名冊供大眾與參賽者公開瀏覽
+      allow get, list: if true;
+
+      // 專家資料維護僅限管理員
+      allow create, update, delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // 5. 全域預設拒絕 (Default Deny - 零漏洞防護)
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

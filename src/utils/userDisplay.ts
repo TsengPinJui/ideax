@@ -23,3 +23,14 @@ export function resolveUserName(name?: string | null, isAnonymous?: boolean): st
   }
   return name;
 }
+
+export function resolveUserDisplayName(userId?: string, fallbackName?: string, userList?: any[]): string {
+  if (userList && userId) {
+    const found = userList.find((u) => u && u.id === userId);
+    if (found && found.name) return found.name;
+  }
+  if (fallbackName && fallbackName.trim() !== '') {
+    return fallbackName;
+  }
+  return userId || '用戶';
+}

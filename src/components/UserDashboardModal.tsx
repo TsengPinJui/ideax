@@ -6,6 +6,12 @@ import confetti from 'canvas-confetti';
 
 interface UserDashboardModalProps {
   onClose: () => void;
+  initialTab?: any;
+  isFullPage?: boolean;
+  onNavigateToTerms?: () => void;
+  onOpenAiCrm?: () => void;
+  onOpenQuestion?: (qId: any) => void;
+  onStartOnboarding?: () => void;
 }
 
 export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {

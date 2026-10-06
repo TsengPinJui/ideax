@@ -58,6 +58,23 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // 6. 競賽專用集合 (IdeaX Innovation Challenge Collections)
+    match /challenge_proposals/{proposalId} {
+      allow read, write: if true;
+    }
+
+    match /challenge_wallets/{walletId} {
+      allow read, write: if true;
+    }
+
+    match /challenge_ambassadors/{ambassadorId} {
+      allow read, write: if true;
+    }
+
+    match /challenge_experts/{expertId} {
+      allow read, write: if true;
+    }
+
     // Default fallback
     match /{document=**} {
       allow read, write: if true;

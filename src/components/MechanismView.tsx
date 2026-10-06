@@ -1,11 +1,31 @@
 import React, { useState } from 'react';
 import { TERMS_DATA, TermItem } from '../data/termsData';
-import { MECHANISM_ARTICLES } from '../data/mechanismKnowledgeBase';
 import { BookOpen, Shield, HelpCircle, FileText, CheckCircle2 } from 'lucide-react';
+
+const MECHANISM_ARTICLES = [
+  {
+    id: 'mech-1',
+    badge: '雙軌驗證',
+    title: '真實盲測與市場支持度評估',
+    summary: '提供 10 萬點虛擬支持池進行無門檻概念盲測，由大眾與專業社群共同檢驗商業可行性。',
+  },
+  {
+    id: 'mech-2',
+    badge: '專屬支持池',
+    title: '特聘專家顧問評估與注資機制',
+    summary: '各界架構師與創投顧問配賦專屬 300 萬點支持金池，針對優質提案進行深度指導。',
+  },
+  {
+    id: 'mech-3',
+    badge: '官方數位證明',
+    title: '唯一序號認證證書與推廣大使',
+    summary: '過審專案即刻獲發官方金色榮譽數位證書；推廣大使每推薦一件過審提案獲 NT$ 400 推廣費。',
+  },
+];
 
 export const MechanismView: React.FC = () => {
   const [selectedTermKey, setSelectedTermKey] = useState<string>('general_terms');
-  const [activeCategory, setActiveCategory] = useState<'all' | 'general' | 'solver' | 'questioner' | 'statement'>('all');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'general' | 'solver' | 'questioner' | 'statement' | 'challenge'>('all');
 
   const allTerms = Object.values(TERMS_DATA);
   const filteredTerms = activeCategory === 'all' 
@@ -49,7 +69,7 @@ export const MechanismView: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl">
-            {(['all', 'general', 'solver', 'questioner', 'statement'] as const).map((cat) => (
+            {(['all', 'general', 'challenge', 'solver', 'questioner', 'statement'] as const).map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
@@ -59,7 +79,7 @@ export const MechanismView: React.FC = () => {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {cat === 'all' ? '全部' : cat === 'general' ? '通用' : cat === 'solver' ? '接案' : cat === 'questioner' ? '提問' : '聲明'}
+                {cat === 'all' ? '全部' : cat === 'general' ? '通用' : cat === 'challenge' ? '創星季' : cat === 'solver' ? '接案' : cat === 'questioner' ? '提問' : '聲明'}
               </button>
             ))}
           </div>

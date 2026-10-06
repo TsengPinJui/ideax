@@ -31,6 +31,8 @@ import { RatingModal } from './components/RatingModal';
 import { HelpTooltip } from './components/HelpTooltip';
 import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnboardingGuide';
 import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompass';
+import { InnovationChallengeView } from './components/challenge/InnovationChallengeView';
+import { AuthModal } from './components/AuthModal';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { isPainPointQuestion } from './utils/questionUtils';
@@ -80,6 +82,12 @@ function MainContent() {
     availableUsers,
     startDirectChat,
     openAuthModal,
+    closeAuthModal,
+    isAuthModalOpen,
+    authModalMode,
+    authModalMethod,
+    authModalRole,
+    authModalInterceptReason,
     addNotification,
     isDemoMode,
     isNoPaymentMode,
@@ -208,6 +216,21 @@ function MainContent() {
     } catch (e) {
       console.error(e);
     }
+  }, []);
+
+  // 監聽網址 Hash 或路徑以支援直達 IdeaX 創新挑戰季競賽專區 (例如 #challenge 或 /challenge)
+  useEffect(() => {
+    const handleUrlHashOrPath = () => {
+      const hash = window.location.hash.toLowerCase();
+      const path = window.location.pathname.toLowerCase();
+      if (hash.includes('challenge') || hash.includes('innovation') || path.includes('challenge')) {
+        setActiveTab('innovation_challenge');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    handleUrlHashOrPath();
+    window.addEventListener('hashchange', handleUrlHashOrPath);
+    return () => window.removeEventListener('hashchange', handleUrlHashOrPath);
   }, []);
 
   const performUnpin = () => {
@@ -721,6 +744,43 @@ function MainContent() {
     }
   };
 
+  if (activeTab === 'innovation_challenge') {
+    return (
+      <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-100 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-emerald-300">
+        <InnovationChallengeView
+          currentUser={currentUser}
+          onBackToMainPlatform={() => {
+            setActiveTab('explore');
+            try {
+              if (window.location.hash.includes('challenge')) {
+                history.pushState('', document.title, window.location.pathname + window.location.search);
+              }
+            } catch (e) {
+              // ignore
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+
+        {/* 螢幕正中央提示浮窗 (Center Toast HUD) */}
+        <CenterToast toast={centerToast} onDismiss={hideCenterToast} />
+
+        {/* 登入 / 註冊全站彈窗 (支援新舊站同步帳號體系) */}
+        {isAuthModalOpen && (
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={closeAuthModal}
+            initialMode={authModalMode}
+            initialMethod={authModalMethod}
+            initialRole={authModalRole}
+            interceptReason={authModalInterceptReason}
+            isChallengeSite={true}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-50/50 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
       {/* App 開啟淡入淡出畫面 (Splash Screen) */}
@@ -948,7 +1008,7 @@ function MainContent() {
                     <div className="flex sm:flex-row items-center justify-between gap-1.5 sm:gap-4 mb-1.5 sm:mb-3">
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 sm:gap-2">
-                          <span>徵點子</span>
+                          <span>💡 徵點子</span>
                           <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 font-mono">
                             {filteredQuestions.length} 則待解
                           </span>
@@ -1648,6 +1708,19 @@ function MainContent() {
 
       {/* 螢幕正中央提示浮窗 (Center Toast HUD: 中間跳出提示再消失) */}
       <CenterToast toast={centerToast} onDismiss={hideCenterToast} />
+
+      {/* 登入 / 註冊全站彈窗 */}
+      {isAuthModalOpen && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={closeAuthModal}
+          initialMode={authModalMode}
+          initialMethod={authModalMethod}
+          initialRole={authModalRole}
+          interceptReason={authModalInterceptReason}
+          isChallengeSite={false}
+        />
+      )}
     </div>
   );
 }

@@ -1885,6 +1885,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           setSelectedQuestion(null);
           setSelectedSolver(null);
         }}
+        onNavigateToChallenge={() => {
+          setActiveTab('innovation_challenge');
+          setSelectedQuestion(null);
+          setSelectedSolver(null);
+        }}
         onStartOnboarding={onStartOnboarding}
         selectedCategory={selectedCategory}
         selectedSubcategory={selectedSubcategory}

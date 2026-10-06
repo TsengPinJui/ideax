@@ -257,8 +257,8 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     app: 'IdeaX 創點子',
-    version: '1.5.5',
-    releaseDate: '2026.10.05',
+    version: '1.5.6',
+    releaseDate: '2026.10.06',
     timezone: 'UTC+8',
     timestamp: new Date().toISOString(),
     hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
@@ -270,8 +270,8 @@ app.get('/api/version', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     app: 'IdeaX 創點子',
-    version: '1.5.5',
-    releaseDate: '2026.10.05',
+    version: '1.5.6',
+    releaseDate: '2026.10.06',
     timezone: 'UTC+8',
     timestamp: new Date().toISOString(),
   });
