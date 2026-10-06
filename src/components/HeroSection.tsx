@@ -4,7 +4,6 @@ import { Category } from '../types';
 import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { useApp } from '../context/AppContext';
-import { calculatePlatformSatisfactionRate } from '../utils/metricsHelper';
 
 interface HeroSectionProps {
   searchQuery?: string;
@@ -176,11 +175,24 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     }
   }, [questions, answers]);
 
-  // 12. 方案採納滿意度 (統一單一真相來源：與管理後台完全一致)
+  // 12. 方案採納滿意度 (依據真實狀況：全站解答專家與方案真實綜合星級換算)
   const satisfactionRateFormatted = useMemo(() => {
-    const stats = calculatePlatformSatisfactionRate(solvers, answers);
-    return stats.percentageFormatted;
-  }, [solvers, answers]);
+    const ratedSolvers = solvers.filter((s) => typeof s.rating === 'number' && s.rating > 0);
+    if (ratedSolvers.length === 0) return '-';
+
+    let totalWeightedRating = 0;
+    let totalWeight = 0;
+
+    ratedSolvers.forEach((s) => {
+      const weight = Math.max(1, s.reviewCount || 1);
+      totalWeightedRating += s.rating * weight;
+      totalWeight += weight;
+    });
+
+    const avgRating = totalWeight > 0 ? totalWeightedRating / totalWeight : 5.0;
+    const percentage = Math.min(100, Math.max(0, (avgRating / 5) * 100));
+    return `${percentage.toFixed(1)}%`;
+  }, [solvers]);
 
   // 13. 當前全站最高懸賞題目金額 (即時從真實問題列表抓取最高值，正式模式與無金流模式歸零)
   const currentHighestBounty = useMemo(() => {
@@ -217,25 +229,25 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         {/* Hero Visual Spotlight with IdeaX - 創點子+IdeaX品牌焦點與關鍵字 */}
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* Official IdeaX Brand Display */}
-          <div className="relative mb-6 sm:mb-7 group inline-flex max-w-2xl mx-auto">
+          <div className="relative mb-4 sm:mb-6 group inline-flex max-w-xl sm:max-w-2xl lg:max-w-3xl mx-auto">
             {/* Ambient backlight ring */}
-            <div className="absolute inset-0 rounded-3xl bg-amber-300/25 blur-xl scale-105 pointer-events-none" />
-            <div className="relative py-3.5 px-5.5 sm:py-5.5 sm:px-9 md:py-6 md:px-11 rounded-3xl bg-gradient-to-b from-amber-50/85 via-white/95 to-white/95 border border-amber-200/70 shadow-xs flex items-center justify-center gap-4 sm:gap-7 md:gap-8">
+            <div className="absolute inset-0 rounded-3xl bg-amber-300/35 blur-2xl scale-105 pointer-events-none" />
+            <div className="relative py-1 px-3 sm:py-1.5 sm:px-5 md:py-2 md:px-6 rounded-3xl bg-gradient-to-b from-amber-50/90 via-white/95 to-white/95 border border-amber-200/80 shadow-md flex items-center justify-center gap-3 sm:gap-5 md:gap-6">
               <img
-                src="/logo-bulb.png?v=trans-bulb-8"
-                alt="IdeaX 創點子燈泡"
-                className="h-17 sm:h-22 md:h-26 lg:h-27.5 w-auto object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-transform"
+                src="/logo-bulb.png"
+                alt="IdeaX 燈泡"
+                className="h-20 sm:h-30 md:h-36 lg:h-42 xl:h-48 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform drop-shadow-sm"
               />
               <img
                 src="/logo-chuangdianzi-text.png"
-                alt="創點子 IdeaX 讓想法發光"
-                className="h-19 sm:h-24 md:h-28 lg:h-29.5 w-auto object-contain shrink-0 group-hover:scale-102 transition-transform"
+                alt="創點子 IdeaX"
+                className="h-13 sm:h-20 md:h-25 lg:h-29 xl:h-33 w-auto object-contain shrink-0"
               />
             </div>
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-stone-900 tracking-tight leading-snug sm:leading-tight mt-1">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 tracking-tight leading-tight sm:leading-tight mt-2 sm:mt-3">
             一個問題，<br className="hidden sm:inline" />
             找到<span className="text-amber-500 underline decoration-amber-300 decoration-wavy decoration-2">更多可能</span>。
           </h1>
@@ -443,7 +455,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <button
                 id="highest-bounty-section"
                 onClick={onLeaderboardClick}
-                className={`scroll-mt-16 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-300/80 hover:border-amber-500 hover:shadow-xs transition-all text-center flex flex-col items-center justify-center cursor-pointer group ${
+                className={`scroll-mt-14 sm:scroll-mt-20 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-300/80 hover:border-amber-500 hover:shadow-xs transition-all text-center flex flex-col items-center justify-center cursor-pointer group ${
                   activeMetricsCount % 2 === 1 ? 'col-span-2 sm:col-span-1' : ''
                 }`}
                 title="點擊查看全平台最高懸賞排行榜"

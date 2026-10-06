@@ -2,9 +2,7 @@
  * 創點子 IdeaX - 型別系統定義
  */
 
-export type UserRole = 'questioner' | 'solver' | 'admin' | 'guest';
-
-export type Solution = any;
+export type UserRole = 'questioner' | 'solver' | 'admin';
 
 export interface DeviceAccount {
   userId: string;
@@ -47,8 +45,7 @@ export type AppTab =
   | 'solver_profile'
   | 'chat'
   | 'my_projects'
-  | 'ai_crm'
-  | 'innovation_challenge';
+  | 'ai_crm';
 
 export type AboutSection = 
   | 'list'
@@ -64,12 +61,7 @@ export type AboutSection =
   | 'anti_fraud_aml_policy'         // 反詐騙與防制洗錢政策
   | 'refund_dispute_policy'         // 退款政策與爭議調解處理辦法
   | 'community_guidelines'          // 社群守則與內容管理規範
-  | 'about_ideax'                   // 關於創點子 / 平台介紹
-  | 'challenge_regulations'         // 創星季競賽辦法與規章
-  | 'challenge_participant_terms'   // 創星季參賽者規則與智慧財產權條款
-  | 'challenge_expert_terms'        // 創星季特聘評審與專家指導條款
-  | 'finance'
-  | (string & {});
+  | 'about_ideax';                  // 關於創點子 / 平台介紹
 
 export type UserDashboardTab = 
   | 'points_receivables'
@@ -108,8 +100,7 @@ export type Category =
   | '創新創業'
   | '專業問題'
   | '學術探討'
-  | '日常疑難'
-  | (string & {});
+  | '日常疑難';
 
 export type Subcategory =
   // 創新創業
@@ -271,7 +262,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     tagline: '標準費率，由解答者吸收 10% 服務費',
     benefits: [
       '全站發問與解答提案',
-      '🤝 AI 雙向特邀與智能撮合：提問端與解答端皆享平台免費智能媒合',
+      'AI-CRM 專家工作台：基礎題庫瀏覽與功能預覽',
     ],
   },
   pro: {
@@ -294,9 +285,11 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     tagline: '費率僅 8%！解答者實收高達 92%',
     benefits: [
       '全站發問與解答提案',
-      '🤝 AI 雙向特邀與智能撮合：提問端與解答端皆享平台免費智能媒合',
+      '費率 8%（解答者實收 92%）',
       'AI 初步問題分析報告：免費查看 50 次',
       'AI 提案架構整理：一鍵整理為 4 層架構',
+      '🎯 AI-CRM 24hr 客情巡航：基礎巡航與意向偵測',
+      '🤝 雙向握手提案：市場顧問 × AICRM 雙向特聘媒合推播',
     ],
   },
   expert: {
@@ -318,9 +311,11 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     tagline: '費率僅 8%！解答者實收高達 92%',
     benefits: [
       '全站發問與解答提案',
-      '🤝 AI 雙向特邀與智能撮合：提問端與解答端皆享平台免費智能媒合',
+      '費率 8%（解答者實收 92%）',
       'AI 初步問題分析報告：免費查看 50 次',
       'AI 提案架構整理：一鍵整理為 4 層架構',
+      '🎯 AI-CRM 24hr 客情巡航：基礎巡航與意向偵測',
+      '🤝 雙向握手提案：市場顧問 × AICRM 雙向特聘媒合推播',
     ],
   },
   authority: {
@@ -342,11 +337,13 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     tagline: '服務費僅 5%（-5%）！實收 95% ＋ 升級無限次 AI 分析報告 ＋ 優先推薦曝光',
     benefits: [
       '全站發問與解答提案',
-      '🤝 AI 雙向特邀與智能撮合：提問端與解答端皆享平台免費智能媒合',
-      'AI 初步問題分析報告：全站免費無限次查看及下載報告（升級無限次＋下載）',
+      '服務費僅 5%（-5% 減免，實收 95%）',
+      'AI 初步問題分析報告：全站免費無限次查看及下載報告',
       'AI 提案架構整理：一鍵整理為 4 層架構',
       '✨ 升級高賞提案優先推薦曝光',
-      '💰 優質提案推薦您來賺：AI-CRM 智能推播高額懸賞好題(權威方案以上)',
+      '🎯 AI-CRM 24hr 客情巡航雷達：實時巡弋全站題庫與發案者猶豫期',
+      '🤝 雙向握手提案：市場顧問 × AICRM 即時推播雙向高契合特聘商機',
+      '💰 優質提案推薦您來賺：智能過濾高額懸賞好題與三階段破局方針',
     ],
   },
   master: {
@@ -368,15 +365,16 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     tagline: '極低 2% 服務費！實收高達 98% ＋ AI-CRM 客戶關係管理',
     benefits: [
       '全站發問與解答提案',
-      '🤝 AI 雙向特邀與智能撮合：提問端與解答端皆享平台免費智能媒合（含 24hr 撮合池雷達）',
+      '服務費極低 2%（-8% 減免，實收高達 98%）',
       'AI 初步問題分析報告：全站免費無限次查看及下載報告',
       'AI 提案架構整理：一鍵整理為 4 層架構',
-      '高賞提案優先推薦',
-      '🎯 24hr巡航雷達：即時客情意向偵測與高潛在客戶巡航(大師專屬)',
-      '💰 優質提案推薦您來賺：AI-CRM 智能推播高額懸賞好題(大師專屬)',
-      '🧠 24hr策略軍師：心理學談判推演與話術擬定排程代操(大師專屬)',
-      '🤖 24hr AI客服特助：離線主動對談維護客戶＋24hr 自動化代操發送(大師專屬)',
-      '⚡ AI-CRM 客戶關係管理：24hr巡航雷達 ＋ 策略軍師 ＋ 24hr AI客服特助，打造高轉單接案飛輪',
+      '高賞提案最高優先級推薦曝光',
+      '🎯 AI-CRM 24hr 客情巡航雷達：即時客情意向偵測與高價值客戶巡航',
+      '🤝 雙向握手提案：市場顧問 × AICRM 即時推播雙向高契合特聘商機',
+      '💰 優質提案推薦您來賺：智能過濾高額懸賞好題與三階段破局方針',
+      '🧠 AI-CRM 24hr 策略軍師：心理學破冰話術擬定與時程推演',
+      '🤖 24hr AI 特助代操：全自動化離線對談與排程破冰代操發送',
+      '📊 客情轉化漏斗分析：即時追蹤跟進轉化率、意向週期與收益成長',
     ],
   },
 };
@@ -588,24 +586,6 @@ export interface User {
   skills?: string[]; // 專長標籤
   verifiedExpert?: boolean; // 是否為認證專家
   verifiedBadge?: string; // 專家認證徽章稱號
-  expertProofUrl?: string; // 專家專業證明或證件照 / 檔案連結 (DataURL 或 檔案URL)
-  expertProofName?: string; // 專家證明文件名稱
-  expertProofUploadedAt?: string; // 專家證明上傳時間
-  agreedChallengeRegulationsVersion?: string; // 已同意創星季競賽辦法版本
-  agreedChallengeRegulationsAt?: string; // 同意創星季競賽辦法時間
-  agreedChallengeParticipantTermsVersion?: string; // 已同意創星季參賽者條款版本
-  agreedChallengeParticipantTermsAt?: string; // 同意創星季參賽者條款時間
-  agreedChallengeExpertTermsVersion?: string; // 已同意創星季特聘專家條款版本
-  agreedChallengeExpertTermsAt?: string; // 同意創星季特聘專家條款時間
-  realName?: string;
-  hasAgreedChallengeParticipantTerms?: boolean;
-  hasAgreedChallengeExpertTerms?: boolean;
-  memberTier?: 'free' | 'pro' | 'enterprise' | string;
-  autoRenewSubscription?: boolean;
-  isExpert?: boolean; // 新站認證特聘專家
-  isVerifiedSolver?: boolean;
-  hasAgreedChallengeRegulations?: boolean;
-  memberExpireAt?: string; // 會員方案到期日
   rating?: number; // 評分（0~5星）
   reviewCount?: number;
   acceptedSolutionsCount?: number; // 方案採納次數（公開）
@@ -734,19 +714,6 @@ export interface User {
   expertCertData?: any;
   lastExpertAppliedAt?: string; // ISO 日期
   expertApplicationRejectReason?: string;
-
-  // 創星季 / 創新挑戰季專屬身分與徽章標記
-  isCreator?: boolean; // 是否為創新季參賽者
-  teamName?: string; // 參賽團隊名稱
-  schoolOrOccupation?: string; // 學校或現職機構
-  challengeReferralCode?: string; // 推薦邀請碼
-  hasCompletedCreatorSurvey?: boolean; // 是否已完成參賽者登記表單
-  badges?: string[]; // 徽章清單，例如 ['創新盃', '創之星']
-  hasInnovationCupBadge?: boolean; // 創新盃徽章 (提案者)
-  hasStarOfCreationBadge?: boolean; // 創之星徽章 (賽後前十名獲獎者)
-  starOfCreationRank?: number; // 創之星名次 1 ~ 10
-  starOfCreationAwardedAt?: string; // 創之星公布發放時間
-
   expertApplicationData?: {
     domain: string;
     domains?: string[]; // 申請之複選主領域 (1~5個)
@@ -795,9 +762,6 @@ export interface Solver {
   subdomain?: string;
   subcategory?: string;
   skills: string[];
-  acceptedSolutionsCount?: number;
-  pricePerSession?: number;
-  completedProjects?: number;
   rating: number; // 1.0 ~ 5.0
   reviewCount: number;
   answerCount: number;
@@ -874,8 +838,6 @@ export interface Question {
   authorTitle?: string;
   invitedSolverIds?: string[];
   isFeatured?: boolean;
-  isAnonymous?: boolean;
-  updatedAt?: string;
   postType?: PostType; // 尋求解答 | 提出痛點 | 閒聊討論
   withheldBounty?: number; // 已保留之懸賞點數（交易履約保障中，採納時發動撥付）
   disputeStatus?: 'none' | 'pending_review' | 'resolved_refunded' | 'rejected'; // 疑義檢舉審查狀態
@@ -1041,13 +1003,6 @@ export interface Answer {
   likes?: number;
   phases?: DeliveryPhase[]; // 多階段交付方案
   isPhasedDelivery?: boolean; // 是否為多階段交付方案
-  authorId?: string;
-  authorName?: string;
-  authorTitle?: string;
-  authorAvatar?: string;
-  summary?: string;
-  deliverables?: string[];
-  priceType?: string;
 }
 
 export interface ChatCustomOffer {
@@ -1156,12 +1111,9 @@ export interface ChatMessage {
   id: string;
   senderId: string;
   senderName: string;
-  senderAvatar?: string;
+  senderAvatar: string;
   text: string;
-  content?: string;
   createdAt: string;
-  timestamp?: string;
-  isRead?: boolean;
   isSystem?: boolean;
   offer?: ChatCustomOffer;
   aiMediation?: ChatAIMediation;
@@ -1178,8 +1130,6 @@ export interface ChatMessage {
 export interface ChatConversation {
   id: string;
   participantIds: string[]; // [user1, user2]
-  participantNames?: Record<string, string>;
-  participantAvatars?: Record<string, string>;
   participantId?: string;
   questionId?: string;
   isGroup?: boolean;
@@ -1194,7 +1144,6 @@ export interface ChatConversation {
   relatedQuestionId?: string;
   relatedQuestionTitle?: string;
   lastMessage?: string;
-  lastMessageText?: string;
   lastMessageTime: string;
   unreadCount: number;
   messages: ChatMessage[];
@@ -1319,11 +1268,41 @@ export interface NotificationItem {
   category?: 'personal' | 'system'; // 'personal': 個人通知 (計入郵件圖示角標) | 'system': 系統通知 (在系統通知區亮紅點，不計入郵件數字)
   title: string;
   message: string;
-  type: 'ai_match' | 'new_answer' | 'new_discussion' | 'payment_unlocked' | 'solution_accepted' | 'chat_message' | 'system';
+  type: 'ai_match' | 'handshake' | 'new_answer' | 'new_discussion' | 'payment_unlocked' | 'solution_accepted' | 'chat_message' | 'system';
   createdAt: string;
   read: boolean;
   linkQuestionId?: string;
   linkChatId?: string;
+}
+
+export interface BidirectionalHandshakeMatch {
+  id: string;
+  questionId: string;
+  questionTitle: string;
+  questionBounty: number;
+  questionCategory: string;
+  questionAuthorId: string;
+  questionAuthorName: string;
+  solverId: string;
+  solverName: string;
+  solverTitle: string;
+  solverAvatar: string;
+  solverRating: number;
+  
+  // Dual-Agent Matching Metrics
+  marketAdvisorScore: number;    // 市場顧問 Agent 契合度 (0~100)
+  marketAdvisorReason: string;   // 市場顧問分析理由
+  aicrmCruiseScore: number;      // AI-CRM 客情巡航指數 (0~100)
+  aicrmCruiseReason: string;     // AI-CRM 巡航分析理由
+  isHandshake: boolean;          // 是否達成雙向握手 (兩者皆高於閥值)
+  handshakeScore: number;        // 綜合握手指數
+  
+  // Handshake Blueprint & Strategy
+  recommendedStrategy: string;
+  estimatedNetProfit?: number;
+  bestOutreachTime?: string;
+  status: 'matched' | 'notified' | 'connected' | 'accepted';
+  createdAt: string;
 }
 
 export interface PublicMetricsConfig {

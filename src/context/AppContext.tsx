@@ -23,6 +23,7 @@ import {
   SearchMode,
   DeviceAccount,
   Assistant24hrConfig,
+  DEFAULT_ASSISTANT_24HR_CONFIG,
   AIPreliminaryReport,
 } from '../types';
 import {
@@ -46,6 +47,7 @@ import {
   isMockConversationId,
 } from '../data/mockData';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
+import { parseScheduleTimestamp } from '../utils/scheduleUtils';
 import { analyzeQuestionWithAI, AIAnalysisResult, generate24hrAssistantReply } from '../services/aiService';
 import { logoutFromFirebase } from '../services/firebaseAuth';
 import {
@@ -94,9 +96,6 @@ interface AppContextType {
   setSolvers: React.Dispatch<React.SetStateAction<Solver[]>>;
   answers: Answer[];
   setAnswers: React.Dispatch<React.SetStateAction<Answer[]>>;
-  solutions: Answer[];
-  setSolutions: React.Dispatch<React.SetStateAction<Answer[]>>;
-  showToast: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   transactions: Transaction[];
   setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
   notifications: NotificationItem[];
@@ -157,14 +156,8 @@ interface AppContextType {
   isAuthModalOpen: boolean;
   authModalMode: 'login' | 'register';
   authModalMethod: 'email' | 'phone' | 'switch';
-  authModalRole?: 'questioner' | 'solver' | 'creator';
   authModalInterceptReason?: string;
-  openAuthModal: (
-    mode?: 'login' | 'register',
-    method?: 'email' | 'phone' | 'switch',
-    interceptReason?: string,
-    role?: 'questioner' | 'solver' | 'creator'
-  ) => void;
+  openAuthModal: (mode?: 'login' | 'register', method?: 'email' | 'phone' | 'switch', interceptReason?: string) => void;
   closeAuthModal: () => void;
 
   // Identity Switcher & Solver Profile Preferences
@@ -444,21 +437,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [authModalMethod, setAuthModalMethod] = useState<'email' | 'phone' | 'switch'>('email');
-  const [authModalRole, setAuthModalRole] = useState<'questioner' | 'solver' | 'creator'>('questioner');
   const [authModalInterceptReason, setAuthModalInterceptReason] = useState<string | undefined>(undefined);
 
   const openAuthModal = (
     mode: 'login' | 'register' = 'login',
     method: 'email' | 'phone' | 'switch' = 'email',
-    interceptReason?: string,
-    role?: 'questioner' | 'solver' | 'creator'
+    interceptReason?: string
   ) => {
     setAuthModalMode(mode);
     setAuthModalMethod(method);
     setAuthModalInterceptReason(interceptReason);
-    if (role) {
-      setAuthModalRole(role);
-    }
     setIsAuthModalOpen(true);
   };
 
@@ -5284,6 +5272,85 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
+  // 🤖 24hr AI 特助自動排程巡航代操背景處理引擎 (全自動依未來排定時序即時發送私聊提案)
+  useEffect(() => {
+    const checkAndExecuteScheduledTasks = () => {
+      try {
+        const tasks = currentUser?.assistant24hrConfig?.scheduledTasks;
+        if (!tasks || !Array.isArray(tasks) || tasks.length === 0) return;
+
+        const now = Date.now();
+        let hasExecutedAny = false;
+        const updatedTasks = tasks.map((task) => {
+          if (task.status !== 'pending') return task;
+
+          const targetTime = parseScheduleTimestamp(task.scheduledTime, task.scheduledTimestamp);
+          // 若當前時間已到達或超過排定發送時程 (Due)
+          if (now >= targetTime) {
+            hasExecutedAny = true;
+            const targetUser = {
+              id: task.clientId,
+              name: task.clientName,
+              avatar: task.clientAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+              title: '發案客戶',
+            };
+
+            const targetQuestion = task.questionId ? questions.find((q) => q.id === task.questionId) : undefined;
+            const convId = startDirectChat(targetUser, targetQuestion);
+            if (convId) {
+              const assistantMessage = `[24hr AI特助代操] ${task.messageTemplate}`;
+              sendMessage(convId, assistantMessage);
+            }
+
+            // 發送系統通知給專家
+            const notifId = `notif-assistant-exec-${task.id}-${Date.now()}`;
+            const timeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+            setNotifications((prev) => [
+              {
+                id: notifId,
+                title: '⚡ 24hr AI 特助已自動執行代操任務',
+                message: `特助已於預定時程 (${task.scheduledTime || timeStr}) 自動發送破冰提案至發案方「${task.clientName}」的私聊室！`,
+                type: 'system',
+                timestamp: '剛剛',
+                createdAt: new Date().toISOString(),
+                read: false,
+              },
+              ...prev,
+            ]);
+
+            return {
+              ...task,
+              status: 'completed' as const,
+              executedAt: `今日 ${timeStr}`,
+              executionResult: '24hr 特助已於排定時程自動代操送達！',
+            };
+          }
+          return task;
+        });
+
+        if (hasExecutedAny) {
+          const currentConfig = currentUser.assistant24hrConfig || DEFAULT_ASSISTANT_24HR_CONFIG;
+          const newConfig: Assistant24hrConfig = {
+            ...currentConfig,
+            isEnabled: currentConfig.isEnabled ?? true,
+            scheduledTasks: updatedTasks,
+          };
+          updateAssistant24hrConfig(newConfig);
+          window.dispatchEvent(new CustomEvent('assistant_scheduled_task_executed', { detail: { updatedTasks } }));
+        }
+      } catch (err) {
+        console.error('Error executing 24hr assistant scheduled tasks:', err);
+      }
+    };
+
+    // 每 5 秒巡檢一次是否有排定時程到期的代操任務
+    const intervalId = setInterval(checkAndExecuteScheduledTasks, 5000);
+    // 初次掛載立即檢測一次
+    checkAndExecuteScheduledTasks();
+
+    return () => clearInterval(intervalId);
+  }, [currentUser?.id, currentUser?.assistant24hrConfig?.scheduledTasks, questions]);
+
   // 檢舉反饋待處理數量
   const pendingReportsCount = 0;
 
@@ -5648,13 +5715,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
-  const showToast = useCallback(
-    (msg: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
-      addNotification('系統提示', msg, type, currentUser.id, 'personal');
-    },
-    [currentUser.id]
-  );
-
   const markAllNotificationsRead = () => {
     // 僅標記當前用戶個人所屬之通知為已讀
     setNotifications((prev) =>
@@ -5867,9 +5927,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSolvers,
         answers,
         setAnswers,
-        solutions: answers,
-        setSolutions: setAnswers,
-        showToast,
         transactions,
         setTransactions,
         notifications: userPersonalNotifications,
@@ -5924,7 +5981,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAuthModalOpen,
         authModalMode,
         authModalMethod,
-        authModalRole,
         authModalInterceptReason,
         openAuthModal,
         closeAuthModal,

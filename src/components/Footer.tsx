@@ -9,13 +9,11 @@ import {
   Compass,
   Layers,
   Lightbulb,
-  Sparkles,
 } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
 import { AppTab, AboutSection } from '../types';
 import { useApp } from '../context/AppContext';
 import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
-import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
 
 interface FooterProps {
   onNavClick: (tab: AppTab, section?: AboutSection | string) => void;
@@ -42,10 +40,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
   };
 
   return (
-    <footer className="bg-stone-950 text-stone-300 border-t border-stone-800 pt-10 sm:pt-12 pb-24 md:pb-8">
+    <footer className="hidden md:block bg-stone-950 text-stone-300 border-t border-stone-800 pt-12 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pb-10 border-b border-stone-800 text-xs">
-          {/* Brand info - 頁尾 IdeaX 左側去背燈泡 + IdeaX 品牌識別 */}
+          {/* Brand info - 頁尾 IdeaX 左側去背低飽和燈泡 + IdeaX 品牌識別 */}
           <div className="col-span-2 lg:col-span-1 space-y-3.5">
             <button
               type="button"
@@ -53,15 +51,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 onNavClick('explore');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              title="回到首頁最頂處"
-              className="inline-flex items-center gap-2.5 py-1 hover:opacity-90 active:scale-98 transition-all text-left cursor-pointer focus:outline-none group"
+              title="回到首頁頂部"
+              className="inline-flex items-center gap-2.5 py-1 hover:opacity-90 transition-opacity text-left cursor-pointer focus:outline-none group"
             >
-              <div className="w-12 h-12 sm:w-13 sm:h-13 shrink-0 flex items-center justify-center">
-                <img
-                  src="/logo-bulb.png?v=trans-bulb-3"
-                  alt="創點子燈泡"
-                  className="w-full h-full object-contain drop-shadow-xs group-hover:scale-105 transition-transform"
-                />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center">
+                <IdeaXLogo variant="bulb" size="sm" />
               </div>
               <IdeaXLogo variant="ideax-6" size="sm" theme="dark" />
             </button>
@@ -74,17 +68,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           <div className="space-y-3">
             <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">平台導覽</h4>
             <ul className="space-y-2 text-stone-400">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => onNavClick('innovation_challenge')}
-                  className="hover:text-emerald-300 transition-colors text-left font-black text-emerald-400 cursor-pointer flex items-center gap-1.5 active:scale-95 group"
-                  title="進入 11月 IdeaX 創星季競賽專區"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span>IdeaX創星季挑戰賽</span>
-                </button>
-              </li>
               <li>
                 <button
                   type="button"
@@ -104,21 +87,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               </li>
               <li>
                 <button
-                  onClick={() => {
-                    onNavClick('explore');
-                    setTimeout(() => {
-                      const el = document.getElementById('market-grid');
-                      if (el) {
-                        const navbar = document.querySelector('header');
-                        const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 64;
-                        const elementTop = el.getBoundingClientRect().top + window.scrollY;
-                        window.scrollTo({
-                          top: Math.max(0, elementTop - navbarHeight - 42),
-                          behavior: 'smooth',
-                        });
-                      }
-                    }, 60);
-                  }}
+                  onClick={() => onNavClick('explore')}
                   className="hover:text-amber-400 transition-colors cursor-pointer text-left"
                 >
                   探索問題
@@ -154,6 +123,22 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   className="hover:text-amber-400 transition-colors cursor-pointer text-left"
                 >
                   功能說明
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => {
+                    onNavClick('about', 'other_4');
+                    setTimeout(() => {
+                      const el = document.getElementById('suitable-personas-section');
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }, 120);
+                  }}
+                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
+                >
+                  什麼人適合使用IdeaX？
                 </button>
               </li>
             </ul>
@@ -319,8 +304,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           <div className="flex items-center gap-2.5 flex-wrap text-stone-500 font-mono text-[10px] sm:text-[11px] select-none tracking-tight shrink-0 justify-center md:justify-end">
             <span className="text-stone-600 font-sans">Powered by AI Engine</span>
             <span>•</span>
-            <span className="text-stone-400 font-semibold">
-              v{APP_VERSION} • {APP_RELEASE_DATE} • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+            <span className="text-stone-500">
+              v1.4.5 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
             </span>
           </div>
         </div>

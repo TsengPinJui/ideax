@@ -98,8 +98,6 @@ export const MobilePwaDownloadWidget: React.FC = () => {
     };
   }, []);
 
-  const [isHovered, setIsHovered] = useState(false);
-
   // 已安裝或已手動關閉則不顯示
   if (isAppMode || isDismissed) {
     return null;
@@ -116,12 +114,8 @@ export const MobilePwaDownloadWidget: React.FC = () => {
   };
 
   return (
-    <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="relative flex items-center justify-end select-none group pointer-events-auto"
-    >
-      <div className="relative flex flex-col items-center">
+    <div className="relative transition-all duration-300 pointer-events-auto select-none">
+      <div className="relative flex flex-col items-center group">
         {/* 關閉按鈕 */}
         <button
           type="button"
@@ -133,16 +127,16 @@ export const MobilePwaDownloadWidget: React.FC = () => {
           <X className="w-2.5 h-2.5 stroke-[2.5]" />
         </button>
 
-        {/* 下載提示圓形按鈕 (精緻黃金比例，與上方羅盤按鈕尺寸一致) */}
+        {/* 下載提示圓形按鈕 (精緻黃金比例，介於原本與精巧版之間) */}
         <button
           type="button"
           onClick={handleDownloadClick}
-          className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-orange-500 text-white shadow-[0_6px_22px_rgba(217,119,6,0.45)] hover:shadow-[0_8px_28px_rgba(217,119,6,0.65)] flex flex-col items-center justify-center cursor-pointer transition-all duration-200 hover:scale-110 active:scale-95 border-2 border-white/90 ring-2 ring-amber-400/50 shrink-0"
+          className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-orange-500 text-white shadow-md hover:shadow-lg hover:shadow-amber-500/30 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 border border-white/80 ring-2 ring-amber-400/25"
           title="下載 / 安裝 IdeaX App"
           aria-label="下載 IdeaX App"
         >
           {/* 外圍輕柔擴散動畫 */}
-          <span className="absolute -inset-1 rounded-full bg-amber-400/30 animate-pulse pointer-events-none" />
+          <span className="absolute -inset-0.5 rounded-full bg-amber-400/30 animate-pulse pointer-events-none -z-10" />
 
           {/* 圓形內部圖示與文字 */}
           <div className="flex flex-col items-center justify-center -space-y-0.5 pointer-events-none">
@@ -152,37 +146,6 @@ export const MobilePwaDownloadWidget: React.FC = () => {
             </span>
           </div>
         </button>
-      </div>
-
-      {/* 滑鼠懸停對話氣泡 (向左冒出 Speech Bubble) */}
-      <div
-        className={`absolute right-full mr-2.5 top-1/2 -translate-y-1/2 transition-all duration-200 ease-out ${
-          isHovered
-            ? 'opacity-100 translate-x-0 scale-100 pointer-events-auto'
-            : 'opacity-0 translate-x-2 scale-95 pointer-events-none'
-        }`}
-      >
-        <div className="relative bg-stone-900/95 text-white px-3 py-2 rounded-2xl shadow-2xl border border-amber-400/80 backdrop-blur-md flex flex-col gap-1.5 whitespace-nowrap min-w-[136px]">
-          <div className="absolute -right-1 top-3.5 w-2.5 h-2.5 bg-stone-900 border-r border-t border-amber-400/80 rotate-45" />
-          <button
-            type="button"
-            onClick={handleDownloadClick}
-            className="text-amber-300 hover:text-amber-200 font-bold text-xs tracking-wide flex items-center gap-1.5 cursor-pointer text-left"
-          >
-            <Download className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span>下載 / 安裝 App</span>
-          </button>
-          <div className="pt-1.5 border-t border-stone-800 flex items-center justify-between">
-            <span className="text-[10px] text-stone-400">PWA 秒開極速版</span>
-            <button
-              type="button"
-              onClick={handleDismiss}
-              className="text-[10px] text-stone-400 hover:text-stone-200 hover:underline cursor-pointer"
-            >
-              隱藏
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

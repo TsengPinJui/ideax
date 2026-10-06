@@ -33,12 +33,11 @@ import {
   Image as ImageIcon,
   ZoomIn,
   Trash2,
-  FileText,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
-import { User as UserType, UserSurveyData, Category, Solver } from '../types';
+import { User as UserType, UserSurveyData, Category } from '../types';
 import {
   processIdCardImage,
   processAndUploadIdCardImage,
@@ -55,18 +54,15 @@ import {
   createRecaptchaVerifier,
 } from '../services/firebaseAuth';
 import { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth';
-import { syncUserToFirestore, getUserFromFirestore, syncSolversToFirestore } from '../services/firestoreSync';
+import { syncUserToFirestore, getUserFromFirestore } from '../services/firestoreSync';
 import { recordUserBoard, recordUserSpecialZone } from '../services/recommendationService';
-import { syncUserToMainPlatformUsers, getChallengeUserWallet } from '../services/challengeService';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMode?: 'login' | 'register';
   initialMethod?: 'email' | 'phone' | 'switch';
-  initialRole?: 'questioner' | 'solver' | 'creator' | 'expert';
   interceptReason?: string; // Optional reason why login is required (e.g., '訪客無法發布問題，請先登入')
-  isChallengeSite?: boolean;
 }
 
 export interface InterestDomainGroup {
@@ -111,7 +107,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   initialMode = 'login',
   initialMethod = 'email',
-  initialRole = 'questioner',
   interceptReason,
 }) => {
   const {
@@ -119,7 +114,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setCurrentUser,
     availableUsers,
     setAvailableUsers,
-    setSolvers,
     deviceAccounts,
     switchAccount,
     recordTermsAgreement,
@@ -166,22 +160,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [regEmail, setRegEmail] = useState('');
   const [useEmailAsLogin, setUseEmailAsLogin] = useState(true);
   const [regPhone, setRegPhone] = useState('');
-  const [regRole, setRegRole] = useState<'questioner' | 'solver' | 'creator' | 'expert'>(initialRole || 'creator');
-  const [regTeamName, setRegTeamName] = useState('');
-  const [regSchoolOrOrg, setRegSchoolOrOrg] = useState('');
-  const [regReferralCode, setRegReferralCode] = useState('');
-  const [expertOrg, setExpertOrg] = useState('');
-  const [expertDomain, setExpertDomain] = useState<Category>('創新創業');
-  const [expertSkills, setExpertSkills] = useState('商業模式、市場驗證、專案評審');
-  const [expertBio, setExpertBio] = useState('');
-  const [expertFeaturedCase, setExpertFeaturedCase] = useState('');
+  const [regRole, setRegRole] = useState<'questioner' | 'solver'>('questioner');
   const [authUid, setAuthUid] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (initialRole) {
-      setRegRole(initialRole);
-    }
-  }, [initialRole, isOpen]);
 
   // Step 2: Solver Real-Name KYC & Questioner Interests
   const [regRealLegalName, setRegRealLegalName] = useState('');
@@ -238,51 +218,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [willingToBeSideHustle, setWillingToBeSideHustle] = useState('considering');
   const [willingToSubscribeSolverPlan, setWillingToSubscribeSolverPlan] = useState('depends_profit');
 
-  // Terms agreement states
-  // 1. 通用條款（剛註冊視同舊站用戶身分）
-  const [agreeGeneralTerms, setAgreeGeneralTerms] = useState(false);
-  const [agreeChallengeRegulations, setAgreeChallengeRegulations] = useState(false);
-  // 2. 參賽者專屬條款
-  const [agreeParticipantTerms, setAgreeParticipantTerms] = useState(false);
-  // 3. 專家專屬條款（舊站專家隊友條款 + 新站創星季專家條款）
-  const [agreeSolverTerms, setAgreeSolverTerms] = useState(false);
-  const [agreeChallengeExpertTerms, setAgreeChallengeExpertTerms] = useState(false);
-
-  // 成為專家之相關證明或專業證件上傳狀態
-  const [expertProofFile, setExpertProofFile] = useState<{
-    name: string;
-    size: number;
-    type: string;
-    dataUrl: string;
-  } | null>(null);
-  const [isUploadingExpertProof, setIsUploadingExpertProof] = useState(false);
-  const expertProofInputRef = useRef<HTMLInputElement>(null);
-
-  const handleExpertProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 25 * 1024 * 1024) {
-      setErrorMsg('專業證明文件大小不可超過 25MB');
-      return;
-    }
-    setIsUploadingExpertProof(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setExpertProofFile({
-        name: file.name,
-        size: file.size,
-        type: file.type || 'application/octet-stream',
-        dataUrl: reader.result as string,
-      });
-      setIsUploadingExpertProof(false);
-      setErrorMsg(null);
-    };
-    reader.onerror = () => {
-      setIsUploadingExpertProof(false);
-      setErrorMsg('讀取檔案失敗，請重新上傳');
-    };
-    reader.readAsDataURL(file);
-  };
+  // Terms agreement
+  const [agreeGeneralTerms, setAgreeGeneralTerms] = useState(true);
 
   // 身分證正反面照片拍攝與儲存建檔 (解答者/專家實名認證專用)
   const [idCardFront, setIdCardFront] = useState<ProcessedIdCardImage | null>(null);
@@ -1085,7 +1022,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   // Step 1: Advance to Step 2 in Registration
-  const handleStep1Next = async (e: React.FormEvent) => {
+  const handleStep1Next = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -1132,60 +1069,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
     }
 
-    // 全體用戶通用條款校驗（新站剛註冊視同舊站用戶身分）
-    if (!agreeGeneralTerms) {
-      setErrorMsg('註冊失敗：請先勾選同意《IdeaX 平台一般服務條款》（含隱私權政策與金流履約守則）。');
-      return;
-    }
-    if (!agreeChallengeRegulations) {
-      setErrorMsg('註冊失敗：請先勾選同意《IdeaX 創星季競賽辦法與規章》（賽事大會規章與支持金辦法）。');
-      return;
-    }
-
-    if (regRole === 'creator') {
-      if (!regTeamName.trim() && !regName.trim()) {
-        setErrorMsg('註冊失敗：請填寫姓名或參賽團隊名稱。');
-        return;
-      }
-      if (!regSchoolOrOrg.trim()) {
-        setErrorMsg('註冊失敗：請填寫就讀學校或所屬組織現職。');
-        return;
-      }
-      if (!agreeParticipantTerms) {
-        setErrorMsg('參賽者需另外勾選同意《IdeaX 創星季參賽規則與智慧財產權條款》（原創擔保與智財不移轉保證）。');
-        return;
-      }
-      await handleFinalRegister(undefined, true);
-      return;
-    }
-
-    if (regRole === 'expert') {
-      if (!regName.trim()) {
-        setErrorMsg('申請失敗：請填寫專家真實姓名或專業全名。');
-        return;
-      }
-      if (!jobTitle.trim() && !expertOrg.trim()) {
-        setErrorMsg('申請失敗：請填寫專業職稱或現職單位。');
-        return;
-      }
-      if (!expertProofFile) {
-        setErrorMsg('成為專家需要求上傳相關證明或專業證件（如名片、專業執照、在職證明或獲獎作品等）。請先上傳佐證資料！');
-        return;
-      }
-      if (!agreeSolverTerms) {
-        setErrorMsg('專家除了需勾選舊站專家的隊友條款外，亦需勾選新站的創星季專家條款。請先勾選《IdeaX 舊站專家解題與隊友服務條款》。');
-        return;
-      }
-      if (!agreeChallengeExpertTerms) {
-        setErrorMsg('專家除了需勾選舊站專家的隊友條款外，亦需勾選新站的創星季專家條款。請先勾選《IdeaX 創星季特聘評審與專家指導條款》。');
-        return;
-      }
-      // 申請競賽專家：直接執行建檔開通，無需多餘繁複步驟
-      await handleFinalRegister(undefined, false);
-      return;
-    }
-
-    const effectiveName = regName.trim() || ((regRole as any) === 'creator' && regTeamName.trim() ? regTeamName.trim() : (regEmail.includes('@') ? regEmail.split('@')[0] : (regUsername.trim() || '平台會員')));
+    const effectiveName = regName.trim() || (regEmail.includes('@') ? regEmail.split('@')[0] : (regUsername.trim() || '平台會員'));
     if (!effectiveName) {
       setErrorMsg('註冊失敗：請輸入姓名或暱稱。');
       return;
@@ -1194,8 +1078,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setRegName(effectiveName);
     }
 
-    setRegStep(2);
+    if (!agreeGeneralTerms) {
+      setErrorMsg('註冊失敗：請先勾選同意服務條款。');
+      return;
+    }
 
+    setRegStep(2);
   };
 
   // Step 2: Final Registration & Survey Save (支援專家實名認證 / 提問者興趣設定與跳過個資)
@@ -1203,12 +1091,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (e) e.preventDefault();
     setErrorMsg(null);
 
-    const isCompetitionExpert = regRole === 'expert';
     const isExpert = regRole === 'solver';
     const isQuestionerSkipped = regRole === 'questioner' && skipProfile;
 
-    // 若為解答者，必須填寫完整實名認證個資 (競賽專家由大會直接快速審核開通)
-    if (isExpert && !isCompetitionExpert) {
+    // 若為解答者，必須填寫完整實名認證個資
+    if (isExpert) {
       const effectiveLegalName = regRealLegalName.trim() || regName.trim();
       const effectiveId = regIdNumber.trim();
       const effectivePhone = phone.trim() || regPhone.trim();
@@ -1248,11 +1135,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
       }
 
-      const chosenDomain = isCompetitionExpert ? (expertDomain || '創新創業') : ((regInterests[0] as Category) || '創新創業');
-      const chosenSkills = isCompetitionExpert
-        ? expertSkills.split(/[,、，\s]+/).filter(Boolean)
-        : (regInterests.length > 0 ? regInterests : ['創新創業', '產品提案']);
-      const chosenDomains = isCompetitionExpert ? [chosenDomain] : (regInterests.length > 0 ? regInterests : [chosenDomain]);
+      const chosenDomains = regInterests.length > 0 ? regInterests : relatedDomains;
 
       const survey: UserSurveyData = {
         desiredServices,
@@ -1281,166 +1164,74 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const newId = registeredUid || authUid || generateUniqueUserId();
       const effectivePhone = (phone.trim() || regPhone.trim()) || undefined;
 
-      const isCreatorRole = regRole === 'creator';
-      const effectiveName = isCreatorRole && regTeamName.trim() ? regTeamName.trim() : (regName.trim() || regUsername.trim() || (regEmail.includes('@') ? regEmail.split('@')[0] : '平台會員'));
+      const finalName = regName.trim() || regUsername.trim() || (regEmail.includes('@') ? regEmail.split('@')[0] : '平台會員');
       const finalUsername = regUsername.trim() || (regEmail.includes('@') ? regEmail.split('@')[0] : `user_${newId.slice(0, 8)}`);
 
       const newUser: UserType = {
         id: newId,
         username: finalUsername,
         password: regPassword.trim() || undefined,
-        name: effectiveName,
-        title: isCompetitionExpert
-          ? (jobTitle.trim() || '競賽特聘專家')
-          : (isCreatorRole
-          ? (regTeamName.trim() ? `${regTeamName.trim()} 參賽代表` : '創新季參賽者')
-          : isExpert
+        name: finalName,
+        title: isExpert
           ? jobTitle.trim() || '認證解題專家'
-          : (isQuestionerSkipped ? '新進提問者' : (jobTitle.trim() || '創新專案發起人'))),
-        avatar: (isExpert || isCompetitionExpert)
+          : (isQuestionerSkipped ? '新進提問者' : (jobTitle.trim() || '創新專案發起人')),
+        avatar: isExpert
           ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
           : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-        role: (isExpert || isCompetitionExpert) ? 'solver' : (isCreatorRole ? 'questioner' : regRole), // 競賽專家與解答者具備 solver 接案權限，亦支援舊站一般登入
+        role: regRole,
         balance: 1000,
         pendingEarnings: 0,
-        reputation: isCompetitionExpert ? 150 : (isExpert ? 120 : (isCreatorRole ? 110 : 100)),
+        reputation: isExpert ? 120 : 100,
         joinedDate: new Date().toISOString().split('T')[0],
-        bio: isCompetitionExpert
-          ? (expertBio.trim() || `【競賽認證專家】單位：${expertOrg.trim() || '專業機構'}。領域：${chosenDomain}。專長：${chosenSkills.join('、')}。`)
-          : (isCreatorRole
-          ? `【創新季參賽者】團隊/組織：${regSchoolOrOrg.trim() || '獨立創新團隊'}。專長領域：${chosenDomains.join('、') || '科技創新'}。`
-          : isExpert
-          ? `${effectiveName} 專家顧問。領域：${industry}。專長：${chosenDomains.join('、')}。`
-          : `${effectiveName} 的個人簡介。`),
+        bio: isExpert
+          ? `${finalName} 專家顧問。領域：${industry}。專長：${chosenDomains.join('、')}。`
+          : `${finalName} 的個人簡介。`,
         email: regEmail.trim() || `${finalUsername}@ideax.user`,
         phone: effectivePhone,
-        isCreator: isCreatorRole,
-        teamName: isCreatorRole ? (regTeamName.trim() || effectiveName) : undefined,
-        schoolOrOccupation: isCompetitionExpert ? (expertOrg.trim() || jobTitle.trim()) : (isCreatorRole ? regSchoolOrOrg.trim() : (jobTitle.trim() || undefined)),
-        challengeReferralCode: isCreatorRole ? (regReferralCode.trim() || undefined) : undefined,
-        hasCompletedCreatorSurvey: isCreatorRole,
-        hasInnovationCupBadge: isCreatorRole || isCompetitionExpert,
-        badges: isCompetitionExpert ? ['認證專家', '競賽專家', '創新盃'] : (isCreatorRole ? ['創新盃'] : (isExpert ? ['認證專家'] : [])),
         gender: isQuestionerSkipped ? 'undisclosed' : gender,
         ageGroup: isQuestionerSkipped ? '25_34' : ageGroup,
-        industry: isCompetitionExpert ? '專業諮詢 / 創新創業評審' : (isCreatorRole ? '創新科技 / 新創團隊' : (isQuestionerSkipped ? '資訊科技 / 軟體互聯網' : industry)),
-        jobTitle: isCompetitionExpert ? (jobTitle.trim() || '競賽特聘專家') : (isCreatorRole ? (regSchoolOrOrg.trim() || '參賽團隊創辦人') : (isQuestionerSkipped ? '自由創業者' : (jobTitle.trim() || (isExpert ? '專家顧問' : '創業者')))),
+        industry: isQuestionerSkipped ? '資訊科技 / 軟體互聯網' : industry,
+        jobTitle: isQuestionerSkipped ? '自由創業者' : (jobTitle.trim() || (isExpert ? '專家顧問' : '創業者')),
         annualSalary,
-        company: isCompetitionExpert ? (expertOrg.trim() || undefined) : ((isCreatorRole ? regSchoolOrOrg.trim() : company.trim()) || undefined),
+        company: company.trim() || undefined,
         domain: (chosenDomains[0] as Category) || '創新創業',
         domains: chosenDomains as Category[],
-        skills: chosenSkills.length > 0 ? chosenSkills : ['創新創業', '產品提案'],
+        skills: chosenDomains.length > 0 ? chosenDomains : ['創新問題解題'],
         interests: chosenDomains,
-        hasCompletedProfile: true,
+        hasCompletedProfile: !isQuestionerSkipped,
         subscriptionTier: 'free',
-        verifiedExpert: isCompetitionExpert, // ✅ 通過「認證專家」
-        verifiedBadge: isCompetitionExpert ? '競賽認證專家' : undefined,
-        expertApplicationStatus: isCompetitionExpert ? 'approved' : (isExpert ? 'pending' : 'none'),
-        expertProofUrl: expertProofFile?.dataUrl,
-        expertProofName: expertProofFile?.name,
-        expertProofUploadedAt: expertProofFile ? new Date().toISOString() : undefined,
-        realNameAuthStatus: isCompetitionExpert ? ('verified' as const) : ((regIdNumber.trim() || idCardFront) ? ('pending' as const) : ('none' as const)),
-        realNameAuthData: (regIdNumber.trim() || idCardFront || isCompetitionExpert)
-          ? ({
+        verifiedExpert: isExpert,
+        verifiedBadge: isExpert ? '認證專家' : undefined,
+        realNameAuthStatus: isExpert ? 'verified' : 'none',
+        realNameAuthData: isExpert
+          ? {
               legalName: regRealLegalName.trim() || regName.trim(),
-              idNumber: regIdNumber.trim() || 'EXPERT_VERIFIED',
+              idNumber: regIdNumber.trim(),
               nationality: '中華民國 (Taiwan)',
-              birthDate: '1988-01-01',
+              birthDate: '1990-01-01',
               phoneNumber: effectivePhone || '0900000000',
               email: regEmail.trim() || `${regUsername.trim()}@ideax.user`,
               idCardFrontFile: idCardFront || undefined,
               idCardBackFile: idCardBack || undefined,
-              expertProofName: expertProofFile?.name,
-              expertProofUrl: expertProofFile?.dataUrl,
               appliedAt: new Date().toISOString(),
-            } as any)
+              verifiedAt: new Date().toISOString(),
+            }
           : undefined,
         rating: 5.0,
-        reviewCount: isCompetitionExpert ? 1 : 0,
+        reviewCount: 0,
         acceptedSolutionsCount: 0,
         submittedSolutionsCount: 0,
         surveyData: survey,
         hasAgreedGeneralTerms: true,
         agreedGeneralTermsVersion: CURRENT_TERMS_VERSION,
         agreedGeneralTermsAt: new Date().toISOString(),
-        hasAgreedChallengeRegulations: true,
-        agreedChallengeRegulationsVersion: CURRENT_TERMS_VERSION,
-        agreedChallengeRegulationsAt: new Date().toISOString(),
-        hasAgreedChallengeParticipantTerms: isCreatorRole,
-        agreedChallengeParticipantTermsVersion: isCreatorRole ? CURRENT_TERMS_VERSION : undefined,
-        agreedChallengeParticipantTermsAt: isCreatorRole ? new Date().toISOString() : undefined,
-        hasAgreedChallengeExpertTerms: isCompetitionExpert,
-        agreedChallengeExpertTermsVersion: isCompetitionExpert ? CURRENT_TERMS_VERSION : undefined,
-        agreedChallengeExpertTermsAt: isCompetitionExpert ? new Date().toISOString() : undefined,
-        hasAgreedSolverTerms: isExpert || isCompetitionExpert,
-        agreedSolverTermsVersion: (isExpert || isCompetitionExpert) ? CURRENT_TERMS_VERSION : undefined,
-        agreedSolverTermsAt: (isExpert || isCompetitionExpert) ? new Date().toISOString() : undefined,
-        hasAgreedQuestionerTerms: true,
-        agreedQuestionerTermsVersion: CURRENT_TERMS_VERSION,
-        agreedQuestionerTermsAt: new Date().toISOString(),
+        hasAgreedSolverTerms: isExpert,
+        agreedSolverTermsVersion: isExpert ? CURRENT_TERMS_VERSION : undefined,
+        agreedSolverTermsAt: isExpert ? new Date().toISOString() : undefined,
+        hasAgreedQuestionerTerms: !isExpert,
+        agreedQuestionerTermsVersion: !isExpert ? CURRENT_TERMS_VERSION : undefined,
+        agreedQuestionerTermsAt: !isExpert ? new Date().toISOString() : undefined,
       };
-
-
-      // 1. 同步錄入主平台使用者清單 (LocalStorage & AvailableUsers State & Firestore users)
-      syncUserToMainPlatformUsers(
-        {
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          phone: newUser.phone,
-          avatar: newUser.avatar,
-          title: newUser.title,
-          schoolOrOccupation: expertOrg.trim() || (newUser as any).schoolOrOccupation,
-        },
-        isCompetitionExpert ? 'expert' : (isCreatorRole ? 'creator' : (isExpert ? 'expert' : 'user')),
-        {
-          hasInnovationCupBadge: true,
-        }
-      );
-
-      // 2. 若為競賽專家，同步錄入專家庫 (Solvers)
-      if (isCompetitionExpert) {
-        const newSolver: Solver = {
-          id: newUser.id,
-          userId: newUser.id,
-          name: newUser.name,
-          title: newUser.title || '競賽特聘專家',
-          avatar: newUser.avatar,
-          domain: (chosenDomains[0] as Category) || '創新創業',
-          domains: chosenDomains as Category[],
-          skills: chosenSkills.length > 0 ? chosenSkills : ['商業模式', '市場驗證', '落地方案'],
-          rating: 5.0,
-          reviewCount: 1,
-          answerCount: 0,
-          acceptedRate: 100,
-          tier: '認證專家',
-          bio: newUser.bio || 'IdeaX 創星挑戰季認證專家顧問',
-          earnings: 0,
-          verifiedBadge: true,
-          verified: true,
-          verifiedExpert: true,
-          featuredCase: {
-            title: expertFeaturedCase.trim() || '新創專案評估與商業架構驗證',
-            description: '為參賽與平台提案提供專業可行性評估與商業架構指導',
-            outcome: '獲聘為 IdeaX 專家庫官方認證專家',
-          },
-        };
-
-        setSolvers((prev) => [newSolver, ...prev.filter((s) => s.id !== newSolver.id)]);
-        try {
-          const raw = localStorage.getItem('ideax_v5_solvers');
-          const list = raw ? JSON.parse(raw) : [];
-          localStorage.setItem('ideax_v5_solvers', JSON.stringify([newSolver, ...list.filter((s: any) => s.id !== newSolver.id)]));
-        } catch {}
-        syncSolversToFirestore([newSolver]);
-      }
-
-      // 3. 初始點數分配 (創星季參賽者 10 萬點，競賽專家 300 萬點)
-      if (isCreatorRole) {
-        getChallengeUserWallet(newUser.id, 'creator');
-      } else if (isCompetitionExpert) {
-        getChallengeUserWallet(newUser.id, 'expert');
-      }
 
       await syncUserToFirestore(newUser);
       setCurrentUser(newUser);
@@ -1469,11 +1260,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         );
       }
 
-      if (isCompetitionExpert) {
-        setSuccessMsg('🎉 競賽專家申請已核准通過！已同步建立舊網站帳號並加入全站認證專家庫，獲頒「認證專家」徽章！');
-      } else if (isCreatorRole) {
-        setSuccessMsg('🎉 創新季參賽者註冊完成！已為您開通 10 萬點競賽點數與「創新盃」標章，歡迎提交提案！');
-      } else if (isExpert) {
+      if (isExpert) {
         setSuccessMsg('實名認證與專家建檔完成！已為您開通接案權限。');
       } else if (isQuestionerSkipped) {
         setSuccessMsg('提問者註冊完成！已設定興趣推播，日後使用進階履約功能時可再補填個人資料。');
@@ -2018,43 +1805,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </form>
             )}
 
-            {/* 🌟 申請競賽專家入口 (登入頁快速通道：填寫完同步錄入舊站一般帳號並加入專家庫) */}
-            <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-emerald-50 border border-emerald-300/80 shadow-2xs">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-black text-emerald-950">成為專家</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-200 text-emerald-900 font-bold whitespace-nowrap">
-                        認證專家庫
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-emerald-800 line-clamp-1 mt-0.5">
-                      同步錄入舊站一般帳號，通過「認證專家」加入專家庫
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('register');
-                    setRegRole('expert');
-                    setRegStep(1);
-                    setErrorMsg(null);
-                    setSuccessMsg(null);
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs shrink-0 transition-all shadow-2xs cursor-pointer flex items-center gap-1 whitespace-nowrap"
-                  title="成為專家：同步開通舊站帳號並加入專家庫"
-                >
-                  <span>成為專家</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
             {/* 6. 分隔線：或使用第三方服務登入 */}
             <div className="flex items-center gap-3 pt-2">
               <div className="flex-1 h-px bg-stone-200" />
@@ -2214,266 +1964,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <label className="block text-xs font-bold text-stone-700 mb-1.5">
                     主要身分 <span className="text-rose-500">*</span>
                   </label>
-                  <div className="space-y-2.5">
-                    {/* 1. 創新季參賽者 */}
+                  <div className="grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
-                      onClick={() => setRegRole('creator')}
-                      className={`w-full p-3.5 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                        regRole === 'creator'
-                          ? 'bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-500/20 shadow-2xs'
+                      onClick={() => setRegRole('questioner')}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
+                        regRole === 'questioner'
+                          ? 'bg-amber-50/90 border-amber-500 ring-2 ring-amber-500/20'
                           : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-sm font-black text-emerald-950">創新季參賽者</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200/90 text-emerald-950 font-bold">
-                          創新盃初賽
+                        <span className="text-xs font-black text-amber-950">提問者</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-200/80 text-amber-900 font-bold">
+                          可跳過個資
                         </span>
                       </div>
-                      <span className="text-[11px] text-stone-500 block leading-tight">
-                        投稿創新挑戰提案、獲「創新盃」初賽徽章
+                      <span className="text-[10px] text-stone-500 block leading-tight">
+                        發布問題徵求解方、設定興趣精準推播
                       </span>
                     </button>
 
-                    {/* 2. 成為專家（在參賽者下面） */}
                     <button
                       type="button"
-                      onClick={() => setRegRole('expert')}
-                      className={`w-full p-3.5 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                        regRole === 'expert'
-                          ? 'bg-emerald-50/90 border-emerald-600 ring-2 ring-emerald-600/20 shadow-2xs'
+                      onClick={() => setRegRole('solver')}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
+                        regRole === 'solver'
+                          ? 'bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/20'
                           : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-sm font-black text-emerald-950">成為專家</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200/90 text-emerald-950 font-bold">
-                          認證專家庫
+                        <span className="text-xs font-black text-blue-950">解答者</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-200/80 text-blue-900 font-bold">
+                          須實名核驗
                         </span>
                       </div>
-                      <span className="text-[11px] text-stone-500 block leading-tight">
-                        同步舊站一般帳號、通過「認證專家」加入專家庫
+                      <span className="text-[10px] text-stone-500 block leading-tight">
+                        提供專業解答賺取報酬、接案變現
                       </span>
                     </button>
                   </div>
                 </div>
-
-                {/* 創新季參賽者登記欄位 */}
-                {regRole === 'creator' && (
-                  <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-2.5 animate-in fade-in">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>參賽者身分登記（同步錄入用戶名單並開通 10 萬點數）</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700">姓名／參賽團隊名稱 <span className="text-rose-500">*</span></label>
-                        <input
-                          type="text"
-                          required
-                          value={regTeamName}
-                          onChange={(e) => setRegTeamName(e.target.value)}
-                          placeholder="例如：Alex / 創智醫療團隊"
-                          className="w-full px-3 py-2 bg-white border border-stone-300 focus:border-emerald-500 rounded-xl text-xs outline-none"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700">就讀學校／所屬組織現職 <span className="text-rose-500">*</span></label>
-                        <input
-                          type="text"
-                          required
-                          value={regSchoolOrOrg}
-                          onChange={(e) => setRegSchoolOrOrg(e.target.value)}
-                          placeholder="例如：國立台灣大學 創新創業學程"
-                          className="w-full px-3 py-2 bg-white border border-stone-300 focus:border-emerald-500 rounded-xl text-xs outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-stone-700">推廣大使推薦碼 (選填)</label>
-                      <input
-                        type="text"
-                        value={regReferralCode}
-                        onChange={(e) => setRegReferralCode(e.target.value.toUpperCase())}
-                        placeholder="例如：IDEAX-CAMPUS88"
-                        className="w-full px-3 py-2 bg-white border border-stone-300 focus:border-emerald-500 rounded-xl text-xs font-mono outline-none uppercase"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* 🌟 競賽專家登記欄位 */}
-                {regRole === 'expert' && (
-                  <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50/90 to-teal-50/80 border border-emerald-300 space-y-3 animate-in fade-in">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-black text-emerald-900">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                        <span>競賽特聘專家資料填寫（審核開通＋認證專家庫）</span>
-                      </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white font-black">
-                        自動頒發「認證專家」
-                      </span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/90 border border-emerald-200/80 text-[11px] text-emerald-800 leading-relaxed">
-                      💡 填寫完畢將<strong>同步錄入舊網站能用的一般帳號</strong>（具備解答者權限，可於提問市場接案與登入），並直接通過<strong>「認證專家」</strong>資格加入平台專家庫，且配發 300 萬點競賽評審專屬額度！
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700">專家真實姓名 / 專業全名 <span className="text-rose-500">*</span></label>
-                        <input
-                          type="text"
-                          required
-                          value={regName}
-                          onChange={(e) => {
-                            setRegName(e.target.value);
-                            if (!regRealLegalName) setRegRealLegalName(e.target.value);
-                          }}
-                          placeholder="例如：陳建銘 / 李博士"
-                          className="w-full px-3 py-2 bg-white border border-stone-300 focus:border-emerald-500 rounded-xl text-xs outline-none font-medium"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700">現職單位 / 所屬機構 <span className="text-rose-500">*</span></label>
-                        <input
-                          type="text"
-                          required
-                          value={expertOrg}
-                          onChange={(e) => setExpertOrg(e.target.value)}
-                          placeholder="例如：大聯大控股 / 台大創創中心 / 藍星資本"
-                          className="w-full px-3 py-2 bg-white border border-stone-300 focus:border-emerald-500 rounded-xl text-xs outline-none font-medium"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700">專業職稱 / 領域稱謂 <span className="text-rose-500">*</span></label>
-                        <input
-                          type="text"
-                          required
-                          value={jobTitle}
-                          onChange={(e) => setJobTitle(e.target.value)}
-                          placeholder="例如：技術長 / 創辦人 / 投資副總裁 / 客座教授"
-                          className="w-full px-3 py-2 bg-white border border-stone-300 focus:border-emerald-500 rounded-xl text-xs outline-none font-medium"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700">專長領域 / 評審關鍵字</label>
-                        <input
-                          type="text"
-                          value={expertSkills}
-                          onChange={(e) => setExpertSkills(e.target.value)}
-                          placeholder="例如：商業模式、AI生醫、綠能永續"
-                          className="w-full px-3 py-2 bg-white border border-stone-300 focus:border-emerald-500 rounded-xl text-xs outline-none font-medium"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-stone-700">專業背景 / 評審資歷簡介 (選填)</label>
-                      <textarea
-                        rows={2}
-                        value={expertBio}
-                        onChange={(e) => setExpertBio(e.target.value)}
-                        placeholder="簡述您的產業經歷、輔導或評審背景..."
-                        className="w-full px-3 py-2 bg-white border border-stone-300 focus:border-emerald-500 rounded-xl text-xs outline-none resize-none font-medium"
-                      />
-                    </div>
-
-                    {/* 成為專家需要求上傳相關證明或專業證件 */}
-                    <div className="space-y-2 pt-2 border-t border-emerald-200">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                          <span>相關證明或專業證件</span>
-                          <span className="text-rose-500 font-bold">* (必傳)</span>
-                        </label>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold">
-                          名片 / 證照 / 聘書
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-emerald-800 leading-relaxed">
-                        成為認證專家需上傳相關證明或專業證件（如名片、專業證照/執照、在職證明書、教授/顧問聘書或獲獎作品等佐證資料，支援 JPG, PNG, PDF，單檔 25MB 內）。大會將嚴格保密，僅供特聘專家資格核驗使用。
-                      </p>
-
-                      <input
-                        ref={expertProofInputRef}
-                        type="file"
-                        accept="image/*,.pdf,.doc,.docx"
-                        onChange={handleExpertProofChange}
-                        className="hidden"
-                      />
-
-                      {expertProofFile ? (
-                        <div className="p-3 rounded-xl bg-white border-2 border-emerald-400 flex items-center justify-between gap-3 shadow-2xs">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            {expertProofFile.type.startsWith('image/') ? (
-                              <img
-                                src={expertProofFile.dataUrl}
-                                alt="專業證件預覽"
-                                className="w-12 h-12 object-cover rounded-lg border border-emerald-200 shrink-0"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-black text-xs shrink-0">
-                                文件
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                                <span className="text-xs font-black text-stone-900 truncate">
-                                  {expertProofFile.name}
-                                </span>
-                              </div>
-                              <span className="text-[10px] text-stone-500 font-mono block">
-                                {(expertProofFile.size / 1024).toFixed(1)} KB • 已備妥專業佐證
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => expertProofInputRef.current?.click()}
-                              className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 underline px-1.5 py-1 cursor-pointer"
-                            >
-                              更換
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setExpertProofFile(null)}
-                              className="p-1.5 rounded-lg hover:bg-rose-100 text-stone-400 hover:text-rose-600 cursor-pointer transition-colors"
-                              title="移除"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => expertProofInputRef.current?.click()}
-                          className="w-full p-4 rounded-xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-white hover:bg-emerald-50/50 transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center group shadow-2xs"
-                        >
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 group-hover:bg-emerald-200 text-emerald-800 flex items-center justify-center transition-colors">
-                            <Camera className="w-5 h-5" />
-                          </div>
-                          <span className="text-xs font-black text-emerald-950">
-                            點擊上傳相關證明或專業證件（如名片、專業執照、在職證明或獲獎作品等）
-                          </span>
-                          <span className="text-[10px] text-stone-500">
-                            支援拍照拍攝或選取相簿檔案，單檔 25MB 內
-                          </span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
 
                 {regAuthProvider === 'email' && (
                   <>
@@ -2605,27 +2137,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </>
                 )}
 
-                {regRole !== 'expert' && (
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-stone-700">
-                        姓名 / 暱稱 <span className="text-rose-500">*</span>
-                      </label>
-                      <span className="text-[10px] text-stone-400">系統顯示名稱（可隨時在個人中心修改）</span>
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      value={regName}
-                      onChange={(e) => {
-                        setRegName(e.target.value);
-                        if (!regRealLegalName) setRegRealLegalName(e.target.value);
-                      }}
-                      placeholder={regEmail ? `例如：${regEmail.split('@')[0] || 'Alex'}` : '例如：Alex Chen'}
-                      className="w-full px-3 py-2.5 bg-[#f0f4f8] focus:bg-white text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none font-medium"
-                    />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-stone-700">
+                      姓名 / 暱稱 <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-stone-400">系統顯示名稱（可隨時在個人中心修改）</span>
                   </div>
-                )}
+                  <input
+                    type="text"
+                    required
+                    value={regName}
+                    onChange={(e) => {
+                      setRegName(e.target.value);
+                      if (!regRealLegalName) setRegRealLegalName(e.target.value);
+                    }}
+                    placeholder={regEmail ? `例如：${regEmail.split('@')[0] || 'Alex'}` : '例如：Alex Chen'}
+                    className="w-full px-3 py-2.5 bg-[#f0f4f8] focus:bg-white text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none font-medium"
+                  />
+                </div>
 
                 {regAuthProvider === 'email' && (
                   <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-stone-700 flex items-center gap-2">
@@ -2634,174 +2164,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                 )}
 
-                {/* 註冊條款與參賽辦法確認（雙站身分互通規範） */}
-                <div className="p-3.5 rounded-2xl bg-stone-50/90 border border-stone-200/90 space-y-2.5">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
-                    <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>註冊條款與參賽辦法確認（雙站身分互通）</span>
-                    </span>
-                    <span className="text-[10px] text-rose-500 font-bold">* 依身分皆須勾選同意</span>
-                  </div>
-
-                  {/* 1. 舊站一般服務條款（所有用戶剛註冊視同舊站用戶身分） */}
-                  <label className="flex items-start gap-2 cursor-pointer select-none text-xs text-stone-700">
-                    <input
-                      type="checkbox"
-                      checked={agreeGeneralTerms}
-                      onChange={(e) => setAgreeGeneralTerms(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
-                    />
-                    <span className="leading-relaxed">
-                      我已閱讀並同意{' '}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          openAboutModal('general_terms');
-                        }}
-                        className="text-amber-800 font-bold underline hover:text-amber-950"
-                      >
-                        《IdeaX 平台一般服務條款》
-                      </button>
-                      <span className="text-stone-500 text-[11px] block">
-                        （新站註冊視同舊站會員身分，享提問探索與金流履約守則，免付費訂閱負擔）
-                      </span>
-                    </span>
-                  </label>
-
-                  {/* 2. 新站創星季競賽辦法（全體新站用戶） */}
-                  <label className="flex items-start gap-2 cursor-pointer select-none text-xs text-stone-700">
-                    <input
-                      type="checkbox"
-                      checked={agreeChallengeRegulations}
-                      onChange={(e) => setAgreeChallengeRegulations(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
-                    />
-                    <span className="leading-relaxed">
-                      我已閱讀並同意{' '}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          openAboutModal('challenge_regulations');
-                        }}
-                        className="text-emerald-800 font-bold underline hover:text-emerald-950"
-                      >
-                        《IdeaX 創星季競賽辦法與規章》
-                      </button>
-                      <span className="text-stone-500 text-[11px] block">
-                        （賽事主辦章程、公眾虛擬支持金使用守則、雙站互通與官方數位證明頒發）
-                      </span>
-                    </span>
-                  </label>
-
-                  {/* 3. 參賽者專屬條款 */}
-                  {regRole === 'creator' && (
-                    <label className="flex items-start gap-2 cursor-pointer select-none text-xs text-stone-800 pt-1.5 border-t border-emerald-100 animate-in fade-in">
-                      <input
-                        type="checkbox"
-                        checked={agreeParticipantTerms}
-                        onChange={(e) => setAgreeParticipantTerms(e.target.checked)}
-                        className="mt-0.5 w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
-                      />
-                      <span className="leading-relaxed">
-                        <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 font-bold text-[10px] mr-1">參賽者專屬</span>
-                        我已閱讀並同意{' '}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            openAboutModal('challenge_participant_terms');
-                          }}
-                          className="text-emerald-900 font-bold underline hover:text-emerald-950"
-                        >
-                          《IdeaX 創星季參賽規則與智慧財產權條款》
-                        </button>
-                        <span className="text-stone-500 text-[11px] block">
-                          （原創合法擔保、智財權 100% 完整歸屬原創者不移轉、大會非專屬展示授權）
-                        </span>
-                      </span>
-                    </label>
-                  )}
-
-                  {/* 4. 專家專屬條款（舊站專家隊友條款 + 新站創星季專家條款） */}
-                  {regRole === 'expert' && (
-                    <>
-                      <label className="flex items-start gap-2 cursor-pointer select-none text-xs text-stone-800 pt-1.5 border-t border-emerald-100 animate-in fade-in">
-                        <input
-                          type="checkbox"
-                          checked={agreeSolverTerms}
-                          onChange={(e) => setAgreeSolverTerms(e.target.checked)}
-                          className="mt-0.5 w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
-                        />
-                        <span className="leading-relaxed">
-                          <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold text-[10px] mr-1">舊站隊友條款</span>
-                          我已閱讀並同意{' '}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              openAboutModal('solver_terms');
-                            }}
-                            className="text-amber-900 font-bold underline hover:text-amber-950"
-                          >
-                            《IdeaX 舊站專家解題與隊友服務條款》
-                          </button>
-                          <span className="text-stone-500 text-[11px] block">
-                            （獨立執業顧問自負法律責任、商業接案諮詢誠信、第三方拆款與保密協定）
-                          </span>
-                        </span>
-                      </label>
-
-                      <label className="flex items-start gap-2 cursor-pointer select-none text-xs text-stone-800 animate-in fade-in">
-                        <input
-                          type="checkbox"
-                          checked={agreeChallengeExpertTerms}
-                          onChange={(e) => setAgreeChallengeExpertTerms(e.target.checked)}
-                          className="mt-0.5 w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
-                        />
-                        <span className="leading-relaxed">
-                          <span className="px-1.5 py-0.2 rounded bg-emerald-200 text-emerald-950 font-bold text-[10px] mr-1">新站專家條款</span>
-                          我已閱讀並同意{' '}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              openAboutModal('challenge_expert_terms');
-                            }}
-                            className="text-emerald-900 font-bold underline hover:text-emerald-950"
-                          >
-                            《IdeaX 創星季特聘評審與專家指導條款》
-                          </button>
-                          <span className="text-stone-500 text-[11px] block">
-                            （專業證件真實擔保、客觀公正評分、300 萬額度神聖性使用與利益迴避守則）
-                          </span>
-                        </span>
-                      </label>
-                    </>
-                  )}
-                </div>
-
+                <label className="flex items-start gap-2 cursor-pointer select-none pt-1">
+                  <input
+                    type="checkbox"
+                    checked={agreeGeneralTerms}
+                    onChange={(e) => setAgreeGeneralTerms(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded text-rose-600 accent-rose-600 cursor-pointer"
+                  />
+                  <span className="text-xs text-stone-600 font-medium leading-relaxed">
+                    我已閱讀並同意{' '}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openAboutModal('general_terms');
+                      }}
+                      className="text-amber-800 font-bold underline hover:text-amber-950"
+                    >
+                      《一般服務條款》
+                    </button>
+                    （含隱私權政策與免責聲明，註冊即為免費基礎用戶，無強制訂閱負擔）
+                  </span>
+                </label>
 
                 <button
                   type="submit"
-                  className={`w-full py-3.5 rounded-2xl active:scale-[0.99] text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    regRole === 'expert'
-                      ? 'bg-emerald-700 hover:bg-emerald-600'
-                      : regRole === 'creator'
-                      ? 'bg-emerald-600 hover:bg-emerald-500'
-                      : 'bg-rose-600 hover:bg-rose-500'
-                  }`}
+                  className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 active:scale-[0.99] text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <span>
-                    {regRole === 'expert'
-                      ? '送出申請並直接開通認證專家庫帳號'
-                      : regRole === 'creator'
-                      ? '下一步：確認參賽者身分並開通'
-                      : regRole === 'solver'
-                      ? '下一步：填寫個資與實名認證'
-                      : '下一步：設定興趣與推播'}
+                    {regRole === 'solver' ? '下一步：填寫個資與實名認證' : '下一步：設定興趣與推播'}
                   </span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -3400,78 +2791,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         className="w-full py-2.5 rounded-xl text-stone-500 hover:text-stone-900 text-xs font-bold transition-colors cursor-pointer hover:bg-stone-100"
                       >
                         跳過個人資料，直接開始 →
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. 創新季參賽者專屬流程：身分確認與初賽權益開通 */}
-                {regRole === 'creator' && (
-                  <div className="space-y-4">
-                    <div className="p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs space-y-2">
-                      <div className="font-black flex items-center gap-1.5 text-emerald-950">
-                        <Sparkles className="w-4 h-4 text-emerald-600" />
-                        <span>IdeaX 創新挑戰季 • 參賽者身分確認</span>
-                      </div>
-                      <p className="text-[11px] text-emerald-800 leading-relaxed">
-                        您即將註冊為「創新季參賽者」。註冊資訊將同步錄入 IdeaX 全站用戶名單，並自動開通競賽提案與 10 萬點虛擬支持點數！
-                      </p>
-                    </div>
-
-                    {/* 參賽者摘要卡片 */}
-                    <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2 text-xs">
-                      <div className="flex items-center justify-between pb-2 border-b border-stone-200">
-                        <span className="font-bold text-stone-500">參賽團隊／個人：</span>
-                        <span className="font-black text-stone-900">{regTeamName || regName || '未填寫'}</span>
-                      </div>
-                      <div className="flex items-center justify-between pb-2 border-b border-stone-200">
-                        <span className="font-bold text-stone-500">就讀學校／所屬組織：</span>
-                        <span className="font-black text-stone-900">{regSchoolOrOrg || '未填寫'}</span>
-                      </div>
-                      <div className="flex items-center justify-between pb-2 border-b border-stone-200">
-                        <span className="font-bold text-stone-500">登入帳號 (Email)：</span>
-                        <span className="font-mono text-stone-900">{regEmail || `${regUsername}@ideax.user`}</span>
-                      </div>
-                      <div className="flex items-center justify-between pb-2 border-b border-stone-200">
-                        <span className="font-bold text-stone-500">聯絡手機：</span>
-                        <span className="font-mono text-stone-900">{regPhone || '未填寫'}</span>
-                      </div>
-                      {regReferralCode && (
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-emerald-700">推廣大使推薦碼：</span>
-                          <span className="font-mono font-black text-emerald-800">{regReferralCode}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 權益開通清單 */}
-                    <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900 space-y-1.5">
-                      <div className="font-bold flex items-center gap-1 text-amber-950">
-                        <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                        <span>註冊即享專屬權益：</span>
-                      </div>
-                      <ul className="space-y-1 list-disc pl-4 text-stone-600">
-                        <li>獲得「創新盃」初賽專屬徽章標章。</li>
-                        <li>開通 100,000 點競賽專用虛擬模擬支持點數（不可兌現、賽事結束後結算）。</li>
-                        <li>帳號資料同步錄入 IdeaX 全站用戶名單，可無縫切換至提問懸賞主平台。</li>
-                      </ul>
-                    </div>
-
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setRegStep(1)}
-                        className="px-4 py-3 rounded-2xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-100 cursor-pointer"
-                      >
-                        上一步
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isLoading}
-                        onClick={() => handleFinalRegister(undefined, false)}
-                        className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-black text-xs shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-                      >
-                        {isLoading ? '建立帳號中...' : '確認完成註冊並開通參賽身分 →'}
                       </button>
                     </div>
                   </div>

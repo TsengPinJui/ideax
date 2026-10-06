@@ -50,7 +50,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     setTimeout(() => {
       setIsRendered(false);
       if (onDismiss) onDismiss();
-    }, 700); // 700ms 絲滑淡出完畢、完全關閉之後再觸發 onDismiss
+    }, 700); // 700ms 絲滑淡出
   };
 
   useEffect(() => {

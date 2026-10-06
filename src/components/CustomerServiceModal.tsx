@@ -701,7 +701,7 @@ export const CustomerServiceModal: React.FC = () => {
             <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
               {filteredFaqs.length === 0 ? (
                 <div className="py-12 text-center text-stone-400 text-xs">
-                  查無相關常見問題，您可以點擊上方「問問 Agent」由專屬官方客服 Agent 為您即時解答！
+                  查無相關常見問題，您可以點擊上方「問問 Agent」由專屬客服特助為您即時解答！
                 </div>
               ) : (
                 filteredFaqs.map((faq, idx) => {

@@ -13,10 +13,13 @@ const STORAGE_PREFIX = 'ideax_user_interest_';
 
 /**
  * 判斷問題是否已經過期
- * 規則：全站所有題目均永久刊登有效，永久保存於資料庫與市場中
+ * 規則：以 deadline 當日 23:59:59 為最終截止線，若當前時間已超過則為過期
  */
-export function isQuestionExpired(_deadline?: string): boolean {
-  return false;
+export function isQuestionExpired(deadline?: string): boolean {
+  if (!deadline) return false;
+  const deadlineStr = deadline.includes('T') ? deadline : `${deadline}T23:59:59`;
+  const time = new Date(deadlineStr).getTime();
+  return !isNaN(time) && time < Date.now();
 }
 
 export function getUserInterestProfile(userId: string = 'guest'): UserInterestProfile {

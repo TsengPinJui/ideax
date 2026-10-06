@@ -48,16 +48,16 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
       '2xl': 'w-20 h-20 sm:w-24 sm:h-24',
     },
     bulb: {
-      xs: 'w-6 h-6',
-      sm: 'w-8 h-8 sm:w-9 sm:h-9',
-      md: 'w-10 h-10 sm:w-11 sm:h-11',
-      lg: 'w-14 h-14 sm:w-16 sm:h-16',
-      xl: 'w-20 h-20 sm:w-24 sm:h-24',
-      '2xl': 'w-24 h-24 sm:w-28 sm:h-28',
+      xs: 'w-7 h-7',
+      sm: 'w-9 h-9 sm:w-10 sm:h-10',
+      md: 'w-11 h-11 sm:w-12 sm:h-12',
+      lg: 'w-13 h-13 sm:w-15 sm:h-15',
+      xl: 'w-16 h-16 sm:w-20 sm:h-20',
+      '2xl': 'w-20 h-20 sm:w-24 sm:h-24',
     },
     chuangdianzi: {
-      xs: 'h-6 sm:h-7 w-auto max-w-[130px]',
-      sm: 'h-8 sm:h-9 md:h-9.5 w-auto max-w-[170px]',
+      xs: 'w-36 h-auto',
+      sm: 'w-44 h-auto',
       md: 'w-56 sm:w-64 h-auto',
       lg: 'w-64 sm:w-72 md:w-80 max-w-full h-auto',
       xl: 'w-full max-w-md h-auto',
@@ -110,7 +110,7 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
   let imageSrc = '/logo-chuangdianzi.png';
 
   if (variant === 'bulb' || variant === 'mark') {
-    imageSrc = '/logo-bulb.png?v=trans-bulb-3'; // 去背低飽和正向燈泡（緊湊去邊放大版）
+    imageSrc = '/logo-bulb.png'; // 去背低飽和正向燈泡
   } else if (variant === 'chuangdianzi') {
     imageSrc = '/logo-chuangdianzi.png'; // 創點子 + IdeaX (2.png transparent)
   } else if (variant === 'chuangdianzi-text') {

@@ -433,7 +433,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </button>
 
-          {/* Desktop Logo (點選直接回首頁最頂處) */}
+          {/* Desktop Logo (點選回到首頁頂部) */}
           <div
             role="button"
             tabIndex={0}
@@ -452,43 +452,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }
             }}
-            title="點擊回到首頁最頂處"
+            title="點擊回到首頁頂部"
             className="flex items-center text-left group transition-transform active:scale-95 cursor-pointer p-0.5 sm:p-1 rounded-xl hover:bg-amber-50/80 transition-colors"
           >
-            <IdeaXLogo variant="bulb" size="md" />
+            <IdeaXLogo variant="bulb" size="lg" />
           </div>
 
           {/* Navigation Links: 「探索問題」、「找專家」與「我的案件」 */}
           <nav className="hidden md:flex items-center gap-1 text-sm font-semibold">
             <button
               onClick={() => {
-                const scrollDown = () => {
+                setActiveTab('explore');
+                setSelectedQuestion(null);
+                setSelectedSolver(null);
+                const scrollToMarket = () => {
                   const el = document.getElementById('market-grid');
                   if (el) {
-                    const navbar = document.querySelector('header');
-                    const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 64;
-                    const elementTop = el.getBoundingClientRect().top + window.scrollY;
-                    window.scrollTo({
-                      top: Math.max(0, elementTop - navbarHeight - 42),
-                      behavior: 'smooth',
-                    });
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }
                 };
-                if (activeTab === 'explore') {
-                  scrollDown();
-                } else {
-                  setActiveTab('explore');
-                  setSelectedQuestion(null);
-                  setSelectedSolver(null);
-                  setTimeout(scrollDown, 50);
-                }
+                scrollToMarket();
+                setTimeout(scrollToMarket, 50);
+                setTimeout(scrollToMarket, 150);
               }}
               className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
                 activeTab === 'explore'
                   ? 'bg-amber-50/90 text-amber-950 font-black border-amber-400 ring-2 ring-amber-200 shadow-2xs'
                   : 'bg-white text-stone-800 border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 hover:text-amber-950 shadow-2xs'
               }`}
-              title="滑動至徵點子區塊"
             >
               <Compass className="w-4 h-4 text-amber-600 shrink-0" />
               <span>探索問題</span>
@@ -1188,20 +1179,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </div>
                     </button>
 
-                    {/* 用戶名稱右方切換鍵 / 管理員治理模式鍵 */}
-                    {currentUser.role === 'admin' ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          setActiveTab('admin_dashboard');
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 active:bg-purple-300 text-purple-900 text-xs font-black transition-all flex items-center gap-1 cursor-pointer shadow-2xs shrink-0"
-                        title="進入全站治理與管理模式"
-                      >
-                        <span>治理模式</span>
-                      </button>
-                    ) : (
+                    {/* 用戶名稱右方切換鍵 */}
+                    {currentUser.role !== 'admin' && (
                       <button
                         type="button"
                         onClick={() => switchRole(currentUser.role === 'solver' ? 'questioner' : 'solver')}
@@ -1232,29 +1211,67 @@ export const Navbar: React.FC<NavbarProps> = ({
                   )}
                 </div>
 
-                {/* 管理員個人中心選單（完全還原經典版） */}
+                {/* 管理員個人中心清單 - 重新整理核心邏輯分類 */}
                 {currentUser.role === 'admin' ? (
                   <div className="py-1 divide-y divide-stone-100 text-xs">
-                    {/* 分類 1: 財務、撥付與費率管理 */}
-                    <div className="py-1.5 px-1.5 space-y-0.5">
-                      {/* 1. 活動激勵、異常補償與合作撥付 */}
+                    {/* 分類 0: 📊 總覽與平台數據 (置頂) */}
+                    <div className="py-1.5 px-1.5 space-y-0.5 bg-purple-50/40">
+                      <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-purple-900 uppercase tracking-wider flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <LayoutGrid className="w-3.5 h-3.5 text-purple-700" />
+                          <span>管理核心總覽</span>
+                        </span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 font-bold border border-purple-200">1 項</span>
+                      </p>
+
+                      {/* 管理儀表板 */}
                       <button
-                        onClick={() => handleOpenDashboard('points_receivables')}
-                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-orange-50 hover:text-orange-950 flex items-center justify-between cursor-pointer group transition-all"
+                        onClick={() => handleOpenDashboard('overview')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-100/70 flex items-center justify-between cursor-pointer group transition-all"
                       >
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                            <LayoutGrid className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <span className="block font-black text-purple-950 group-hover:text-purple-700 transition-colors">管理儀表板</span>
+                            <span className="text-[10px] text-purple-700/80 font-normal">全站營運大盤、會員分佈、數據控制與資料庫</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition-all" />
+                      </button>
+                    </div>
+
+                    {/* 分類 1: 💰 財務與點數治理 (全模式配置同步) */}
+                    <div className="py-1.5 px-1.5 space-y-0.5">
+                      <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-amber-700 uppercase tracking-wider flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <Coins className="w-3 h-3 text-amber-600" />
+                          <span>財務與點數治理</span>
+                        </span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">3 項</span>
+                      </p>
+
+                      {/* 1. 點數與帳務管理 (整合點數查詢、應收託管與管理員撥付) */}
+                      <button
+                        onClick={() => handleOpenDashboard('points_receivables')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs">
                             <Coins className="w-3.5 h-3.5" />
                           </div>
                           <div>
-                            <span className="block font-black text-stone-900">活動激勵、異常補償與合作撥付</span>
-                            <span className="text-[10px] text-stone-500 font-normal">活動激勵、異常補償與合作撥付</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="block font-black text-stone-900">點數與帳務管理</span>
+                            </div>
+                            <span className="text-[10px] text-stone-500 font-normal">用戶帳目查閱、點數撥發與應收管理</span>
                           </div>
                         </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-orange-700 transition-colors" />
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
                       </button>
 
-                      {/* 2. 交易管理 */}
+                      {/* 3. 交易流水管理 */}
                       <button
                         onClick={() => handleOpenDashboard('transactions')}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
@@ -1270,36 +1287,55 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
                       </button>
+                    </div>
 
-                      {/* 3. 會員方案與費率管理 */}
+                    {/* 案件管理與問題管理 (業務與內容審核) */}
+                    <div className="py-1.5 px-1.5 space-y-0.5">
                       <button
-                        onClick={() => handleOpenDashboard('subscriptions')}
-                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
+                        onClick={() => handleOpenDashboard('admin_cases')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-50 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
                       >
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 shadow-2xs">
-                            <Crown className="w-3.5 h-3.5" />
+                          <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 shadow-2xs">
+                            <Briefcase className="w-3.5 h-3.5" />
                           </div>
                           <div>
-                            <span className="block font-black text-stone-900">會員方案與費率管理</span>
-                            <span className="text-[10px] text-stone-500 font-normal">平台抽成設定與會員訂閱方案編輯</span>
+                            <span className="block font-black text-stone-900">案件管理</span>
+                            <span className="text-[10px] text-stone-500 font-normal">全站案件詳細狀況與私聊對話稽核</span>
                           </div>
                         </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
+                      </button>
+
+                      {/* 問題管理 (新增於案件管理下方) */}
+                      <button
+                        onClick={() => handleOpenDashboard('admin_questions')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-50 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 shadow-2xs">
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <span className="block font-black text-stone-900">問題管理</span>
+                            <span className="text-[10px] text-stone-500 font-normal">各類問題分佈圓餅圖、違規下架與用戶反饋</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
                       </button>
                     </div>
 
-                    {/* 分類 2: 👥 用戶與審核認證 (3 項) */}
+                    {/* 分類 2: 👥 用戶與審核認證 */}
                     <div className="py-1.5 px-1.5 space-y-0.5">
                       <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-blue-700 uppercase tracking-wider flex items-center justify-between">
                         <span className="flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5 text-blue-600" />
+                          <Users className="w-3 h-3 text-blue-600" />
                           <span>用戶與審核認證</span>
                         </span>
                         <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-bold">3 項</span>
                       </p>
 
-                      {/* 4. 用戶管理 */}
+                      {/* 5. 用戶管理 */}
                       <button
                         onClick={() => handleOpenDashboard('admin_user_management')}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-blue-50 hover:text-blue-950 flex items-center justify-between cursor-pointer group transition-all"
@@ -1316,7 +1352,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-blue-600 transition-colors" />
                       </button>
 
-                      {/* 5. 受理認證 (實名、專家) */}
+                      {/* 6. 受理認證 (實名、專家) */}
                       <button
                         onClick={() => handleOpenDashboard('admin_certifications')}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-blue-50 hover:text-blue-950 flex items-center justify-between cursor-pointer group transition-all"
@@ -1333,7 +1369,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-blue-700 transition-colors" />
                       </button>
 
-                      {/* 6. 用戶分佈與習慣統計 */}
+                      {/* 7. 用戶分佈與習慣統計 */}
                       <button
                         onClick={() => handleOpenDashboard('admin_user_analytics')}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-emerald-50 hover:text-emerald-950 flex items-center justify-between cursor-pointer group transition-all"
@@ -1356,51 +1392,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </button>
                     </div>
 
-                    {/* 分類 3: 🎛️ 營運、案件與 AI 系統 (4 項) */}
+                    {/* 分類 3: ✨ AI 智能與會員方案 */}
                     <div className="py-1.5 px-1.5 space-y-0.5">
-                      <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-purple-900 uppercase tracking-wider flex items-center justify-between">
+                      <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-amber-900 uppercase tracking-wider flex items-center justify-between">
                         <span className="flex items-center gap-1">
-                          <Sliders className="w-3.5 h-3.5 text-purple-700" />
-                          <span>營運、案件與 AI 系統</span>
+                          <Sparkles className="w-3 h-3 text-amber-600" />
+                          <span>AI 智能與會員方案</span>
                         </span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 font-bold border border-purple-200">4 項</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">2 項</span>
                       </p>
 
-                      {/* 7. 案件管理 */}
-                      <button
-                        onClick={() => handleOpenDashboard('admin_cases')}
-                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-50 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 shadow-2xs">
-                            <Briefcase className="w-3.5 h-3.5" />
-                          </div>
-                          <div>
-                            <span className="block font-black text-stone-900">案件管理</span>
-                            <span className="text-[10px] text-stone-500 font-normal">全站案件詳細狀況與私聊對話稽核</span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
-                      </button>
-
-                      {/* 8. 問題管理 */}
-                      <button
-                        onClick={() => handleOpenDashboard('admin_questions')}
-                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-50 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 shadow-2xs">
-                            <HelpCircle className="w-3.5 h-3.5" />
-                          </div>
-                          <div>
-                            <span className="block font-black text-stone-900">問題管理</span>
-                            <span className="text-[10px] text-stone-500 font-normal">各類問題分佈圓餅圖、違規下架與用戶反饋</span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
-                      </button>
-
-                      {/* 9. AI-CRM 監控與 Agent 測試 */}
+                      {/* 1. AI-CRM 監控與 Agent 測試 */}
                       <button
                         onClick={() => handleOpenDashboard('admin_aicrm')}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-50 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
@@ -1420,42 +1422,35 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
                       </button>
 
-                      {/* 10. 爭議調解與客服信箱 */}
+                      {/* 2. 會員方案與費率管理 */}
                       <button
-                        onClick={() => handleOpenDashboard('admin_mail_disputes')}
-                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-50 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
+                        onClick={() => handleOpenDashboard('subscriptions')}
+                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-amber-50 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
                       >
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 shadow-2xs">
-                            <Mail className="w-3.5 h-3.5" />
+                          <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 shadow-2xs">
+                            <Crown className="w-3.5 h-3.5" />
                           </div>
                           <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="block font-black text-stone-900">爭議調解與客服信箱</span>
-                              {pendingTicketsCount + pendingDisputesCount + pendingReportsCount > 0 && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-500 text-white">
-                                  {pendingTicketsCount + pendingDisputesCount + pendingReportsCount}
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[10px] text-stone-500 font-normal">案件申訴調解、檢舉審理與客服工單</span>
+                            <span className="block font-black text-stone-900">會員方案與費率管理</span>
+                            <span className="text-[10px] text-stone-500 font-normal">平台抽成設定與會員訂閱方案編輯</span>
                           </div>
                         </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />
+                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
                       </button>
                     </div>
 
-                    {/* 分類 4: ⚙️ 帳號與平台資訊 (4 項) */}
+                    {/* 分類 4: ⚙️ 帳號 */}
                     <div className="py-1.5 px-1.5 space-y-0.5">
                       <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-stone-500 uppercase tracking-wider flex items-center justify-between">
                         <span className="flex items-center gap-1">
                           <Settings className="w-3 h-3 text-stone-500" />
-                          <span>帳號與平台資訊</span>
+                          <span>帳號</span>
                         </span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-bold">4 項</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-bold">2 項</span>
                       </p>
 
-                      {/* 11. 管理員帳號設定 */}
+                      {/* 13. 管理員帳號設定 */}
                       <button
                         onClick={() => handleOpenDashboard('profile')}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-stone-100 flex items-center justify-between cursor-pointer group transition-all"
@@ -1472,33 +1467,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-700 transition-colors" />
                       </button>
 
-                      {/* 12. 平台資訊 */}
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          if (onNavigateToAbout) {
-                            onNavigateToAbout();
-                          } else {
-                            setActiveTab('about');
-                            setSelectedQuestion(null);
-                            setSelectedSolver(null);
-                          }
-                        }}
-                        className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-slate-50 hover:text-slate-950 flex items-center justify-between cursor-pointer group transition-all"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 shadow-2xs">
-                            <FileText className="w-3.5 h-3.5" />
-                          </div>
-                          <div>
-                            <span className="block font-black text-stone-900">平台資訊</span>
-                            <span className="text-[10px] text-stone-500 font-normal">品牌介紹、使用說明與條款規範</span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-slate-700 transition-colors" />
-                      </button>
-
-                      {/* 13. 切換帳號 / 添加測試帳號 */}
+                      {/* 14. 切換帳號 / 添加測試帳號 */}
                       <button
                         onClick={() => {
                           setIsUserMenuOpen(false);
@@ -1522,7 +1491,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
                       </button>
 
-                      {/* 14. 登出帳號 */}
+                      {/* 15. 登出帳號 */}
                       <button
                         onClick={() => {
                           setIsUserMenuOpen(false);
@@ -1539,6 +1508,30 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 ) : (
                   <div className="py-1 divide-y divide-stone-100">
+
+                  {/* 若當前登入為測試模擬帳號（非真實普通用戶），在頂部提供一鍵返回管理員身分 */}
+                  {(isTestAccountUserId(currentUser.id) || ['solver-1', 'solver-2', 'user-questioner'].includes(currentUser.id)) && (
+                    <div className="p-2 m-1.5 bg-gradient-to-r from-purple-950 via-stone-900 to-indigo-950 rounded-2xl border border-purple-500/50 text-white shadow-xs space-y-1.5">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-[10px] font-black text-amber-300 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-amber-400" />
+                          <span>測試模擬身分進行中</span>
+                        </span>
+                        <span className="text-[9px] text-purple-300">管理員專用</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const adminUser = availableUsers.find((u) => u.id === 'user-admin' || u.role === 'admin');
+                          if (adminUser) handleSwitchUser(adminUser);
+                        }}
+                        className="w-full py-1.5 px-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-black text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer border border-purple-400/40"
+                      >
+                        <Crown className="w-3.5 h-3.5 text-amber-300" />
+                        <span>👑 一鍵返回管理員身分 (Admin)</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* 區塊 1：資產與帳務 (全模式配置同步) */}
                   <div className="py-1.5 px-1.5 space-y-0.5">
@@ -1682,10 +1675,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </div>
                         <span>實名認證</span>
                       </div>
-                      {currentUser.realNameAuthStatus === 'verified' ? (
+                      {currentUser.realNameAuthStatus === 'verified' || currentUser.bankAccount?.isVerified ? (
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">已認證</span>
-                      ) : currentUser.realNameAuthStatus === 'pending' ? (
-                        <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">審核中</span>
                       ) : null}
                     </button>
                     <button
@@ -1713,23 +1704,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full ring-1.5 ring-white" />
                           )}
                         </div>
-                        <span>問卷(客戶調查)</span>
+                        <span>問卷（用戶調查）</span>
                       </div>
                       {currentUser.surveyData?.completedAt ? (
                         <span className="text-[10px] font-bold text-purple-750 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">已填寫</span>
                       ) : (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
-                            完成即送會員
-                          </span>
-                          <span
-                            className="text-[10px] font-bold text-amber-800 hover:text-amber-950 bg-amber-100/90 hover:bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-0.5 transition-all shadow-2xs cursor-pointer"
-                            title="查看會員活動"
-                          >
-                            <span>查看活動</span>
-                            <ArrowRight className="w-2.5 h-2.5" />
-                          </span>
-                        </div>
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                          完成即送會員
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1878,11 +1860,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         }}
         onNavigateToLeaderboard={() => {
           setActiveTab('leaderboard');
-          setSelectedQuestion(null);
-          setSelectedSolver(null);
-        }}
-        onNavigateToChallenge={() => {
-          setActiveTab('innovation_challenge');
           setSelectedQuestion(null);
           setSelectedSolver(null);
         }}

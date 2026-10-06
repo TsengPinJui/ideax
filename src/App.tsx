@@ -31,8 +31,6 @@ import { RatingModal } from './components/RatingModal';
 import { HelpTooltip } from './components/HelpTooltip';
 import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnboardingGuide';
 import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompass';
-import { InnovationChallengeView } from './components/challenge/InnovationChallengeView';
-import { AuthModal } from './components/AuthModal';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { isPainPointQuestion } from './utils/questionUtils';
@@ -82,12 +80,6 @@ function MainContent() {
     availableUsers,
     startDirectChat,
     openAuthModal,
-    closeAuthModal,
-    isAuthModalOpen,
-    authModalMode,
-    authModalMethod,
-    authModalRole,
-    authModalInterceptReason,
     addNotification,
     isDemoMode,
     isNoPaymentMode,
@@ -218,21 +210,6 @@ function MainContent() {
     }
   }, []);
 
-  // 監聽網址 Hash 或路徑以支援直達 IdeaX 創新挑戰季競賽專區 (例如 #challenge 或 /challenge)
-  useEffect(() => {
-    const handleUrlHashOrPath = () => {
-      const hash = window.location.hash.toLowerCase();
-      const path = window.location.pathname.toLowerCase();
-      if (hash.includes('challenge') || hash.includes('innovation') || path.includes('challenge')) {
-        setActiveTab('innovation_challenge');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    };
-    handleUrlHashOrPath();
-    window.addEventListener('hashchange', handleUrlHashOrPath);
-    return () => window.removeEventListener('hashchange', handleUrlHashOrPath);
-  }, []);
-
   const performUnpin = () => {
     localStorage.removeItem('ideax_pinned_board');
     setPinnedBoard(null);
@@ -292,6 +269,19 @@ function MainContent() {
       setUserProfileVersion((v) => v + 1);
     }
   };
+
+  // 手機app模式，開啟後會自動滾動到探索市場位置
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById('market-grid');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Specific sub-view flag when submitting answer to a question in full page mode
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
@@ -393,7 +383,12 @@ function MainContent() {
       // 1. 排除已被管理員下架的問題
       if (q.status === 'delisted') return false;
 
-      // 2. 永久刊登：所有題目均永久有效並刊登於市場中，無過期下架限制
+      // 2. 顯示出來的問題不包含過期的（以截止日當日 23:59:59 為最終截止線，過期不顯示）
+      if (isQuestionExpired(q.deadline)) {
+        return false;
+      }
+
+      // 3. 已有人提案或接案的問題，只要期限還沒過一樣顯示
       return true;
     });
   }, [questions, isDemoMode]);
@@ -723,69 +718,10 @@ function MainContent() {
     setActiveTab('create_question');
   };
 
-  // 平滑滾動至「探索問題市場」標題與問題清單區塊（再往上一點點，保留頂部舒適留白與視覺呼吸空間）
-  const scrollToExploreMarket = () => {
-    const el = document.getElementById('market-grid');
-    if (el) {
-      const navbar = document.querySelector('header');
-      const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 64;
-      const elementTop = el.getBoundingClientRect().top + window.scrollY;
-      // 再往上一點點（留出 42px 舒適間隔與呼吸空間）
-      const targetY = Math.max(0, elementTop - navbarHeight - 42);
-      window.scrollTo({
-        top: targetY,
-        behavior: 'smooth',
-      });
-    }
-  };
-
-  if (activeTab === 'innovation_challenge') {
-    return (
-      <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-100 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-emerald-300">
-        <InnovationChallengeView
-          currentUser={currentUser}
-          onBackToMainPlatform={() => {
-            setActiveTab('explore');
-            try {
-              if (window.location.hash.includes('challenge')) {
-                history.pushState('', document.title, window.location.pathname + window.location.search);
-              }
-            } catch (e) {
-              // ignore
-            }
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-        />
-
-        {/* 螢幕正中央提示浮窗 (Center Toast HUD) */}
-        <CenterToast toast={centerToast} onDismiss={hideCenterToast} />
-
-        {/* 登入 / 註冊全站彈窗 (支援新舊站同步帳號體系) */}
-        {isAuthModalOpen && (
-          <AuthModal
-            isOpen={isAuthModalOpen}
-            onClose={closeAuthModal}
-            initialMode={authModalMode}
-            initialMethod={authModalMethod}
-            initialRole={authModalRole}
-            interceptReason={authModalInterceptReason}
-            isChallengeSite={true}
-          />
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-50/50 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
       {/* App 開啟淡入淡出畫面 (Splash Screen) */}
-      <SplashScreen
-        minDurationMs={1400}
-        onDismiss={() => {
-          // 起始畫面加載完畢、完全關閉之後，0 秒立即平滑滾動到探索問題市場
-          scrollToExploreMarket();
-        }}
-      />
+      <SplashScreen minDurationMs={1400} />
 
       {/* Navigation */}
       <Navbar
@@ -880,15 +816,19 @@ function MainContent() {
               setSelectedCategory={setSelectedCategory}
               onPostClick={() => handleOpenCreateWithType('seek_solution')}
               onPostPainPointClick={() => handleOpenCreateWithType('pain_point')}
-              onExploreClick={scrollToExploreMarket}
+              onExploreClick={() => {
+                const el = document.getElementById('market-grid');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
               onLeaderboardClick={() => {
                 handleSetSortBy('highest_bounty');
-                scrollToExploreMarket();
+                const el = document.getElementById('market-grid');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
             />
 
             {/* Questions Market Grid Section */}
-            <div id="market-grid" className="scroll-mt-14 sm:scroll-mt-16 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 pb-8 sm:py-10">
+            <div id="market-grid" className="scroll-mt-20 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 pb-8 sm:py-10">
               <div className="space-y-3 sm:space-y-6">
                 {/* Special Zone Banners */}
                 {specialZone === 'pain_points' && (
@@ -1003,7 +943,7 @@ function MainContent() {
                     <div className="flex sm:flex-row items-center justify-between gap-1.5 sm:gap-4 mb-1.5 sm:mb-3">
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 sm:gap-2">
-                          <span>💡 徵點子</span>
+                          <span>探索問題市場</span>
                           <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 font-mono">
                             {filteredQuestions.length} 則待解
                           </span>
@@ -1221,9 +1161,11 @@ function MainContent() {
                           }}
                           onSearchTag={handleSearchTag}
                           onClick={() => {
+                            incrementQuestionViews(q.id, 1);
                             recordUserViewedQuestion(currentUser.id, q);
                             setUserProfileVersion((v) => v + 1);
-                            setSelectedQuestion(q);
+                            const nextV = (q.views || 0) + 1;
+                            setSelectedQuestion({ ...q, views: nextV, viewsCount: nextV });
                             setActiveTab('question_detail');
                           }}
                         />
@@ -1289,7 +1231,9 @@ function MainContent() {
               onSelectQuestion={(qId: string) => {
                 const found = questions.find((q) => q.id === qId);
                 if (found) {
-                  setSelectedQuestion(found);
+                  incrementQuestionViews(found.id, 1);
+                  const nextV = (found.views || 0) + 1;
+                  setSelectedQuestion({ ...found, views: nextV, viewsCount: nextV });
                   setActiveTab('question_detail');
                 }
               }}
@@ -1325,7 +1269,9 @@ function MainContent() {
               onOpenQuestion={(qId: string) => {
                 const found = questions.find((q) => q.id === qId);
                 if (found) {
-                  setSelectedQuestion(found);
+                  incrementQuestionViews(found.id, 1);
+                  const nextV = (found.views || 0) + 1;
+                  setSelectedQuestion({ ...found, views: nextV, viewsCount: nextV });
                   setActiveTab('question_detail');
                 }
               }}
@@ -1563,42 +1509,27 @@ function MainContent() {
         </div>
       )}
 
-      {/* 畫面右側中上浮動操作氣泡群（下載 App ＋ 教學導覽羅盤，手機端與桌面端統一右側中上位置） */}
-      <aside
-        aria-label="浮動捷徑工具"
-        className="fixed right-2.5 sm:right-4 top-[32%] sm:top-[35%] -translate-y-1/2 z-40 flex flex-col items-end gap-3 pointer-events-none select-none"
-      >
-        <div className="pointer-events-auto">
-          <FloatingOnboardingCompass
-            isVisible={!isOnboardingOpen}
-            onStartOnboarding={() => {
-              setIsOnboardingFromAbout(true);
-              setSelectedQuestion(null);
-              setSelectedSolver(null);
-              setActiveTab('explore');
-              setIsOnboardingOpen(true);
-            }}
-          />
-        </div>
-        <div className="pointer-events-auto">
-          <MobilePwaDownloadWidget />
-        </div>
-      </aside>
+      {/* 網頁版左側羅盤浮動懸停導覽入口 */}
+      <FloatingOnboardingCompass
+        isVisible={!isOnboardingOpen}
+        onStartOnboarding={() => {
+          setIsOnboardingFromAbout(true);
+          setSelectedQuestion(null);
+          setSelectedSolver(null);
+          setActiveTab('explore');
+          setIsOnboardingOpen(true);
+        }}
+      />
 
       {/* Footer */}
       <Footer
         onNavClick={(tab, section) => {
-          setSelectedQuestion(null);
-          setSelectedSolver(null);
           if (section) {
             setAboutPageSection(section);
           } else if (tab === 'about') {
             setAboutPageSection('others');
           }
           setActiveTab(tab);
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }, 30);
         }}
         onPostClick={() => setActiveTab('create_question')}
         onSearchTag={(tag) => setSearchQuery(tag)}
@@ -1632,14 +1563,16 @@ function MainContent() {
             return;
           }
           if (tab === 'explore') {
-            if (activeTab === 'explore') {
-              scrollToExploreMarket();
-            } else {
-              setActiveTab('explore');
-              setTimeout(() => {
-                scrollToExploreMarket();
-              }, 60);
-            }
+            setActiveTab('explore');
+            const scrollToMarket = () => {
+              const el = document.getElementById('market-grid');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            };
+            scrollToMarket();
+            setTimeout(scrollToMarket, 60);
+            setTimeout(scrollToMarket, 180);
             return;
           }
           setActiveTab(tab);
@@ -1703,19 +1636,6 @@ function MainContent() {
 
       {/* 螢幕正中央提示浮窗 (Center Toast HUD: 中間跳出提示再消失) */}
       <CenterToast toast={centerToast} onDismiss={hideCenterToast} />
-
-      {/* 登入 / 註冊全站彈窗 */}
-      {isAuthModalOpen && (
-        <AuthModal
-          isOpen={isAuthModalOpen}
-          onClose={closeAuthModal}
-          initialMode={authModalMode}
-          initialMethod={authModalMethod}
-          initialRole={authModalRole}
-          interceptReason={authModalInterceptReason}
-          isChallengeSite={false}
-        />
-      )}
     </div>
   );
 }

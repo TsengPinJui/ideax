@@ -44,7 +44,6 @@ interface CategorySidebarProps {
   onNavigateToLeaderboard?: () => void;
   onOpenNotifications?: () => void;
   onStartOnboarding?: () => void;
-  onNavigateToChallenge?: () => void;
   activeTab?: AppTab;
 }
 
@@ -66,7 +65,6 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   onNavigateToLeaderboard,
   onOpenNotifications,
   onStartOnboarding,
-  onNavigateToChallenge,
   activeTab = 'explore',
 }) => {
   const [sidebarSearch, setSidebarSearch] = useState('');
@@ -79,7 +77,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
     return (isDemoMode
       ? questions
       : questions.filter((q) => !isMockQuestionId(q.id, q.authorId))
-    ).filter((q) => q.status !== 'delisted');
+    ).filter((q) => q.status !== 'delisted' && !isQuestionExpired(q.deadline));
   }, [questions, isDemoMode]);
 
   // Close on Escape key press
@@ -358,58 +356,13 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
             </span>
           </button>
 
-          {/* 2. 獨立專屬專區（IdeaX 創新季 在最上方，創點子/痛點專區 在中，L0問題討論專區 在下） */}
+          {/* 2. 獨立專屬專區（創點子/痛點專區 在上，L0問題討論專區 在下） */}
           <div id="onboarding-step-7-special-zones" className="space-y-2 pt-1 pb-1">
             <div className="text-[11px] font-bold text-stone-500 px-1 flex items-center justify-between">
-              <span>🔥 主題專區與競賽</span>
-              <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded-full font-bold">
-                <span className="sm:hidden">11月創新月</span>
-                <span className="hidden sm:inline">11月國際創新月</span>
-              </span>
+              <span>🔥 主題專區</span>
             </div>
 
-            {/* 🌟 ［IdeaX 創星季］競賽活動專區入口 */}
-            <button
-              onClick={() => {
-                if (onNavigateToChallenge) {
-                  onNavigateToChallenge();
-                }
-                onClose();
-              }}
-              className={`w-full p-3 sm:p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
-                activeTab === 'innovation_challenge'
-                  ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-200 shadow-2xs'
-                  : 'bg-gradient-to-r from-amber-50/90 via-white to-amber-50/40 hover:bg-amber-100/60 border-amber-300 hover:border-amber-400 shadow-2xs'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center gap-1 shrink-0 transition-transform group-hover:scale-105">
-                  <img
-                    src="/白底低飽和正向燈泡.png"
-                    alt="IdeaX"
-                    className="h-9 sm:h-10 w-auto max-w-[38px] object-contain rounded-xl shrink-0 border border-amber-200/60 shadow-2xs"
-                  />
-                  <img
-                    src="/去背創星季.png"
-                    alt="創星季"
-                    className="h-8 sm:h-9 w-auto max-w-[72px] sm:max-w-[80px] object-contain shrink-0"
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs sm:text-sm font-black flex items-center gap-1.5 flex-wrap">
-                    <span className="text-amber-500 font-black">IdeaX 創星季</span>
-                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-emerald-600 text-white shadow-2xs whitespace-nowrap">
-                      競賽挑戰
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
-                    競賽提案、虛擬募資與專家評選
-                  </p>
-                </div>
-              </div>
-            </button>
-
-            {/* ① ［創點子/痛點專區］ */}
+            {/* ① ［創點子/痛點專區］（移到 L0 上方） */}
             <button
               onClick={() => handleSelectZone('pain_points')}
               className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
