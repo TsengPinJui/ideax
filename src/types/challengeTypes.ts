@@ -101,12 +101,37 @@ export interface ChallengeProposal {
   likedUserIds: string[];        // 點心收藏的用戶清單
   isCertified: boolean;          // 是否獲得「IdeaX 創新挑戰認證」標章
   isDemo?: boolean;              // 是否為展示範例資料
+  isTop10Winner?: boolean;       // 是否為賽後結算前十名獲獎提案
+  top10Rank?: number;            // 結算名次 1 ~ 10
+  starOfCreationAwarded?: boolean;// 是否已獲頒「創之星」徽章
 
   // 互動紀錄
   expertReviews: ChallengeExpertReview[];
   investments: ChallengeInvestment[];
   comments: ChallengeComment[];
 }
+
+export interface ChallengeFinalAwardRecord {
+  rank: number;
+  proposalId: string;
+  proposalTitle: string;
+  authorId: string;
+  authorName: string;
+  teamName: string;
+  category: ChallengeCategory;
+  fundingRaised: number;
+  likes: number;
+  badgeName: '創之星';
+  finalizedAt: string;
+}
+
+export interface ChallengeContestStatus {
+  isFinalized: boolean; // 是否已由管理員確認公布前十名
+  finalizedAt?: string;
+  finalizedByAdminId?: string;
+  top10Winners: ChallengeFinalAwardRecord[];
+}
+
 
 export interface ChallengeExpert {
   id: string;
@@ -131,7 +156,7 @@ export interface ChallengeAmbassador {
   referralCode: string;          // 專屬推薦碼
   approvedReferralsCount: number;// 推薦且已「過審」的提案數量
   pendingReferralsCount: number; // 推薦但尚在審核中的提案數量
-  earnedBonus: number;           // 累計宣傳獎勵 (過審數量 × $800)
+  earnedBonus: number;           // 累計宣傳獎勵 (過審數量 × $400)
   referredProposalIds: string[]; // 推薦的提案 ID 清單
   createdAt: string;
   isDemo?: boolean;              // 是否為展示範例資料

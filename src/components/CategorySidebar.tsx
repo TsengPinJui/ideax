@@ -79,7 +79,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
     return (isDemoMode
       ? questions
       : questions.filter((q) => !isMockQuestionId(q.id, q.authorId))
-    ).filter((q) => q.status !== 'delisted' && !isQuestionExpired(q.deadline));
+    ).filter((q) => q.status !== 'delisted');
   }, [questions, isDemoMode]);
 
   // Close on Escape key press
@@ -362,10 +362,13 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
           <div id="onboarding-step-7-special-zones" className="space-y-2 pt-1 pb-1">
             <div className="text-[11px] font-bold text-stone-500 px-1 flex items-center justify-between">
               <span>🔥 主題專區與競賽</span>
-              <span className="text-[10px] text-amber-600 font-bold">11月限定</span>
+              <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded-full font-bold">
+                <span className="sm:hidden">11月創新月</span>
+                <span className="hidden sm:inline">11月國際創新月</span>
+              </span>
             </div>
 
-            {/* 🌟 ［IdeaX 創新季］競賽活動專區入口 */}
+            {/* 🌟 ［IdeaX 創星季］競賽活動專區入口 */}
             <button
               onClick={() => {
                 if (onNavigateToChallenge) {
@@ -373,21 +376,30 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 }
                 onClose();
               }}
-              className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
+              className={`w-full p-3 sm:p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
                 activeTab === 'innovation_challenge'
                   ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-200 shadow-2xs'
-                  : 'bg-gradient-to-r from-amber-50/80 via-white to-amber-50/40 hover:bg-amber-100/60 border-amber-300 hover:border-amber-400 shadow-2xs'
+                  : 'bg-gradient-to-r from-amber-50/90 via-white to-amber-50/40 hover:bg-amber-100/60 border-amber-300 hover:border-amber-400 shadow-2xs'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-xs shrink-0">
-                  <Sparkles className="w-4 h-4 text-stone-950" />
+                <div className="flex items-center gap-1 shrink-0 transition-transform group-hover:scale-105">
+                  <img
+                    src="/白底低飽和正向燈泡.png"
+                    alt="IdeaX"
+                    className="h-9 sm:h-10 w-auto max-w-[38px] object-contain rounded-xl shrink-0 border border-amber-200/60 shadow-2xs"
+                  />
+                  <img
+                    src="/去背創星季.png"
+                    alt="創星季"
+                    className="h-8 sm:h-9 w-auto max-w-[72px] sm:max-w-[80px] object-contain shrink-0"
+                  />
                 </div>
-                <div>
-                  <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-900 transition-colors flex items-center gap-1.5">
-                    <span>IdeaX 創新季</span>
-                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-emerald-500 text-stone-950 shadow-2xs">
-                      創新季
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs sm:text-sm font-black flex items-center gap-1.5 flex-wrap">
+                    <span className="text-amber-500 font-black">IdeaX 創星季</span>
+                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-emerald-600 text-white shadow-2xs whitespace-nowrap">
+                      競賽挑戰
                     </span>
                   </div>
                   <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
@@ -395,9 +407,6 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                   </p>
                 </div>
               </div>
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
-                進入首頁
-              </span>
             </button>
 
             {/* ① ［創點子/痛點專區］ */}

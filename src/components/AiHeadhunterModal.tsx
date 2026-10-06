@@ -1,17 +1,28 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { resolveUserAvatar } from '../utils/userDisplay';
+import { Solver } from '../types';
 import { X, Sparkles, UserCheck, ShieldCheck, ArrowRight, MessageSquare } from 'lucide-react';
 
 interface AiHeadhunterModalProps {
   onClose: () => void;
+  isOpen?: boolean;
+  onSelectSolver?: (solver: Solver) => void;
+  onOpenChat?: (solver: Solver) => void;
 }
 
-export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({ onClose }) => {
+export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
+  onClose,
+  isOpen = true,
+  onSelectSolver,
+  onOpenChat,
+}) => {
   const { solvers, startDirectChat, showToast } = useApp();
   const [demandQuery, setDemandQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [matchedSolvers, setMatchedSolvers] = useState(solvers);
+
+  if (isOpen === false) return null;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

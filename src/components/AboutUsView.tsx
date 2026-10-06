@@ -1,8 +1,16 @@
 import React from 'react';
 import { TERMS_DATA } from '../data/termsData';
+import { AboutSection } from '../types';
 import { Sparkles, ShieldCheck, Target, Users, Zap, HeartHandshake } from 'lucide-react';
 
-export const AboutUsView: React.FC = () => {
+interface AboutUsViewProps {
+  initialSection?: AboutSection | string;
+  onBack?: () => void;
+  isModal?: boolean;
+  onStartOnboarding?: () => void;
+}
+
+export const AboutUsView: React.FC<AboutUsViewProps> = () => {
   const about = TERMS_DATA.about_ideax;
 
   return (

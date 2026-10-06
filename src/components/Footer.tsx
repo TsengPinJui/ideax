@@ -78,14 +78,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 <button
                   type="button"
                   onClick={() => onNavClick('innovation_challenge')}
-                  className="hover:text-amber-300 transition-colors text-left font-black text-amber-400 cursor-pointer flex items-center gap-1.5 active:scale-95 group"
-                  title="進入 11月 IdeaX 創新挑戰季競賽網站"
+                  className="hover:text-emerald-300 transition-colors text-left font-black text-emerald-400 cursor-pointer flex items-center gap-1.5 active:scale-95 group"
+                  title="進入 11月 IdeaX 創星季競賽專區"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span>IdeaX創新季挑戰賽</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40">
-                    競賽
-                  </span>
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <span>IdeaX創星季挑戰賽</span>
                 </button>
               </li>
               <li>
@@ -157,22 +154,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   className="hover:text-amber-400 transition-colors cursor-pointer text-left"
                 >
                   功能說明
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => {
-                    onNavClick('about', 'other_4');
-                    setTimeout(() => {
-                      const el = document.getElementById('suitable-personas-section');
-                      if (el) {
-                        el.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }, 120);
-                  }}
-                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
-                >
-                  什麼人適合使用IdeaX？
                 </button>
               </li>
             </ul>

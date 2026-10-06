@@ -56,12 +56,21 @@ export const ChallengeCertificateModal: React.FC<ChallengeCertificateModalProps>
                 <Award className="w-8 h-8 text-stone-950" />
               </div>
               <p className="text-[10px] font-mono tracking-widest text-amber-800 font-bold uppercase pt-1">
-                Official Certification of Innovation
+                Official Certification of Innovation • 創星季
               </p>
               <h2 className="text-lg sm:text-2xl font-black text-stone-950 tracking-tight">
                 IdeaX 創新挑戰入選認證
               </h2>
+
+              {/* 創之星 前十名榮譽標章 */}
+              {(proposal.starOfCreationAwarded || proposal.isTop10Winner) && (
+                <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-950 text-xs font-black shadow-xs mx-auto mt-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>🌟 創星季賽事前十名「創之星」榮譽得主 {proposal.top10Rank ? `(TOP ${proposal.top10Rank})` : ''}</span>
+                </div>
+              )}
             </div>
+
 
             {/* Certificate Body */}
             <div className="py-2 space-y-3 text-stone-800 text-xs sm:text-sm leading-relaxed border-y border-amber-200/80">
@@ -86,8 +95,8 @@ export const ChallengeCertificateModal: React.FC<ChallengeCertificateModalProps>
               </div>
 
               <div className="text-right">
-                <span className="block text-stone-400">發證機構</span>
-                <span className="font-bold text-amber-900 font-sans">創點子 IdeaX 競賽委員會</span>
+                <span className="block text-stone-400">主辦單位 / 發證機構</span>
+                <span className="font-bold text-amber-900 font-sans">IdeaX創點子團隊</span>
               </div>
             </div>
           </div>

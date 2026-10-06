@@ -244,11 +244,18 @@ export const ChallengeProposalDetailModal: React.FC<ChallengeProposalDetailModal
         <div className="px-6 py-4 bg-white text-stone-900 flex items-center justify-between shrink-0 border-b border-stone-200">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-300">
-              創新季
+              創星季
             </span>
             <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 text-xs font-bold">
               {currentProp.category}
             </span>
+            {/* 創之星 榮譽徽章 */}
+            {(currentProp.starOfCreationAwarded || currentProp.isTop10Winner) && (
+              <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-950 font-black text-xs flex items-center gap-1 shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>創之星 {currentProp.top10Rank ? `TOP ${currentProp.top10Rank}` : 'TOP 10'}</span>
+              </span>
+            )}
             {currentProp.isCertified && (
               <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 font-black text-xs flex items-center gap-1 shadow-2xs">
                 <Award className="w-3.5 h-3.5" />
@@ -256,6 +263,7 @@ export const ChallengeProposalDetailModal: React.FC<ChallengeProposalDetailModal
               </span>
             )}
           </div>
+
 
           <div className="flex items-center gap-2">
             {currentProp.isCertified && (

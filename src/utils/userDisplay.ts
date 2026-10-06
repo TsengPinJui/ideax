@@ -23,3 +23,23 @@ export function resolveUserName(name?: string | null, isAnonymous?: boolean): st
   }
   return name;
 }
+
+export function resolveUserDisplayName(
+  userId?: string | null,
+  fallbackName?: string | null,
+  availableUsers?: Array<{ id: string; name?: string; username?: string }> | null
+): string {
+  if (userId && availableUsers && availableUsers.length > 0) {
+    const found = availableUsers.find((u) => u.id === userId);
+    if (found && found.name && found.name.trim() !== '') {
+      return found.name;
+    }
+  }
+  if (fallbackName && fallbackName.trim() !== '') {
+    return fallbackName;
+  }
+  if (userId) {
+    return userId;
+  }
+  return '創點子用戶';
+}

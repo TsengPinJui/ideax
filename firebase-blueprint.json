@@ -155,6 +155,87 @@
         "isCustom": { "type": "boolean" }
       },
       "required": ["id", "name", "title", "fileType", "isCustom"]
+    },
+    "ChallengeProposal": {
+      "title": "ChallengeProposal",
+      "description": "IdeaX Innovation Challenge proposals with funding, approvals, reviews, and attachments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "teamName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "schoolOrOccupation": { "type": "string" },
+        "painPoint": { "type": "string" },
+        "solution": { "type": "string" },
+        "targetAudience": { "type": "string" },
+        "businessModel": { "type": "string" },
+        "expectedImpact": { "type": "string" },
+        "status": { "type": "string" },
+        "submittedAt": { "type": "string" },
+        "fundingRaised": { "type": "number" },
+        "fundingSupportersCount": { "type": "number" },
+        "views": { "type": "number" },
+        "likes": { "type": "number" },
+        "isCertified": { "type": "boolean" },
+        "isDemo": { "type": "boolean" }
+      },
+      "required": ["id", "title", "category", "authorId", "status", "submittedAt", "fundingRaised"]
+    },
+    "ChallengeWallet": {
+      "title": "ChallengeWallet",
+      "description": "Virtual Idea Points wallet dedicated to Innovation Challenge",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "role": { "type": "string" },
+        "totalPoints": { "type": "number" },
+        "availablePoints": { "type": "number" },
+        "spentPoints": { "type": "number" },
+        "investedRecords": { "type": "array" }
+      },
+      "required": ["userId", "role", "totalPoints", "availablePoints", "spentPoints"]
+    },
+    "ChallengeAmbassador": {
+      "title": "ChallengeAmbassador",
+      "description": "Campus ambassadors advocating challenge proposals with referral codes and approval rewards",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "schoolOrOrg": { "type": "string" },
+        "referralCode": { "type": "string" },
+        "approvedReferralsCount": { "type": "number" },
+        "pendingReferralsCount": { "type": "number" },
+        "earnedBonus": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "referralCode", "earnedBonus"]
+    },
+    "ChallengeExpert": {
+      "title": "ChallengeExpert",
+      "description": "Industry and academic mentors providing expert reviews and guidance on challenge proposals",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "domain": { "type": "string" },
+        "avatar": { "type": "string" },
+        "experience": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewsCount": { "type": "number" },
+        "totalFundPool": { "type": "number" },
+        "remainingFundPool": { "type": "number" },
+        "isDemo": { "type": "boolean" }
+      },
+      "required": ["id", "name", "title", "domain", "totalFundPool", "remainingFundPool"]
     }
   },
   "firestore": {
@@ -209,6 +290,22 @@
     "/platform_manual_files/{fileId}": {
       "schema": "PlatformManualFile",
       "description": "Stores custom uploaded documents and manuals in IdeaX platform list"
+    },
+    "/challenge_proposals/{proposalId}": {
+      "schema": "ChallengeProposal",
+      "description": "Stores IdeaX Innovation Challenge proposals"
+    },
+    "/challenge_wallets/{walletId}": {
+      "schema": "ChallengeWallet",
+      "description": "Stores dedicated point wallets for challenge participants"
+    },
+    "/challenge_ambassadors/{ambassadorId}": {
+      "schema": "ChallengeAmbassador",
+      "description": "Stores campus ambassador profiles and referral metrics"
+    },
+    "/challenge_experts/{expertId}": {
+      "schema": "ChallengeExpert",
+      "description": "Stores challenge expert mentor profiles and review quotas"
     }
   }
 }

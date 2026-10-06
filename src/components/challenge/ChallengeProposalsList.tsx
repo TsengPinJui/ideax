@@ -101,10 +101,11 @@ export const ChallengeProposalsList: React.FC<ChallengeProposalsListProps> = ({
             <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
               <span>競賽提案專區</span>
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                創新季
+                創星季
               </span>
             </h2>
           </div>
+
           <p className="text-xs sm:text-sm text-stone-500 mt-1">
             借鏡大專校院創業學習平臺架構：提案總覽、模擬支持、評審點評與完整企劃專頁
           </p>
@@ -261,10 +262,10 @@ export const ChallengeProposalsList: React.FC<ChallengeProposalsListProps> = ({
 
                   {/* Top Badges */}
                   <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
-                    {/* 綠色活動標籤「創新季」 */}
+                    {/* 綠色活動標籤「創星季」 */}
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-stone-950 font-black text-[10px] shadow-2xs flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-stone-950" />
-                      <span>創新季</span>
+                      <span>創星季</span>
                     </span>
 
                     {/* 領域標籤 */}
@@ -272,12 +273,24 @@ export const ChallengeProposalsList: React.FC<ChallengeProposalsListProps> = ({
                       {proposal.category}
                     </span>
 
+                    {/* 賽後結算前十名「創之星」榮譽徽章 */}
+                    {(proposal.starOfCreationAwarded || proposal.isTop10Winner) && (
+                      <span
+                        className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-950 text-[10px] font-black flex items-center gap-0.5 shadow-2xs"
+                        title={`獲選為創星季前十名「創之星」榮譽得主${proposal.top10Rank ? `（第 ${proposal.top10Rank} 名）` : ''}`}
+                      >
+                        <Sparkles className="w-3 h-3 text-stone-950" />
+                        <span>創之星 {proposal.top10Rank ? `TOP ${proposal.top10Rank}` : ''}</span>
+                      </span>
+                    )}
+
                     {/* 展示範例標籤 */}
                     {proposal.isDemo && (
                       <span className="px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 text-[10px] font-black shadow-2xs">
                         展示範例
                       </span>
                     )}
+
 
                     {/* 官方認證金色標章 */}
                     {proposal.isCertified && !proposal.isDemo && (

@@ -1,14 +1,29 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { resolveUserAvatar } from '../utils/userDisplay';
+import { UserDashboardTab } from '../types';
 import { X, ShieldCheck, Wallet, UserCheck, Lock, CheckCircle, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface UserDashboardModalProps {
   onClose: () => void;
+  initialTab?: UserDashboardTab;
+  isFullPage?: boolean;
+  onNavigateToTerms?: () => void;
+  onOpenAiCrm?: () => void;
+  onOpenQuestion?: (qId: any) => void;
+  onStartOnboarding?: () => void;
 }
 
-export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({ onClose }) => {
+export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
+  onClose,
+  initialTab,
+  isFullPage,
+  onNavigateToTerms,
+  onOpenAiCrm,
+  onOpenQuestion,
+  onStartOnboarding,
+}) => {
   const { currentUser, setCurrentUser, showToast } = useApp();
   const [topUpAmount, setTopUpAmount] = useState<number>(5000);
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'wallet' | 'membership'>('profile');

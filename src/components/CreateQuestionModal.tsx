@@ -6,6 +6,12 @@ import confetti from 'canvas-confetti';
 
 interface CreateQuestionModalProps {
   onClose: () => void;
+  isFullPage?: boolean;
+  initialPostType?: any;
+  initialPublishIdentity?: 'admin' | 'platform';
+  initialCategory?: Category | undefined;
+  initialSubcategory?: string | undefined;
+  onSuccess?: (newQ: any) => void;
 }
 
 export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({ onClose }) => {
@@ -64,7 +70,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({ onClos
       tags: tags.length > 0 ? tags : [category],
       level: isPainPointFree ? 'L1' : level,
       bounty: effectiveBounty,
-      deadline: new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
+      deadline: '',
       status: 'open',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -74,7 +80,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({ onClos
 
     setQuestions((prev) => [newQuestion, ...prev]);
     confetti({ particleCount: 70, spread: 60 });
-    showToast(isPainPointFree ? '🎉 痛點已成功免費上架！' : '🎉 付費懸賞已成功發布並進入第三方價金託管！');
+    showToast(isPainPointFree ? '🎉 痛點已成功永久刊登！' : '🎉 付費懸賞已成功永久發布並進入第三方價金託管！');
     onClose();
   };
 
@@ -242,6 +248,17 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({ onClos
               placeholder="例如：AI Agent, 企業落地, POC驗收"
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
             />
+          </div>
+
+          {/* Permanent Listing Notice */}
+          <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/90 text-xs text-amber-950 flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="leading-relaxed">
+              <span className="font-bold text-stone-900 block">✨ 全平台永久刊登存檔</span>
+              <span className="text-stone-600 text-[11px]">
+                所有發布之難題與痛點將永久存於資料庫與市場中，無需擔心過期下架。系統自動依「推薦/推播 &gt; 最新發布 &gt; 早期題目」進行排序曝光。
+              </span>
+            </div>
           </div>
 
           {/* Anonymous Switch */}

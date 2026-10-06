@@ -9,8 +9,8 @@ export const CHALLENGE_CONSTANTS = {
   TITLE: 'IdeaX 創新挑戰季',
   TITLE_EN: 'IdeaX Innovation Challenge',
   SLOGAN: '提出你的創新想法，讓市場與專業者共同驗證。',
-  HERO_TITLE: '你的 Idea，值得被世界看見',
-  HERO_SUBTITLE: '加入 IdeaX 創新挑戰季，提出創業想法，獲得市場支持與專業回饋。',
+  HERO_TITLE: '你的 創新點子，值得被市場看見',
+  HERO_SUBTITLE: '加入 IdeaX 創新挑戰季，提出創新idea，獲得市場支持與專業回饋。',
   POINT_NAME: 'Idea Point (虛擬點數)',
   POINT_EXCHANGE_RATE: '1 點 = NT$1',
   
@@ -37,7 +37,11 @@ export const CHALLENGE_CONSTANTS = {
   },
 
   // 大使推廣獎勵（實體宣傳費）
-  AMBASSADOR_REWARD_PER_APPROVED: 800, // 校園大使每推薦一件審核通過的提案，可得 $800 推廣費 (不可暗示投稿者領款)
+  AMBASSADOR_REWARD_PER_APPROVED: 400, // 推廣大使每推薦一件審核通過的提案，可得 $400 推廣費 (400/過審)
+
+  // 賽事主辦單位
+  ORGANIZER: 'IdeaX創點子團隊',
+  ORGANIZER_LABEL: '主辦單位：IdeaX創點子團隊',
 
   // 推薦分享獎勵（虛擬點數）
   SHARE_REFERRAL_BONUS_POINTS: 100,    // 推薦碼分享獎勵：每人可領 100 點競賽虛擬幣 (每個帳號限領一次)
@@ -143,18 +147,18 @@ export const INITIAL_CHALLENGE_EXPERTS: ChallengeExpert[] = [
   },
 ];
 
-// 示範校園大使
+// 示範推廣大使
 export const INITIAL_CHALLENGE_AMBASSADORS: ChallengeAmbassador[] = [
   {
     id: 'amb-demo-1',
     userId: 'user-amb-demo-1',
-    name: '【展示範例】校園大使 A',
+    name: '【展示範例】推廣大使 A',
     email: 'ambassador.demo@campus.ideax.tw',
     schoolOrOrg: '示範大學 創新創業學程',
     referralCode: 'IDEAX-DEMO88',
     approvedReferralsCount: 2,
     pendingReferralsCount: 1,
-    earnedBonus: 1600, // 2 * 800
+    earnedBonus: 800, // 2 * 400
     referredProposalIds: ['demo-prop-1', 'demo-prop-2'],
     createdAt: '2026-11-02T10:00:00Z',
     isDemo: true,

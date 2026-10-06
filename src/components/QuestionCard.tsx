@@ -6,6 +6,11 @@ import { Clock, Eye, MessageSquare, Tag, Zap, ShieldCheck } from 'lucide-react';
 interface QuestionCardProps {
   question: Question;
   onClick: () => void;
+  solutionsCount?: number;
+  discussionsCount?: number;
+  viewMode?: string;
+  onSelectCategory?: (cat: any, sub?: any) => void;
+  onSearchTag?: (tag: string) => void;
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({ question, onClick }) => {

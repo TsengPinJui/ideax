@@ -32,6 +32,7 @@ import { HelpTooltip } from './components/HelpTooltip';
 import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnboardingGuide';
 import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompass';
 import { InnovationChallengeView } from './components/challenge/InnovationChallengeView';
+import { AuthModal } from './components/AuthModal';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { isPainPointQuestion } from './utils/questionUtils';
@@ -81,6 +82,12 @@ function MainContent() {
     availableUsers,
     startDirectChat,
     openAuthModal,
+    closeAuthModal,
+    isAuthModalOpen,
+    authModalMode,
+    authModalMethod,
+    authModalRole,
+    authModalInterceptReason,
     addNotification,
     isDemoMode,
     isNoPaymentMode,
@@ -386,12 +393,7 @@ function MainContent() {
       // 1. 排除已被管理員下架的問題
       if (q.status === 'delisted') return false;
 
-      // 2. 顯示出來的問題不包含過期的（以截止日當日 23:59:59 為最終截止線，過期不顯示）
-      if (isQuestionExpired(q.deadline)) {
-        return false;
-      }
-
-      // 3. 已有人提案或接案的問題，只要期限還沒過一樣顯示
+      // 2. 永久刊登：所有題目均永久有效並刊登於市場中，無過期下架限制
       return true;
     });
   }, [questions, isDemoMode]);
@@ -739,7 +741,7 @@ function MainContent() {
 
   if (activeTab === 'innovation_challenge') {
     return (
-      <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-100 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-amber-200">
+      <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-100 flex flex-col font-['Noto_Sans_TC',sans-serif] text-stone-900 selection:bg-emerald-300">
         <InnovationChallengeView
           currentUser={currentUser}
           onBackToMainPlatform={() => {
@@ -757,6 +759,19 @@ function MainContent() {
 
         {/* 螢幕正中央提示浮窗 (Center Toast HUD) */}
         <CenterToast toast={centerToast} onDismiss={hideCenterToast} />
+
+        {/* 登入 / 註冊全站彈窗 (支援新舊站同步帳號體系) */}
+        {isAuthModalOpen && (
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={closeAuthModal}
+            initialMode={authModalMode}
+            initialMethod={authModalMethod}
+            initialRole={authModalRole}
+            interceptReason={authModalInterceptReason}
+            isChallengeSite={true}
+          />
+        )}
       </div>
     );
   }
@@ -988,7 +1003,7 @@ function MainContent() {
                     <div className="flex sm:flex-row items-center justify-between gap-1.5 sm:gap-4 mb-1.5 sm:mb-3">
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 sm:gap-2">
-                          <span>徵點子</span>
+                          <span>💡 徵點子</span>
                           <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 font-mono">
                             {filteredQuestions.length} 則待解
                           </span>
@@ -1688,6 +1703,19 @@ function MainContent() {
 
       {/* 螢幕正中央提示浮窗 (Center Toast HUD: 中間跳出提示再消失) */}
       <CenterToast toast={centerToast} onDismiss={hideCenterToast} />
+
+      {/* 登入 / 註冊全站彈窗 */}
+      {isAuthModalOpen && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={closeAuthModal}
+          initialMode={authModalMode}
+          initialMethod={authModalMethod}
+          initialRole={authModalRole}
+          interceptReason={authModalInterceptReason}
+          isChallengeSite={false}
+        />
+      )}
     </div>
   );
 }
