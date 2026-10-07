@@ -232,7 +232,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <div className="relative mb-4.5 sm:mb-5.5 group inline-flex max-w-[90%] sm:max-w-xl lg:max-w-2xl mx-auto justify-center">
             {/* Ambient backlight ring */}
             <div className="absolute inset-0 rounded-3xl bg-amber-300/35 blur-2xl scale-105 pointer-events-none" />
-            <div className="relative py-2 px-3.5 sm:py-2.5 sm:px-5 md:py-3 md:px-6 rounded-2xl sm:rounded-3xl bg-gradient-to-b from-amber-50/90 via-white/95 to-white/95 border border-amber-200/80 shadow-md flex items-center justify-center gap-3 sm:gap-4.5 md:gap-5.5">
+            <div className="relative py-2 px-3 sm:py-2.5 sm:px-4 md:py-3 md:px-5 rounded-2xl sm:rounded-3xl bg-gradient-to-b from-amber-50/90 via-white/95 to-white/95 border border-amber-200/80 shadow-md flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2">
               <img
                 src="/logo-bulb.png"
                 alt="IdeaX 燈泡"
