@@ -746,17 +746,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRaceMode(!isRaceMode);
   };
 
-  // Load initial state with localStorage support (預設未登入任何帳號，以訪客身分開始)
+  // Load initial state with localStorage support (依使用者要求：絕對不預設任何帳號登入，一律以未登入訪客開始)
   const [currentUser, setCurrentUser] = useState<User>(() => {
     try {
       const isAuthenticated = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_authenticated`) === 'true';
-      if (!isAuthenticated) {
+      const isExplicitLogin = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_explicit_login`) === 'true';
+
+      // 依使用者指示「不要預設有任何帳號登入」：
+      // 未明確點擊登入的使用者，初次載入或重整一律為訪客身分 (GUEST_USER)，清除任何舊版殘留之預設登入身分
+      if (!isAuthenticated || !isExplicitLogin) {
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_explicit_login`);
         return GUEST_USER;
       }
+
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}user`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.id && parsed.name && parsed.id !== 'user-guest') {
+          // 若為舊版遺留之預設管理員/測試帳號且未曾明確手動登入過，一律清除並還原為訪客
+          if (!isExplicitLogin && (parsed.id === 'user-admin' || isTestAccountUserId(parsed.id))) {
+            localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+            localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_explicit_login`);
+            return GUEST_USER;
+          }
+
           const isAdmin =
             parsed.id === 'user-admin' ||
             (typeof parsed.username === 'string' && parsed.username.toLowerCase() === 'admin_001') ||
@@ -859,6 +873,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [deviceAccounts, setDeviceAccounts] = useState<DeviceAccount[]>(() => {
     try {
       const isAuthenticated = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_authenticated`) === 'true';
+      const isExplicitLogin = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_explicit_login`) === 'true';
+      if (!isAuthenticated || !isExplicitLogin) {
+        return [];
+      }
       const saved = localStorage.getItem(DEVICE_ACCOUNTS_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -866,7 +884,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // 若目前未登入（如剛進入網站或剛下載之用戶），絕不殘留任何舊版預設之管理員或訪客帳號
           const cleaned = parsed.filter((a: any) => {
             if (!a || !a.userId || a.userId === 'user-guest') return false;
-            if (!isAuthenticated && (a.userId === 'user-admin' || isTestAccountUserId(a.userId))) return false;
             return true;
           });
           return cleaned;
@@ -1436,8 +1453,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(currentUser));
     if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}is_authenticated`, 'true');
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}is_explicit_login`, 'true');
     } else {
       localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_explicit_login`);
     }
     setAvailableUsers((users) => {
       const idx = users.findIndex((u) => u.id === currentUser.id);
@@ -1581,12 +1600,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(cleanUsers));
         } catch {}
-        const found = cleanUsers.find((u) => u.id === currentUser.id);
-        if (found) {
-          const effectiveUser = (found.id === 'user-admin' || found.role === 'admin')
-            ? { ...found, balance: typeof found.balance === 'number' && found.balance > 0 ? found.balance : 50000 }
-            : found;
-          setCurrentUser(effectiveUser);
+        if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
+          const found = cleanUsers.find((u) => u.id === currentUser.id);
+          if (found) {
+            const effectiveUser = (found.id === 'user-admin' || found.role === 'admin')
+              ? { ...found, balance: typeof found.balance === 'number' && found.balance > 0 ? found.balance : 50000 }
+              : found;
+            setCurrentUser(effectiveUser);
+          }
         }
       }
 
@@ -1691,12 +1712,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               return u;
             });
             setAvailableUsers(cleanUsers.length > 0 ? cleanUsers : CLEAN_CORE_USERS);
-            const foundUser = cleanUsers.find((u) => u.id === currentUser.id);
-            if (foundUser) {
-              const effectiveUser = (foundUser.id === 'user-admin' || foundUser.role === 'admin')
-                ? { ...foundUser, balance: typeof foundUser.balance === 'number' && foundUser.balance > 0 ? foundUser.balance : 50000 }
-                : foundUser;
-              setCurrentUser(effectiveUser);
+            if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
+              const foundUser = cleanUsers.find((u) => u.id === currentUser.id);
+              if (foundUser) {
+                const effectiveUser = (foundUser.id === 'user-admin' || foundUser.role === 'admin')
+                  ? { ...foundUser, balance: typeof foundUser.balance === 'number' && foundUser.balance > 0 ? foundUser.balance : 50000 }
+                  : foundUser;
+                setCurrentUser(effectiveUser);
+              }
             }
           }
           if (cloudData.questions && cloudData.questions.length > 0) {
@@ -2550,6 +2573,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const effectiveUser = restoredUser;
     setCurrentUser(effectiveUser);
     localStorage.setItem(`${STORAGE_KEY_PREFIX}is_authenticated`, 'true');
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}is_explicit_login`, 'true');
     localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(effectiveUser));
     localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(effectiveUser));
 
@@ -2609,6 +2633,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const guest = GUEST_USER;
       setCurrentUser(guest);
       localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_explicit_login`);
       localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(guest));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(guest));
     }

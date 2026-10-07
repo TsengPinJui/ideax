@@ -977,87 +977,92 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* 3.5 點數 / 應收帳款快捷按鈕 (電腦版) - 全模式配置同步 */}
-          <button
-            onClick={() => {
-              if (currentUser.role === 'solver') {
-                handleOpenDashboard('points_receivables');
-              } else {
-                handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
-              }
-            }}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs hover:shadow-xs group shrink-0 ${
-              currentUser.role === 'solver'
-                ? 'bg-blue-50/90 hover:bg-blue-100 border-blue-200/90 text-blue-950'
-                : currentUser.role === 'admin'
-                ? 'bg-purple-50/90 hover:bg-purple-100 border-purple-200/90 text-purple-950'
-                : 'bg-amber-50/90 hover:bg-amber-100 border-amber-200/90 text-amber-950'
-            }`}
-            title={currentUser.role === 'solver' ? '應收帳款中心' : currentUser.role === 'admin' ? '管理員每日可撥付配額中心' : '點數中心'}
-          >
-            {currentUser.role === 'solver' ? (
-              <>
-                <Building2 className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
-                <span>{isNoPaymentMode ? '應收 尚未開放' : `應收 NT$ ${(currentUser.withheldPoints || 0).toLocaleString()}`}</span>
-              </>
-            ) : currentUser.role === 'admin' ? (
-              <>
-                <Coins className="w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform" />
-                <span className="font-mono text-purple-950 font-extrabold">{(getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()} 點</span>
-              </>
-            ) : (
-              <>
-                <Coins className="w-3.5 h-3.5 text-amber-600 group-hover:scale-110 transition-transform" />
-                <span className="font-mono text-amber-900 font-extrabold">{(currentUser?.balance || 0).toLocaleString()} 點</span>
-              </>
-            )}
-          </button>
+          {/* 3.5 點數 / 應收帳款快捷按鈕 (僅登入用戶顯示，訪客不顯示) */}
+          {!isGuest && (
+            <>
+              {/* 電腦版 */}
+              <button
+                onClick={() => {
+                  if (currentUser.role === 'solver') {
+                    handleOpenDashboard('points_receivables');
+                  } else {
+                    handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
+                  }
+                }}
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs hover:shadow-xs group shrink-0 ${
+                  currentUser.role === 'solver'
+                    ? 'bg-blue-50/90 hover:bg-blue-100 border-blue-200/90 text-blue-950'
+                    : currentUser.role === 'admin'
+                    ? 'bg-purple-50/90 hover:bg-purple-100 border-purple-200/90 text-purple-950'
+                    : 'bg-amber-50/90 hover:bg-amber-100 border-amber-200/90 text-amber-950'
+                }`}
+                title={currentUser.role === 'solver' ? '應收帳款中心' : currentUser.role === 'admin' ? '管理員每日可撥付配額中心' : '點數中心'}
+              >
+                {currentUser.role === 'solver' ? (
+                  <>
+                    <Building2 className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                    <span>{isNoPaymentMode ? '應收 尚未開放' : `應收 NT$ ${(currentUser.withheldPoints || 0).toLocaleString()}`}</span>
+                  </>
+                ) : currentUser.role === 'admin' ? (
+                  <>
+                    <Coins className="w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform" />
+                    <span className="font-mono text-purple-950 font-extrabold">{(getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()} 點</span>
+                  </>
+                ) : (
+                  <>
+                    <Coins className="w-3.5 h-3.5 text-amber-600 group-hover:scale-110 transition-transform" />
+                    <span className="font-mono text-amber-900 font-extrabold">{(currentUser?.balance || 0).toLocaleString()} 點</span>
+                  </>
+                )}
+              </button>
 
-          {/* 手機版：餘額按鈕（位於右上角聊天室入口左側，點擊連結到點數儲值或應收帳款管理） - 全模式配置同步 */}
-          <button
-            type="button"
-            onClick={() => {
-              if (currentUser.role === 'solver') {
-                handleOpenDashboard('points_receivables');
-              } else {
-                handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
-              }
-            }}
-            className={`sm:hidden flex items-center gap-1 px-2 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
-              currentUser.role === 'solver'
-                ? 'bg-blue-50/95 hover:bg-blue-100 border-blue-200 text-blue-950'
-                : currentUser.role === 'admin'
-                ? 'bg-purple-50/95 hover:bg-purple-100 border-purple-200 text-purple-950'
-                : 'bg-amber-50/95 hover:bg-amber-100 border-amber-200 text-amber-950'
-            }`}
-            title={currentUser.role === 'solver' ? '應收帳款管理' : currentUser.role === 'admin' ? '管理員每日可撥配額' : '點數儲值管理'}
-          >
-            {currentUser.role === 'solver' ? (
-              <>
-                <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="text-[10px] font-bold text-blue-800">應收</span>
-                <span className={`text-[11px] font-black text-blue-950 ${isNoPaymentMode ? 'font-sans text-[10px]' : 'font-mono'}`}>
-                  {isNoPaymentMode ? '尚未開放' : `NT$${(currentUser.withheldPoints || 0).toLocaleString()}`}
-                </span>
-              </>
-            ) : currentUser.role === 'admin' ? (
-              <>
-                <Coins className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                <span className="font-mono text-purple-950 font-black text-[11px]">
-                  {(getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()}
-                </span>
-                <span className="text-[10px] text-purple-900 font-bold">點</span>
-              </>
-            ) : (
-              <>
-                <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span className="font-mono text-amber-950 font-black text-[11px]">
-                  {(currentUser?.balance || 0).toLocaleString()}
-                </span>
-                <span className="text-[10px] text-amber-900 font-bold">點</span>
-              </>
-            )}
-          </button>
+              {/* 手機版 */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentUser.role === 'solver') {
+                    handleOpenDashboard('points_receivables');
+                  } else {
+                    handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
+                  }
+                }}
+                className={`sm:hidden flex items-center gap-1 px-2 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
+                  currentUser.role === 'solver'
+                    ? 'bg-blue-50/95 hover:bg-blue-100 border-blue-200 text-blue-950'
+                    : currentUser.role === 'admin'
+                    ? 'bg-purple-50/95 hover:bg-purple-100 border-purple-200 text-purple-950'
+                    : 'bg-amber-50/95 hover:bg-amber-100 border-amber-200 text-amber-950'
+                }`}
+                title={currentUser.role === 'solver' ? '應收帳款管理' : currentUser.role === 'admin' ? '管理員每日可撥配額' : '點數儲值管理'}
+              >
+                {currentUser.role === 'solver' ? (
+                  <>
+                    <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span className="text-[10px] font-bold text-blue-800">應收</span>
+                    <span className={`text-[11px] font-black text-blue-950 ${isNoPaymentMode ? 'font-sans text-[10px]' : 'font-mono'}`}>
+                      {isNoPaymentMode ? '尚未開放' : `NT$${(currentUser.withheldPoints || 0).toLocaleString()}`}
+                    </span>
+                  </>
+                ) : currentUser.role === 'admin' ? (
+                  <>
+                    <Coins className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                    <span className="font-mono text-purple-950 font-black text-[11px]">
+                      {(getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()}
+                    </span>
+                    <span className="text-[10px] text-purple-900 font-bold">點</span>
+                  </>
+                ) : (
+                  <>
+                    <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="font-mono text-amber-950 font-black text-[11px]">
+                      {(currentUser?.balance || 0).toLocaleString()}
+                    </span>
+                    <span className="text-[10px] text-amber-900 font-bold">點</span>
+                  </>
+                )}
+              </button>
+            </>
+          )}
 
           {/* Mobile Message Center Entry (替代頭像) */}
           <button

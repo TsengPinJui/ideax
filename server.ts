@@ -133,8 +133,22 @@ export async function callDifyStreamingAgent(params: {
 
 // Helper to generate content with fallback models and retry for 503 / high demand spikes
 const CANDIDATE_MODELS = ['gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+let isGeminiAuthDisabled = false;
+
+function isGeminiAuthError(err: any): boolean {
+  const msg = (err?.message || '').toLowerCase();
+  return (
+    err?.status === 401 ||
+    err?.status === 'UNAUTHENTICATED' ||
+    msg.includes('401') ||
+    msg.includes('deleted or disabled') ||
+    msg.includes('account_state_invalid') ||
+    msg.includes('api_key_invalid')
+  );
+}
 
 async function generateWithGeminiFallback(prompt: string, schema: any) {
+  if (isGeminiAuthDisabled) return null;
   const ai = getGeminiClient();
   if (!ai) return null;
 
@@ -155,6 +169,11 @@ async function generateWithGeminiFallback(prompt: string, schema: any) {
           if (parsed) return parsed;
         }
       } catch (err: any) {
+        if (isGeminiAuthError(err)) {
+          isGeminiAuthDisabled = true;
+          console.warn('Gemini service account is disabled/unauthenticated. Automatically routing all intelligence tasks to Dify Agent & heuristic engines.');
+          return null;
+        }
         console.warn(`Gemini schema error on ${model}:`, err.message);
         const isUnavailable = err?.message?.includes('503') || err?.status === 'UNAVAILABLE' || err?.message?.includes('high demand');
         if (isUnavailable && attempt === 0) {
@@ -171,31 +190,39 @@ async function generateWithGeminiFallback(prompt: string, schema: any) {
 
 // Helper to generate open-ended or JSON raw text via Gemini fallback
 async function generateRawTextWithGemini(prompt: string, systemInstruction?: string): Promise<string | null> {
-  const ai = getGeminiClient();
-  if (ai) {
-    for (const model of CANDIDATE_MODELS) {
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const response = await ai.models.generateContent({
-            model,
-            contents: prompt,
-            config: {
-              systemInstruction: systemInstruction || '你是「創點子 IdeaX」頂級 AI Agent 智庫大腦（整合市場顧問、AICRM 與官方客服特助），請根據指令產出專業、結構化、可直接落地的深入回覆。若有需要請以 Markdown 或 JSON 格式輸出。',
-            },
-          });
+  if (!isGeminiAuthDisabled) {
+    const ai = getGeminiClient();
+    if (ai) {
+      for (const model of CANDIDATE_MODELS) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const response = await ai.models.generateContent({
+              model,
+              contents: prompt,
+              config: {
+                systemInstruction: systemInstruction || '你是「創點子 IdeaX」頂級 AI Agent 智庫大腦（整合市場顧問、AICRM 與官方客服特助），請根據指令產出專業、結構化、可直接落地的深入回覆。若有需要請以 Markdown 或 JSON 格式輸出。',
+              },
+            });
 
-          if (response && response.text) {
-            return response.text.trim();
+            if (response && response.text) {
+              return response.text.trim();
+            }
+          } catch (err: any) {
+            if (isGeminiAuthError(err)) {
+              isGeminiAuthDisabled = true;
+              console.warn('Gemini service account is disabled/unauthenticated. Routing to fallback text generation.');
+              break;
+            }
+            console.warn(`Gemini raw text error on ${model}:`, err.message);
+            const isUnavailable = err?.message?.includes('503') || err?.status === 'UNAVAILABLE' || err?.message?.includes('high demand');
+            if (isUnavailable && attempt === 0) {
+              await new Promise((r) => setTimeout(r, 400));
+              continue;
+            }
+            break;
           }
-        } catch (err: any) {
-          console.warn(`Gemini raw text error on ${model}:`, err.message);
-          const isUnavailable = err?.message?.includes('503') || err?.status === 'UNAVAILABLE' || err?.message?.includes('high demand');
-          if (isUnavailable && attempt === 0) {
-            await new Promise((r) => setTimeout(r, 400));
-            continue;
-          }
-          break;
         }
+        if (isGeminiAuthDisabled) break;
       }
     }
   }

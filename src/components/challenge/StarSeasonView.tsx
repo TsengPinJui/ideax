@@ -308,6 +308,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   // 創星季當前競賽階段 (痛點徵件 10/31~11/13、模擬募資與提案 11/14~12/04、決選 12/05~12/11、公布 12/16 前)
   const stageInfo = useMemo(() => getCompetitionStageInfo(), []);
 
+  // 綠色膠囊標籤第二行：日期+XXX(階段名稱)中!
+  const stageBadgeSubtitle = useMemo(() => {
+    if (stageInfo.isPainPointStage) return '10/31~11/13 痛點徵件中!';
+    if (stageInfo.isPreProposalStage) return '11/14~11/15 預先提案中!';
+    if (stageInfo.isCrowdfundingActiveStage) return '11/16~12/04 模擬募資中!';
+    if (stageInfo.isExpertReviewStage) return '12/05~12/11 進入決選(評審)中!';
+    return '12/16前 公布結果中!';
+  }, [stageInfo]);
+
   // 痛點徵件階段：點擊提出痛點
   const handleOpenPainPointSubmission = () => {
     if (!isLoggedIn) {
@@ -1241,90 +1250,6 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-20 selection:bg-amber-300 selection:text-stone-950 font-sans">
       {/* 頂部全站提示列與導覽 */}
       <div className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
-        {/* 最頂部黃色廣播列 */}
-        <div className="bg-amber-400 text-stone-950 py-1.5 px-3 sm:px-4 text-xs font-black overflow-hidden">
-          <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 truncate">
-              <span className="bg-stone-950 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0">
-                11月創新月
-              </span>
-              <button
-                type="button"
-                onClick={handleOpenAmbassadorModal}
-                className="truncate hover:underline text-left cursor-pointer flex items-center gap-1.5 text-stone-950 text-[11px] sm:text-xs"
-                title="點擊進入推廣大使與推薦碼專區"
-              >
-                <span className="shrink-0 font-black">🌟 IdeaX 創星季・創新挑戰賽</span>
-                <span className="shrink-0 font-black bg-stone-950 text-amber-300 px-1.5 py-0.2 rounded text-[10px]">
-                  痛點徵件中
-                </span>
-                <span className="hidden md:inline font-normal text-stone-900 truncate">
-                  • 推薦審核通過提案即享 300 點獎勵！
-                </span>
-              </button>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {/* 管理員專屬：決選評分與全體獎勵統計總台 */}
-              {currentUser?.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={() => setIsAdminFinalEvaluationHubOpen(true)}
-                  className="inline-flex items-center gap-1 bg-rose-700 text-white hover:bg-rose-600 text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-full transition-colors cursor-pointer shadow-xs animate-pulse"
-                  title="管理員專屬：指派特聘評審、勾選入選名單、結算平均名次與發布前台結果"
-                >
-                  <Trophy className="w-3 h-3 text-amber-300" />
-                  <span>決選結算＆獎勵統計</span>
-                </button>
-              )}
-
-              {/* 被指派評審之決選評分專屬功能 */}
-              {(isCurrentUserAppointedJudge || currentUser?.role === 'admin') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEvaluatingJudgeUser({
-                      id: currentUser?.id || 'user-expert-1',
-                      name: currentUser?.name || '柯育任 院長/特聘教授',
-                    });
-                    setIsJudgeEvaluationModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1 bg-purple-800 text-white hover:bg-purple-700 text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-full transition-colors cursor-pointer shadow-xs ring-1 ring-purple-400"
-                  title="特聘評審委員專屬：進入決選評分區邊看提案邊評分"
-                >
-                  <Award className="w-3 h-3 text-amber-300" />
-                  <span>決選評分區</span>
-                </button>
-              )}
-
-              {/* 盾牌符號與專家快速入口 */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isLoggedIn) {
-                    onOpenAuth();
-                    return;
-                  }
-                  navigateToSubView('judge');
-                }}
-                className="inline-flex items-center gap-1 bg-stone-950 text-amber-300 hover:text-white hover:bg-stone-800 text-[10px] sm:text-[11px] font-bold px-2 sm:px-2.5 py-0.5 rounded-full transition-colors cursor-pointer shadow-2xs"
-                title="點擊進入成為專家"
-              >
-                <ShieldCheck className="w-3 h-3 text-amber-400" />
-                <span>成為專家</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenAmbassadorModal}
-                className="inline-flex items-center gap-1 bg-stone-950 text-white hover:bg-stone-800 text-[10px] sm:text-[11px] font-bold px-2 sm:px-2.5 py-0.5 rounded-full transition-colors cursor-pointer shadow-2xs"
-              >
-                <Megaphone className="w-3 h-3 text-amber-400" />
-                <span>推廣大使</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* 導覽列核心主行 */}
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex items-center justify-between gap-2">
           {/* 左側：品牌 Logo (點燈泡回舊站首頁，點創星季回競賽首頁) */}
@@ -1852,20 +1777,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
           <div className="text-center max-w-3xl mx-auto space-y-4">
             
-            {/* 1. 綠色活動圓角膠囊標籤（綠底小圓點 + 創星季標籤） */}
+            {/* 1. 綠色活動圓角膠囊標籤（第一行：活動名稱，第二行：日期+階段名稱中!） */}
             <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-emerald-900 text-xs sm:text-sm font-bold shadow-2xs">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               <div className="leading-snug text-center">
                 <div>【11月創新月】IdeaX 創星季・創新挑戰賽</div>
-                <div className="text-emerald-700 font-extrabold tracking-wide">痛點徵件中!</div>
-              </div>
-            </div>
-
-            {/* 2. 活動時程提醒標籤 */}
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-[11px] sm:text-xs font-bold shadow-2xs">
-                <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>活動時程：10/24~12/04 報名・10/31~11/13 痛點徵件・11/14~11/15 預先提案・11/16~12/04 模擬募資・12/05~12/11 進入決選(評審)・12/16前公布結果</span>
+                <div className="text-emerald-700 font-extrabold tracking-wide">{stageBadgeSubtitle}</div>
               </div>
             </div>
 

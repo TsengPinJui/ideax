@@ -398,6 +398,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
+    if (!agreeCompetitionTerms) {
+      setErrorMsg('登入失敗：請先勾選同意《IdeaX一般條款》與《創星季一般用戶條款》。');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -1035,7 +1040,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (!agreeGeneralTerms || !agreeCompetitionTerms) {
-      setErrorMsg('註冊失敗：請先勾選同意服務條款及競賽網一般用戶條款。');
+      setErrorMsg('註冊失敗：請先勾選同意《IdeaX一般條款》與《創星季一般用戶條款》。');
       return;
     }
 
@@ -1755,16 +1760,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </div>
                   </div>
 
-                  {/* 登入同步勾選：B. 創星季競賽網一般用戶條款 */}
+                  {/* 登入勾選：我已閱讀並同意 IdeaX一般條款 與 創星季一般用戶條款 */}
                   <label className="flex items-start gap-1.5 cursor-pointer select-none bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80">
                     <input
                       type="checkbox"
                       checked={agreeCompetitionTerms}
                       onChange={(e) => setAgreeCompetitionTerms(e.target.checked)}
-                      className="mt-0.5 w-3.5 h-3.5 rounded text-amber-600 accent-amber-600 cursor-pointer"
+                      className="mt-0.5 w-3.5 h-3.5 rounded text-amber-600 accent-amber-600 cursor-pointer shrink-0"
                     />
-                    <span className="text-[11px] text-stone-600 font-medium leading-tight">
-                      登入即同步同意{' '}
+                    <span className="text-[11px] sm:text-xs text-stone-700 font-medium leading-tight">
+                      我已閱讀並同意{' '}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openAboutModal('general_terms');
+                        }}
+                        className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+                      >
+                        《IdeaX一般條款》
+                      </button>
+                      {' '}與{' '}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1773,9 +1789,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         }}
                         className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                       >
-                        《創星季競賽網一般用戶條款》
+                        《創星季一般用戶條款》
                       </button>
-                      （同意即同意註冊 IdeaX 平台並自動刊登存取競賽痛點、提案與討論，並配發 100,000 創星幣）
+                      。
                     </span>
                   </label>
                 </div>
@@ -2150,15 +2166,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                 )}
 
-                <div className="space-y-2 pt-1">
-                  <label className="flex items-start gap-2 cursor-pointer select-none">
+                <div className="pt-1">
+                  <label className="flex items-start gap-2 cursor-pointer select-none bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80">
                     <input
                       type="checkbox"
-                      checked={agreeGeneralTerms}
-                      onChange={(e) => setAgreeGeneralTerms(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded text-rose-600 accent-rose-600 cursor-pointer"
+                      checked={agreeGeneralTerms && agreeCompetitionTerms}
+                      onChange={(e) => {
+                        setAgreeGeneralTerms(e.target.checked);
+                        setAgreeCompetitionTerms(e.target.checked);
+                      }}
+                      className="mt-0.5 w-4 h-4 rounded text-amber-600 accent-amber-600 cursor-pointer shrink-0"
                     />
-                    <span className="text-xs text-stone-600 font-medium leading-relaxed">
+                    <span className="text-xs text-stone-700 font-medium leading-relaxed">
                       我已閱讀並同意{' '}
                       <button
                         type="button"
@@ -2166,23 +2185,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           e.preventDefault();
                           openAboutModal('general_terms');
                         }}
-                        className="text-amber-800 font-bold underline hover:text-amber-950"
+                        className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                       >
-                        《一般服務條款》
+                        《IdeaX一般條款》
                       </button>
-                      （含隱私權政策與免責聲明，註冊即為免費基礎用戶，無強制訂閱負擔）
-                    </span>
-                  </label>
-
-                  <label className="flex items-start gap-2 cursor-pointer select-none bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80">
-                    <input
-                      type="checkbox"
-                      checked={agreeCompetitionTerms}
-                      onChange={(e) => setAgreeCompetitionTerms(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded text-amber-600 accent-amber-600 cursor-pointer"
-                    />
-                    <span className="text-xs text-stone-700 font-medium leading-relaxed">
-                      同步同意{' '}
+                      {' '}與{' '}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -2191,9 +2198,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         }}
                         className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                       >
-                        《創星季競賽網一般用戶條款》
+                        《創星季一般用戶條款》
                       </button>
-                      （同意即同意註冊 IdeaX 創點子平台（ideax.tw）並自動刊登與存取競賽痛點、提案與討論，並開通 100,000 創星幣模擬錢包）
+                      。
                     </span>
                   </label>
                 </div>
@@ -3259,6 +3266,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           </div>
         </div>
+      )}
+      {/* 創星季競賽規章與條款說明彈窗 */}
+      {competitionTermsDoc && (
+        <CompetitionTermsModal
+          isOpen={Boolean(competitionTermsDoc)}
+          onClose={() => setCompetitionTermsDoc(null)}
+          initialDoc={competitionTermsDoc}
+        />
       )}
     </div>
   );
