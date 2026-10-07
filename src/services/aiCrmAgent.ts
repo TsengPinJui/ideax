@@ -20,6 +20,8 @@
  *    - 依據排定時程，自動發送溫暖、專業、直擊痛點的 3 款心理學破冰話術（沉穩顧問風 / 專業精闢風 / 熱情親和風）
  */
 
+import { callDifyClientDirect } from './difyClientService';
+
 export interface RadarScanParams {
   solverDomain?: string;
   solverSkills?: string[];
@@ -150,7 +152,25 @@ export class AiCrmAgent {
         }
       }
     } catch (err) {
-      console.warn('AiCrmAgent.scanRadar call failed, using intelligent fallback:', err);
+      console.warn('Backend AICRM API unreachable, trying browser direct Dify call:', err);
+    }
+
+    // 瀏覽器 CORS 直連 Dify AICRM Agent
+    try {
+      const prompt = `你是「創點子 IdeaX」專屬 AI Agent「AICRM 業務顧問」，請為專家領域「${params.solverDomain || '商業與科技顧問'}」進行 24hr 巡航雷達掃描，剖析客戶核心痛點、預算心理與防備點，輸出 0~100% 成案意向指數 (Intent Score) 與推薦最適跟進時段。請以 JSON 輸出。`;
+      const directResult = await callDifyClientDirect({
+        agentType: 'aicrm_agent',
+        query: prompt,
+        timeoutMs: 25000,
+      });
+      if (directResult && directResult.parsedJson) {
+        const parsed = directResult.parsedJson;
+        if (parsed.leads && Array.isArray(parsed.leads)) {
+          return parsed as RadarScanResult;
+        }
+      }
+    } catch (difyDirectErr) {
+      console.warn('Browser direct Dify call failed:', difyDirectErr);
     }
 
     // Fallback Mocked Local Computation

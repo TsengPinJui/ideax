@@ -86,7 +86,8 @@ export async function callDifyStreamingAgent(params: {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let accumulated = '';
+    let agentAccumulated = '';
+    let workflowAccumulated = '';
     let convId = params.conversationId || '';
     let msgId = '';
     let buffer = '';
@@ -104,9 +105,9 @@ export async function callDifyStreamingAgent(params: {
         try {
           const data = JSON.parse(trimmed.slice(6));
           if (data.event === 'agent_message' && data.answer) {
-            accumulated += data.answer;
+            agentAccumulated += data.answer;
           } else if (data.event === 'message' && data.answer) {
-            accumulated += data.answer;
+            workflowAccumulated += data.answer;
           }
           if (data.conversation_id) convId = data.conversation_id;
           if (data.message_id) msgId = data.message_id;
@@ -114,9 +115,10 @@ export async function callDifyStreamingAgent(params: {
       }
     }
 
+    const finalText = (agentAccumulated.trim() || workflowAccumulated.trim());
     const latencyMs = Date.now() - startTime;
     return {
-      text: accumulated.trim(),
+      text: finalText,
       conversationId: convId,
       messageId: msgId,
       latencyMs,
@@ -707,7 +709,8 @@ ${JSON.stringify((questions || []).filter((q: any) => (q.bounty || 0) >= 1000).s
   };
 
   try {
-    const difyOutput = await callDifyAgentStream(prompt, 'aicrm_bounty');
+    const aicrmKey = process.env.DIFY_AICRM_API_KEY || process.env.DIFY_API_KEY;
+    const difyOutput = await callDifyAgentStream(prompt, 'aicrm_bounty', aicrmKey);
     if (difyOutput) {
       const parsedDify = extractJsonFromText(difyOutput);
       if (parsedDify && parsedDify.opportunities) {
@@ -857,7 +860,8 @@ async function handleAiCrmAssistantOutreach(req: Request, res: Response) {
   };
 
   try {
-    const difyOutput = await callDifyAgentStream(prompt, 'aicrm_outreach');
+    const aicrmKey = process.env.DIFY_AICRM_API_KEY || process.env.DIFY_API_KEY;
+    const difyOutput = await callDifyAgentStream(prompt, 'aicrm_outreach', aicrmKey);
     if (difyOutput) {
       const parsedDify = extractJsonFromText(difyOutput);
       if (parsedDify && parsedDify.pitches) {
@@ -1112,9 +1116,9 @@ async function handleMarketAdvisorJinaCrawl(req: Request, res: Response) {
 // ==========================================
 // Dify Agent Stream Client & JSON Extractor (市場顧問專屬 Agent)
 // ==========================================
-async function callDifyAgentStream(query: string, user: string = 'market_advisor'): Promise<string | null> {
+async function callDifyAgentStream(query: string, user: string = 'market_advisor', apiKeyOverride?: string): Promise<string | null> {
   // 市場顧問專用 API Key：app-Hwi0hh3nGTIMpAMybQiKSNoO
-  const difyKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || 'app-Hwi0hh3nGTIMpAMybQiKSNoO';
+  const difyKey = apiKeyOverride || process.env.DIFY_MARKET_ADVISOR_API_KEY || 'app-Hwi0hh3nGTIMpAMybQiKSNoO';
   const difyBaseUrl = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
 
   const controller = new AbortController();
@@ -1145,7 +1149,8 @@ async function callDifyAgentStream(query: string, user: string = 'market_advisor
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let accumulated = '';
+    let agentAccumulated = '';
+    let workflowAccumulated = '';
     let buffer = '';
 
     while (true) {
@@ -1160,8 +1165,10 @@ async function callDifyAgentStream(query: string, user: string = 'market_advisor
         if (!trimmed.startsWith('data: ')) continue;
         try {
           const data = JSON.parse(trimmed.slice(6));
-          if ((data.event === 'agent_message' || data.event === 'message') && data.answer) {
-            accumulated += data.answer;
+          if (data.event === 'agent_message' && data.answer) {
+            agentAccumulated += data.answer;
+          } else if (data.event === 'message' && data.answer) {
+            workflowAccumulated += data.answer;
           }
           if (data.event === 'message_end') {
             break;
@@ -1170,7 +1177,7 @@ async function callDifyAgentStream(query: string, user: string = 'market_advisor
       }
     }
 
-    return accumulated.trim() || null;
+    return (agentAccumulated.trim() || workflowAccumulated.trim()) || null;
   } catch (err) {
     clearTimeout(timeoutId);
     console.warn('Dify Agent stream call error:', err);
@@ -1218,10 +1225,12 @@ app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
 
   const difyBaseUrl = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
   let apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || 'app-Hwi0hh3nGTIMpAMybQiKSNoO';
-  if (agentType === 'cs_agent' && process.env.DIFY_CS_API_KEY) {
-    apiKey = process.env.DIFY_CS_API_KEY;
-  } else if (agentType === 'aicrm_agent' && (process.env.DIFY_AICRM_API_KEY || process.env.DIFY_AICRM_AGENT_API_KEY)) {
-    apiKey = process.env.DIFY_AICRM_API_KEY || process.env.DIFY_AICRM_AGENT_API_KEY || apiKey;
+  if (agentType === 'cs_agent') {
+    apiKey = process.env.DIFY_CS_API_KEY || process.env.DIFY_API_KEY || 'app-VQ8gZUbV7tVlW1x916o1oeI6';
+  } else if (agentType === 'aicrm_agent') {
+    apiKey = process.env.DIFY_AICRM_API_KEY || 'app-WnL0BqYzHviViu4Oogmbj85j';
+  } else if (agentType === 'market_advisor') {
+    apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || 'app-Hwi0hh3nGTIMpAMybQiKSNoO';
   }
 
   const agentLabel = agentType === 'aicrm_agent' ? 'AICRM 業務顧問' : agentType === 'cs_agent' ? '官方客服特助' : '市場顧問';
@@ -1271,7 +1280,8 @@ app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
 
     const reader = difyRes.body.getReader();
     const decoder = new TextDecoder();
-    let accumulated = '';
+    let agentAccumulated = '';
+    let workflowAccumulated = '';
     let buffer = '';
     let messageId = '';
     let conversationId = '';
@@ -1290,14 +1300,17 @@ app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
           const data = JSON.parse(trimmed.slice(6));
           if (data.message_id) messageId = data.message_id;
           if (data.conversation_id) conversationId = data.conversation_id;
-          if ((data.event === 'agent_message' || data.event === 'message') && data.answer) {
-            accumulated += data.answer;
+          if (data.event === 'agent_message' && data.answer) {
+            agentAccumulated += data.answer;
+          } else if (data.event === 'message' && data.answer) {
+            workflowAccumulated += data.answer;
           }
         } catch {}
       }
     }
 
     const latencyMs = Date.now() - startTime;
+    const finalAnswer = agentAccumulated.trim() || workflowAccumulated.trim();
     return res.json({
       success: true,
       source: 'dify-api',
@@ -1305,8 +1318,8 @@ app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
       latencyMs,
       messageId,
       conversationId,
-      rawOutput: accumulated.trim(),
-      parsedJson: extractJsonFromText(accumulated.trim()),
+      rawOutput: finalAnswer,
+      parsedJson: extractJsonFromText(finalAnswer),
     });
   } catch (err: any) {
     clearTimeout(timeoutId);

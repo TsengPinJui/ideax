@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <title>IdeaX 創點子 - 重新導向中</title>
+    <script>
+      // Single Page Apps for GitHub Pages / Firebase / Static Hostings
+      // 保留當前子路徑 (例如 /challenge) 並轉向首頁由 React 路由接管
+      (function() {
+        var path = window.location.pathname;
+        var search = window.location.search;
+        var hash = window.location.hash;
+        
+        // 若直接輸入 /challenge 等路徑，以 query 方式轉向 index.html
+        var redirectUrl = '/' + '?redirect=' + encodeURIComponent(path + search + hash);
+        window.location.replace(redirectUrl);
+      })();
+    </script>
+  </head>
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0c0a09; color: #f5f5f4;">
+    <div style="text-align: center;">
+      <h2 style="margin-bottom: 8px;">載入「創星季」中...</h2>
+      <p style="color: #a8a29e; font-size: 14px;">正在為您連接頁面，請稍候。</p>
+    </div>
+  </body>
+</html>

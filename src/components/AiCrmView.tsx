@@ -34,6 +34,7 @@ import {
   Lock,
   ArrowRight,
   Zap,
+  ExternalLink,
 } from 'lucide-react';
 
 interface AiCrmViewProps {
@@ -575,6 +576,17 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
             <p className="text-xs text-stone-300 max-w-xl leading-relaxed">
               AI-CRM 智能分析客情意向與切入時機，24hr 特助全天候自動化發送與接待守護。
             </p>
+            <div className="pt-1">
+              <a
+                href={process.env.DIFY_AICRM_WEB_URL || 'https://udify.app/agent/BnAiF81AGw454x0u'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-stone-950 font-black text-xs transition-all shadow-xs"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>開啟 AICRM 24hr Agent (Web 對話視窗)</span>
+              </a>
+            </div>
           </div>
 
           {/* 雷達與特助連線狀態 ＋ 開關控制區 (整合面板) */}

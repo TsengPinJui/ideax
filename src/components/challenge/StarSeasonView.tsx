@@ -1243,23 +1243,24 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       <div className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
         {/* 最頂部黃色廣播列 */}
         <div className="bg-amber-400 text-stone-950 py-1.5 px-3 sm:px-4 text-xs font-black overflow-hidden">
-          <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 sm:gap-2 truncate">
-              <span className="bg-stone-950 text-white text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full font-bold shrink-0">
+          <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 truncate">
+              <span className="bg-stone-950 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0">
                 11月創新月
               </span>
               <button
                 type="button"
                 onClick={handleOpenAmbassadorModal}
-                className="truncate hover:underline text-left cursor-pointer flex items-center gap-1 text-stone-950 text-[11px] sm:text-xs"
+                className="truncate hover:underline text-left cursor-pointer flex items-center gap-1.5 text-stone-950 text-[11px] sm:text-xs"
                 title="點擊進入推廣大使與推薦碼專區"
               >
-                <span className="shrink-0">🌟 【11月創新月】IdeaX 創星季・創新挑戰賽</span>
-                <span className="shrink-0 font-black bg-stone-950 text-amber-300 px-1.5 py-0.2 rounded text-[10px]">痛點徵件中!</span>
-                <span className="hidden sm:inline underline font-black bg-stone-950/15 px-1.5 py-0.2 rounded hover:bg-stone-950/25">
-                  推廣大使
+                <span className="shrink-0 font-black">🌟 IdeaX 創星季・創新挑戰賽</span>
+                <span className="shrink-0 font-black bg-stone-950 text-amber-300 px-1.5 py-0.2 rounded text-[10px]">
+                  痛點徵件中
                 </span>
-                <span className="hidden md:inline">每推薦一件審核通過提案，即享 300 點（價值 $400）推廣獎勵（IdeaX平台點數，用於提問、享受付費服務）！</span>
+                <span className="hidden md:inline font-normal text-stone-900 truncate">
+                  • 推薦審核通過提案即享 300 點獎勵！
+                </span>
               </button>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1318,7 +1319,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 className="inline-flex items-center gap-1 bg-stone-950 text-white hover:bg-stone-800 text-[10px] sm:text-[11px] font-bold px-2 sm:px-2.5 py-0.5 rounded-full transition-colors cursor-pointer shadow-2xs"
               >
                 <Megaphone className="w-3 h-3 text-amber-400" />
-                <span className="hidden sm:inline">推廣大使</span><span>推薦碼</span>
+                <span>推廣大使</span>
               </button>
             </div>
           </div>
@@ -1402,32 +1403,35 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
             <div className="h-4 w-px bg-stone-300/80 mx-0.5" />
 
-            {/* 2. 探索Idea */}
+            {/* 2. 探索Idea (前三項目之二：有色鮮明膠囊) */}
             <button
               type="button"
               onClick={() => navigateToSubView('proposal')}
-              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+              className="px-3 py-1.5 rounded-xl text-amber-950 bg-amber-200/90 hover:bg-amber-300 border border-amber-300/80 transition-all cursor-pointer font-black flex items-center gap-1.5 shadow-2xs active:scale-98"
             >
-              探索Idea
+              <Compass className="w-3.5 h-3.5 text-amber-700" />
+              <span>探索Idea</span>
             </button>
 
-            {/* 3. 先看痛點 */}
+            {/* 3. 先看痛點 (前三項目之三：有色鮮明膠囊) */}
             <button
               type="button"
               onClick={onGoToPainPoints || onBackToOldSite}
-              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-              title="前往舊站 創點子/痛點專區"
+              className="px-3 py-1.5 rounded-xl text-orange-950 bg-orange-200/90 hover:bg-orange-300 border border-orange-300/80 transition-all cursor-pointer font-black flex items-center gap-1.5 shadow-2xs active:scale-98"
+              title="前往 IdeaX創點子 痛點專區"
             >
-              先看痛點
+              <Layers className="w-3.5 h-3.5 text-orange-700" />
+              <span>先看痛點</span>
             </button>
 
             {/* 競賽辦法 (直接前往專門競賽辦法頁) */}
             <button
               type="button"
               onClick={() => navigateToSubView('rules')}
-              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold flex items-center gap-1.5"
             >
-              競賽辦法
+              <BookOpen className="w-3.5 h-3.5 text-stone-500" />
+              <span>競賽辦法</span>
             </button>
 
             {/* 4. 申請參賽者 */}
@@ -1440,9 +1444,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 }
                 navigateToSubView('participant');
               }}
-              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold flex items-center gap-1.5"
             >
-              申請參賽者
+              <GraduationCap className="w-3.5 h-3.5 text-stone-500" />
+              <span>申請參賽者</span>
             </button>
 
             {/* 5. 成為專家 */}
@@ -1455,19 +1460,21 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 }
                 navigateToSubView('judge');
               }}
-              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold flex items-center gap-1.5"
               title="點擊進入成為專家"
             >
-              成為專家
+              <ShieldCheck className="w-3.5 h-3.5 text-stone-500" />
+              <span>成為專家</span>
             </button>
 
             {/* 6. 推廣大使 */}
             <button
               type="button"
               onClick={() => navigateToSubView('ambassador')}
-              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold flex items-center gap-1.5"
             >
-              推廣大使
+              <Megaphone className="w-3.5 h-3.5 text-stone-500" />
+              <span>推廣大使</span>
             </button>
           </nav>
 

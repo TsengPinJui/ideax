@@ -42,19 +42,35 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Skip non-GET and API proxy requests
-  if (event.request.method !== 'GET' || url.pathname.startsWith('/api/')) {
+  // Skip non-GET, non-http(s) (e.g. chrome-extension), and API proxy requests
+  if (
+    event.request.method !== 'GET' ||
+    !event.request.url.startsWith('http') ||
+    !url.protocol.startsWith('http') ||
+    url.pathname.startsWith('/api/')
+  ) {
     return;
   }
 
-  // Network-first with cache fallback for navigation requests (HTML pages)
+  // SPA Navigation handling: network-first, with 404 and offline fallback to index.html
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(async () => {
-        const cached = await caches.match('/index.html') || await caches.match('/');
-        if (cached) return cached;
-        throw new Error('Offline and no cached shell available');
-      })
+      (async () => {
+        try {
+          const networkResponse = await fetch(event.request);
+          // 若靜態伺服器回傳 404（例如直接貼上 /challenge 子路徑），SPA 必須 fallback 回傳 /index.html
+          if (networkResponse.status === 404) {
+            const cachedShell = (await caches.match('/index.html')) || (await caches.match('/'));
+            if (cachedShell) return cachedShell;
+            return fetch('/index.html');
+          }
+          return networkResponse;
+        } catch (err) {
+          const cached = (await caches.match('/index.html')) || (await caches.match('/'));
+          if (cached) return cached;
+          return fetch('/index.html').catch(() => new Response('離線模式', { status: 503 }));
+        }
+      })()
     );
     return;
   }
@@ -64,11 +80,16 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            networkResponse.type === 'basic' &&
+            event.request.url.startsWith('http')
+          ) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);
-            });
+            }).catch(() => {});
           }
           return networkResponse;
         })

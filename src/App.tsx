@@ -104,12 +104,18 @@ function MainContent() {
         const pathname = window.location.pathname.toLowerCase();
         const search = window.location.search.toLowerCase();
         const hash = window.location.hash.toLowerCase();
+        const redirectParam = (new URLSearchParams(window.location.search).get('redirect') || '').toLowerCase();
         if (
           pathname.includes('/challenge') ||
+          redirectParam.includes('/challenge') ||
           pathname.includes('/proposal') ||
+          redirectParam.includes('/proposal') ||
           pathname.includes('/cases') ||
+          redirectParam.includes('/cases') ||
           pathname.includes('/star-season') ||
+          redirectParam.includes('/star-season') ||
           pathname.includes('/competition') ||
+          redirectParam.includes('/competition') ||
           pathname.includes('/rules') ||
           pathname.includes('/submit') ||
           pathname.includes('/participant') ||
@@ -222,6 +228,22 @@ function MainContent() {
   };
 
   // 監聽並自動記錄個別用戶最近搜尋的關鍵字（防抖 600ms）
+  useEffect(() => {
+    // 檢查是否有來自 404.html 的 SPA 轉向，若有則恢復乾淨 URL
+    if (typeof window !== 'undefined') {
+      const search = window.location.search;
+      if (search.includes('redirect=')) {
+        try {
+          const params = new URLSearchParams(search);
+          const redirect = params.get('redirect');
+          if (redirect) {
+            window.history.replaceState(null, '', redirect);
+          }
+        } catch {}
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (trimmed.length >= 2) {

@@ -16,6 +16,7 @@ import {
   syncCustomerSupportConversationToFirestore,
   getTicketsFromFirestore,
 } from './firestoreSync';
+import { callDifyClientDirect } from './difyClientService';
 
 const STORAGE_CONVERSATIONS_KEY = 'ideax_cs_conversations';
 const STORAGE_TICKETS_KEY = 'ideax_cs_tickets';
@@ -523,7 +524,27 @@ export async function sendCustomerSupportMessage(
       }
     }
   } catch (err) {
-    console.warn('AI Support Agent call failed, falling back to local handlers:', err);
+    console.warn('Backend AI Support API unreachable, attempting browser direct Dify connection:', err);
+  }
+
+  // 1.1 瀏覽器 CORS 直連 Dify CS Agent（解決靜態部屬環境如 www.ideax.tw 無後端時的客服通訊）
+  try {
+    const directResult = await callDifyClientDirect({
+      agentType: 'cs_agent',
+      query,
+      conversationId: ctx.difyConversationId || undefined,
+      user: user?.id ? `usr_${String(user.id).replace(/[^a-zA-Z0-9_-]/g, '_')}` : 'guest_visitor',
+      timeoutMs: 25000,
+    });
+    if (directResult && directResult.rawOutput) {
+      return {
+        replyText: directResult.rawOutput,
+        difyConversationId: directResult.conversationId || ctx.difyConversationId,
+        quickOptions: ['查詢點數餘額', '提問分級說明', 'AI 獵頭找專家', '常見問題 FAQ'],
+      };
+    }
+  } catch (directErr) {
+    console.warn('Browser direct Dify call failed, falling back to local intent parser:', directErr);
   }
 
   // 2. Fallback: Direct Intent for Balance / Points Query (Offline / Failover only)
