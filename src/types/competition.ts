@@ -384,21 +384,21 @@ export interface CompetitionScheduleConfig {
 export const DEFAULT_COMPETITION_SCHEDULE: CompetitionScheduleConfig = {
   stage1Submission: {
     title: '第一階段：痛點徵件',
-    period: '10/31 – 11/13',
+    period: '10/31 00:00 – 11/13 16:30',
     isTentative: false,
   },
   stage2Solution: {
-    title: '想解方（解法提案）',
-    period: '10/31 – 11/13',
+    title: '想解方（預先提案 11/14 10:00~11/15 16:30・模擬募資提案 11/16 10:00~12/04 16:30）',
+    period: '11/14 10:00 – 12/04 16:30',
     isTentative: false,
   },
   crowdfunding: {
-    title: '第二階段：模擬募資（全體會員使用創星幣進行模擬注資與投票。募資總額前 20 名 取得入圍決選資格）',
-    period: '11/14 – 12/04',
+    title: '第二階段：模擬募資（11/16 10:00 ~ 12/04 16:30 全體會員使用創星幣模擬注資投票，總額前 20 名取得決選資格）',
+    period: '11/16 10:00 – 12/04 16:30',
     isTentative: false,
   },
   expertReview: {
-    title: '第三階段：進入決選（由大會之產學研專家與導師進行專業審查、深度指導與評分）',
+    title: '第三階段：進入決選(評審)（由大會之產學研專家與導師進行專業審查、深度指導與評分）',
     period: '12/05 – 12/11',
     isTentative: false,
   },

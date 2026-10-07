@@ -9,11 +9,13 @@ import {
   Compass,
   Layers,
   Lightbulb,
+  Sparkles,
 } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
 import { AppTab, AboutSection } from '../types';
 import { useApp } from '../context/AppContext';
 import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
+import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
 
 interface FooterProps {
   onNavClick: (tab: AppTab, section?: AboutSection | string) => void;
@@ -23,7 +25,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearchTag, onStartOnboarding }) => {
-  const { openCustomerService, openPwaInstallModal, isDemoMode, isNoPaymentMode, isHideTestAccounts } = useApp();
+  const { openCustomerService, openPwaInstallModal, isDemoMode, isNoPaymentMode, isHideTestAccounts, isRaceMode } = useApp();
 
   const handleTagClick = (tagWithHash: string) => {
     const rawTag = tagWithHash.replace('#', '').trim();
@@ -52,15 +54,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               title="回到首頁頂部"
-              className="inline-flex items-center gap-3 py-1 hover:opacity-95 transition-all text-left cursor-pointer focus:outline-none group"
+              className="inline-flex items-center gap-2.5 py-1 hover:opacity-95 transition-all text-left cursor-pointer focus:outline-none group"
             >
-              <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center p-0.5">
-                <IdeaXLogo variant="bulb" size="xl" className="group-hover:scale-108 transition-transform duration-200" />
+              <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center p-0.5">
+                <IdeaXLogo variant="bulb" size="sm" className="group-hover:scale-108 transition-transform duration-200" />
               </div>
               <img
                 src="/logo-6-trans-dark.png"
                 alt="IdeaX"
-                className="h-9 sm:h-10 w-auto object-contain shrink-0"
+                className="h-6 sm:h-7 w-auto object-contain shrink-0"
               />
             </button>
             <div className="text-xs text-amber-400 font-bold">
@@ -75,6 +77,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           <div className="space-y-3">
             <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">平台導覽</h4>
             <ul className="space-y-2 text-stone-400">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onNavClick('star_season')}
+                  className="hover:text-emerald-300 transition-colors text-left font-bold text-emerald-400 cursor-pointer flex items-center gap-1.5 active:scale-95 group"
+                  title="前往 IdeaX 創星季 • 創新挑戰賽"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <span>創星季 • 創新挑戰賽</span>
+                </button>
+              </li>
               <li>
                 <button
                   type="button"
@@ -278,6 +291,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             </button>
             <span>•</span>
             <button
+              type="button"
+              onClick={() => onNavClick('star_season')}
+              className="text-emerald-400 hover:text-emerald-300 font-bold underline transition-colors cursor-pointer inline-flex items-center gap-1"
+            >
+              <Sparkles className="w-3 h-3 text-emerald-400" />
+              <span>創星季 • 創新挑戰賽</span>
+            </button>
+            <span>•</span>
+            <button
               onClick={() => onNavClick('about', 'intro')}
               className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
             >
@@ -312,7 +334,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
             <span className="text-stone-600 font-sans">Powered by AI Engine</span>
             <span>•</span>
             <span className="text-stone-500">
-              v1.4.5 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+              v{APP_VERSION} • {APP_RELEASE_DATE} • {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
             </span>
           </div>
         </div>

@@ -21,6 +21,7 @@ import {
   Filter,
   ExternalLink,
   Lock,
+  Clock,
   X,
   Heart,
   Plus,
@@ -56,6 +57,7 @@ import {
   StarSeasonStage,
   StarSeasonTrack,
   STAR_SEASON_TRACKS,
+  OFFICIAL_COMPETITION_TRACKS,
   COMPETITION_POINTS_CONFIG,
   DEFAULT_COMPETITION_SCHEDULE,
   ParticipantRegistrationData,
@@ -63,7 +65,6 @@ import {
   ProposalComment,
   CompetitionHomepageStatsConfig,
   CompetitionAdminMetrics,
-  OFFICIAL_COMPETITION_TRACKS,
 } from '../../types/competition';
 import {
   getCompetitionHomepageStatsConfig,
@@ -100,6 +101,7 @@ import { CompetitionFooter } from './CompetitionFooter';
 import { AdminCompetitionRulesArchiveFolder } from './AdminCompetitionRulesArchiveFolder';
 import { MyProposalsAndDraftsModal } from './MyProposalsAndDraftsModal';
 import { getProposalDrafts } from '../../services/draftService';
+import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 
 export type ChallengeSubView = 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador';
 
@@ -257,6 +259,19 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         onBackToOldSite();
       }
     }, 60);
+  };
+
+  // 創星季當前競賽階段 (痛點徵件 10/31~11/13、模擬募資與提案 11/14~12/04、決選 12/05~12/11、公布 12/16 前)
+  const stageInfo = useMemo(() => getCompetitionStageInfo(), []);
+
+  // 痛點徵件階段：點擊提出痛點
+  const handleOpenPainPointSubmission = () => {
+    if (!isLoggedIn) {
+      onOpenAuth();
+      return;
+    }
+    setFormStage('pain_point');
+    setIsSubmitModalOpen(true);
   };
 
   // 個人收藏名單 (已按讚提案)
@@ -832,9 +847,25 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     }
   };
 
-  // 支持投點提交
+  // 支持投點提交 (按照時程開放與封鎖)
   const handleConfirmSupport = async () => {
     if (!selectedProposalForSupport) return;
+    if (stageInfo.isPainPointStage) {
+      showToast('ℹ️ 創星幣模擬募資將於 11/16 ~ 12/04 正式開跑！目前為第一階段「痛點徵件」期，歡迎先提出痛點或探索題目。');
+      return;
+    }
+    if (stageInfo.isPreProposalStage) {
+      showToast('ℹ️ 11/14 ~ 11/15 為「預先提案期」，暫時關閉募資(投資)功能，僅供提案審核與預覽！模擬募資注資將於 11/16 正式開跑。');
+      return;
+    }
+    if (stageInfo.isCrowdfundingClosed) {
+      showToast('⚠️ 創星季模擬募資已於 12/04 截止注資！感謝全體會員支持，前 20 名提案已進入決選評選。');
+      return;
+    }
+    if (!stageInfo.isInvestmentEnabled) {
+      showToast('ℹ️ 模擬募資(投資)功能僅於 11/16 ~ 12/04 開放！');
+      return;
+    }
     setIsSubmittingSupport(true);
     try {
       const res = await supportProposal({
@@ -887,6 +918,22 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     }
     if (!contactName.trim() || !contactPhone.trim() || !contactEmail.trim()) {
       showToast('請填寫主要聯絡人姓名、電話與 Email（此敏感資料將受安全隔離保護）');
+      return;
+    }
+
+    // 依競賽時程嚴格開放與封鎖對應階段
+    if (formStage === 'solution' && stageInfo.isPainPointStage) {
+      showToast('ℹ️ 目前為第一階段「痛點徵件」期（至 11/13 截止）。「想解方/提案」將於 11/14 ~ 12/04 正式開跑，目前優先開放提出痛點！');
+      setFormStage('pain_point');
+      return;
+    }
+    if (formStage === 'pain_point' && stageInfo.isProposalStage) {
+      showToast('ℹ️ 第一階段「痛點徵件」已於 11/13 截止！現正進行第二階段「想解方」提案（開放至 12/04），歡迎針對現有痛點提出完整方案！');
+      setFormStage('solution');
+      return;
+    }
+    if (stageInfo.isProposalClosed) {
+      showToast('⚠️ 創星季提案已於 12/04 23:59 截止收件！目前已進入決選評審階段。');
       return;
     }
 
@@ -1043,18 +1090,26 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const faqList = [
     {
       q: '什麼是「IdeaX 創星季」兩階段競賽？痛點獎勵與採用獎勵是如何運作的？',
-      a: 'IdeaX 創星季分為兩階段：第一階段「徵點子」由提案者發布真實痛點，只要成功提出痛點（需過審）即送 200 點（價值 $250 的 IdeaX 創點子平台點數，可用於發布懸賞問題、享受付費功能，點數效期 60 日）。第二階段「想解方」由團隊針對痛點提出具體落地架構；若前十名得獎提案採用了第一階段的痛點，原痛點提出者另享等值好禮：創新提案排名前 1~3 名採用獲價值 $1,000 好禮（800 點 IdeaX 平台提問金）；排名前 4~10 名採用獲價值 $500 好禮（400 點 IdeaX 平台提問金），經官方管理員核准後發放，建立正向良性的創新激勵生態！',
+      a: 'IdeaX 創星季分為兩階段：第一階段「徵點子」由提案者發布真實痛點，只要成功提出痛點（需過審）即送 200 點（價值 $250 的 IdeaX 創點子平台點數，可用於發布懸賞問題、享受付費功能，點數效期 60 日）。第二階段「想解方」由團隊針對痛點提出具體落地架構；若前十名得獎提案採用了第一階段的痛點，原痛點提出者另享等值好禮（點數效期 60 日）：創新提案排名前 1~3 名採用獲價值 $1,000 好禮（800 點 IdeaX 平台提問金，效期 60 日）；排名前 4~10 名採用獲價值 $500 好禮（400 點 IdeaX 平台提問金，效期 60 日），經官方管理員核准後發放，建立正向良性的創新激勵生態！',
     },
     {
-      q: '模擬募資前 20 名與最終得獎名次（冠、亞、季軍）如何評定？',
-      a: '全體大眾與專家的虛擬募資投票排名「前 20 名」代表獲得「入圍決選」資格，並非最終得獎！最終得獎名次由大會產學研專家與導師進行專業審查、深度指導與評分，決選出：冠軍價值 $30,000（NT$20,000 現金 ＋ 8,000 點（價值 $10,000）＋ 官方「創之星」最高榮譽徽章）、亞軍價值 $10,000（NT$6,000 現金 ＋ 3,200 點（價值 NT$4,000）＋ 官方「創之星」最高榮譽徽章）、季軍價值 $5,000（NT$3,000 現金 ＋ 1,600 點（價值 NT$2,000）＋ 官方「創之星」最高榮譽徽章）。獲獎團隊由系統授予「創之星」最高榮譽徽章！',
+      q: '模擬募資前 20 名與最終得獎名次（冠、亞、季軍）如何評定？獎勵內容為何？',
+      a: '全體大眾與專家的虛擬募資投票排名「前 20 名」代表獲得「入圍決選」資格，並非最終得獎！最終得獎名次由大會產學研專家與導師進行專業審查、深度指導與評分，決選出：冠軍價值 $30,000（NT$20,000 現金 ＋ 8,000 點（價值 $10,000，點數效期 180 日）＋ 官方「創之星」最高榮譽徽章）、亞軍價值 $10,000（NT$6,000 現金 ＋ 3,200 點（價值 NT$4,000，點數效期 180 日）＋ 官方「創之星」最高榮譽徽章）、季軍價值 $5,000（NT$3,000 現金 ＋ 1,600 點（價值 NT$2,000，點數效期 180 日）＋ 官方「創之星」最高榮譽徽章）。獲獎團隊由系統授予「創之星」最高榮譽徽章！',
     },
     {
       q: '創星幣是多少？可以兌現或投資自己嗎？',
       a: '使用 創星幣 支持你認同的創新提案，模擬市場關注度。一般用戶與提案者初始各享有 100,000 創星幣，專家享有 3,000,000 創星幣。1 創星幣 = NT$1 僅作為模擬市場驗證投票權益，非真實現金或法定投資，不可購買、轉帳或兌現。單案支持上限：一般用戶 50,000 創星幣、提案者 30,000 創星幣、專家 2,000,000 創星幣。系統強制「防自投」機制，嚴禁投點支持自己發起的提案！',
     },
     {
-      q: '校園推廣大使獎勵是如何核發的？',
+      q: '各項競賽獎勵點數的有效期限是多久？',
+      a: '重要規範：除了前三名（冠、亞、季軍）獲獎團隊所獲得之獎勵點數效期為 180 日以外，其餘所有的獎勵點數（包含提出痛點過審獎 200 點、痛點採用好禮、推廣大使推薦獎勵 300 點等）效期皆為 60 日。點數可用於 IdeaX 創點子平台提問與付費服務。',
+    },
+    {
+      q: '參賽單位如何計算？每隊有投件數量或痛點數量上限嗎？',
+      a: '本競賽「以每個帳號算計一隊」，且「每隊不限提案或痛點數量」！目標不限於青年或學生，亦不一定要團隊，個人獨立參賽或自由組隊皆可。在痛點徵件階段可提交多筆切身痛點，在想解方階段亦可提出多件解方提案。',
+    },
+    {
+      q: '推廣大使獎勵是如何核發的？',
       a: '推廣大使每推薦 1 案審核通過，即享 300 點（價值 $400）（IdeaX 平台點數，用於提問、享受付費服務），多推多得無上限。',
     },
     {
@@ -1063,7 +1118,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     },
     {
       q: '創星季的活動各階段時程如何安排？',
-      a: '競賽各階段日程如下：\n• 10/31 ～ 11/13：第一階段：痛點徵件（提出痛點過審即送 200 點，價值 $250，效期 60 日）\n• 11/14 ～ 12/04：第二階段：模擬募資（全體會員使用創星幣進行模擬注資與投票。募資總額前 20 名 取得入圍決選資格）\n• 12/05 ～ 12/11：第三階段：進入決選（由大會產學研專家與導師進行專業審查、深度指導與評分）\n• 12/16 前公布：第四階段：公布結果（於首頁盛大公告最終榜單，頒發榮譽與獎勵）',
+      a: '競賽各階段日程如下：\n• 10/31 ～ 11/13：第一階段：痛點徵件（提出痛點過審即送 200 點，價值 $250，效期 60 日）\n• 11/14 ～ 11/15：第二階段 (一)：預先提案（【關閉募資(投資)功能】，僅可註冊報名、在線提案、主辦單位審核及預覽）\n• 11/16 ～ 12/04：第二階段 (二)：模擬募資與提案（【全面開放功能】，可報名、提案、創星幣模擬募資(投資)注資投票、主辦單位審核，募資總額前 20 名取得決選資格）\n• 12/05 ～ 12/11：第三階段：進入決選（由大會產學研專家與導師進行專業審查、深度指導與評分）\n• 12/16 前公布：第四階段：公布結果（於首頁盛大公告最終榜單，頒發榮譽與獎勵）',
     },
   ];
 
@@ -1155,9 +1210,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 className="truncate hover:underline text-left cursor-pointer flex items-center gap-1 text-stone-950 text-[11px] sm:text-xs"
                 title="點擊進入推廣大使與推薦碼專區"
               >
-                <span className="shrink-0">🌟 【11月創新月】IdeaX 創星季・創新挑戰賽痛點徵件中!</span>
+                <span className="shrink-0">🌟 【11月創新月】IdeaX 創星季・創新挑戰賽</span>
+                <span className="shrink-0 font-black bg-stone-950 text-amber-300 px-1.5 py-0.2 rounded text-[10px]">痛點徵件中!</span>
                 <span className="hidden sm:inline underline font-black bg-stone-950/15 px-1.5 py-0.2 rounded hover:bg-stone-950/25">
-                  校園推廣大使
+                  推廣大使
                 </span>
                 <span className="hidden md:inline">每推薦一件審核通過提案，即享 300 點（價值 $400）推廣獎勵（IdeaX平台點數，用於提問、享受付費服務）！</span>
               </button>
@@ -1196,7 +1252,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex items-center justify-between gap-2">
           {/* 左側：品牌 Logo (點燈泡回舊站首頁，點創星季回競賽首頁) */}
           <div className="flex items-center gap-1.5 shrink-0 -ml-1 sm:-ml-3">
-            {/* 1. 點左上燈泡圖片回到舊站首頁 */}
+            {/* 1. 點左上燈泡圖片回到舊站首頁 (依指示大一點點) */}
             <button
               type="button"
               onClick={() => {
@@ -1210,7 +1266,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <img
                 src="/logo-bulb.png"
                 alt="IdeaX 創點子 - 點擊回舊站首頁"
-                className="w-8.5 h-8.5 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain shrink-0 drop-shadow-xs group-hover:drop-shadow-md transition-all group-hover:scale-105"
+                className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:drop-shadow-md transition-all group-hover:scale-105"
               />
             </button>
 
@@ -1235,16 +1291,38 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
           {/* 中間：核心導覽列 (風格統一、簡潔俐落) */}
           <nav className="hidden lg:flex items-center gap-1.5 text-xs font-bold text-stone-700 bg-stone-100/80 p-1 rounded-2xl border border-stone-200/80">
-            {/* 1. 我想提案! (主行動 CTA 按鈕) */}
-            <button
-              type="button"
-              onClick={() => setIsProposalTutorialModalOpen(true)}
-              className="px-3.5 py-1.5 rounded-xl text-stone-950 bg-amber-400 hover:bg-amber-300 transition-all cursor-pointer font-black shadow-2xs active:scale-98 flex items-center gap-1.5"
-              title="點擊查看提案教學與開始提案"
-            >
-              <Send className="w-3.5 h-3.5 text-stone-950" />
-              <span>我想提案!</span>
-            </button>
+            {/* 1. 痛點徵件階段為「提出痛點」，11/14~12/04 轉為「我想提案!」，12/04後截止 */}
+            {stageInfo.isPainPointStage ? (
+              <button
+                type="button"
+                onClick={handleOpenPainPointSubmission}
+                className="px-3.5 py-1.5 rounded-xl text-white bg-rose-600 hover:bg-rose-500 transition-all cursor-pointer font-black shadow-2xs active:scale-98 flex items-center gap-1.5"
+                title="第一階段痛點徵件中：立即提出生活或產業痛點（過審送200點）"
+              >
+                <Flame className="w-3.5 h-3.5 text-white" />
+                <span>提出痛點</span>
+              </button>
+            ) : stageInfo.isProposalStage ? (
+              <button
+                type="button"
+                onClick={() => setIsProposalTutorialModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl text-stone-950 bg-amber-400 hover:bg-amber-300 transition-all cursor-pointer font-black shadow-2xs active:scale-98 flex items-center gap-1.5"
+                title="點擊查看提案教學與開始提案（提案開放至 12/04 截止）"
+              >
+                <Send className="w-3.5 h-3.5 text-stone-950" />
+                <span>我想提案!</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="px-3.5 py-1.5 rounded-xl text-stone-400 bg-stone-200 cursor-not-allowed font-bold flex items-center gap-1.5"
+                title="創星季提案已於 12/04 截止收件"
+              >
+                <Clock className="w-3.5 h-3.5 text-stone-400" />
+                <span>提案已截止</span>
+              </button>
+            )}
 
             <div className="h-4 w-px bg-stone-300/80 mx-0.5" />
 
@@ -1265,6 +1343,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               title="前往舊站 創點子/痛點專區"
             >
               先看痛點
+            </button>
+
+            {/* 競賽辦法 (直接前往專門競賽辦法頁) */}
+            <button
+              type="button"
+              onClick={() => navigateToSubView('rules')}
+              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+            >
+              競賽辦法
             </button>
 
             {/* 4. 申請參賽者 */}
@@ -1349,8 +1436,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   </div>
                   <div className="text-[10px] font-semibold flex items-center gap-1">
                     {isLoggedIn ? (
-                      currentUser.verifiedExpert || currentUser.role === 'solver' ? (
-                        <span className="text-purple-700 font-black">👑 評審專家</span>
+                      currentUser.role === 'admin' ? (
+                        <span className="text-rose-700 font-black">👑 平台管理員</span>
+                      ) : currentUser.verifiedExpert || currentUser.role === 'solver' ? (
+                        <span className="text-purple-700 font-black">👑 專家</span>
                       ) : currentUser.competitionBadges?.includes('創星季') ? (
                         <span className="text-emerald-700 font-black">★ 創星季參賽者</span>
                       ) : (
@@ -1384,21 +1473,29 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                           {isLoggedIn ? currentUser.name || '會員' : '訪客創友'}
                         </div>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                          {currentUser.verifiedExpert || currentUser.role === 'solver' ? (
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
-                              👑 認證評審專家
+                          {currentUser.role === 'admin' ? (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-200">
+                              👑 平台管理員
                             </span>
-                          ) : null}
-                          {currentUser.competitionBadges?.includes('創星季') ? (
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 shadow-2xs">
-                              ✨ 創星季參賽者
-                            </span>
-                          ) : null}
-                          {(!currentUser.verifiedExpert && currentUser.role !== 'solver' && !currentUser.competitionBadges?.includes('創星季')) ? (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
-                              一般會員用戶
-                            </span>
-                          ) : null}
+                          ) : (
+                            <>
+                              {currentUser.verifiedExpert || currentUser.role === 'solver' ? (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
+                                  👑 認證專家
+                                </span>
+                              ) : null}
+                              {currentUser.competitionBadges?.includes('創星季') ? (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 shadow-2xs">
+                                  ✨ 創星季參賽者
+                                </span>
+                              ) : null}
+                              {(!currentUser.verifiedExpert && currentUser.role !== 'solver' && !currentUser.competitionBadges?.includes('創星季')) ? (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
+                                  一般會員用戶
+                                </span>
+                              ) : null}
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1617,27 +1714,88 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           <div className="text-center max-w-3xl mx-auto space-y-4">
             
             {/* 1. 綠色活動圓角膠囊標籤（綠底小圓點 + 創星季標籤） */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50/90 border border-emerald-300 text-emerald-900 text-xs sm:text-sm font-bold shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>【11月創新月】IdeaX 創星季・創新挑戰賽痛點徵件中!</span>
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-emerald-900 text-xs sm:text-sm font-bold shadow-2xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <div className="leading-snug text-center">
+                <div>【11月創新月】IdeaX 創星季・創新挑戰賽</div>
+                <div className="text-emerald-700 font-extrabold tracking-wide">痛點徵件中!</div>
+              </div>
             </div>
 
             {/* 2. 活動時程提醒標籤 */}
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-[11px] sm:text-xs font-bold shadow-2xs">
                 <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>活動時程：10/31~11/13 痛點徵件・11/14~12/04 模擬募資・12/05~12/11 進入決選・12/16前公布結果</span>
+                <span>活動時程：10/31~11/13 痛點徵件・11/14~11/15 預先提案・11/16~12/04 模擬募資・12/05~12/11 進入決選(評審)・12/16前公布結果</span>
               </div>
             </div>
 
-            {/* 3. 大標語：你的 創新點子，值得被世界看見（第二句向右縮排） */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 tracking-tight leading-tight pt-2">
-              <span>你的 <span className="text-amber-500">創新點子</span>，</span>
-              <br />
-              <span className="text-black font-black inline-block pl-6 sm:pl-10 md:pl-14">
-                值得被世界看見
-              </span>
-            </h1>
+            {/* 3. 大標語：你的 創新點子，\n    值得被世界看見（階梯向右縮排排版，附璀璨金芒閃爍與流光特效） */}
+            <div className="pt-2">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 tracking-tight leading-tight inline-block text-left">
+                <span className="block">
+                  你的{' '}
+                  <span className="relative inline-block px-1">
+                    {/* 周圍環境金色輝光光暈 (擴大範圍至外圍，柔和氛圍) */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute -inset-x-6 sm:-inset-x-10 -inset-y-3 sm:-inset-y-5 bg-gradient-to-r from-amber-300/15 via-yellow-200/25 to-amber-400/15 blur-xl sm:blur-2xl rounded-3xl animate-ambient-glow pointer-events-none"
+                    />
+
+                    {/* 閃爍星芒 1：右上角主星芒 (散佈範圍更寬廣，光芒柔和不刺眼) */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute -top-5 sm:-top-7 -right-6 sm:-right-9 text-amber-400/90 animate-sparkle-burst-1 pointer-events-none select-none z-10"
+                    >
+                      <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-amber-400/80 fill-amber-300/60 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" />
+                    </span>
+
+                    {/* 閃爍星芒 2：左上角星芒 (散佈範圍更寬廣) */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute -top-4 sm:-top-6 -left-6 sm:-left-8 text-yellow-400/85 animate-sparkle-burst-2 pointer-events-none select-none z-10"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-4 h-4 sm:w-5 sm:h-5 md:w-5.5 md:h-5.5 fill-yellow-400/70 text-yellow-400/70 drop-shadow-[0_0_8px_rgba(253,224,71,0.4)]"
+                      >
+                        <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+                      </svg>
+                    </span>
+
+                    {/* 閃爍星芒 3：右下角微星芒 (擴大至右外側下方) */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute -bottom-4 sm:-bottom-6 -right-3 sm:-right-5 text-amber-400/80 animate-sparkle-burst-3 pointer-events-none select-none z-10"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400/60 text-amber-400/60 drop-shadow-[0_0_6px_rgba(252,211,77,0.35)]"
+                      >
+                        <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+                      </svg>
+                    </span>
+
+                    {/* 閃爍星芒 4：左下側飄逸微光 (擴大散佈至左側遠處) */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute -bottom-3 sm:-bottom-5 -left-5 sm:-left-7 text-yellow-300/80 animate-sparkle-burst-4 pointer-events-none select-none z-10"
+                    >
+                      <span className="block w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-yellow-300/75 shadow-[0_0_8px_rgba(253,224,71,0.5)]" />
+                    </span>
+
+                    {/* 核心字體：「創新點子」具備金黃漸層流光，柔化過度刺眼的 drop-shadow */}
+                    <span className="relative z-10 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 bg-clip-text text-transparent font-black animate-gold-sweep drop-shadow-[0_1px_4px_rgba(245,158,11,0.25)]">
+                      創新點子
+                    </span>
+                  </span>
+                  ，
+                </span>
+                <span className="block pl-6 sm:pl-10 md:pl-14 text-stone-900">
+                  值得被世界看見
+                </span>
+              </h1>
+            </div>
 
             {/* 4. 副標題說明文字 */}
             <div className="space-y-1.5 text-xs sm:text-sm md:text-base text-stone-700 max-w-xl mx-auto font-medium leading-relaxed">
@@ -1649,16 +1807,38 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
             {/* 5. 核心 CTA 按鍵組：風格高度統一，具備一致的圓角、邊框、圖示與視覺層次 */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3 max-w-lg mx-auto">
-              {/* 主行動：我想提案! (黃金主視覺強調) */}
-              <button
-                type="button"
-                onClick={() => setIsProposalTutorialModalOpen(true)}
-                className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm sm:text-base shadow-sm border border-amber-400 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
-                title="點擊查看提案流程教學"
-              >
-                <Send className="w-4 h-4 text-stone-950" />
-                <span>我想提案!</span>
-              </button>
+              {/* 主行動：在痛點徵件階段為「提出痛點」，痛點徵件後轉為「我想提案」直到 12/04，12/04後截止 */}
+              {stageInfo.isPainPointStage ? (
+                <button
+                  type="button"
+                  onClick={handleOpenPainPointSubmission}
+                  className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-sm sm:text-base shadow-sm border border-rose-600 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+                  title="第一階段痛點徵件中：立即提出產業或生活痛點（過審即送 200 點）"
+                >
+                  <Flame className="w-4 h-4 text-white" />
+                  <span>提出痛點</span>
+                </button>
+              ) : stageInfo.isProposalStage ? (
+                <button
+                  type="button"
+                  onClick={() => setIsProposalTutorialModalOpen(true)}
+                  className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm sm:text-base shadow-sm border border-amber-400 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+                  title="點擊查看提案流程教學（提案開放至 12/04 截止）"
+                >
+                  <Send className="w-4 h-4 text-stone-950" />
+                  <span>我想提案!</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-stone-200 text-stone-500 font-bold text-sm sm:text-base border border-stone-300 flex items-center justify-center gap-2 cursor-not-allowed"
+                  title="創星季提案已於 12/04 截止收件，現正進行決選評審"
+                >
+                  <Clock className="w-4 h-4 text-stone-400" />
+                  <span>提案已截止 (12/04截止)</span>
+                </button>
+              )}
 
               {/* 次行動 1：探索Idea (高雅白底微邊框卡片，圖示文字一致) */}
               <button
@@ -1789,7 +1969,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 {statsConfig.showParticipants && (
                   <div className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200/90 shadow-2xs hover:border-amber-300 transition-all flex flex-col justify-between">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-black text-stone-700">青年參賽團隊</span>
+                      <span className="text-xs sm:text-sm font-black text-stone-700">參賽團隊</span>
                       <GraduationCap className="w-4 h-4 text-emerald-500 shrink-0" />
                     </div>
                     <div className="mt-3">
@@ -1863,7 +2043,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     <div className="text-xl sm:text-2xl font-black text-purple-700">
                       成為專家
                     </div>
-                    <p className="text-[10px] text-stone-500 mt-0.5">申請產學專家認證與專屬創星幣</p>
+                    <p className="text-[10px] text-stone-500 mt-0.5">審核通過轉為專家帳號，享有 3,000,000 點投資額度（單案上限 2,000,000）</p>
                   </div>
                 </button>
               </div>
@@ -1906,30 +2086,17 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 IdeaX 創星季 賽程時程表
               </h2>
             </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-stone-600">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>當前進行：<strong className="text-emerald-800 font-black">{stageInfo.stageTitle}</strong>（{stageInfo.stagePeriod}）</span>
+            </div>
           </div>
 
           {(() => {
-            const now = new Date();
-            const m = now.getMonth() + 1;
-            const d = now.getDate();
-            let activeStage = 0; // 10/31 前為賽前準備期 (activeStage = 0)
-
-            if (m < 10 || (m === 10 && d < 31)) {
-              activeStage = 0; // 10/31 前尚未開跑
-            } else if ((m === 10 && d >= 31) || (m === 11 && d <= 13)) {
-              activeStage = 1; // 10/31 ~ 11/13 第一階段：痛點徵件
-            } else if ((m === 11 && d > 13) || (m === 12 && d <= 4)) {
-              activeStage = 2; // 11/14 ~ 12/04 第二階段：模擬募資
-            } else if (m === 12 && d >= 5 && d <= 11) {
-              activeStage = 3; // 12/05 ~ 12/11 第三階段：進入決選
-            } else if (m === 12 && d >= 12) {
-              activeStage = 4; // 12/16 前公布結果
-            } else {
-              activeStage = 0;
-            }
+            const activeStage = stageInfo.activeStage;
 
             return (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 {/* 階段 1: 痛點徵件 */}
                 <div
                   className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
@@ -1956,25 +2123,25 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       }`}
                     >
                       {activeStage === 1 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      <span>{activeStage === 1 ? '徵件中（當前）' : activeStage > 1 ? '已截止' : '即將開始 (10/31 開跑)'}</span>
+                      <span>{activeStage === 1 ? '徵件中（當前）' : '已截止'}</span>
                     </span>
                   </div>
                   <div className={`text-sm ${activeStage === 1 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
                     痛點徵件
                   </div>
                   <div className={`text-xs font-mono ${activeStage === 1 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
-                    10/31 ~ 11/13
+                    10/31 00:00 ~ 11/13 16:30
                   </div>
                   <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 1 ? 'text-stone-600' : 'text-stone-400'}`}>
-                    提出生活與產業切身痛點（過審即送 200 點，價值 $250，效期 60 日），開放各隊選題解題。
+                    提出生活與產業切身痛點（過審即送 200 點），開放各隊選題解題。
                   </p>
                 </div>
 
-                {/* 階段 2: 模擬募資 */}
+                {/* 階段 2A: 預先提案 (11/14 10:00 ~ 11/15 16:30) */}
                 <div
                   className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
                     activeStage === 2
-                      ? 'bg-white border-2 border-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
+                      ? 'bg-white border-2 border-amber-500 ring-2 ring-amber-400/20 shadow-md'
                       : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
                   }`}
                 >
@@ -1982,35 +2149,35 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     <span
                       className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                         activeStage === 2
-                          ? 'bg-emerald-500 text-white'
+                          ? 'bg-amber-500 text-stone-950 font-bold'
                           : 'bg-stone-200 text-stone-600'
                       }`}
                     >
-                      第二階段
+                      第二階段 (一)
                     </span>
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
                         activeStage === 2
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
                           : 'bg-stone-200/70 text-stone-500 border border-stone-200'
                       }`}
                     >
-                      {activeStage === 2 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      <span>{activeStage === 2 ? '募資中（當前）' : activeStage > 2 ? '已結束' : '即將登場'}</span>
+                      {activeStage === 2 && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
+                      <span>{activeStage === 2 ? '預先提案中（當前）' : activeStage > 2 ? '已結束' : '即將開放'}</span>
                     </span>
                   </div>
                   <div className={`text-sm ${activeStage === 2 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
-                    模擬募資
+                    預先提案
                   </div>
-                  <div className={`text-xs font-mono ${activeStage === 2 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
-                    11/14 ~ 12/04
+                  <div className={`text-xs font-mono ${activeStage === 2 ? 'font-black text-amber-700' : 'font-medium text-stone-400'}`}>
+                    11/14 10:00 ~ 11/15 16:30
                   </div>
-                  <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 2 ? 'text-stone-600' : 'text-stone-400'}`}>
-                    全體會員使用創星幣進行模擬注資與投票。募資總額前 20 名 取得入圍決選資格。
+                  <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 2 ? 'text-stone-700 font-medium' : 'text-stone-400'}`}>
+                    關閉募資(投資)功能。開放報名、線上提案、主辦審核與預覽。
                   </p>
                 </div>
 
-                {/* 階段 3: 進入決選 */}
+                {/* 階段 2B: 模擬募資與提案 (11/16 10:00 ~ 12/04 16:30) */}
                 <div
                   className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
                     activeStage === 3
@@ -2026,7 +2193,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                           : 'bg-stone-200 text-stone-600'
                       }`}
                     >
-                      第三階段
+                      第二階段 (二)
                     </span>
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
@@ -2036,21 +2203,21 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       }`}
                     >
                       {activeStage === 3 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      <span>{activeStage === 3 ? '決選審查中（當前）' : activeStage > 3 ? '已結束' : '專家審查'}</span>
+                      <span>{activeStage === 3 ? '募資與提案中（當前）' : activeStage > 3 ? '已截止 (12/04 16:30)' : '即將開跑 (11/16 10:00)'}</span>
                     </span>
                   </div>
                   <div className={`text-sm ${activeStage === 3 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
-                    進入決選
+                    模擬募資與提案
                   </div>
                   <div className={`text-xs font-mono ${activeStage === 3 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
-                    12/05 ~ 12/11
+                    11/16 10:00 ~ 12/04 16:30
                   </div>
                   <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 3 ? 'text-stone-600' : 'text-stone-400'}`}>
-                    由大會產學研專家與導師進行專業審查、深度指導與評分。
+                    開放報名、提案、創星幣注資與審核！總額前 20 名取得決選資格。
                   </p>
                 </div>
 
-                {/* 階段 4: 公布結果 */}
+                {/* 階段 3: 進入決選(評審) */}
                 <div
                   className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
                     activeStage === 4
@@ -2066,7 +2233,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                           : 'bg-stone-200 text-stone-600'
                       }`}
                     >
-                      第四階段
+                      第三階段
                     </span>
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
@@ -2076,22 +2243,75 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       }`}
                     >
                       {activeStage === 4 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      <span>{activeStage === 4 ? '已公布榜單（當前）' : '大會榮耀'}</span>
+                      <span>{activeStage === 4 ? '決選審查中（當前）' : activeStage > 4 ? '已結束' : '專家審查'}</span>
                     </span>
                   </div>
                   <div className={`text-sm ${activeStage === 4 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
-                    公布結果
+                    進入決選(評審)
                   </div>
                   <div className={`text-xs font-mono ${activeStage === 4 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
-                    12/16 前公布
+                    12/05 ~ 12/11
                   </div>
                   <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 4 ? 'text-stone-600' : 'text-stone-400'}`}>
-                    於首頁盛大公告最終榜單，頒發榮譽與獎勵
+                    由大會產學研專家與導師進行專業審查、深度指導與評分。
+                  </p>
+                </div>
+
+                {/* 階段 4: 公布結果 */}
+                <div
+                  className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
+                    activeStage === 5
+                      ? 'bg-white border-2 border-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
+                      : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        activeStage === 5
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-stone-200 text-stone-600'
+                      }`}
+                    >
+                      第四階段
+                    </span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
+                        activeStage === 5
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'bg-stone-200/70 text-stone-500 border border-stone-200'
+                      }`}
+                    >
+                      {activeStage === 5 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                      <span>{activeStage === 5 ? '已公布榜單（當前）' : '大會榮耀'}</span>
+                    </span>
+                  </div>
+                  <div className={`text-sm ${activeStage === 5 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
+                    公布結果
+                  </div>
+                  <div className={`text-xs font-mono ${activeStage === 5 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
+                    12/16 前公布
+                  </div>
+                  <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 5 ? 'text-stone-600' : 'text-stone-400'}`}>
+                    於首頁盛大公告最終榜單，頒發榮譽與獎勵。
                   </p>
                 </div>
               </div>
             );
           })()}
+
+          {/* 賽程表區塊右下：完整競賽辦法-> */}
+          <div className="pt-3 border-t border-stone-100 flex items-center justify-end mt-3">
+            <button
+              type="button"
+              onClick={() => navigateToSubView('rules')}
+              className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline transition-colors cursor-pointer group"
+              title="前往閱讀完整競賽辦法與規章章程"
+            >
+              <span>完整競賽辦法</span>
+              <span className="transition-transform group-hover:translate-x-0.5">→</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2236,65 +2456,251 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           </div>
         </div>
 
-        {/* 競賽實戰學習指南與常見問答 (教育部 SSP faqs 風格呈現) */}
-        <div className="mt-16 pt-10 border-t border-stone-200 space-y-6">
-          <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold">
-              <BookOpen className="w-3.5 h-3.5 text-amber-600" />
-              <span>IdeaX 創星季 規則與常見問答手冊</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-stone-900">
-              IdeaX 創星季 規則指南與常見問題
-            </h2>
-            <p className="text-xs sm:text-sm text-stone-600 max-w-xl mx-auto">
-              掌握兩階段提案策略、使用創星幣模擬注資投票、獲獎提案使用痛點之好禮獎勵與專家決選辦法
-            </p>
-            <div className="pt-2">
+        {/* 首頁資訊：活動獎項、大略規則與前往專門競賽辦法頁之文字連結 */}
+        <div className="mt-16 pt-10 border-t border-stone-200 space-y-12">
+          {/* 1. 活動獎項專區 */}
+          <section id="homepage-awards-section" className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <Trophy className="w-4.5 h-4.5 text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-stone-900">
+                    活動獎項
+                  </h2>
+                  <p className="text-xs text-stone-500 font-medium">總獎金回饋、官方「創之星」最高榮譽與雙向共創好禮</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => navigateToSubView('rules')}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs sm:text-sm shadow-xs cursor-pointer transition-all"
+                className="text-xs font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer transition-colors self-start sm:self-auto"
               >
-                <BookOpen className="w-4 h-4 text-amber-400" />
-                <span>開啟完整【競賽辦法與實戰指南】滿版專頁 →</span>
+                <span>完整競賽辦法</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
-          </div>
 
-          <div className="max-w-3xl mx-auto space-y-3">
-            {faqList.map((faq, idx) => {
-              const isOpen = openFaqIndex === idx;
-              return (
-                <div
-                  key={idx}
-                  className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-2xs transition-all"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                    className="w-full p-4 text-left flex items-center justify-between gap-3 cursor-pointer hover:bg-amber-50/40 transition-colors"
-                  >
-                    <span className="font-black text-stone-900 text-xs sm:text-sm flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center text-[10px] font-black shrink-0">
-                        {idx + 1}
-                      </span>
-                      {faq.q}
+            {/* 前三名大獎卡片 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* 冠軍 */}
+              <div className="bg-gradient-to-b from-amber-50/80 via-white to-stone-50 p-5 rounded-2xl border-2 border-amber-300 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 flex items-center gap-1">
+                      <Trophy className="w-3 h-3 text-stone-950" />
+                      <span>第一名</span>
                     </span>
-                    <ChevronDown
-                      className={`w-4 h-4 text-stone-400 transition-transform duration-200 shrink-0 ${
-                        isOpen ? 'rotate-180 text-amber-600' : ''
-                      }`}
-                    />
-                  </button>
-                  {isOpen && (
-                    <div className="px-4 pb-4 pt-1 text-xs text-stone-600 leading-relaxed border-t border-stone-100 bg-amber-50/20">
-                      {faq.a}
-                    </div>
-                  )}
+                    <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded">
+                      First Prize
+                    </span>
+                  </div>
+                  <h3 className="text-base font-black text-stone-900">🏆 冠軍大獎</h3>
+                  <div className="text-2xl sm:text-3xl font-black text-amber-700 font-mono tracking-tight">
+                    NT$30,000 <span className="text-xs text-stone-500 font-normal">等值獎勵</span>
+                  </div>
+                  <p className="text-xs text-stone-600 leading-relaxed pt-1">
+                    <b>NT$20,000 現金</b> ＋ <b>8,000 點</b> IdeaX 平台點數（點數效期 180 日）＋ 官方「創之星」最高榮譽徽章與得獎證書。
+                  </p>
                 </div>
-              );
-            })}
-          </div>
+                <div className="mt-3 pt-3 border-t border-amber-200/60 text-[11px] font-bold text-amber-900 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-600" />
+                  <span>最高榮耀認證，產學業師深度指導</span>
+                </div>
+              </div>
+
+              {/* 亞軍 */}
+              <div className="bg-gradient-to-b from-stone-50 via-white to-stone-50 p-5 rounded-2xl border border-stone-200 shadow-2xs flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-stone-200 text-stone-800 flex items-center gap-1">
+                      <Award className="w-3 h-3 text-stone-700" />
+                      <span>第二名</span>
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded">
+                      Second Prize
+                    </span>
+                  </div>
+                  <h3 className="text-base font-black text-stone-900">🥈 亞軍殊榮</h3>
+                  <div className="text-2xl sm:text-3xl font-black text-stone-900 font-mono tracking-tight">
+                    NT$10,000 <span className="text-xs text-stone-500 font-normal">等值獎勵</span>
+                  </div>
+                  <p className="text-xs text-stone-600 leading-relaxed pt-1">
+                    <b>NT$6,000 現金</b> ＋ <b>3,200 點</b> IdeaX 平台點數（點數效期 180 日）＋ 官方「創之星」榮譽徽章與得獎證書。
+                  </p>
+                </div>
+                <div className="mt-3 pt-3 border-t border-stone-100 text-[11px] font-bold text-stone-600 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-stone-400" />
+                  <span>官方重點孵化推薦方案</span>
+                </div>
+              </div>
+
+              {/* 季軍 */}
+              <div className="bg-gradient-to-b from-stone-50 via-white to-stone-50 p-5 rounded-2xl border border-stone-200 shadow-2xs flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-stone-200 text-stone-800 flex items-center gap-1">
+                      <Award className="w-3 h-3 text-stone-700" />
+                      <span>第三名</span>
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded">
+                      Third Prize
+                    </span>
+                  </div>
+                  <h3 className="text-base font-black text-stone-900">🥉 季軍殊榮</h3>
+                  <div className="text-2xl sm:text-3xl font-black text-stone-900 font-mono tracking-tight">
+                    NT$5,000 <span className="text-xs text-stone-500 font-normal">等值獎勵</span>
+                  </div>
+                  <p className="text-xs text-stone-600 leading-relaxed pt-1">
+                    <b>NT$3,000 現金</b> ＋ <b>1,600 點</b> IdeaX 平台點數（點數效期 180 日）＋ 官方「創之星」榮譽徽章與得獎證書。
+                  </p>
+                </div>
+                <div className="mt-3 pt-3 border-t border-stone-100 text-[11px] font-bold text-stone-600 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-stone-400" />
+                  <span>社群高人氣創客推薦</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 人人有獎痛點提出獎、痛點採用獎與推廣大使卡片 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+              <div className="p-4 rounded-xl bg-rose-50/70 border border-rose-200 space-y-1.5 text-xs text-stone-700">
+                <div className="font-bold text-stone-900 flex items-center gap-1.5">
+                  <Flame className="w-4 h-4 text-rose-500" />
+                  <span>痛點提出獎（人人有獎）</span>
+                </div>
+                <p className="leading-relaxed text-stone-600">
+                  只要成功提出生活或產業痛點（需過審），即送 <b>200 點</b>（價值 $250 的 IdeaX 創點子平台點數，效期 60 日）。
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1.5 text-xs text-stone-700">
+                <div className="font-bold text-stone-900 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-amber-700" />
+                  <span>痛點採用好禮</span>
+                </div>
+                <p className="leading-relaxed text-stone-600">
+                  獲獎提案採用您的痛點：前 1~3 名享價值 <b>NT$1,500</b> 等值好禮（含 1,200 點提問金）；前 4~10 名享價值 <b>$500</b> 好禮（效期 60 日）。
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-200 space-y-1.5 text-xs text-stone-700">
+                <div className="font-bold text-stone-900 flex items-center gap-1.5">
+                  <Megaphone className="w-4 h-4 text-purple-600" />
+                  <span>推廣大使推薦獎</span>
+                </div>
+                <p className="leading-relaxed text-stone-600">
+                  每成功推薦 1 案審核通過，推薦人享 <b>300 點</b>（價值 $400）IdeaX 平台點數（效期 60 日，多推多得無上限）。
+                </p>
+              </div>
+            </div>
+
+            {/* 點數效期規範提醒 */}
+            <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200 text-xs text-stone-700 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>
+                <b>點數有效期限特別說明：</b>前三名（冠、亞、季軍）獲獎團隊點數效期為 <b>180 日</b>，其餘所有獎勵點數（痛點獎、採用好禮、大使獎）效期皆為 <b>60 日</b>。
+              </span>
+            </div>
+          </section>
+
+          {/* 2. 競賽辦法專區 */}
+          <section id="homepage-brief-rules-section" className="space-y-6 pt-6 border-t border-stone-200/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-4.5 h-4.5 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-stone-900">
+                    競賽辦法
+                  </h2>
+                  <p className="text-xs text-stone-500 font-medium">免預先報名、題目設定、模擬募資與特聘專家評審機制</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigateToSubView('rules')}
+                className="text-xs font-bold text-blue-700 hover:text-blue-800 flex items-center gap-1 cursor-pointer transition-colors self-start sm:self-auto"
+              >
+                <span>完整競賽辦法</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* 大略規則三大核心卡片 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* 規則 1: 參加資格與報名方式 */}
+              <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">1</span>
+                  <h3 className="font-black text-stone-900 text-sm">參加資格與報名方式</h3>
+                </div>
+                <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
+                  <li><b>身分不限：</b>不限在學學生或社會人士，個人獨立或 1~5 人自由組隊皆可參加。</li>
+                  <li><b>隊伍計算：</b>以每個帳號算計一隊，每隊不限提案或痛點數量。</li>
+                  <li><b>免預先報名：</b>競賽網站開放隨時可註冊登入 IdeaX 帳號，時程一到即可線上提案。</li>
+                  <li><b>可報名期間：</b>提痛點 10/24~11/13（可能提前開放）；提案 10/24~12/04（可能提前開放）。</li>
+                </ul>
+              </div>
+
+              {/* 規則 2: 競賽主題與交稿方式 */}
+              <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">2</span>
+                  <h3 className="font-black text-stone-900 text-sm">競賽主題與交稿方式</h3>
+                </div>
+                <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
+                  <li><b>提痛點：</b>提出生活中感到煩惱困擾的地方共同腦力激盪（過審送 200 點）。</li>
+                  <li><b>提方案：</b>從痛點庫選題，尋找能解決問題的「創新方法」或「創新事物」。</li>
+                  <li><b>線上交稿：</b>至提案專頁填寫標題、領域分類、摘要、企劃四部曲與 BP 簡報附件。</li>
+                </ul>
+              </div>
+
+              {/* 規則 3: 評審機制與評分比重 */}
+              <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">3</span>
+                  <h3 className="font-black text-stone-900 text-sm">評審機制與指標比重</h3>
+                </div>
+                <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
+                  <li><b>初審入圍：</b>第二階段大眾模擬注資總額排名前 20 名晉級決審。</li>
+                  <li><b>專家評審：</b>由特聘專家評審團審查（名單暫不公布以維持公正）。</li>
+                  <li><b>四大維度比重：</b><b>創新性 40%</b>、<b>完整度 20%</b>、<b>可行性 20%</b>、<b>商業潛力 20%</b>。</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* 3. 專屬文字連結卡片：引導進入專門的競賽辦法頁 */}
+          <section className="bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 rounded-3xl p-6 sm:p-8 text-white shadow-md border border-stone-700/80">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                  想深入瞭解完整競賽章程、報名細節與常見問答？
+                </h3>
+                <p className="text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
+                  包含：壹、競賽緣起 ｜ 貳、報名時間 ｜ 參、參加資格 ｜ 肆、報名方式 ｜ 伍、競賽主題設定 ｜ 陸、交稿方式 ｜ 柒、活動獎項 ｜ 捌、評審機制 ｜ 玖、活動時程 ｜ 拾、其他注意事項與詳細常見問答 FAQ。
+                </p>
+              </div>
+
+              <div className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigateToSubView('rules');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-98 group"
+                >
+                  <BookOpen className="w-4 h-4 text-stone-950" />
+                  <span>前往［競賽辦法］</span>
+                  <span className="transition-transform group-hover:translate-x-1 font-bold">→</span>
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
@@ -2737,18 +3143,33 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    if (stageInfo.isPreProposalStage) {
+                      showToast('ℹ️ 11/14 ~ 11/15 為預先提案期，募資(投資)功能暫時關閉，僅供提案審核與預覽！11/16 起正式開放注資。');
+                      return;
+                    }
+                    if (!stageInfo.isInvestmentEnabled) {
+                      showToast('ℹ️ 創星幣模擬募資將於 11/16 ~ 12/04 開放！');
+                      return;
+                    }
                     setSelectedProposalForSupport(selectedProposalForDetail);
                     setSelectedProposalForDetail(null);
                     setIsSupportModalOpen(true);
                   }}
                   className={`py-2.5 rounded-xl border border-amber-300 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5 ${
-                    selectedProposalForDetail.stage === 'pain_point'
+                    !stageInfo.isInvestmentEnabled
+                      ? 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
+                      : selectedProposalForDetail.stage === 'pain_point'
                       ? 'bg-amber-100 hover:bg-amber-200 px-4'
                       : 'flex-1 bg-amber-400 hover:bg-amber-300'
                   }`}
+                  title={!stageInfo.isInvestmentEnabled ? '預先提案期（11/14~11/15）募資功能關閉，11/16 正式開放' : undefined}
                 >
-                  <Heart className="w-4 h-4 fill-current text-rose-500" />
-                  <span>使用創星幣支持{selectedProposalForDetail.stage === 'pain_point' ? '痛點' : '提案'}</span>
+                  <Heart className={`w-4 h-4 ${stageInfo.isInvestmentEnabled ? 'fill-current text-rose-500' : 'text-stone-400'}`} />
+                  <span>
+                    {stageInfo.isPreProposalStage
+                      ? '預先提案期（募資暫未開放）'
+                      : `使用創星幣支持${selectedProposalForDetail.stage === 'pain_point' ? '痛點' : '提案'}`}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -2843,9 +3264,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   onChange={(e) => setFormTrack(e.target.value as StarSeasonTrack)}
                   className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 text-xs focus:outline-none focus:border-amber-400"
                 >
-                  {Object.values(STAR_SEASON_TRACKS).map((t) => (
+                  {OFFICIAL_COMPETITION_TRACKS.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.name} ({t.tag})
+                      {t.name}
                     </option>
                   ))}
                 </select>
@@ -3211,7 +3632,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <Megaphone className="w-4 h-4 text-amber-700" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-stone-900">校園推廣大使推薦碼專區</h3>
+                  <h3 className="text-base font-black text-stone-900">推廣大使推薦碼專區</h3>
                   <p className="text-[11px] text-stone-500">推薦夥伴參賽享 300 點（價值 $400）推廣獎勵（IdeaX平台點數，用於提問、享受付費服務）</p>
                 </div>
               </div>
@@ -3290,7 +3711,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       <span>每推薦 1 案審核通過，即享 300 點（價值 $400）推廣獎勵（IdeaX平台點數，用於提問、享受付費服務）！</span>
                     </div>
                     <p className="text-[11px] text-stone-600 leading-relaxed">
-                      邀請各校青年創客或團隊於提案時填入您的推薦碼，或透過您的專屬連結投件，初審過審後獎勵自動計入結算名單。多推多得無上限！
+                      邀請創客、個人或團隊於提案時填入您的推薦碼，或透過您的專屬連結投件，初審過審後獎勵自動計入結算名單。多推多得無上限！
                     </p>
                   </div>
                 </div>
@@ -3324,7 +3745,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     <span>輸入推薦碼（綁定您的推薦人）</span>
                   </div>
                   <p className="text-[11px] text-stone-500 leading-relaxed">
-                    若您是由特定校園推廣大使或夥伴推薦前來參賽，可在此輸入對方的推薦碼。提案通過初審時，對方將獲得 300 點（價值 $400）推薦獎勵（IdeaX平台點數，用於提問、享受付費服務）！
+                    若您是由特定推廣大使或夥伴推薦前來參賽，可在此輸入對方的推薦碼。提案通過初審時，對方將獲得 300 點（價值 $400）推薦獎勵（IdeaX平台點數，用於提問、享受付費服務）！
                   </p>
                   <form onSubmit={handleBindReferral} className="flex items-center gap-2 pt-1">
                     <input
@@ -3481,28 +3902,28 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <div className="space-y-3 p-4 rounded-2xl bg-stone-50 border border-stone-200">
                   <div className="font-bold text-stone-900 flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-amber-600" />
-                    <span>團隊成員與指導老師</span>
+                    <span>參賽者 / 團隊成員資料</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-bold text-stone-700 mb-1">團隊名稱 *</label>
+                      <label className="block font-bold text-stone-700 mb-1">團隊或個人名稱 *</label>
                       <input
                         type="text"
                         value={teamName}
                         onChange={(e) => setTeamName(e.target.value)}
-                        placeholder="例如: 智創綠能青年隊"
+                        placeholder="例如: 智創綠能隊 (個人可填姓名或稱號)"
                         className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block font-bold text-stone-700 mb-1">隊長 / 負責人姓名 *</label>
+                      <label className="block font-bold text-stone-700 mb-1">主要聯絡人 / 提案人姓名 *</label>
                       <input
                         type="text"
                         value={leaderName}
                         onChange={(e) => setLeaderName(e.target.value)}
-                        placeholder="請填寫隊長姓名"
+                        placeholder="請填寫聯絡人姓名"
                         className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400"
                         required
                       />
@@ -3529,37 +3950,37 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block font-bold text-stone-700 mb-1">就讀學校 / 機構單位</label>
+                      <label className="block font-bold text-stone-700 mb-1">就讀學校 / 任職單位 (選填)</label>
                       <input
                         type="text"
                         value={schoolName}
                         onChange={(e) => setSchoolName(e.target.value)}
-                        placeholder="例如: 國立臺灣科技大學"
+                        placeholder="例如: 國立臺灣科技大學、XX科技公司或自由創客"
                         className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400"
                       />
                     </div>
                     <div>
-                      <label className="block font-bold text-stone-700 mb-1">系所 / 年級</label>
+                      <label className="block font-bold text-stone-700 mb-1">系所 / 職稱 (選填)</label>
                       <input
                         type="text"
                         value={department}
                         onChange={(e) => setDepartment(e.target.value)}
-                        placeholder="例如: 資訊工程系 碩士班"
+                        placeholder="例如: 資訊工程系、產品經理或工程師"
                         className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400"
                       />
                     </div>
                     <div>
-                      <label className="block font-bold text-stone-700 mb-1">指導老師 / 業師</label>
+                      <label className="block font-bold text-stone-700 mb-1">指導顧問 / 業師 (選填)</label>
                       <input
                         type="text"
                         value={advisorName}
                         onChange={(e) => setAdvisorName(e.target.value)}
-                        placeholder="例如: 林教授 / 王業師"
+                        placeholder="例如: 林顧問 / 王業師 (無則免填)"
                         className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400"
                       />
                     </div>
                     <div>
-                      <label className="block font-bold text-stone-700 mb-1">團隊其他核心成員</label>
+                      <label className="block font-bold text-stone-700 mb-1">團隊其他核心成員 (個人參賽免填)</label>
                       <input
                         type="text"
                         value={teamMembersInput}
@@ -3586,9 +4007,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         onChange={(e) => setParticipantTrack(e.target.value as StarSeasonTrack)}
                         className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 font-bold"
                       >
-                        {Object.values(STAR_SEASON_TRACKS).map((tr) => (
+                        {OFFICIAL_COMPETITION_TRACKS.map((tr) => (
                           <option key={tr.id} value={tr.id}>
-                            {tr.name} ({tr.tag})
+                            {tr.name}
                           </option>
                         ))}
                       </select>
@@ -3795,7 +4216,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             {regModalTab === 'judge' && (
               <form onSubmit={handleSubmitJudge} className="space-y-4 text-xs">
                 <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-purple-900 leading-relaxed text-[11px]">
-                  👑 <b>評審資格權益：</b>申請通過後，將<b>同步錄入舊站的認證專家身份與專家名單</b>！在創星季競賽中享有 <b>3,000,000 點</b>專家專業評選額度，並受邀為入圍決賽隊伍進行深度點評！
+                  👑 <b>評審資格權益：</b>審核通過轉為專家帳號，享有 <b>3,000,000 點</b>投資額度（單案上限 2,000,000），並同步錄入舊站認證專家名單！
                 </div>
 
                 {/* 評審基本資料 */}

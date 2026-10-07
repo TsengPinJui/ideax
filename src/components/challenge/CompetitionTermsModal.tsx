@@ -100,32 +100,30 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
           })}
         </div>
 
-        {/* Content Area */}
+        {/* Content Area - 商用正式規章白底黑字連續文件規格 */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
           {activeDoc === 'A' && (
-            <div className="space-y-4">
-              <div className="bg-amber-50/80 p-4 rounded-2xl border border-amber-200">
-                <div className="flex items-center gap-2 text-amber-900 font-black text-sm">
-                  <BookOpen className="w-4 h-4 text-amber-600" />
-                  <span>{COMPETITION_RULES_A.title}</span>
+            <div className="bg-white border border-stone-200 rounded-xl p-6 sm:p-8 text-stone-900 shadow-2xs space-y-6">
+              <div className="border-b border-stone-200 pb-4">
+                <h3 className="text-base sm:text-lg font-black text-stone-950">
+                  {COMPETITION_RULES_A.title}
+                </h3>
+                <p className="text-xs text-stone-600 mt-1">{COMPETITION_RULES_A.subtitle}</p>
+                <div className="text-[11px] font-mono text-stone-500 mt-2">
+                  最後修訂日：{COMPETITION_RULES_A.lastUpdated} • 主辦單位：IdeaX 團隊
                 </div>
-                <p className="text-xs text-amber-800 mt-1">{COMPETITION_RULES_A.subtitle}</p>
-                <span className="text-[10px] font-mono text-stone-400 mt-2 block">
-                  最後修訂日：{COMPETITION_RULES_A.lastUpdated}
-                </span>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="space-y-6 text-xs text-stone-800 leading-relaxed">
                 {COMPETITION_RULES_A.sections.map((sec) => (
-                  <div key={sec.id} className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-black text-stone-900 text-sm">{sec.title}</h4>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                        {sec.badge}
-                      </span>
-                    </div>
-                    <p className="text-stone-500 font-bold text-[11px]">{sec.summary}</p>
-                    <div className="space-y-1.5 text-stone-700 leading-relaxed pt-1">
+                  <div key={sec.id} className="space-y-2">
+                    <h4 className="font-black text-stone-950 text-sm border-b border-stone-200 pb-1">
+                      {sec.title}
+                    </h4>
+                    {sec.summary && (
+                      <p className="text-stone-500 font-medium text-[11px]">{sec.summary}</p>
+                    )}
+                    <div className="space-y-1 text-stone-700 pl-0 sm:pl-1">
                       {sec.content.map((para, i) => (
                         <p key={i}>{para}</p>
                       ))}
@@ -137,29 +135,27 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
           )}
 
           {activeDoc === 'B' && (
-            <div className="space-y-4">
-              <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200">
-                <div className="flex items-center gap-2 text-emerald-950 font-black text-sm">
-                  <FileText className="w-4 h-4 text-emerald-600" />
-                  <span>{GENERAL_USER_TERMS_B.title}</span>
-                </div>
-                <p className="text-xs text-emerald-800 mt-1">{GENERAL_USER_TERMS_B.subtitle}</p>
-                <span className="text-[10px] font-mono text-stone-400 mt-2 block">
+            <div className="bg-white border border-stone-200 rounded-xl p-6 sm:p-8 text-stone-900 shadow-2xs space-y-6">
+              <div className="border-b border-stone-200 pb-4">
+                <h3 className="text-base sm:text-lg font-black text-stone-950">
+                  {GENERAL_USER_TERMS_B.title}
+                </h3>
+                <p className="text-xs text-stone-600 mt-1">{GENERAL_USER_TERMS_B.subtitle}</p>
+                <div className="text-[11px] font-mono text-stone-500 mt-2">
                   適用範圍：競賽網站全體會員登入、註冊與創星幣注資
-                </span>
+                </div>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="space-y-6 text-xs text-stone-800 leading-relaxed">
                 {GENERAL_USER_TERMS_B.sections.map((sec) => (
-                  <div key={sec.id} className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-black text-stone-900 text-sm">{sec.title}</h4>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        {sec.badge}
-                      </span>
-                    </div>
-                    <p className="text-stone-500 font-bold text-[11px]">{sec.summary}</p>
-                    <div className="space-y-1.5 text-stone-700 leading-relaxed pt-1">
+                  <div key={sec.id} className="space-y-2">
+                    <h4 className="font-black text-stone-950 text-sm border-b border-stone-200 pb-1">
+                      {sec.title}
+                    </h4>
+                    {sec.summary && (
+                      <p className="text-stone-500 font-medium text-[11px]">{sec.summary}</p>
+                    )}
+                    <div className="space-y-1 text-stone-700 pl-0 sm:pl-1">
                       {sec.content.map((para, i) => (
                         <p key={i}>{para}</p>
                       ))}
@@ -171,29 +167,27 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
           )}
 
           {activeDoc === 'C' && (
-            <div className="space-y-4">
-              <div className="bg-blue-50/80 p-4 rounded-2xl border border-blue-200">
-                <div className="flex items-center gap-2 text-blue-950 font-black text-sm">
-                  <UserCheck className="w-4 h-4 text-blue-600" />
-                  <span>{PARTICIPANT_TERMS_C.title}</span>
-                </div>
-                <p className="text-xs text-blue-800 mt-1">{PARTICIPANT_TERMS_C.subtitle}</p>
-                <span className="text-[10px] font-mono text-stone-400 mt-2 block">
+            <div className="bg-white border border-stone-200 rounded-xl p-6 sm:p-8 text-stone-900 shadow-2xs space-y-6">
+              <div className="border-b border-stone-200 pb-4">
+                <h3 className="text-base sm:text-lg font-black text-stone-950">
+                  {PARTICIPANT_TERMS_C.title}
+                </h3>
+                <p className="text-xs text-stone-600 mt-1">{PARTICIPANT_TERMS_C.subtitle}</p>
+                <div className="text-[11px] font-mono text-stone-500 mt-2">
                   適用範圍：申請成為參賽者、提案投件與決賽資格
-                </span>
+                </div>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="space-y-6 text-xs text-stone-800 leading-relaxed">
                 {PARTICIPANT_TERMS_C.sections.map((sec) => (
-                  <div key={sec.id} className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-black text-stone-900 text-sm">{sec.title}</h4>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-                        {sec.badge}
-                      </span>
-                    </div>
-                    <p className="text-stone-500 font-bold text-[11px]">{sec.summary}</p>
-                    <div className="space-y-1.5 text-stone-700 leading-relaxed pt-1">
+                  <div key={sec.id} className="space-y-2">
+                    <h4 className="font-black text-stone-950 text-sm border-b border-stone-200 pb-1">
+                      {sec.title}
+                    </h4>
+                    {sec.summary && (
+                      <p className="text-stone-500 font-medium text-[11px]">{sec.summary}</p>
+                    )}
+                    <div className="space-y-1 text-stone-700 pl-0 sm:pl-1">
                       {sec.content.map((para, i) => (
                         <p key={i}>{para}</p>
                       ))}
@@ -205,29 +199,27 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
           )}
 
           {activeDoc === 'D' && (
-            <div className="space-y-4">
-              <div className="bg-purple-50/80 p-4 rounded-2xl border border-purple-200">
-                <div className="flex items-center gap-2 text-purple-950 font-black text-sm">
-                  <ShieldCheck className="w-4 h-4 text-purple-600" />
-                  <span>{EXPERT_JUDGE_TERMS_D.title}</span>
-                </div>
-                <p className="text-xs text-purple-800 mt-1">{EXPERT_JUDGE_TERMS_D.subtitle}</p>
-                <span className="text-[10px] font-mono text-stone-400 mt-2 block">
+            <div className="bg-white border border-stone-200 rounded-xl p-6 sm:p-8 text-stone-900 shadow-2xs space-y-6">
+              <div className="border-b border-stone-200 pb-4">
+                <h3 className="text-base sm:text-lg font-black text-stone-950">
+                  {EXPERT_JUDGE_TERMS_D.title}
+                </h3>
+                <p className="text-xs text-stone-600 mt-1">{EXPERT_JUDGE_TERMS_D.subtitle}</p>
+                <div className="text-[11px] font-mono text-stone-500 mt-2">
                   適用範圍：專家申請、保密協議（NDA）與決選評審
-                </span>
+                </div>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="space-y-6 text-xs text-stone-800 leading-relaxed">
                 {EXPERT_JUDGE_TERMS_D.sections.map((sec) => (
-                  <div key={sec.id} className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-black text-stone-900 text-sm">{sec.title}</h4>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                        {sec.badge}
-                      </span>
-                    </div>
-                    <p className="text-stone-500 font-bold text-[11px]">{sec.summary}</p>
-                    <div className="space-y-1.5 text-stone-700 leading-relaxed pt-1">
+                  <div key={sec.id} className="space-y-2">
+                    <h4 className="font-black text-stone-950 text-sm border-b border-stone-200 pb-1">
+                      {sec.title}
+                    </h4>
+                    {sec.summary && (
+                      <p className="text-stone-500 font-medium text-[11px]">{sec.summary}</p>
+                    )}
+                    <div className="space-y-1 text-stone-700 pl-0 sm:pl-1">
                       {sec.content.map((para, i) => (
                         <p key={i}>{para}</p>
                       ))}
@@ -239,36 +231,26 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
           )}
 
           {activeDoc === 'E' && (
-            <div className="space-y-4">
-              <div className="bg-yellow-50/80 p-4 rounded-2xl border border-yellow-200">
-                <div className="flex items-center gap-2 text-yellow-950 font-black text-sm">
-                  <HelpCircle className="w-4 h-4 text-yellow-600" />
-                  <span>{PLATFORM_GUIDE_E.title}</span>
-                </div>
-                <p className="text-xs text-yellow-800 mt-1">{PLATFORM_GUIDE_E.subtitle}</p>
-                <span className="text-[10px] font-mono text-stone-400 mt-2 block">
+            <div className="bg-white border border-stone-200 rounded-xl p-6 sm:p-8 text-stone-900 shadow-2xs space-y-6">
+              <div className="border-b border-stone-200 pb-4">
+                <h3 className="text-base sm:text-lg font-black text-stone-950">
+                  {PLATFORM_GUIDE_E.title}
+                </h3>
+                <p className="text-xs text-stone-600 mt-1">{PLATFORM_GUIDE_E.subtitle}</p>
+                <div className="text-[11px] font-mono text-stone-500 mt-2">
                   快速上手指南：7 大實戰操作步驟
-                </span>
+                </div>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="space-y-6 text-xs text-stone-800 leading-relaxed">
                 {PLATFORM_GUIDE_E.steps.map((step) => (
-                  <div key={step.stepNumber} className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-amber-400 text-stone-950 font-black text-xs flex items-center justify-center font-mono">
-                          {step.stepNumber}
-                        </span>
-                        <h4 className="font-black text-stone-900 text-sm">{step.title}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-200 text-stone-700">
-                        {step.badge}
-                      </span>
-                    </div>
-                    <p className="text-stone-700 leading-relaxed pt-0.5">{step.description}</p>
-                    <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900 font-bold">
-                      💡 實戰小撇步：{step.tips}
-                    </div>
+                  <div key={step.stepNumber} className="space-y-2">
+                    <h4 className="font-black text-stone-950 text-sm border-b border-stone-200 pb-1 flex items-center justify-between">
+                      <span>步驟 {step.stepNumber}：{step.title}</span>
+                      <span className="text-[11px] font-normal text-stone-500">{step.badge}</span>
+                    </h4>
+                    <p className="text-stone-700">{step.description}</p>
+                    <p className="text-stone-500 text-[11px]">提示：{step.tips}</p>
                   </div>
                 ))}
               </div>

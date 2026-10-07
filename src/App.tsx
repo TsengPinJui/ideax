@@ -22,6 +22,8 @@ import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { AiCrmView } from './components/AiCrmView';
 import { ChatView } from './components/ChatView';
 import { StarSeasonView } from './components/challenge/StarSeasonView';
+import { DraggableStarSeasonFloat } from './components/challenge/DraggableStarSeasonFloat';
+import { DraggableChuangdianziFloat } from './components/challenge/DraggableChuangdianziFloat';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
@@ -46,7 +48,7 @@ import {
   isUserInterestedInQuestionTopic,
   isQuestionExpired,
 } from './services/recommendationService';
-import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, LogOut } from 'lucide-react';
+import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert } from 'lucide-react';
 
 const CATEGORIES: Category[] = [
   '創新創業',
@@ -84,6 +86,7 @@ function MainContent() {
     addNotification,
     isDemoMode,
     isNoPaymentMode,
+    isRaceMode,
     centerToast,
     hideCenterToast,
     promptLogin,
@@ -248,7 +251,7 @@ function MainContent() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('ideax_pinned_board');
-      if (saved) {
+      if (saved && saved !== 'unpinned') {
         const board = JSON.parse(saved);
         setPinnedBoard(board);
         if (board.type === 'special_zone') {
@@ -260,14 +263,21 @@ function MainContent() {
           setSelectedSubcategory(board.id);
           setSpecialZone('all');
         }
+      } else if (!saved && isRaceMode) {
+        // 競賽模式: 舊站優先置頂痛點專區，除非後面用戶自己換成其他置頂看板
+        const defaultRaceBoard = { type: 'special_zone' as const, id: 'pain_points' };
+        setPinnedBoard(defaultRaceBoard);
+        setSpecialZone('pain_points');
+        setSelectedCategory('全部');
+        setSelectedSubcategory('全部');
       }
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [isRaceMode]);
 
   const performUnpin = () => {
-    localStorage.removeItem('ideax_pinned_board');
+    localStorage.setItem('ideax_pinned_board', 'unpinned');
     setPinnedBoard(null);
   };
 
@@ -946,24 +956,6 @@ function MainContent() {
                         <span>提出痛點</span>
                       </button>
 
-                      {/* 2. 返回創星季 (在右邊，離開圖示) */}
-                      <button
-                        onClick={() => {
-                          setActiveTab('star_season');
-                          try {
-                            if (typeof window !== 'undefined') {
-                              window.history.pushState(null, '', '/challenge');
-                            }
-                          } catch {}
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-98"
-                        title="返回 IdeaX 創星季競賽活動"
-                      >
-                        <LogOut className="w-3.5 h-3.5 text-stone-950" />
-                        <span>返回創星季</span>
-                      </button>
-
                       <button
                         onClick={() => setSpecialZone('all')}
                         className="p-2 rounded-xl bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
@@ -1341,6 +1333,7 @@ function MainContent() {
                 setActiveTab('explore');
                 setIsOnboardingOpen(true);
               }}
+              onNavigateToStarSeason={() => setActiveTab('star_season')}
             />
           </div>
         )}
@@ -1776,26 +1769,38 @@ function MainContent() {
         onSetViewMode={handleSetViewMode}
       />
 
-      {/* 當在創點子/痛點區時，提供懸浮「返回創星季」按鈕 */}
-      {specialZone === 'pain_points' && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <button
-            onClick={() => {
-              setActiveTab('star_season');
-              try {
-                if (typeof window !== 'undefined') {
-                  window.history.pushState(null, '', '/challenge');
-                }
-              } catch {}
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs sm:text-sm shadow-xl hover:shadow-2xl border-2 border-amber-300 flex items-center gap-2 cursor-pointer transition-all active:scale-95 group"
-            title="返回 IdeaX 創星季競賽活動"
-          >
-            <LogOut className="w-4 h-4 text-stone-950 group-hover:translate-x-0.5 transition-transform" />
-            <span>返回創星季</span>
-          </button>
-        </div>
+      {/* 舊網站獨立創星季懸浮按鈕：可拖動、可貼齊隱藏到邊框、可隨時再叫出（使用創星季圖片，不用燈泡） */}
+      {activeTab !== 'star_season' && (
+        <DraggableStarSeasonFloat
+          onNavigate={() => {
+            setSelectedQuestion(null);
+            setSelectedSolver(null);
+            setActiveTab('star_season');
+            try {
+              if (typeof window !== 'undefined') {
+                window.history.pushState(null, '', '/challenge');
+              }
+            } catch {}
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
+
+      {/* 競賽網站獨立「逛逛IdeaX創點子」懸浮按鈕：說明【逛逛IdeaX創點子】，橘色外框，logo-chuangdianzi-text，帶到創點子首頁 */}
+      {activeTab === 'star_season' && (
+        <DraggableChuangdianziFloat
+          onNavigate={() => {
+            setSelectedQuestion(null);
+            setSelectedSolver(null);
+            setActiveTab('explore');
+            try {
+              if (typeof window !== 'undefined') {
+                window.history.pushState(null, '', '/');
+              }
+            } catch {}
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
       )}
 
       {/* 專家評分回饋彈窗 */}

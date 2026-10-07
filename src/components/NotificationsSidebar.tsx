@@ -59,6 +59,7 @@ const isModeOrEnvNotification = (title?: string, message?: string) => {
     text.includes('測試環境 (TEST)') ||
     text.includes('無金流模式 (FREE)') ||
     text.includes('正式營運模式 (NORM)') ||
+    text.includes('競賽模式 (RACE)') ||
     (text.includes('模式') && (text.includes('啟用') || text.includes('切換') || text.includes('開啟') || text.includes('關閉') || text.includes('恢復') || text.includes('隱藏') || text.includes('純淨') || text.includes('示範') || text.includes('營運') || text.includes('測試'))) ||
     (text.includes('環境') && (text.includes('啟用') || text.includes('切換') || text.includes('開啟') || text.includes('關閉') || text.includes('恢復') || text.includes('測試')))
   );

@@ -28,6 +28,8 @@ import {
   PlatformDocument,
   PlatformDocumentModule,
   DEFAULT_PLATFORM_DOCUMENTS,
+  INITIAL_VERSION_LOGS,
+  PlatformVersionLog,
 } from '../data/platformManualData';
 import {
   getPlatformDocuments,
@@ -37,8 +39,11 @@ import {
   formatDocumentToMarkdown,
   downloadAllDocumentsZip,
   downloadDocumentAsWord,
+  downloadVersionLogAsMarkdown,
+  downloadAllVersionLogsAsMarkdown,
   VersionState,
 } from '../services/platformManualService';
+import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
 
 interface PlatformManualModalProps {
   isOpen: boolean;
@@ -352,7 +357,7 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
                         }, 50);
                       }
                     }}
-                    className={`group p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 active:scale-98 ${
+                    className={`group p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 active:scale-98 ${
                       isSelected
                         ? 'bg-amber-100/90 border-amber-400 ring-2 ring-amber-400/50 text-stone-950 font-bold shadow-xs'
                         : isSpecialVersion
@@ -360,50 +365,79 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
                         : 'bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          isSelected
-                            ? 'bg-amber-500 text-stone-950 shadow-xs'
-                            : isSpecialVersion
-                            ? 'bg-amber-400/30 text-amber-800'
-                            : 'bg-stone-100 group-hover:bg-stone-200/80 text-stone-600'
-                        }`}
-                      >
-                        {renderIcon(doc.icon, doc.color)}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="text-xs sm:text-sm font-bold text-stone-900 truncate">
-                            {doc.code}
-                          </h4>
-                          {doc.isCustom && (
-                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-800">
-                              自訂
-                            </span>
-                          )}
+                    <div className="flex items-center justify-between gap-2.5 w-full">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                            isSelected
+                              ? 'bg-amber-500 text-stone-950 shadow-xs'
+                              : isSpecialVersion
+                              ? 'bg-amber-400/30 text-amber-800'
+                              : 'bg-stone-100 group-hover:bg-stone-200/80 text-stone-600'
+                          }`}
+                        >
+                          {renderIcon(doc.icon, doc.color)}
                         </div>
-                        <p className="text-[11px] text-stone-500 truncate mt-0.5">
-                          {doc.modules.length} 個模組 • {doc.subtitle}
-                        </p>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-xs sm:text-sm font-bold text-stone-900 truncate">
+                              {doc.code}
+                            </h4>
+                            {doc.isCustom && (
+                              <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-800">
+                                自訂
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-stone-500 truncate mt-0.5">
+                            {doc.modules.length} 個模組 • {doc.subtitle}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {doc.isCustom && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteDoc(doc.id, e)}
+                            className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="刪除此檔案"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <ChevronRight className={`w-4 h-4 transition-all ${
+                          isSelected ? 'text-amber-800 translate-x-0.5 font-bold' : 'text-stone-300 group-hover:text-amber-600'
+                        }`} />
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
-                      {doc.isCustom && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteDoc(doc.id, e)}
-                          className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="刪除此檔案"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      <ChevronRight className={`w-4 h-4 transition-all ${
-                        isSelected ? 'text-amber-800 translate-x-0.5 font-bold' : 'text-stone-300 group-hover:text-amber-600'
-                      }`} />
-                    </div>
+                    {/* 00_版本資訊 清單區即時簡覽 (同一份文件記錄最早到未來的每個版本) */}
+                    {isSpecialVersion && (
+                      <div className="pt-2 border-t border-amber-200/70 text-[10px] space-y-1.5 w-full">
+                        <div className="flex items-center justify-between font-mono font-bold text-amber-950">
+                          <span className="bg-amber-200/90 text-amber-950 px-1.5 py-0.5 rounded text-[10px]">
+                            {versionState.currentVersion} ({versionState.seqNumber})
+                          </span>
+                          <span className="text-[10px] text-stone-600">
+                            最後更新：{versionState.lastReleaseDate} {versionState.lastReleaseTime}
+                          </span>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-white/80 border border-amber-200/60 text-[10px] text-stone-700 leading-tight">
+                          <div className="font-bold text-amber-950 flex items-center justify-between">
+                            <span>最新版本更新重點：</span>
+                            <span className="text-[9px] font-normal text-stone-500">#{INITIAL_VERSION_LOGS[0]?.seqNumber}</span>
+                          </div>
+                          <p className="text-stone-600 line-clamp-2 mt-0.5">
+                            {INITIAL_VERSION_LOGS[0]?.summary}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] text-amber-900 font-bold pt-0.5">
+                          <span>已收錄全歷史 {INITIAL_VERSION_LOGS.length} 個版本 (最早 09/22 專案啟動)</span>
+                          <span className="text-amber-700 underline underline-offset-2">點選調閱與下載 →</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -483,24 +517,102 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
 
                 {/* Special Production Version Card for 00_版本資訊 */}
                 {currentDoc.code === '00_版本資訊' && (
-                  <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-3">
-                    <span className="text-xs font-bold text-amber-900 block">
-                      當前運行版本 (Production)
-                    </span>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="px-3 py-1 rounded-xl bg-stone-900 text-amber-400 font-mono font-black text-sm shadow-xs">
-                        序號 {versionState.seqNumber}
-                      </span>
-                      <span className="text-xl sm:text-2xl font-black text-stone-950 font-mono">
-                        {versionState.currentVersion}
-                      </span>
-                      <span className="px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-xs text-stone-600 font-medium">
-                        最後更新：{versionState.lastReleaseDate} {versionState.lastReleaseTime}
-                      </span>
+                  <div className="space-y-4">
+                    <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="text-xs font-bold text-amber-900 block">
+                          當前運行版本 (Production)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => downloadAllVersionLogsAsMarkdown(INITIAL_VERSION_LOGS)}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                          title="下載從最早到最新所有版本的完整歷程 (.md)"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>下載全版本歷程總清單 (.md)</span>
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="px-3 py-1 rounded-xl bg-stone-900 text-amber-400 font-mono font-black text-sm shadow-xs">
+                          序號 {versionState.seqNumber}
+                        </span>
+                        <span className="text-xl sm:text-2xl font-black text-stone-950 font-mono">
+                          {versionState.currentVersion}
+                        </span>
+                        <span className="px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-xs text-stone-600 font-medium font-mono">
+                          最後更新：{versionState.lastReleaseDate} {versionState.lastReleaseTime}
+                        </span>
+                      </div>
+                      <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between gap-2 text-xs text-emerald-800 font-bold flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>單日 0.2.0 與字母單獨記數規範運作中 • 最後更新依發布時戳靜態記錄</span>
+                        </div>
+                        <span className="text-[11px] text-stone-500 font-mono">
+                          共收錄 {INITIAL_VERSION_LOGS.length} 個歷史版本（最早 09/22 專案啟動）
+                        </span>
+                      </div>
                     </div>
-                    <div className="pt-2 border-t border-amber-200/60 flex items-center gap-2 text-xs text-emerald-800 font-bold">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>單日 0.2.0 與字母單獨記數規範運作中</span>
+
+                    {/* 完整歷史版本清單（隨時調閱、逐版下載） */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+                      <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-amber-600" />
+                          <h4 className="text-sm font-black text-stone-900">
+                            歷史版本歷程清單（隨時調閱、逐版下載）
+                          </h4>
+                        </div>
+                        <span className="text-[10px] text-stone-500">
+                          同一份文件持續累加記錄最新至最早之全部更動
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                        {INITIAL_VERSION_LOGS.map((log) => (
+                          <div
+                            key={log.seqNumber}
+                            className="p-3.5 rounded-xl bg-white border border-stone-200 hover:border-amber-300 transition-colors space-y-2"
+                          >
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2 py-0.5 rounded-md bg-stone-900 text-amber-400 font-mono font-bold text-xs">
+                                  {log.seqNumber}
+                                </span>
+                                <span className="font-mono font-bold text-sm text-stone-900">
+                                  {log.version}
+                                </span>
+                                <span className="text-[11px] text-stone-500 font-mono">
+                                  {log.releaseDate} {log.releaseTime}
+                                </span>
+                                <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-medium">
+                                  {log.author}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => downloadVersionLogAsMarkdown(log)}
+                                className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-amber-100 text-stone-700 hover:text-amber-900 font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                                title={`下載 ${log.seqNumber} (${log.version}) 變更紀錄 (.md)`}
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>下載此版紀錄 (.md)</span>
+                              </button>
+                            </div>
+
+                            <p className="text-xs font-semibold text-stone-800 leading-snug">
+                              {log.summary}
+                            </p>
+
+                            <ul className="list-disc list-inside space-y-0.5 text-[11px] text-stone-600 pl-1 leading-relaxed">
+                              {log.changes.map((change, cIdx) => (
+                                <li key={cIdx}>{change}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}

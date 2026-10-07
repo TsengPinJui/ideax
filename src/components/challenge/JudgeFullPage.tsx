@@ -205,7 +205,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                 title="點擊回到 IdeaX 舊站首頁"
                 aria-label="回到舊站首頁"
               >
-                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-8.5 h-8.5 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
+                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
               </button>
               <button
                 type="button"
@@ -322,13 +322,17 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-black text-stone-950 tracking-tight leading-snug">
-            申請成為 IdeaX 創星季專家<br />
-            <span className="text-purple-700">審核通過轉為專家帳號，享有 3,000,000 點投資額度（單案上限 2,000,000）</span>
+            申請成為 IdeaX 創星季專家
           </h1>
 
-          <p className="text-xs sm:text-sm text-stone-700 max-w-2xl mx-auto leading-relaxed">
-            邀請產學研專家加入創星季！審核通過後自動轉為專家帳號並同步錄入認證專家名單，可於投資期間投資提案（單案上限 2,000,000 點）與參與討論，並可由專家中獲選為評審參與決選評分。
-          </p>
+          <div className="space-y-1 max-w-2xl mx-auto">
+            <p className="text-xs sm:text-sm text-purple-800 font-bold leading-relaxed">
+              審核通過轉為專家帳號，享有 3,000,000 點投資額度（單案上限 2,000,000）
+            </p>
+            <p className="text-[11px] sm:text-xs text-stone-600 leading-relaxed">
+              邀請產學研專家加入創星季！審核通過後自動轉為專家帳號並同步錄入認證專家名單，可於投資期間投資提案與參與討論，並可由專家中獲選為評審參與決選評分。
+            </p>
+          </div>
         </div>
       </section>
 

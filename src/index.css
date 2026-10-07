@@ -102,3 +102,65 @@ body {
 .animate-sparkle-twinkle {
   animation: sparkle-twinkle 1.8s ease-in-out infinite;
 }
+
+/* 創新點子專屬金芒閃爍與流光特效 (Sparkle & Twinkle Animations) - 柔和亮度、範圍擴大 */
+@keyframes sparkle-burst {
+  0%, 100% {
+    opacity: 0.1;
+    transform: scale(0.65) rotate(0deg);
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.15));
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.15) rotate(25deg);
+    filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.45)) drop-shadow(0 0 24px rgba(245, 158, 11, 0.25));
+  }
+}
+
+@keyframes text-gold-sweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes ambient-glow-pulse {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.15);
+  }
+}
+
+.animate-sparkle-burst-1 {
+  animation: sparkle-burst 2.8s ease-in-out infinite;
+}
+
+.animate-sparkle-burst-2 {
+  animation: sparkle-burst 3.2s ease-in-out 0.8s infinite;
+}
+
+.animate-sparkle-burst-3 {
+  animation: sparkle-burst 2.6s ease-in-out 1.5s infinite;
+}
+
+.animate-sparkle-burst-4 {
+  animation: sparkle-burst 3.0s ease-in-out 0.5s infinite;
+}
+
+.animate-gold-sweep {
+  background-size: 200% auto;
+  animation: text-gold-sweep 3s ease-in-out infinite;
+}
+
+.animate-ambient-glow {
+  animation: ambient-glow-pulse 3.2s ease-in-out infinite;
+}

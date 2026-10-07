@@ -538,7 +538,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
                 title="點擊回到 IdeaX 舊站首頁"
                 aria-label="回到舊站首頁"
               >
-                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-8.5 h-8.5 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
+                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
               </button>
               <button
                 type="button"
@@ -780,7 +780,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               >
                 <div className="font-black text-rose-800 text-sm">第一階段：徵點子（痛點）</div>
                 <div className="text-[11px] text-stone-600 mt-1">
-                  提出各領域未被滿足的真實需求或產業痛點（<b>過審即送 100 點</b>，價值 $125，效期 60 日）。
+                  提出各領域未被滿足的真實需求或產業痛點（<b>過審即送 200 點</b>，價值 $250，效期 60 日）。
                 </div>
               </button>
 
@@ -846,7 +846,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
                 >
                   {OFFICIAL_COMPETITION_TRACKS.map((tr) => (
                     <option key={tr.id} value={tr.id}>
-                      {tr.name} ({tr.tag})
+                      {tr.name}
                     </option>
                   ))}
                 </select>

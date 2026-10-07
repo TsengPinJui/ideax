@@ -6,7 +6,7 @@ import {
   INITIAL_VERSION_LOGS,
   PlatformVersionLog,
 } from '../data/platformManualData';
-import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
+import { APP_VERSION, APP_RELEASE_DATE, APP_RELEASE_TIME, APP_SEQUENCE_NUMBER } from '../data/versionData';
 
 const STORAGE_KEY_DOCS = 'ideax_platform_internal_docs_v1';
 const STORAGE_KEY_VERSION_META = 'ideax_platform_version_meta_v1';
@@ -21,33 +21,32 @@ export interface VersionState {
 }
 
 /**
- * 依版本規則計算最新版本號：
+ * 依版本規則取得最新版本號與發布時間戳記：
+ * - 固定記錄發布時間（最後更新：2026.10.07 10:06），不隨系統時鐘持續跳動
  * - 依當前號碼每次增加 0.0.1
  * - 單日最多 +0.2.0 (即單日最多遞增 20 次 0.0.1)
- * - 到達上限下次尾號加上字母，例如 v1.5.7a, v1.5.7b
- * - 隔日開始的下一個版本回到 v1.5.8 (去除字母並進位)
+ * - 到達上限下次尾號加上字母，例如 v1.6.0a, v1.6.0b
+ * - 隔日開始的下一個版本回到 v1.6.1 (去除字母並進位)
  */
 export function getCalculatedVersionState(): VersionState {
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
-  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
   try {
     const raw = localStorage.getItem(STORAGE_KEY_VERSION_META);
     if (raw) {
       const parsed: VersionState = JSON.parse(raw);
-      return parsed;
+      if (parsed && parsed.currentVersion) {
+        return parsed;
+      }
     }
   } catch (e) {
     console.warn('Error reading version state:', e);
   }
 
-  // Initial State matching current system
+  // 靜態版本發布紀錄（不要變時鐘，固定依更新時間 2026.10.07 10:42 紀錄）
   return {
-    currentVersion: APP_VERSION ? `v${APP_VERSION}` : 'v1.5.7',
-    seqNumber: '#008',
-    lastReleaseDate: todayStr || APP_RELEASE_DATE,
-    lastReleaseTime: timeStr,
+    currentVersion: APP_VERSION ? `v${APP_VERSION}` : 'v1.6.3',
+    seqNumber: APP_SEQUENCE_NUMBER || '#014',
+    lastReleaseDate: APP_RELEASE_DATE || '2026.10.07',
+    lastReleaseTime: APP_RELEASE_TIME || '10:42',
     dailyIncrementCount: 1,
     letterSuffix: '',
   };
@@ -391,3 +390,74 @@ export function downloadDocumentAsPdf(doc: PlatformDocument, versionState?: Vers
 
   docPdf.save(`${doc.code || doc.title}_${state.currentVersion}.pdf`);
 }
+
+/**
+ * 下載單一版本紀錄為 Markdown 檔案
+ */
+export function downloadVersionLogAsMarkdown(log: PlatformVersionLog): void {
+  const content = `# IdeaX 平台版本更新紀錄 (${log.version})
+
+* **版本號碼**：${log.version}
+* **遞增序號**：${log.seqNumber}
+* **發布日期**：${log.releaseDate}
+* **發布時間**：${log.releaseTime}
+* **負責單位**：${log.author}
+
+## 版本摘要
+${log.summary}
+
+## 詳細變更清單
+${log.changes.map((c, i) => `${i + 1}. ${c}`).join('\n')}
+
+---
+*版權所有 © 2026 創點子 IdeaX Platform. 內部機密規格檔案。*
+`;
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `IdeaX_版本紀錄_${log.seqNumber}_${log.version}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * 下載全部歷史版本歷程為 Markdown 檔案
+ */
+export function downloadAllVersionLogsAsMarkdown(logs: PlatformVersionLog[]): void {
+  let content = `# IdeaX 創點子 平台全歷史版本演進與發布歷程總表
+
+> 最後更新時間：${APP_RELEASE_DATE} ${APP_RELEASE_TIME} (依發布戳記靜態存檔)
+> 當前正式版本：v${APP_VERSION} (${APP_SEQUENCE_NUMBER})
+> 收錄自 2026.09.22 專案啟動建置起之所有版本歷程
+
+---
+
+`;
+
+  logs.forEach((log) => {
+    content += `## [${log.seqNumber}] ${log.version} - ${log.releaseDate} ${log.releaseTime}
+**發布單位**：${log.author}  
+**更新摘要**：${log.summary}  
+
+### 變更項目：
+${log.changes.map((c, i) => `${i + 1}. ${c}`).join('\n')}
+
+---
+
+`;
+  });
+
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `IdeaX_全版本歷史歷程總清單_${APP_RELEASE_DATE}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+

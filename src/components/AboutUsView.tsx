@@ -62,6 +62,7 @@ interface AboutUsViewProps {
   onBack?: () => void;
   isModal?: boolean;
   onStartOnboarding?: () => void;
+  onNavigateToStarSeason?: () => void;
 }
 
 type MainTab = 'intro' | 'download_app' | 'contact' | 'terms' | 'others';
@@ -71,6 +72,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
   onBack,
   isModal = false,
   onStartOnboarding,
+  onNavigateToStarSeason,
 }) => {
   const { currentUser, openCustomerService, addNotification, openPwaInstallModal } = useApp();
   const [copiedAppUrl, setCopiedAppUrl] = useState(false);
@@ -806,6 +808,43 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                   </div>
                 </button>
               )}
+
+              {/* 創星季 • 創新挑戰賽 */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (onNavigateToStarSeason) {
+                    onNavigateToStarSeason();
+                  } else {
+                    window.location.href = '/challenge';
+                  }
+                }}
+                className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-white to-emerald-50/30 border-2 border-emerald-400/80 shadow-xs hover:shadow-md hover:border-emerald-500 transition-all text-left flex flex-col justify-between cursor-pointer group active:scale-[0.98]"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      競賽挑戰
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
+                      <span>創星季 • 創新挑戰賽</span>
+                      <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
+                    </h4>
+                    <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">
+                      徵點子痛點 × 想解方實戰評選，全台大專青年與創客落地挑戰！
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-3 mt-1 border-t border-emerald-200/60 flex items-center justify-between text-xs font-bold text-emerald-700">
+                  <span>前往創星季大賽專區</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </button>
 
               {/* 2. 下載 APP */}
               <button

@@ -617,7 +617,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                     <span className="font-mono text-xs font-black text-emerald-600">{adminMetrics.participantsCount} 隊</span>
                   </div>
                   <p className="text-[11px] text-stone-500 leading-snug">
-                    展示已報名青年參賽團隊數（通過 {adminMetrics.approvedParticipantsCount} 隊）。
+                    展示已報名參賽團隊數（通過 {adminMetrics.approvedParticipantsCount} 隊）。
                   </p>
                 </div>
               </label>

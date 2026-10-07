@@ -5,6 +5,7 @@ import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { isMockTransactionId, isMockQuestionId } from '../data/mockData';
 import { getTransactionBadge } from './AdminTransactionsTab';
 import { CompetitionAdminReviewTab } from './CompetitionAdminReviewTab';
+import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
 import {
   X,
   Sliders,
@@ -74,7 +75,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   } = useApp();
 
   const [pendingConfirm, setPendingConfirm] = useState<{
-    type: 'liveOperation' | 'demo' | 'noPayment' | 'hideTestAccounts' | 'clearMockData' | 'saveBaseCommission' | 'saveFullCommissionAndPlans' | 'savePublicMetrics' | 'saveAiCrmConfig';
+    type: 'liveOperation' | 'demo' | 'noPayment' | 'race' | 'hideTestAccounts' | 'clearMockData' | 'saveBaseCommission' | 'saveFullCommissionAndPlans' | 'savePublicMetrics' | 'saveAiCrmConfig';
     nextState?: boolean;
     data?: any;
   } | null>(null);
@@ -163,6 +164,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         setDemoMode(true);
       } else {
         setNoPaymentMode(false);
+      }
+    } else if (pendingConfirm.type === 'race') {
+      if (pendingConfirm.nextState) {
+        setRaceMode(true);
+      } else {
+        setRaceMode(false);
       }
     } else if (pendingConfirm.type === 'hideTestAccounts') {
       if (pendingConfirm.nextState) {
@@ -1343,31 +1350,32 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             </span>
           </div>
 
-          {/* 共用相對雙向開關：正式營運模式 (NORM) vs. 無金流模式 (FREE) */}
+          {/* 四大平台運營模式切換：正式營運模式 (NORM) vs. 無金流模式 (FREE) vs. 測試環境 (TEST) vs. 競賽模式 (RACE) */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="font-bold text-stone-300">商業金流運營模式（二選一共用相對開關）</span>
-              <span className="text-[10px] text-stone-400 font-mono font-bold">
-                {!isNoPaymentMode && isHideTestAccounts && !isDemoMode ? 'NORM' : 'FREE'}
+              <span className="font-bold text-stone-300">平台運營模式（四選一專屬模式切換）</span>
+              <span className="text-[10px] text-amber-400 font-mono font-bold">
+                {isRaceMode ? '🏎️ RACE (競賽專屬)' : isDemoMode ? '🧪 TEST (測試環境)' : isNoPaymentMode ? '⚡ FREE (無金流)' : '🟢 NORM (正常營運)'}
               </span>
             </div>
             
-            <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800">
               {/* 🟢 正式營運模式 (NORM) */}
               <button
                 type="button"
                 onClick={() => {
-                  if (!(!isNoPaymentMode && isHideTestAccounts && !isDemoMode)) {
+                  if (isRaceMode || isNoPaymentMode || isDemoMode) {
                     setPendingConfirm({ type: 'liveOperation', nextState: true });
                   }
                 }}
-                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  !isNoPaymentMode && isHideTestAccounts && !isDemoMode
-                    ? 'bg-emerald-500 text-stone-950 shadow-md font-black'
+                className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  !isRaceMode && !isNoPaymentMode && !isDemoMode
+                    ? 'bg-emerald-500 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
                     : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                 }`}
+                title="切換至正常營運模式 (保留點數機制，純淨交易額)"
               >
-                <span>🟢 正式營運模式</span>
+                <span>🟢 正常營運</span>
                 <span className="text-[9px] opacity-80 font-mono">(NORM)</span>
               </button>
 
@@ -1375,54 +1383,73 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               <button
                 type="button"
                 onClick={() => {
-                  if (!isNoPaymentMode) {
+                  if (!isNoPaymentMode || isRaceMode || isDemoMode) {
                     setPendingConfirm({ type: 'noPayment', nextState: true });
                   }
                 }}
-                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  isNoPaymentMode
-                    ? 'bg-rose-500 text-white shadow-md font-black'
+                className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  !isRaceMode && isNoPaymentMode && !isDemoMode
+                    ? 'bg-rose-500 text-white shadow-md font-black ring-1 ring-rose-400'
                     : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                 }`}
+                title="切換至無金流模式 (全站免點數，隱藏金流)"
               >
-                <span>⚡ 無金流模式</span>
+                <span>⚡ 無金流</span>
                 <span className="text-[9px] opacity-80 font-mono">(FREE)</span>
+              </button>
+
+              {/* 🧪 測試環境 (TEST) */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isDemoMode || isRaceMode || isNoPaymentMode) {
+                    setPendingConfirm({ type: 'demo', nextState: true });
+                  }
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  !isRaceMode && isDemoMode
+                    ? 'bg-amber-400 text-stone-950 shadow-md font-black ring-1 ring-amber-300'
+                    : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+                }`}
+                title="切換至測試環境 (解封模擬數據與測試帳號)"
+              >
+                <span>🧪 測試環境</span>
+                <span className="text-[9px] opacity-80 font-mono">(TEST)</span>
+              </button>
+
+              {/* 🏎️ 競賽模式 (RACE) */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isRaceMode) {
+                    setPendingConfirm({ type: 'race', nextState: true });
+                  }
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  isRaceMode
+                    ? 'bg-emerald-400 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
+                    : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
+                }`}
+                title="切換至競賽模式 (舊站優先置頂痛點專區、L0創星季標籤、獨立方案卡片與專屬網址)"
+              >
+                <span>🏎️ 競賽模式</span>
+                <span className="text-[9px] opacity-80 font-mono">(RACE)</span>
               </button>
             </div>
           </div>
 
-          {/* 輔助測試設定：測試環境 (DEMO) 與 隱藏測試帳號 (HIDE) 與 競賽模式 (RACE) */}
+          {/* 當前模式說明與輔助設定 */}
           <div className="space-y-2 pt-1.5 border-t border-stone-800/60">
-            {/* 競賽模式 (RACE) 專屬開關 */}
-            <div className="p-2.5 rounded-xl bg-stone-950/80 border border-emerald-900/60 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            {/* 競賽模式 (RACE) 狀態提示卡 */}
+            {isRaceMode && (
+              <div className="p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-800/70 flex items-center gap-2">
                 <span className="text-base shrink-0">🏎️</span>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-extrabold text-xs text-white">競賽模式（RACE）</span>
-                    <span className={`text-[9px] font-black px-1.5 py-0.2 rounded font-mono ${
-                      isRaceMode ? 'bg-emerald-500 text-stone-950' : 'bg-stone-800 text-stone-400'
-                    }`}>
-                      {isRaceMode ? 'RACE ON' : 'OFF'}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-stone-400 block mt-0.5 leading-tight">
-                    痛點專區提出限定 L0 並附綠色「創星季」標籤與獨立網址，方案以競賽卡片列出並可進獨立網頁；痛點依提案數/讚/觀看/討論排序。
-                  </span>
+                <div className="text-[11px] text-emerald-200 leading-tight">
+                  <span className="font-bold text-white">競賽模式運作中：</span>
+                  舊站優先置頂痛點專區，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽卡片列出並可進獨立網頁；痛點依提案數/讚/觀看/討論排序。
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={toggleRaceMode}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black shrink-0 transition-all cursor-pointer shadow-xs ${
-                  isRaceMode
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950 ring-2 ring-emerald-300'
-                    : 'bg-stone-700 hover:bg-stone-600 text-stone-100'
-                }`}
-              >
-                {isRaceMode ? '關閉競賽模式' : '開啟競賽模式'}
-              </button>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               {/* 測試環境（僅管理員畫面） */}
@@ -1489,6 +1516,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     ? '確認清除瀏覽器中的模擬示範資料？'
                     : pendingConfirm.type === 'liveOperation'
                     ? (pendingConfirm.nextState ? '確認開啟【正式營運模式】？' : '確認關閉【正式營運模式】？')
+                    : pendingConfirm.type === 'race'
+                    ? (pendingConfirm.nextState ? '確認開啟【競賽模式 (RACE)】？' : '確認關閉【競賽模式】？')
                     : pendingConfirm.type === 'demo'
                     ? (pendingConfirm.nextState ? '確認開啟【測試環境】？' : '確認關閉【測試環境】？')
                     : pendingConfirm.type === 'noPayment'
@@ -1569,6 +1598,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   ? '即將開啟【正式營運模式】：（全站平台同步生效）系統將自動關閉無金流模式並隱藏所有測試帳號與模擬資料，全平台恢復真實數據，同步啟用標準商業金流與履約託管機制。'
                   : '即將關閉【正式營運模式】：（全站平台同步生效）系統將相對地自動切換為【無金流模式】，並持續隱藏測試環境模擬資料與測試帳號。'
               )}
+              {pendingConfirm.type === 'race' && (
+                pendingConfirm.nextState
+                  ? '即將開啟【競賽模式 (RACE)】：（全站平台同步生效）舊站問題市場將優先置頂「痛點專區」，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽圖文卡片展示並含獨立網址；頁尾同步顯示 RACE 簡稱。本模式與正式營運、無金流、測試環境為四選一互斥。'
+                  : '即將關閉【競賽模式】：系統將自動切換為【正式營運模式 (NORM)】。'
+              )}
               {pendingConfirm.type === 'demo' && (
                 pendingConfirm.nextState
                   ? '即將開啟【測試環境】：（僅作用於管理員帳號視角）管理員畫面將載入預設示範問題、提案與專家數據，不影響外部真實會員與訪客。'
@@ -1633,7 +1667,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
       {/* 平台版本號與最近更新時間與當前環境簡稱 (純英文與數字，以連字號連接至少兩個英文標籤) */}
       <div className="py-2.5 text-center bg-stone-50/50 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
-        v1.4.5 • 2026.10.01 • {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+        v{APP_VERSION} • {APP_RELEASE_DATE} • {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
     </div>
   );

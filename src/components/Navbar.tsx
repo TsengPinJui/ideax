@@ -428,9 +428,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             aria-label="開啟熱門看板與主題側邊欄"
           >
             <PanelLeft className="w-5 h-5 text-stone-700 group-hover:text-amber-600 transition-colors" />
-            <span className="hidden lg:inline-block ml-1.5 text-xs font-bold text-stone-800 group-hover:text-amber-700">
-              版面專區
-            </span>
           </button>
 
           {/* Desktop Logo (點選回到首頁頂部) */}
@@ -453,7 +450,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }
             }}
             title="點擊回到首頁頂部"
-            className="flex items-center text-left group transition-transform active:scale-95 cursor-pointer p-0.5 sm:p-1 rounded-xl hover:bg-amber-50/80 transition-colors"
+            className="flex items-center text-left group transition-transform active:scale-95 cursor-pointer p-0.5 sm:p-1 rounded-xl bg-[#ffefb5] hover:bg-[#ffe79c] transition-colors"
           >
             <IdeaXLogo variant="bulb" size="lg" />
           </div>
@@ -499,42 +496,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>找專家</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('star_season');
-                setSelectedQuestion(null);
-                setSelectedSolver(null);
-              }}
-              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs ${
-                activeTab === 'star_season'
-                  ? 'bg-emerald-50 text-stone-900 font-black border-emerald-500 ring-2 ring-emerald-300 shadow-sm'
-                  : 'bg-white text-stone-800 border-emerald-400 hover:bg-emerald-50/40 hover:border-emerald-500 font-bold'
-              }`}
-              title="前往 IdeaX 創星季 Innovation Challenge"
-            >
-              <img src="/logo-bulb.png" alt="黃色正向去背燈泡" className="w-4.5 h-4.5 object-contain shrink-0" />
-              <img src="/logo-chuangxingji-text.png" alt="創星季去背" className="h-4.5 w-auto object-contain shrink-0" />
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-600 text-white border border-emerald-500 font-black">大賽</span>
-            </button>
-            <button
-              onClick={() => {
-                if (isGuest) {
-                  promptLogin('訪客模式請先登入帳號以查看我的案件');
-                  return;
-                }
-                setActiveTab('my_projects');
-                setSelectedQuestion(null);
-                setSelectedSolver(null);
-              }}
-              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
-                activeTab === 'my_projects'
-                  ? 'bg-blue-100/90 text-blue-950 font-bold shadow-2xs'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
-              }`}
-            >
-              <Briefcase className="w-3.5 h-3.5 text-blue-600" />
-              <span>我的案件</span>
             </button>
           </nav>
         </div>
@@ -943,6 +904,28 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
           </div>
+
+          {/* 我的案件 (移至 + 號右邊，電腦版顯示) */}
+          <button
+            onClick={() => {
+              if (isGuest) {
+                promptLogin('訪客模式請先登入帳號以查看我的案件');
+                return;
+              }
+              setActiveTab('my_projects');
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+            }}
+            className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm font-bold shadow-2xs ${
+              activeTab === 'my_projects'
+                ? 'bg-blue-50 text-blue-950 font-black border-blue-400 ring-2 ring-blue-200'
+                : 'bg-white text-stone-700 border-stone-200 hover:border-blue-400 hover:bg-blue-50/40 hover:text-blue-950'
+            }`}
+            title="查看我發布與參與的案件"
+          >
+            <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span>我的案件</span>
+          </button>
 
           {/* 2. 訊息 (電腦版 - 僅保留圖示，數字徽章移至右上角) */}
           <button

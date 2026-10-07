@@ -363,15 +363,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 全部問題
               </span>
             </div>
-            <span
-              className={`text-xs font-mono font-bold px-2 py-0.5 rounded-lg border shrink-0 transition-colors ${
-                selectedCategory === '全部' && specialZone === 'all' && activeTab === 'explore'
-                  ? 'bg-white text-stone-900 border-stone-300 shadow-2xs'
-                  : 'bg-stone-50 text-stone-600 border-stone-200'
-              }`}
-            >
-              {questions.length} 則
-            </span>
+            <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
           </button>
 
           {/* 2. 獨立專屬專區（創星季 在最上，創點子/痛點專區 次之，L0問題討論專區 在下） */}

@@ -1,5 +1,7 @@
 import React from 'react';
-import { Mail, ExternalLink, ArrowRight, Sparkles, Send, Flame, ShieldCheck, GraduationCap, Award } from 'lucide-react';
+import { Mail, ExternalLink, ArrowRight } from 'lucide-react';
+import { APP_VERSION, APP_RELEASE_DATE } from '../../data/versionData';
+import { useApp } from '../../context/AppContext';
 
 interface CompetitionFooterProps {
   onBackToOldSite: () => void;
@@ -12,57 +14,26 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
   onNavigate,
   className = '',
 }) => {
+  const { isRaceMode, isDemoMode, isNoPaymentMode } = useApp();
   return (
     <footer className={`bg-stone-950 text-stone-300 border-t border-stone-800 pt-10 sm:pt-12 pb-12 ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-stone-800/80">
-          {/* Logo & 主辦單位資訊 */}
+          {/* Logo & 品牌簡介 */}
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <img
                 src="/logo-6-trans-dark.png"
-                alt="IdeaX Logo"
-                className="h-10 sm:h-12 w-auto object-contain shrink-0"
+                alt="IdeaX"
+                className="h-6 sm:h-7 w-auto object-contain shrink-0"
               />
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-white text-base sm:text-lg tracking-tight">IdeaX 創星季</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-stone-950">
-                    青年創新挑戰實戰
-                  </span>
-                </div>
-                <div className="text-xs text-amber-400 font-bold mt-0.5">
-                  主辦單位：IdeaX團隊
-                </div>
-              </div>
+              <span className="font-bold text-white text-[15px] sm:text-[17px] tracking-normal leading-none select-none">
+                創星季
+              </span>
             </div>
             <p className="text-stone-400 text-xs max-w-xl leading-relaxed">
               聚焦青年創新思維，連結真實產業痛點與市場驗證。全體會員使用創星幣進行模擬募資注資，打造最高榮譽「創之星」。
             </p>
-          </div>
-
-          {/* 造訪 IdeaX創點子 平台的入口 (醒目按鈕) */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto shrink-0">
-            <button
-              type="button"
-              onClick={onBackToOldSite}
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs sm:text-sm shadow-md hover:shadow-lg transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2 group"
-              title="前往 IdeaX 創點子主平台探索懸賞問題與專家智庫"
-            >
-              <Sparkles className="w-4 h-4 text-stone-950" />
-              <span>造訪 IdeaX創點子 平台</span>
-              <ArrowRight className="w-4 h-4 text-stone-950 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-
-            <button
-              type="button"
-              onClick={onBackToOldSite}
-              className="px-4 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-2xs transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"
-              title="直接前往痛點專區"
-            >
-              <Flame className="w-4 h-4 text-white" />
-              <span>痛點專區 →</span>
-            </button>
           </div>
         </div>
 
@@ -155,7 +126,7 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
                 onClick={onBackToOldSite}
                 className="text-amber-400 hover:text-amber-300 underline font-bold inline-flex items-center gap-1 cursor-pointer"
               >
-                <span>立即造訪 IdeaX 創點子平台首頁</span>
+                <span>前往IdeaX創點子 平台</span>
                 <ExternalLink className="w-3 h-3" />
               </button>
             </div>
@@ -165,10 +136,14 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
         {/* 頁尾版權條 */}
         <div className="pt-6 border-t border-stone-800 text-[11px] text-stone-500 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <div>
-            © {new Date().getFullYear()} IdeaX 創星季 · 主辦單位: IdeaX團隊 · All rights reserved.
+            © {new Date().getFullYear()} 創星季 · 主辦單位: IdeaX團隊 · All rights reserved.
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-end">
             <span>官方信箱: ideax.office@gmail.com</span>
+            <span>•</span>
+            <span className="font-mono text-stone-500">
+              v{APP_VERSION} • {APP_RELEASE_DATE} • {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}
+            </span>
             <span>•</span>
             <button
               type="button"

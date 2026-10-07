@@ -38,6 +38,7 @@ import {
   CompetitionAccount,
   ProposalComment,
   STAR_SEASON_TRACKS,
+  OFFICIAL_COMPETITION_TRACKS,
 } from '../../types/competition';
 import {
   likeProposal,
@@ -47,6 +48,7 @@ import {
   fetchUserLikedProposalIds,
 } from '../../services/competitionClientService';
 import { auth } from '../../services/firebase';
+import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 
 interface ExploreProposalsFullPageProps {
   onNavigate: (view: 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador') => void;
@@ -68,6 +70,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   onRefreshAccount,
 }) => {
   const { currentUser, addNotification } = useApp();
+  const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
 
   const [proposals, setProposals] = useState<StarSeasonProposal[]>(initialProposals);
   const [selectedTrack, setSelectedTrack] = useState<string>('all');
@@ -227,6 +230,22 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   // 支持投點
   const handleConfirmSupport = async () => {
     if (!selectedProposalForSupport) return;
+    if (stageInfo.isPainPointStage) {
+      showToast('ℹ️ 創星幣模擬募資將於 11/16 ~ 12/04 正式開跑！目前為第一階段「痛點徵件」期。');
+      return;
+    }
+    if (stageInfo.isPreProposalStage) {
+      showToast('ℹ️ 11/14 ~ 11/15 為「預先提案期」，暫時關閉募資(投資)功能，僅供提案審核與預覽！模擬募資注資將於 11/16 正式開跑。');
+      return;
+    }
+    if (stageInfo.isCrowdfundingClosed) {
+      showToast('⚠️ 創星季模擬募資已於 12/04 截止注資！感謝全體會員支持。');
+      return;
+    }
+    if (!stageInfo.isInvestmentEnabled) {
+      showToast('ℹ️ 模擬募資(投資)功能僅於 11/16 ~ 12/04 開放！');
+      return;
+    }
     if (!auth.currentUser || currentUser.id === 'user-guest') {
       onOpenAuth();
       return;
@@ -271,33 +290,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-24 selection:bg-amber-300 selection:text-stone-950 font-sans">
-      {/* 頂部固定導覽列 (滿版獨立子網址: ideax.tw/challenge/proposal) */}
+      {/* 頂部固定導覽列 */}
       <header className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
-        {/* 頂部次導覽列標籤 */}
-        <div className="bg-amber-400 text-stone-950 py-1 px-3 sm:px-6 text-[11px] font-bold">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2 truncate">
-              <span className="bg-stone-950 text-white text-[9px] px-1.5 py-0.2 rounded-full font-bold">
-                滿版專區
-              </span>
-              <span className="font-mono text-stone-900 font-bold truncate">
-                ideax.tw/challenge/proposal
-              </span>
-              <span className="text-stone-700 hidden md:inline">· 創星季參賽提案總覽與模擬募資庫</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onNavigate('home')}
-                className="hover:underline flex items-center gap-1 cursor-pointer font-bold"
-              >
-                <span>返回大會首頁</span>
-                <ArrowRight className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* 導覽列核心主行 */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -313,7 +307,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                 title="點擊回到 IdeaX 舊站首頁"
                 aria-label="回到舊站首頁"
               >
-                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-8.5 h-8.5 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
+                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
               </button>
               <button
                 type="button"
@@ -328,101 +322,21 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                 <img src="/logo-chuangxingji-text.png" alt="創星季 - 點擊回競賽首頁" className="h-7.5 sm:h-9 md:h-10.5 w-auto object-contain shrink-0 group-hover:opacity-90 transition-all" />
               </button>
             </div>
+          </div>
 
-            <span className="text-stone-300 hidden sm:inline">|</span>
-
+          {/* 右側：簡潔清晰的「回大會首頁」按鈕 */}
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => onNavigate('home')}
-              className="inline-flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-amber-700 transition-colors cursor-pointer"
+              onClick={() => {
+                onNavigate('home');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs shadow-2xs transition-all cursor-pointer active:scale-95"
+              title="返回創星季大會首頁"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>回大會首頁</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5 text-xs font-bold text-stone-700 bg-stone-100/80 p-1 rounded-2xl border border-stone-200/80">
-            {/* 1. 我想提案! */}
-            <button
-              type="button"
-              onClick={() => {
-                if (!auth.currentUser && (!currentUser || currentUser.id === 'user-guest')) {
-                  onOpenAuth();
-                  return;
-                }
-                onNavigate('submit');
-              }}
-              className="px-3.5 py-1.5 rounded-xl text-stone-950 bg-amber-400 hover:bg-amber-300 transition-all cursor-pointer font-black shadow-2xs active:scale-98 flex items-center gap-1.5"
-            >
-              <Send className="w-3.5 h-3.5 text-stone-950" />
-              <span>我想提案!</span>
-            </button>
-
-            <div className="h-4 w-px bg-stone-300/80 mx-0.5" />
-
-            {/* 2. 探索Idea (當前頁) */}
-            <span className="px-3 py-1.5 rounded-xl text-stone-950 bg-white font-black shadow-2xs">
-              探索Idea
-            </span>
-
-            {/* 3. 先看痛點 */}
-            <button
-              type="button"
-              onClick={onBackToOldSite}
-              className="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-              title="前往舊站 創點子/痛點專區"
-            >
-              先看痛點
-            </button>
-
-            {/* 4. 申請參賽者 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (!auth.currentUser && (!currentUser || currentUser.id === 'user-guest')) {
-                  onOpenAuth();
-                  return;
-                }
-                onNavigate('participant');
-              }}
-              className="hidden md:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-            >
-              申請參賽者
-            </button>
-
-            {/* 5. 成為專家 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (!auth.currentUser && (!currentUser || currentUser.id === 'user-guest')) {
-                  onOpenAuth();
-                  return;
-                }
-                onNavigate('judge');
-              }}
-              className="hidden md:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-              title="點擊進入成為專家"
-            >
-              成為專家
-            </button>
-
-            {/* 6. 推廣大使 */}
-            <button
-              type="button"
-              onClick={() => onNavigate('ambassador')}
-              className="hidden lg:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-            >
-              推廣大使
-            </button>
-
-            {/* 行動版先看痛點 (風格一致) */}
-            <button
-              onClick={onBackToOldSite}
-              className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
-              title="前往舊站 創點子/痛點專區"
-            >
-              <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>先看痛點</span>
             </button>
           </div>
         </div>
@@ -433,10 +347,6 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         <div className="max-w-7xl mx-auto space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold shadow-2xs mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>【創星季】創新提案探索庫 — 獨立專屬頁面</span>
-              </div>
               <h1 className="text-2xl sm:text-4xl font-black text-stone-950 tracking-tight">
                 當前提案
               </h1>
@@ -563,20 +473,17 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               >
                 全部領域
               </button>
-              {Object.values(STAR_SEASON_TRACKS).map((tr) => (
+              {OFFICIAL_COMPETITION_TRACKS.map((tr) => (
                 <button
                   key={tr.id}
                   onClick={() => setSelectedTrack(tr.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border flex items-center gap-1.5 shadow-2xs ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border flex items-center shadow-2xs ${
                     selectedTrack === tr.id
                       ? 'bg-amber-100 text-amber-950 border-amber-400 font-black'
                       : 'bg-white text-stone-600 border-stone-200 hover:bg-amber-50/50'
                   }`}
                 >
                   <span>{tr.name}</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
-                    {tr.tag}
-                  </span>
                 </button>
               ))}
             </div>
@@ -873,12 +780,25 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                       <button
                         type="button"
                         onClick={() => {
+                          if (stageInfo.isPreProposalStage) {
+                            showToast('ℹ️ 11/14 ~ 11/15 為預先提案期，暫時關閉募資(投資)功能，僅供審核與預覽！11/16 起開放注資。');
+                            return;
+                          }
+                          if (!stageInfo.isInvestmentEnabled) {
+                            showToast('ℹ️ 模擬募資(投資)功能將於 11/16 ~ 12/04 開放！');
+                            return;
+                          }
                           setSelectedProposalForSupport(proposal);
                           setIsSupportModalOpen(true);
                         }}
-                        className="flex-1 py-2 px-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs transition-colors cursor-pointer text-center shadow-2xs"
+                        className={`flex-1 py-2 px-2.5 rounded-xl text-xs transition-colors cursor-pointer text-center shadow-2xs ${
+                          !stageInfo.isInvestmentEnabled
+                            ? 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+                            : 'bg-amber-400 hover:bg-amber-300 text-stone-950 font-black'
+                        }`}
+                        title={!stageInfo.isInvestmentEnabled ? '預先提案期（11/14~11/15）募資功能關閉，11/16 開放' : undefined}
                       >
-                        支持
+                        {stageInfo.isPreProposalStage ? '預覽中' : '支持'}
                       </button>
                     </div>
                   </div>
@@ -1251,18 +1171,33 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                 <button
                   type="button"
                   onClick={() => {
+                    if (stageInfo.isPreProposalStage) {
+                      showToast('ℹ️ 11/14 ~ 11/15 為預先提案期，募資(投資)功能暫時關閉，僅供提案審核與預覽！11/16 起正式開放注資。');
+                      return;
+                    }
+                    if (!stageInfo.isInvestmentEnabled) {
+                      showToast('ℹ️ 創星幣模擬募資將於 11/16 ~ 12/04 開放！');
+                      return;
+                    }
                     setSelectedProposalForSupport(selectedProposalForDetail);
                     setSelectedProposalForDetail(null);
                     setIsSupportModalOpen(true);
                   }}
                   className={`py-2.5 rounded-xl border border-amber-300 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5 ${
-                    selectedProposalForDetail.stage === 'pain_point'
+                    !stageInfo.isInvestmentEnabled
+                      ? 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
+                      : selectedProposalForDetail.stage === 'pain_point'
                       ? 'bg-amber-100 hover:bg-amber-200 px-4'
                       : 'flex-1 bg-amber-400 hover:bg-amber-300'
                   }`}
+                  title={!stageInfo.isInvestmentEnabled ? '預先提案期（11/14~11/15）募資功能關閉，11/16 正式開放' : undefined}
                 >
-                  <Heart className="w-4 h-4 fill-current text-rose-500" />
-                  <span>使用創星幣支持{selectedProposalForDetail.stage === 'pain_point' ? '痛點' : '提案'}</span>
+                  <Heart className={`w-4 h-4 ${stageInfo.isInvestmentEnabled ? 'fill-current text-rose-500' : 'text-stone-400'}`} />
+                  <span>
+                    {stageInfo.isPreProposalStage
+                      ? '預先提案期（募資暫未開放）'
+                      : `使用創星幣支持${selectedProposalForDetail.stage === 'pain_point' ? '痛點' : '提案'}`}
+                  </span>
                 </button>
                 <button
                   type="button"

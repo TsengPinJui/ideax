@@ -137,7 +137,7 @@ export const AmbassadorFullPage: React.FC<AmbassadorFullPageProps> = ({
                 title="點擊回到 IdeaX 舊站首頁"
                 aria-label="回到舊站首頁"
               >
-                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-8.5 h-8.5 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
+                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
               </button>
               <button
                 type="button"
@@ -257,16 +257,16 @@ export const AmbassadorFullPage: React.FC<AmbassadorFullPageProps> = ({
         <div className="max-w-4xl mx-auto text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold shadow-2xs">
             <Megaphone className="w-4 h-4 text-emerald-600" />
-            <span>【推廣獎勵機制】每案過審享 300 點（價值 $400）・多推多得無上限（IdeaX平台點數，用於提問、享受付費服務）</span>
+            <span>【推廣獎勵機制】每案過審享 300 點（價值 $400，效期 60 日）・多推多得無上限（IdeaX平台點數，用於提問、享受付費服務）</span>
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-black text-stone-950 tracking-tight leading-snug">
-            IdeaX 創星季 校園推廣大使<br />
+            IdeaX 創星季 推廣大使<br />
             <span className="text-amber-600">專屬推薦碼、綁定與過審推薦名單</span>
           </h1>
 
           <p className="text-xs sm:text-sm text-stone-700 max-w-2xl mx-auto leading-relaxed">
-            邀請青年創客與跨領域創業團隊參與創星季！分享您的專屬推薦代碼，受推薦提案通過初審，即可獲得 300 點（價值 $400）推廣獎勵（IdeaX平台點數，用於提問、享受付費服務）。
+            邀請各界創客、個人與創新團隊參與創星季！分享您的專屬推薦代碼，受推薦提案通過初審，即可獲得 300 點（價值 $400，效期 60 日）推廣獎勵（IdeaX平台點數，用於提問、享受付費服務）。
           </p>
         </div>
       </section>
@@ -345,10 +345,10 @@ export const AmbassadorFullPage: React.FC<AmbassadorFullPageProps> = ({
                 <div className="p-4 rounded-2xl bg-white/80 border border-amber-200 text-stone-700 space-y-1.5 text-xs">
                   <div className="font-black text-emerald-800 flex items-center gap-1.5">
                     <Coins className="w-4 h-4 text-emerald-600" />
-                    <span>推廣點數獎勵：每推薦 1 案審核通過，即核發 300 點（價值 $400）</span>
+                    <span>推廣點數獎勵：每推薦 1 案審核通過，即核發 300 點（價值 $400，點數效期 60 日）</span>
                   </div>
                   <p className="text-[11px] text-stone-600 leading-relaxed">
-                    邀請青年創客與創新團隊於投件或報名時填入您的推薦碼。主辦單位審核通過後，300 點數將自動入帳（IdeaX平台點數，可用於提問、享受付費服務）。多推多得無上限！
+                    邀請創客、個人或創新團隊於投件或報名時填入您的推薦碼。主辦單位審核通過後，300 點數（效期 60 日）將自動入帳（IdeaX平台點數，可用於提問、享受付費服務）。多推多得無上限！
                   </p>
                 </div>
               </div>

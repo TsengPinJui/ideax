@@ -407,16 +407,33 @@ const isModeOrEnvNotification = (title?: string, message?: string) => {
     text.includes('測試環境 (TEST)') ||
     text.includes('無金流模式 (FREE)') ||
     text.includes('正式營運模式 (NORM)') ||
+    text.includes('競賽模式 (RACE)') ||
     (text.includes('模式') && (text.includes('啟用') || text.includes('切換') || text.includes('開啟') || text.includes('關閉') || text.includes('恢復') || text.includes('隱藏') || text.includes('純淨') || text.includes('示範') || text.includes('營運') || text.includes('測試'))) ||
     (text.includes('環境') && (text.includes('啟用') || text.includes('切換') || text.includes('開啟') || text.includes('關閉') || text.includes('恢復') || text.includes('測試')))
   );
 };
 
-// 檢測當前運營模式 (FREE: 無金流模式, NORM: 正式營運模式, TEST: 測試環境)
-type PlatformMode = 'TEST' | 'NORM' | 'FREE';
+// 檢測當前運營模式 (FREE: 無金流模式, NORM: 正式營運模式, TEST: 測試環境, RACE: 競賽模式)
+export type PlatformMode = 'TEST' | 'NORM' | 'FREE' | 'RACE';
 
 const getInitialPlatformMode = (): PlatformMode => {
   try {
+    const savedMode = localStorage.getItem(`${STORAGE_KEY_PREFIX}platform_mode`);
+    if (savedMode === 'RACE' || savedMode === 'TEST' || savedMode === 'FREE' || savedMode === 'NORM') {
+      return savedMode as PlatformMode;
+    }
+    const isRace = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_race_mode`);
+    if (isRace !== null) {
+      if (isRace === 'true') return 'RACE';
+      if (isRace === 'false') {
+        const isFree = localStorage.getItem(`${STORAGE_KEY_PREFIX}no_payment_mode`) === 'true';
+        if (isFree) return 'FREE';
+        const isNorm = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_norm_mode`) === 'true';
+        if (isNorm) return 'NORM';
+        const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+        if (isDemo) return 'TEST';
+      }
+    }
     const isFree = localStorage.getItem(`${STORAGE_KEY_PREFIX}no_payment_mode`) === 'true';
     if (isFree) return 'FREE';
 
@@ -428,8 +445,8 @@ const getInitialPlatformMode = (): PlatformMode => {
   } catch {
     // ignore
   }
-  // 默認規則：如果一般模式和無金流模式都沒開的話就默認開啟測試環境
-  return 'TEST';
+  // 默認規則：預設開啟競賽模式 (RACE)
+  return 'RACE';
 };
 
 const getInitialIsDemoMode = (): boolean => {
@@ -513,7 +530,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setNoPaymentMode = (enabled: boolean) => {
     setIsNoPaymentMode(enabled);
+    setIsRaceMode(false);
     try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}is_race_mode`, 'false');
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}platform_mode`, enabled ? 'FREE' : 'NORM');
       localStorage.setItem(`${STORAGE_KEY_PREFIX}no_payment_mode`, String(enabled));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}is_norm_mode`, String(!enabled));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}demo_mode`, 'false');
@@ -704,6 +724,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}is_race_mode`, String(enabled));
     } catch {}
+    if (enabled) {
+      setIsDemoMode(false);
+      setIsNoPaymentMode(false);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}platform_mode`, 'RACE');
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}demo_mode`, 'false');
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}no_payment_mode`, 'false');
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}is_norm_mode`, 'false');
+      } catch {}
+    } else {
+      // 關閉競賽模式時，預設自動切回正式營運模式 (NORM)
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}platform_mode`, 'NORM');
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}is_norm_mode`, 'true');
+      } catch {}
+    }
   };
 
   const toggleRaceMode = () => {
@@ -5928,7 +5964,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (enabled) {
       setIsDemoMode(true);
       setIsNoPaymentMode(false);
+      setIsRaceMode(false);
       try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}platform_mode`, 'TEST');
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}is_race_mode`, 'false');
         localStorage.setItem(`${STORAGE_KEY_PREFIX}demo_mode`, 'true');
         localStorage.setItem(`${STORAGE_KEY_PREFIX}is_norm_mode`, 'false');
         localStorage.setItem(`${STORAGE_KEY_PREFIX}no_payment_mode`, 'false');
