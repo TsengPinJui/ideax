@@ -103,6 +103,7 @@ import { AdminCompetitionRulesArchiveFolder } from './AdminCompetitionRulesArchi
 import { MyProposalsAndDraftsModal } from './MyProposalsAndDraftsModal';
 import { JudgeEvaluationModal } from './JudgeEvaluationModal';
 import { AdminFinalEvaluationManagementModal } from './AdminFinalEvaluationManagementModal';
+import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import {
   getNominatedProposalIds,
   getIsFinalResultsPublished,
@@ -135,7 +136,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     setAvailableUsers,
     addNotification,
     logoutAccount,
+    openAboutModal,
   } = useApp();
+  const [competitionTermsDoc, setCompetitionTermsDoc] = useState<CompetitionDocumentKey | null>(null);
   const isLoggedIn = Boolean(auth.currentUser || (currentUser && currentUser.id && currentUser.id !== 'user-guest'));
   const [proposals, setProposals] = useState<StarSeasonProposal[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -683,7 +686,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       return;
     }
     if (!participantPledgeAgreed) {
-      showToast('請勾選同意遵守創星季競賽規範與原創性承諾');
+      showToast('請先勾選同意 <<IdeaX一般條款>> 與 <<創星季參賽者條款>>');
       return;
     }
 
@@ -776,7 +779,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       return;
     }
     if (!judgePledgeAgreed) {
-      showToast('請勾選恪守評審委員保密與公正評選承諾');
+      showToast('請先勾選同意 <<IdeaX一般條款>> 與 <<創星季專家評審條款>>');
       return;
     }
 
@@ -1960,147 +1963,6 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 >
                   <ShieldCheck className="w-4 h-4 text-purple-600 shrink-0" />
                   <span>成為專家</span>
-                </button>
-              </div>
-
-              {/* 7. 公開指標卡片 (依管理員後台設定即時展示，純白圓角卡片) */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-left max-w-5xl mx-auto">
-                {/* 提案數 */}
-                {statsConfig.showProposals && (
-                  <div className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200/90 shadow-2xs hover:border-amber-300 transition-all flex flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-black text-stone-700">參賽提案數</span>
-                      <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-                    </div>
-                    <div className="mt-3">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl sm:text-3xl font-black text-stone-900 font-mono">
-                          {adminMetrics.proposalsCount > 0 ? adminMetrics.proposalsCount : 7}
-                        </span>
-                        <span className="text-xs text-stone-500 font-bold">件</span>
-                      </div>
-                      <p className="text-[10px] text-stone-400 mt-0.5">徵點子與解法提案</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 已配發點數 / 全網金池 */}
-                {statsConfig.showAllocatedPoints && (
-                  <div className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200/90 shadow-2xs hover:border-amber-300 transition-all flex flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-black text-stone-700">已配發創星幣總額</span>
-                      <Coins className="w-4 h-4 text-amber-500 shrink-0" />
-                    </div>
-                    <div className="mt-3">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-xl sm:text-2xl md:text-3xl font-black text-amber-600 font-mono">
-                          {(adminMetrics.totalAllocatedPoints > 0 ? adminMetrics.totalAllocatedPoints : 259000).toLocaleString()} 創星幣
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-stone-400 mt-0.5">各身份帳號與推薦碼總額</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 登入用戶數 */}
-                {statsConfig.showLoggedInUsers && (
-                  <div className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200/90 shadow-2xs hover:border-amber-300 transition-all flex flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-black text-stone-700">登入用戶數</span>
-                      <Users className="w-4 h-4 text-blue-500 shrink-0" />
-                    </div>
-                    <div className="mt-3">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl sm:text-3xl font-black text-blue-600 font-mono">
-                          {adminMetrics.loggedInUsersCount > 0 ? adminMetrics.loggedInUsersCount : 142}
-                        </span>
-                        <span className="text-xs text-stone-500 font-bold">人</span>
-                      </div>
-                      <p className="text-[10px] text-stone-400 mt-0.5">全體登入會員與評選支持者</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 參賽者數 */}
-                {statsConfig.showParticipants && (
-                  <div className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200/90 shadow-2xs hover:border-amber-300 transition-all flex flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-black text-stone-700">參賽團隊</span>
-                      <GraduationCap className="w-4 h-4 text-emerald-500 shrink-0" />
-                    </div>
-                    <div className="mt-3">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono">
-                          {adminMetrics.participantsCount > 0 ? adminMetrics.participantsCount : 3}
-                        </span>
-                        <span className="text-xs text-stone-500 font-bold">隊</span>
-                      </div>
-                      <p className="text-[10px] text-stone-400 mt-0.5">已報名參賽隊伍</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 專家數 */}
-                {statsConfig.showExperts && (
-                  <div className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200/90 shadow-2xs hover:border-purple-300 transition-all flex flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-black text-stone-700">專業專家</span>
-                      <ShieldCheck className="w-4 h-4 text-purple-600 shrink-0" />
-                    </div>
-                    <div className="mt-3">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl sm:text-3xl font-black text-purple-700 font-mono">
-                          {adminMetrics.approvedExpertsCount > 0 ? adminMetrics.approvedExpertsCount : 3}
-                        </span>
-                        <span className="text-xs text-stone-500 font-bold">位</span>
-                      </div>
-                      <p className="text-[10px] text-stone-400 mt-0.5">每位配發 3,000,000 創星幣</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 痛點數 */}
-                {statsConfig.showPainPoints && (
-                  <div className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200/90 shadow-2xs hover:border-rose-300 transition-all flex flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-black text-stone-700">切身痛點徵集</span>
-                      <Flame className="w-4 h-4 text-rose-500 shrink-0" />
-                    </div>
-                    <div className="mt-3">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl sm:text-3xl font-black text-rose-600 font-mono">
-                          {adminMetrics.painPointsCount > 0 ? adminMetrics.painPointsCount : 5}
-                        </span>
-                        <span className="text-xs text-stone-500 font-bold">題</span>
-                      </div>
-                      <p className="text-[10px] text-stone-400 mt-0.5">生活與產業真實痛點</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 大會官方認證入口卡片 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      onOpenAuth();
-                      return;
-                    }
-                    navigateToSubView('judge');
-                  }}
-                  className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200/90 shadow-2xs hover:border-purple-300 hover:bg-purple-50/20 transition-all flex flex-col justify-between text-left cursor-pointer group active:scale-98"
-                  title="點擊進入成為專家"
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-xs sm:text-sm font-black text-stone-700 group-hover:text-purple-900">大會專家認證</span>
-                    <ShieldCheck className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform shrink-0" />
-                  </div>
-                  <div className="mt-3">
-                    <div className="text-xl sm:text-2xl font-black text-purple-700">
-                      成為專家
-                    </div>
-                    <p className="text-[10px] text-stone-500 mt-0.5">審核通過轉為專家帳號，享有 3,000,000 點投資額度（單案上限 2,000,000）</p>
-                  </div>
                 </button>
               </div>
 
@@ -4342,7 +4204,31 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     required
                   />
                   <label htmlFor="participantPledge" className="text-[11px] text-stone-600 cursor-pointer leading-relaxed">
-                    我代表團隊承諾所提方案為原創內容，同意遵守創星季規範；同意此條款即同意註冊 IdeaX 創點子平台（ideax.tw），並同意由系統自動刊登與存取競賽期間提出的痛點或提案和討論內容。
+                    我已閱讀並同意{' '}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openAboutModal('general_terms');
+                      }}
+                      className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+                    >
+                      &lt;&lt;IdeaX一般條款&gt;&gt;
+                    </button>
+                    {' '}與{' '}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCompetitionTermsDoc('C');
+                      }}
+                      className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+                    >
+                      &lt;&lt;創星季參賽者條款&gt;&gt;
+                    </button>
+                    。
                   </label>
                 </div>
 
@@ -4537,8 +4423,32 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     className="mt-0.5 rounded text-purple-600 focus:ring-purple-400"
                     required
                   />
-                  <label htmlFor="judgePledge" className="text-[11px] text-stone-600 cursor-pointer">
-                    我承諾遵守評審委員保密義務與利益迴避原則，秉持公平、公正、客觀立場評選參賽提案。
+                  <label htmlFor="judgePledge" className="text-[11px] text-stone-600 cursor-pointer leading-relaxed">
+                    我已閱讀並同意{' '}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openAboutModal('general_terms');
+                      }}
+                      className="text-purple-800 font-bold underline hover:text-purple-950 cursor-pointer"
+                    >
+                      &lt;&lt;IdeaX一般條款&gt;&gt;
+                    </button>
+                    {' '}與{' '}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCompetitionTermsDoc('D');
+                      }}
+                      className="text-purple-800 font-bold underline hover:text-purple-950 cursor-pointer"
+                    >
+                      &lt;&lt;創星季專家評審條款&gt;&gt;
+                    </button>
+                    。
                   </label>
                 </div>
 
@@ -4863,6 +4773,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             setEvaluatingJudgeUser(judge);
             setIsJudgeEvaluationModalOpen(true);
           }}
+        />
+      )}
+      {/* 創星季競賽規章與條款說明彈窗 */}
+      {competitionTermsDoc && (
+        <CompetitionTermsModal
+          isOpen={Boolean(competitionTermsDoc)}
+          onClose={() => setCompetitionTermsDoc(null)}
+          initialDoc={competitionTermsDoc}
         />
       )}
     </div>

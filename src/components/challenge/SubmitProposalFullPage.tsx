@@ -75,7 +75,10 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
     setAnswers,
     setAvailableUsers,
     addNotification,
+    openAboutModal,
   } = useApp();
+
+  const [termsDoc, setTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
   const [editingDraftId, setEditingDraftId] = useState<string | null>(initialDraftId || null);
   const [availableDrafts, setAvailableDrafts] = useState<ProposalDraft[]>([]);
@@ -353,7 +356,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
     }
 
     if (!pledgeAgreed) {
-      showToast('請勾選同意遵守競賽規範與原創性承諾');
+      showToast('請先勾選同意 <<IdeaX一般條款>> 與 <<創星季參賽者條款>>');
       return;
     }
 
@@ -1200,7 +1203,31 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               required
             />
             <label htmlFor="submitPledge" className="text-[11px] text-stone-600 cursor-pointer leading-relaxed">
-              我確認本提案內容為本人或團隊原創構想，同意遵守 IdeaX 創星季競賽規章與原創性承諾；同意此條款即同意註冊 IdeaX 創點子平台（ideax.tw），並同意由系統自動刊登與存取競賽期間提出的痛點、提案和討論內容。
+              我已閱讀並同意{' '}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openAboutModal('general_terms');
+                }}
+                className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+              >
+                &lt;&lt;IdeaX一般條款&gt;&gt;
+              </button>
+              {' '}與{' '}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setTermsDoc('C');
+                }}
+                className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+              >
+                &lt;&lt;創星季參賽者條款&gt;&gt;
+              </button>
+              。
             </label>
           </div>
 
@@ -1238,6 +1265,15 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           </div>
         </form>
       </main>
+
+      {/* 創星季規章與條款說明彈窗 */}
+      {termsDoc && (
+        <CompetitionTermsModal
+          isOpen={Boolean(termsDoc)}
+          onClose={() => setTermsDoc(null)}
+          initialDoc={termsDoc}
+        />
+      )}
     </div>
   );
 };

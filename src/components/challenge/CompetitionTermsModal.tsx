@@ -52,7 +52,7 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
 
   const modalElement = (
     <div
-      style={{ zIndex: 2147483647 }}
+      style={{ zIndex: 2147483648 }}
       className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

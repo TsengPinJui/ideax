@@ -762,15 +762,15 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
                     className="w-4 h-4 accent-amber-600 rounded cursor-pointer mt-0.5"
                   />
                   <span>
-                    我已閱讀並同意遵守<strong>《個人資料保護法》</strong>及
+                    我已閱讀並同意{' '}
                     <button
                       type="button"
                       onClick={() => openAboutModal('privacy_policy')}
-                      className="text-amber-800 underline font-bold inline-flex items-center mx-1"
+                      className="text-amber-800 underline font-bold inline-flex items-center"
                     >
-                      平台隱私權政策
+                      &lt;&lt;平台隱私權政策&gt;&gt;
                     </button>
-                    ，同意 IdeaX 僅將所提供證件及有利證明用於身分與資歷審查核驗。
+                    。
                   </span>
                 </label>
 

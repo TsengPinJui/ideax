@@ -550,18 +550,18 @@ export const SubscriptionPlanCard: React.FC = () => {
                   className="w-4 h-4 accent-amber-600 rounded mt-0.5 shrink-0 cursor-pointer"
                 />
                 <span className="text-[11px] leading-relaxed text-stone-700">
-                  我已詳閱並同意
+                  我已閱讀並同意{' '}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       openAboutModal('recharge_subscription_terms');
                     }}
-                    className="text-amber-800 hover:text-amber-900 underline font-black mx-1 cursor-pointer inline-flex items-center"
+                    className="text-amber-800 hover:text-amber-900 underline font-black cursor-pointer inline-flex items-center"
                   >
-                    《點數儲值與會員方案訂閱服務條款》
+                    &lt;&lt;點數儲值與會員方案訂閱服務條款&gt;&gt;
                   </button>
-                  。我理解本方案為<strong>定期定額自動續訂</strong>，授權系統於每期期滿前自動展延扣款；依消保法規定，本數位特權服務開通即享專屬費率與功能，開通後不適用七日無條件退款。您可隨時於個人中心取消下期續約。
+                  。
                 </span>
               </label>
             </div>

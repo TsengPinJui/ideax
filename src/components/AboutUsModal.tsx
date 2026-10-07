@@ -21,7 +21,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
 
   const modalElement = (
     <div
-      style={{ zIndex: 2147483647 }}
+      style={{ zIndex: 2147483648 }}
       className="fixed inset-0 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

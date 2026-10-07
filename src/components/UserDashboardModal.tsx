@@ -4760,14 +4760,15 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div className="p-3 rounded-xl bg-white/90 border border-amber-200/80 text-[11px] text-stone-600 flex items-start gap-2">
                       <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span className="leading-relaxed">
-                        點擊購買即代表您同意
+                        點擊購買即代表您同意{' '}
                         <button
                           type="button"
                           onClick={() => openAboutModal('recharge_subscription_terms')}
-                          className="text-amber-800 hover:text-amber-900 underline font-bold mx-1 cursor-pointer inline-flex items-center"
+                          className="text-amber-800 hover:text-amber-900 underline font-bold cursor-pointer inline-flex items-center"
                         >
-                          《點數儲值與會員方案訂閱服務條款》
+                          &lt;&lt;點數儲值與會員方案訂閱服務條款&gt;&gt;
                         </button>
+                        。
                       </span>
                     </div>
                   </div>

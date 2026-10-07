@@ -46,6 +46,7 @@ import {
   getCompetitionHomepageStatsConfig,
   saveCompetitionHomepageStatsConfig,
   getCompetitionAggregatedMetrics,
+  resetCompetitionDataToZero,
 } from '../services/competitionAdminSync';
 import {
   StarSeasonProposal,
@@ -176,6 +177,13 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     triggerToast(showAll ? '✅ 已將所有 6 項數據公開於競賽網首頁！' : '🔒 已隱藏首頁所有自選數據指標。');
   };
 
+  // 一鍵數據歸零
+  const handleResetDataToZero = () => {
+    resetCompetitionDataToZero();
+    loadAll();
+    triggerToast('🧹 已成功將全站競賽數據清零！所有計數器回歸 0。');
+  };
+
   // 統計數據
   const pendingRegsCount = registrations.filter((r) => r.status === 'pending_review').length;
   const pendingPropsCount = proposals.filter((p) => p.status === 'pending_review').length;
@@ -246,12 +254,23 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
           </div>
         </div>
 
-        {/* 提示訊息 */}
-        {toastMsg && (
-          <span className="px-3 py-1 rounded-xl bg-emerald-600 text-white text-xs font-bold animate-in fade-in duration-200 shrink-0">
-            {toastMsg}
-          </span>
-        )}
+        {/* 提示訊息與數據清零按鈕 */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleResetDataToZero}
+            className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
+            title="將全站競賽數據歸零重設"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>數據清零</span>
+          </button>
+          {toastMsg && (
+            <span className="px-3 py-1 rounded-xl bg-emerald-600 text-white text-xs font-bold animate-in fade-in duration-200 shrink-0">
+              {toastMsg}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 📊 頂部 6 大即時指標快報列 (點擊可直接切換) */}

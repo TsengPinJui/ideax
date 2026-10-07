@@ -982,29 +982,29 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                   className="mt-0.5 w-4 h-4 accent-blue-600 rounded cursor-pointer shrink-0"
                 />
                 <div className="text-xs text-stone-800 leading-relaxed select-none">
-                  <span className="font-bold text-stone-900">我已詳閱並同意</span>
+                  <span className="font-bold text-stone-900">我已閱讀並同意</span>{' '}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       openAboutModal('solver_terms');
                     }}
-                    className="font-bold text-blue-700 hover:text-blue-900 underline mx-1 cursor-pointer"
+                    className="font-bold text-blue-700 hover:text-blue-900 underline cursor-pointer"
                   >
-                    《接案會員服務條款》
+                    &lt;&lt;接案會員服務條款&gt;&gt;
                   </button>
-                  與
+                  {' '}與{' '}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       openAboutModal('general_terms');
                     }}
-                    className="font-bold text-stone-700 hover:text-stone-900 underline mx-1 cursor-pointer"
+                    className="font-bold text-stone-700 hover:text-stone-900 underline cursor-pointer"
                   >
-                    《一般服務條款》
+                    &lt;&lt;一般服務條款&gt;&gt;
                   </button>
-                  <span className="text-stone-500">（包含第三方支付安全託管、多階段履約驗收、及平台不對用戶上傳之資料與檔案負保管責任）</span>
+                  。
                 </div>
               </label>
               {termsError && (
@@ -1018,7 +1018,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-600">
               <span className="flex items-center gap-1.5 font-medium">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>您已同意《接案會員服務條款》（v2.1）</span>
+                <span>您已同意 &lt;&lt;接案會員服務條款&gt;&gt;（v2.1）</span>
               </span>
               <button
                 type="button"
@@ -1037,7 +1037,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                 onClick={() => openAboutModal('general_terms')}
                 className="text-stone-700 underline font-semibold mx-1 cursor-pointer"
               >
-                《一般服務條款》
+                &lt;&lt;一般服務條款&gt;&gt;
               </button>
               規範，無須另外簽署接案條款。
             </span>

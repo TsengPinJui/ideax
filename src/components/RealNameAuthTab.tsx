@@ -634,15 +634,23 @@ export const RealNameAuthTab: React.FC = () => {
               className="w-4 h-4 accent-blue-600 rounded cursor-pointer mt-0.5"
             />
             <span>
-              我已詳閱並同意遵守<strong>《個人資料保護法》</strong>、<strong>《洗錢防制法》</strong>與
+              我已閱讀並同意{' '}
               <button
                 type="button"
                 onClick={() => openAboutModal('privacy_policy')}
-                className="text-blue-800 underline font-bold inline-flex items-center mx-1"
+                className="text-blue-800 underline font-bold inline-flex items-center"
               >
-                隱私權保護政策
+                &lt;&lt;隱私權保護政策&gt;&gt;
               </button>
-              ，授權 IdeaX 創點子於平台金流託管、撥款核驗與法令合規必要範圍內進行身分真實性驗證。
+              {' '}與{' '}
+              <button
+                type="button"
+                onClick={() => openAboutModal('anti_fraud_aml_policy')}
+                className="text-blue-800 underline font-bold inline-flex items-center"
+              >
+                &lt;&lt;防制洗錢與反詐騙政策&gt;&gt;
+              </button>
+              。
             </span>
           </label>
         </div>

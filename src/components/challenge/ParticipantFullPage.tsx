@@ -33,6 +33,7 @@ import {
 } from '../../services/competitionClientService';
 import { recordNewParticipantRegistration } from '../../services/competitionAdminSync';
 import { PainPointSelector } from './PainPointSelector';
+import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 
 interface ParticipantFullPageProps {
   onNavigate: (view: 'home' | 'explore' | 'rules' | 'submit' | 'judge' | 'ambassador') => void;
@@ -56,7 +57,10 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
     setAnswers,
     setAvailableUsers,
     addNotification,
+    openAboutModal,
   } = useApp();
+
+  const [termsDoc, setTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
   // 團隊基本資料
   const [teamName, setTeamName] = useState('');
@@ -169,7 +173,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
     }
 
     if (!participantPledgeAgreed) {
-      showToast('請勾選同意遵守創星季規範與原創性承諾');
+      showToast('請先勾選同意 <<IdeaX一般條款>> 與 <<創星季參賽者條款>>');
       return;
     }
 
@@ -804,7 +808,31 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                 required
               />
               <label htmlFor="participantFullPledge" className="text-xs text-stone-700 cursor-pointer leading-relaxed">
-                我代表團隊承諾所提方案為原創內容，未侵犯他人智慧財產權，同意遵守 IdeaX 創星季規範；同意此條款即同意註冊 IdeaX 創點子平台（ideax.tw），並同意由系統自動刊登與存取競賽期間提出的痛點、提案和討論內容，接受主辦單位之審查與展示公開。
+                我已閱讀並同意{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openAboutModal('general_terms');
+                  }}
+                  className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+                >
+                  &lt;&lt;IdeaX一般條款&gt;&gt;
+                </button>
+                {' '}與{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTermsDoc('C');
+                  }}
+                  className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+                >
+                  &lt;&lt;創星季參賽者條款&gt;&gt;
+                </button>
+                。
               </label>
             </div>
 
@@ -839,6 +867,15 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
           </form>
         </div>
       </main>
+
+      {/* 創星季規章與條款說明彈窗 */}
+      {termsDoc && (
+        <CompetitionTermsModal
+          isOpen={Boolean(termsDoc)}
+          onClose={() => setTermsDoc(null)}
+          initialDoc={termsDoc}
+        />
+      )}
     </div>
   );
 };

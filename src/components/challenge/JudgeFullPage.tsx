@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { applyJudge, uploadProposalAttachment } from '../../services/competitionClientService';
+import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 
 interface JudgeFullPageProps {
   onNavigate: (view: 'home' | 'explore' | 'rules' | 'submit' | 'participant' | 'ambassador') => void;
@@ -43,7 +44,10 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
     setCurrentUser,
     setSolvers,
     addNotification,
+    openAboutModal,
   } = useApp();
+
+  const [termsDoc, setTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
   const [judgeName, setJudgeName] = useState(currentUser?.name || '');
   const [judgePhone, setJudgePhone] = useState('');
@@ -110,7 +114,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
     }
 
     if (!judgePledgeAgreed) {
-      showToast('請勾選同意遵循公正評審與利益迴避原則');
+      showToast('請先勾選同意 <<IdeaX一般條款>> 與 <<創星季專家評審條款>>');
       return;
     }
 
@@ -570,7 +574,31 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                 required
               />
               <label htmlFor="judgeFullPledge" className="text-xs text-stone-700 cursor-pointer leading-relaxed">
-                我承諾於擔任 IdeaX 創星季評審委員期間，嚴格恪守客觀公正與利益迴避原則。若參賽團隊中有本人所指導或具利害關係之項目，將主動迴避評選；所有給分與意見將秉持專業誠信。
+                我已閱讀並同意{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openAboutModal('general_terms');
+                  }}
+                  className="text-purple-800 font-bold underline hover:text-purple-950 cursor-pointer"
+                >
+                  &lt;&lt;IdeaX一般條款&gt;&gt;
+                </button>
+                {' '}與{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTermsDoc('D');
+                  }}
+                  className="text-purple-800 font-bold underline hover:text-purple-950 cursor-pointer"
+                >
+                  &lt;&lt;創星季專家評審條款&gt;&gt;
+                </button>
+                。
               </label>
             </div>
 
@@ -605,6 +633,15 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
           </form>
         </div>
       </main>
+
+      {/* 創星季規章與條款說明彈窗 */}
+      {termsDoc && (
+        <CompetitionTermsModal
+          isOpen={Boolean(termsDoc)}
+          onClose={() => setTermsDoc(null)}
+          initialDoc={termsDoc}
+        />
+      )}
     </div>
   );
 };

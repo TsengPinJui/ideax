@@ -215,7 +215,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     }
 
     if (postType === 'seek_solution' && !agreeQuestionerTerms) {
-      setTermsError('發布問題前，請先勾選確認已詳閱並同意提問者條款與一般服務條款');
+      setTermsError('發布問題前，請先勾選確認已閱讀並同意 <<提問會員服務條款>> 與 <<一般服務條款>>');
       return;
     }
 
@@ -1096,7 +1096,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 className="mt-0.5 w-4 h-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
               />
               <div className="text-xs text-stone-700 leading-relaxed">
-                <span className="font-bold text-stone-900">我已詳閱並同意</span>
+                <span className="font-bold text-stone-900">我已閱讀並同意</span>{' '}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -1104,11 +1104,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                     e.stopPropagation();
                     openAboutModal('questioner_terms');
                   }}
-                  className="text-blue-700 hover:text-blue-800 font-bold underline mx-1 cursor-pointer"
+                  className="text-blue-700 hover:text-blue-800 font-bold underline cursor-pointer"
                 >
-                  《提問會員服務條款》
+                  &lt;&lt;提問會員服務條款&gt;&gt;
                 </button>
-                <span>和</span>
+                {' '}與{' '}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -1116,11 +1116,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                     e.stopPropagation();
                     openAboutModal('general_terms');
                   }}
-                  className="text-blue-700 hover:text-blue-800 font-bold underline mx-1 cursor-pointer"
+                  className="text-blue-700 hover:text-blue-800 font-bold underline cursor-pointer"
                 >
-                  《一般服務條款》
+                  &lt;&lt;一般服務條款&gt;&gt;
                 </button>
-                <span className="text-stone-500">（包含第三方支付安全託管、多階段履約驗收、及平台不對用戶上傳之資料與檔案負保管責任）</span>
+                。
               </div>
             </label>
 
@@ -1140,7 +1140,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 onClick={() => openAboutModal('general_terms')}
                 className="text-stone-800 font-bold underline mx-1 cursor-pointer"
               >
-                《一般服務條款》
+                &lt;&lt;一般服務條款&gt;&gt;
               </button>
               規範，發布即代表同意平台服務規範。
             </span>
