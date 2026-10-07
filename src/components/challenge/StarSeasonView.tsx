@@ -104,6 +104,7 @@ import { MyProposalsAndDraftsModal } from './MyProposalsAndDraftsModal';
 import { JudgeEvaluationModal } from './JudgeEvaluationModal';
 import { AdminFinalEvaluationManagementModal } from './AdminFinalEvaluationManagementModal';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
+import { ShatterPageTurnTransition } from './ShatterPageTurnTransition';
 import {
   getNominatedProposalIds,
   getIsFinalResultsPublished,
@@ -246,6 +247,57 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 管理員專屬：決選評分與全體獎勵統計總控制台
   const [isAdminFinalEvaluationHubOpen, setIsAdminFinalEvaluationHubOpen] = useState<boolean>(false);
+
+  // 特效：點擊「痛點」或「創新起點」字體碎片掉落並直接跳轉至對應專區
+  const [shatterTransition, setShatterTransition] = useState<{
+    isActive: boolean;
+    clickedWord: 'painPoint' | 'innovation' | null;
+    originX: number;
+    originY: number;
+  }>({
+    isActive: false,
+    clickedWord: null,
+    originX: 0,
+    originY: 0,
+  });
+
+  const handleTriggerShatterAndJump = (e: React.MouseEvent, word: 'painPoint' | 'innovation') => {
+    if (shatterTransition.isActive) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const originX = rect.left + rect.width / 2;
+    const originY = rect.top + rect.height / 2;
+
+    setShatterTransition({
+      isActive: true,
+      clickedWord: word,
+      originX,
+      originY,
+    });
+
+    // 碎片物理掉落過程中 (~480ms)，俐落跳轉
+    setTimeout(() => {
+      if (word === 'painPoint') {
+        if (onGoToPainPoints) {
+          onGoToPainPoints();
+        } else {
+          onBackToOldSite();
+        }
+      } else {
+        navigateToSubView('proposal');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 480);
+
+    // 1s 後復原動畫狀態
+    setTimeout(() => {
+      setShatterTransition({
+        isActive: false,
+        clickedWord: null,
+        originX: 0,
+        originY: 0,
+      });
+    }, 1000);
+  };
 
   // 專家名單與評審身分判定 (評審身分為專家，由管理員在後台指派 isJudgeSelected = true)
   const expertsList = useMemo(() => getCompetitionExperts(), [isAdminFinalEvaluationHubOpen, isJudgeEvaluationModalOpen]);
@@ -686,7 +738,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       return;
     }
     if (!participantPledgeAgreed) {
-      showToast('請先勾選同意 <<IdeaX一般條款>> 與 <<創星季參賽者條款>>');
+      showToast('請先勾選同意 《IdeaX一般條款》 與 《創星季參賽者條款》');
       return;
     }
 
@@ -779,7 +831,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       return;
     }
     if (!judgePledgeAgreed) {
-      showToast('請先勾選同意 <<IdeaX一般條款>> 與 <<創星季專家評審條款>>');
+      showToast('請先勾選同意 《IdeaX一般條款》 與 《創星季專家評審條款》');
       return;
     }
 
@@ -1181,15 +1233,23 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   // 滿版子網址獨立網頁渲染 (探索提案、競賽辦法、投稿、申請參賽者、申請專家、推廣大使推薦碼)
   if (currentSubView === 'proposal' || currentSubView === 'explore') {
     return (
-      <ExploreProposalsFullPage
-        onNavigate={navigateToSubView}
-        onBackToOldSite={onBackToOldSite}
-        onOpenAuth={onOpenAuth}
-        proposals={proposals}
-        onRefreshProposals={loadData}
-        account={account}
-        onRefreshAccount={loadData}
-      />
+      <>
+        <ShatterPageTurnTransition
+          isActive={shatterTransition.isActive}
+          clickedWord={shatterTransition.clickedWord}
+          originX={shatterTransition.originX}
+          originY={shatterTransition.originY}
+        />
+        <ExploreProposalsFullPage
+          onNavigate={navigateToSubView}
+          onBackToOldSite={onBackToOldSite}
+          onOpenAuth={onOpenAuth}
+          proposals={proposals}
+          onRefreshProposals={loadData}
+          account={account}
+          onRefreshAccount={loadData}
+        />
+      </>
     );
   }
 
@@ -1251,13 +1311,21 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-20 selection:bg-amber-300 selection:text-stone-950 font-sans">
+      {/* 點擊「痛點」或「創新起點」之字體碎片炸裂掉落全螢幕動態 */}
+      <ShatterPageTurnTransition
+        isActive={shatterTransition.isActive}
+        clickedWord={shatterTransition.clickedWord}
+        originX={shatterTransition.originX}
+        originY={shatterTransition.originY}
+      />
+
       {/* 頂部全站提示列與導覽 */}
       <div className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
         {/* 導覽列核心主行 */}
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex items-center justify-between gap-2">
           {/* 左側：品牌 Logo (點燈泡回舊站首頁，點創星季回競賽首頁) */}
-          <div className="flex items-center gap-1.5 shrink-0 -ml-1 sm:-ml-3">
-            {/* 1. 點左上燈泡圖片回到舊站首頁 (依指示大一點點) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 -ml-0.5 sm:-ml-2">
+            {/* 1. 點左上燈泡圖片回到舊站首頁 (手機版與電腦版適度放大) */}
             <button
               type="button"
               onClick={() => {
@@ -1271,7 +1339,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <img
                 src="/logo-bulb.png"
                 alt="IdeaX 創點子 - 點擊回舊站首頁"
-                className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:drop-shadow-md transition-all group-hover:scale-105"
+                className="w-12 h-12 sm:w-13 sm:h-13 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:drop-shadow-md transition-all group-hover:scale-105"
               />
             </button>
 
@@ -1282,14 +1350,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 navigateToSubView('home');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="p-1 -m-1 rounded-xl hover:bg-amber-100/60 active:scale-95 transition-all cursor-pointer flex items-center group -ml-1"
+              className="p-1 -m-1 rounded-xl hover:bg-amber-100/60 active:scale-95 transition-all cursor-pointer flex items-center group -ml-0.5"
               title="點擊返回創星季競賽首頁"
               aria-label="回創星季競賽首頁"
             >
               <img
                 src="/logo-chuangxingji-text.png"
                 alt="創星季 - 點擊回競賽首頁"
-                className="h-7.5 sm:h-9 md:h-10.5 w-auto object-contain shrink-0 group-hover:opacity-90 group-hover:scale-102 transition-all"
+                className="h-8.5 sm:h-9.5 md:h-10.5 w-auto object-contain shrink-0 group-hover:opacity-90 group-hover:scale-102 transition-all"
               />
             </button>
           </div>
@@ -1789,71 +1857,97 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               </div>
             </div>
 
-            {/* 3. 大標語：你的 創新點子，\n    值得被世界看見（階梯向右縮排排版，附璀璨金芒閃爍與流光特效） */}
-            <div className="pt-2">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 tracking-tight leading-tight inline-block text-left">
-                <span className="block">
-                  你的{' '}
-                  <span className="relative inline-block px-1">
-                    {/* 周圍環境金色輝光光暈 (擴大範圍至外圍，柔和氛圍) */}
-                    <span
-                      aria-hidden="true"
-                      className="absolute -inset-x-6 sm:-inset-x-10 -inset-y-3 sm:-inset-y-5 bg-gradient-to-r from-amber-300/15 via-yellow-200/25 to-amber-400/15 blur-xl sm:blur-2xl rounded-3xl animate-ambient-glow pointer-events-none"
-                    />
-
-                    {/* 閃爍星芒 1：右上角主星芒 (散佈範圍更寬廣，光芒柔和不刺眼) */}
-                    <span
-                      aria-hidden="true"
-                      className="absolute -top-5 sm:-top-7 -right-6 sm:-right-9 text-amber-400/90 animate-sparkle-burst-1 pointer-events-none select-none z-10"
+            {/* 3. 大標語：參考原創比賽海報風格（微傾斜動態、三行大字體交錯錯開排版、手繪粉紅與黃綠油漆筆刷、向前運動斜體感） */}
+            <div className="pt-4 pb-2 flex justify-center overflow-visible">
+              <div className="inline-block text-left transform -rotate-3 sm:-rotate-4 -skew-x-8 sm:-skew-x-10 italic origin-center select-none max-w-full">
+                {/* 第一行：你的 痛點， (靠左) */}
+                <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-stone-950 tracking-tight leading-tight flex items-center">
+                  <span>你的</span>
+                  <button
+                    type="button"
+                    onClick={(e) => handleTriggerShatterAndJump(e, 'painPoint')}
+                    title="點擊擊碎痛點：字體化為碎片掉落，直接跳轉進入痛點專區！"
+                    aria-label="點擊擊碎痛點並跳轉進入痛點專區"
+                    className={`relative inline-block ml-2 sm:ml-3 cursor-pointer group active:scale-95 transition-all text-left focus:outline-none ${
+                      shatterTransition.isActive && shatterTransition.clickedWord === 'painPoint'
+                        ? 'opacity-0 scale-90 pointer-events-none'
+                        : 'hover:scale-102'
+                    }`}
+                  >
+                    {/* 粉紅油漆筆刷底 */}
+                    <svg
+                      viewBox="0 0 170 54"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="absolute -inset-x-4 sm:-inset-x-6 -inset-y-2 w-[calc(100%+32px)] sm:w-[calc(100%+48px)] h-[calc(100%+16px)] pointer-events-none -z-10 group-hover:scale-105 transition-transform"
+                      preserveAspectRatio="none"
                     >
-                      <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-amber-400/80 fill-amber-300/60 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" />
-                    </span>
+                      <path
+                        d="M6 28C14 14 32 9 58 7C86 5 120 7 146 10C162 12 168 18 165 28C162 38 148 44 125 46C95 48 55 47 28 44C12 42 4 36 6 28Z"
+                        fill="#fda4af"
+                        fillOpacity="0.95"
+                      />
+                      <path
+                        d="M15 19C35 12 68 13 100 11C132 10 156 14 162 21C154 26 132 25 106 24C72 23 38 25 19 26C14 24 13 20 15 19Z"
+                        fill="#fb7185"
+                        fillOpacity="0.75"
+                      />
+                      <path
+                        d="M22 35C48 38 85 39 122 37C146 36 158 33 156 38C147 44 124 46 96 47C62 48 32 46 18 42C16 38 19 36 22 35Z"
+                        fill="#f43f5e"
+                        fillOpacity="0.6"
+                      />
+                    </svg>
+                    <span className="relative z-10 text-stone-950">痛點，</span>
+                  </button>
+                </div>
 
-                    {/* 閃爍星芒 2：左上角星芒 (散佈範圍更寬廣) */}
-                    <span
-                      aria-hidden="true"
-                      className="absolute -top-4 sm:-top-6 -left-6 sm:-left-8 text-yellow-400/85 animate-sparkle-burst-2 pointer-events-none select-none z-10"
+                {/* 第二行：就是我的 (向右明顯錯開排版) */}
+                <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-950 tracking-tight leading-tight pl-16 sm:pl-28 md:pl-36 lg:pl-44 my-2 sm:my-3">
+                  就是我的
+                </div>
+
+                {/* 第三行：創新起點 (加大醒目大字體 + 鮮亮黃綠油漆筆刷底，回到偏左位置形成鮮明之字交錯) */}
+                <div className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-stone-950 tracking-tight leading-none pl-1 sm:pl-3">
+                  <button
+                    type="button"
+                    onClick={(e) => handleTriggerShatterAndJump(e, 'innovation')}
+                    title="點擊啟動創新起點：字體化為碎片掉落，直接跳轉進入提案專區！"
+                    aria-label="點擊啟動創新起點並跳轉進入提案專區"
+                    className={`relative inline-block cursor-pointer group active:scale-95 transition-all text-left focus:outline-none ${
+                      shatterTransition.isActive && shatterTransition.clickedWord === 'innovation'
+                        ? 'opacity-0 scale-90 pointer-events-none'
+                        : 'hover:scale-102'
+                    }`}
+                  >
+                    {/* 黃綠大筆刷底 */}
+                    <svg
+                      viewBox="0 0 280 62"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="absolute -inset-x-5 sm:-inset-x-8 -inset-y-2.5 sm:-inset-y-3 w-[calc(100%+40px)] sm:w-[calc(100%+64px)] h-[calc(100%+20px)] sm:h-[calc(100%+24px)] pointer-events-none -z-10 group-hover:scale-105 transition-transform"
+                      preserveAspectRatio="none"
                     >
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="w-4 h-4 sm:w-5 sm:h-5 md:w-5.5 md:h-5.5 fill-yellow-400/70 text-yellow-400/70 drop-shadow-[0_0_8px_rgba(253,224,71,0.4)]"
-                      >
-                        <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
-                      </svg>
-                    </span>
-
-                    {/* 閃爍星芒 3：右下角微星芒 (擴大至右外側下方) */}
-                    <span
-                      aria-hidden="true"
-                      className="absolute -bottom-4 sm:-bottom-6 -right-3 sm:-right-5 text-amber-400/80 animate-sparkle-burst-3 pointer-events-none select-none z-10"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400/60 text-amber-400/60 drop-shadow-[0_0_6px_rgba(252,211,77,0.35)]"
-                      >
-                        <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
-                      </svg>
-                    </span>
-
-                    {/* 閃爍星芒 4：左下側飄逸微光 (擴大散佈至左側遠處) */}
-                    <span
-                      aria-hidden="true"
-                      className="absolute -bottom-3 sm:-bottom-5 -left-5 sm:-left-7 text-yellow-300/80 animate-sparkle-burst-4 pointer-events-none select-none z-10"
-                    >
-                      <span className="block w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-yellow-300/75 shadow-[0_0_8px_rgba(253,224,71,0.5)]" />
-                    </span>
-
-                    {/* 核心字體：「創新點子」具備金黃漸層流光，柔化過度刺眼的 drop-shadow */}
-                    <span className="relative z-10 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 bg-clip-text text-transparent font-black animate-gold-sweep drop-shadow-[0_1px_4px_rgba(245,158,11,0.25)]">
-                      創新點子
-                    </span>
-                  </span>
-                  ，
-                </span>
-                <span className="block pl-6 sm:pl-10 md:pl-14 text-stone-900">
-                  值得被世界看見
-                </span>
-              </h1>
+                      <path
+                        d="M8 34C16 16 45 11 92 8C148 5 210 7 258 11C274 13 278 22 272 33C264 45 245 50 210 52C152 55 86 54 44 49C20 46 6 43 8 34Z"
+                        fill="#bef264"
+                        fillOpacity="0.95"
+                      />
+                      <path
+                        d="M18 23C40 14 92 15 152 13C208 11 254 16 270 25C258 33 222 30 172 29C116 28 58 30 30 33C21 30 17 26 18 23Z"
+                        fill="#84cc16"
+                        fillOpacity="0.45"
+                      />
+                      <path
+                        d="M26 42C70 46 130 48 190 46C234 44 262 40 265 46C250 54 210 56 162 57C106 58 54 55 24 50C20 46 22 43 26 42Z"
+                        fill="#a3e635"
+                        fillOpacity="0.75"
+                      />
+                    </svg>
+                    <span className="relative z-10 text-stone-950">創新起點</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* 4. 副標題說明文字 */}
@@ -2217,7 +2311,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       }`}
                     >
                       {activeStage === 5 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      <span>{activeStage === 5 ? '已公布榜單（當前）' : '大會榮耀'}</span>
+                      <span>{activeStage === 5 ? '已公布榜單（當前）' : '創星季榮耀'}</span>
                     </span>
                   </div>
                   <div className={`text-sm ${activeStage === 5 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
@@ -4214,7 +4308,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       }}
                       className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                     >
-                      &lt;&lt;IdeaX一般條款&gt;&gt;
+                      《IdeaX一般條款》
                     </button>
                     {' '}與{' '}
                     <button
@@ -4226,7 +4320,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       }}
                       className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                     >
-                      &lt;&lt;創星季參賽者條款&gt;&gt;
+                      《創星季參賽者條款》
                     </button>
                     。
                   </label>
@@ -4434,7 +4528,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       }}
                       className="text-purple-800 font-bold underline hover:text-purple-950 cursor-pointer"
                     >
-                      &lt;&lt;IdeaX一般條款&gt;&gt;
+                      《IdeaX一般條款》
                     </button>
                     {' '}與{' '}
                     <button
@@ -4446,7 +4540,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       }}
                       className="text-purple-800 font-bold underline hover:text-purple-950 cursor-pointer"
                     >
-                      &lt;&lt;創星季專家評審條款&gt;&gt;
+                      《創星季專家評審條款》
                     </button>
                     。
                   </label>

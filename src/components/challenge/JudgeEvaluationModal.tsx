@@ -141,7 +141,7 @@ export const JudgeEvaluationModal: React.FC<JudgeEvaluationModalProps> = ({
 
   // 統一送出全部團隊評分給主辦單位
   const handleSubmitAll = () => {
-    if (!window.confirm('確定要將所有團隊的決選評分「統一正式送出給主辦單位」嗎？送出後系統將自動加權並納入大會平均計算。')) {
+    if (!window.confirm('確定要將所有團隊的決選評分「統一正式送出給主辦單位」嗎？送出後系統將自動加權並納入創星季平均計算。')) {
       return;
     }
 
@@ -355,7 +355,7 @@ export const JudgeEvaluationModal: React.FC<JudgeEvaluationModalProps> = ({
                   <div className="text-xs font-black text-stone-900 flex items-center justify-between">
                     <span>評分指標 (每項 0 ~ 100 分)</span>
                     <span className="text-[11px] font-normal text-stone-500">
-                      系統依大會標準自動加權
+                       系統依創星季標準自動加權
                     </span>
                   </div>
 
@@ -388,7 +388,7 @@ export const JudgeEvaluationModal: React.FC<JudgeEvaluationModalProps> = ({
                   <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-between">
                     <div>
                       <div className="text-xs font-bold text-purple-900">該案綜合加權總分</div>
-                      <div className="text-[10px] text-purple-700">依大會規章加權換算 (滿分100)</div>
+                      <div className="text-[10px] text-purple-700">依創星季規章加權換算 (滿分100)</div>
                     </div>
                     <div className="text-2xl font-black font-mono text-purple-950">
                       {calculateWeightedScore(curScore).toFixed(1)} <span className="text-xs font-normal">分</span>
@@ -399,7 +399,7 @@ export const JudgeEvaluationModal: React.FC<JudgeEvaluationModalProps> = ({
                 {/* 評審專業評語與指導建議 */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-stone-900 flex items-center justify-between">
-                    <span>專家審查意見與評語（給團隊與大會的指導）</span>
+                    <span>專家審查意見與評語（給團隊與主辦方的指導）</span>
                     <span className="text-[10px] text-stone-400 font-normal">選填</span>
                   </label>
                   <textarea
@@ -435,7 +435,7 @@ export const JudgeEvaluationModal: React.FC<JudgeEvaluationModalProps> = ({
                 <span>全部團隊統一送出給主辦單位</span>
               </button>
               <p className="text-[10px] text-stone-400 text-center">
-                ※ 支援先為各隊逐一評分暫存，最後點擊「全部統一送出」即不可撤回並進入大會平均統計。
+                ※ 支援先為各隊逐一評分暫存，最後點擊「全部統一送出」即不可撤回並進入創星季平均統計。
               </p>
             </div>
           </div>

@@ -324,7 +324,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             </div>
           </div>
 
-          {/* 右側：簡潔清晰的「回大會首頁」按鈕 */}
+          {/* 右側：簡潔清晰的「回首頁」按鈕 */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -333,10 +333,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs shadow-2xs transition-all cursor-pointer active:scale-95"
-              title="返回創星季大會首頁"
+              title="返回創星季首頁"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>回大會首頁</span>
+              <span>回首頁</span>
             </button>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React from 'react';
 
 export interface IdeaXLogoProps {
   variant?: 'horizontal' | 'compact' | 'stacked' | 'mark' | 'dark' | 'card' | 'bulb' | 'chuangdianzi' | 'chuangdianzi-text' | 'horizontal-ideax' | 'footer-combined' | 'ideax-6';
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
   theme?: 'light' | 'dark' | 'auto';
   className?: string;
   showSlogan?: boolean;
@@ -24,6 +24,8 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
       md: 'h-9 sm:h-10 w-auto',
       lg: 'h-11 sm:h-13 w-auto',
       xl: 'h-14 sm:h-16 w-auto',
+      '2xl': 'h-16 sm:h-20 w-auto',
+      '3xl': 'h-20 sm:h-24 w-auto',
     },
     compact: {
       xs: 'h-6 w-auto',
@@ -31,6 +33,8 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
       md: 'h-10 w-auto',
       lg: 'h-12 w-auto',
       xl: 'h-16 w-auto',
+      '2xl': 'h-20 w-auto',
+      '3xl': 'h-24 w-auto',
     },
     stacked: {
       xs: 'w-16 h-auto',
@@ -38,6 +42,8 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
       md: 'w-32 h-auto',
       lg: 'w-44 h-auto',
       xl: 'w-56 h-auto',
+      '2xl': 'w-64 h-auto',
+      '3xl': 'w-72 h-auto',
     },
     mark: {
       xs: 'w-5 h-5',
@@ -45,15 +51,17 @@ export const IdeaXLogo: React.FC<IdeaXLogoProps> = ({
       md: 'w-8 h-8 sm:w-9 sm:h-9',
       lg: 'w-12 h-12 sm:w-14 sm:h-14',
       xl: 'w-16 h-16 sm:w-20 sm:h-20',
-      '2xl': 'w-20 h-20 sm:w-24 sm:h-24',
+      '2xl': 'w-24 h-24 sm:w-28 sm:h-28',
+      '3xl': 'w-28 h-28 sm:w-32 sm:h-32',
     },
     bulb: {
       xs: 'w-7 h-7',
       sm: 'w-9 h-9 sm:w-10 sm:h-10',
       md: 'w-11 h-11 sm:w-12 sm:h-12',
       lg: 'w-13 h-13 sm:w-15 sm:h-15',
-      xl: 'w-16 h-16 sm:w-20 sm:h-20',
-      '2xl': 'w-20 h-20 sm:w-24 sm:h-24',
+      xl: 'w-[72px] h-[72px] sm:w-[88px] sm:h-[88px]',
+      '2xl': 'w-24 h-24 sm:w-30 sm:h-30',
+      '3xl': 'w-28 h-28 sm:w-36 sm:h-36',
     },
     chuangdianzi: {
       xs: 'w-36 h-auto',

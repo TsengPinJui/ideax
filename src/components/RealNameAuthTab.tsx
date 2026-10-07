@@ -640,7 +640,7 @@ export const RealNameAuthTab: React.FC = () => {
                 onClick={() => openAboutModal('privacy_policy')}
                 className="text-blue-800 underline font-bold inline-flex items-center"
               >
-                &lt;&lt;隱私權保護政策&gt;&gt;
+                《隱私權保護政策》
               </button>
               {' '}與{' '}
               <button
@@ -648,7 +648,7 @@ export const RealNameAuthTab: React.FC = () => {
                 onClick={() => openAboutModal('anti_fraud_aml_policy')}
                 className="text-blue-800 underline font-bold inline-flex items-center"
               >
-                &lt;&lt;防制洗錢與反詐騙政策&gt;&gt;
+                《防制洗錢與反詐騙政策》
               </button>
               。
             </span>

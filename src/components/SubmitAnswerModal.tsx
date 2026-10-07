@@ -991,7 +991,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                     }}
                     className="font-bold text-blue-700 hover:text-blue-900 underline cursor-pointer"
                   >
-                    &lt;&lt;接案會員服務條款&gt;&gt;
+                    《接案會員服務條款》
                   </button>
                   {' '}與{' '}
                   <button
@@ -1002,7 +1002,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                     }}
                     className="font-bold text-stone-700 hover:text-stone-900 underline cursor-pointer"
                   >
-                    &lt;&lt;一般服務條款&gt;&gt;
+                    《一般服務條款》
                   </button>
                   。
                 </div>
@@ -1018,7 +1018,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-600">
               <span className="flex items-center gap-1.5 font-medium">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>您已同意 &lt;&lt;接案會員服務條款&gt;&gt;（v2.1）</span>
+                <span>您已同意 《接案會員服務條款》（v2.1）</span>
               </span>
               <button
                 type="button"
@@ -1037,7 +1037,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                 onClick={() => openAboutModal('general_terms')}
                 className="text-stone-700 underline font-semibold mx-1 cursor-pointer"
               >
-                &lt;&lt;一般服務條款&gt;&gt;
+                《一般服務條款》
               </button>
               規範，無須另外簽署接案條款。
             </span>

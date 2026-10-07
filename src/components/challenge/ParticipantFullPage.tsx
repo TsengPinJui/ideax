@@ -173,7 +173,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
     }
 
     if (!participantPledgeAgreed) {
-      showToast('請先勾選同意 <<IdeaX一般條款>> 與 <<創星季參賽者條款>>');
+      showToast('請先勾選同意 《IdeaX一般條款》 與 《創星季參賽者條款》');
       return;
     }
 
@@ -818,7 +818,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                   }}
                   className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                 >
-                  &lt;&lt;IdeaX一般條款&gt;&gt;
+                  《IdeaX一般條款》
                 </button>
                 {' '}與{' '}
                 <button
@@ -830,7 +830,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                   }}
                   className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                 >
-                  &lt;&lt;創星季參賽者條款&gt;&gt;
+                  《創星季參賽者條款》
                 </button>
                 。
               </label>

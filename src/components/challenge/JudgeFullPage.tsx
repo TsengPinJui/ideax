@@ -114,7 +114,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
     }
 
     if (!judgePledgeAgreed) {
-      showToast('請先勾選同意 <<IdeaX一般條款>> 與 <<創星季專家評審條款>>');
+      showToast('請先勾選同意 《IdeaX一般條款》 與 《創星季專家評審條款》');
       return;
     }
 
@@ -584,7 +584,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                   }}
                   className="text-purple-800 font-bold underline hover:text-purple-950 cursor-pointer"
                 >
-                  &lt;&lt;IdeaX一般條款&gt;&gt;
+                  《IdeaX一般條款》
                 </button>
                 {' '}與{' '}
                 <button
@@ -596,7 +596,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                   }}
                   className="text-purple-800 font-bold underline hover:text-purple-950 cursor-pointer"
                 >
-                  &lt;&lt;創星季專家評審條款&gt;&gt;
+                  《創星季專家評審條款》
                 </button>
                 。
               </label>

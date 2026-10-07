@@ -215,7 +215,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     }
 
     if (postType === 'seek_solution' && !agreeQuestionerTerms) {
-      setTermsError('發布問題前，請先勾選確認已閱讀並同意 <<提問會員服務條款>> 與 <<一般服務條款>>');
+      setTermsError('發布問題前，請先勾選確認已閱讀並同意 《提問會員服務條款》 與 《一般服務條款》');
       return;
     }
 
@@ -1106,7 +1106,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                   }}
                   className="text-blue-700 hover:text-blue-800 font-bold underline cursor-pointer"
                 >
-                  &lt;&lt;提問會員服務條款&gt;&gt;
+                  《提問會員服務條款》
                 </button>
                 {' '}與{' '}
                 <button
@@ -1118,7 +1118,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                   }}
                   className="text-blue-700 hover:text-blue-800 font-bold underline cursor-pointer"
                 >
-                  &lt;&lt;一般服務條款&gt;&gt;
+                  《一般服務條款》
                 </button>
                 。
               </div>
@@ -1140,7 +1140,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 onClick={() => openAboutModal('general_terms')}
                 className="text-stone-800 font-bold underline mx-1 cursor-pointer"
               >
-                &lt;&lt;一般服務條款&gt;&gt;
+                《一般服務條款》
               </button>
               規範，發布即代表同意平台服務規範。
             </span>

@@ -54,20 +54,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               title="回到首頁頂部"
-              className="inline-flex items-center gap-3 py-1 hover:opacity-95 transition-all text-left cursor-pointer focus:outline-none group"
+              className="inline-flex items-center gap-0.5 sm:gap-1 py-1 hover:opacity-95 transition-all text-left cursor-pointer focus:outline-none group"
             >
-              <div className="w-13 h-13 sm:w-15 sm:h-15 shrink-0 flex items-center justify-center">
+              <div className="w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] shrink-0 flex items-center justify-center">
                 <IdeaXLogo variant="bulb" size="lg" className="group-hover:scale-108 transition-transform duration-200" />
               </div>
               <img
                 src="/logo-6-trans-dark.png"
                 alt="IdeaX"
-                className="h-7 sm:h-8 w-auto object-contain shrink-0"
+                className="h-6 sm:h-7 md:h-8 w-auto object-contain shrink-0"
               />
             </button>
-            <div className="text-xs text-amber-400 font-bold">
-              主辦單位：IdeaX團隊
-            </div>
             <p className="text-stone-400 leading-relaxed pt-0.5">
               一個問題，找到更多可能。專為新創團隊、商業領袖與技術探索者打造的高價值問題與解決方案交易市場。讓想法發光，連結無限可能。
             </p>

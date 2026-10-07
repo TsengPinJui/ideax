@@ -164,3 +164,35 @@ body {
 .animate-ambient-glow {
   animation: ambient-glow-pulse 3.2s ease-in-out infinite;
 }
+
+/* 點擊標語之碎片炸開與物理掉落特效 */
+@keyframes shard-fall {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  20% {
+    opacity: 0.95;
+    transform: translate3d(var(--tx, 0px), var(--pop-y, -35px), 0) rotate(var(--rot-mid, 90deg)) scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--tx, 0px) * 1.4), var(--drop-y, 500px), 0) rotate(var(--rot-end, 360deg)) scale(0.35);
+  }
+}
+
+/* 3D 翻頁轉場特效 (Page Turn / Flip) */
+@keyframes page-turn-flip {
+  0% {
+    transform: perspective(1600px) rotateY(0deg);
+    box-shadow: -10px 0 25px rgba(0, 0, 0, 0.15);
+  }
+  45% {
+    transform: perspective(1600px) rotateY(-40deg) skewY(-3deg);
+    box-shadow: -35px 10px 60px rgba(0, 0, 0, 0.35);
+  }
+  100% {
+    transform: perspective(1600px) rotateY(-95deg) skewY(-8deg);
+    box-shadow: -80px 20px 120px rgba(0, 0, 0, 0.6);
+  }
+}

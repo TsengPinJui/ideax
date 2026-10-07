@@ -764,7 +764,7 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
 
         {/* 底部功能說明列 */}
         <div className="p-3 bg-stone-100 border-t border-stone-200 text-center text-[11px] text-stone-500">
-          IdeaX 創星季 • 官方評審機制遵守「四大評審指標（40%, 20%, 20%, 20%）」與「評審算術平均」大會章程規章。
+          IdeaX 創星季 • 官方評審機制遵守「四大評審指標（40%, 20%, 20%, 20%）」與「評審算術平均」創星季章程規章。
         </div>
 
       </div>

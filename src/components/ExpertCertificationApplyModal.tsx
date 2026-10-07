@@ -768,7 +768,7 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
                       onClick={() => openAboutModal('privacy_policy')}
                       className="text-amber-800 underline font-bold inline-flex items-center"
                     >
-                      &lt;&lt;平台隱私權政策&gt;&gt;
+                      《平台隱私權政策》
                     </button>
                     。
                   </span>

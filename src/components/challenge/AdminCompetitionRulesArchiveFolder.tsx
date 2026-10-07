@@ -57,7 +57,7 @@ export const AdminCompetitionRulesArchiveFolder: React.FC = () => {
       title: COMPETITION_RULES_A.title,
       subtitle: COMPETITION_RULES_A.subtitle,
       code: 'A',
-      category: '大會競賽辦法',
+      category: '創星季競賽辦法',
       updatedAt: COMPETITION_RULES_A.lastUpdated,
       data: COMPETITION_RULES_A,
       badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',

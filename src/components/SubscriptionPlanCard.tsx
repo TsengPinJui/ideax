@@ -559,7 +559,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                     }}
                     className="text-amber-800 hover:text-amber-900 underline font-black cursor-pointer inline-flex items-center"
                   >
-                    &lt;&lt;點數儲值與會員方案訂閱服務條款&gt;&gt;
+                    《點數儲值與會員方案訂閱服務條款》
                   </button>
                   。
                 </span>

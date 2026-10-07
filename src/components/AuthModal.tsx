@@ -399,7 +399,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (!agreeCompetitionTerms) {
-      setErrorMsg('登入失敗：請先勾選同意 <<IdeaX一般條款>> 與 <<創星季一般用戶條款>>。');
+      setErrorMsg('登入失敗：請先勾選同意 《IdeaX一般條款》 與 《創星季一般用戶條款》。');
       return;
     }
 
@@ -1040,7 +1040,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (!agreeGeneralTerms || !agreeCompetitionTerms) {
-      setErrorMsg('註冊失敗：請先勾選同意 <<IdeaX一般條款>> 與 <<創星季一般用戶條款>>。');
+      setErrorMsg('註冊失敗：請先勾選同意 《IdeaX一般條款》 與 《創星季一般用戶條款》。');
       return;
     }
 
@@ -1778,7 +1778,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         }}
                         className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                       >
-                        &lt;&lt;IdeaX一般條款&gt;&gt;
+                        《IdeaX一般條款》
                       </button>
                       {' '}與{' '}
                       <button
@@ -1789,7 +1789,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         }}
                         className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                       >
-                        &lt;&lt;創星季一般用戶條款&gt;&gt;
+                        《創星季一般用戶條款》
                       </button>
                       。
                     </span>
@@ -2187,7 +2187,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         }}
                         className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                       >
-                        &lt;&lt;IdeaX一般條款&gt;&gt;
+                        《IdeaX一般條款》
                       </button>
                       {' '}與{' '}
                       <button
@@ -2198,7 +2198,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         }}
                         className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
                       >
-                        &lt;&lt;創星季一般用戶條款&gt;&gt;
+                        《創星季一般用戶條款》
                       </button>
                       。
                     </span>

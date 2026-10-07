@@ -21,13 +21,13 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-stone-800/80">
           {/* Logo & 品牌簡介 */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-2.5">
               <img
                 src="/logo-6-trans-dark.png"
                 alt="IdeaX"
-                className="h-7 sm:h-8 md:h-9 w-auto object-contain shrink-0"
+                className="h-6 sm:h-7 md:h-8 w-auto object-contain shrink-0"
               />
-              <span className="font-black text-white text-xl sm:text-2xl md:text-3xl tracking-tight leading-none select-none">
+              <span className="font-black text-white text-lg sm:text-xl md:text-2xl tracking-tight leading-none select-none">
                 創星季
               </span>
             </div>

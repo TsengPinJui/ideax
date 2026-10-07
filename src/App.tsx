@@ -1344,7 +1344,17 @@ function MainContent() {
                   window.history.pushState(null, '', '/?zone=pain_points');
                 }
               } catch {}
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              // 自動平滑下滑至問題市場與痛點專區區域
+              const scrollToQuestionsGrid = () => {
+                const el = document.getElementById('market-grid');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              };
+              scrollToQuestionsGrid();
+              setTimeout(scrollToQuestionsGrid, 80);
+              setTimeout(scrollToQuestionsGrid, 250);
+              setTimeout(scrollToQuestionsGrid, 450);
             }}
             onOpenAuth={() => openAuthModal('login', 'email')}
           />
