@@ -257,8 +257,8 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({ onOpenQuestion }
                       </span>
                     )}
                     {isPainPointQuestion(q) ? (
-                      <span className="text-xs font-black px-2.5 py-1 rounded-lg font-mono border-2 border-rose-500 bg-rose-50 text-rose-700 shadow-2xs ring-1 ring-rose-400/25">
-                        {(q.bounty || 0) > 0 ? `痛點懸賞 NT$ ${(q.bounty || 0).toLocaleString()}` : '痛點 $0 免費'}
+                      <span className="text-xs font-black px-2.5 py-1 rounded-lg font-mono border border-rose-300 bg-rose-50/80 text-rose-700 shadow-2xs">
+                        {(q.bounty || 0) > 0 ? `痛點懸賞 NT$ ${(q.bounty || 0).toLocaleString()}` : '痛點'}
                       </span>
                     ) : (q.bounty || 0) > 0 ? (
                       <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 font-mono">
@@ -286,11 +286,7 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({ onOpenQuestion }
                     {q.tags.map((tag) => (
                       <span
                         key={tag}
-                        className={`text-[10.5px] font-medium px-2 py-0.2 rounded border ${
-                          isPainPointQuestion(q)
-                            ? 'text-rose-600 bg-rose-50 border-rose-200/80 font-semibold'
-                            : 'text-stone-600 bg-stone-100 border-stone-200'
-                        }`}
+                        className="text-[10.5px] font-medium px-2 py-0.2 rounded border text-stone-600 bg-stone-100 border-stone-200"
                       >
                         #{tag}
                       </span>

@@ -57,6 +57,7 @@ import {
 import { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth';
 import { syncUserToFirestore, getUserFromFirestore } from '../services/firestoreSync';
 import { recordUserBoard, recordUserSpecialZone } from '../services/recommendationService';
+import { CompetitionTermsModal, CompetitionDocumentKey } from './challenge/CompetitionTermsModal';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -221,6 +222,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   // Terms agreement
   const [agreeGeneralTerms, setAgreeGeneralTerms] = useState(true);
+  const [agreeCompetitionTerms, setAgreeCompetitionTerms] = useState(true);
+  const [competitionTermsDoc, setCompetitionTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
   // 身分證正反面照片拍攝與儲存建檔 (解答者/專家實名認證專用)
   const [idCardFront, setIdCardFront] = useState<ProcessedIdCardImage | null>(null);
@@ -1031,8 +1034,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setRegName(effectiveName);
     }
 
-    if (!agreeGeneralTerms) {
-      setErrorMsg('註冊失敗：請先勾選同意服務條款。');
+    if (!agreeGeneralTerms || !agreeCompetitionTerms) {
+      setErrorMsg('註冊失敗：請先勾選同意服務條款及競賽網一般用戶條款。');
       return;
     }
 
@@ -1709,46 +1712,72 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   )}
                 </div>
 
-                {/* 3. 保持登入 ＋ 右側 忘記密碼 / 快速註冊 */}
-                <div className="flex items-center justify-between pt-1 px-0.5">
-                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                {/* 3. 保持登入 ＋ 同步勾選競賽網一般用戶條款 ＋ 右側 忘記密碼 / 快速註冊 */}
+                <div className="space-y-2 pt-1 px-0.5">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 accent-rose-600 cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-stone-600">
+                        保持登入
+                      </span>
+                    </label>
+
+                    <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('forgot_password');
+                          setErrorMsg(null);
+                          setSuccessMsg(null);
+                        }}
+                        className="hover:text-rose-600 transition-colors cursor-pointer"
+                      >
+                        忘記密碼
+                      </button>
+                      <span className="text-stone-300 font-normal">|</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('register');
+                          setRegStep(1);
+                          setErrorMsg(null);
+                          setSuccessMsg(null);
+                        }}
+                        className="hover:text-rose-600 transition-colors cursor-pointer font-black text-rose-600"
+                      >
+                        快速註冊
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 登入同步勾選：B. 創星季競賽網一般用戶條款 */}
+                  <label className="flex items-start gap-1.5 cursor-pointer select-none bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80">
                     <input
                       type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 accent-rose-600 cursor-pointer"
+                      checked={agreeCompetitionTerms}
+                      onChange={(e) => setAgreeCompetitionTerms(e.target.checked)}
+                      className="mt-0.5 w-3.5 h-3.5 rounded text-amber-600 accent-amber-600 cursor-pointer"
                     />
-                    <span className="text-xs font-bold text-stone-600">
-                      保持登入
+                    <span className="text-[11px] text-stone-600 font-medium leading-tight">
+                      登入即同步同意{' '}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCompetitionTermsDoc('B');
+                        }}
+                        className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+                      >
+                        《創星季競賽網一般用戶條款》
+                      </button>
+                      （同意即同意註冊 IdeaX 平台並自動刊登存取競賽痛點、提案與討論，並配發 100,000 創星幣）
                     </span>
                   </label>
-
-                  <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('forgot_password');
-                        setErrorMsg(null);
-                        setSuccessMsg(null);
-                      }}
-                      className="hover:text-rose-600 transition-colors cursor-pointer"
-                    >
-                      忘記密碼
-                    </button>
-                    <span className="text-stone-300 font-normal">|</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('register');
-                        setRegStep(1);
-                        setErrorMsg(null);
-                        setSuccessMsg(null);
-                      }}
-                      className="hover:text-rose-600 transition-colors cursor-pointer font-black text-rose-600"
-                    >
-                      快速註冊
-                    </button>
-                  </div>
                 </div>
 
                 {/* 4. 主要登入按鈕 */}
@@ -2121,28 +2150,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                 )}
 
-                <label className="flex items-start gap-2 cursor-pointer select-none pt-1">
-                  <input
-                    type="checkbox"
-                    checked={agreeGeneralTerms}
-                    onChange={(e) => setAgreeGeneralTerms(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded text-rose-600 accent-rose-600 cursor-pointer"
-                  />
-                  <span className="text-xs text-stone-600 font-medium leading-relaxed">
-                    我已閱讀並同意{' '}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        openAboutModal('general_terms');
-                      }}
-                      className="text-amber-800 font-bold underline hover:text-amber-950"
-                    >
-                      《一般服務條款》
-                    </button>
-                    （含隱私權政策與免責聲明，註冊即為免費基礎用戶，無強制訂閱負擔）
-                  </span>
-                </label>
+                <div className="space-y-2 pt-1">
+                  <label className="flex items-start gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={agreeGeneralTerms}
+                      onChange={(e) => setAgreeGeneralTerms(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded text-rose-600 accent-rose-600 cursor-pointer"
+                    />
+                    <span className="text-xs text-stone-600 font-medium leading-relaxed">
+                      我已閱讀並同意{' '}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openAboutModal('general_terms');
+                        }}
+                        className="text-amber-800 font-bold underline hover:text-amber-950"
+                      >
+                        《一般服務條款》
+                      </button>
+                      （含隱私權政策與免責聲明，註冊即為免費基礎用戶，無強制訂閱負擔）
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-2 cursor-pointer select-none bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80">
+                    <input
+                      type="checkbox"
+                      checked={agreeCompetitionTerms}
+                      onChange={(e) => setAgreeCompetitionTerms(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded text-amber-600 accent-amber-600 cursor-pointer"
+                    />
+                    <span className="text-xs text-stone-700 font-medium leading-relaxed">
+                      同步同意{' '}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCompetitionTermsDoc('B');
+                        }}
+                        className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+                      >
+                        《創星季競賽網一般用戶條款》
+                      </button>
+                      （同意即同意註冊 IdeaX 創點子平台（ideax.tw）並自動刊登與存取競賽痛點、提案與討論，並開通 100,000 創星幣模擬錢包）
+                    </span>
+                  </label>
+                </div>
 
                 <button
                   type="submit"

@@ -4165,6 +4165,21 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                               : '解答者')
                           : '提問者'}
                       </span>
+                      {currentUser.competitionBadges?.includes('創新盃') && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+                          創新盃
+                        </span>
+                      )}
+                      {currentUser.competitionBadges?.includes('創星季') && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 flex items-center gap-1 font-bold shadow-2xs">
+                          ✨ 創星季
+                        </span>
+                      )}
+                      {currentUser.competitionBadges?.includes('創之星') && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 flex items-center gap-1 font-bold">
+                          ★ 創之星
+                        </span>
+                      )}
                       <CopyableUserId userId={currentUser.id} prefix="ID: " className="bg-stone-900/60 text-stone-200 border-white/20 hover:bg-stone-900 hover:text-white" />
                     </div>
                     <p className="text-xs text-amber-200/80 mt-1">{currentUser.title || '一般會員用戶'}</p>
@@ -6120,7 +6135,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
-                {['L0 免費痛點', 'L1 入門實戰', 'L2 進階應用', 'L3 專家級', 'L4 殿堂級'].map((lvl, idx) => {
+                {['L0 痛點', 'L1 入門實戰', 'L2 進階應用', 'L3 專家級', 'L4 殿堂級'].map((lvl, idx) => {
                   const counts = [12, 8, 15, 6, 2];
                   return (
                     <div

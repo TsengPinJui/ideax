@@ -1,0 +1,232 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // =========================================================================
+    // 安全輔助函式 (Security Helpers)
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // 嚴禁依賴可被用戶端寫入的 /users/{uid}.role == 'admin'！
+    // 僅限 Admin SDK / 後端寫入之 /admins/{uid} 獨立集合或 Firebase Auth Custom Claims (admin === true)
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        ('admin' in request.auth.token && request.auth.token.admin == true)
+      );
+    }
+
+    // 管理員白名單標記集合 (僅限 Admin SDK / 後端維護)
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false; // 嚴禁用戶端直接寫入自我提權
+    }
+
+    // 連線探測 (舊站連線測試集合)
+    match /_connection_test/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // =========================================================================
+    // 1. 舊站業務核心與交易類 (Core Business & Transactions)
+    // =========================================================================
+    match /questions/{questionId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        isOwner(resource.data.authorId) ||
+        isAdmin() ||
+        // 允許提問採納與瀏覽數遞增等舊站常規業務行為
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'answersCount', 'status', 'updatedAt'])
+      );
+      allow delete: if isAdmin() || (isSignedIn() && isOwner(resource.data.authorId));
+    }
+
+    match /answers/{answerId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        isOwner(resource.data.solverId) ||
+        isAdmin() ||
+        // 允許採納狀態更新
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAccepted', 'acceptedAt', 'updatedAt', 'rating', 'reviewText'])
+      );
+      allow delete: if isAdmin() || (isSignedIn() && isOwner(resource.data.solverId));
+    }
+
+    match /transactions/{txId} {
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid ||
+        resource.data.solverId == request.auth.uid ||
+        resource.data.payerId == request.auth.uid ||
+        resource.data.payeeId == request.auth.uid
+      );
+      // 交易涉及實體點數與金流，禁止一般登入用戶端任意直接新增；一律須由可信後端或管理員處理
+      allow write: if isAdmin();
+    }
+
+    match /conversations/{convId} {
+      allow read, write: if isSignedIn() && (
+        isAdmin() ||
+        (resource != null && request.auth.uid in resource.data.participants) ||
+        (request.resource != null && request.auth.uid in request.resource.data.participants)
+      );
+    }
+
+    // =========================================================================
+    // 2. 用戶身分與審核治理類 (Identity, Verification & Governance)
+    // =========================================================================
+    match /users/{userId} {
+      allow read: if true; // 舊站個人公開履歷、專家資訊公開展示
+      // 限制使用者僅能修改自己的個人資料，且一般用戶不得自我提升為 admin
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) ? (
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance']) || isAdmin()
+      ) : isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /certifications/{certId} {
+      allow read: if isSignedIn() && (isAdmin() || certId == request.auth.uid);
+      allow create, update: if isSignedIn() && (isAdmin() || certId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if false; // 審計紀錄嚴格防篡改
+    }
+
+    // =========================================================================
+    // 3. 互動通知與評價體系類 (Notifications & Directory)
+    // =========================================================================
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && (
+        isAdmin() || resource.data.userId == request.auth.uid
+      );
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        isAdmin() || resource.data.userId == request.auth.uid
+      );
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /bookmarks/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /solvers/{solverId} {
+      allow read: if true;
+      allow write: if isOwner(solverId) || isAdmin();
+    }
+
+    // =========================================================================
+    // 4. 客服與合規設定類 (Support & Compliance)
+    // =========================================================================
+    match /terms_agreements/{agreementId} {
+      allow read, write: if isOwner(agreementId) || isAdmin();
+    }
+
+    match /platform_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /customer_support_tickets/{ticketId} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /customer_support_conversations/{convId} {
+      allow read, write: if isSignedIn() && (
+        isAdmin() ||
+        (resource != null && request.auth.uid in resource.data.participants) ||
+        (request.resource != null && request.auth.uid in request.resource.data.participants)
+      );
+    }
+
+    // =========================================================================
+    // 5. 創星季 (IdeaX 創星季) 競賽集合安全規則
+    // =========================================================================
+    // 公開提案集合 (僅通過審核之提案對所有人公開；待審不公開，僅作者本人與管理員可查閱)
+    match /competition_proposals/{proposalId} {
+      allow read: if resource.data.status == 'approved' ||
+        (isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()));
+      // 嚴禁用戶端直接寫入或竄改點數、審核狀態與排行榜，一律改由 Admin SDK 後端處理
+      allow write: if false;
+    }
+
+    // 敏感資料隔離空間 (聯絡人、電話、身分證字號、銀行帳號) -> 絕對嚴格隔離，禁止公開讀取！
+    match /competition_private_submissions/{proposalId} {
+      allow read: if isSignedIn() && (
+        isAdmin() || resource.data.authorId == request.auth.uid
+      );
+      // 禁止瀏覽器任意替他人投稿或竄改敏感資料，一律由可信 Admin SDK 後端寫入
+      allow write: if false;
+    }
+
+    // 獨立競賽點數錢包 (與舊站真實 balance 徹底分開)
+    match /competition_accounts/{userId} {
+      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+      // 嚴禁用戶端直接寫入競賽點數，一律由可信後端以原子 transaction 處理
+      allow write: if false;
+    }
+
+    // 支持投點紀錄
+    match /competition_support_records/{recordId} {
+      allow read: if isSignedIn() && (
+        isAdmin() || resource.data.supporterId == request.auth.uid
+      );
+      // 嚴禁用戶端直接建立支持紀錄，一律由可信後端原子處理
+      allow write: if false;
+    }
+
+    // 競賽審計紀錄 (僅限管理員讀取，不可篡改)
+    match /competition_audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // 校園大使推薦統計 (僅管理員可檢視，禁止客戶端直接寫入)
+    match /competition_ambassador_stats/{code} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /competition_ambassador_referrals/{refId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // 專家行銷費用審核 (僅管理員可檢視與審核)
+    match /competition_expert_marketing/{recordId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // 痛點採用獎勵記錄
+    match /competition_adopted_rewards/{recordId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // =========================================================================
+    // 預設全域防線：未明確聲明之路徑一律預設拒絕 (Default Deny)
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -4,6 +4,7 @@ import { SubscriptionTier } from '../types';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { isMockTransactionId, isMockQuestionId } from '../data/mockData';
 import { getTransactionBadge } from './AdminTransactionsTab';
+import { CompetitionAdminReviewTab } from './CompetitionAdminReviewTab';
 import {
   X,
   Sliders,
@@ -67,6 +68,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     toggleHideTestAccounts,
     aiCrmConfig,
     updateAiCrmConfig,
+    isRaceMode,
+    setRaceMode,
+    toggleRaceMode,
   } = useApp();
 
   const [pendingConfirm, setPendingConfirm] = useState<{
@@ -309,6 +313,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 }`}>
                   {isDemoMode ? '🧪 測試環境 (解封測試帳號與假資料)' : '🟢 正式營運模式 (僅保留核心測試帳號)'}
                 </span>
+                {isRaceMode && (
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-400 text-stone-950 border border-emerald-300 shadow-2xs">
+                    🏎️ 競賽模式 (RACE)
+                  </span>
+                )}
               </div>
               <h3 className="text-base font-black text-white">
                 測試環境開關與假資料清理
@@ -1314,6 +1323,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           </div>
         </div>
 
+        {/* 5. 創星季競賽審核管理中心（參賽團隊報名審核、競賽提案審核與決選名次及痛點獎勵核定） */}
+        <CompetitionAdminReviewTab
+          onNotify={(title, message) => {
+            setSaveMsg(`${title}：${message}`);
+            setTimeout(() => setSaveMsg(null), 3500);
+          }}
+        />
+
         {/* 特殊環境開關 (共用相對開關 + 權限範圍) */}
         <div className="p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800 text-stone-300 text-xs space-y-3">
           <div className="flex items-center justify-between border-b border-stone-800/80 pb-2">
@@ -1374,44 +1391,77 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             </div>
           </div>
 
-          {/* 輔助測試設定：測試環境 (DEMO) 與 隱藏測試帳號 (HIDE) */}
-          <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-stone-800/60">
-            {/* 測試環境（僅管理員畫面） */}
-            <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-              <div className="flex flex-col">
-                <span className="font-bold text-stone-200 truncate">測試環境 (DEMO)</span>
-                <span className="text-[9px] text-stone-500">僅作用於管理員帳號</span>
+          {/* 輔助測試設定：測試環境 (DEMO) 與 隱藏測試帳號 (HIDE) 與 競賽模式 (RACE) */}
+          <div className="space-y-2 pt-1.5 border-t border-stone-800/60">
+            {/* 競賽模式 (RACE) 專屬開關 */}
+            <div className="p-2.5 rounded-xl bg-stone-950/80 border border-emerald-900/60 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base shrink-0">🏎️</span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-xs text-white">競賽模式（RACE）</span>
+                    <span className={`text-[9px] font-black px-1.5 py-0.2 rounded font-mono ${
+                      isRaceMode ? 'bg-emerald-500 text-stone-950' : 'bg-stone-800 text-stone-400'
+                    }`}>
+                      {isRaceMode ? 'RACE ON' : 'OFF'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-stone-400 block mt-0.5 leading-tight">
+                    痛點專區提出限定 L0 並附綠色「創星季」標籤與獨立網址，方案以競賽卡片列出並可進獨立網頁；痛點依提案數/讚/觀看/討論排序。
+                  </span>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={() => setPendingConfirm({ type: 'demo', nextState: !isDemoMode })}
-                className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                  isDemoMode
-                    ? 'bg-amber-400 text-stone-950 hover:bg-amber-300'
-                    : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                onClick={toggleRaceMode}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black shrink-0 transition-all cursor-pointer shadow-xs ${
+                  isRaceMode
+                    ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950 ring-2 ring-emerald-300'
+                    : 'bg-stone-700 hover:bg-stone-600 text-stone-100'
                 }`}
               >
-                {isDemoMode ? '已開啟' : '開啟'}
+                {isRaceMode ? '關閉競賽模式' : '開啟競賽模式'}
               </button>
             </div>
 
-            {/* 隱藏測試帳號 */}
-            <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
-              <div className="flex flex-col">
-                <span className="font-bold text-stone-200 truncate">測試帳號顯示</span>
-                <span className="text-[9px] text-stone-500">全站平台同步</span>
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              {/* 測試環境（僅管理員畫面） */}
+              <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                <div className="flex flex-col">
+                  <span className="font-bold text-stone-200 truncate">測試環境 (DEMO)</span>
+                  <span className="text-[9px] text-stone-500">僅作用於管理員帳號</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingConfirm({ type: 'demo', nextState: !isDemoMode })}
+                  className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+                    isDemoMode
+                      ? 'bg-amber-400 text-stone-950 hover:bg-amber-300'
+                      : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                  }`}
+                >
+                  {isDemoMode ? '已開啟' : '開啟'}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setPendingConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
-                className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer font-mono ${
-                  isHideTestAccounts
-                    ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
-                    : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
-                }`}
-              >
-                {isHideTestAccounts ? 'HIDE' : 'SHOW'}
-              </button>
+
+              {/* 隱藏測試帳號 */}
+              <div className="p-2 rounded-lg bg-stone-950/60 border border-stone-800 flex items-center justify-between gap-1">
+                <div className="flex flex-col">
+                  <span className="font-bold text-stone-200 truncate">測試帳號顯示</span>
+                  <span className="text-[9px] text-stone-500">全站平台同步</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingConfirm({ type: 'hideTestAccounts', nextState: !isHideTestAccounts })}
+                  className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 transition-all cursor-pointer font-mono ${
+                    isHideTestAccounts
+                      ? 'bg-purple-400 text-stone-950 hover:bg-purple-300'
+                      : 'bg-stone-700 text-stone-100 hover:bg-stone-600'
+                  }`}
+                >
+                  {isHideTestAccounts ? 'HIDE' : 'SHOW'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1583,7 +1633,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
       {/* 平台版本號與最近更新時間與當前環境簡稱 (純英文與數字，以連字號連接至少兩個英文標籤) */}
       <div className="py-2.5 text-center bg-stone-50/50 border-t border-stone-200/60 text-[10px] sm:text-[11px] text-stone-400 font-mono tracking-tight select-none">
-        v1.4.5 • 2026.10.01 • {isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
+        v1.4.5 • 2026.10.01 • {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
       </div>
     </div>
   );

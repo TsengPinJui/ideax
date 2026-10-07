@@ -1,0 +1,1243 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Sparkles,
+  Send,
+  ArrowLeft,
+  ArrowRight,
+  Upload,
+  X,
+  FileText,
+  AlertCircle,
+  CheckCircle2,
+  Coins,
+  LogIn,
+  RefreshCw,
+  ShieldCheck,
+  Megaphone,
+  Flame,
+  Trophy,
+  Gift,
+  BookOpen,
+  Users,
+  Calendar,
+  ChevronRight,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Bot,
+  Save,
+  FolderOpen,
+} from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import {
+  StarSeasonProposal,
+  StarSeasonStage,
+  StarSeasonTrack,
+  STAR_SEASON_TRACKS,
+  OFFICIAL_COMPETITION_TRACKS,
+} from '../../types/competition';
+import {
+  submitProposal,
+  uploadProposalAttachment,
+} from '../../services/competitionClientService';
+import { getCompetitionProposalsForAdmin, saveAllCompetitionProposals } from '../../services/competitionAdminSync';
+import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
+import { PainPointSelector } from './PainPointSelector';
+import { analyzeCompetitionItemWithAgent } from '../../services/competitionAiAgent';
+import {
+  ProposalDraft,
+  saveProposalDraft,
+  deleteProposalDraft,
+  getProposalDrafts,
+} from '../../services/draftService';
+
+interface SubmitProposalFullPageProps {
+  onNavigate: (view: 'home' | 'explore' | 'rules' | 'participant' | 'judge' | 'ambassador') => void;
+  onBackToOldSite: () => void;
+  onOpenAuth: () => void;
+  painPointProposals: StarSeasonProposal[];
+  onSuccess: () => void;
+  initialDraftId?: string;
+}
+
+export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
+  onNavigate,
+  onBackToOldSite,
+  onOpenAuth,
+  painPointProposals,
+  onSuccess,
+  initialDraftId,
+}) => {
+  const {
+    currentUser,
+    setCurrentUser,
+    questions,
+    setQuestions,
+    setAnswers,
+    setAvailableUsers,
+    addNotification,
+  } = useApp();
+
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(initialDraftId || null);
+  const [availableDrafts, setAvailableDrafts] = useState<ProposalDraft[]>([]);
+  const [isDraftDropdownOpen, setIsDraftDropdownOpen] = useState<boolean>(false);
+  const [isDraftSaving, setIsDraftSaving] = useState<boolean>(false);
+
+  const [formStage, setFormStage] = useState<StarSeasonStage>('solution');
+  const [formTrack, setFormTrack] = useState<StarSeasonTrack>('ict');
+  const [painPointTrackChoice, setPainPointTrackChoice] = useState<string>('auto'); // 痛點選填，未選由 AI 市場顧問 Agent 自動賦予
+  const [formTitle, setFormTitle] = useState<string>('');
+  const [formSummary, setFormSummary] = useState<string>('');
+  const [formDescription, setFormDescription] = useState<string>('');
+  const [formSourcePainPointId, setFormSourcePainPointId] = useState<string>('');
+  const [formImages, setFormImages] = useState<string[]>([]);
+  const [formExternalLink, setFormExternalLink] = useState<string>('');
+  const [formTechnicalFeasibility, setFormTechnicalFeasibility] = useState<string>('');
+  const [formMarketAnalysis, setFormMarketAnalysis] = useState<string>('');
+  const [formBusinessModelFinancials, setFormBusinessModelFinancials] = useState<string>('');
+  const [formAmbassadorCode, setFormAmbassadorCode] = useState<string>('');
+  const [formAttachment, setFormAttachment] = useState<{
+    url: string;
+    name: string;
+    size: number;
+    mime: string;
+  } | null>(null);
+
+  // 聯絡個資與撥款資料 (隔離保存)
+  const [contactName, setContactName] = useState<string>(currentUser?.name || '');
+  const [contactPhone, setContactPhone] = useState<string>('');
+  const [contactEmail, setContactEmail] = useState<string>(currentUser?.email || '');
+  const [schoolOrOrg, setSchoolOrOrg] = useState<string>('');
+  const [bankCode, setBankCode] = useState<string>('');
+  const [bankAccount, setBankAccount] = useState<string>('');
+  const [idNumber, setIdNumber] = useState<string>('');
+
+  const [pledgeAgreed, setPledgeAgreed] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isUploadingFile, setIsUploadingFile] = useState<boolean>(false);
+  const [isProcessingImages, setIsProcessingImages] = useState<boolean>(false);
+
+  // 載入使用者草稿列表
+  const refreshDrafts = () => {
+    if (currentUser) {
+      setAvailableDrafts(getProposalDrafts(currentUser.id));
+    } else {
+      setAvailableDrafts(getProposalDrafts());
+    }
+  };
+
+  useEffect(() => {
+    refreshDrafts();
+  }, [currentUser]);
+
+  // 讀取教學彈窗、痛點專區預選或指定草稿
+  useEffect(() => {
+    try {
+      // 1. 指定草稿 ID
+      const targetDraftId = initialDraftId || sessionStorage.getItem('ideax_challenge_load_draft_id');
+      if (targetDraftId) {
+        sessionStorage.removeItem('ideax_challenge_load_draft_id');
+        const draftsList = getProposalDrafts(currentUser?.id);
+        const target = draftsList.find((d) => d.id === targetDraftId);
+        if (target) {
+          applyDraftToForm(target);
+          return;
+        }
+      }
+
+      // 2. 預選主題
+      const stored = sessionStorage.getItem('ideax_challenge_prefill_topic');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.title) {
+          setFormTitle((prev) => prev || `針對「${parsed.title}」之創新解方`);
+          setFormSummary((prev) => prev || `針對痛點「${parsed.title}」所提出之具體創新落地解決方案。`);
+        }
+        if (parsed.id) {
+          setFormSourcePainPointId(parsed.id);
+        }
+        sessionStorage.removeItem('ideax_challenge_prefill_topic');
+      } else if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const titleParam = params.get('title');
+        const painPointIdParam = params.get('sourcePainPointId');
+        if (titleParam) {
+          setFormTitle((prev) => prev || `針對「${decodeURIComponent(titleParam)}」之創新解方`);
+        }
+        if (painPointIdParam) {
+          setFormSourcePainPointId(painPointIdParam);
+        }
+      }
+    } catch {}
+  }, [initialDraftId, currentUser]);
+
+  const applyDraftToForm = (draft: ProposalDraft) => {
+    setEditingDraftId(draft.id);
+    setFormStage(draft.stage || 'solution');
+    setFormTrack(draft.track || 'ict');
+    setPainPointTrackChoice(draft.painPointTrackChoice || 'auto');
+    setFormTitle(draft.title || '');
+    setFormSummary(draft.summary || '');
+    setFormDescription(draft.description || '');
+    setFormSourcePainPointId(draft.sourcePainPointId || '');
+    setFormImages(draft.images || []);
+    setFormExternalLink(draft.externalLink || '');
+    setFormTechnicalFeasibility(draft.technicalFeasibility || '');
+    setFormMarketAnalysis(draft.marketAnalysis || '');
+    setFormBusinessModelFinancials(draft.businessModelFinancials || '');
+    setFormAmbassadorCode(draft.ambassadorCode || '');
+    setFormAttachment(draft.attachment || null);
+    if (draft.contactName) setContactName(draft.contactName);
+    if (draft.contactPhone) setContactPhone(draft.contactPhone);
+    if (draft.contactEmail) setContactEmail(draft.contactEmail);
+    if (draft.schoolOrOrg) setSchoolOrOrg(draft.schoolOrOrg);
+    if (draft.bankCode) setBankCode(draft.bankCode);
+    if (draft.bankAccount) setBankAccount(draft.bankAccount);
+    if (draft.idNumber) setIdNumber(draft.idNumber);
+    showToast(`已載入草稿「${draft.title || '未命名草稿'}」`);
+  };
+
+  const handleSaveDraft = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (!formTitle.trim() && !formSummary.trim() && !formDescription.trim()) {
+      showToast('請至少輸入標題或構想簡述再儲存草稿');
+      return;
+    }
+
+    setIsDraftSaving(true);
+    try {
+      const saved = saveProposalDraft(
+        {
+          id: editingDraftId || undefined,
+          stage: formStage,
+          track: formTrack,
+          painPointTrackChoice,
+          title: formTitle,
+          summary: formSummary,
+          description: formDescription,
+          sourcePainPointId: formSourcePainPointId,
+          images: formImages,
+          externalLink: formExternalLink,
+          technicalFeasibility: formTechnicalFeasibility,
+          marketAnalysis: formMarketAnalysis,
+          businessModelFinancials: formBusinessModelFinancials,
+          ambassadorCode: formAmbassadorCode,
+          attachment: formAttachment,
+          contactName,
+          contactPhone,
+          contactEmail,
+          schoolOrOrg,
+          bankCode,
+          bankAccount,
+          idNumber,
+        },
+        currentUser?.id || 'user-guest'
+      );
+      setEditingDraftId(saved.id);
+      refreshDrafts();
+      showToast('提案草稿已暫存！您可隨時至個人列表或草稿箱繼續編輯');
+    } catch (err) {
+      console.error(err);
+      showToast('暫存草稿失敗，請重試');
+    } finally {
+      setIsDraftSaving(false);
+    }
+  };
+
+  const showToast = (message: string) => {
+    addNotification({
+      title: '創星季',
+      message,
+      type: 'system',
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 20 * 1024 * 1024) {
+      showToast('附件檔案請勿超過 20MB');
+      return;
+    }
+
+    setIsUploadingFile(true);
+    try {
+      const res = await uploadProposalAttachment(file);
+      if (res && res.url) {
+        setFormAttachment(res);
+        showToast('附件上傳完成！');
+      }
+    } catch (err: any) {
+      showToast(err.message || '上傳出錯');
+    } finally {
+      setIsUploadingFile(false);
+    }
+  };
+
+  const handleImageFilesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (formImages.length + files.length > 3) {
+      showToast('最多上傳 3 張照片/圖片');
+      return;
+    }
+
+    setIsProcessingImages(true);
+    const newImages: string[] = [];
+    let processed = 0;
+
+    Array.from(files).forEach((file) => {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast(`檔案「${file.name}」超過 5MB，請選擇較小的圖片`);
+        processed++;
+        if (processed === files.length) setIsProcessingImages(false);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        if (ev.target?.result) {
+          newImages.push(ev.target.result as string);
+        }
+        processed++;
+        if (processed === files.length) {
+          setFormImages((prev) => [...prev, ...newImages].slice(0, 3));
+          setIsProcessingImages(false);
+          showToast(`已成功載入 ${newImages.length} 張圖片`);
+        }
+      };
+      reader.onerror = () => {
+        processed++;
+        if (processed === files.length) setIsProcessingImages(false);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setFormImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleInsertDemoImages = () => {
+    const demoPresets = [
+      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
+    ];
+    setFormImages(demoPresets.slice(0, formStage === 'solution' ? 2 : 1));
+    showToast('已帶入展示示範照片');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!currentUser || currentUser.id === 'user-guest') {
+      onOpenAuth();
+      return;
+    }
+
+    if (!formTitle.trim() || !formSummary.trim() || !contactName.trim() || !contactPhone.trim()) {
+      showToast('請完整填寫標題、簡述/概述、聯絡人姓名與手機');
+      return;
+    }
+
+    if (formStage === 'solution') {
+      if (!formDescription.trim()) {
+        showToast('提案需填寫方案詳述（詳細闡述技術架構、產品功能、商業模式規劃或社會效益）');
+        return;
+      }
+      if (formImages.length === 0) {
+        showToast('提案需包含 1~3 張照片（會顯示於提案區），請上傳照片或點選帶入展示照片');
+        return;
+      }
+    }
+
+    if (!pledgeAgreed) {
+      showToast('請勾選同意遵守競賽規範與原創性承諾');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // AI 市場顧問 Agent 自動分析：痛點未填領域則自動賦予四大分類，並自動賦予 3~5 個標籤
+      const aiAnalysis = await analyzeCompetitionItemWithAgent({
+        title: formTitle.trim(),
+        summary: formSummary.trim(),
+        description: formDescription.trim(),
+        stage: formStage,
+        userTrack: formStage === 'solution' ? formTrack : (painPointTrackChoice === 'auto' ? undefined : painPointTrackChoice),
+      });
+
+      const effectiveTrack: StarSeasonTrack = formStage === 'solution' ? formTrack : aiAnalysis.track;
+      const effectiveTags = aiAnalysis.tags;
+      const aiCategorized = formStage === 'pain_point' && painPointTrackChoice === 'auto';
+
+      const sourcePainPoint =
+        painPointProposals.find((p) => p.id === formSourcePainPointId) ||
+        questions.find((q) => q.id === formSourcePainPointId);
+
+      const res = await submitProposal({
+        stage: formStage,
+        track: effectiveTrack,
+        title: formTitle.trim(),
+        summary: formSummary.trim(),
+        description: formDescription.trim(),
+        sourcePainPointProposalId: formStage === 'solution' ? formSourcePainPointId : undefined,
+        sourcePainPointTitle: formStage === 'solution' ? sourcePainPoint?.title : undefined,
+        images: formImages,
+        externalLink: formExternalLink.trim() || undefined,
+        technicalFeasibility: formTechnicalFeasibility.trim() || undefined,
+        marketAnalysis: formMarketAnalysis.trim() || undefined,
+        businessModelFinancials: formBusinessModelFinancials.trim() || undefined,
+        tags: effectiveTags,
+        aiCategorized,
+        attachmentUrl: formAttachment?.url,
+        attachmentName: formAttachment?.name,
+        attachmentSize: formAttachment?.size,
+        attachmentMime: formAttachment?.mime,
+        referredByAmbassadorCode: formAmbassadorCode,
+        contactName,
+        contactPhone,
+        contactEmail,
+        schoolOrOrg,
+        bankCode,
+        bankAccount,
+        idNumber,
+      });
+
+      if (res.success) {
+        showToast(res.message);
+
+        // 同步錄入管理員後台審核資料庫
+        try {
+          const newPropId = res.proposalId || `prop-sub-${Date.now()}`;
+          const currentProps = getCompetitionProposalsForAdmin();
+          const painPointObj =
+            painPointProposals.find((p) => p.id === formSourcePainPointId) ||
+            questions.find((q) => q.id === formSourcePainPointId);
+          saveAllCompetitionProposals([
+            {
+              id: newPropId,
+              title: formTitle.trim(),
+              stage: formStage,
+              track: effectiveTrack,
+              summary: formSummary.trim(),
+              description: formDescription.trim(),
+              authorId: currentUser.id,
+              authorName: currentUser.name || contactName,
+              authorAvatar: currentUser.avatar,
+              authorRole: (currentUser.role as any) || 'user',
+              sourcePainPointProposalId: formSourcePainPointId || undefined,
+              sourcePainPointTitle: painPointObj?.title || undefined,
+              images: formImages,
+              externalLink: formExternalLink.trim() || undefined,
+              technicalFeasibility: formTechnicalFeasibility.trim() || undefined,
+              marketAnalysis: formMarketAnalysis.trim() || undefined,
+              businessModelFinancials: formBusinessModelFinancials.trim() || undefined,
+              tags: effectiveTags,
+              aiCategorized,
+              status: 'pending_review',
+              supportPoints: 0,
+              supporterCount: 0,
+              targetFundingAmount: 100000,
+              likeCount: 0,
+              commentsCount: 0,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            ...currentProps.filter((p) => p.id !== newPropId),
+          ]);
+        } catch {}
+
+        // 同步寫入舊站痛點專區與對應提案
+        const exclusiveChallengeUrl = `https://ideax.tw/challenge?proposalId=${res.proposalId || 'new'}`;
+        if (formStage === 'pain_point') {
+          const newQ = {
+            id: res.proposalId || `star-pain-${Date.now()}`,
+            title: `【痛點】${formTitle.trim()}`,
+            description: `${formSummary.trim()}\n\n${formDescription.trim()}\n\n🏆 創星季競賽痛點專屬連結：${exclusiveChallengeUrl}`,
+            category: (STAR_SEASON_TRACKS[effectiveTrack]?.name || '創新創業') as any,
+            tags: ['創點子', '痛點', '創星季', STAR_SEASON_TRACKS[effectiveTrack]?.tag || '創新痛點', ...effectiveTags],
+            postType: 'pain_point' as const,
+            images: formImages,
+            bounty: 0,
+            authorId: currentUser.id,
+            authorName: currentUser.name || contactName,
+            authorAvatar: currentUser.avatar,
+            authorRole: currentUser.role,
+            status: 'open' as const,
+            answersCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            exclusiveChallengeUrl,
+            isStarSeason: true,
+            starSeasonProposalId: res.proposalId,
+          };
+          setQuestions((prev: any) => [newQ, ...prev]);
+        } else if (formStage === 'solution' && formSourcePainPointId) {
+          const newAns = {
+            id: `ans-${res.proposalId || Date.now()}`,
+            questionId: formSourcePainPointId,
+            solverId: currentUser.id,
+            solverName: currentUser.name || contactName,
+            solverAvatar: currentUser.avatar,
+            title: formTitle.trim(),
+            content: `💡【創星季提案解方】${formTitle.trim()}\n\n${formSummary.trim()}\n\n${formDescription.trim()}\n\n🔗 參賽網站專屬專案連結：${exclusiveChallengeUrl}`,
+            exclusiveChallengeUrl,
+            isStarSeasonSolution: true,
+            starSeasonProposalId: res.proposalId,
+            sourcePainPointProposalId: formSourcePainPointId,
+            images: formImages,
+            price: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          setAnswers((prev: any) => [newAns, ...prev]);
+          setQuestions((prev: any) =>
+            prev.map((q: any) =>
+              q.id === formSourcePainPointId
+                ? { ...q, answersCount: (q.answersCount || 0) + 1 }
+                : q
+            )
+          );
+        }
+
+        // 若有綁定草稿，發布成功後自動清除該草稿
+        if (editingDraftId) {
+          deleteProposalDraft(editingDraftId);
+          setEditingDraftId(null);
+          refreshDrafts();
+        }
+
+        onSuccess();
+        onNavigate('home');
+      } else {
+        showToast(res.message);
+      }
+    } catch (err: any) {
+      showToast(err.message || '提交失敗');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-stone-50 text-stone-900 pb-24 font-sans">
+      {/* 獨立頂部導覽列 */}
+      <header className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 shrink-0 -ml-1 sm:-ml-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onBackToOldSite();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="p-1 -m-1 rounded-xl hover:bg-amber-100/60 active:scale-95 transition-all cursor-pointer flex items-center justify-center group"
+                title="點擊回到 IdeaX 舊站首頁"
+                aria-label="回到舊站首頁"
+              >
+                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-8.5 h-8.5 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigate('home');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="p-1 -m-1 rounded-xl hover:bg-amber-100/60 active:scale-95 transition-all cursor-pointer flex items-center group -ml-1"
+                title="點擊返回創星季首頁"
+                aria-label="回創星季競賽首頁"
+              >
+                <img src="/logo-chuangxingji-text.png" alt="創星季 - 點擊回競賽首頁" className="h-7.5 sm:h-9 md:h-10.5 w-auto object-contain shrink-0 group-hover:opacity-90 transition-all" />
+              </button>
+            </div>
+
+            <span className="text-stone-300 hidden sm:inline">|</span>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('home')}
+              className="inline-flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-amber-700 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>返回提案總覽</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs font-bold text-stone-700 bg-stone-100/80 p-1 rounded-2xl border border-stone-200/80">
+            {/* 1. 我想提案! (當前頁) */}
+            <span className="px-3.5 py-1.5 rounded-xl text-stone-950 bg-amber-400 font-black shadow-2xs flex items-center gap-1.5">
+              <Send className="w-3.5 h-3.5 text-stone-950" />
+              <span>我想提案!</span>
+            </span>
+
+            <div className="h-4 w-px bg-stone-300/80 mx-0.5" />
+
+            {/* 2. 探索Idea */}
+            <button
+              type="button"
+              onClick={() => onNavigate('explore')}
+              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+            >
+              探索Idea
+            </button>
+
+            {/* 3. 先看痛點 */}
+            <button
+              type="button"
+              onClick={onBackToOldSite}
+              className="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+              title="前往舊站 創點子/痛點專區"
+            >
+              先看痛點
+            </button>
+
+            {/* 4. 申請參賽者 */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!currentUser || currentUser.id === 'user-guest') {
+                  onOpenAuth();
+                  return;
+                }
+                onNavigate('participant');
+              }}
+              className="hidden md:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+            >
+              申請參賽者
+            </button>
+
+            {/* 5. 成為專家 */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!currentUser || currentUser.id === 'user-guest') {
+                  onOpenAuth();
+                  return;
+                }
+                onNavigate('judge');
+              }}
+              className="hidden md:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+              title="點擊進入成為專家"
+            >
+              成為專家
+            </button>
+
+            {/* 6. 推廣大使 */}
+            <button
+              type="button"
+              onClick={() => onNavigate('ambassador')}
+              className="hidden lg:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
+            >
+              推廣大使
+            </button>
+
+            {/* 行動版先看痛點 (風格一致) */}
+            <button
+              onClick={onBackToOldSite}
+              className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
+              title="前往舊站 創點子/痛點專區"
+            >
+              <Flame className="w-3.5 h-3.5 text-rose-500" />
+              <span>先看痛點</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* 滿版標題與簡介 */}
+      <section className="bg-gradient-to-b from-amber-100/70 via-yellow-50/50 to-stone-50 border-b border-amber-200/70 pt-10 pb-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto text-center space-y-3">
+          <h1 className="text-2xl sm:text-4xl font-black text-stone-950 tracking-tight">
+            投稿參賽 — IdeaX 創星季
+          </h1>
+
+          <p className="text-xs sm:text-sm text-stone-700 max-w-xl mx-auto leading-relaxed">
+            提出您的真實痛點洞察或創新落地解方。通過初審後即進入全體大眾模擬注資與特聘專家評審！
+          </p>
+        </div>
+      </section>
+
+      {/* 滿版表單區域 */}
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        {(!currentUser || currentUser.id === 'user-guest') && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-300 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-stone-800 font-bold">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>您目前尚未登入。提交提案前請先登入或註冊 IdeaX 帳號。</span>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenAuth}
+              className="px-4 py-2 rounded-xl bg-stone-900 text-white font-bold hover:bg-stone-800 transition-colors cursor-pointer shrink-0"
+            >
+              立即登入
+            </button>
+          </div>
+        )}
+
+        {/* 草稿提示與切換列 */}
+        {availableDrafts.length > 0 && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-amber-50/80 border border-amber-300 flex items-center justify-between gap-3 text-xs flex-wrap">
+            <div className="flex items-center gap-2 text-stone-800">
+              <FolderOpen className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>
+                {editingDraftId ? (
+                  <>
+                    正在編輯草稿：<b className="text-amber-900 font-black">{formTitle || '(未命名草稿)'}</b>
+                  </>
+                ) : (
+                  <>
+                    您有 <b className="text-amber-900 font-mono font-black">{availableDrafts.length}</b> 筆暫存提案草稿
+                  </>
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsDraftDropdownOpen(!isDraftDropdownOpen)}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100/60 border border-amber-300 text-stone-800 font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5 text-amber-600" />
+                  <span>載入其他草稿 ({availableDrafts.length})</span>
+                </button>
+
+                {isDraftDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-72 bg-white border border-stone-200 rounded-2xl shadow-xl p-2 z-50 space-y-1">
+                    <div className="text-[11px] font-bold text-stone-500 px-2 py-1">
+                      選擇要載入的草稿：
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-1">
+                      {availableDrafts.map((d) => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => {
+                            applyDraftToForm(d);
+                            setIsDraftDropdownOpen(false);
+                          }}
+                          className={`w-full text-left p-2 rounded-xl transition-colors cursor-pointer flex flex-col gap-0.5 ${
+                            editingDraftId === d.id
+                              ? 'bg-amber-100/80 text-amber-950 font-black'
+                              : 'hover:bg-stone-100 text-stone-800'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-xs font-bold truncate">
+                            <span className="truncate">{d.title || '(未命名草稿)'}</span>
+                            <span className="text-[10px] text-stone-400 font-mono shrink-0 ml-1">
+                              {new Date(d.updatedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-stone-500 truncate">
+                            {d.stage === 'solution' ? '創新解方' : '痛點需求'} · {d.summary || '無摘要'}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {editingDraftId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingDraftId(null);
+                    setFormTitle('');
+                    setFormSummary('');
+                    setFormDescription('');
+                    setFormImages([]);
+                    showToast('已切換為全新空白提案');
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl text-stone-500 hover:text-stone-800 hover:bg-stone-200/60 font-medium transition-colors cursor-pointer text-[11px]"
+                >
+                  開新提案
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 space-y-6 shadow-xs text-xs">
+          {/* 1. 提案階段選擇 */}
+          <div className="space-y-2">
+            <label className="block text-stone-800 font-black text-sm">
+              1. 投件參賽階段 *
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormStage('pain_point')}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                  formStage === 'pain_point'
+                    ? 'border-rose-400 bg-rose-50/70 shadow-xs ring-2 ring-rose-300'
+                    : 'border-stone-200 bg-white hover:bg-stone-50'
+                }`}
+              >
+                <div className="font-black text-rose-800 text-sm">第一階段：徵點子（痛點）</div>
+                <div className="text-[11px] text-stone-600 mt-1">
+                  提出各領域未被滿足的真實需求或產業痛點（<b>過審即送 100 點</b>，價值 $125，效期 60 日）。
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormStage('solution')}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                  formStage === 'solution'
+                    ? 'border-emerald-500 bg-emerald-50/70 shadow-xs ring-2 ring-emerald-300'
+                    : 'border-stone-200 bg-white hover:bg-stone-50'
+                }`}
+              >
+                <div className="font-black text-emerald-900 text-sm">第二階段：想解方（解法提案）</div>
+                <div className="text-[11px] text-stone-500 mt-1">
+                  針對產業痛點提出完整技術或商業模式解法，進行實戰模擬。
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* 2. 相關領域標注與標題 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {formStage === 'pain_point' ? (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-stone-800 font-bold">
+                    2. 痛點所屬領域（選填）
+                  </label>
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                    選填 · AI市場顧問自動賦予
+                  </span>
+                </div>
+                <select
+                  value={painPointTrackChoice}
+                  onChange={(e) => setPainPointTrackChoice(e.target.value)}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-900 font-bold focus:outline-none focus:border-amber-400"
+                >
+                  <option value="auto">🤖 由 AI 市場顧問 Agent 自動分析分類（未填選填）</option>
+                  <option value="mechanical_transport">機電運輸</option>
+                  <option value="ict">資通訊</option>
+                  <option value="biomedical">生醫化材</option>
+                  <option value="cultural_services">服務文創</option>
+                </select>
+                <p className="text-[10px] text-stone-500 mt-1">
+                  若未填寫，發布時將由 AI 市場顧問 Agent 依題意自動賦予領域分類與標籤。
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-stone-800 font-bold">
+                    2. 提案所屬領域 *（必填）
+                  </label>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                    參賽者必填
+                  </span>
+                </div>
+                <select
+                  value={formTrack}
+                  onChange={(e) => setFormTrack(e.target.value as StarSeasonTrack)}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-900 font-bold focus:outline-none focus:border-amber-400"
+                  required
+                >
+                  {OFFICIAL_COMPETITION_TRACKS.map((tr) => (
+                    <option key={tr.id} value={tr.id}>
+                      {tr.name} ({tr.tag})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-stone-500 mt-1">
+                  四大領域分類為提案參賽者必填；AI 市場顧問 Agent 發布時將自動賦予精準標籤。
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-stone-800 font-bold mb-1">
+                3. {formStage === 'pain_point' ? '痛點標題名稱 *' : '提案標題名稱 *'}
+              </label>
+              <input
+                type="text"
+                value={formTitle}
+                onChange={(e) => setFormTitle(e.target.value)}
+                placeholder={formStage === 'pain_point' ? '例如: 智慧微電網動態需量預測不足導致用電尖峰斷電' : '例如: 智慧微電網動態需量反應預測系統'}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-900 font-bold focus:outline-none focus:border-amber-400"
+                required
+              />
+            </div>
+          </div>
+
+          {/* 3. 若為解方，選擇採用來源痛點 (支援輸入序號/名稱查詢與痛點捷徑) */}
+          {formStage === 'solution' && (
+            <PainPointSelector
+              value={formSourcePainPointId}
+              onChange={(id, pp) => {
+                setFormSourcePainPointId(id);
+                if (pp?.trackId) {
+                  setFormTrack(pp.trackId);
+                }
+              }}
+              painPointProposals={painPointProposals}
+              onApplySuggestedTitle={(suggestedTitle, suggestedSummary) => {
+                setFormTitle(suggestedTitle);
+                setFormSummary(suggestedSummary);
+              }}
+            />
+          )}
+
+          {/* 4. 痛點簡述 / 提案概述 (用於瀏覽多題時的卡片模式) 與詳述 */}
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-stone-800 font-bold">
+                  4. {formStage === 'pain_point' ? '痛點簡述 * (300字以內)' : '提案概述 * (300字以內)'}
+                </label>
+                <span className="text-[10px] text-stone-500">
+                  用於瀏覽多題時的卡片模式展示
+                </span>
+              </div>
+              <textarea
+                rows={3}
+                value={formSummary}
+                onChange={(e) => setFormSummary(e.target.value)}
+                placeholder={formStage === 'pain_point' ? '簡明扼要陳述生活或產業中所面臨之實際困難、尚未被滿足之需求...' : '簡明扼要介紹本提案的核心重點、欲解決之關鍵問題與預期成效...'}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-stone-800 font-bold mb-1">
+                5. {formStage === 'pain_point' ? '痛點詳述 (選填)' : '方案詳述 * (詳細闡述技術架構、產品功能、商業模式或社會效益)'}
+              </label>
+              <textarea
+                rows={4}
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder={formStage === 'pain_point' ? '詳細說明痛點發生情境、關鍵瓶頸、對大眾或產業造成的具體損失...' : '詳細闡述技術架構、產品功能、商業模式規劃或社會效益...'}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400"
+                required={formStage === 'solution'}
+              />
+            </div>
+          </div>
+
+          {/* 5. 圖片/照片上傳區塊 (痛點 0~3張，選填；提案 1~3張，必填；大卡片顯示時才顯示圖片) */}
+          <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/90 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div className="font-bold text-stone-900 flex items-center gap-1.5 text-xs sm:text-sm">
+                  <ImageIcon className="w-4 h-4 text-amber-600" />
+                  <span>
+                    {formStage === 'pain_point' ? '痛點圖片 (0~3張，選填)' : '提案照片 (1~3張，必填)'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-600 mt-0.5">
+                  {formStage === 'pain_point'
+                    ? '會顯示於痛點區，可增加吸引力獲取曝光機會；大卡片模式瀏覽時顯示。'
+                    : '會顯示於提案區，展示核心產品、原型、團隊或架構圖片；大卡片模式瀏覽時顯示。'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleInsertDemoImages}
+                  className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 hover:bg-amber-100 text-stone-700 text-[11px] font-bold cursor-pointer transition-colors"
+                >
+                  帶入展示範例照
+                </button>
+                <span className="font-mono text-xs font-black px-2 py-0.5 rounded bg-amber-200 text-amber-950">
+                  {formImages.length}/3 張
+                </span>
+              </div>
+            </div>
+
+            {/* 縮圖預覽列 */}
+            {formImages.length > 0 && (
+              <div className="grid grid-cols-3 gap-3 pt-1">
+                {formImages.map((img, idx) => (
+                  <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-amber-300 bg-white shadow-2xs group">
+                    <img src={img} alt={`upload-${idx}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute top-1 right-1 p-1 rounded-full bg-stone-900/80 text-white hover:bg-rose-600 transition-colors cursor-pointer"
+                      title="移除此圖片"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    <span className="absolute bottom-1 left-1 px-1.5 py-0.2 rounded bg-black/70 text-white text-[9px] font-mono">
+                      #{idx + 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {formImages.length < 3 && (
+              <div>
+                <label className="flex items-center justify-center gap-2 p-3 border border-dashed border-amber-300 rounded-xl hover:border-amber-500 bg-white hover:bg-amber-100/50 text-stone-700 cursor-pointer transition-colors">
+                  <Upload className="w-4 h-4 text-amber-600" />
+                  <span>{isProcessingImages ? '處理中...' : `選擇電腦或手機圖片上傳（還可上傳 ${3 - formImages.length} 張）`}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageFilesUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* 6. 若為提案：補充資料 (技術可行性、市場分析與定位、商業模式與財務預測...) */}
+          {formStage === 'solution' && (
+            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+              <div className="font-bold text-stone-900 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs sm:text-sm">
+                  <FileText className="w-4 h-4 text-amber-600" />
+                  <span>補充資料（加強專家評審與市場模擬募資評估）</span>
+                </span>
+                <span className="text-[10px] text-stone-500">選填推薦</span>
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1">
+                    • 技術可行性說明 (選填)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formTechnicalFeasibility}
+                    onChange={(e) => setFormTechnicalFeasibility(e.target.value)}
+                    placeholder="說明技術成熟度（TRL）、核心演算法、原型實測數據或已驗證指標..."
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1">
+                    • 市場分析與定位 (選填)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formMarketAnalysis}
+                    onChange={(e) => setFormMarketAnalysis(e.target.value)}
+                    placeholder="目標客群（TAM/SAM/SOM）、主要競爭對手比較、獨特價值主張（UVP）..."
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-stone-700 font-bold mb-1">
+                    • 商業模式與財務預測 (選填)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formBusinessModelFinancials}
+                    onChange={(e) => setFormBusinessModelFinancials(e.target.value)}
+                    placeholder="獲利模式（訂閱/分潤/販售）、成本結構、損益平衡點或 1~3 年營收預估..."
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 7. 補充資料連結 / 外部連結 (選填) */}
+          <div>
+            <label className="block text-stone-800 font-bold mb-1 flex items-center gap-1.5">
+              <LinkIcon className="w-3.5 h-3.5 text-amber-600" />
+              <span>{formStage === 'pain_point' ? '補充資料連結 (選填)' : '外部連結 (產品Demo、GitHub或補充資料，選填)'}</span>
+            </label>
+            <input
+              type="url"
+              value={formExternalLink}
+              onChange={(e) => setFormExternalLink(e.target.value)}
+              placeholder="https://example.com/demo-or-reference"
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400 font-mono text-xs"
+            />
+          </div>
+
+          {/* 8. 簡報附件與推廣大使推薦碼 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-stone-800 font-bold mb-1">
+                提案簡報 / 計畫附件 (PDF/PPT, 20MB以內，選填)
+              </label>
+              {formAttachment ? (
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 flex items-center justify-between">
+                  <div className="flex items-center gap-2 truncate">
+                    <FileText className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span className="truncate font-bold text-stone-800">{formAttachment.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormAttachment(null)}
+                    className="text-stone-400 hover:text-stone-700 ml-2"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 p-3 border border-dashed border-stone-300 rounded-xl hover:border-amber-400 bg-stone-50 hover:bg-amber-50/40 text-stone-600 cursor-pointer transition-colors">
+                  <Upload className="w-4 h-4 text-amber-600" />
+                  <span>{isUploadingFile ? '上傳中...' : '選擇檔案上傳'}</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.ppt,.pptx"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-stone-800 font-bold mb-1">
+                校園推廣大使推薦碼 (選填)
+              </label>
+              <input
+                type="text"
+                value={formAmbassadorCode}
+                onChange={(e) => setFormAmbassadorCode(e.target.value.toUpperCase())}
+                placeholder="輸入推薦碼 (如: AMB-USER-XXXX)"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-900 font-mono focus:outline-none focus:border-amber-400 uppercase"
+              />
+              <p className="text-[10px] text-stone-400 mt-1">
+                若通過初審，推薦您的推廣大使將獲得 400 點推廣獎勵（IdeaX平台點數，用於提問、享受付費服務）。
+              </p>
+            </div>
+          </div>
+
+          {/* 6. 聯絡人個資與撥款資訊 (隔離保存) */}
+          <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+            <div className="font-bold text-stone-900 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>聯絡人資訊與獲獎撥款帳戶（僅供主辦單位核銷聯繫，不對外公開）</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-stone-600 font-bold mb-1">聯絡人真實姓名 *</label>
+                <input
+                  type="text"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="姓名"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-stone-600 font-bold mb-1">聯絡人手機電話 *</label>
+                <input
+                  type="tel"
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  placeholder="0912-345-678"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-stone-600 font-bold mb-1">電子信箱</label>
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900"
+                />
+              </div>
+              <div>
+                <label className="block text-stone-600 font-bold mb-1">學校 / 機構單位</label>
+                <input
+                  type="text"
+                  value={schoolOrOrg}
+                  onChange={(e) => setSchoolOrOrg(e.target.value)}
+                  placeholder="例如: 國立臺灣大學"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900"
+                />
+              </div>
+              <div>
+                <label className="block text-stone-600 font-bold mb-1">銀行代碼 (3碼)</label>
+                <input
+                  type="text"
+                  maxLength={3}
+                  value={bankCode}
+                  onChange={(e) => setBankCode(e.target.value)}
+                  placeholder="例如: 004"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-stone-600 font-bold mb-1">銀行帳號 (入圍獎金撥付)</label>
+                <input
+                  type="text"
+                  value={bankAccount}
+                  onChange={(e) => setBankAccount(e.target.value)}
+                  placeholder="帳號"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900 font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 7. 原創性承諾與送出 */}
+          <div className="flex items-start gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="submitPledge"
+              checked={pledgeAgreed}
+              onChange={(e) => setPledgeAgreed(e.target.checked)}
+              className="mt-0.5 rounded text-amber-500 focus:ring-amber-400"
+              required
+            />
+            <label htmlFor="submitPledge" className="text-[11px] text-stone-600 cursor-pointer leading-relaxed">
+              我確認本提案內容為本人或團隊原創構想，同意遵守 IdeaX 創星季競賽規章與原創性承諾；同意此條款即同意註冊 IdeaX 創點子平台（ideax.tw），並同意由系統自動刊登與存取競賽期間提出的痛點、提案和討論內容。
+            </label>
+          </div>
+
+          <div className="pt-3 flex flex-col sm:flex-row items-center gap-3">
+            {/* 存為草稿按鈕 */}
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={isDraftSaving || isSubmitting}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white hover:bg-stone-50 border-2 border-stone-200 hover:border-amber-400 text-stone-800 font-bold text-sm shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
+              title="將目前填寫的提案內容保存為草稿，隨時回個人列表繼續編輯"
+            >
+              <Save className="w-4 h-4 text-amber-600" />
+              <span>{isDraftSaving ? '正在儲存草稿...' : editingDraftId ? '更新暫存草稿' : '先存為草稿'}</span>
+            </button>
+
+            {/* 正式送審按鈕 */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full flex-1 py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-2 active:scale-98"
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>提交提案中...</span>
+                </>
+              ) : (
+                <>
+                  <span>確認提交提案（送交主辦單位初審）</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+  );
+};

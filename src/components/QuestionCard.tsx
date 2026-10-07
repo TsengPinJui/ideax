@@ -75,13 +75,23 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         <div className="space-y-1.5">
           {/* Top Line: 子領域 + $+數字 (招募中不貼標籤，純以紫框突顯) */}
           <div className="flex items-center justify-between gap-1.5">
-            <span
-              onClick={handleSubcategoryClick}
-              className="text-[10px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80 truncate max-w-[90px] select-none hover:bg-amber-100"
-              title={question.subcategory || question.category}
-            >
-              {question.subcategory || question.category}
-            </span>
+            <div className="flex items-center gap-1 min-w-0">
+              <span
+                onClick={handleSubcategoryClick}
+                className="text-[10px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80 truncate max-w-[85px] select-none hover:bg-amber-100"
+                title={question.subcategory || question.category}
+              >
+                {question.subcategory || question.category}
+              </span>
+
+              {/* 綠色創星季標籤 */}
+              {(question.isStarSeason || question.tags?.includes('創星季')) && (
+                <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow-2xs shrink-0 flex items-center gap-0.5" title="創星季參賽題目（擁有獨立網址）">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  <span>創星季</span>
+                </span>
+              )}
+            </div>
 
             {/* $+數字 (痛點提問懸賞匡用紅色框起來) */}
             <div className="shrink-0 font-mono text-right">
@@ -91,10 +101,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </span>
               ) : isPainPoint ? (
                 <span
-                  className="text-xs sm:text-[13px] font-black font-mono px-1.5 py-0.5 rounded-md border-2 border-rose-500 bg-rose-50 text-rose-600 shadow-2xs ring-1 ring-rose-400/25 inline-block"
-                  title="痛點提問懸賞"
+                  className="text-xs sm:text-[13px] font-black font-mono px-2 py-0.5 rounded-lg border border-rose-300 bg-rose-50/80 text-rose-600 shadow-2xs inline-block"
+                  title={question.bounty > 0 ? '痛點提問懸賞' : '痛點'}
                 >
-                  {question.bounty > 0 ? `$${question.bounty.toLocaleString()}` : '$0痛點'}
+                  {question.bounty > 0 ? `$${question.bounty.toLocaleString()}` : '痛點'}
                 </span>
               ) : question.bounty > 0 ? (
                 <span className="text-xs sm:text-[13px] font-black text-amber-600 font-mono">
@@ -119,11 +129,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               {question.tags.slice(0, 3).map((tag) => (
                 <span
                   key={tag}
-                  className={`text-[9.5px] font-medium px-1.5 py-0.2 rounded border truncate max-w-[80px] select-none pointer-events-none ${
-                    isPainPoint
-                      ? 'text-rose-600 bg-rose-50 border-rose-200/80'
-                      : 'text-stone-600 bg-stone-100 border-stone-200/70'
-                  }`}
+                  className="text-[9.5px] font-medium px-1.5 py-0.2 rounded border truncate max-w-[80px] select-none pointer-events-none text-stone-600 bg-stone-100 border-stone-200/70"
                 >
                   #{tag}
                 </span>
@@ -210,6 +216,19 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </button>
               )}
 
+              {/* 綠色創星季標籤與獨立網址 */}
+              {(question.isStarSeason || question.tags?.includes('創星季')) && (
+                <div className="flex items-center gap-1.5">
+                  <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-1 shrink-0">
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>創星季</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 hidden sm:inline-block">
+                    🔗 獨立網址
+                  </span>
+                </div>
+              )}
+
               {isSolved && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> 已採納方案
@@ -225,15 +244,21 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </span>
               ) : isPainPoint ? (
                 <div
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-50/90 border-2 border-rose-500 text-rose-950 shadow-2xs ring-1 ring-rose-400/25"
-                  title="痛點提問懸賞"
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-50/80 border border-rose-300 text-rose-950 shadow-2xs"
+                  title={question.bounty > 0 ? '痛點提問懸賞' : '痛點'}
                 >
-                  <span className="text-[11px] text-rose-600 font-bold">
-                    {question.bounty > 0 ? '痛點懸賞' : '痛點'}
-                  </span>
-                  <span className="text-xs sm:text-sm font-black font-mono text-rose-600">
-                    {question.bounty > 0 ? `NT$ ${question.bounty.toLocaleString()}` : '$0 免費'}
-                  </span>
+                  {question.bounty > 0 ? (
+                    <>
+                      <span className="text-[11px] text-rose-600 font-bold">痛點懸賞</span>
+                      <span className="text-xs sm:text-sm font-black font-mono text-rose-600">
+                        NT$ {question.bounty.toLocaleString()}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs sm:text-sm font-black font-mono text-rose-600">
+                      痛點
+                    </span>
+                  )}
                 </div>
               ) : question.bounty > 0 ? (
                 <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 shadow-2xs">
@@ -261,11 +286,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               {question.tags.map((tag) => (
                 <span
                   key={tag}
-                  className={`text-[10.5px] font-medium px-2 py-0.2 rounded border select-none pointer-events-none ${
-                    isPainPoint
-                      ? 'text-rose-600 bg-rose-50 border-rose-200/80 font-semibold'
-                      : 'text-stone-600 bg-stone-100 border-stone-200'
-                  }`}
+                  className="text-[10.5px] font-medium px-2 py-0.2 rounded border select-none pointer-events-none text-stone-600 bg-stone-100 border-stone-200"
                 >
                   #{tag}
                 </span>
@@ -369,6 +390,19 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 : `${question.level} · ${levelConfig.name}`}
             </span>
 
+            {/* 綠色創星季標籤與獨立網址 */}
+            {(question.isStarSeason || question.tags?.includes('創星季')) && (
+              <div className="flex items-center gap-1.5">
+                <span className="bg-emerald-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-2xs flex items-center gap-1 shrink-0" title="創星季參賽題目（擁有獨立網址）">
+                  <Sparkles className="w-3 h-3" />
+                  <span>創星季</span>
+                </span>
+                <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 hidden md:inline-flex items-center gap-1">
+                  <span>🔗 獨立網址：ideax.tw/challenge?questionId={question.id.slice(-6)}</span>
+                </span>
+              </div>
+            )}
+
             {isSolved && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> 已採納方案
@@ -384,15 +418,21 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               </span>
             ) : isPainPoint ? (
               <div
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-rose-50/90 border-2 border-rose-500 text-rose-950 shadow-xs ring-1 ring-rose-400/25"
-                title="痛點提問懸賞"
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-rose-50/80 border border-rose-300 text-rose-950 shadow-2xs"
+                title={question.bounty > 0 ? '痛點提問懸賞' : '痛點'}
               >
-                <span className="text-xs text-rose-600 font-bold">
-                  {question.bounty > 0 ? '痛點懸賞' : '痛點'}
-                </span>
-                <span className="text-sm font-black font-mono text-rose-600">
-                  {question.bounty > 0 ? `NT$ ${question.bounty.toLocaleString()}` : '$0 免費'}
-                </span>
+                {question.bounty > 0 ? (
+                  <>
+                    <span className="text-xs text-rose-600 font-bold">痛點懸賞</span>
+                    <span className="text-sm font-black font-mono text-rose-600">
+                      NT$ {question.bounty.toLocaleString()}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs sm:text-sm font-black font-mono text-rose-600">
+                    痛點
+                  </span>
+                )}
               </div>
             ) : question.bounty > 0 ? (
               <div className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 shadow-2xs">
@@ -457,11 +497,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   setSearchQuery(tag);
                 }
               }}
-              className={`text-[11px] font-medium px-2 py-0.5 rounded-md border transition-all cursor-pointer shadow-2xs ${
-                isPainPoint
-                  ? 'text-rose-600 bg-rose-50/90 hover:bg-rose-100 hover:text-rose-950 hover:border-rose-300 border-rose-200/90 font-semibold'
-                  : 'text-stone-600 bg-stone-100/90 hover:bg-amber-100 hover:text-amber-950 hover:border-amber-300 border-stone-200/90'
-              }`}
+              className="text-[11px] font-medium px-2 py-0.5 rounded-md border transition-all cursor-pointer shadow-2xs text-stone-600 bg-stone-100/90 hover:bg-stone-200 hover:text-stone-900 border-stone-200/90"
               title={`點擊搜尋「#${tag}」相關問題`}
             >
               #{tag}

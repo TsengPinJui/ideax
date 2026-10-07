@@ -57,9 +57,16 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center p-0.5">
                 <IdeaXLogo variant="bulb" size="xl" className="group-hover:scale-108 transition-transform duration-200" />
               </div>
-              <IdeaXLogo variant="ideax-6" size="md" theme="dark" />
+              <img
+                src="/logo-6-trans-dark.png"
+                alt="IdeaX"
+                className="h-9 sm:h-10 w-auto object-contain shrink-0"
+              />
             </button>
-            <p className="text-stone-400 leading-relaxed pt-1">
+            <div className="text-xs text-amber-400 font-bold">
+              主辦單位：IdeaX團隊
+            </div>
+            <p className="text-stone-400 leading-relaxed pt-0.5">
               一個問題，找到更多可能。專為新創團隊、商業領袖與技術探索者打造的高價值問題與解決方案交易市場。讓想法發光，連結無限可能。
             </p>
           </div>
@@ -202,10 +209,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               <div className="flex items-center gap-1.5 text-stone-400">
                 <Mail className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <a
-                  href="mailto:support@ideax.tw"
+                  href="mailto:ideax.office@gmail.com"
                   className="hover:text-amber-400 transition-colors underline font-mono"
                 >
-                  support@ideax.tw
+                  ideax.office@gmail.com
                 </a>
               </div>
               <div className="flex items-center gap-1.5 text-stone-400">

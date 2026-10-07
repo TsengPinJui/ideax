@@ -53,7 +53,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   initialPostType = 'seek_solution',
   initialPublishIdentity = 'admin',
 }) => {
-  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode } = useApp();
+  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode, isRaceMode } = useApp();
 
   const [publishIdentity, setPublishIdentity] = useState<'admin' | 'platform'>(initialPublishIdentity || 'admin');
 
@@ -64,16 +64,18 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [postType, setPostType] = useState<PostType>(initialPostType);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<Category | ''>(initialCategory || '');
+  const [category, setCategory] = useState<Category | ''>(initialCategory || '創新創業');
   const [subcategory, setSubcategory] = useState<string>(
-    initialSubcategory && initialSubcategory !== '全部' ? initialSubcategory : ''
+    initialSubcategory && initialSubcategory !== '全部' ? initialSubcategory : '資訊科技'
   );
   const [tagsInput, setTagsInput] = useState('');
+  const isPainPoint = initialPostType === 'pain_point' || postType === 'pain_point';
+  const lockToL0 = (isRaceMode && isPainPoint) || isPainPoint || initialPostType === 'chat_discussion';
   const [level, setLevel] = useState<ProblemLevel>(
-    initialPostType === 'chat_discussion' || initialPostType === 'pain_point' ? 'L0' : 'L2'
+    lockToL0 ? 'L0' : 'L2'
   );
   const [bounty, setBounty] = useState<number>(
-    initialPostType === 'chat_discussion' || initialPostType === 'pain_point' ? 0 : 500
+    lockToL0 ? 0 : 500
   );
   const [deadlineDays, setDeadlineDays] = useState<number>(14);
   const [paymentMethod, setPaymentMethod] = useState<'信用卡' | 'LINE Pay' | 'Apple Pay' | 'ATM 轉帳'>('信用卡');

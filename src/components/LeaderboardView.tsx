@@ -632,7 +632,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-stone-400 block">懸賞金額</span>
-                    <span className="font-bold text-amber-900">{(q.bounty || 0) === 0 ? '免費痛點' : `NT$ ${(q.bounty || 0).toLocaleString()}`}</span>
+                    <span className="font-bold text-amber-900">{(q.bounty || 0) === 0 ? '痛點' : `NT$ ${(q.bounty || 0).toLocaleString()}`}</span>
                   </div>
                   <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
                 </div>
@@ -697,7 +697,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-stone-400 block">懸賞金額</span>
-                    <span className="font-bold text-amber-900">{(q.bounty || 0) === 0 ? '痛點解鎖' : `NT$ ${(q.bounty || 0).toLocaleString()}`}</span>
+                    <span className="font-bold text-amber-900">{(q.bounty || 0) === 0 ? '痛點' : `NT$ ${(q.bounty || 0).toLocaleString()}`}</span>
                   </div>
                   <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
                 </div>

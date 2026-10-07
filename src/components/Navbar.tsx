@@ -502,6 +502,23 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
             <button
               onClick={() => {
+                setActiveTab('star_season');
+                setSelectedQuestion(null);
+                setSelectedSolver(null);
+              }}
+              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs ${
+                activeTab === 'star_season'
+                  ? 'bg-emerald-50 text-stone-900 font-black border-emerald-500 ring-2 ring-emerald-300 shadow-sm'
+                  : 'bg-white text-stone-800 border-emerald-400 hover:bg-emerald-50/40 hover:border-emerald-500 font-bold'
+              }`}
+              title="前往 IdeaX 創星季 Innovation Challenge"
+            >
+              <img src="/logo-bulb.png" alt="黃色正向去背燈泡" className="w-4.5 h-4.5 object-contain shrink-0" />
+              <img src="/logo-chuangxingji-text.png" alt="創星季去背" className="h-4.5 w-auto object-contain shrink-0" />
+              <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-600 text-white border border-emerald-500 font-black">大賽</span>
+            </button>
+            <button
+              onClick={() => {
                 if (isGuest) {
                   promptLogin('訪客模式請先登入帳號以查看我的案件');
                   return;
@@ -1813,6 +1830,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         isOpen={isCategorySidebarOpen}
         onClose={() => setIsCategorySidebarOpen(false)}
         activeTab={activeTab}
+        onNavigateToStarSeason={() => {
+          setActiveTab('star_season');
+          setSelectedQuestion(null);
+          setSelectedSolver(null);
+          setIsCategorySidebarOpen(false);
+        }}
         onOpenNotifications={() => {
           if (currentUser.role === 'admin') {
             handleOpenDashboard('admin_mail_disputes');

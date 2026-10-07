@@ -127,11 +127,11 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
           </button>
 
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-400/40 bg-white/95 p-0.5 flex items-center justify-center shrink-0 shadow-sm">
+            <div className="w-7.5 h-7.5 sm:w-8 sm:h-8 rounded-lg overflow-hidden border border-amber-400/40 bg-white/95 p-0.5 flex items-center justify-center shrink-0 shadow-sm">
               <img
-                src="/pwa-maskable-512x512.png?v=pwa-app-16"
+                src="/pwa-maskable-512x512.png?v=pwa-app-17"
                 alt="IdeaX創點子"
-                className="w-full h-full object-contain rounded-lg"
+                className="w-full h-full object-contain rounded-md"
               />
             </div>
             <div>

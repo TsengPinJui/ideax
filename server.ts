@@ -3,6 +3,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
+import competitionRouter from './server/competitionRoutes';
 
 dotenv.config();
 
@@ -10,6 +11,7 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+app.use('/api/competition', competitionRouter);
 
 // Lazy-initialized Gemini client
 let geminiClient: GoogleGenAI | null = null;

@@ -21,6 +21,7 @@ import { UserDashboardModal } from './components/UserDashboardModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { AiCrmView } from './components/AiCrmView';
 import { ChatView } from './components/ChatView';
+import { StarSeasonView } from './components/challenge/StarSeasonView';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
@@ -45,7 +46,7 @@ import {
   isUserInterestedInQuestionTopic,
   isQuestionExpired,
 } from './services/recommendationService';
-import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert } from 'lucide-react';
+import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, LogOut } from 'lucide-react';
 
 const CATEGORIES: Category[] = [
   '創新創業',
@@ -88,13 +89,68 @@ function MainContent() {
     promptLogin,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<AppTab>('explore');
+  const [activeTab, setActiveTab] = useState<AppTab>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const pathname = window.location.pathname.toLowerCase();
+        const search = window.location.search.toLowerCase();
+        const hash = window.location.hash.toLowerCase();
+        if (
+          pathname.includes('/challenge') ||
+          pathname.includes('/proposal') ||
+          pathname.includes('/cases') ||
+          pathname.includes('/star-season') ||
+          pathname.includes('/competition') ||
+          pathname.includes('/rules') ||
+          pathname.includes('/submit') ||
+          pathname.includes('/participant') ||
+          pathname.includes('/judge') ||
+          pathname.includes('/ambassador') ||
+          pathname.includes('/explore') ||
+          search.includes('tab=star_season') ||
+          search.includes('tab=challenge') ||
+          search.includes('tab=proposal') ||
+          search.includes('tab=cases') ||
+          search.includes('star-season') ||
+          search.includes('view=rules') ||
+          search.includes('view=proposal') ||
+          search.includes('view=submit') ||
+          search.includes('view=participant') ||
+          search.includes('view=judge') ||
+          search.includes('view=ambassador') ||
+          search.includes('view=explore') ||
+          hash.includes('rules') ||
+          hash.includes('proposal') ||
+          hash.includes('submit') ||
+          hash.includes('participant') ||
+          hash.includes('judge') ||
+          hash.includes('ambassador') ||
+          hash.includes('star_season') ||
+          hash.includes('challenge')
+        ) {
+          return 'star_season';
+        }
+      }
+    } catch {}
+    return 'explore';
+  });
   const [userDashboardTab, setUserDashboardTab] = useState<UserDashboardTab>('overview');
   const [dashboardResetCount, setDashboardResetCount] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<Category | '全部'>('全部');
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | '全部'>('全部');
   const [selectedLevel, setSelectedLevel] = useState<ProblemLevel | '全部'>('全部');
-  const [specialZone, setSpecialZone] = useState<SpecialZone>('all');
+  const [specialZone, setSpecialZone] = useState<SpecialZone>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const search = window.location.search.toLowerCase();
+        const hash = window.location.hash.toLowerCase();
+        if (search.includes('zone=pain_points') || search.includes('pain_points') || hash.includes('pain_points')) {
+          return 'pain_points';
+        }
+      }
+    } catch {}
+    return 'all';
+  });
   const [initialPostType, setInitialPostType] = useState<PostType>('seek_solution');
   const [initialPublishIdentity, setInitialPublishIdentity] = useState<'admin' | 'platform'>('admin');
   // 問題市場排序方式：按照用戶前一次使用的作為下次預設（預設為 recruiting_promoted 推薦）
@@ -288,9 +344,20 @@ function MainContent() {
   const [submitInitialType, setSubmitInitialType] = useState<'discussion' | 'solution'>('solution');
   const [aboutPageSection, setAboutPageSection] = useState<string>('others');
 
-  // Scroll to top when switching activeTab
+  // Scroll to top and sync URL pathname when switching activeTab
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      if (typeof window !== 'undefined') {
+        if (activeTab === 'star_season') {
+          if (!window.location.pathname.startsWith('/challenge')) {
+            window.history.pushState({ tab: 'star_season' }, '', '/challenge');
+          }
+        } else if (window.location.pathname === '/challenge' || window.location.pathname === '/cases') {
+          window.history.pushState({ tab: activeTab }, '', '/');
+        }
+      }
+    } catch {}
   }, [activeTab]);
 
   // Guest intercept: if guest tries to view personal center or my projects or create question, redirect to login
@@ -723,51 +790,53 @@ function MainContent() {
       {/* App 開啟淡入淡出畫面 (Splash Screen) */}
       <SplashScreen minDurationMs={1400} />
 
-      {/* Navigation */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={handleSelectCategory}
-        selectedSubcategory={selectedSubcategory}
-        setSelectedSubcategory={handleSelectSubcategory}
-        specialZone={specialZone}
-        setSpecialZone={handleSelectSpecialZone}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onSelectSort={handleSetSortBy}
-        onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
-        onOpenCreateQuestionWithType={handleOpenCreateWithType}
-        onOpenUserDashboardTab={(tab, scrollSection) => {
-          if (currentUser.id === 'user-guest') {
-            promptLogin('訪客模式請先登入帳號以查看個人中心');
-            return;
-          }
-          setUserDashboardTab(tab);
-          setActiveTab('user_dashboard');
-          if (tab === 'overview') {
-            setDashboardResetCount((prev) => prev + 1);
-          }
-          if (scrollSection) {
-            setTimeout(() => {
-              const el = document.getElementById(scrollSection);
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            }, 180);
-          }
-        }}
-        onOpenAiCrm={() => setActiveTab('ai_crm')}
-        isCategorySidebarOpen={isCategorySidebarOpen}
-        setIsCategorySidebarOpen={setIsCategorySidebarOpen}
-        onStartOnboarding={() => setIsOnboardingOpen(true)}
-        onNavigateToAbout={(section) => {
-          setAboutPageSection(section || 'others');
-          setActiveTab('about');
-          setSelectedQuestion(null);
-          setSelectedSolver(null);
-        }}
-      />
+      {/* Navigation (在創星季獨立網站時隱藏舊站導覽列，保持獨立站體驗) */}
+      {activeTab !== 'star_season' && (
+        <Navbar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={handleSelectCategory}
+          selectedSubcategory={selectedSubcategory}
+          setSelectedSubcategory={handleSelectSubcategory}
+          specialZone={specialZone}
+          setSpecialZone={handleSelectSpecialZone}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onSelectSort={handleSetSortBy}
+          onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
+          onOpenCreateQuestionWithType={handleOpenCreateWithType}
+          onOpenUserDashboardTab={(tab, scrollSection) => {
+            if (currentUser.id === 'user-guest') {
+              promptLogin('訪客模式請先登入帳號以查看個人中心');
+              return;
+            }
+            setUserDashboardTab(tab);
+            setActiveTab('user_dashboard');
+            if (tab === 'overview') {
+              setDashboardResetCount((prev) => prev + 1);
+            }
+            if (scrollSection) {
+              setTimeout(() => {
+                const el = document.getElementById(scrollSection);
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }, 180);
+            }
+          }}
+          onOpenAiCrm={() => setActiveTab('ai_crm')}
+          isCategorySidebarOpen={isCategorySidebarOpen}
+          setIsCategorySidebarOpen={setIsCategorySidebarOpen}
+          onStartOnboarding={() => setIsOnboardingOpen(true)}
+          onNavigateToAbout={(section) => {
+            setAboutPageSection(section || 'others');
+            setActiveTab('about');
+            setSelectedQuestion(null);
+            setSelectedSolver(null);
+          }}
+        />
+      )}
 
       {/* 帳號停權警告橫幅 */}
       {currentUser.isBlocked && (
@@ -867,13 +936,34 @@ function MainContent() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      {/* 1. 提出痛點 (在左邊，紅底白字) */}
                       <button
                         onClick={() => handleOpenCreateWithType('pain_point')}
-                        className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer active:scale-98"
+                        title="發布產業或生活真實痛點"
                       >
-                        <Flame className="w-3.5 h-3.5" />
-                        <span>提出新痛點</span>
+                        <Flame className="w-3.5 h-3.5 text-white" />
+                        <span>提出痛點</span>
                       </button>
+
+                      {/* 2. 返回創星季 (在右邊，離開圖示) */}
+                      <button
+                        onClick={() => {
+                          setActiveTab('star_season');
+                          try {
+                            if (typeof window !== 'undefined') {
+                              window.history.pushState(null, '', '/challenge');
+                            }
+                          } catch {}
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-98"
+                        title="返回 IdeaX 創星季競賽活動"
+                      >
+                        <LogOut className="w-3.5 h-3.5 text-stone-950" />
+                        <span>返回創星季</span>
+                      </button>
+
                       <button
                         onClick={() => setSpecialZone('all')}
                         className="p-2 rounded-xl bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
@@ -1205,6 +1295,41 @@ function MainContent() {
           </div>
         )}
 
+        {/* 2.5 Star Season Tab: IdeaX 創星季 Innovation Challenge */}
+        {activeTab === 'star_season' && (
+          <StarSeasonView
+            onBackToOldSite={() => {
+              setActiveTab('explore');
+              setSpecialZone('all');
+              setSelectedCategory('全部');
+              setSelectedSubcategory('全部');
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+              try {
+                if (typeof window !== 'undefined') {
+                  window.history.pushState(null, '', '/');
+                }
+              } catch {}
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onGoToPainPoints={() => {
+              setActiveTab('explore');
+              setSpecialZone('pain_points');
+              setSelectedCategory('全部');
+              setSelectedSubcategory('全部');
+              setSelectedQuestion(null);
+              setSelectedSolver(null);
+              try {
+                if (typeof window !== 'undefined') {
+                  window.history.pushState(null, '', '/?zone=pain_points');
+                }
+              } catch {}
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onOpenAuth={() => openAuthModal('login', 'email')}
+          />
+        )}
+
         {/* 3. Mechanism Tab (轉向關於我們金流運作) */}
         {activeTab === 'mechanism' && (
           <div className="max-w-5xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
@@ -1287,6 +1412,22 @@ function MainContent() {
             onClose={() => {
               setSelectedQuestion(null);
               setActiveTab('explore');
+            }}
+            onNavigateToChallengeSubmit={(q) => {
+              try {
+                sessionStorage.setItem(
+                  'ideax_challenge_prefill_topic',
+                  JSON.stringify({
+                    id: q.id,
+                    title: q.title,
+                    serial: q.id,
+                    summary: q.description,
+                  })
+                );
+                window.history.pushState({ subView: 'submit' }, '', '/challenge/submit');
+              } catch {}
+              setSelectedQuestion(null);
+              setActiveTab('star_season');
             }}
             onOpenSubmitAnswer={(initialType) => {
               if (currentUser.id === 'user-guest') {
@@ -1521,64 +1662,68 @@ function MainContent() {
         }}
       />
 
-      {/* Footer */}
-      <Footer
-        onNavClick={(tab, section) => {
-          if (section) {
-            setAboutPageSection(section);
-          } else if (tab === 'about') {
-            setAboutPageSection('others');
-          }
-          setActiveTab(tab);
-        }}
-        onPostClick={() => setActiveTab('create_question')}
-        onSearchTag={(tag) => setSearchQuery(tag)}
-        onStartOnboarding={() => {
-          setIsOnboardingFromAbout(true);
-          setActiveTab('explore');
-          setIsOnboardingOpen(true);
-        }}
-      />
-
-      {/* 手機行動裝置專屬底部導覽列 (僅限移動裝置版，電腦桌面版完全隱藏) */}
-      <MobileBottomNav
-        activeTab={activeTab}
-        userDashboardTab={userDashboardTab}
-        onNavigate={(tab) => {
-          setSelectedQuestion(null);
-          setSelectedSolver(null);
-          if (currentUser.id === 'user-guest' && (tab === 'user_dashboard' || tab === 'my_projects')) {
-            promptLogin(tab === 'my_projects' ? '訪客模式請先登入帳號以查看我的案件' : '訪客模式請先登入帳號以查看個人中心');
-            return;
-          }
-          if (tab === 'user_dashboard') {
-            setUserDashboardTab('overview');
-            setActiveTab('user_dashboard');
-            setDashboardResetCount((prev) => prev + 1);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            return;
-          }
-          if (tab === 'my_projects') {
-            setActiveTab('my_projects');
-            return;
-          }
-          if (tab === 'explore') {
+      {/* Footer (創星季獨立站模式下不顯示舊站大頁尾) */}
+      {activeTab !== 'star_season' && (
+        <Footer
+          onNavClick={(tab, section) => {
+            if (section) {
+              setAboutPageSection(section);
+            } else if (tab === 'about') {
+              setAboutPageSection('others');
+            }
+            setActiveTab(tab);
+          }}
+          onPostClick={() => setActiveTab('create_question')}
+          onSearchTag={(tag) => setSearchQuery(tag)}
+          onStartOnboarding={() => {
+            setIsOnboardingFromAbout(true);
             setActiveTab('explore');
-            const scrollToMarket = () => {
-              const el = document.getElementById('market-grid');
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            };
-            scrollToMarket();
-            setTimeout(scrollToMarket, 60);
-            setTimeout(scrollToMarket, 180);
-            return;
-          }
-          setActiveTab(tab);
-        }}
-        onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
-      />
+            setIsOnboardingOpen(true);
+          }}
+        />
+      )}
+
+      {/* 手機行動裝置專屬底部導覽列 (創星季獨立站模式下隱藏，保持獨立單頁體驗) */}
+      {activeTab !== 'star_season' && (
+        <MobileBottomNav
+          activeTab={activeTab}
+          userDashboardTab={userDashboardTab}
+          onNavigate={(tab) => {
+            setSelectedQuestion(null);
+            setSelectedSolver(null);
+            if (currentUser.id === 'user-guest' && (tab === 'user_dashboard' || tab === 'my_projects')) {
+              promptLogin(tab === 'my_projects' ? '訪客模式請先登入帳號以查看我的案件' : '訪客模式請先登入帳號以查看個人中心');
+              return;
+            }
+            if (tab === 'user_dashboard') {
+              setUserDashboardTab('overview');
+              setActiveTab('user_dashboard');
+              setDashboardResetCount((prev) => prev + 1);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+              return;
+            }
+            if (tab === 'my_projects') {
+              setActiveTab('my_projects');
+              return;
+            }
+            if (tab === 'explore') {
+              setActiveTab('explore');
+              const scrollToMarket = () => {
+                const el = document.getElementById('market-grid');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              };
+              scrollToMarket();
+              setTimeout(scrollToMarket, 60);
+              setTimeout(scrollToMarket, 180);
+              return;
+            }
+            setActiveTab(tab);
+          }}
+          onOpenCreateQuestion={() => handleOpenCreateWithType('seek_solution')}
+        />
+      )}
 
       {/* PWA 安裝與下載指引彈窗 */}
       <PwaInstallModal
@@ -1630,6 +1775,28 @@ function MainContent() {
         viewMode={viewMode}
         onSetViewMode={handleSetViewMode}
       />
+
+      {/* 當在創點子/痛點區時，提供懸浮「返回創星季」按鈕 */}
+      {specialZone === 'pain_points' && (
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <button
+            onClick={() => {
+              setActiveTab('star_season');
+              try {
+                if (typeof window !== 'undefined') {
+                  window.history.pushState(null, '', '/challenge');
+                }
+              } catch {}
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs sm:text-sm shadow-xl hover:shadow-2xl border-2 border-amber-300 flex items-center gap-2 cursor-pointer transition-all active:scale-95 group"
+            title="返回 IdeaX 創星季競賽活動"
+          >
+            <LogOut className="w-4 h-4 text-stone-950 group-hover:translate-x-0.5 transition-transform" />
+            <span>返回創星季</span>
+          </button>
+        </div>
+      )}
 
       {/* 專家評分回饋彈窗 */}
       <RatingModal />

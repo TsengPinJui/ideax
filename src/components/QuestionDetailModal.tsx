@@ -70,6 +70,7 @@ interface QuestionDetailModalProps {
   onSelectCategory?: (category: Category, subcategory?: string | '全部') => void;
   isFullPage?: boolean;
   onSearchTag?: (tag: string) => void;
+  onNavigateToChallengeSubmit?: (question: Question) => void;
 }
 
 export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
@@ -81,6 +82,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   onSelectCategory,
   isFullPage = false,
   onSearchTag,
+  onNavigateToChallengeSubmit,
 }) => {
   const {
     currentUser,
@@ -120,6 +122,31 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   } = useApp();
 
   const [isAiAutoTagging, setIsAiAutoTagging] = useState(false);
+
+  const handleGoToChallengeProposal = () => {
+    if (currentUser.id === 'user-guest') {
+      promptLogin('請先登入帳號以參與創星季提案');
+      return;
+    }
+    if (onNavigateToChallengeSubmit) {
+      onNavigateToChallengeSubmit(question);
+    } else {
+      try {
+        sessionStorage.setItem(
+          'ideax_challenge_prefill_topic',
+          JSON.stringify({
+            id: question.id,
+            title: question.title,
+            serial: question.id,
+            summary: question.description,
+          })
+        );
+        window.history.pushState({ subView: 'submit' }, '', '/challenge/submit');
+        window.dispatchEvent(new Event('popstate'));
+      } catch {}
+      onClose();
+    }
+  };
 
   const handleRunLiveAiAutoTag = async () => {
     setIsAiAutoTagging(true);
@@ -819,15 +846,23 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
           ) : isPainPoint ? (
             <div
-              className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border-2 border-rose-500 bg-rose-50/90 shadow-2xs ring-1 ring-rose-400/25"
-              title="痛點提問懸賞"
+              className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border border-rose-300 bg-rose-50/80 shadow-2xs"
+              title={(question.bounty || 0) > 0 ? '痛點提問懸賞' : '痛點'}
             >
-              <span className="text-[11px] font-bold text-rose-700 block">
-                {(question.bounty || 0) > 0 ? '痛點懸賞' : '痛點提問'}
-              </span>
-              <span className="text-lg sm:text-xl font-black text-rose-600 font-mono">
-                {(question.bounty || 0) > 0 ? `NT$ ${(question.bounty || 0).toLocaleString()}` : '$0 免費上架'}
-              </span>
+              {(question.bounty || 0) > 0 ? (
+                <>
+                  <span className="text-[11px] font-bold text-rose-700 block">
+                    痛點懸賞
+                  </span>
+                  <span className="text-lg sm:text-xl font-black text-rose-600 font-mono">
+                    NT$ {(question.bounty || 0).toLocaleString()}
+                  </span>
+                </>
+              ) : (
+                <span className="text-base sm:text-lg font-black text-rose-600 font-mono py-0.5 block">
+                  痛點
+                </span>
+              )}
             </div>
           ) : (question.bounty || 0) > 0 ? (
             <div className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border border-amber-300 bg-amber-50/60">
@@ -997,6 +1032,66 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               </div>
           </div>
 
+          {/* 創星季專屬參賽專案連結卡片 */}
+          {(question.exclusiveChallengeUrl || question.isStarSeason || question.tags?.includes('創星季')) && (
+            <div className="mt-3 p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-100/60 border border-amber-300 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
+                  ★
+                </div>
+                <div>
+                  <div className="font-black text-xs text-stone-900 flex items-center gap-1.5">
+                    <span>IdeaX 創星季 參賽網站專屬專案</span>
+                    <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-amber-200 text-amber-950">官方連動</span>
+                  </div>
+                  <div className="text-[11px] text-amber-900 font-medium mt-0.5">
+                    本痛點已登錄創星季青年實戰模擬競賽，歡迎前往參賽站查看對應提案或參與模擬注資！
+                  </div>
+                </div>
+              </div>
+              <a
+                href={question.exclusiveChallengeUrl || `https://ideax.tw/challenge?proposalId=${question.starSeasonProposalId || question.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs flex items-center gap-1.5 shadow-2xs shrink-0 transition-all cursor-pointer"
+              >
+                <span>前往參賽網站</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          )}
+
+          {/* 痛點下方提出創新想法 Banner (選擇此題作為提案題目) */}
+          {isPainPoint && (
+            <div className="mt-3 p-4 rounded-2xl bg-gradient-to-r from-amber-50 via-yellow-50 to-rose-50 border-2 border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[11px] font-black shrink-0">
+                    痛
+                  </span>
+                  <span className="font-black text-xs sm:text-sm text-stone-900">
+                    於痛點下方提出你的創新想法
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-amber-200 text-amber-950">
+                    創星季選題
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-600 leading-relaxed">
+                  選擇此痛點作為創星季提案題目！獲獎解方若採用本痛點，原痛點提出者將共享 NT$1,500 好禮。
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleGoToChallengeProposal}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-xs shrink-0 transition-all cursor-pointer active:scale-98"
+                title="針對此痛點直接進入大賽提案頁提出創新方案（直用提案頁）"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-stone-950" />
+                <span>針對此痛點提出方案（直用提案頁） →</span>
+              </button>
+            </div>
+          )}
+
             {/* Tags */}
             <div className="pt-2 border-t border-stone-100 flex items-center gap-1.5 flex-wrap">
               <span className="text-[11px] font-bold text-stone-400 flex items-center gap-1 mr-1">
@@ -1016,11 +1111,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                         onClose();
                       }
                     }}
-                    className={`text-xs font-bold px-2.5 py-0.5 rounded-lg transition-all cursor-pointer shadow-2xs border ${
-                      isPainPoint
-                        ? 'text-rose-600 bg-rose-50 hover:bg-rose-100 hover:border-rose-300 border-rose-200/90 font-semibold'
-                        : 'text-amber-950 bg-amber-50 hover:bg-amber-100 hover:border-amber-400 border border-amber-200/90'
-                    }`}
+                    className="text-xs font-semibold px-2.5 py-0.5 rounded-lg transition-all cursor-pointer shadow-2xs border text-stone-700 bg-stone-100 hover:bg-stone-200 hover:text-stone-900 border-stone-200"
                     title={`點擊搜尋「#${tag}」相關問題`}
                   >
                     #{tag}
@@ -1588,7 +1679,18 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
 
             {/* Submit Action */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              {/* 創星季參賽捷徑按鈕 */}
+              <button
+                type="button"
+                onClick={handleGoToChallengeProposal}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer border border-amber-300 active:scale-98"
+                title="針對此痛點直接進入創星季大賽提案頁提出創新方案"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-stone-950" />
+                <span>參與創星季提案（直用提案頁）</span>
+              </button>
+
               <button
                 onClick={() => {
                   if (currentUser.id === 'user-guest') {
@@ -2419,6 +2521,16 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap sm:flex-nowrap">
           <button
+            type="button"
+            onClick={handleGoToChallengeProposal}
+            className="px-3.5 sm:px-4 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300 shrink-0"
+            title="直用大賽提案頁填寫此痛點的完整創新方案"
+          >
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">創星季：針對此痛點提案（直用提案頁）</span>
+            <span className="sm:hidden">創星季提案</span>
+          </button>
+          <button
             onClick={onClose}
             className="px-3.5 py-2.5 sm:py-2 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-200 text-xs font-bold transition-colors cursor-pointer shrink-0"
           >
@@ -2600,7 +2712,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               <div className="text-[11px] text-stone-500 pt-0.5 flex items-center gap-2">
                 <span>發布者：{authorDisplayName}</span>
                 <span>•</span>
-                <span>懸賞：{(question.bounty || 0) > 0 ? `NT$ ${(question.bounty || 0).toLocaleString()}` : 'L0 免費'}</span>
+                <span>懸賞：{(question.bounty || 0) > 0 ? `NT$ ${(question.bounty || 0).toLocaleString()}` : isPainPoint ? '痛點' : 'L0 免費'}</span>
               </div>
             </div>
 

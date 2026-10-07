@@ -44,6 +44,7 @@ interface CategorySidebarProps {
   onNavigateToLeaderboard?: () => void;
   onOpenNotifications?: () => void;
   onStartOnboarding?: () => void;
+  onNavigateToStarSeason?: () => void;
   activeTab?: AppTab;
 }
 
@@ -65,6 +66,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   onNavigateToLeaderboard,
   onOpenNotifications,
   onStartOnboarding,
+  onNavigateToStarSeason,
   activeTab = 'explore',
 }) => {
   const [sidebarSearch, setSidebarSearch] = useState('');
@@ -329,38 +331,100 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
             </button>
           </div>
 
-          {/* 1. 全部問題入口 */}
+          {/* 1. 全部問題入口 (白色/淺灰模塊，淺灰細框) */}
           <button
             onClick={() => {
               if (onSelectSpecialZone) onSelectSpecialZone('all');
               handleSelectCategory('全部', '全部');
             }}
-            className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+            className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group shadow-2xs ${
               selectedCategory === '全部' && specialZone === 'all' && activeTab === 'explore'
-                ? 'bg-stone-900 text-white border-stone-900 shadow-xs'
-                : 'bg-stone-50 hover:bg-stone-100 text-stone-800 border-stone-200'
+                ? 'bg-stone-50 border-stone-300 ring-2 ring-stone-200/80 shadow-xs'
+                : 'bg-white hover:bg-stone-50 border-stone-200 hover:border-stone-300'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-amber-500" />
-              <span className="text-sm font-bold">全部問題</span>
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border transition-colors ${
+                  selectedCategory === '全部' && specialZone === 'all' && activeTab === 'explore'
+                    ? 'bg-white border-stone-300 text-amber-600 shadow-2xs'
+                    : 'bg-stone-50 border-stone-200 text-stone-400 group-hover:text-stone-600'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <span
+                className={`text-xs sm:text-sm font-black transition-colors ${
+                  selectedCategory === '全部' && specialZone === 'all' && activeTab === 'explore'
+                    ? 'text-stone-950 font-black'
+                    : 'text-stone-800 group-hover:text-stone-950'
+                }`}
+              >
+                全部問題
+              </span>
             </div>
             <span
-              className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
+              className={`text-xs font-mono font-bold px-2 py-0.5 rounded-lg border shrink-0 transition-colors ${
                 selectedCategory === '全部' && specialZone === 'all' && activeTab === 'explore'
-                  ? 'bg-stone-800 text-stone-200'
-                  : 'bg-white text-stone-600 border border-stone-200'
+                  ? 'bg-white text-stone-900 border-stone-300 shadow-2xs'
+                  : 'bg-stone-50 text-stone-600 border-stone-200'
               }`}
             >
               {questions.length} 則
             </span>
           </button>
 
-          {/* 2. 獨立專屬專區（創點子/痛點專區 在上，L0問題討論專區 在下） */}
+          {/* 2. 獨立專屬專區（創星季 在最上，創點子/痛點專區 次之，L0問題討論專區 在下） */}
           <div id="onboarding-step-7-special-zones" className="space-y-2 pt-1 pb-1">
             <div className="text-[11px] font-bold text-stone-500 px-1 flex items-center justify-between">
               <span>🔥 主題專區</span>
             </div>
+
+            {/* ［IdeaX創星季］專區（綠框白底或很淡的綠底，後面「競賽挑戰」標籤） */}
+            <button
+              onClick={() => {
+                if (onNavigateToStarSeason) {
+                  onNavigateToStarSeason();
+                }
+                onClose();
+              }}
+              className={`w-full pl-2.5 pr-3 py-2.5 rounded-2xl border-2 text-left transition-all flex items-center justify-between cursor-pointer group shadow-2xs ${
+                activeTab === 'star_season'
+                  ? 'bg-emerald-50/50 border-emerald-500 ring-3 ring-emerald-300/40 shadow-xs'
+                  : 'bg-white hover:bg-emerald-50/30 border-emerald-400 hover:border-emerald-500'
+              }`}
+              title="前往 IdeaX創星季 競賽挑戰"
+            >
+              <div className="flex items-center gap-2 min-w-0 -ml-0.5">
+                {/* 黃色正向去背燈泡 + 創星季去背 (左移貼齊微調) */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <img
+                    src="/logo-bulb.png"
+                    alt="黃色正向去背燈泡"
+                    className="w-7 h-7 object-contain group-hover:scale-110 transition-transform shrink-0"
+                  />
+                  <img
+                    src="/logo-chuangxingji-text.png"
+                    alt="創星季去背"
+                    className="h-5.5 w-auto object-contain shrink-0"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-emerald-700 transition-colors tracking-tight">
+                      IdeaX創星季
+                    </span>
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-emerald-600 text-white border border-emerald-500 shadow-2xs shrink-0">
+                      競賽挑戰
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-stone-600 mt-0.5 line-clamp-1">
+                    徵點子痛點 × 想解方實戰評選
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform shrink-0 ml-1" />
+            </button>
 
             {/* ① ［創點子/痛點專區］（移到 L0 上方） */}
             <button

@@ -127,11 +127,11 @@ export const MobilePwaDownloadWidget: React.FC = () => {
           <X className="w-2.5 h-2.5 stroke-[2.5]" />
         </button>
 
-        {/* 下載提示圓形按鈕 (精緻黃金比例，介於原本與精巧版之間) */}
+        {/* 下載提示圓形按鈕 (精巧細緻尺寸) */}
         <button
           type="button"
           onClick={handleDownloadClick}
-          className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-orange-500 text-white shadow-md hover:shadow-lg hover:shadow-amber-500/30 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 border border-white/80 ring-2 ring-amber-400/25"
+          className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-orange-500 text-white shadow-md hover:shadow-lg hover:shadow-amber-500/30 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 border border-white/80 ring-2 ring-amber-400/25"
           title="下載 / 安裝 IdeaX App"
           aria-label="下載 IdeaX App"
         >
@@ -140,8 +140,8 @@ export const MobilePwaDownloadWidget: React.FC = () => {
 
           {/* 圓形內部圖示與文字 */}
           <div className="flex flex-col items-center justify-center -space-y-0.5 pointer-events-none">
-            <Download className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-white drop-shadow-xs stroke-[2.4]" />
-            <span className="text-[9.5px] sm:text-[10px] font-black tracking-tight text-white drop-shadow-xs leading-none select-none">
+            <Download className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-white drop-shadow-xs stroke-[2.4]" />
+            <span className="text-[9px] sm:text-[9.5px] font-black tracking-tight text-white drop-shadow-xs leading-none select-none">
               App
             </span>
           </div>

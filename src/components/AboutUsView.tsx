@@ -952,7 +952,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
             <div className="relative z-10 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl overflow-hidden border border-amber-400/40 bg-white/95 p-1 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/10">
+                  <div className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-lg overflow-hidden border border-amber-400/40 bg-white/95 p-0.5 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/10">
                     <img
                       src="/pwa-maskable-512x512.png"
                       alt="IdeaX創點子"
@@ -1305,7 +1305,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleCopy('support@ideax.tw', '客服信箱')}
+                  onClick={() => handleCopy('ideax.office@gmail.com', '客服信箱')}
                   className="text-[11px] font-bold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/70 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   {copiedEmail === '客服信箱' ? (
@@ -1319,10 +1319,10 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
               <div>
                 <span className="text-xs font-bold text-stone-900 block">客服支援信箱</span>
                 <a
-                  href="mailto:support@ideax.tw"
+                  href="mailto:ideax.office@gmail.com"
                   className="text-xs font-mono font-bold text-indigo-600 hover:underline block mt-0.5"
                 >
-                  support@ideax.tw
+                  ideax.office@gmail.com
                 </a>
               </div>
               <p className="text-[11px] text-stone-500 leading-relaxed">

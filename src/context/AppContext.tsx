@@ -340,6 +340,11 @@ interface AppContextType {
   setHideTestAccounts: (enabled: boolean) => void;
   toggleHideTestAccounts: () => void;
 
+  // Race Mode (競賽模式開關：痛點限定 L0 並附綠色「創星季」標籤與獨立網址，方案以競賽圖文卡片展示並含獨立網址，痛點按提案數/讚數/觀看數/討論數排序)
+  isRaceMode: boolean;
+  setRaceMode: (enabled: boolean) => void;
+  toggleRaceMode: () => void;
+
   // Device Logged-In Accounts Management (本裝置曾經登錄的帳號)
   deviceAccounts: DeviceAccount[];
   switchAccount: (userId: string) => boolean;
@@ -683,6 +688,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleHideTestAccounts = () => {
     setHideTestAccounts(!isHideTestAccounts);
+  };
+
+  // Race Mode (競賽模式：痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案圖文卡片展示並含獨立網址)
+  const [isRaceMode, setIsRaceMode] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(`${STORAGE_KEY_PREFIX}is_race_mode`);
+      if (stored !== null) return stored === 'true';
+    } catch {}
+    return true; // 預設開啟競賽模式
+  });
+
+  const setRaceMode = (enabled: boolean) => {
+    setIsRaceMode(enabled);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}is_race_mode`, String(enabled));
+    } catch {}
+  };
+
+  const toggleRaceMode = () => {
+    setRaceMode(!isRaceMode);
   };
 
   // Load initial state with localStorage support (預設未登入任何帳號，以訪客身分開始)
@@ -2646,15 +2671,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: 'questioner',
       }));
     }
+
+    const qId = `q-${Date.now()}`;
+    const isPainPoint = newQ.postType === 'pain_point' || newQ.tags?.some((t) => t.includes('痛點') || t.includes('創點子'));
+    const isRaceModeActive = isRaceMode && isPainPoint;
+
+    // 關鍵規則：在創點子、痛點提出的內容同步出現於「創新創業」看板，依細分領域分類
+    const finalCategory = (isPainPoint || newQ.postType === 'seek_solution' || isRaceMode)
+      ? (newQ.category || '創新創業')
+      : (newQ.category || '創新創業');
+    const finalSubcategory = newQ.subcategory || '資訊科技';
+
+    // 競賽模式規則：從痛點專區提出的問題僅限 L0 且標注綠色「創星季」標籤並擁有獨立網址
+    const finalLevel = isRaceModeActive ? 'L0' : (newQ.level || 'L2');
+    const finalBounty = isRaceModeActive ? 0 : (newQ.bounty ?? (finalLevel === 'L0' ? 0 : 1000));
+    
+    const baseTags = newQ.tags || ['創新創業', finalSubcategory];
+    const tagsSet = new Set(baseTags);
+    tagsSet.add(finalSubcategory);
+    if (isPainPoint) tagsSet.add('痛點');
+    if (isRaceModeActive || isPainPoint || newQ.isStarSeason) {
+      tagsSet.add('創星季');
+    }
+    const finalTags = Array.from(tagsSet);
+
     const q: Question = {
-      id: `q-${Date.now()}`,
+      id: qId,
       title: newQ.title || '無標題問題',
       description: newQ.description || '',
-      category: newQ.category || '創新創業',
-      subcategory: newQ.subcategory || '資訊科技',
-      tags: newQ.tags || ['創新創業', '商業模式'],
-      level: newQ.level || 'L2',
-      bounty: newQ.bounty ?? 1000,
+      category: finalCategory,
+      subcategory: finalSubcategory,
+      tags: finalTags,
+      level: finalLevel,
+      bounty: finalBounty,
       postType: newQ.postType || 'seek_solution',
       status: 'open',
       authorId: newQ.authorId || currentUser.id,
@@ -2666,13 +2715,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isFeatured: newQ.isFeatured,
       createdAt: new Date().toISOString(),
       deadline: newQ.deadline || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-      views: 0,
-      viewsCount: 0,
+      views: newQ.views ?? 0,
+      viewsCount: newQ.viewsCount ?? 0,
       answersCount: 0,
+      likes: newQ.likes ?? (isRaceModeActive ? 16 : 8),
       aiAnalysis: newQ.aiAnalysis,
-      withheldBounty: newQ.bounty ?? 1000,
+      withheldBounty: finalBounty,
       disputeStatus: 'none',
       phases: newQ.phases,
+      isStarSeason: isRaceModeActive ? true : (newQ.isStarSeason ?? (isPainPoint ? true : false)),
+      exclusiveChallengeUrl: newQ.exclusiveChallengeUrl || (isRaceModeActive || isPainPoint ? `https://ideax.tw/challenge?questionId=${qId}` : undefined),
+      starSeasonProposalId: newQ.starSeasonProposalId,
     };
 
     // If bounty > 0, questioner pays via supported third-party payment gateway into safe escrow
@@ -2744,8 +2797,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const defaultPrice = targetQ && targetQ.bounty > 0 ? targetQ.bounty : 300;
     const finalPrice = isDiscussion ? 0 : (newAns.price !== undefined ? newAns.price : defaultPrice);
 
+    const ansId = isDiscussion ? `disc-${Date.now()}` : `ans-${Date.now()}`;
+    const isStarSeasonAnswer = isRaceMode || targetQ?.isStarSeason || targetQ?.tags?.includes('創星季') || newAns.isStarSeasonSolution;
+
     const ans: Answer = {
-      id: isDiscussion ? `disc-${Date.now()}` : `ans-${Date.now()}`,
+      id: ansId,
       questionId: newAns.questionId || selectedQuestion?.id || 'q-1',
       type: newAns.type || 'solution',
       solverId: currentUser.id,
@@ -2765,7 +2821,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unlockedByUserIds: [currentUser.id],
       isUnlockedByCurrentUser: true,
       createdAt: new Date().toISOString(),
-      likes: 0,
+      likes: newAns.likes ?? (isStarSeasonAnswer ? 28 : 0),
+      coverImageUrl: newAns.coverImageUrl || (isStarSeasonAnswer ? 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&auto=format&fit=crop&q=80' : undefined),
+      exclusiveChallengeUrl: newAns.exclusiveChallengeUrl || (isStarSeasonAnswer ? `https://ideax.tw/challenge/proposal?proposalId=${ansId}` : undefined),
+      isStarSeasonSolution: isStarSeasonAnswer ? true : false,
+      starSeasonProposalId: newAns.starSeasonProposalId || (isStarSeasonAnswer ? ansId : undefined),
+      sourcePainPointProposalId: targetQ?.id,
+      supportPoints: newAns.supportPoints || (isStarSeasonAnswer ? 120000 : undefined),
+      commentsCount: newAns.commentsCount || (isStarSeasonAnswer ? 12 : 0),
     };
 
     setAnswers((prev) => [ans, ...prev]);
@@ -5964,6 +6027,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isHideTestAccounts,
         setHideTestAccounts,
         toggleHideTestAccounts,
+        isRaceMode,
+        setRaceMode,
+        toggleRaceMode,
         currentUser,
         setCurrentUser,
         availableUsers,

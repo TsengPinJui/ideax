@@ -35,6 +35,7 @@ export interface PlatformRoleInfo {
 export type AppTab = 
   | 'explore'
   | 'solvers'
+  | 'star_season'
   | 'mechanism'
   | 'about'
   | 'leaderboard'
@@ -92,9 +93,11 @@ export type UserDashboardTab =
 
 export type QuestionSortOption = 
   | 'recruiting_promoted' // ✨推薦（依用戶最近搜尋關鍵字、主題、看板個性化推薦，付費推播置頂並註明招募中）
-  | 'most_solutions'      // 最多解答（方案數最多）
+  | 'most_solutions'      // 最多解答（方案數最多 / 提案數最高）
   | 'most_discussions'    // 熱烈討論（討論數）
-  | 'highest_bounty';     // 最高懸賞
+  | 'highest_bounty'     // 最高懸賞
+  | 'most_likes'         // 按讚數最多
+  | 'most_views';        // 觀看數最高
 
 export type Category = 
   | '創新創業'
@@ -588,6 +591,7 @@ export interface User {
   skills?: string[]; // 專長標籤
   verifiedExpert?: boolean; // 是否為認證專家
   verifiedBadge?: string; // 專家認證徽章稱號
+  competitionBadges?: Array<'創新盃' | '創之星' | '創星季'>; // 競賽徽章：提案者標記「創新盃」；前十名官方核發「創之星」；創星季參賽者標記「創星季」
   rating?: number; // 評分（0~5星）
   reviewCount?: number;
   acceptedSolutionsCount?: number; // 方案採納次數（公開）
@@ -836,6 +840,7 @@ export interface Question {
   deadline: string;
   views: number;
   viewsCount?: number;
+  likes?: number; // 痛點/提問按讚數
   answersCount: number;
   authorTitle?: string;
   invitedSolverIds?: string[];
@@ -855,6 +860,9 @@ export interface Question {
     marketFitRating?: string;
   };
   aiPreliminaryReport?: AIPreliminaryReport;
+  exclusiveChallengeUrl?: string; // 創星季參賽網站專案連結
+  isStarSeason?: boolean;
+  starSeasonProposalId?: string;
 }
 
 export interface AIPreliminaryReport {
@@ -1005,6 +1013,13 @@ export interface Answer {
   likes?: number;
   phases?: DeliveryPhase[]; // 多階段交付方案
   isPhasedDelivery?: boolean; // 是否為多階段交付方案
+  exclusiveChallengeUrl?: string; // 創星季參賽網站提案連結
+  isStarSeasonSolution?: boolean;
+  starSeasonProposalId?: string;
+  sourcePainPointProposalId?: string;
+  supportPoints?: number; // 創星季模擬募資點數
+  coverImageUrl?: string; // 提案卡片封面圖片
+  commentsCount?: number; // 討論數
 }
 
 export interface ChatCustomOffer {
