@@ -354,6 +354,11 @@ export const COMPETITION_POINTS_CONFIG = {
  * 12/16前 公布結果
  */
 export interface CompetitionScheduleConfig {
+  registrationPeriod?: {
+    title: string;
+    period: string;
+    note?: string;
+  };
   stage1Submission: {
     title: string;
     period: string;
@@ -382,6 +387,11 @@ export interface CompetitionScheduleConfig {
 }
 
 export const DEFAULT_COMPETITION_SCHEDULE: CompetitionScheduleConfig = {
+  registrationPeriod: {
+    title: '報名時段',
+    period: '10/24 00:00 – 12/04 16:30',
+    note: '提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名',
+  },
   stage1Submission: {
     title: '第一階段：痛點徵件',
     period: '10/31 00:00 – 11/13 16:30',
@@ -398,7 +408,7 @@ export const DEFAULT_COMPETITION_SCHEDULE: CompetitionScheduleConfig = {
     isTentative: false,
   },
   expertReview: {
-    title: '第三階段：進入決選(評審)（由大會之產學研專家與導師進行專業審查、深度指導與評分）',
+    title: '第三階段：進入決選(評審)（由評審團進行專業審查與評分）',
     period: '12/05 – 12/11',
     isTentative: false,
   },

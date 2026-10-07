@@ -54,15 +54,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               title="回到首頁頂部"
-              className="inline-flex items-center gap-2.5 py-1 hover:opacity-95 transition-all text-left cursor-pointer focus:outline-none group"
+              className="inline-flex items-center gap-3 py-1 hover:opacity-95 transition-all text-left cursor-pointer focus:outline-none group"
             >
-              <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center p-0.5">
-                <IdeaXLogo variant="bulb" size="sm" className="group-hover:scale-108 transition-transform duration-200" />
+              <div className="w-13 h-13 sm:w-15 sm:h-15 shrink-0 flex items-center justify-center">
+                <IdeaXLogo variant="bulb" size="lg" className="group-hover:scale-108 transition-transform duration-200" />
               </div>
               <img
                 src="/logo-6-trans-dark.png"
                 alt="IdeaX"
-                className="h-6 sm:h-7 w-auto object-contain shrink-0"
+                className="h-7 sm:h-8 w-auto object-contain shrink-0"
               />
             </button>
             <div className="text-xs text-amber-400 font-bold">
@@ -274,58 +274,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
         <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-stone-500">
           <div className="flex items-center gap-2 flex-wrap text-center md:text-left justify-center md:justify-start">
             <span>© {new Date().getFullYear()} 創點子 IdeaX. All rights reserved.</span>
-            <span>•</span>
-            <button
-              type="button"
-              onClick={() => {
-                if (onStartOnboarding) {
-                  onStartOnboarding();
-                } else {
-                  onNavClick('about', 'intro');
-                }
-              }}
-              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer inline-flex items-center gap-1"
-            >
-              <Compass className="w-3 h-3 text-amber-400" />
-              <span>導覽教學</span>
-            </button>
-            <span>•</span>
-            <button
-              type="button"
-              onClick={() => onNavClick('star_season')}
-              className="text-emerald-400 hover:text-emerald-300 font-bold underline transition-colors cursor-pointer inline-flex items-center gap-1"
-            >
-              <Sparkles className="w-3 h-3 text-emerald-400" />
-              <span>創星季 • 創新挑戰賽</span>
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => onNavClick('about', 'intro')}
-              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
-            >
-              平台介紹
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => onNavClick('about', 'others')}
-              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
-            >
-              其他說明
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => onNavClick('about', 'terms')}
-              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
-            >
-              條款與聲明
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => openCustomerService({ subject: '頁尾客服諮詢與支援' })}
-              className="text-amber-400 hover:text-amber-300 font-bold underline transition-colors cursor-pointer"
-            >
-              客服與回報
-            </button>
             <span>•</span>
             <span>讓創新想法化為真實商業價值。</span>
           </div>

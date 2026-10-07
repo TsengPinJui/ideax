@@ -450,7 +450,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }
             }}
             title="點擊回到首頁頂部"
-            className="flex items-center text-left group transition-transform active:scale-95 cursor-pointer p-0.5 sm:p-1 rounded-xl bg-[#ffefb5] hover:bg-[#ffe79c] transition-colors"
+            className="flex items-center text-left group transition-transform active:scale-95 cursor-pointer"
           >
             <IdeaXLogo variant="bulb" size="lg" />
           </div>
@@ -1898,15 +1898,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           setSelectedQuestion(null);
           setSelectedSolver(null);
         }}
-      />
-
-      {/* 登入 / 註冊彈窗（含註冊強制勾選一般條款） */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={closeAuthModal}
-        initialMode={authModalMode}
-        initialMethod={authModalMethod}
-        interceptReason={authModalInterceptReason}
       />
     </header>
   );

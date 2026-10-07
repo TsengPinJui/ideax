@@ -21,13 +21,13 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-stone-800/80">
           {/* Logo & 品牌簡介 */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               <img
                 src="/logo-6-trans-dark.png"
                 alt="IdeaX"
-                className="h-6 sm:h-7 w-auto object-contain shrink-0"
+                className="h-7 sm:h-8 md:h-9 w-auto object-contain shrink-0"
               />
-              <span className="font-bold text-white text-[15px] sm:text-[17px] tracking-normal leading-none select-none">
+              <span className="font-black text-white text-xl sm:text-2xl md:text-3xl tracking-tight leading-none select-none">
                 創星季
               </span>
             </div>
@@ -66,7 +66,7 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
           {/* 快速導覽連結 */}
           {onNavigate && (
             <div className="space-y-2">
-              <div className="font-bold text-white text-[13px]">競賽單元快速導覽</div>
+              <div className="font-bold text-white text-[13px]">創星季 網站導覽</div>
               <div className="grid grid-cols-2 gap-2 text-stone-400">
                 <button
                   type="button"
@@ -77,10 +77,10 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onNavigate('explore')}
+                  onClick={() => onNavigate('participant')}
                   className="text-left hover:text-amber-400 transition-colors cursor-pointer"
                 >
-                  • 探索Idea
+                  • 申請參賽者
                 </button>
                 <button
                   type="button"
@@ -91,10 +91,10 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onNavigate('participant')}
+                  onClick={() => onNavigate('explore')}
                   className="text-left hover:text-amber-400 transition-colors cursor-pointer"
                 >
-                  • 申請參賽者
+                  • 探索Idea
                 </button>
                 <button
                   type="button"

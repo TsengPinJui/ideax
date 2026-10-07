@@ -152,6 +152,11 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
       return;
     }
 
+    if (currentUser?.verifiedExpert || currentUser?.role === 'solver') {
+      showToast('依競賽辦法規範：不可兼任參賽者與專家！為維持評選公正與利益迴避，專家身分無法報名為參賽團隊。');
+      return;
+    }
+
     if (
       !teamName.trim() ||
       !leaderName.trim() ||
@@ -422,6 +427,15 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
           <p className="text-xs sm:text-sm text-stone-700 max-w-2xl mx-auto leading-relaxed">
             完成報名登錄後，您的帳號將在全站獲得「創星季」專屬榮譽徽章！提案將同步納入舊站「創點子/痛點」對應專區，並享有參賽專屬專案連結。
           </p>
+
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 pt-1 text-xs">
+            <span className="px-3 py-1 rounded-full bg-amber-400/90 text-stone-950 font-black shadow-2xs font-mono">
+              📝 報名時段：10/24 00:00 ～ 12/04 16:30
+            </span>
+            <span className="text-[11px] text-amber-900 font-bold">
+              （提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名）
+            </span>
+          </div>
         </div>
       </section>
 
@@ -448,6 +462,30 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
               </button>
             </div>
           )}
+
+          {/* 已是專家之利益迴避警示 */}
+          {(currentUser?.verifiedExpert || currentUser?.role === 'solver') && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-300 flex items-start gap-3 text-xs text-rose-950">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <div className="font-black text-rose-900">⚠️ 競賽規範限制：不可兼任參賽者與專家</div>
+                <div className="leading-relaxed text-rose-800">
+                  您目前帳號具備「專家」身分。為維持大賽評審之客觀公正與利益迴避原則，<strong>不可兼任參賽者</strong>。若欲代表團隊投件參賽，請改以獨立之參賽團隊帳號登入。
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 提痛點與提案雙軌並行提醒 */}
+          <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-300 flex items-start gap-3 text-xs text-amber-950">
+            <CheckCircle2 className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="font-black text-amber-900">💡 溫馨提醒：可以同時提出痛點與解決方案！</div>
+              <div className="leading-relaxed text-stone-700">
+                若您已在「痛點徵件專區」發布生活痛點（過審贈 200 點），您依然可以在此提交創新解方企劃，爭取大眾模擬注資與前三名最高 3 萬元等值大獎，雙向權益與獎勵完全享有！
+              </div>
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-8 text-xs">
             

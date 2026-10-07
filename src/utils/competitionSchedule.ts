@@ -23,6 +23,8 @@ export type CompetitionActiveStage = 1 | 2 | 3 | 4 | 5; // 1:痛點 2:預先提�
 export interface CompetitionStageInfo {
   activeStage: number;           // 1:痛點 2:預先提案 3:模擬募資 4:決選 5:公布 (對應UI階梯或精細階段)
   timelineStep: 1 | 2 | 3 | 4 | 5;
+  registrationPeriod: string;    // 報名時段：10/24 00:00 ~ 12/04 16:30
+  registrationNote: string;      // 提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名
   isPainPointStage: boolean;     // 第一階段：痛點徵件 (11/13 前)
   isPreProposalStage: boolean;   // 預先提案期 (11/14 ~ 11/15)：關閉募資/投資，可報名/提案/審核/預覽
   isCrowdfundingActiveStage: boolean; // 模擬募資期 (11/16 ~ 12/04)：可報名/提案/募資投資/審核
@@ -142,6 +144,8 @@ export function getCompetitionStageInfo(): CompetitionStageInfo {
   return {
     activeStage: stage,
     timelineStep: stage as 1 | 2 | 3 | 4 | 5,
+    registrationPeriod: '10/24 00:00 ~ 12/04 16:30',
+    registrationNote: '提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名',
     isPainPointStage,
     isPreProposalStage,
     isCrowdfundingActiveStage,

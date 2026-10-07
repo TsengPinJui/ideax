@@ -15,6 +15,7 @@ import { MechanismView } from './components/MechanismView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { AboutUsView } from './components/AboutUsView';
 import { AboutUsModal } from './components/AboutUsModal';
+import { AuthModal } from './components/AuthModal';
 import { MyProjectsView } from './components/MyProjectsView';
 import { CustomerServiceModal } from './components/CustomerServiceModal';
 import { UserDashboardModal } from './components/UserDashboardModal';
@@ -83,6 +84,11 @@ function MainContent() {
     availableUsers,
     startDirectChat,
     openAuthModal,
+    isAuthModalOpen,
+    closeAuthModal,
+    authModalMode,
+    authModalMethod,
+    authModalInterceptReason,
     addNotification,
     isDemoMode,
     isNoPaymentMode,
@@ -1583,6 +1589,15 @@ function MainContent() {
         isOpen={isAboutModalOpen}
         onClose={closeAboutModal}
         initialSection={aboutModalInitialSection}
+      />
+
+      {/* 全域 登入 / 註冊彈窗（含創星季獨立站與舊站） */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={closeAuthModal}
+        initialMode={authModalMode}
+        initialMethod={authModalMethod}
+        interceptReason={authModalInterceptReason}
       />
 
       {/* 官方客服與爭議仲裁中心彈窗 */}

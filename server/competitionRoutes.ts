@@ -429,6 +429,15 @@ router.post('/register-participant', async (req: Request, res: Response) => {
 
     const userDoc = await adminDb.collection('users').doc(authUser.uid).get();
     const userData = userDoc.exists ? userDoc.data() : null;
+
+    // 競賽原則：不可兼任參賽者與專家（利益迴避）
+    if (userData?.verifiedExpert || userData?.role === 'expert' || userData?.role === 'solver') {
+      return res.status(400).json({
+        success: false,
+        error: '依競賽辦法規範：不可兼任參賽者與專家！您目前具備專家身分，為維持評審客觀與利益迴避原則，不可兼任參賽者。',
+      });
+    }
+
     const userProfile = {
       name: userData?.name || data.leaderName,
       avatar: userData?.avatar,
@@ -458,6 +467,20 @@ router.post('/apply-judge', async (req: Request, res: Response) => {
 
     const userDoc = await adminDb.collection('users').doc(authUser.uid).get();
     const userData = userDoc.exists ? userDoc.data() : null;
+
+    // 競賽原則：不可兼任參賽者與專家（利益迴避）
+    const participantSnap = await adminDb
+      .collection('competition_participant_registrations')
+      .where('userId', '==', authUser.uid)
+      .limit(1)
+      .get();
+    if (!participantSnap.empty || userData?.competitionBadges?.includes('創星季')) {
+      return res.status(400).json({
+        success: false,
+        error: '依競賽辦法規範：不可兼任參賽者與專家！您已登錄為參賽團隊，為維持評審客觀與利益迴避原則，不可兼任專家。',
+      });
+    }
+
     const userProfile = {
       name: data.name || userData?.name,
       avatar: userData?.avatar,

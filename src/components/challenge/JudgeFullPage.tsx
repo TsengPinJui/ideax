@@ -99,6 +99,11 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
       return;
     }
 
+    if (currentUser?.competitionBadges?.includes('創星季') || (currentUser as any)?.isParticipant) {
+      showToast('依競賽辦法規範：不可兼任參賽者與專家！已註冊為參賽團隊者無法兼任專家，請遵循利益迴避原則。');
+      return;
+    }
+
     if (!judgeName.trim() || !judgeInstitution.trim() || !judgeJobTitle.trim()) {
       showToast('請填寫評審姓名、任職單位與職稱');
       return;
@@ -381,9 +386,20 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
             <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-1">
               <div className="flex items-center gap-1.5 font-bold text-emerald-900 text-xs">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>大會聘書證書</span>
+                <span>評審公信力背書</span>
               </div>
-              <p className="text-[11px] text-stone-600">賽期結束後頒發大會專業審查委員官方數位聘書。</p>
+              <p className="text-[11px] text-stone-600">決選專業審查委員身分與官方專業徽章認證。</p>
+            </div>
+          </div>
+
+          {/* 利益迴避原則提醒 */}
+          <div className="p-4 rounded-2xl bg-purple-50/80 border border-purple-300 flex items-start gap-3 text-xs text-purple-950">
+            <ShieldCheck className="w-5 h-5 text-purple-700 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="font-black text-purple-900">⚠️ 競賽規範限制：不可兼任參賽者與專家（利益迴避）</div>
+              <div className="leading-relaxed text-stone-700">
+                依創星季大賽規章，為落實評審客觀公正，<strong>不可兼任參賽者與專家</strong>。若您或您的團隊已登錄為參賽團隊，不得兼任專家或決審評審委員；請依實際參與身分擇一申請。
+              </div>
             </div>
           </div>
 
@@ -519,7 +535,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                   ) : (
                     <label className="w-full py-3 px-4 border-2 border-dashed border-stone-300 hover:border-purple-400 rounded-xl text-stone-500 hover:text-purple-800 flex items-center justify-center gap-2 cursor-pointer transition-all bg-white">
                       <Upload className="w-4 h-4" />
-                      <span>{isUploadingProof ? '上傳中...' : '上傳名片、證照或聘書'}</span>
+                      <span>{isUploadingProof ? '上傳中...' : '上傳名片、證照或在職證明'}</span>
                       <input
                         type="file"
                         accept=".pdf,.jpg,.jpeg,.png"

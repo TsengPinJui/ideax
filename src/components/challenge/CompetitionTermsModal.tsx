@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   BookOpen,
@@ -49,9 +50,18 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
     { key: 'E', label: 'E. 平台使用方法', icon: HelpCircle, shortTitle: '實戰操作全指南' },
   ];
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-white border border-amber-300 rounded-3xl max-w-3xl w-full p-5 sm:p-6 space-y-4 my-8 max-h-[90vh] overflow-y-auto shadow-2xl text-stone-900 flex flex-col justify-between">
+  const modalElement = (
+    <div
+      style={{ zIndex: 2147483647 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-white border border-amber-300 rounded-3xl max-w-3xl w-full p-5 sm:p-6 space-y-4 my-8 max-h-[90vh] overflow-y-auto shadow-2xl text-stone-900 flex flex-col justify-between"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-stone-100 pb-3">
           <div className="flex items-center gap-2">
@@ -275,4 +285,6 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalElement, document.body) : modalElement;
 };

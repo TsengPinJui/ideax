@@ -50,6 +50,7 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Folder,
+  Download,
 } from 'lucide-react';
 import {
   StarSeasonProposal,
@@ -100,6 +101,15 @@ import { ProposalHeroCarousel } from './ProposalHeroCarousel';
 import { CompetitionFooter } from './CompetitionFooter';
 import { AdminCompetitionRulesArchiveFolder } from './AdminCompetitionRulesArchiveFolder';
 import { MyProposalsAndDraftsModal } from './MyProposalsAndDraftsModal';
+import { JudgeEvaluationModal } from './JudgeEvaluationModal';
+import { AdminFinalEvaluationManagementModal } from './AdminFinalEvaluationManagementModal';
+import {
+  getNominatedProposalIds,
+  getIsFinalResultsPublished,
+  calculateFinalProposalRankings,
+  exportFinalRankingsExcel,
+} from '../../services/finalEvaluationService';
+import { getCompetitionExperts } from '../../services/competitionAdminSync';
 import { getProposalDrafts } from '../../services/draftService';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 
@@ -226,6 +236,40 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 管理員專屬：創星季全套規章條款與辦法封存資料夾 Modal (僅管理員可見)
   const [isAdminRulesFolderOpen, setIsAdminRulesFolderOpen] = useState<boolean>(false);
+
+  // 決審評審專屬評分 Modal
+  const [isJudgeEvaluationModalOpen, setIsJudgeEvaluationModalOpen] = useState<boolean>(false);
+  const [evaluatingJudgeUser, setEvaluatingJudgeUser] = useState<{ id: string; name: string } | null>(null);
+
+  // 管理員專屬：決選評分與全體獎勵統計總控制台
+  const [isAdminFinalEvaluationHubOpen, setIsAdminFinalEvaluationHubOpen] = useState<boolean>(false);
+
+  // 專家名單與評審身分判定 (評審身分為專家，由管理員在後台指派 isJudgeSelected = true)
+  const expertsList = useMemo(() => getCompetitionExperts(), [isAdminFinalEvaluationHubOpen, isJudgeEvaluationModalOpen]);
+  const isCurrentUserAppointedJudge = useMemo(() => {
+    if (!currentUser || currentUser.id === 'user-guest') return false;
+    const expertRec = expertsList.find(
+      (e) => e.userId === currentUser.id || e.id === currentUser.id || e.expertEmail === currentUser.email
+    );
+    if (expertRec && expertRec.isJudgeSelected) return true;
+    if ((currentUser as any).isJudgeSelected || (currentUser as any).isJudge) return true;
+    return false;
+  }, [currentUser, expertsList]);
+
+  // 入選提案清單（管理員勾選後自動匯入決選評分區）
+  const nominatedProposalIds = useMemo(
+    () => getNominatedProposalIds(),
+    [isJudgeEvaluationModalOpen, isAdminFinalEvaluationHubOpen]
+  );
+  const nominatedProposals = useMemo(() => {
+    return proposals.filter((p) => nominatedProposalIds.includes(p.id) || p.rankQualifiedForFinal);
+  }, [proposals, nominatedProposalIds]);
+
+  // 前台是否已盛大公布榜單
+  const [isFinalResultsPublishedState, setIsFinalResultsPublishedState] = useState<boolean>(() => getIsFinalResultsPublished());
+  const finalRankings = useMemo(() => {
+    return calculateFinalProposalRankings(proposals);
+  }, [proposals, nominatedProposalIds, isAdminFinalEvaluationHubOpen, isFinalResultsPublishedState]);
 
   // 個人提案與草稿箱 Modal
   const [isMyProposalsModalOpen, setIsMyProposalsModalOpen] = useState<boolean>(false);
@@ -1094,7 +1138,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     },
     {
       q: '模擬募資前 20 名與最終得獎名次（冠、亞、季軍）如何評定？獎勵內容為何？',
-      a: '全體大眾與專家的虛擬募資投票排名「前 20 名」代表獲得「入圍決選」資格，並非最終得獎！最終得獎名次由大會產學研專家與導師進行專業審查、深度指導與評分，決選出：冠軍價值 $30,000（NT$20,000 現金 ＋ 8,000 點（價值 $10,000，點數效期 180 日）＋ 官方「創之星」最高榮譽徽章）、亞軍價值 $10,000（NT$6,000 現金 ＋ 3,200 點（價值 NT$4,000，點數效期 180 日）＋ 官方「創之星」最高榮譽徽章）、季軍價值 $5,000（NT$3,000 現金 ＋ 1,600 點（價值 NT$2,000，點數效期 180 日）＋ 官方「創之星」最高榮譽徽章）。獲獎團隊由系統授予「創之星」最高榮譽徽章！',
+      a: '全體大眾與專家的虛擬募資投票排名「前 20 名」代表獲得「入圍決選」資格，並非最終得獎！最終得獎名次由評審團進行專業審查與評分，決選出：冠軍價值 $30,000（NT$20,000 現金 ＋ 8,000 點（價值 $10,000，點數效期 180 日）＋ 官方「創之星」最高榮譽徽章）、亞軍價值 $10,000（NT$6,000 現金 ＋ 3,200 點（價值 NT$4,000，點數效期 180 日）＋ 官方「創之星」最高榮譽徽章）、季軍價值 $5,000（NT$3,000 現金 ＋ 1,600 點（價值 NT$2,000，點數效期 180 日）＋ 官方「創之星」最高榮譽徽章）。獲獎團隊由系統授予「創之星」最高榮譽徽章！',
     },
     {
       q: '創星幣是多少？可以兌現或投資自己嗎？',
@@ -1118,7 +1162,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     },
     {
       q: '創星季的活動各階段時程如何安排？',
-      a: '競賽各階段日程如下：\n• 10/31 ～ 11/13：第一階段：痛點徵件（提出痛點過審即送 200 點，價值 $250，效期 60 日）\n• 11/14 ～ 11/15：第二階段 (一)：預先提案（【關閉募資(投資)功能】，僅可註冊報名、在線提案、主辦單位審核及預覽）\n• 11/16 ～ 12/04：第二階段 (二)：模擬募資與提案（【全面開放功能】，可報名、提案、創星幣模擬募資(投資)注資投票、主辦單位審核，募資總額前 20 名取得決選資格）\n• 12/05 ～ 12/11：第三階段：進入決選（由大會產學研專家與導師進行專業審查、深度指導與評分）\n• 12/16 前公布：第四階段：公布結果（於首頁盛大公告最終榜單，頒發榮譽與獎勵）',
+      a: '競賽各階段日程如下：\n• 10/24 00:00 ～ 12/04 16:30：報名時段（※ 提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名）\n• 10/31 ～ 11/13：第一階段：痛點徵件（提出痛點過審即送 200 點，價值 $250，效期 60 日）\n• 11/14 ～ 11/15：第二階段 (一)：預先提案（【關閉募資(投資)功能】，僅可註冊報名、在線提案、主辦單位審核及預覽）\n• 11/16 ～ 12/04：第二階段 (二)：模擬募資與提案（【全面開放功能】，可報名、提案、創星幣模擬募資(投資)注資投票、主辦單位審核，募資總額前 20 名取得決選資格）\n• 12/05 ～ 12/11：第三階段：進入決選（由評審團進行專業審查與評分）\n• 12/16 前公布：第四階段：公布結果（於首頁盛大公告最終榜單，頒發榮譽與獎勵）',
     },
   ];
 
@@ -1219,6 +1263,38 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               </button>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {/* 管理員專屬：決選評分與全體獎勵統計總台 */}
+              {currentUser?.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={() => setIsAdminFinalEvaluationHubOpen(true)}
+                  className="inline-flex items-center gap-1 bg-rose-700 text-white hover:bg-rose-600 text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-full transition-colors cursor-pointer shadow-xs animate-pulse"
+                  title="管理員專屬：指派特聘評審、勾選入選名單、結算平均名次與發布前台結果"
+                >
+                  <Trophy className="w-3 h-3 text-amber-300" />
+                  <span>決選結算＆獎勵統計</span>
+                </button>
+              )}
+
+              {/* 被指派評審之決選評分專屬功能 */}
+              {(isCurrentUserAppointedJudge || currentUser?.role === 'admin') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEvaluatingJudgeUser({
+                      id: currentUser?.id || 'user-expert-1',
+                      name: currentUser?.name || '柯育任 院長/特聘教授',
+                    });
+                    setIsJudgeEvaluationModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1 bg-purple-800 text-white hover:bg-purple-700 text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-full transition-colors cursor-pointer shadow-xs ring-1 ring-purple-400"
+                  title="特聘評審委員專屬：進入決選評分區邊看提案邊評分"
+                >
+                  <Award className="w-3 h-3 text-amber-300" />
+                  <span>決選評分區</span>
+                </button>
+              )}
+
               {/* 盾牌符號與專家快速入口 */}
               <button
                 type="button"
@@ -1601,8 +1677,64 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
                     </button>
 
+                    {(isCurrentUserAppointedJudge || currentUser.role === 'admin') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          setEvaluatingJudgeUser({
+                            id: currentUser?.id || 'user-expert-1',
+                            name: currentUser?.name || '柯育任 院長/特聘教授',
+                          });
+                          setIsJudgeEvaluationModalOpen(true);
+                        }}
+                        className="w-full px-3 py-2.5 rounded-xl hover:bg-purple-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-purple-50/50"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-purple-200 text-purple-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                            <Award className="w-4 h-4 text-purple-700" />
+                          </div>
+                          <div>
+                            <div className="font-black text-stone-900 flex items-center gap-1.5">
+                              <span>決選評分區</span>
+                              <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-purple-700 text-white">
+                                評審專屬
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-stone-500 font-normal">邊看提案企劃詳情邊評分，暫存或統一送出</div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
+                    )}
+
                     {currentUser.role === 'admin' && (
                       <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            setIsAdminFinalEvaluationHubOpen(true);
+                          }}
+                          className="w-full px-3 py-2.5 rounded-xl hover:bg-amber-100/80 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-amber-50/70 border border-amber-300"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-2xs font-black">
+                              <Trophy className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="font-black text-stone-900 flex items-center gap-1.5">
+                                <span>決審評分＆獎勵統計</span>
+                                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-rose-600 text-white">
+                                  管理員
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-500 font-normal">入選勾選、算術平均名次、前台發布與Excel匯出</div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => {
@@ -1726,7 +1858,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-[11px] sm:text-xs font-bold shadow-2xs">
                 <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>活動時程：10/31~11/13 痛點徵件・11/14~11/15 預先提案・11/16~12/04 模擬募資・12/05~12/11 進入決選(評審)・12/16前公布結果</span>
+                <span>活動時程：10/24~12/04 報名・10/31~11/13 痛點徵件・11/14~11/15 預先提案・11/16~12/04 模擬募資・12/05~12/11 進入決選(評審)・12/16前公布結果</span>
               </div>
             </div>
 
@@ -2092,6 +2224,22 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             </div>
           </div>
 
+          {/* 報名時段特別公告標籤 */}
+          <div className="mb-4 p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-stone-950 font-black text-[11px] shrink-0 shadow-2xs">
+                📝 報名時段
+              </span>
+              <span className="font-black text-stone-900 font-mono text-sm">
+                10/24 00:00 ～ 12/04 16:30
+              </span>
+            </div>
+            <div className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0" />
+              <span>提痛點之參賽者請於 <strong className="font-black text-stone-900 underline underline-offset-2">11/13 16:30</strong> 痛點徵件截止前完成報名</span>
+            </div>
+          </div>
+
           {(() => {
             const activeStage = stageInfo.activeStage;
 
@@ -2253,7 +2401,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     12/05 ~ 12/11
                   </div>
                   <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 4 ? 'text-stone-600' : 'text-stone-400'}`}>
-                    由大會產學研專家與導師進行專業審查、深度指導與評分。
+                    由評審團進行專業審查與評分。
                   </p>
                 </div>
 
@@ -2316,7 +2464,76 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       </div>
 
       {/* 主體內容：探索提案獨立專區 Spotlight (獨立子網址: ideax.tw/challenge/proposal) */}
-      <div id="cases-overview-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <div id="cases-overview-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-6">
+
+        {/* 🎉 前台盛大公布：創星季決選獲獎榜單 Banner */}
+        {isFinalResultsPublishedState && finalRankings.length > 0 && (
+          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-stone-950 via-stone-900 to-amber-950 text-white border-2 border-amber-400 shadow-xl space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-500/40 pb-5">
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400 text-stone-950 text-xs font-black">
+                  <Trophy className="w-4 h-4" />
+                  <span>2026 IdeaX 創星季 • 決選得獎榜單盛大揭曉</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-amber-300 tracking-tight">
+                  🎉 決選最終評定名次榜單
+                </h2>
+                <p className="text-xs sm:text-sm text-stone-300">
+                  依競賽辦法標準（創新性 40%、完整度 20%、可行性 20%、商業潛力 20%），經評審團審查並採算術平均計算核定。
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => exportFinalRankingsExcel(finalRankings)}
+                  className="px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs flex items-center gap-2 shadow-md cursor-pointer transition-transform active:scale-95"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>匯出決選榜單 Excel (.xlsx)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 冠亞季軍頒獎台卡片 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {finalRankings.slice(0, 3).map((winner) => (
+                <div
+                  key={winner.proposalId}
+                  className={`p-5 rounded-2xl border transition-all ${
+                    winner.rank === 1
+                      ? 'bg-gradient-to-b from-amber-900/60 to-stone-900 border-amber-400 ring-2 ring-amber-400/40 shadow-lg'
+                      : winner.rank === 2
+                      ? 'bg-gradient-to-b from-stone-800 to-stone-900 border-stone-400'
+                      : 'bg-gradient-to-b from-amber-950/60 to-stone-900 border-amber-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl">
+                      {winner.rank === 1 ? '🥇' : winner.rank === 2 ? '🥈' : '🥉'}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-amber-300">
+                      評審平均分: {winner.averageFinalScore.toFixed(2)} 分
+                    </span>
+                  </div>
+                  <div className="font-mono text-xs font-bold text-amber-400 mt-2">
+                    {winner.rank === 1 ? '第一名 (冠軍大獎)' : winner.rank === 2 ? '第二名 (亞軍殊榮)' : '第三名 (季軍殊榮)'}
+                  </div>
+                  <h3 className="text-base font-black text-white mt-1 line-clamp-1">
+                    {winner.proposalTitle}
+                  </h3>
+                  <div className="text-xs text-stone-300 mt-0.5">
+                    團隊：<strong>{winner.authorName}</strong> · 賽道：{winner.trackName}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-white/10 text-xs font-bold text-amber-200">
+                    獲得 {winner.rank === 1 ? 'NT$20,000' : winner.rank === 2 ? 'NT$6,000' : 'NT$3,000'} 現金 ＋ {winner.pointsReward.toLocaleString()} 點平台點數
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="bg-gradient-to-br from-amber-50/80 via-white to-stone-50 rounded-3xl border border-amber-300/80 p-6 sm:p-8 shadow-xs space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-200/60 pb-6">
             <div>
@@ -2501,12 +2718,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     NT$30,000 <span className="text-xs text-stone-500 font-normal">等值獎勵</span>
                   </div>
                   <p className="text-xs text-stone-600 leading-relaxed pt-1">
-                    <b>NT$20,000 現金</b> ＋ <b>8,000 點</b> IdeaX 平台點數（點數效期 180 日）＋ 官方「創之星」最高榮譽徽章與得獎證書。
+                    <b>NT$20,000 現金</b> ＋ <b>8,000 點</b> IdeaX 平台點數（點數效期 180 日）＋ 官方「創之星」最高榮譽徽章。
                   </p>
                 </div>
                 <div className="mt-3 pt-3 border-t border-amber-200/60 text-[11px] font-bold text-amber-900 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-600" />
-                  <span>最高榮耀認證，產學業師深度指導</span>
+                  <span>官方最高榮耀認證與社群推薦</span>
                 </div>
               </div>
 
@@ -2527,7 +2744,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     NT$10,000 <span className="text-xs text-stone-500 font-normal">等值獎勵</span>
                   </div>
                   <p className="text-xs text-stone-600 leading-relaxed pt-1">
-                    <b>NT$6,000 現金</b> ＋ <b>3,200 點</b> IdeaX 平台點數（點數效期 180 日）＋ 官方「創之星」榮譽徽章與得獎證書。
+                    <b>NT$6,000 現金</b> ＋ <b>3,200 點</b> IdeaX 平台點數（點數效期 180 日）＋ 官方「創之星」榮譽徽章。
                   </p>
                 </div>
                 <div className="mt-3 pt-3 border-t border-stone-100 text-[11px] font-bold text-stone-600 flex items-center gap-1">
@@ -2553,7 +2770,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     NT$5,000 <span className="text-xs text-stone-500 font-normal">等值獎勵</span>
                   </div>
                   <p className="text-xs text-stone-600 leading-relaxed pt-1">
-                    <b>NT$3,000 現金</b> ＋ <b>1,600 點</b> IdeaX 平台點數（點數效期 180 日）＋ 官方「創之星」榮譽徽章與得獎證書。
+                    <b>NT$3,000 現金</b> ＋ <b>1,600 點</b> IdeaX 平台點數（點數效期 180 日）＋ 官方「創之星」榮譽徽章。
                   </p>
                 </div>
                 <div className="mt-3 pt-3 border-t border-stone-100 text-[11px] font-bold text-stone-600 flex items-center gap-1">
@@ -2629,8 +2846,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               </button>
             </div>
 
-            {/* 大略規則三大核心卡片 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* 大略規則四大核心卡片 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* 規則 1: 參加資格與報名方式 */}
               <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5">
                 <div className="flex items-center gap-2">
@@ -2639,9 +2856,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
                 <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
                   <li><b>身分不限：</b>不限在學學生或社會人士，個人獨立或 1~5 人自由組隊皆可參加。</li>
+                  <li><b>不可兼任：</b><b>不可兼任參賽者與專家</b>，為維護評選公正與利益迴避，身分嚴格互斥。</li>
                   <li><b>隊伍計算：</b>以每個帳號算計一隊，每隊不限提案或痛點數量。</li>
-                  <li><b>免預先報名：</b>競賽網站開放隨時可註冊登入 IdeaX 帳號，時程一到即可線上提案。</li>
-                  <li><b>可報名期間：</b>提痛點 10/24~11/13（可能提前開放）；提案 10/24~12/04（可能提前開放）。</li>
+                  <li><b>報名時段：</b>10/24 00:00 ~ 12/04 16:30（提痛點請於 11/13 16:30 前報名）。</li>
                 </ul>
               </div>
 
@@ -2652,6 +2869,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <h3 className="font-black text-stone-900 text-sm">競賽主題與交稿方式</h3>
                 </div>
                 <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
+                  <li><b>雙軌並行：</b><b>可以同時提出痛點與解決方案</b>，提痛點過審即享 200 點，亦可提方案角逐大獎。</li>
                   <li><b>提痛點：</b>提出生活中感到煩惱困擾的地方共同腦力激盪（過審送 200 點）。</li>
                   <li><b>提方案：</b>從痛點庫選題，尋找能解決問題的「創新方法」或「創新事物」。</li>
                   <li><b>線上交稿：</b>至提案專頁填寫標題、領域分類、摘要、企劃四部曲與 BP 簡報附件。</li>
@@ -2666,8 +2884,22 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
                 <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
                   <li><b>初審入圍：</b>第二階段大眾模擬注資總額排名前 20 名晉級決審。</li>
-                  <li><b>專家評審：</b>由特聘專家評審團審查（名單暫不公布以維持公正）。</li>
+                  <li><b>專家評審：</b>由評審團審查（名單暫不公布以維持公正）。</li>
                   <li><b>四大維度比重：</b><b>創新性 40%</b>、<b>完整度 20%</b>、<b>可行性 20%</b>、<b>商業潛力 20%</b>。</li>
+                </ul>
+              </div>
+
+              {/* 規則 4: 核心注意事項與權益 */}
+              <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">4</span>
+                  <h3 className="font-black text-stone-900 text-sm">核心注意事項與權益</h3>
+                </div>
+                <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
+                  <li><b>原創保證：</b>嚴禁抄襲剽竊或冒名侵權，違者取消資格並追回全數獎勵。</li>
+                  <li><b>幣別性質：</b>創星幣純屬大賽模擬驗證，非真實法幣，禁止私下兌現買賣。</li>
+                  <li><b>防刷反作弊：</b>嚴禁分身機器人灌票洗幣，經查違規直接取消評選資格。</li>
+                  <li><b>獎金與點數：</b>獎金依法申報代扣稅額，前三名點數效期 180 日，其餘 60 日。</li>
                 </ul>
               </div>
             </div>
@@ -2681,7 +2913,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   想深入瞭解完整競賽章程、報名細節與常見問答？
                 </h3>
                 <p className="text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
-                  包含：壹、競賽緣起 ｜ 貳、報名時間 ｜ 參、參加資格 ｜ 肆、報名方式 ｜ 伍、競賽主題設定 ｜ 陸、交稿方式 ｜ 柒、活動獎項 ｜ 捌、評審機制 ｜ 玖、活動時程 ｜ 拾、其他注意事項與詳細常見問答 FAQ。
+                  包含：壹、競賽緣起 ｜ 貳、報名時間 ｜ 參、參賽資格 ｜ 肆、報名方式 ｜ 伍、競賽主題設定 ｜ 陸、交稿方式 ｜ 柒、活動獎項 ｜ 捌、評審機制 ｜ 玖、活動時程 ｜ 拾、其他注意事項與詳細常見問答 FAQ。
                 </p>
               </div>
 
@@ -4676,6 +4908,38 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             <AdminCompetitionRulesArchiveFolder />
           </div>
         </div>
+      )}
+
+      {/* 決選評審專家工作台 Modal (邊看提案企劃詳情邊評分，暫存或統一送出) */}
+      {isJudgeEvaluationModalOpen && evaluatingJudgeUser && (
+        <JudgeEvaluationModal
+          isOpen={isJudgeEvaluationModalOpen}
+          onClose={() => setIsJudgeEvaluationModalOpen(false)}
+          judgeUser={evaluatingJudgeUser}
+          nominatedProposals={nominatedProposals}
+          onScoresUpdated={() => {
+            setIsFinalResultsPublishedState(getIsFinalResultsPublished());
+          }}
+        />
+      )}
+
+      {/* 管理員專用：決選評分與全體獎勵統計總控制台 Modal */}
+      {isAdminFinalEvaluationHubOpen && (currentUser?.role === 'admin' || currentUser?.accountType === 'admin') && (
+        <AdminFinalEvaluationManagementModal
+          isOpen={isAdminFinalEvaluationHubOpen}
+          onClose={() => {
+            setIsAdminFinalEvaluationHubOpen(false);
+            setIsFinalResultsPublishedState(getIsFinalResultsPublished());
+          }}
+          proposals={proposals}
+          onProposalsUpdated={() => {
+            setIsFinalResultsPublishedState(getIsFinalResultsPublished());
+          }}
+          onOpenJudgeEvaluationAsUser={(judge) => {
+            setEvaluatingJudgeUser(judge);
+            setIsJudgeEvaluationModalOpen(true);
+          }}
+        />
       )}
     </div>
   );
