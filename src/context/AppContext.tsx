@@ -63,6 +63,7 @@ import {
   deleteQuestionAndRelatedDataFromFirestore,
   deleteUserAndAllRelatedDataFromFirestore,
   subscribeToQuestions,
+  subscribeToUsers,
   syncAnswerToFirestore,
   syncAnswersToFirestore,
   deleteAnswerFromFirestore,
@@ -228,8 +229,8 @@ interface AppContextType {
   deleteQuestionPermanently: (questionId: string) => Promise<void>;
   deleteAnswerPermanently: (answerId: string) => Promise<void>;
   purgeExpiredDelistedQuestions: () => Promise<number>;
-  requestAccountDeactivation: (reason?: string) => Promise<void>;
-  cancelAccountDeactivation: (targetUser?: User) => Promise<User>;
+  requestAccountDeactivation: (reason?: string, targetUserId?: string) => Promise<void>;
+  cancelAccountDeactivation: (targetUser?: User | string) => Promise<User | null>;
   checkUserDeactivationStatus: (target: User) => {
     canLogin: boolean;
     restoredUser?: User;
@@ -812,7 +813,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [availableUsers, setAvailableUsers] = useState<User[]>(() => {
     const isDemo = getInitialIsDemoMode();
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}users`);
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}users`) || localStorage.getItem(`${STORAGE_KEY_PREFIX}available_users`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
@@ -841,25 +842,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           const disposableTestAccountIds = ['solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
           if (!isDemo) {
-            // 正式模式：過濾拋棄式測試帳號，永久保留 1~3 個核心測試身分
+            // 正式模式：過濾拋棄式測試帳號，永久保留核心身分，並優先保留既有註銷與審計狀態
             const cleanList = usersList.filter((u: any) => !disposableTestAccountIds.includes(u.id));
             CORE_TEST_ACCOUNTS.forEach((cta) => {
-              if (!cleanList.some((u: any) => u.id === cta.id)) {
+              const existingIdx = cleanList.findIndex((u: any) => u.id === cta.id);
+              if (existingIdx === -1) {
                 cleanList.push(cta);
+              } else {
+                cleanList[existingIdx] = { ...cta, ...cleanList[existingIdx] };
               }
             });
             return cleanList;
           }
 
-          // 測試環境 (TEST)：加回所有模擬用戶與測試帳號，並保留自訂用戶
-          const customUsers = usersList.filter((u: any) => !isTestAccountUserId(u.id) && !u.id.startsWith('solver-') && u.id !== 'user-admin');
-          const testList = [...MOCK_USERS, ...customUsers];
-          CORE_TEST_ACCOUNTS.forEach((cta) => {
-            if (!testList.some((u: any) => u.id === cta.id)) {
-              testList.push(cta);
-            }
+          // 測試環境 (TEST)：以 saved users 為主，智慧合併模擬用戶與測試帳號，絕不覆蓋註銷/反悔期等狀態
+          const userMap = new Map<string, any>();
+          MOCK_USERS.forEach((mu) => userMap.set(mu.id, mu));
+          CORE_TEST_ACCOUNTS.forEach((cta) => userMap.set(cta.id, cta));
+          // 用 usersList 的最新狀態覆蓋預設值（包含 isDeactivated, deactivationStatus 等）
+          usersList.forEach((u: any) => {
+            const base = userMap.get(u.id) || {};
+            userMap.set(u.id, { ...base, ...u });
           });
-          return testList;
+          return Array.from(userMap.values());
         }
       }
     } catch {
@@ -1586,22 +1591,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (cloudData.users && cloudData.users.length > 0) {
-        const rawUsers = !isDemo ? cloudData.users.filter((u) => !isTestAccountUserId(u.id)) : cloudData.users;
-        const cleanUsers = rawUsers.map((u) => {
-          if (u.id === 'user-admin' || u.role === 'admin') {
-            return {
-              ...u,
-              balance: typeof u.balance === 'number' && u.balance > 0 ? u.balance : 50000,
-            };
-          }
-          return u;
+        setAvailableUsers((prevUsers) => {
+          const userMap = new Map<string, User>();
+          prevUsers.forEach((u) => userMap.set(u.id, u));
+          cloudData.users!.forEach((cu) => {
+            const local = userMap.get(cu.id);
+            if (local) {
+              userMap.set(cu.id, {
+                ...local,
+                ...cu,
+                isDeactivated: cu.isDeactivated ?? local.isDeactivated,
+                deactivationStatus: cu.deactivationStatus ?? local.deactivationStatus,
+                deactivationRequestedAt: cu.deactivationRequestedAt ?? local.deactivationRequestedAt,
+                deactivationScheduledPurgeAt: cu.deactivationScheduledPurgeAt ?? local.deactivationScheduledPurgeAt,
+                deactivationReason: cu.deactivationReason ?? local.deactivationReason,
+              });
+            } else {
+              userMap.set(cu.id, cu);
+            }
+          });
+          const merged = Array.from(userMap.values());
+          const cleanUsers = merged.map((u) => {
+            if (u.id === 'user-admin' || u.role === 'admin') {
+              return {
+                ...u,
+                balance: typeof u.balance === 'number' && u.balance > 0 ? u.balance : 50000,
+              };
+            }
+            return u;
+          });
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(cleanUsers));
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(cleanUsers));
+          } catch {}
+          return cleanUsers;
         });
-        setAvailableUsers(cleanUsers.length > 0 ? cleanUsers : CLEAN_CORE_USERS);
-        try {
-          localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(cleanUsers));
-        } catch {}
         if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
-          const found = cleanUsers.find((u) => u.id === currentUser.id);
+          const found = cloudData.users.find((u) => u.id === currentUser.id);
           if (found) {
             const effectiveUser = (found.id === 'user-admin' || found.role === 'admin')
               ? { ...found, balance: typeof found.balance === 'number' && found.balance > 0 ? found.balance : 50000 }
@@ -1657,6 +1683,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     let mounted = true;
     let unsubQuestions: (() => void) | null = null;
+    let unsubUsers: (() => void) | null = null;
 
     (async () => {
       try {
@@ -1701,19 +1728,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (cloudData && ((cloudData.questions && cloudData.questions.length > 0) || (cloudData.users && cloudData.users.length > 0))) {
           if (cloudData.users && cloudData.users.length > 0) {
-            const rawUsers = !isDemo ? cloudData.users.filter((u) => !isTestAccountUserId(u.id)) : cloudData.users;
-            const cleanUsers = rawUsers.map((u) => {
-              if (u.id === 'user-admin' || u.role === 'admin') {
-                return {
-                  ...u,
-                  balance: typeof u.balance === 'number' && u.balance > 0 ? u.balance : 50000,
-                };
-              }
-              return u;
+            setAvailableUsers((prevUsers) => {
+              const userMap = new Map<string, User>();
+              prevUsers.forEach((u) => userMap.set(u.id, u));
+              cloudData.users!.forEach((cu) => {
+                const local = userMap.get(cu.id);
+                if (local) {
+                  userMap.set(cu.id, {
+                    ...local,
+                    ...cu,
+                    isDeactivated: cu.isDeactivated ?? local.isDeactivated,
+                    deactivationStatus: cu.deactivationStatus ?? local.deactivationStatus,
+                    deactivationRequestedAt: cu.deactivationRequestedAt ?? local.deactivationRequestedAt,
+                    deactivationScheduledPurgeAt: cu.deactivationScheduledPurgeAt ?? local.deactivationScheduledPurgeAt,
+                    deactivationReason: cu.deactivationReason ?? local.deactivationReason,
+                  });
+                } else {
+                  userMap.set(cu.id, cu);
+                }
+              });
+              const merged = Array.from(userMap.values());
+              const cleanUsers = merged.map((u) => {
+                if (u.id === 'user-admin' || u.role === 'admin') {
+                  return {
+                    ...u,
+                    balance: typeof u.balance === 'number' && u.balance > 0 ? u.balance : 50000,
+                  };
+                }
+                return u;
+              });
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(cleanUsers));
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(cleanUsers));
+              } catch {}
+              return cleanUsers;
             });
-            setAvailableUsers(cleanUsers.length > 0 ? cleanUsers : CLEAN_CORE_USERS);
             if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
-              const foundUser = cleanUsers.find((u) => u.id === currentUser.id);
+              const foundUser = cloudData.users.find((u) => u.id === currentUser.id);
               if (foundUser) {
                 const effectiveUser = (foundUser.id === 'user-admin' || foundUser.role === 'admin')
                   ? { ...foundUser, balance: typeof foundUser.balance === 'number' && foundUser.balance > 0 ? foundUser.balance : 50000 }
@@ -1813,6 +1864,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } catch {}
           setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
         });
+
+        // Attach real-time snapshot listener for users (同步註銷與反悔猶豫期狀態)
+        unsubUsers = subscribeToUsers((updatedCloudUsers) => {
+          if (!mounted || !updatedCloudUsers || updatedCloudUsers.length === 0) return;
+          setAvailableUsers((prevUsers) => {
+            const userMap = new Map<string, User>();
+            prevUsers.forEach((u) => userMap.set(u.id, u));
+            updatedCloudUsers.forEach((cu) => {
+              const local = userMap.get(cu.id);
+              if (local) {
+                userMap.set(cu.id, {
+                  ...local,
+                  ...cu,
+                });
+              } else {
+                userMap.set(cu.id, cu);
+              }
+            });
+            const merged = Array.from(userMap.values());
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(merged));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
+          setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
+        });
       } catch (err) {
         console.warn('Firestore initial boot load:', err);
       }
@@ -1821,6 +1899,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       mounted = false;
       if (unsubQuestions) unsubQuestions();
+      if (unsubUsers) unsubUsers();
     };
   }, []);
 
@@ -2789,17 +2868,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       starSeasonProposalId: newQ.starSeasonProposalId,
     };
 
-    // If bounty > 0, questioner pays via supported third-party payment gateway into safe escrow
+    // If bounty > 0, questioner pays via supported third-party payment gateway or points into safe escrow
     if (q.bounty > 0) {
       setCurrentUser((prev) => ({
         ...prev,
+        balance: Math.max(0, (prev.balance || 0) - q.bounty),
         withheldPoints: (prev.withheldPoints || 0) + q.bounty,
         levelQuestionCounts: {
           ...(prev.levelQuestionCounts || { L0: 0, L1: 0, L2: 0, L3: 0, L4: 0 }),
           [q.level]: ((prev.levelQuestionCounts?.[q.level]) || 0) + 1,
         },
       }));
-      // 提案懸賞扣的是點數（由點數帳本/預扣額管理），不記入現金交易紀錄
+      // 記錄點數付點與履約託管扣抵紀錄
+      const bountyTx: Transaction = {
+        id: `tx-bounty-${Date.now()}`,
+        fromUserId: currentUser.id,
+        fromUserName: currentUser.name,
+        type: '提案懸賞',
+        amount: q.bounty,
+        platformFee: 0,
+        netAmount: q.bounty,
+        status: '已完成',
+        relatedQuestionId: q.id,
+        relatedQuestionTitle: q.title,
+        payoutStatus: '安全託管中',
+        paymentMethod: '平台點數付點扣抵',
+        createdAt: new Date().toISOString(),
+      };
+      setTransactions((prev) => [bountyTx, ...prev]);
     } else {
       // L0 free question stats update
       setCurrentUser((prev) => ({
@@ -3873,13 +3969,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Action: Request account deactivation (申請註銷帳號，進入 7 日反悔期並自動安全登出)
-  const requestAccountDeactivation = async (reason?: string): Promise<void> => {
-    const targetUserId = currentUser.id;
-    const targetUserName = currentUser.name;
+  const requestAccountDeactivation = async (reason?: string, targetUserId?: string): Promise<void> => {
+    const effectiveTargetId = targetUserId || currentUser.id;
+    const existingTarget = availableUsers.find((u) => u.id === effectiveTargetId) || (currentUser.id === effectiveTargetId ? currentUser : null);
+    if (!existingTarget) return;
+
+    const targetUserName = existingTarget.name;
     const now = new Date();
     const purgeDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const updatedUser: User = {
-      ...currentUser,
+      ...existingTarget,
       isDeactivated: true,
       deactivationStatus: 'pending_grace',
       deactivationRequestedAt: now.toISOString(),
@@ -3887,14 +3986,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deactivationReason: reason || '用戶自行申請註銷',
     };
 
-    setAvailableUsers((prev) =>
-      prev.map((u) => (u.id === targetUserId ? updatedUser : u))
-    );
-    try {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(
-        availableUsers.map((u) => (u.id === targetUserId ? updatedUser : u))
-      ));
-    } catch {}
+    setAvailableUsers((prev) => {
+      const next = prev.map((u) => (u.id === effectiveTargetId ? updatedUser : u));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    if (currentUser.id === effectiveTargetId) {
+      setCurrentUser(updatedUser);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedUser));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updatedUser));
+      } catch {}
+    }
 
     await syncUserToFirestore(updatedUser);
 
@@ -3902,7 +4009,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-deact-${Date.now()}`,
         title: '帳號註銷申請已生效・7日反悔猶豫期',
-        message: `您的帳號「${targetUserName}」已進入 7 日註銷猶豫期。系統將於 7 日後（${purgeDate.toLocaleDateString('zh-TW')}）正式完成註銷並清空私密個資。在此 7 日期間內，只要您再次登入此帳號，系統即視為您取消註銷並自動全面恢復帳號！`,
+        message: `帳號「${targetUserName}」已進入 7 日註銷猶豫期。系統將於 7 日後（${purgeDate.toLocaleDateString('zh-TW')}）正式完成註銷並清空私密個資。在此 7 日期間內，只要再次登入此帳號，系統即視為取消註銷並自動全面恢復帳號！`,
         type: 'system',
         createdAt: '剛剛',
         read: false,
@@ -3913,20 +4020,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     syncAuditLogsToFirestore([
       {
         id: `audit-deact-req-${Date.now()}`,
-        adminId: targetUserId,
-        action: `用戶申請註銷帳號（7日反悔期，再登入即自動取消註銷）：${targetUserId}`,
+        adminId: currentUser.id,
+        action: `申請帳號註銷（7日反悔猶豫期）：${effectiveTargetId}`,
         details: { reason, purgeAt: purgeDate.toISOString(), timestamp: now.toISOString() },
         createdAt: now.toISOString(),
       },
     ]);
 
-    // 依使用者規範：申請註銷後安全登出當前帳號
-    logoutAccount(targetUserId);
+    // 若為當前登入者本人自行註銷：依使用者規範安全登出當前帳號
+    if (currentUser.id === effectiveTargetId) {
+      logoutAccount(effectiveTargetId);
+    }
   };
 
   // Action: Cancel account deactivation (撤銷註銷帳號，恢復正常狀態)
-  const cancelAccountDeactivation = async (targetUser?: User): Promise<User> => {
-    const userToRestore = targetUser || currentUser;
+  const cancelAccountDeactivation = async (targetUser?: User | string): Promise<User | null> => {
+    let userToRestore: User | undefined;
+    if (typeof targetUser === 'string') {
+      userToRestore = availableUsers.find((u) => u.id === targetUser) || (currentUser.id === targetUser ? currentUser : undefined);
+    } else {
+      userToRestore = targetUser || currentUser;
+    }
+    if (!userToRestore) return null;
+
     const updatedUser: User = {
       ...userToRestore,
       isDeactivated: false,
@@ -3936,25 +4052,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deactivationReason: undefined,
     };
 
-    setCurrentUser(updatedUser);
-    setAvailableUsers((prev) =>
-      prev.map((u) => (u.id === userToRestore.id ? updatedUser : u))
-    );
-    try {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updatedUser));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedUser));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(
-        availableUsers.map((u) => (u.id === userToRestore.id ? updatedUser : u))
-      ));
-    } catch {}
+    setAvailableUsers((prev) => {
+      const next = prev.map((u) => (u.id === userToRestore!.id ? updatedUser : u));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    if (currentUser.id === userToRestore.id) {
+      setCurrentUser(updatedUser);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updatedUser));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedUser));
+      } catch {}
+    }
 
     await syncUserToFirestore(updatedUser);
 
     setNotifications((prev) => [
       {
         id: `notif-cancel-deact-${Date.now()}`,
-        title: '已自動取消帳號註銷！',
-        message: `歡迎回來！您於 7 日反悔猶豫期內登入「${updatedUser.name}」，系統已自動視為取消註銷，所有資料與發案提案均完整保留並正常運作。`,
+        title: '已取消帳號註銷！',
+        message: `帳號「${updatedUser.name}」已取消註銷，所有資料與功能均完整保留並正常運作。`,
         type: 'system',
         createdAt: '剛剛',
         read: false,
@@ -3997,6 +4118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return u;
       });
       try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(updated));
         localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(updated));
       } catch {}
       return updated;
@@ -4142,6 +4264,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAvailableUsers((prev) => {
       const updated = [newUser, ...prev];
       try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(updated));
         localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(updated));
       } catch {}
       return updated;
@@ -6085,7 +6208,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleDemoMode,
         clearMockData,
         resetDemoData,
-        isNoPaymentMode,
+        isNoPaymentMode: isRaceMode ? false : isNoPaymentMode,
         setNoPaymentMode,
         toggleNoPaymentMode,
         isHideTestAccounts,

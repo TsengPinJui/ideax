@@ -6,6 +6,8 @@ import {
   FacebookAuthProvider,
   sendPasswordResetEmail,
   sendEmailVerification,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
   signOut,
   RecaptchaVerifier,
   signInWithPhoneNumber,
@@ -60,6 +62,35 @@ export async function sendFirebasePasswordReset(email: string): Promise<void> {
       throw new Error('電子郵件格式不正確！');
     }
     throw new Error(error.message || '發送密碼重設信失敗，請稍後再試');
+  }
+}
+
+export async function confirmFirebasePasswordReset(actionCodeOrLink: string, newPassword: string): Promise<string> {
+  let oobCode = actionCodeOrLink.trim();
+  if (oobCode.includes('oobCode=')) {
+    try {
+      const url = new URL(oobCode);
+      oobCode = url.searchParams.get('oobCode') || oobCode;
+    } catch {
+      const match = oobCode.match(/oobCode=([^&]+)/);
+      if (match) oobCode = match[1];
+    }
+  }
+
+  try {
+    const email = await verifyPasswordResetCode(auth, oobCode);
+    await confirmPasswordReset(auth, oobCode, newPassword.trim());
+    return email;
+  } catch (error: any) {
+    console.warn('Firebase confirm password reset error:', error);
+    if (error.code === 'auth/expired-action-code') {
+      throw new Error('此安全認證代碼或連結已過期，請重新發送密碼重設信！');
+    } else if (error.code === 'auth/invalid-action-code') {
+      throw new Error('此安全認證代碼或連結無效，請確認由信箱取得之完整連結或代碼！');
+    } else if (error.code === 'auth/weak-password') {
+      throw new Error('新密碼強度不足，請設定至少 6 位元密碼！');
+    }
+    throw new Error(error.message || '確認重設密碼失敗，請稍後再試');
   }
 }
 
@@ -168,6 +199,121 @@ export async function verifyFirebasePhoneCode(
       throw new Error('驗證碼已過期，請重新發送簡訊！');
     }
     throw new Error(error.message || '手機驗證碼確認失敗');
+  }
+}
+
+export async function sendFirebaseEmailVerification(user?: FirebaseUser): Promise<void> {
+  const targetUser = user || auth.currentUser;
+  if (!targetUser) {
+    throw new Error('找不到目前的登入用戶以發送認證信');
+  }
+  try {
+    await sendEmailVerification(targetUser);
+  } catch (error: any) {
+    console.warn('Firebase email verification send error:', error);
+    if (error.code === 'auth/too-many-requests') {
+      throw new Error('發送次數過多，請稍後幾分鐘再試。');
+    }
+    throw new Error(error.message || '發送認證信失敗，請稍後再試');
+  }
+}
+
+/**
+ * 伺服器端發送電子郵件驗證碼 / 認證信
+ */
+export async function sendEmailVerificationCode(
+  email: string,
+  type: 'register' | 'forgot_password' | 'verify_email' | 'general' = 'general',
+  name?: string
+): Promise<{ success: boolean; message: string; code?: string; expiresAt?: number }> {
+  try {
+    const res = await fetch('/api/auth/send-email-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), type, name }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || '發送認證信失敗');
+    }
+    return data;
+  } catch (err: any) {
+    console.warn('Send email code error:', err);
+    throw new Error(err.message || '無法連線發送認證信，請檢查網路');
+  }
+}
+
+/**
+ * 伺服器端驗證電子郵件驗證碼
+ */
+export async function verifyEmailCode(
+  email: string,
+  code: string,
+  type: 'register' | 'forgot_password' | 'verify_email' | 'general' = 'general'
+): Promise<{ success: boolean; verified: boolean; message?: string }> {
+  try {
+    const res = await fetch('/api/auth/verify-email-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), code: code.trim(), type }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || '驗證碼錯誤或過期');
+    }
+    return data;
+  } catch (err: any) {
+    console.warn('Verify email code error:', err);
+    throw new Error(err.message || '驗證失敗，請重新輸入');
+  }
+}
+
+/**
+ * 伺服器端發送手機簡訊驗證碼
+ */
+export async function sendBackendSmsCode(
+  phone: string,
+  type: string = 'general'
+): Promise<{ success: boolean; message: string; code?: string; expiresAt?: number }> {
+  try {
+    const res = await fetch('/api/auth/send-sms-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone.trim(), type }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || '發送簡訊失敗');
+    }
+    return data;
+  } catch (err: any) {
+    console.warn('Send SMS code error:', err);
+    throw new Error(err.message || '無法發送簡訊驗證碼');
+  }
+}
+
+/**
+ * 伺服器端驗證手機簡訊驗證碼
+ */
+export async function verifyBackendSmsCode(
+  phone: string,
+  code: string,
+  type: string = 'general'
+): Promise<{ success: boolean; verified: boolean }> {
+  try {
+    const res = await fetch('/api/auth/verify-sms-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone.trim(), code: code.trim(), type }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || '簡訊驗證碼錯誤或已過期');
+    }
+    return data;
+  } catch (err: any) {
+    console.warn('Verify SMS code error:', err);
+    throw new Error(err.message || '驗證失敗');
   }
 }
 

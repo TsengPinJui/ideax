@@ -33,7 +33,7 @@ export const ShatterPageTurnTransition: React.FC<ShatterPageTurnTransitionProps>
 
   // Generate 42 detailed shards radiating from the clicked location
   const shards: ShardData[] = useMemo(() => {
-    const chars = clickedWord === 'painPoint' ? ['痛', '點', '，', '痛', '點'] : ['創', '新', '起', '點', '創', '新'];
+    const chars = clickedWord === 'painPoint' ? ['痛', '點', '，', '痛', '點'] : ['創', '新', '起', '點', '！', '創', '新'];
     const brushColors =
       clickedWord === 'painPoint'
         ? ['#fda4af', '#fb7185', '#f43f5e', '#fecdd3', '#e11d48']

@@ -176,7 +176,7 @@ export function getAllJudgeScoreRecords(): Record<string, ProposalJudgeScoreReco
   const initialSeeds: Record<string, ProposalJudgeScoreRecord> = {
     'user-expert-1_prop-star-1': {
       judgeId: 'user-expert-1',
-      judgeName: '柯育任 院長/特聘教授',
+      judgeName: '柯育任 院長/客座教授',
       proposalId: 'prop-star-1',
       scores: { innovation: 88, completeness: 85, feasibility: 92, commercial: 86 },
       weightedScore: 88 * 0.4 + 85 * 0.2 + 92 * 0.2 + 86 * 0.2, // 87.8
@@ -196,7 +196,7 @@ export function getAllJudgeScoreRecords(): Record<string, ProposalJudgeScoreReco
     },
     'user-expert-1_prop-star-2': {
       judgeId: 'user-expert-1',
-      judgeName: '柯育任 院長/特聘教授',
+      judgeName: '柯育任 院長/客座教授',
       proposalId: 'prop-star-2',
       scores: { innovation: 92, completeness: 90, feasibility: 86, commercial: 94 },
       weightedScore: 92 * 0.4 + 90 * 0.2 + 86 * 0.2 + 94 * 0.2, // 90.8
@@ -216,7 +216,7 @@ export function getAllJudgeScoreRecords(): Record<string, ProposalJudgeScoreReco
     },
     'user-expert-1_prop-star-3': {
       judgeId: 'user-expert-1',
-      judgeName: '柯育任 院長/特聘教授',
+      judgeName: '柯育任 院長/客座教授',
       proposalId: 'prop-star-3',
       scores: { innovation: 96, completeness: 88, feasibility: 82, commercial: 85 },
       weightedScore: 96 * 0.4 + 88 * 0.2 + 82 * 0.2 + 85 * 0.2, // 89.4
@@ -496,14 +496,14 @@ export function generateAggregatedRewardsReport(proposals: StarSeasonProposal[])
     user.notes = user.notes ? `${user.notes}；${note}` : note;
   });
 
-  // 3. 特聘評審審查出席與指導費
+  // 3. 決選評審審查出席與指導費
   experts.forEach((exp) => {
     if (exp.isJudgeSelected) {
-      const user = ensureUser(exp.userId, exp.expertName, '特聘評審專家');
+      const user = ensureUser(exp.userId, exp.expertName, '決選評審專家');
       const honorarium = 5000;
       user.breakdown.judgeConsultingHonorariumCash += honorarium;
       user.totalCash += honorarium;
-      const note = '擔任創星季特聘決選專家評審委員：出席評審費 NT$5,000';
+      const note = '擔任創星季決選專家評審委員：出席評審費 NT$5,000';
       user.notes = user.notes ? `${user.notes}；${note}` : note;
     } else if (exp.status === 'approved') {
       const user = ensureUser(exp.userId, exp.expertName, '智庫專家');
@@ -515,7 +515,7 @@ export function generateAggregatedRewardsReport(proposals: StarSeasonProposal[])
   // 4. 校園推廣大使獎勵 (每案 300 點)
   const ambassadors = [
     { id: 'user-ambassador-1', name: '陳品潔 (臺大推廣大使)', approvedCases: 8 },
-    { id: 'user-expert-1', name: '柯育任 院長/特聘教授', approvedCases: 3 }, // 專家兼推廣大使
+    { id: 'user-expert-1', name: '柯育任 院長/客座教授', approvedCases: 3 }, // 專家兼推廣大使
   ];
   ambassadors.forEach((a) => {
     const user = ensureUser(a.id, a.name, '推廣大使');
@@ -541,7 +541,7 @@ export function exportFinalRankingsExcel(rankings: FinalProposalAggregateScore[]
       '參賽團隊/代表': r.authorName,
       '所屬領域': r.trackName,
       '初審注資點數': r.supportPoints,
-      '特聘評審算術平均分': r.averageFinalScore,
+      '專家評審算術平均分': r.averageFinalScore,
       '已評審委員人數': r.judgesCount,
       '獲得獎金 (NT$)': r.cashReward,
       '獲得平台點數 (點)': r.pointsReward,

@@ -27,6 +27,7 @@ import { AiAssistantSettingsPanel } from './AiAssistantSettingsPanel';
 import { CopyableUserId } from './CopyableUserId';
 import { PlatformManualModal } from './PlatformManualModal';
 import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
+import { GOOGLE_SITELINKS, GoogleSitelinkItem, getSitelinkFullUrl } from '../services/seoService';
 import { 
   ContractData, 
   buildContractFromProposalItem, 
@@ -50,6 +51,10 @@ import {
   Unlock,
   KeyRound,
   AlertCircle,
+  Compass,
+  PlusCircle,
+  GraduationCap,
+  Flame,
   ArrowLeft,
   Shield,
   ShieldAlert,
@@ -164,6 +169,7 @@ interface UserDashboardModalProps {
   onSelectCategory?: (category: any, subcategory: string) => void;
   onOpenAiCrm?: () => void;
   onStartOnboarding?: () => void;
+  onNavigateToSitelink?: (item: GoogleSitelinkItem) => void;
 }
 
 export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
@@ -176,6 +182,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   onSelectCategory,
   onOpenAiCrm,
   onStartOnboarding,
+  onNavigateToSitelink,
 }) => {
   const {
     currentUser,
@@ -294,6 +301,51 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
   const [isRechargeExpanded, setIsRechargeExpanded] = useState(false);
   const [isCloudDbExpanded, setIsCloudDbExpanded] = useState(false);
+  const [copiedSitelinkId, setCopiedSitelinkId] = useState<string | null>(null);
+
+  const handleCopySitelinkUrl = (e: React.MouseEvent, item: GoogleSitelinkItem) => {
+    e.stopPropagation();
+    const fullUrl = getSitelinkFullUrl(item);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        setCopiedSitelinkId(item.id);
+        setTimeout(() => setCopiedSitelinkId(null), 2000);
+      });
+    }
+  };
+
+  const handleSitelinkItemClick = (e: React.MouseEvent, item: GoogleSitelinkItem) => {
+    e.preventDefault();
+    if (onNavigateToSitelink) {
+      onNavigateToSitelink(item);
+    } else {
+      window.dispatchEvent(new CustomEvent('ideax_navigate_sitelink', { detail: { id: item.id } }));
+      onClose();
+    }
+  };
+
+  const renderSitelinkIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'Compass':
+        return <Compass className="w-4 h-4 text-amber-600 shrink-0" />;
+      case 'PlusCircle':
+        return <PlusCircle className="w-4 h-4 text-amber-600 shrink-0" />;
+      case 'AlertCircle':
+        return <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />;
+      case 'GraduationCap':
+        return <GraduationCap className="w-4 h-4 text-emerald-600 shrink-0" />;
+      case 'Flame':
+        return <Flame className="w-4 h-4 text-orange-500 shrink-0" />;
+      case 'ShieldCheck':
+        return <ShieldCheck className="w-4 h-4 text-purple-600 shrink-0" />;
+      case 'Layers':
+        return <Layers className="w-4 h-4 text-blue-500 shrink-0" />;
+      case 'FileText':
+        return <FileText className="w-4 h-4 text-indigo-500 shrink-0" />;
+      default:
+        return <Search className="w-4 h-4 text-stone-400 shrink-0" />;
+    }
+  };
 
   const handleConfirmModeToggle = () => {
     if (!pendingModeConfirm) return;
@@ -725,11 +777,28 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [userEmail, setUserEmail] = useState(currentUser.email || '');
 
   // Bank Account State (解答者與撥退款專用帳戶)
-  const [bankCode, setBankCode] = useState(currentUser.bankAccount?.bankCode || '');
-  const [bankName, setBankName] = useState(currentUser.bankAccount?.bankName || '');
-  const [branchName, setBranchName] = useState(currentUser.bankAccount?.branchName || '');
-  const [accountNumber, setAccountNumber] = useState(currentUser.bankAccount?.accountNumber || '');
-  const [accountHolder, setAccountHolder] = useState(currentUser.bankAccount?.accountHolder || currentUser.name || '');
+  // 依使用者指示：用戶申請任何驗證時，絕對不自動帶入虛擬測試資料
+  const isMockBankAccount = Boolean(
+    currentUser.bankAccount && (
+      currentUser.bankAccount.bankCode === '822' ||
+      currentUser.bankAccount.accountNumber?.includes('123456789012') ||
+      currentUser.bankAccount.accountHolder?.includes('創點子股份有限公司') ||
+      currentUser.bankAccount.accountHolder?.includes('測試')
+    )
+  );
+  const initialBank = isMockBankAccount ? null : currentUser.bankAccount;
+  const isRealAccountHolder = Boolean(
+    currentUser.name &&
+    !currentUser.name.includes('測試') &&
+    !currentUser.name.includes('管理') &&
+    !currentUser.name.includes('訪客')
+  );
+
+  const [bankCode, setBankCode] = useState(initialBank?.bankCode || '');
+  const [bankName, setBankName] = useState(initialBank?.bankName || '');
+  const [branchName, setBranchName] = useState(initialBank?.branchName || '');
+  const [accountNumber, setAccountNumber] = useState(initialBank?.accountNumber || '');
+  const [accountHolder, setAccountHolder] = useState(initialBank?.accountHolder || (isRealAccountHolder ? currentUser.name : ''));
 
   // 修改密碼狀態 (Change Password State)
   const [currentOldPassword, setCurrentOldPassword] = useState('');
@@ -751,7 +820,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     currentUser.surveyData?.relatedDomains || [currentUser.domain || '創新創業']
   );
   const [surveyRelatedDomainsCustom, setSurveyRelatedDomainsCustom] = useState(currentUser.surveyData?.relatedDomainsCustom || '');
+  const [surveyWillingPointsPerQuestion, setSurveyWillingPointsPerQuestion] = useState(currentUser.surveyData?.willingPointsPerQuestion || '');
   const [surveyWillingQuestionBudget, setSurveyWillingQuestionBudget] = useState(currentUser.surveyData?.willingQuestionBudget || '');
+  const [surveyMonthlyQuestionBudget, setSurveyMonthlyQuestionBudget] = useState(currentUser.surveyData?.monthlyQuestionBudget || '');
   const [surveyWillingToProvideSolutions, setSurveyWillingToProvideSolutions] = useState(currentUser.surveyData?.willingToProvideSolutions || 'very_willing');
   const [surveyUsageFrequency, setSurveyUsageFrequency] = useState(currentUser.surveyData?.usageFrequency || '');
   const [surveyWillingToBeSideHustle, setSurveyWillingToBeSideHustle] = useState(currentUser.surveyData?.willingToBeSideHustle || '');
@@ -772,16 +843,18 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setUserCompany(currentUser.company || '');
     setUserPhone(currentUser.phone || '');
     setUserEmail(currentUser.email || '');
-    setBankCode(currentUser.bankAccount?.bankCode || '');
-    setBankName(currentUser.bankAccount?.bankName || '');
-    setBranchName(currentUser.bankAccount?.branchName || '');
-    setAccountNumber(currentUser.bankAccount?.accountNumber || '');
-    setAccountHolder(currentUser.bankAccount?.accountHolder || currentUser.name || '');
+    setBankCode(initialBank?.bankCode || '');
+    setBankName(initialBank?.bankName || '');
+    setBranchName(initialBank?.branchName || '');
+    setAccountNumber(initialBank?.accountNumber || '');
+    setAccountHolder(initialBank?.accountHolder || (isRealAccountHolder ? currentUser.name : ''));
     setSurveyDesiredServices(currentUser.surveyData?.desiredServices || []);
     setSurveyDesiredServicesCustom(currentUser.surveyData?.desiredServicesCustom || '');
     setSurveyRelatedDomains(currentUser.surveyData?.relatedDomains || [currentUser.domain || '創新創業']);
     setSurveyRelatedDomainsCustom(currentUser.surveyData?.relatedDomainsCustom || '');
+    setSurveyWillingPointsPerQuestion(currentUser.surveyData?.willingPointsPerQuestion || '');
     setSurveyWillingQuestionBudget(currentUser.surveyData?.willingQuestionBudget || '');
+    setSurveyMonthlyQuestionBudget(currentUser.surveyData?.monthlyQuestionBudget || '');
     setSurveyWillingToProvideSolutions(currentUser.surveyData?.willingToProvideSolutions || 'very_willing');
     setSurveyUsageFrequency(currentUser.surveyData?.usageFrequency || '');
     setSurveyWillingToBeSideHustle(currentUser.surveyData?.willingToBeSideHustle || '');
@@ -1281,7 +1354,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       desiredServicesCustom: surveyDesiredServicesCustom.trim() || undefined,
       relatedDomains: surveyRelatedDomains,
       relatedDomainsCustom: surveyRelatedDomainsCustom.trim() || undefined,
+      willingPointsPerQuestion: surveyWillingPointsPerQuestion || undefined,
       willingQuestionBudget: surveyWillingQuestionBudget,
+      monthlyQuestionBudget: surveyMonthlyQuestionBudget || undefined,
       willingToProvideSolutions: surveyWillingToProvideSolutions,
       usageFrequency: surveyUsageFrequency,
       willingToBeSideHustle: surveyWillingToBeSideHustle,
@@ -1611,10 +1686,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     if (!userAnnualSalary || userAnnualSalary === '') errors['q5'] = true;
 
     if (!surveyDesiredServices || surveyDesiredServices.length === 0) errors['q6_1'] = true;
-    if (!surveyWillingQuestionBudget || surveyWillingQuestionBudget === '') errors['q6_2'] = true;
-    if (!surveyUsageFrequency || surveyUsageFrequency === '') errors['q6_3'] = true;
-    if (!surveyWillingToBeSideHustle || surveyWillingToBeSideHustle === '') errors['q6_4'] = true;
-    if (!surveyWillingToSubscribeSolverPlan || surveyWillingToSubscribeSolverPlan === '') errors['q6_5'] = true;
+    if (!surveyWillingPointsPerQuestion || surveyWillingPointsPerQuestion === '') errors['q6_2'] = true;
+    if (!surveyWillingQuestionBudget || surveyWillingQuestionBudget === '') errors['q6_3'] = true;
+    if (!surveyMonthlyQuestionBudget || surveyMonthlyQuestionBudget === '') errors['q6_4'] = true;
+    if (!surveyUsageFrequency || surveyUsageFrequency === '') errors['q6_5'] = true;
+    if (!surveyWillingToBeSideHustle || surveyWillingToBeSideHustle === '') errors['q6_6'] = true;
+    if (!surveyWillingToSubscribeSolverPlan || surveyWillingToSubscribeSolverPlan === '') errors['q6_7'] = true;
 
     setSurveyUnansweredErrors(errors);
 
@@ -1629,7 +1706,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       desiredServicesCustom: surveyDesiredServicesCustom.trim() || undefined,
       relatedDomains: surveyRelatedDomains,
       relatedDomainsCustom: surveyRelatedDomainsCustom.trim() || undefined,
+      willingPointsPerQuestion: surveyWillingPointsPerQuestion,
       willingQuestionBudget: surveyWillingQuestionBudget,
+      monthlyQuestionBudget: surveyMonthlyQuestionBudget,
       willingToProvideSolutions: surveyWillingToProvideSolutions,
       usageFrequency: surveyUsageFrequency,
       willingToBeSideHustle: surveyWillingToBeSideHustle,
@@ -3892,126 +3971,155 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 )}
               </div>
 
-              {/* Administrative Function Pillars */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-black text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <LayoutGrid className="w-3.5 h-3.5 text-purple-700" />
-                  <span>管理員功能模組快捷導覽</span>
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {/* 用戶分佈與習慣統計 */}
-                  <div
-                    onClick={() => setActiveTab('admin_user_analytics')}
-                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-purple-400 hover:bg-purple-50/20 transition-all cursor-pointer group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <BarChart3 className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h5 className="font-black text-stone-900 text-sm">用戶分佈與習慣統計</h5>
-                        <span className="text-[10px] text-purple-700 font-bold">支援 Excel 匯出與圖表</span>
-                      </div>
+              {/* Google 搜尋分頁捷徑與子網址導覽 (Google Sitelinks) - 原管理員功能模組快捷導覽區塊替換 */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+                {/* 區塊標題與快捷預覽按鈕 */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center justify-center shrink-0 shadow-xs">
+                      <Search className="w-4 h-4" />
                     </div>
-                    <p className="text-xs text-stone-500 line-clamp-2">
-                      彙整性別、年齡、職業、期望服務、專業領域、提問預算及付費意願，可一鍵下載標準 Excel 檔案。
-                    </p>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-sm font-black text-stone-900 tracking-wide">
+                          Google 搜尋分頁捷徑與子網址導覽 (Google Sitelinks)
+                        </h4>
+                        <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
+                          8 大獨立子網址
+                        </span>
+                        <span className="text-[10px] bg-blue-100 text-blue-900 border border-blue-200 px-2 py-0.5 rounded-full font-bold">
+                          Schema.org 結構化規範
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-500 mt-0.5">
+                        全站專屬獨立子路徑與搜尋引擎捷徑規範。點擊卡片可直達分頁，或點擊複製按鈕快速取得公開分享網址。
+                      </p>
+                    </div>
                   </div>
 
-                  {/* 會員方案與費率管理 */}
-                  <div
-                    onClick={() => setActiveTab('subscriptions')}
-                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 hover:bg-amber-50/20 transition-all cursor-pointer group shadow-2xs"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('ideax_open_sitelinks'));
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-xs hover:shadow self-start sm:self-auto shrink-0 active:scale-95"
+                    title="開啟 Google 搜尋捷徑完整預覽中心"
                   >
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Crown className="w-4 h-4" />
+                    <Search className="w-3.5 h-3.5" />
+                    <span>開啟 Google 搜尋捷徑預覽中心</span>
+                  </button>
+                </div>
+
+                {/* 8 大子網址分類宮格 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* 群組 1: IdeaX 創點子 */}
+                  <div className="p-3.5 rounded-2xl bg-amber-50/40 border border-amber-200/80 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span>IdeaX 創點子 (4 大入口)</span>
                       </div>
-                      <div>
-                        <h5 className="font-black text-stone-900 text-sm">會員方案與費率管理</h5>
-                        <span className="text-[10px] text-amber-700 font-bold">自訂階梯定價與分潤優惠</span>
-                      </div>
+                      <span className="text-[10px] text-amber-700 font-mono font-semibold">主平台業務流</span>
                     </div>
-                    <p className="text-xs text-stone-500 line-clamp-2">
-                      自由調整一般會員、達人、權威、大師等各級別月費與抽成折抵幅度，即時調控全站營收模型。
-                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {GOOGLE_SITELINKS.filter((s) => s.category === 'ideax').map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={(e) => handleSitelinkItemClick(e, item)}
+                          className="p-2.5 rounded-xl bg-white hover:bg-amber-50/60 border border-stone-200/90 hover:border-amber-400 transition-all cursor-pointer group shadow-2xs flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <div className="flex items-center gap-1.5">
+                                {renderSitelinkIcon(item.icon)}
+                                <span className="font-bold text-stone-900 group-hover:text-amber-800 text-xs">
+                                  {item.name}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => handleCopySitelinkUrl(e, item)}
+                                title="複製完整網址"
+                                className="p-1 rounded-md text-stone-400 hover:text-amber-600 hover:bg-amber-100 transition-colors"
+                              >
+                                {copiedSitelinkId === item.id ? (
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
+                            <div className="text-[10px] text-stone-500 line-clamp-1">
+                              {item.description}
+                            </div>
+                          </div>
+                          <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between">
+                            <span className="text-[10px] font-mono text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded font-bold">
+                              {item.path}
+                            </span>
+                            <span className="text-[10px] text-stone-400 group-hover:text-amber-700 flex items-center gap-0.5">
+                              直達 <ChevronRight className="w-3 h-3" />
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  {/* 交易管理 */}
-                  <div
-                    onClick={() => setActiveTab('transactions')}
-                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-emerald-400 hover:bg-emerald-50/20 transition-all cursor-pointer group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Clock className="w-4 h-4" />
+                  {/* 群組 2: 創星季 */}
+                  <div className="p-3.5 rounded-2xl bg-purple-50/40 border border-purple-200/80 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-black text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-purple-500" />
+                        <span>創星季 (4 大入口)</span>
                       </div>
-                      <div>
-                        <h5 className="font-black text-stone-900 text-sm">全站交易管理</h5>
-                        <span className="text-[10px] text-emerald-700 font-bold">方案訂閱與金流明細</span>
-                      </div>
+                      <span className="text-[10px] text-purple-700 font-mono font-semibold">競賽與專案庫</span>
                     </div>
-                    <p className="text-xs text-stone-500 line-clamp-2">
-                      查閱全站方案成交訂單、懸賞解鎖、點數儲值與服務費抽成明細，支援多維度篩選與備註。
-                    </p>
-                  </div>
 
-                  {/* 點數與帳務管理 (整合點數查詢、應收託管與管理員撥付) */}
-                  <div
-                    onClick={() => setActiveTab('points_receivables')}
-                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 hover:bg-amber-50/20 transition-all cursor-pointer group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
-                        <Coins className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h5 className="font-black text-stone-900 text-sm">點數與帳務管理</h5>
-                        <span className="text-[10px] text-amber-700 font-bold">全站用戶帳目與點數撥付</span>
-                      </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {GOOGLE_SITELINKS.filter((s) => s.category === 'star_season').map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={(e) => handleSitelinkItemClick(e, item)}
+                          className="p-2.5 rounded-xl bg-white hover:bg-purple-50/60 border border-stone-200/90 hover:border-purple-400 transition-all cursor-pointer group shadow-2xs flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <div className="flex items-center gap-1.5">
+                                {renderSitelinkIcon(item.icon)}
+                                <span className="font-bold text-stone-900 group-hover:text-purple-800 text-xs">
+                                  {item.name}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => handleCopySitelinkUrl(e, item)}
+                                title="複製完整網址"
+                                className="p-1 rounded-md text-stone-400 hover:text-purple-600 hover:bg-purple-100 transition-colors"
+                              >
+                                {copiedSitelinkId === item.id ? (
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
+                            <div className="text-[10px] text-stone-500 line-clamp-1">
+                              {item.description}
+                            </div>
+                          </div>
+                          <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between">
+                            <span className="text-[10px] font-mono text-purple-700 bg-purple-100/70 px-1.5 py-0.2 rounded font-bold">
+                              {item.path}
+                            </span>
+                            <span className="text-[10px] text-stone-400 group-hover:text-purple-700 flex items-center gap-0.5">
+                              直達 <ChevronRight className="w-3 h-3" />
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <p className="text-xs text-stone-500 line-clamp-2">
-                      查閱全站用戶點數餘額、未結收益與銀行帳戶，並可運用每日 5 萬點配額執行活動激勵與帳務調度。
-                    </p>
-                  </div>
-
-                  {/* 案件管理 */}
-                  <div
-                    onClick={() => setActiveTab('admin_cases')}
-                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-blue-400 hover:bg-blue-50/20 transition-all cursor-pointer group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Briefcase className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h5 className="font-black text-stone-900 text-sm">案件管理與私聊稽核</h5>
-                        <span className="text-[10px] text-blue-700 font-bold">全站案件與履約追蹤</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-stone-500 line-clamp-2">
-                      查閱懸賞問題、採納方案、階段交付交付成果與客製私聊進度，杜絕履約違規。
-                    </p>
-                  </div>
-
-                  {/* 受理認證 */}
-                  <div
-                    onClick={() => setActiveTab('admin_certifications')}
-                    className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-emerald-400 hover:bg-emerald-50/20 transition-all cursor-pointer group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <BadgeCheck className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h5 className="font-black text-stone-900 text-sm">受理認證 (實名、專家)</h5>
-                        <span className="text-[10px] text-emerald-700 font-bold">證件資格審核批覆</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-stone-500 line-clamp-2">
-                      審核用戶送審之身分證明文件與專家頭銜佐證，一鍵批覆通過或核發平台大師徽章。
-                    </p>
                   </div>
                 </div>
               </div>
@@ -4633,7 +4741,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  應收帳款 {isNoPaymentMode && <span className="text-[10px] text-stone-400 font-normal ml-0.5">（尚未開放）</span>}
+                  應收帳款
                 </button>
                 <button
                   type="button"
@@ -4678,7 +4786,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           title="展開或收合購買儲值點數方案"
                         >
                           <CreditCard className="w-3 h-3" />
-                          <span>{isRechargeExpanded ? '收合 ▲' : '+ 儲值 ▼'}</span>
+                          <span>{isRechargeExpanded ? '收合 ▲' : '+ 儲值 (暫不開放) ▼'}</span>
                         </button>
                       </div>
                       <div className="flex items-baseline gap-1.5 mt-1 sm:mt-1.5">
@@ -4719,6 +4827,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </button>
                     </div>
 
+                    {/* 暫不開放儲值公告 */}
+                    <div className="p-3.5 rounded-xl bg-amber-100/80 border border-amber-300 text-amber-950 text-xs font-semibold flex items-center gap-2">
+                      <span className="text-base select-none shrink-0">💡</span>
+                      <span>
+                        <strong>平台公告：</strong>目前為創星季競賽營運階段，線上儲值功能暫不開放。您既有的點數仍可正常用於提問懸賞與付點，感謝體諒！
+                      </span>
+                    </div>
+
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                       {RECHARGE_PACKAGES.map((pkg) => (
                         <div
@@ -4744,13 +4860,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              depositPackage(pkg.id);
-                              setMsg(`🎉 成功儲值 ${pkg.totalPoints} 點！`);
-                              setTimeout(() => setMsg(null), 4000);
+                              setMsg('💡 目前為創星季競賽營運階段，線上儲值暫不開放，現有點數可正常付點！');
+                              setTimeout(() => setMsg(null), 3500);
                             }}
-                            className="mt-3 w-full py-1.5 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs rounded-xl shadow-2xs cursor-pointer transition-colors"
+                            className="mt-3 w-full py-1.5 bg-stone-100 hover:bg-stone-200 active:bg-stone-100 text-stone-500 font-bold text-xs rounded-xl shadow-2xs cursor-pointer transition-colors border border-stone-200"
+                            title="目前暫不開放儲值"
                           >
-                            立即購買
+                            暫不開放儲值
                           </button>
                         </div>
                       ))}
@@ -4961,13 +5077,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                 </div>
 
-                {/* 無金流模式提示 */}
-                {isNoPaymentMode && (
-                  <div className="p-3.5 rounded-2xl bg-stone-100 border border-stone-200 text-stone-700 text-xs font-semibold flex items-center gap-2">
-                    <span className="font-bold text-stone-800">💡 無金流模式：</span>
-                    <span>應收帳款與銀行撥款提領功能尚未開放。</span>
-                  </div>
-                )}
+                {/* 應收帳款開放狀態提示 */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-950 text-xs sm:text-sm font-medium flex items-start gap-2.5 leading-relaxed shadow-xs">
+                  <span className="text-base shrink-0 select-none">💡</span>
+                  <span>
+                    目前尚未開放撥款，您獲得的懸賞仍會記錄在<strong>&lt;應收帳款&gt;</strong>且將於開放撥款時通知用戶請領帳款收益。感謝體諒🙇
+                  </span>
+                </div>
 
                 {/* 應收帳款核心指標卡片 */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
@@ -7833,13 +7949,46 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </div>
                     </div>
 
-                    {/* 6-2: 提問預算 */}
+                    {/* 6-2: 通常願意花多少點數提問懸賞？ */}
                     <div>
                       <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
                         <span className="flex items-center gap-1 flex-wrap">
                           <span className="text-rose-500 font-bold text-sm leading-none">*</span>
-                          <span>6-2. 若您遇到棘手問題，一次性尋求專家解答願支付多少預算？</span>
+                          <span>6-2. 您通常願意花多少點數提問懸賞？</span>
                           {surveyUnansweredErrors['q6_2'] && (
+                            <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                              (請回答此題)
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                      <select
+                        value={surveyWillingPointsPerQuestion}
+                        onChange={(e) => {
+                          setSurveyWillingPointsPerQuestion(e.target.value);
+                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_2: false }));
+                        }}
+                        className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
+                          surveyUnansweredErrors['q6_2'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                        }`}
+                      >
+                        <option value="">-------</option>
+                        <option value="0_free">0 點（僅發布免費交流/痛點）</option>
+                        <option value="100_300">100 ~ 300 點（L1 基礎懸賞）</option>
+                        <option value="301_899">301 ~ 899 點（L2 進階懸賞）</option>
+                        <option value="900_2999">900 ~ 2,999 點（L3 高階挑戰）</option>
+                        <option value="above_3000">3,000 點以上（L4 資深顧問級）</option>
+                        <option value="undecided">視問題緊急度與難易度而定</option>
+                      </select>
+                    </div>
+
+                    {/* 6-3: 棘手問題一次性預算 */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1 flex-wrap">
+                          <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                          <span>6-3. 若您遇到棘手問題，一次性尋求專家解答願支付多少預算？</span>
+                          {surveyUnansweredErrors['q6_3'] && (
                             <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
                               (請回答此題)
                             </span>
@@ -7850,10 +7999,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         value={surveyWillingQuestionBudget}
                         onChange={(e) => {
                           setSurveyWillingQuestionBudget(e.target.value);
-                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_2: false }));
+                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_3: false }));
                         }}
                         className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
-                          surveyUnansweredErrors['q6_2'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                          surveyUnansweredErrors['q6_3'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
                         }`}
                       >
                         <option value="">-------</option>
@@ -7866,13 +8015,72 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </select>
                     </div>
 
-                    {/* 6-3: 打開頻率 */}
+                    {/* 6-4: 每個月願意花多少錢在提問上？（附點數儲值與新台幣對照表） */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-stone-800 flex items-center justify-between">
+                        <span className="flex items-center gap-1 flex-wrap">
+                          <span className="text-rose-500 font-bold text-sm leading-none">*</span>
+                          <span>6-4. 每個月願意花多少錢在提問上？</span>
+                          {surveyUnansweredErrors['q6_4'] && (
+                            <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
+                              (請回答此題)
+                            </span>
+                          )}
+                        </span>
+                      </label>
+
+                      {/* 點數儲值與新台幣對照表 */}
+                      <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-stone-50 border border-amber-200/90 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-amber-950 flex items-center gap-1.5">
+                            🪙 平台點數儲值與新台幣對照表
+                          </span>
+                          <span className="text-[10px] text-amber-800 font-medium">1 點數 ≈ NT$ 1.15 ~ 1.42</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                          {RECHARGE_PACKAGES.map((pkg) => (
+                            <div key={pkg.id} className="p-2 rounded-xl bg-white border border-amber-200/80 shadow-2xs space-y-0.5">
+                              <span className="text-[10px] font-black text-amber-800 bg-amber-100/90 px-1.5 py-0.2 rounded-full inline-block">
+                                {pkg.tag}
+                              </span>
+                              <div className="font-mono font-black text-xs text-stone-900 mt-0.5">
+                                {pkg.totalPoints.toLocaleString()} 點
+                              </div>
+                              <div className="text-[10px] font-bold text-amber-900">
+                                NT$ {pkg.price.toLocaleString()}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <select
+                        value={surveyMonthlyQuestionBudget}
+                        onChange={(e) => {
+                          setSurveyMonthlyQuestionBudget(e.target.value);
+                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_4: false }));
+                        }}
+                        className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
+                          surveyUnansweredErrors['q6_4'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                        }`}
+                      >
+                        <option value="">-------</option>
+                        <option value="monthly_0">NT$ 0（僅使用免費功能/現有點數）</option>
+                        <option value="monthly_under_300">NT$ 300 以下（約等於 210 點輕量包）</option>
+                        <option value="monthly_300_600">NT$ 300 ~ 600（約 210 ~ 510 點）</option>
+                        <option value="monthly_600_1500">NT$ 600 ~ 1,500（約 510 ~ 1,200 點）</option>
+                        <option value="monthly_1500_3000">NT$ 1,500 ~ 3,000（約 1,200 ~ 2,610 點）</option>
+                        <option value="monthly_above_3000">NT$ 3,000 以上（高頻顧問諮詢需求）</option>
+                      </select>
+                    </div>
+
+                    {/* 6-5: 打開頻率 */}
                     <div>
                       <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
                         <span className="flex items-center gap-1 flex-wrap">
                           <span className="text-rose-500 font-bold text-sm leading-none">*</span>
-                          <span>6-3. 您預計多久打開一次 IdeaX 平台？</span>
-                          {surveyUnansweredErrors['q6_3'] && (
+                          <span>6-5. 您預計多久打開一次 IdeaX 平台？</span>
+                          {surveyUnansweredErrors['q6_5'] && (
                             <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
                               (請回答此題)
                             </span>
@@ -7883,10 +8091,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         value={surveyUsageFrequency}
                         onChange={(e) => {
                           setSurveyUsageFrequency(e.target.value);
-                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_3: false }));
+                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_5: false }));
                         }}
                         className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
-                          surveyUnansweredErrors['q6_3'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                          surveyUnansweredErrors['q6_5'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
                         }`}
                       >
                         <option value="">-------</option>
@@ -7898,13 +8106,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </select>
                     </div>
 
-                    {/* 6-4: 發展副業 */}
+                    {/* 6-6: 發展副業 */}
                     <div>
                       <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
                         <span className="flex items-center gap-1 flex-wrap">
                           <span className="text-rose-500 font-bold text-sm leading-none">*</span>
-                          <span>6-4. 您是否願意將在 IdeaX 提供解答發展為您的有償副業？</span>
-                          {surveyUnansweredErrors['q6_4'] && (
+                          <span>6-6. 您是否願意將在 IdeaX 提供解答發展為您的有償副業？</span>
+                          {surveyUnansweredErrors['q6_6'] && (
                             <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
                               (請回答此題)
                             </span>
@@ -7915,10 +8123,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         value={surveyWillingToBeSideHustle}
                         onChange={(e) => {
                           setSurveyWillingToBeSideHustle(e.target.value);
-                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_4: false }));
+                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_6: false }));
                         }}
                         className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
-                          surveyUnansweredErrors['q6_4'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                          surveyUnansweredErrors['q6_6'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
                         }`}
                       >
                         <option value="">-------</option>
@@ -7929,13 +8137,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </select>
                     </div>
 
-                    {/* 6-5: 解答者方案付費意願 */}
+                    {/* 6-7: 解答者方案付費意願 */}
                     <div>
                       <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
                         <span className="flex items-center gap-1 flex-wrap">
                           <span className="text-rose-500 font-bold text-sm leading-none">*</span>
-                          <span>6-5. 您是否願意花錢訂閱解答者的優惠方案？</span>
-                          {surveyUnansweredErrors['q6_5'] && (
+                          <span>6-7. 您是否願意花錢訂閱解答者的優惠方案？</span>
+                          {surveyUnansweredErrors['q6_7'] && (
                             <span className="text-rose-600 font-bold text-xs ml-1 animate-pulse">
                               (請回答此題)
                             </span>
@@ -7946,10 +8154,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         value={surveyWillingToSubscribeSolverPlan}
                         onChange={(e) => {
                           setSurveyWillingToSubscribeSolverPlan(e.target.value);
-                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_5: false }));
+                          if (e.target.value) setSurveyUnansweredErrors((prev) => ({ ...prev, q6_7: false }));
                         }}
                         className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:border-amber-500 outline-none ${
-                          surveyUnansweredErrors['q6_5'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
+                          surveyUnansweredErrors['q6_7'] ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/30' : 'border-stone-200'
                         }`}
                       >
                         <option value="">-------</option>
@@ -7960,10 +8168,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       </select>
                     </div>
 
-                    {/* 6-6: 給我們的建議，自由填寫 (選填) */}
+                    {/* 6-8: 給我們的建議，自由填寫 (選填) */}
                     <div>
                       <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
-                        <span>6-6. 給我們的建議（自由填寫）</span>
+                        <span>6-8. 給我們的建議（自由填寫）</span>
                         <span className="text-[10px] text-stone-400 font-normal">選填</span>
                       </label>
                       <textarea

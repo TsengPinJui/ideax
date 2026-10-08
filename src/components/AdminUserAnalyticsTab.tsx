@@ -1309,8 +1309,24 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                     {/* 6. 其他深入問題 */}
                     <td className="p-3 space-y-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
+                        {s.willingPointsPerQuestion && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-orange-100 text-orange-950 border border-orange-300">
+                            懸賞點數:{' '}
+                            {s.willingPointsPerQuestion === '0_free'
+                              ? '0點'
+                              : s.willingPointsPerQuestion === '100_300'
+                              ? '100~300點'
+                              : s.willingPointsPerQuestion === '301_899'
+                              ? '301~899點'
+                              : s.willingPointsPerQuestion === '900_2999'
+                              ? '900~3k點'
+                              : s.willingPointsPerQuestion === 'above_3000'
+                              ? '>3k點'
+                              : '視情況'}
+                          </span>
+                        )}
                         <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                          預算:{' '}
+                          單次預算:{' '}
                           {s.willingQuestionBudget
                             ? s.willingQuestionBudget === 'under_500'
                               ? '<500'
@@ -1323,6 +1339,22 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                               : '>20k'
                             : '2k~5k'}
                         </span>
+                        {s.monthlyQuestionBudget && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-200">
+                            月預算:{' '}
+                            {s.monthlyQuestionBudget === 'monthly_0'
+                              ? '$0'
+                              : s.monthlyQuestionBudget === 'monthly_under_300'
+                              ? '<$300'
+                              : s.monthlyQuestionBudget === 'monthly_300_600'
+                              ? '$300~600'
+                              : s.monthlyQuestionBudget === 'monthly_600_1500'
+                              ? '$600~1.5k'
+                              : s.monthlyQuestionBudget === 'monthly_1500_3000'
+                              ? '$1.5k~3k'
+                              : '>$3k'}
+                          </span>
+                        )}
                         <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-900">
                           副業:{' '}
                           {s.willingToBeSideHustle === 'very_willing'

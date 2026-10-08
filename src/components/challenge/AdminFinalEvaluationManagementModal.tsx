@@ -207,7 +207,7 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
                 )}
               </div>
               <p className="text-xs text-stone-300 mt-0.5">
-                管理員負責指派特聘評審、勾選入選提案、結算算術平均名次、發布前台結果與匯出 Excel。
+                管理員負責指派決選評審、勾選入選提案、結算算術平均名次、發布前台結果與匯出 Excel。
               </p>
             </div>
           </div>
@@ -603,7 +603,7 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
               <div className="bg-white p-4 rounded-2xl border border-stone-200 space-y-1">
                 <h4 className="font-black text-stone-900 text-sm flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-purple-600" />
-                  <span>特聘決選專家評審委員指派管理</span>
+                  <span>決選專家評審委員指派管理</span>
                 </h4>
                 <p className="text-xs text-stone-500">
                   評審身分為專家，由管理員在後台指派。被指派的評審立即具備「決選評分」專屬功能，並獲得審查車馬費 NT$5,000。不可兼任參賽者。
@@ -633,7 +633,7 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
                               <span>{exp.expertName}</span>
                               {isAppointed && (
                                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-700 text-white">
-                                  特聘評審委員
+                                  決選評審委員
                                 </span>
                               )}
                             </div>

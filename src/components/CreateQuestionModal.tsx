@@ -78,7 +78,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     lockToL0 ? 0 : 500
   );
   const [deadlineDays, setDeadlineDays] = useState<number>(14);
-  const [paymentMethod, setPaymentMethod] = useState<'信用卡' | 'LINE Pay' | 'Apple Pay' | 'ATM 轉帳'>('信用卡');
+  const [paymentMethod, setPaymentMethod] = useState<'帳戶點數付點' | '信用卡' | 'LINE Pay' | 'Apple Pay' | 'ATM 轉帳'>('帳戶點數付點');
 
   // 多階段交付設定
   const [enablePhasedDelivery, setEnablePhasedDelivery] = useState(false);
@@ -216,6 +216,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
     if (postType === 'seek_solution' && !agreeQuestionerTerms) {
       setTermsError('發布問題前，請先勾選確認已閱讀並同意 《提問會員服務條款》 與 《一般服務條款》');
+      return;
+    }
+
+    if (currentBounty > 0 && paymentMethod === '帳戶點數付點' && (currentUser?.balance || 0) < currentBounty) {
+      setTermsError(`您的帳戶點數餘額不足（目前餘額 ${(currentUser?.balance || 0).toLocaleString()} 點 / 需支付 ${currentBounty.toLocaleString()} 點），請切換為信用卡或其他支付方式。`);
       return;
     }
 
@@ -824,8 +829,18 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
         </div>
 
-        {/* Problem Level & Bounty Configuration (無金流模式下全站免費提問) */}
-        {isNoPaymentMode ? (
+        {/* Problem Level & Bounty Configuration (競賽模式痛點免費；其他提問正常懸賞並開放付點) */}
+        {postType === 'pain_point' ? (
+          <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-xs font-bold text-emerald-950 flex items-center gap-2.5 shadow-2xs">
+            <Sparkles className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div>
+              <div className="font-black text-emerald-900">【🏆 創星季競賽痛點徵件】：免收懸賞金（0 點免費發布）</div>
+              <div className="text-[11px] text-emerald-800/90 font-medium mt-0.5">
+                痛點提問一律免收點數，成功發布後享有專屬獨立網址，由參賽專家量身打造商業落地方案！
+              </div>
+            </div>
+          </div>
+        ) : isNoPaymentMode ? (
           <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 text-xs font-bold text-amber-950 flex items-center gap-2.5 shadow-2xs">
             <Coins className="w-5 h-5 text-amber-600 shrink-0" />
             <div>
@@ -841,13 +856,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             <div className="flex items-center gap-2">
               <Coins className="w-4 h-4 text-amber-600" />
               <h3 className="font-extrabold text-sm text-stone-900">
-                {postType === 'pain_point' ? '痛點懸賞設定（可免費提出）' : '問題分級與懸賞金額'}
+                問題分級與懸賞金額
               </h3>
             </div>
             <span className="text-[11px] text-amber-700 font-semibold">
-              {postType === 'pain_point'
-                ? '可選 NT$ 0 免費提出，也可額外加碼懸賞'
-                : '等級越高，吸引愈高階的產業專家解答'}
+              等級越高，吸引愈高階的產業專家解答
             </span>
           </div>
 
@@ -1010,38 +1023,51 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             </label>
           </div>
 
-          {/* 第三方金流支付選擇 (若 bounty > 0 或有勾選推播) */}
+          {/* 懸賞付點/第三方金流支付選擇 (若 bounty > 0 或有勾選推播) */}
           {(currentBounty > 0 || isPromotedWithMegaphone) && (
             <div className="mt-3 p-3.5 rounded-xl bg-white border border-stone-200 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-                  <CreditCard className="w-4 h-4 text-amber-600" />
-                  <span>第三方支付方式（發布時由金流安全託管）：</span>
+                  <Coins className="w-4 h-4 text-amber-600" />
+                  <span>支付方式（懸賞金由安全履約託管）：</span>
                 </span>
                 <span className="text-xs font-black font-mono text-amber-700">
-                  應付總計 NT$ {(currentBounty + (isPromotedWithMegaphone ? 50 : 0)).toLocaleString()} 元
+                  應付總計 {(currentBounty + (isPromotedWithMegaphone ? 50 : 0)).toLocaleString()} 點/元
                   {isPromotedWithMegaphone && currentBounty > 0 && (
                     <span className="text-[10px] text-stone-400 font-normal block text-right">
-                      (懸賞 NT$ {currentBounty.toLocaleString()} + 推播 NT$ 50)
+                      (懸賞 {currentBounty.toLocaleString()} + 推播 50)
                     </span>
                   )}
                 </span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {(['信用卡', 'LINE Pay', 'Apple Pay', 'ATM 轉帳'] as const).map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => setPaymentMethod(method)}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
-                      paymentMethod === method
-                        ? 'border-amber-500 bg-amber-50 text-amber-950 ring-1 ring-amber-300'
-                        : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
-                    }`}
-                  >
-                    {method}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {(['帳戶點數付點', '信用卡', 'LINE Pay', 'Apple Pay', 'ATM 轉帳'] as const).map((method) => {
+                  const isPoints = method === '帳戶點數付點';
+                  const isSelected = paymentMethod === method;
+                  return (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => setPaymentMethod(method)}
+                      className={`py-2 px-2 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-amber-500 bg-amber-50 text-amber-950 ring-1 ring-amber-300 font-black shadow-2xs'
+                          : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                      }`}
+                    >
+                      {isPoints ? (
+                        <div className="truncate">
+                          <div>🪙 帳戶點數</div>
+                          <div className="text-[10px] text-amber-700 font-normal">
+                            餘額 {(currentUser?.balance || 0).toLocaleString()} 點
+                          </div>
+                        </div>
+                      ) : (
+                        method
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

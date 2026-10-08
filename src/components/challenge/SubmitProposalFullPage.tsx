@@ -42,6 +42,7 @@ import {
 import { getCompetitionProposalsForAdmin, saveAllCompetitionProposals } from '../../services/competitionAdminSync';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import { PainPointSelector } from './PainPointSelector';
+import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import { analyzeCompetitionItemWithAgent } from '../../services/competitionAiAgent';
 import {
   ProposalDraft,
@@ -54,6 +55,7 @@ interface SubmitProposalFullPageProps {
   onNavigate: (view: 'home' | 'explore' | 'rules' | 'participant' | 'judge' | 'ambassador') => void;
   onBackToOldSite: () => void;
   onOpenAuth: () => void;
+  onGoToPainPoints?: () => void;
   painPointProposals: StarSeasonProposal[];
   onSuccess: () => void;
   initialDraftId?: string;
@@ -63,6 +65,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
   onNavigate,
   onBackToOldSite,
   onOpenAuth,
+  onGoToPainPoints,
   painPointProposals,
   onSuccess,
   initialDraftId,
@@ -528,6 +531,8 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-24 font-sans">
       {/* 獨立頂部導覽列 */}
       <header className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
+        {/* 創星季廣播橫幅：誠徵各行業專家參與注資，注資額300萬（點擊申請） */}
+        <StarSeasonBroadcastBanner onApply={() => onNavigate('judge')} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 shrink-0 -ml-1 sm:-ml-2">
@@ -587,14 +592,14 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               探索Idea
             </button>
 
-            {/* 3. 先看痛點 */}
+            {/* 3. 痛點-> */}
             <button
               type="button"
-              onClick={onBackToOldSite}
+              onClick={onGoToPainPoints || onBackToOldSite}
               className="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-              title="前往舊站 創點子/痛點專區"
+              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
             >
-              先看痛點
+              痛點-&gt;
             </button>
 
             {/* 4. 申請參賽者 */}
@@ -637,14 +642,14 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               推廣大使
             </button>
 
-            {/* 行動版先看痛點 (風格一致) */}
+            {/* 行動版痛點-> (風格一致) */}
             <button
-              onClick={onBackToOldSite}
+              onClick={onGoToPainPoints || onBackToOldSite}
               className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
-              title="前往舊站 創點子/痛點專區"
+              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
             >
               <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>先看痛點</span>
+              <span>痛點-&gt;</span>
             </button>
           </div>
         </div>
@@ -658,7 +663,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           </h1>
 
           <p className="text-xs sm:text-sm text-stone-700 max-w-xl mx-auto leading-relaxed">
-            提出您的真實痛點洞察或創新落地解方。通過初審後即進入全體大眾模擬注資與特聘專家評審！
+            提出您的真實痛點洞察或創新落地解方。通過初審後即進入全體大眾模擬注資與專家評審！
           </p>
         </div>
       </section>

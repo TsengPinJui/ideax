@@ -25,12 +25,14 @@ import {
 import { useApp } from '../../context/AppContext';
 import { applyJudge, uploadProposalAttachment } from '../../services/competitionClientService';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
+import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 
 interface JudgeFullPageProps {
   onNavigate: (view: 'home' | 'explore' | 'rules' | 'submit' | 'participant' | 'ambassador') => void;
   onBackToOldSite: () => void;
   onOpenAuth: () => void;
   onSuccess: () => void;
+  onGoToPainPoints?: () => void;
 }
 
 export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
@@ -38,6 +40,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
   onBackToOldSite,
   onOpenAuth,
   onSuccess,
+  onGoToPainPoints,
 }) => {
   const {
     currentUser,
@@ -49,13 +52,34 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
 
   const [termsDoc, setTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
-  const [judgeName, setJudgeName] = useState(currentUser?.name || '');
+  // 依使用者指示：用戶申請任何驗證時，絕對不自動帶入虛擬測試資料
+  const isRealName = Boolean(
+    currentUser?.name &&
+    !currentUser.name.includes('測試') &&
+    !currentUser.name.includes('管理') &&
+    !currentUser.name.includes('訪客') &&
+    !currentUser.id.startsWith('c1000') &&
+    !currentUser.id.startsWith('c2000') &&
+    !currentUser.id.startsWith('a000') &&
+    !currentUser.id.startsWith('solver-')
+  );
+  const isRealEmail = Boolean(
+    currentUser?.email &&
+    !currentUser.email.includes('ideax') &&
+    !currentUser.email.includes('yichun') &&
+    !currentUser.email.includes('shuhao') &&
+    !currentUser.email.includes('test') &&
+    !currentUser.email.includes('operations') &&
+    !currentUser.email.includes('guest')
+  );
+
+  const [judgeName, setJudgeName] = useState(isRealName ? currentUser?.name || '' : '');
   const [judgePhone, setJudgePhone] = useState('');
-  const [judgeEmail, setJudgeEmail] = useState(currentUser?.email || '');
-  const [judgeDomain, setJudgeDomain] = useState('AI 智慧與科技創新');
+  const [judgeEmail, setJudgeEmail] = useState(isRealEmail ? currentUser?.email || '' : '');
+  const [judgeDomain, setJudgeDomain] = useState('');
   const [judgeInstitution, setJudgeInstitution] = useState('');
   const [judgeJobTitle, setJudgeJobTitle] = useState('');
-  const [judgeYearsOfExp, setJudgeYearsOfExp] = useState(5);
+  const [judgeYearsOfExp, setJudgeYearsOfExp] = useState<number | ''>('');
   const [judgeBio, setJudgeBio] = useState('');
   const [proofFile, setProofFile] = useState<{ url: string; name: string } | null>(null);
 
@@ -201,6 +225,13 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-24 font-sans">
       {/* 頂部導覽列 */}
       <header className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
+        {/* 創星季廣播橫幅：誠徵各行業專家參與注資，注資額300萬（點擊申請） */}
+        <StarSeasonBroadcastBanner
+          onApply={() => {
+            const el = document.getElementById('expert-judge-apply-form') || document.querySelector('form');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 shrink-0 -ml-1 sm:-ml-2">
@@ -270,14 +301,14 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
               探索Idea
             </button>
 
-            {/* 3. 先看痛點 */}
+            {/* 3. 痛點-> */}
             <button
               type="button"
-              onClick={onBackToOldSite}
+              onClick={onGoToPainPoints || onBackToOldSite}
               className="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-              title="前往舊站 創點子/痛點專區"
+              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
             >
-              先看痛點
+              痛點-&gt;
             </button>
 
             {/* 4. 申請參賽者 */}
@@ -309,14 +340,14 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
               推廣大使
             </button>
 
-            {/* 行動版先看痛點 (風格一致) */}
+            {/* 行動版痛點-> (風格一致) */}
             <button
-              onClick={onBackToOldSite}
+              onClick={onGoToPainPoints || onBackToOldSite}
               className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
-              title="前往舊站 創點子/痛點專區"
+              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
             >
               <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>先看痛點</span>
+              <span>痛點-&gt;</span>
             </button>
           </div>
         </div>
@@ -407,7 +438,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8 text-xs">
+          <form id="expert-judge-apply-form" onSubmit={handleSubmit} className="space-y-8 text-xs">
             
             {/* 區塊 1: 評審基本資訊 */}
             <div className="space-y-4 p-5 sm:p-6 rounded-3xl bg-stone-50/70 border border-stone-200">
@@ -461,8 +492,10 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                   <select
                     value={judgeDomain}
                     onChange={(e) => setJudgeDomain(e.target.value)}
+                    required
                     className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 font-bold focus:outline-none focus:border-purple-400"
                   >
+                    <option value="">請選擇專業審查領域 *</option>
                     <option value="AI 智慧與科技創新">AI 智慧與科技創新</option>
                     <option value="智慧物聯與硬體整合">智慧物聯與硬體整合</option>
                     <option value="永續綠能與循環經濟">永續綠能與循環經濟</option>
@@ -515,7 +548,8 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                       min={1}
                       max={40}
                       value={judgeYearsOfExp}
-                      onChange={(e) => setJudgeYearsOfExp(Number(e.target.value))}
+                      onChange={(e) => setJudgeYearsOfExp(e.target.value ? Number(e.target.value) : '')}
+                      placeholder="例如: 8"
                       className="w-24 bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-purple-400 text-xs font-bold"
                     />
                     <span className="text-stone-600 font-bold">年</span>

@@ -196,3 +196,177 @@ body {
     box-shadow: -80px 20px 120px rgba(0, 0, 0, 0.6);
   }
 }
+
+/* ============================================================== */
+/* 黃色液態流動感核心特效 (Yellow Liquid Fluid Flow Animations) */
+/* ============================================================== */
+@keyframes liquid-morph-1 {
+  0%, 100% {
+    border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%;
+    transform: translate3d(40px, -22px, 0) rotate(115deg) scale(1.1);
+  }
+  66% {
+    border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%;
+    transform: translate3d(-30px, 28px, 0) rotate(235deg) scale(0.94);
+  }
+}
+
+@keyframes liquid-morph-2 {
+  0%, 100% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  38% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    transform: translate3d(-45px, 25px, 0) rotate(-110deg) scale(1.14);
+  }
+  72% {
+    border-radius: 50% 50% 20% 80% / 25% 80% 20% 75%;
+    transform: translate3d(30px, -30px, 0) rotate(-230deg) scale(0.96);
+  }
+}
+
+@keyframes liquid-morph-3 {
+  0%, 100% {
+    border-radius: 35% 65% 60% 40% / 55% 45% 55% 45%;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    border-radius: 70% 30% 40% 60% / 35% 65% 35% 65%;
+    transform: translate3d(25px, -35px, 0) rotate(170deg) scale(1.18);
+  }
+}
+
+@keyframes liquid-flow-horizontal {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes liquid-flow-horizontal-slow {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes liquid-flow-horizontal-reverse {
+  0% {
+    transform: translate3d(-50%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes liquid-wave-drift {
+  0% {
+    transform: translate3d(-4%, 0, 0) skewX(-1.5deg);
+  }
+  50% {
+    transform: translate3d(4%, -10px, 0) skewX(1.5deg);
+  }
+  100% {
+    transform: translate3d(-4%, 0, 0) skewX(-1.5deg);
+  }
+}
+
+@keyframes liquid-wave-drift-reverse {
+  0% {
+    transform: translate3d(4%, 0, 0) skewX(1.5deg);
+  }
+  50% {
+    transform: translate3d(-4%, 8px, 0) skewX(-1.5deg);
+  }
+  100% {
+    transform: translate3d(4%, 0, 0) skewX(1.5deg);
+  }
+}
+
+@keyframes liquid-caustic-sweep {
+  0% {
+    transform: translate3d(-120%, -60%, 0) rotate(28deg);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.65;
+  }
+  70% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translate3d(220%, 140%, 0) rotate(28deg);
+    opacity: 0;
+  }
+}
+
+@keyframes liquid-droplet-pulse {
+  0%, 100% {
+    transform: scale(0.9) translate3d(0, 0, 0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.25) translate3d(12px, -18px, 0);
+    opacity: 0.95;
+  }
+}
+
+.animate-liquid-morph-1 {
+  animation: liquid-morph-1 12s ease-in-out infinite;
+  will-change: transform, border-radius;
+}
+
+.animate-liquid-morph-2 {
+  animation: liquid-morph-2 15s ease-in-out infinite;
+  will-change: transform, border-radius;
+}
+
+.animate-liquid-morph-3 {
+  animation: liquid-morph-3 10s ease-in-out infinite;
+  will-change: transform, border-radius;
+}
+
+.animate-liquid-wave {
+  animation: liquid-wave-drift 9s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-liquid-wave-rev {
+  animation: liquid-wave-drift-reverse 11s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-liquid-flow-1 {
+  animation: liquid-flow-horizontal 12s linear infinite;
+  will-change: transform;
+}
+
+.animate-liquid-flow-2 {
+  animation: liquid-flow-horizontal-slow 18s linear infinite;
+  will-change: transform;
+}
+
+.animate-liquid-flow-rev {
+  animation: liquid-flow-horizontal-reverse 15s linear infinite;
+  will-change: transform;
+}
+
+.animate-liquid-caustic {
+  animation: liquid-caustic-sweep 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+
+.animate-liquid-droplet {
+  animation: liquid-droplet-pulse 4.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+

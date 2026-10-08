@@ -137,7 +137,7 @@ export const SUBCATEGORY_DETAILS: Record<
     description:
       '探討尖端生醫檢測、微流體晶片製程、學術技轉 Spin-off 權益分配與國科會/生技產業研發補助案規劃。',
     trendingTopics: ['微流體光學檢測', '學術技轉股權分成', '臨床前安全性數據', '生醫專利布局'],
-    recommendedSkills: ['生醫產學特聘教授', '科研政策研究員', '生技創投合夥人', '專利技轉律師'],
+    recommendedSkills: ['生醫產學名譽教授', '科研政策研究員', '生技創投合夥人', '專利技轉律師'],
     bountyLevelHint: 'L3 ~ L4（常見懸賞 NT$ 3,000 ~ 50,000）',
   },
   資訊工程: {
@@ -193,7 +193,7 @@ export const SUBCATEGORY_DETAILS: Record<
     description:
       '聚焦極簡無障礙設計、次世代人機互動 UI/UX、實體品牌空間展演與跨領域美學實驗。',
     trendingTopics: ['無障礙 Design System', '生成式視覺藝術邊界', '沉浸式展演動線', '品牌動態識別系統'],
-    recommendedSkills: ['資深設計總監', '跨領域當代藝術家', 'UI/UX 架構師', '視覺傳達特聘講師'],
+    recommendedSkills: ['資深設計總監', '跨領域當代藝術家', 'UI/UX 架構師', '視覺傳達專業講師'],
     bountyLevelHint: 'L1 ~ L3（常見懸賞 NT$ 800 ~ 5,000）',
   },
 

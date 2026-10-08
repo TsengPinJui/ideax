@@ -497,6 +497,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>找專家</span>
             </button>
+
+            {/* Google 搜尋多個分頁捷徑與子網址中心 */}
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('ideax_open_sitelinks'));
+              }}
+              className="px-2.5 py-1.5 rounded-xl border border-stone-200 hover:border-blue-400 bg-white hover:bg-blue-50/40 text-stone-700 hover:text-blue-900 transition-all cursor-pointer text-xs flex items-center gap-1.5 shadow-2xs group"
+              title="查看 Google 搜尋多個分頁捷徑 (Sitelinks) 與 8 大子網址"
+            >
+              <Search className="w-3.5 h-3.5 text-blue-600 shrink-0 group-hover:scale-110 transition-transform" />
+              <span>分頁捷徑</span>
+            </button>
           </nav>
         </div>
 

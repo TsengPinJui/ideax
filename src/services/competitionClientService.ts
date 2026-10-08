@@ -62,6 +62,31 @@ export async function fetchProposals(stage?: StarSeasonStage, track?: StarSeason
 }
 
 /**
+ * 取得單一公開競賽提案詳細資料（支援直接連結與搜尋引擎直達）
+ */
+export async function fetchSingleProposal(proposalId: string): Promise<StarSeasonProposal | null> {
+  if (!proposalId) return null;
+  try {
+    const res = await fetch(`/api/competition/proposals/${encodeURIComponent(proposalId)}`);
+    if (!res.ok) {
+      // 找不到時嘗試從全量列表匹配
+      const all = await fetchProposals();
+      return all.find((p) => p.id === proposalId) || null;
+    }
+    const data = await res.json();
+    return data.proposal || null;
+  } catch (err) {
+    console.warn('[Competition] fetchSingleProposal fallback:', err);
+    try {
+      const all = await fetchProposals();
+      return all.find((p) => p.id === proposalId) || null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+/**
  * 取得當前用戶之競賽點數錢包
  */
 export async function fetchMyCompetitionAccount(): Promise<{ account: CompetitionAccount | null; error?: string }> {

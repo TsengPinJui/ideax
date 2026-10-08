@@ -932,7 +932,7 @@ export const MOCK_QUESTIONS: Question[] = [
         '廠區光儲直柔（PEDF）微電網調度架構',
         '歐盟 CBAM 碳邊境關稅申報合規模型',
       ],
-      solverProfileAdvice: '大型工程統包顧問、綠色冶金特聘教授或跨國 ESG 碳金融首席分析師。',
+      solverProfileAdvice: '大型工程統包顧問、綠色冶金領域權威學者或跨國 ESG 碳金融首席分析師。',
       marketFitRating: '旗艦懸賞（頂級產業難題）',
     },
   },
@@ -2262,6 +2262,7 @@ export const isTestAccountUserId = (userId?: string): boolean => {
     userId.startsWith('user-author-') ||
     userId.startsWith('solver-') ||
     userId.startsWith('test-') ||
+    userId.startsWith('test_') ||
     userId.startsWith('mock-')
   ) {
     return true;

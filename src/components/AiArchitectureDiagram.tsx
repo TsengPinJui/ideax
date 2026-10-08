@@ -156,7 +156,7 @@ export const AiArchitectureDiagram: React.FC<AiArchitectureDiagramProps> = ({
                 <div className="p-2.5 rounded-xl bg-stone-900/90 border border-stone-700/80 space-y-1">
                   <span className="font-bold text-stone-200 text-[11px] flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                    <span>雙向握手特聘提案</span>
+                    <span>雙向握手專屬媒合</span>
                   </span>
                   <p className="text-[11px] text-stone-400 leading-relaxed">
                     系統精準雙向確認雙方需求後，第一時間推播優先提案。

@@ -52,6 +52,12 @@ import {
   loginWithFirebasePhone,
   verifyFirebasePhoneCode,
   sendFirebasePasswordReset,
+  confirmFirebasePasswordReset,
+  sendFirebaseEmailVerification,
+  sendEmailVerificationCode,
+  verifyEmailCode,
+  sendBackendSmsCode,
+  verifyBackendSmsCode,
   createRecaptchaVerifier,
 } from '../services/firebaseAuth';
 import { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth';
@@ -164,6 +170,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [regPhone, setRegPhone] = useState('');
   const [regRole, setRegRole] = useState<'questioner' | 'solver'>('questioner');
   const [authUid, setAuthUid] = useState<string | null>(null);
+  const [isSendingRegEmailVerification, setIsSendingRegEmailVerification] = useState(false);
+  const [regEmailVerificationSent, setRegEmailVerificationSent] = useState(false);
 
   // Step 2: Solver Real-Name KYC & Questioner Interests
   const [regRealLegalName, setRegRealLegalName] = useState('');
@@ -178,7 +186,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [showCustomerServiceHelp, setShowCustomerServiceHelp] = useState(false);
   const [forgotTargetEmail, setForgotTargetEmail] = useState('');
   const [isForgotEmailSent, setIsForgotEmailSent] = useState(false);
+  const [forgotEmailCode, setForgotEmailCode] = useState('');
   const [forgotSmsCode, setForgotSmsCode] = useState('');
+  const [forgotSmsConfirmation, setForgotSmsConfirmation] = useState<ConfirmationResult | null>(null);
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
   const [isForgotCodeSent, setIsForgotCodeSent] = useState(false);
@@ -891,7 +901,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  // Send Firebase Email Password Reset with strict registration validation
+  // Send Firebase Email Password Reset & Email Verification Code
   const handleSendEmailReset = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const input = forgotIdentifier.trim();
@@ -908,10 +918,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         (u.username && u.username.toLowerCase().trim() === cleanInput)
     );
 
-    const targetEmail = registeredUser?.email?.trim() || (cleanInput.includes('@') ? cleanInput : null);
+    const targetEmail = cleanInput.includes('@')
+      ? cleanInput
+      : registeredUser?.email?.trim() || null;
 
-    if (!registeredUser || !targetEmail) {
-      setErrorMsg(`發送失敗：查無「${input}」的註冊帳號或郵件，發送信箱必須與註冊資料一致！`);
+    if (!targetEmail) {
+      setErrorMsg(`發送失敗：查無「${input}」的註冊帳號或郵件，請輸入完整 Email 地址！`);
       return;
     }
 
@@ -919,26 +931,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMsg(null);
     setIsLoading(true);
     try {
+      // 1. 發送 Firebase 官方密碼重設信（真正寄送至外部 Google/Gmail 郵箱）
       await sendFirebasePasswordReset(targetEmail);
+
+      // 2. 同步發送後端安全認證信
+      try {
+        await sendEmailVerificationCode(targetEmail, 'forgot_password', registeredUser?.name);
+      } catch (mailErr: any) {
+        console.warn('Backend verification email note:', mailErr);
+      }
+
       setForgotTargetEmail(targetEmail);
       setIsForgotEmailSent(true);
       setSmsCountdown(60);
-      setSuccessMsg(`已成功發送密碼重設信至 ${targetEmail}，請查收信件並依指示設定新密碼！`);
+      setSuccessMsg(`官方密碼重設信已成功發送至外部信箱 ${targetEmail}！請前往您的 Gmail/信箱查收信件。`);
     } catch (err: any) {
-      console.warn('Firebase reset email note:', err);
-      setForgotTargetEmail(targetEmail);
-      setIsForgotEmailSent(true);
-      setSmsCountdown(60);
-      setSuccessMsg(`已發送密碼重設信至 ${targetEmail}，請查收信件並點擊安全連結重設密碼！`);
+      console.warn('Email reset send error:', err);
+      setErrorMsg('發送密碼重設信失敗：' + (err.message || '請確認該信箱是否已註冊'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Direct reset password from Email flow (測試/快捷重設通道)
-  const handleEmailPasswordResetSubmit = (e: React.FormEvent) => {
+  // Direct reset password from Email verification code & link
+  const handleEmailPasswordResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    const cleanTargetEmail = forgotTargetEmail.toLowerCase().trim();
+    const cleanCode = forgotEmailCode.trim();
+
+    if (!cleanCode) {
+      setErrorMsg('請輸入電子信箱中收到的安全連結或認證代碼！');
+      return;
+    }
 
     const pwdVal = validatePassword(forgotNewPassword);
     if (!pwdVal.isValid) {
@@ -951,13 +977,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    const cleanTargetEmail = forgotTargetEmail.toLowerCase().trim();
-    const matched = availableUsers.find(
-      (u) => u.email && u.email.toLowerCase().trim() === cleanTargetEmail
-    );
-
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      let isVerified = false;
+
+      // 1. 若為 Firebase 官方重設代碼 (oobCode) 或完整連結，以 Firebase confirmFirebasePasswordReset 真實重設
+      try {
+        await confirmFirebasePasswordReset(cleanCode, forgotNewPassword);
+        isVerified = true;
+      } catch (fbErr: any) {
+        console.warn('Firebase confirm action code check:', fbErr.message);
+      }
+
+      // 2. 若為 6 位數伺服器驗證碼，進行校驗
+      if (!isVerified && cleanCode.length === 6) {
+        try {
+          await verifyEmailCode(cleanTargetEmail, cleanCode, 'forgot_password');
+          isVerified = true;
+        } catch (codeErr: any) {
+          console.warn('Email 6-digit code check:', codeErr.message);
+        }
+      }
+
+      if (!isVerified) {
+        throw new Error('認證代碼或連結不正確或已過期，請確認信件中的最新連結！');
+      }
+
+      const matched = availableUsers.find(
+        (u) => u.email && u.email.toLowerCase().trim() === cleanTargetEmail
+      );
+
       if (matched) {
         matched.password = forgotNewPassword.trim();
         setAvailableUsers((prev) =>
@@ -968,18 +1017,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
       }
 
-      setSuccessMsg('🎉 密碼已重設成功！請使用新密碼登入。');
-      setIsLoading(false);
+      setSuccessMsg('🎉 密碼已成功重設！請使用新密碼登入。');
       setTimeout(() => {
         setMode('login');
         setLoginIdentifier(cleanTargetEmail);
         setLoginPassword(forgotNewPassword.trim());
         setSuccessMsg(null);
         setIsForgotEmailSent(false);
+        setForgotEmailCode('');
         setForgotNewPassword('');
         setForgotConfirmPassword('');
-      }, 1500);
-    }, 400);
+      }, 1200);
+    } catch (err: any) {
+      setErrorMsg('密碼重設失敗：' + (err.message || '代碼不正確或已過期，請重新發送！'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Send Email Verification Code / 認證信 for registration
+  const handleSendRegEmailVerification = async () => {
+    const trimmed = regEmail.trim();
+    if (!trimmed || !trimmed.includes('@') || trimmed.length < 5) {
+      setErrorMsg('請先輸入正確的電子信箱！');
+      return;
+    }
+    setErrorMsg(null);
+    setIsSendingRegEmailVerification(true);
+    try {
+      await sendEmailVerificationCode(trimmed, 'register', regName.trim() || '平台新會員');
+      setRegEmailVerificationSent(true);
+      setSmsCountdown(60);
+      setSuccessMsg(`官方安全認證信已寄送至外部信箱 ${trimmed}，請至 Gmail / 收件匣查收！`);
+    } catch (err: any) {
+      setErrorMsg('發送認證信失敗：' + (err.message || '請確認電子郵件格式'));
+    } finally {
+      setIsSendingRegEmailVerification(false);
+    }
   };
 
   // Step 1: Advance to Step 2 in Registration
@@ -1091,6 +1165,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         try {
           const cred = await registerWithFirebaseEmail(regEmail.trim(), regPassword);
           registeredUid = cred.uid;
+          // 發送官方電子郵件認證信 (Firebase sendEmailVerification)
+          try {
+            await sendFirebaseEmailVerification(cred);
+          } catch (verErr: any) {
+            console.warn('Firebase email verification send notice:', verErr);
+          }
+          // 發送系統認證信
+          try {
+            await sendEmailVerificationCode(regEmail.trim(), 'register', regName.trim() || regUsername.trim());
+          } catch (mailErr: any) {
+            console.warn('Backend email verification dispatch notice:', mailErr);
+          }
         } catch (authErr: any) {
           console.warn('Firebase register notice:', authErr);
         }
@@ -1239,8 +1325,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  // Forgot Password: Send Code & Reset
-  const handleForgotPasswordSubmit = (e: React.FormEvent) => {
+  // Forgot Password: Real SMS Send Code & Reset
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -1258,24 +1344,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         (u.phone && u.phone.replace(/[\s-]/g, '') === cleanPhone)
     );
 
-    if (!matched) {
+    const targetPhone = matched?.phone || (cleanPhone.startsWith('09') || cleanPhone.startsWith('+') ? cleanPhone : null);
+
+    if (!matched && !targetPhone) {
       setErrorMsg('重設失敗：此手機號碼或帳號尚未註冊或與系統資料不一致，請確認後重試！');
       return;
     }
 
+    const effectivePhone = targetPhone || cleanPhone;
+
     if (!isForgotCodeSent) {
       setIsLoading(true);
-      setTimeout(() => {
+      try {
+        try {
+          const verifier = getOrCreateRecaptcha('recaptcha-sms-forgot-container');
+          const confirmation = await loginWithFirebasePhone(effectivePhone, verifier);
+          setForgotSmsConfirmation(confirmation);
+        } catch (fbErr: any) {
+          console.warn('Firebase SMS notice, using backend SMS delivery:', fbErr);
+          await sendBackendSmsCode(effectivePhone, 'forgot_password');
+        }
+
         setIsForgotCodeSent(true);
         setSmsCountdown(60);
+        setSuccessMsg(`安全驗證碼簡訊已發送至門號 ${effectivePhone}，請於 60 秒內輸入 6 位數驗證碼！`);
+      } catch (err: any) {
+        setErrorMsg('發送簡訊驗證碼失敗：' + (err.message || '請確認手機門號格式'));
+      } finally {
         setIsLoading(false);
-        setSuccessMsg(`驗證碼已發送至 ${matched.phone || cleanIdentifier}（測試環境驗證碼：123456）。`);
-      }, 350);
+      }
       return;
     }
 
-    if (forgotSmsCode.trim() !== '123456' && forgotSmsCode.trim().length < 4) {
-      setErrorMsg('重設失敗：驗證碼不正確（測試環境請輸入 123456）。');
+    if (!forgotSmsCode.trim() || forgotSmsCode.trim().length < 6) {
+      setErrorMsg('請輸入完整的 6 位數簡訊驗證碼！');
       return;
     }
 
@@ -1291,26 +1393,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      matched.password = forgotNewPassword.trim();
-      setAvailableUsers((prev) => prev.map((u) => (u.id === matched.id ? { ...u, password: forgotNewPassword.trim() } : u)));
-      if (currentUser.id === matched.id) {
-        setCurrentUser((prev) => ({ ...prev, password: forgotNewPassword.trim() }));
+    try {
+      if (forgotSmsConfirmation) {
+        try {
+          await verifyFirebasePhoneCode(forgotSmsConfirmation, forgotSmsCode.trim());
+        } catch (fbErr: any) {
+          console.warn('Firebase confirmation failed, verifying backend SMS code:', fbErr);
+          await verifyBackendSmsCode(effectivePhone, forgotSmsCode.trim(), 'forgot_password');
+        }
+      } else {
+        await verifyBackendSmsCode(effectivePhone, forgotSmsCode.trim(), 'forgot_password');
       }
 
-      setSuccessMsg('密碼重設成功！請以新密碼登入。');
-      setIsLoading(false);
+      if (matched) {
+        matched.password = forgotNewPassword.trim();
+        setAvailableUsers((prev) => prev.map((u) => (u.id === matched.id ? { ...u, password: forgotNewPassword.trim() } : u)));
+        if (currentUser.id === matched.id) {
+          setCurrentUser((prev) => ({ ...prev, password: forgotNewPassword.trim() }));
+        }
+      }
+
+      setSuccessMsg('🎉 密碼重設成功！請以新密碼登入。');
       setTimeout(() => {
         setMode('login');
-        setLoginIdentifier(matched.username || matched.email || matched.phone || cleanIdentifier);
+        setLoginIdentifier(matched?.username || matched?.email || matched?.phone || cleanIdentifier);
         setLoginPassword(forgotNewPassword.trim());
         setSuccessMsg(null);
         setIsForgotCodeSent(false);
+        setForgotSmsConfirmation(null);
         setForgotSmsCode('');
         setForgotNewPassword('');
         setForgotConfirmPassword('');
-      }, 800);
-    }, 400);
+      }, 1000);
+    } catch (err: any) {
+      setErrorMsg('簡訊驗證碼確認失敗：' + (err.message || '代碼不正確或已過期，請重新發送！'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Method 3: Instant Security Identity Verification Reset (4項完整身分核驗，不符則轉真人客服協助)
@@ -2019,24 +2138,50 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         <span className="text-[10px] text-stone-400">登入帳號 / 密碼重設 / 系統通知</span>
                       </div>
 
-                      <div className="relative">
-                        <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3 pointer-events-none" />
-                        <input
-                          type="email"
-                          required
-                          value={regEmail}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setRegEmail(val);
-                            if (!regName || regName === regEmail.split('@')[0]) {
-                              const prefix = val.split('@')[0];
-                              setRegName(prefix);
-                            }
-                          }}
-                          placeholder="例如：alex@example.com"
-                          className="w-full pl-9 pr-3 py-2.5 bg-[#f0f4f8] focus:bg-white text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none font-medium"
-                        />
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3 pointer-events-none" />
+                          <input
+                            type="email"
+                            required
+                            value={regEmail}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setRegEmail(val);
+                              if (!regName || regName === regEmail.split('@')[0]) {
+                                const prefix = val.split('@')[0];
+                                setRegName(prefix);
+                              }
+                            }}
+                            placeholder="例如：alex@example.com"
+                            className="w-full pl-9 pr-3 py-2.5 bg-[#f0f4f8] focus:bg-white text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none font-medium"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isSendingRegEmailVerification || !regEmail.includes('@')}
+                          onClick={handleSendRegEmailVerification}
+                          className="px-3 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-bold shrink-0 transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed border border-stone-200"
+                        >
+                          {isSendingRegEmailVerification
+                            ? '發送中...'
+                            : regEmailVerificationSent
+                            ? '✓ 認證信已發送'
+                            : '發送認證信'}
+                        </button>
                       </div>
+
+                      {regEmailVerificationSent && (
+                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-950 flex items-center justify-between text-xs animate-in fade-in">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span>官方認證信已寄送至外部信箱！請前往您的 Gmail 或收件匣查收。</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">
+                            已寄送
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -2941,12 +3086,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-2.5">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                      <span className="text-xs font-black">密碼重設信已成功發送！</span>
+                      <span className="text-xs font-black">官方密碼重設信已寄出！</span>
                     </div>
 
                     <p className="text-xs text-stone-600 leading-relaxed pl-7">
-                      系統已將密碼重設連結寄送至 <strong className="font-mono text-emerald-950 font-bold">{forgotTargetEmail}</strong>。請前往您的電子信箱查收信件，並點擊信中的安全連結重新設定密碼。
+                      系統已將官方安全認證信寄送至外部信箱 <strong className="font-mono text-emerald-950 font-bold">{forgotTargetEmail}</strong>。請前往您的 Gmail 或電子信箱（含垃圾郵件匣）查收由 <strong className="font-mono text-stone-800">noreply@ideax-2af9c.firebaseapp.com</strong> 寄出的信件。
                     </p>
+
+                    <div className="pl-7 text-[11px] text-stone-500 space-y-0.5">
+                      <p>• 方式一：直接點擊信中的<strong>「安全重設連結」</strong>即可完成密碼重設。</p>
+                      <p>• 方式二：將信件中的代碼或連結貼於下方欄位直接設定新密碼。</p>
+                    </div>
 
                     <div className="pt-2 flex items-center justify-between border-t border-emerald-200/60 text-xs">
                       <span className="text-stone-500 font-medium">沒收到信件？</span>
@@ -2956,12 +3106,75 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         onClick={() => handleSendEmailReset()}
                         className="font-bold text-amber-800 hover:text-amber-950 disabled:text-stone-400 cursor-pointer disabled:cursor-not-allowed underline"
                       >
-                        {smsCountdown > 0 ? `重新發送 (${smsCountdown}s)` : '重新發送重設信'}
+                        {smsCountdown > 0 ? `重新發送 (${smsCountdown}s)` : '重新發送認證信'}
                       </button>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-amber-50/90 border border-amber-200 rounded-xl space-y-1 text-center">
+                  {/* 輸入信件代碼或連結重設 */}
+                  <form onSubmit={handleEmailPasswordResetSubmit} className="space-y-3 p-3.5 bg-stone-50/80 rounded-2xl border border-stone-200">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-stone-700">
+                          信件安全認證代碼或連結 <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[10px] text-stone-400">請查收外部信箱</span>
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={forgotEmailCode}
+                        onChange={(e) => setForgotEmailCode(e.target.value)}
+                        placeholder="請貼上信件中的認證代碼或完整連結"
+                        className="w-full px-3 py-2.5 bg-white border border-stone-200 focus:border-amber-500 text-xs rounded-xl font-mono outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        設定新密碼 (6~20 位英數字) <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showForgotNewPassword ? 'text' : 'password'}
+                          required
+                          value={forgotNewPassword}
+                          onChange={(e) => setForgotNewPassword(e.target.value)}
+                          placeholder="輸入 6~20 位新密碼"
+                          className="w-full px-3.5 py-2.5 bg-white text-xs rounded-xl border border-stone-200 focus:border-amber-500 outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
+                          className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+                        >
+                          {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">再次確認新密碼 <span className="text-rose-500">*</span></label>
+                      <input
+                        type="password"
+                        required
+                        value={forgotConfirmPassword}
+                        onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                        placeholder="再次輸入新密碼"
+                        className="w-full px-3.5 py-2.5 bg-white text-xs rounded-xl border border-stone-200 focus:border-amber-500 outline-none"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading || !forgotEmailCode || forgotEmailCode.length < 6}
+                      className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                    >
+                      {isLoading ? '驗證並重設中...' : '確認認證碼並儲存新密碼'}
+                    </button>
+                  </form>
+
+                  <div className="p-2.5 bg-amber-50/90 border border-amber-200 rounded-xl space-y-1 text-center">
                     <p className="text-[11px] text-amber-950 font-medium">若信箱未收到信件，您可直接免等待信件重設：</p>
                     <button
                       type="button"
@@ -2982,7 +3195,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         setErrorMsg(null);
                         setSuccessMsg(null);
                       }}
-                      className="w-full py-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs transition-colors cursor-pointer"
+                      className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs transition-colors cursor-pointer"
                     >
                       完成並返回登入
                     </button>
@@ -3008,13 +3221,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {isForgotCodeSent && (
                   <>
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1">簡訊驗證碼</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-stone-700">簡訊驗證碼 <span className="text-rose-500">*</span></label>
+                        <span className="text-[10px] text-stone-400">請輸入 6 位數字</span>
+                      </div>
                       <input
                         type="text"
+                        maxLength={6}
                         required
                         value={forgotSmsCode}
-                        onChange={(e) => setForgotSmsCode(e.target.value)}
-                        placeholder="輸入驗證碼（測試環境：123456）"
+                        onChange={(e) => setForgotSmsCode(e.target.value.replace(/\D/g, ''))}
+                        placeholder="請輸入手機收到的 6 位數代碼"
                         className="w-full px-3 py-2.5 bg-amber-50/50 border border-amber-300 text-xs rounded-xl text-center font-mono tracking-widest outline-none"
                       />
                     </div>
@@ -3056,13 +3273,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {isLoading ? '處理中...' : isForgotCodeSent ? '重設密碼並儲存' : '發送安全簡訊驗證碼'}
-                </button>
+                {/* reCAPTCHA 容器 */}
+                <div id="recaptcha-sms-forgot-container"></div>
+
+                <div className="space-y-2">
+                  <button
+                    type="submit"
+                    disabled={isLoading || (isForgotCodeSent && (!forgotSmsCode || forgotSmsCode.length < 6))}
+                    className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isLoading ? '處理中...' : isForgotCodeSent ? '確認驗證並重設密碼' : '發送簡訊驗證碼'}
+                  </button>
+
+                  {isForgotCodeSent && (
+                    <button
+                      type="button"
+                      disabled={smsCountdown > 0 || isLoading}
+                      onClick={() => {
+                        setIsForgotCodeSent(false);
+                      }}
+                      className="w-full py-2 text-xs text-stone-500 hover:text-stone-800 font-bold transition-colors cursor-pointer text-center"
+                    >
+                      {smsCountdown > 0 ? `重新發送 (${smsCountdown}s)` : '重新發送簡訊驗證碼'}
+                    </button>
+                  )}
+                </div>
               </form>
             ) : (
               /* Method 3: Security Verification Reset (身分校驗重設) */

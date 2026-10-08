@@ -178,7 +178,7 @@ export async function computeBidirectionalHandshake({
         userId: question.authorId,
         category: 'personal',
         type: 'handshake',
-        title: `🤝 達成「雙向握手」特聘專家推薦！`,
+        title: `🤝 達成「雙向握手」智庫專家推薦！`,
         message: `市場顧問 Agent 與 AICRM 巡航已為您的問題《${question.title}》與專家【${solver.name}】達成雙向握手（契合度 ${handshakeScore}%）！`,
         linkQuestionId: question.id,
       });

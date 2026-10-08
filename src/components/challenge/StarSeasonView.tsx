@@ -16,7 +16,10 @@ import {
   ShieldCheck,
   FileText,
   Users,
+  ChevronLeft,
   ChevronRight,
+  Pause,
+  Play,
   ChevronDown,
   Filter,
   ExternalLink,
@@ -88,7 +91,13 @@ import {
   applyJudge,
   fetchMyAmbassadorData,
   bindAmbassadorReferralCode,
+  fetchSingleProposal,
 } from '../../services/competitionClientService';
+import {
+  updateSEOForProposal,
+  resetSEOToDefault,
+  getProposalShareUrl,
+} from '../../services/seoService';
 import { useApp } from '../../context/AppContext';
 import { auth } from '../../services/firebase';
 import { RulesFullPage } from './RulesFullPage';
@@ -105,6 +114,7 @@ import { JudgeEvaluationModal } from './JudgeEvaluationModal';
 import { AdminFinalEvaluationManagementModal } from './AdminFinalEvaluationManagementModal';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import { ShatterPageTurnTransition } from './ShatterPageTurnTransition';
+import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import {
   getNominatedProposalIds,
   getIsFinalResultsPublished,
@@ -177,6 +187,199 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     } catch {}
     return 'home';
   });
+
+  // 創星季首頁「當前提案」批次輪播 (一次顯示三個提案，一批一批向左輪播，純以募得創星幣為主)
+  const defaultHomepageProposals = useMemo(() => [
+    {
+      id: 'demo-1',
+      title: '智農 AI 蔬果病蟲害即時預警無人機',
+      school: '國立臺灣大學',
+      team: '臺大智慧農創隊',
+      authorName: '臺大智慧農創隊',
+      track: 'ai_applications' as StarSeasonTrack,
+      stage: 'solution' as StarSeasonStage,
+      cohort: '第一梯次',
+      summary: '結合輕量邊緣運算無人機與近紅外光譜分析，於田間即時偵測早期病蟲害，減少 60% 農藥使用量。',
+      imageUrl: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=800&q=80',
+      supportPoints: 128000,
+      supporterCount: 65,
+      likeCount: 42,
+      commentsCount: 9,
+    },
+    {
+      id: 'demo-2',
+      title: '全齡永續健康守護手環與居家照護雲',
+      school: '國立陽明交通大學',
+      team: '陽明交大銀髮智慧生技',
+      authorName: '陽明交大銀髮智慧生技',
+      track: 'social_innovation' as StarSeasonTrack,
+      stage: 'solution' as StarSeasonStage,
+      cohort: '第一梯次',
+      summary: '無感配戴之毫米波跌倒偵測與心律異步回報系統，串連社區照護據點與家屬即時告警通知。',
+      imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80',
+      supportPoints: 86000,
+      supporterCount: 43,
+      likeCount: 31,
+      commentsCount: 6,
+    },
+    {
+      id: 'demo-3',
+      title: '大學校園循環包材共享快遞站系統',
+      school: '國立成功大學',
+      team: '成大淨零綠生活專案組',
+      authorName: '成大淨零綠生活專案組',
+      track: 'green_tech' as StarSeasonTrack,
+      stage: 'pain_point' as StarSeasonStage,
+      cohort: '第一梯次',
+      summary: '解決大專校園網購快遞包裝垃圾堆積成災問題，建置模組化循環包裝回收與點數回饋站。',
+      imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=800&q=80',
+      supportPoints: 45000,
+      supporterCount: 32,
+      likeCount: 28,
+      commentsCount: 4,
+    },
+    {
+      id: 'demo-4',
+      title: '智慧高齡步態震顫聲學穿戴監測系統',
+      school: '國立清華大學',
+      team: '清華生醫訊號實驗室',
+      authorName: '清華生醫訊號實驗室',
+      track: 'ai_applications' as StarSeasonTrack,
+      stage: 'solution' as StarSeasonStage,
+      cohort: '第一梯次',
+      summary: '運用微機電微型音頻與三軸加速度感測，精準捕捉帕金森氏症早期步態異樣，提供遠距神經內科醫師客觀數據。',
+      imageUrl: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&w=800&q=80',
+      supportPoints: 115000,
+      supporterCount: 58,
+      likeCount: 39,
+      commentsCount: 11,
+    },
+    {
+      id: 'demo-5',
+      title: '海洋廢棄塑料升級高值化建築隔熱磚',
+      school: '國立臺灣科技大學',
+      team: '臺科大永續創客隊',
+      authorName: '臺科大永續創客隊',
+      track: 'green_tech' as StarSeasonTrack,
+      stage: 'solution' as StarSeasonStage,
+      cohort: '第一梯次',
+      summary: '將東北角淨灘廢塑膠改質為中空蜂巢式隔熱建材磚，減碳 45% 且隔熱係數優於傳統水泥磚，已獲金門示範基地採用。',
+      imageUrl: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80',
+      supportPoints: 92000,
+      supporterCount: 47,
+      likeCount: 36,
+      commentsCount: 8,
+    },
+    {
+      id: 'demo-6',
+      title: '社區閒置空間青銀共創共食共享廚房',
+      school: '國立臺北大學',
+      team: '鳶山社創團隊',
+      authorName: '鳶山社創團隊',
+      track: 'social_innovation' as StarSeasonTrack,
+      stage: 'pain_point' as StarSeasonStage,
+      cohort: '第一梯次',
+      summary: '活化老舊眷村與國宅活動中心，由在地長者傳授手路菜、青年提供數位點餐與品牌社群運營，打造世代共融新典範。',
+      imageUrl: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=800&q=80',
+      supportPoints: 78000,
+      supporterCount: 41,
+      likeCount: 33,
+      commentsCount: 7,
+    },
+    {
+      id: 'demo-7',
+      title: '城市微氣候降溫植生牆與物聯網霧化系統',
+      school: '國立成功大學',
+      team: '綠建築能源創研組',
+      authorName: '綠建築能源創研組',
+      track: 'green_tech' as StarSeasonTrack,
+      stage: 'solution' as StarSeasonStage,
+      cohort: '第一梯次',
+      summary: '藉由雨水回收結合微氣象即時感測，在熱島效應最劇烈時自動噴灑微米級水霧降溫 3~5°C，有效減緩都市熱浪。',
+      imageUrl: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=800&q=80',
+      supportPoints: 104000,
+      supporterCount: 52,
+      likeCount: 44,
+      commentsCount: 12,
+    },
+    {
+      id: 'demo-8',
+      title: '工業高壓管線智慧聲學洩漏偵測攀附機器人',
+      school: '國立臺北科技大學',
+      team: '北科智慧自動化團隊',
+      authorName: '北科智慧自動化團隊',
+      track: 'ai_applications' as StarSeasonTrack,
+      stage: 'solution' as StarSeasonStage,
+      cohort: '第一梯次',
+      summary: '磁吸式履帶機器人搭載超聲波陣列麥克風，於石化廠複雜管線上自主巡檢，精準定位微米級氣體洩漏點，守護工安。',
+      imageUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80',
+      supportPoints: 88000,
+      supporterCount: 46,
+      likeCount: 29,
+      commentsCount: 5,
+    },
+    {
+      id: 'demo-9',
+      title: '偏鄉教育沉浸式 VR 職業與科學探索基地',
+      school: '國立臺灣師範大學',
+      team: '師大數位學習領航隊',
+      authorName: '師大數位學習領航隊',
+      track: 'social_innovation' as StarSeasonTrack,
+      stage: 'pain_point' as StarSeasonStage,
+      cohort: '第一梯次',
+      summary: '打破城鄉教育資源藩籬，以輕量一體機 VR 提供 50+ 種專業職涯與前沿科學實驗沉浸式探索體驗，啟發偏鄉學子夢想。',
+      imageUrl: 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?auto=format&fit=crop&w=800&q=80',
+      supportPoints: 95000,
+      supporterCount: 50,
+      likeCount: 48,
+      commentsCount: 14,
+    },
+  ], []);
+
+  const [homepageCarouselBatchIndex, setHomepageCarouselBatchIndex] = useState(0);
+  const [isHomepageCarouselPaused, setIsHomepageCarouselPaused] = useState(false);
+
+  // 合併雲端真實提案與示範提案，確保隨時有豐富批次輪播
+  const homepageAllProposals = useMemo(() => {
+    const liveIds = new Set(proposals.map((p) => p.id));
+    const normalizedLive = proposals.map((p) => ({
+      id: p.id,
+      title: p.title,
+      school: (p as any).schoolOrOrg || '參賽隊伍',
+      team: p.authorName || '提案團隊',
+      authorName: p.authorName || '提案人',
+      track: p.track,
+      stage: p.stage,
+      cohort: (p as any).cohort || '第一梯次',
+      summary: p.summary || p.description || '',
+      imageUrl: (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=800&q=80',
+      supportPoints: p.supportPoints || 0,
+      supporterCount: p.supporterCount || 0,
+      likeCount: p.likeCount || 0,
+      commentsCount: p.commentsCount || 0,
+    }));
+    const extraDemos = defaultHomepageProposals.filter((d) => !liveIds.has(d.id));
+    return [...normalizedLive, ...extraDemos];
+  }, [proposals, defaultHomepageProposals]);
+
+  // 每批顯示 3 個提案
+  const homepageProposalBatches = useMemo(() => {
+    const list = homepageAllProposals;
+    const batches: typeof homepageAllProposals[] = [];
+    for (let i = 0; i < list.length; i += 3) {
+      batches.push(list.slice(i, i + 3));
+    }
+    return batches;
+  }, [homepageAllProposals]);
+
+  // 自動定時一批一批向左輪播 (每 4.5 秒向左滑動至下一批)
+  useEffect(() => {
+    if (homepageProposalBatches.length <= 1 || isHomepageCarouselPaused) return;
+    const timer = setInterval(() => {
+      setHomepageCarouselBatchIndex((prev) => (prev + 1) % homepageProposalBatches.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [homepageProposalBatches.length, isHomepageCarouselPaused]);
 
   const navigateToSubView = (view: ChallengeSubView) => {
     const normalizedView = view === 'explore' ? 'proposal' : view;
@@ -342,22 +545,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     };
   }, [currentUser]);
 
-  // 點擊痛點捷徑直接平滑滑動至痛點主題看板
+  // 點擊痛點捷徑直接平滑滑動至痛點專區看板
   const scrollToPainPointsBoard = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    if (currentSubView !== 'home') {
-      navigateToSubView('home');
+    if (onGoToPainPoints) {
+      onGoToPainPoints();
+    } else {
+      onBackToOldSite();
     }
-    setTimeout(() => {
-      const el = document.getElementById('painpoints-board-section') || document.getElementById('cases-overview-section');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else if (onGoToPainPoints) {
-        onGoToPainPoints();
-      } else {
-        onBackToOldSite();
-      }
-    }, 60);
   };
 
   // 創星季當前競賽階段 (痛點徵件 10/31~11/13、模擬募資與提案 11/14~12/04、決選 12/05~12/11、公布 12/16 前)
@@ -365,6 +560,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 綠色膠囊標籤第二行：日期+XXX(階段名稱)中!
   const stageBadgeSubtitle = useMemo(() => {
+    if (stageInfo.activeStage === 0) return '10/31 痛點徵件即將開跑!';
     if (stageInfo.isPainPointStage) return '10/31~11/13 痛點徵件中!';
     if (stageInfo.isPreProposalStage) return '11/14~11/15 預先提案中!';
     if (stageInfo.isCrowdfundingActiveStage) return '11/16~12/04 模擬募資中!';
@@ -593,6 +789,82 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   useEffect(() => {
     loadData();
   }, [currentUser?.id]);
+
+  // 監聽 URL 參數或路徑，支援以 ?proposalId=xxx 或 /proposal/:id 開啟單一提案
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const parseAndOpenProposal = async () => {
+      let targetId: string | null = null;
+      const params = new URLSearchParams(window.location.search);
+      targetId = params.get('proposalId') || params.get('p') || params.get('id');
+
+      if (!targetId) {
+        const path = window.location.pathname;
+        if (path.includes('/proposal/')) {
+          targetId = path.split('/proposal/')[1].split('/')[0].split('?')[0];
+        }
+      }
+
+      if (!targetId && window.location.hash) {
+        const hashStr = window.location.hash.replace(/^#/, '');
+        const hashParams = new URLSearchParams(hashStr.startsWith('?') ? hashStr.slice(1) : hashStr);
+        targetId = hashParams.get('proposalId') || hashParams.get('p');
+        if (!targetId && hashStr.includes('/proposal/')) {
+          targetId = hashStr.split('/proposal/')[1].split('/')[0].split('?')[0];
+        }
+      }
+
+      if (targetId) {
+        let found = proposals.find((p) => p.id === targetId);
+        if (!found) {
+          found = (await fetchSingleProposal(targetId)) || undefined;
+        }
+        if (found) {
+          setSelectedProposalForDetail(found);
+        }
+      }
+    };
+
+    parseAndOpenProposal();
+    window.addEventListener('popstate', parseAndOpenProposal);
+    return () => window.removeEventListener('popstate', parseAndOpenProposal);
+  }, [proposals]);
+
+  // 同步 URL 與提案動態 SEO
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (selectedProposalForDetail) {
+      updateSEOForProposal(selectedProposalForDetail);
+      const url = new URL(window.location.href);
+      url.searchParams.set('proposalId', selectedProposalForDetail.id);
+      window.history.replaceState({ proposalId: selectedProposalForDetail.id }, '', url.toString());
+    } else {
+      resetSEOToDefault();
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('proposalId')) {
+        url.searchParams.delete('proposalId');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [selectedProposalForDetail]);
+
+  const [copiedProposalId, setCopiedProposalId] = useState<string | null>(null);
+
+  const handleCopyProposalLink = async (proposalId: string) => {
+    const canonicalUrl = getProposalShareUrl(proposalId);
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(canonicalUrl);
+        setCopiedProposalId(proposalId);
+        showToast('🔗 提案專屬公開網址已複製！支援各搜尋引擎直接檢索與社群預覽。');
+        setTimeout(() => setCopiedProposalId(null), 2500);
+      } catch {
+        // fallback
+      }
+    }
+  };
 
   // 第一階段痛點清單 (供第二階段解法引用)
   const painPointProposals = useMemo(() => {
@@ -1259,6 +1531,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         onNavigate={navigateToSubView}
         onBackToOldSite={onBackToOldSite}
         onOpenAuth={onOpenAuth}
+        onGoToPainPoints={onGoToPainPoints || onBackToOldSite}
         onOpenAmbassadorModal={() => navigateToSubView('ambassador')}
       />
     );
@@ -1270,6 +1543,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         onNavigate={navigateToSubView}
         onBackToOldSite={onBackToOldSite}
         onOpenAuth={onOpenAuth}
+        onGoToPainPoints={onGoToPainPoints || onBackToOldSite}
         painPointProposals={painPointProposals}
         onSuccess={loadData}
       />
@@ -1282,6 +1556,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         onNavigate={navigateToSubView}
         onBackToOldSite={onBackToOldSite}
         onOpenAuth={onOpenAuth}
+        onGoToPainPoints={onGoToPainPoints || onBackToOldSite}
         painPointProposals={painPointProposals}
         onSuccess={loadData}
       />
@@ -1294,6 +1569,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         onNavigate={navigateToSubView}
         onBackToOldSite={onBackToOldSite}
         onOpenAuth={onOpenAuth}
+        onGoToPainPoints={onGoToPainPoints || onBackToOldSite}
         onSuccess={loadData}
       />
     );
@@ -1305,6 +1581,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         onNavigate={navigateToSubView}
         onBackToOldSite={onBackToOldSite}
         onOpenAuth={onOpenAuth}
+        onGoToPainPoints={onGoToPainPoints || onBackToOldSite}
       />
     );
   }
@@ -1321,6 +1598,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
       {/* 頂部全站提示列與導覽 */}
       <div className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
+        {/* 創星季廣播橫幅：誠徵各行業專家參與注資，注資額300萬（點擊申請） */}
+        <StarSeasonBroadcastBanner onApply={() => navigateToSubView('judge')} />
+
         {/* 導覽列核心主行 */}
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex items-center justify-between gap-2">
           {/* 左側：品牌 Logo (點燈泡回舊站首頁，點創星季回競賽首頁) */}
@@ -1364,8 +1644,21 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
           {/* 中間：核心導覽列 (風格統一、簡潔俐落) */}
           <nav className="hidden lg:flex items-center gap-1.5 text-xs font-bold text-stone-700 bg-stone-100/80 p-1 rounded-2xl border border-stone-200/80">
-            {/* 1. 痛點徵件階段為「提出痛點」，11/14~12/04 轉為「我想提案!」，12/04後截止 */}
-            {stageInfo.isPainPointStage ? (
+            {/* 1. 痛點徵件前為「10/31徵件」，痛點徵件階段為「提出痛點」，11/14~12/04 轉為「我想提案!」，12/04後截止 */}
+            {stageInfo.activeStage === 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('homepage-schedule-section') || document.getElementById('homepage-awards-section');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-3 py-1.5 rounded-xl text-stone-800 bg-amber-100/80 hover:bg-amber-200/80 border border-amber-300 transition-all cursor-pointer font-bold shadow-2xs active:scale-98 flex items-center gap-1.5"
+                title="創星季籌備中：第一階段痛點徵件將於 10/31 00:00 正式開放！點擊查看完整賽程時程"
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-700" />
+                <span>10/31 徵件開跑</span>
+              </button>
+            ) : stageInfo.isPainPointStage ? (
               <button
                 type="button"
                 onClick={handleOpenPainPointSubmission}
@@ -1409,15 +1702,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <span>探索Idea</span>
             </button>
 
-            {/* 3. 先看痛點 (前三項目之三：有色鮮明膠囊) */}
+            {/* 3. 痛點-> (前三項目之三：有色鮮明膠囊) */}
             <button
               type="button"
-              onClick={onGoToPainPoints || onBackToOldSite}
+              onClick={scrollToPainPointsBoard}
               className="px-3 py-1.5 rounded-xl text-orange-950 bg-orange-200/90 hover:bg-orange-300 border border-orange-300/80 transition-all cursor-pointer font-black flex items-center gap-1.5 shadow-2xs active:scale-98"
-              title="前往 IdeaX創點子 痛點專區"
+              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
             >
               <Layers className="w-3.5 h-3.5 text-orange-700" />
-              <span>先看痛點</span>
+              <span>痛點-&gt;</span>
             </button>
 
             {/* 競賽辦法 (直接前往專門競賽辦法頁) */}
@@ -1687,7 +1980,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                           setIsProfileMenuOpen(false);
                           setEvaluatingJudgeUser({
                             id: currentUser?.id || 'user-expert-1',
-                            name: currentUser?.name || '柯育任 院長/特聘教授',
+                            name: currentUser?.name || '柯育任 院長/客座教授',
                           });
                           setIsJudgeEvaluationModalOpen(true);
                         }}
@@ -1821,15 +2114,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               )}
             </div>
 
-            {/* 先看痛點 (行動版快捷鍵，風格與全站一致) */}
+            {/* 痛點-> (行動版快捷鍵，風格與全站一致) */}
             <button
               type="button"
-              onClick={onBackToOldSite}
+              onClick={scrollToPainPointsBoard}
               className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 hover:border-amber-300 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98 shrink-0"
-              title="連結到舊站 創點子/痛點專區"
+              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
             >
               <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>先看痛點</span>
+              <span>痛點-&gt;</span>
             </button>
           </div>
         </div>
@@ -1944,7 +2237,16 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         fillOpacity="0.75"
                       />
                     </svg>
-                    <span className="relative z-10 text-stone-950">創新起點</span>
+                    <span className="relative z-10 text-stone-950 inline-flex items-baseline">
+                      創新起點
+                      <span
+                        className="inline-block text-amber-500 font-black italic tracking-tighter text-[1.15em] sm:text-[1.22em] ml-1 sm:ml-1.5 transform rotate-6 select-none transition-all group-hover:rotate-12 group-hover:scale-110 drop-shadow-xs"
+                        style={{ fontFamily: 'Impact, "Arial Black", ui-sans-serif, system-ui, sans-serif' }}
+                        aria-hidden="true"
+                      >
+                        !
+                      </span>
+                    </span>
                   </button>
                 </div>
               </div>
@@ -1960,8 +2262,21 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
             {/* 5. 核心 CTA 按鍵組：風格高度統一，具備一致的圓角、邊框、圖示與視覺層次 */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3 max-w-lg mx-auto">
-              {/* 主行動：在痛點徵件階段為「提出痛點」，痛點徵件後轉為「我想提案」直到 12/04，12/04後截止 */}
-              {stageInfo.isPainPointStage ? (
+              {/* 主行動：在痛點徵件尚未開始前為「即將開跑 (10/31徵件)」，痛點徵件階段為「提出痛點」，痛點徵件後轉為「我想提案」直到 12/04，12/04後截止 */}
+              {stageInfo.activeStage === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('homepage-schedule-section') || document.getElementById('homepage-awards-section');
+                    el?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm sm:text-base shadow-sm border border-amber-400 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+                  title="創星季籌備中：第一階段痛點徵件將於 10/31 00:00 正式開放！點擊查看完整賽程時程"
+                >
+                  <Sparkles className="w-4 h-4 text-stone-950" />
+                  <span>即將開跑 (10/31徵件)</span>
+                </button>
+              ) : stageInfo.isPainPointStage ? (
                 <button
                   type="button"
                   onClick={handleOpenPainPointSubmission}
@@ -2004,15 +2319,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <span>探索Idea</span>
               </button>
 
-              {/* 次行動 2：先看痛點 (同風格白底微邊框卡片，統一圖示與圓角尺寸) */}
+              {/* 次行動 2：痛點-> (同風格白底微邊框卡片，統一圖示與圓角尺寸) */}
               <button
                 type="button"
-                onClick={onGoToPainPoints || onBackToOldSite}
+                onClick={scrollToPainPointsBoard}
                 className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-white hover:bg-stone-50 text-stone-800 hover:text-stone-950 font-bold text-sm sm:text-base shadow-2xs border border-stone-200/90 hover:border-amber-300 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
-                title="前往舊站 創點子/痛點專區"
+                title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
               >
                 <Flame className="w-4 h-4 text-rose-500" />
-                <span>先看痛點</span>
+                <span>痛點-&gt;</span>
               </button>
             </div>
 
@@ -2089,7 +2404,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       </div>
 
       {/* 競賽四階段時程進度條 (10/31~11/13 痛點徵件、11/14~12/04 模擬募資、12/05~12/11 進入決選、12/16前公布結果) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <div id="homepage-schedule-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <div className="bg-white/90 backdrop-blur-xs p-5 rounded-3xl border border-stone-200/90 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-b border-stone-100 pb-3">
             <div className="flex items-center gap-2">
@@ -2099,8 +2414,17 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               </h2>
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-stone-600">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>當前進行：<strong className="text-emerald-800 font-black">{stageInfo.stageTitle}</strong>（{stageInfo.stagePeriod}）</span>
+              {stageInfo.activeStage === 0 ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span>當前狀態：<strong className="text-amber-800 font-black">{stageInfo.stageTitle}</strong>（{stageInfo.stagePeriod}）</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>當前進行：<strong className="text-emerald-800 font-black">{stageInfo.stageTitle}</strong>（{stageInfo.stagePeriod}）</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -2147,11 +2471,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
                         activeStage === 1
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : activeStage === 0
+                          ? 'bg-amber-50 text-amber-900 border border-amber-200'
                           : 'bg-stone-200/70 text-stone-500 border border-stone-200'
                       }`}
                     >
                       {activeStage === 1 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      <span>{activeStage === 1 ? '徵件中（當前）' : '已截止'}</span>
+                      <span>{activeStage === 1 ? '徵件中（當前）' : activeStage === 0 ? '即將開放（10/31 00:00）' : '已截止'}</span>
                     </span>
                   </div>
                   <div className={`text-sm ${activeStage === 1 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
@@ -2417,11 +2743,17 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         <div className="bg-gradient-to-br from-amber-50/80 via-white to-stone-50 rounded-3xl border border-amber-300/80 p-6 sm:p-8 shadow-xs space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-200/60 pb-6">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-stone-950 tracking-tight">
-                當前提案
-              </h2>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-2xl sm:text-3xl font-black text-stone-950 tracking-tight">
+                  當前提案
+                </h2>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  目前為示範
+                </span>
+              </div>
               <p className="text-stone-600 text-xs sm:text-sm mt-1 max-w-2xl font-medium leading-relaxed">
-                本屆創星季提案庫已全面獨立至專屬滿版網頁！匯聚青年原創解法，支援依賽道篩選、按讚收藏、模擬注資投點與特聘評審深度交流。
+                本屆創星季提案庫已全面獨立至專屬滿版網頁！匯聚青年原創解法，支援依賽道篩選、按讚收藏與模擬注資投點。（目前為示範提案展示）
               </p>
             </div>
 
@@ -2455,92 +2787,234 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             ))}
           </div>
 
-          {/* 精選前 3 件提案預覽卡片 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-            {(proposals.slice(0, 3).length > 0 ? proposals.slice(0, 3) : [
-              {
-                id: 'demo-1',
-                title: '智農 AI 蔬果病蟲害即時預警無人機',
-                authorName: '臺大智慧農創隊',
-                track: 'ai_applications' as StarSeasonTrack,
-                stage: 'solution' as StarSeasonStage,
-                summary: '結合輕量邊緣運算無人機與近紅外光譜分析，於田間即時偵測早期病蟲害，減少 60% 農藥使用量。',
-                supportPoints: 128000,
-                likeCount: 42,
-                commentsCount: 9,
-              },
-              {
-                id: 'demo-2',
-                title: '全齡永續健康守護手環與居家照護雲',
-                authorName: '陽明交大銀髮智慧生技',
-                track: 'social_innovation' as StarSeasonTrack,
-                stage: 'solution' as StarSeasonStage,
-                summary: '無感配戴之毫米波跌倒偵測與心律異步回報系統，串連社區照護據點與家屬即時告警通知。',
-                supportPoints: 86000,
-                likeCount: 31,
-                commentsCount: 6,
-              },
-              {
-                id: 'demo-3',
-                title: '大學校園循環包材共享快遞站系統',
-                authorName: '成功大學淨零綠生活專案組',
-                track: 'green_tech' as StarSeasonTrack,
-                stage: 'pain_point' as StarSeasonStage,
-                summary: '解決大專校園網購快遞包裝垃圾堆積成災問題，建置模組化循環包裝回收與點數回饋站。',
-                supportPoints: 45000,
-                likeCount: 28,
-                commentsCount: 4,
-              },
-            ]).map((p) => {
-              const trackInfo = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => navigateToSubView('proposal')}
-                  className="bg-white rounded-2xl border border-stone-200 hover:border-amber-400 p-4 flex flex-col justify-between transition-all hover:shadow-md cursor-pointer group shadow-2xs"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                        {trackInfo.tag}
-                      </span>
-                      <span className="text-[10px] font-bold text-stone-400">
-                        {p.stage === 'pain_point' ? '痛點徵件' : '解法提案'}
-                      </span>
-                    </div>
-                    <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-1 text-sm">
-                      {p.title}
-                    </h3>
-                    <p className="text-stone-600 text-xs line-clamp-2 leading-relaxed">
-                      {p.summary}
-                    </p>
-                  </div>
+          {/* 批次輪播控制列 (一次顯示三個提案，一批一批向左輪播) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                <span>精選提案輪播</span>
+                <span className="text-[11px] font-mono text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300">
+                  第 {homepageCarouselBatchIndex + 1} / {Math.max(1, homepageProposalBatches.length)} 批
+                </span>
+              </span>
+              <span className="text-xs text-stone-500 hidden md:inline">
+                · 共 {homepageAllProposals.length} 隊參賽（每批 3 隊向左滑動）
+              </span>
+            </div>
 
-                  <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-xs">
-                    <div className="font-mono font-bold text-amber-700">
-                      ${(p.supportPoints || 0).toLocaleString()} 點支持
-                    </div>
-                    <div className="flex items-center gap-2 text-stone-400 text-[11px]">
-                      <span className="flex items-center gap-0.5">
-                        <Heart className="w-3 h-3 text-rose-500 fill-rose-500/20" />
-                        {p.likeCount || 0}
-                      </span>
-                      <span className="flex items-center gap-0.5">
-                        <MessageSquare className="w-3 h-3 text-amber-500" />
-                        {p.commentsCount || 0}
-                      </span>
-                    </div>
-                  </div>
+            {/* 輪播左右切換按鈕、暫停與批次按鈕 */}
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setIsHomepageCarouselPaused((prev) => !prev)}
+                className={`p-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  isHomepageCarouselPaused
+                    ? 'bg-amber-100 text-amber-900 border-amber-300'
+                    : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                }`}
+                title={isHomepageCarouselPaused ? '繼續自動向左輪播' : '暫停自動輪播'}
+              >
+                {isHomepageCarouselPaused ? <Play className="w-3.5 h-3.5 text-amber-700" /> : <Pause className="w-3.5 h-3.5 text-stone-600" />}
+                <span className="text-[10px] hidden xs:inline">{isHomepageCarouselPaused ? '播放' : '暫停'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setHomepageCarouselBatchIndex(
+                    (prev) => (prev - 1 + homepageProposalBatches.length) % homepageProposalBatches.length
+                  );
+                }}
+                className="p-1.5 rounded-xl bg-white hover:bg-amber-50 active:scale-95 text-stone-800 border border-stone-200 hover:border-amber-300 shadow-2xs transition-all cursor-pointer"
+                title="上一批提案 (向右回播)"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setHomepageCarouselBatchIndex(
+                    (prev) => (prev + 1) % homepageProposalBatches.length
+                  );
+                }}
+                className="p-1.5 rounded-xl bg-white hover:bg-amber-50 active:scale-95 text-stone-800 border border-stone-200 hover:border-amber-300 shadow-2xs transition-all cursor-pointer"
+                title="下一批提案 (向左輪播)"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* 提案滑動輪播視窗：一次顯示 3 個提案，一批一批向左滑動 */}
+          <div
+            className="overflow-hidden relative w-full rounded-3xl"
+            onMouseEnter={() => setIsHomepageCarouselPaused(true)}
+            onMouseLeave={() => setIsHomepageCarouselPaused(false)}
+          >
+            <div
+              className="flex transition-transform duration-700 ease-in-out"
+              style={{ transform: `translateX(-${homepageCarouselBatchIndex * 100}%)` }}
+            >
+              {homepageProposalBatches.map((batch, batchIdx) => (
+                <div
+                  key={`batch-${batchIdx}`}
+                  className="w-full shrink-0 grid grid-cols-1 md:grid-cols-3 gap-5 px-0.5"
+                >
+                  {batch.map((p) => {
+                    const trackInfo = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => navigateToSubView('proposal')}
+                        className="bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden cursor-pointer"
+                      >
+                        {/* 卡片封面大圖與標籤 */}
+                        <div className="relative h-44 overflow-hidden bg-stone-100 border-b border-stone-100">
+                          <img
+                            src={p.imageUrl}
+                            alt={p.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
+
+                          {/* 左上角標籤：梯次與賽道領域 */}
+                          <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-amber-300 border border-white/20 shadow-xs">
+                              {p.cohort}
+                            </span>
+                            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-stone-900 border border-white/40 shadow-xs">
+                              {trackInfo.name}
+                            </span>
+                          </div>
+
+                          {/* 右上角標籤：示範標記與階段 */}
+                          <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-pulse" />
+                              精選
+                            </span>
+                            <span
+                              className={`text-[10px] font-black px-2.5 py-1 rounded-full backdrop-blur-md shadow-xs ${
+                                p.stage === 'pain_point'
+                                  ? 'bg-rose-500/90 text-white'
+                                  : 'bg-emerald-600/90 text-white'
+                              }`}
+                            >
+                              {p.stage === 'pain_point' ? '徵點子' : '想解方'}
+                            </span>
+                          </div>
+
+                          {/* 圖片底部學校與團隊 */}
+                          <div className="absolute bottom-2.5 left-3 right-3 flex items-center gap-1.5 text-white/95 text-xs font-bold truncate drop-shadow-sm">
+                            <GraduationCap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                            <span className="truncate">{p.school} ｜ {p.team}</span>
+                          </div>
+                        </div>
+
+                        {/* 卡片內容主體 */}
+                        <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
+                          <div className="space-y-2">
+                            <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2 text-base leading-snug">
+                              {p.title}
+                            </h3>
+                            <p className="text-stone-600 text-xs line-clamp-2 leading-relaxed">
+                              {p.summary}
+                            </p>
+                          </div>
+
+                          {/* 純以募得創星幣為主展示（已取消達成率機制） */}
+                          <div className="pt-2">
+                            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-50/50 to-orange-50/40 border border-amber-200/90 flex items-center justify-between">
+                              <div>
+                                <div className="text-[10px] font-bold text-amber-900 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-amber-600" />
+                                  <span>募得創星幣</span>
+                                </div>
+                                <div className="font-mono font-black text-amber-950 text-base sm:text-lg flex items-baseline gap-1 mt-0.5">
+                                  <span>{p.supportPoints.toLocaleString()}</span>
+                                  <span className="text-xs font-bold text-amber-700">幣</span>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[10px] font-bold text-stone-500 flex items-center justify-end gap-1">
+                                  <Users className="w-3 h-3 text-stone-400" />
+                                  <span>支持人數</span>
+                                </div>
+                                <div className="font-mono font-bold text-stone-800 text-xs sm:text-sm mt-0.5">
+                                  {p.supporterCount} 人支持
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 卡片底部操作按鈕與互動計數 */}
+                        <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 text-stone-400 text-xs">
+                            <span className="flex items-center gap-1 font-bold hover:text-rose-600 transition-colors">
+                              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/20" />
+                              <span className="font-mono text-[11px]">{p.likeCount}</span>
+                            </span>
+                            <span className="flex items-center gap-1 font-bold hover:text-amber-600 transition-colors">
+                              <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+                              <span className="font-mono text-[11px]">{p.commentsCount}</span>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigateToSubView('proposal');
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              查看提案
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigateToSubView('proposal');
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-colors cursor-pointer shadow-2xs"
+                            >
+                              為他注資
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+
+          {/* 批次指示圓點導航列 */}
+          <div className="flex items-center justify-center gap-2 pt-1 pb-1">
+            {homepageProposalBatches.map((_, dotIdx) => (
+              <button
+                key={`dot-${dotIdx}`}
+                type="button"
+                onClick={() => setHomepageCarouselBatchIndex(dotIdx)}
+                className={`transition-all duration-300 rounded-full cursor-pointer ${
+                  homepageCarouselBatchIndex === dotIdx
+                    ? 'w-8 h-2.5 bg-amber-500 shadow-2xs'
+                    : 'w-2.5 h-2.5 bg-stone-300 hover:bg-stone-400'
+                }`}
+                title={`切換至第 ${dotIdx + 1} 批提案`}
+              />
+            ))}
           </div>
 
           {/* 底部醒目 CTA 橫幅 */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-amber-100/60 p-4 rounded-2xl border border-amber-300/80">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-950">
               <Sparkles className="w-4 h-4 text-amber-700 shrink-0" />
-              <span>探索全部參賽隊伍、完整計畫簡報、模擬注資與特聘專家回饋</span>
+              <span>探索全部參賽隊伍、完整計畫簡報、模擬注資與智庫專家回饋</span>
             </div>
             <button
               type="button"
@@ -2713,7 +3187,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <h2 className="text-lg sm:text-xl font-black text-stone-900">
                     競賽辦法
                   </h2>
-                  <p className="text-xs text-stone-500 font-medium">免預先報名、題目設定、模擬募資與特聘專家評審機制</p>
+                  <p className="text-xs text-stone-500 font-medium">免預先報名、題目設定、模擬募資與專業評審機制</p>
                 </div>
               </div>
               <button
@@ -2829,12 +3303,32 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <img src="/logo-chuangxingji-text.png" alt="創星季去背" className="h-5 w-auto object-contain shrink-0" />
                 <h3 className="text-base font-black text-stone-900 ml-1">提案詳情 — 創新提案</h3>
               </div>
-              <button
-                onClick={() => setSelectedProposalForDetail(null)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-800 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCopyProposalLink(selectedProposalForDetail.id)}
+                  className="px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-950 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                  title="複製此提案專屬公開網址（可於搜尋引擎檢索與社群分享）"
+                >
+                  {copiedProposalId === selectedProposalForDetail.id ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700 font-black">已複製連結</span>
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="w-3.5 h-3.5 text-amber-700" />
+                      <span>複製公開網址</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setSelectedProposalForDetail(null)}
+                  className="p-1 rounded-lg text-stone-400 hover:text-stone-800 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4 text-xs">
@@ -2887,7 +3381,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     {selectedProposalForDetail.sourcePainPointTitle}
                   </p>
                   <p className="text-[11px] text-emerald-700">
-                    若獲特聘專家評審為前三名獲獎解方，獲獎提案使用之痛點提出者可獲獎勵：價值$1500好禮（1200點提問金,用於IdeaX平台提問或使用特色功能）！
+                    若獲專家評審評定為前三名獲獎解方，獲獎提案使用之痛點提出者可獲獎勵：價值$1500好禮（1200點提問金,用於IdeaX平台提問或使用特色功能）！
                   </p>
                 </div>
               )}
@@ -3060,29 +3554,35 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               )}
 
-              {/* 創星幣募資進度 */}
-              <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2">
+              {/* 創星幣募資成果展示（純以募得創星幣為主，取消達成率機制） */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-50/60 to-orange-50/50 border border-amber-200 space-y-2.5">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-stone-800">使用 創星幣 支持你認同的創新提案</span>
-                  <span className="font-mono font-black text-amber-800 text-sm">
-                    {selectedProposalForDetail.supportPoints.toLocaleString()} 創星幣（
-                    {Math.min(Math.round(((selectedProposalForDetail.supportPoints || 0) / 100000) * 100), 1000)}%）
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-amber-400 text-stone-950 font-black flex items-center justify-center text-sm shadow-2xs">
+                      🪙
+                    </div>
+                    <div>
+                      <div className="font-bold text-stone-900 text-sm">當前累積募得創星幣</div>
+                      <div className="text-[11px] text-stone-500">純以社群與投資者實際注資金額為主</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono font-black text-amber-900 text-xl sm:text-2xl flex items-baseline justify-end gap-1">
+                      <span>{selectedProposalForDetail.supportPoints.toLocaleString()}</span>
+                      <span className="text-xs font-bold text-amber-700">創星幣</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-amber-200/80 flex items-center justify-between text-xs text-stone-700">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-amber-700" />
+                    <span>累積支持夥伴：</span>
+                    <span className="font-mono font-bold text-stone-900">{selectedProposalForDetail.supporterCount || 0} 人</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    ⭐ 創星季實時榜單計分
                   </span>
-                </div>
-                <div className="w-full bg-white h-2.5 rounded-full overflow-hidden border border-amber-200">
-                  <div
-                    className="bg-gradient-to-r from-amber-400 to-yellow-500 h-full rounded-full"
-                    style={{
-                      width: `${Math.min(
-                        Math.round(((selectedProposalForDetail.supportPoints || 0) / 100000) * 100),
-                        100
-                      )}%`,
-                    }}
-                  />
-                </div>
-                <div className="text-[11px] text-stone-500 flex justify-between">
-                  <span>支持人次：{selectedProposalForDetail.supporterCount || 0} 人</span>
-                  <span>目標額度：100,000 創星幣</span>
                 </div>
               </div>
 
@@ -3090,7 +3590,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <div className="p-3.5 rounded-2xl bg-white border border-stone-200 space-y-2 shadow-2xs">
                 <div className="flex items-center gap-1.5 font-black text-stone-900">
                   <MessageSquare className="w-4 h-4 text-amber-500" />
-                  <span>特聘專家評審與業師教練回饋</span>
+                  <span>專家評審與業師教練回饋</span>
                 </div>
                 {selectedProposalForDetail.reviewNote ? (
                   <p className="text-stone-700 bg-stone-50 p-2.5 rounded-xl border border-stone-200 italic">
@@ -3098,7 +3598,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   </p>
                 ) : (
                   <p className="text-stone-400 italic text-[11px]">
-                    目前該提案已通過初審，正在進行全體模擬募資中；募資前 20 名將由特聘專家小組於 12/01–12/06 決審階段給予深度輔導回饋。
+                    目前該提案已通過初審，正在進行全體模擬募資中；募資前 20 名將由產學專家小組於 12/01–12/06 決審階段給予深度輔導回饋。
                   </p>
                 )}
               </div>
@@ -3132,7 +3632,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <div className="flex items-center justify-between border-b border-stone-100 pb-2">
                   <div className="flex items-center gap-2 font-black text-stone-900 text-xs">
                     <MessageSquare className="w-4 h-4 text-amber-500" />
-                    <span>社群討論與評審交流區</span>
+                    <span>社群討論與交流專區</span>
                     <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 text-[10px] font-bold">
                       {activeComments.length} 則留言
                     </span>
@@ -3151,7 +3651,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     <div className="py-6 text-center text-stone-400 space-y-1">
                       <MessageSquare className="w-8 h-8 mx-auto text-stone-300 stroke-1" />
                       <p className="text-xs">目前尚無討論留言</p>
-                      <p className="text-[10px] text-stone-400">歡迎參賽者、特聘評審與會員提出建議、提問或交流！</p>
+                      <p className="text-[10px] text-stone-400">歡迎參賽者、顧問專家與會員提出建議、提問或交流！</p>
                     </div>
                   ) : (
                     activeComments.map((cm) => (
@@ -3708,7 +4208,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
               {/* 最終得獎核定 */}
               <div className="pt-3 border-t border-stone-200 space-y-2">
-                <div className="font-bold text-amber-800">特聘專家評審核定得獎名次 (決選)</div>
+                <div className="font-bold text-amber-800">專家評審核定得獎名次 (決選)</div>
                 <div className="flex items-center gap-2">
                   <select
                     value={adminFinalRankInput}

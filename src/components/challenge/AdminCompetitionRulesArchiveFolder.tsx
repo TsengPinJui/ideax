@@ -26,6 +26,7 @@ import {
   EXPERT_JUDGE_TERMS_D,
   PLATFORM_GUIDE_E,
 } from '../../data/competitionTermsData';
+import { copyToClipboard } from '../../utils/clipboard';
 
 export const AdminCompetitionRulesArchiveFolder: React.FC = () => {
   const { currentUser } = useApp();
@@ -151,7 +152,7 @@ export const AdminCompetitionRulesArchiveFolder: React.FC = () => {
   // 複製全套歸檔
   const handleCopyFullPackage = () => {
     const text = generateFullPackageMarkdown();
-    navigator.clipboard.writeText(text);
+    copyToClipboard(text);
     setCopiedSuccess(true);
     setTimeout(() => setCopiedSuccess(false), 3000);
   };

@@ -41,12 +41,12 @@ export function getCalculatedVersionState(): VersionState {
     console.warn('Error reading version state:', e);
   }
 
-  // 靜態版本發布紀錄（不要變時鐘，固定依更新時間 2026.10.07 10:42 紀錄）
+  // 靜態版本發布紀錄（不要變時鐘，固定依更新時間 2026.10.08 02:45 紀錄）
   return {
-    currentVersion: APP_VERSION ? `v${APP_VERSION}` : 'v1.6.3',
-    seqNumber: APP_SEQUENCE_NUMBER || '#014',
-    lastReleaseDate: APP_RELEASE_DATE || '2026.10.07',
-    lastReleaseTime: APP_RELEASE_TIME || '10:42',
+    currentVersion: APP_VERSION ? `v${APP_VERSION}` : 'v1.6.4',
+    seqNumber: APP_SEQUENCE_NUMBER || '#015',
+    lastReleaseDate: APP_RELEASE_DATE || '2026.10.08',
+    lastReleaseTime: APP_RELEASE_TIME || '02:45',
     dailyIncrementCount: 1,
     letterSuffix: '',
   };

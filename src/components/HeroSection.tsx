@@ -4,6 +4,7 @@ import { Category } from '../types';
 import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { useApp } from '../context/AppContext';
+import { YellowLiquidHeroBackground } from './YellowLiquidHeroBackground';
 
 interface HeroSectionProps {
   searchQuery?: string;
@@ -175,24 +176,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     }
   }, [questions, answers]);
 
-  // 12. 方案採納滿意度 (依據真實狀況：全站解答專家與方案真實綜合星級換算)
+  // 12. 方案採納滿意度 (依需求：舊站滿意度歸零為 0%)
   const satisfactionRateFormatted = useMemo(() => {
-    const ratedSolvers = solvers.filter((s) => typeof s.rating === 'number' && s.rating > 0);
-    if (ratedSolvers.length === 0) return '-';
-
-    let totalWeightedRating = 0;
-    let totalWeight = 0;
-
-    ratedSolvers.forEach((s) => {
-      const weight = Math.max(1, s.reviewCount || 1);
-      totalWeightedRating += s.rating * weight;
-      totalWeight += weight;
-    });
-
-    const avgRating = totalWeight > 0 ? totalWeightedRating / totalWeight : 5.0;
-    const percentage = Math.min(100, Math.max(0, (avgRating / 5) * 100));
-    return `${percentage.toFixed(1)}%`;
-  }, [solvers]);
+    return '0%';
+  }, []);
 
   // 13. 當前全站最高懸賞題目金額 (即時從真實問題列表抓取最高值，正式模式與無金流模式歸零)
   const currentHighestBounty = useMemo(() => {
@@ -220,19 +207,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     return count;
   }, [publicMetricsConfig]);
   return (
-    <section className="relative overflow-hidden bg-white border-b border-stone-200 pt-4 pb-2 sm:pt-8 sm:pb-8 md:pt-9 md:pb-8">
-      {/* Radiant ambient glow matching the IdeaX yellow/gold brand aura */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-amber-200/35 via-yellow-100/20 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-28 right-10 w-80 h-80 bg-amber-100/30 rounded-full blur-2xl pointer-events-none -z-10" />
+    <section className="relative overflow-hidden bg-amber-50/20 border-b border-amber-200/80 pt-4 pb-2 sm:pt-8 sm:pb-8 md:pt-9 md:pb-8">
+      {/* 耀眼活力的黃色液態流動感動態背景 (Yellow Liquid Fluid Motion Background) */}
+      <YellowLiquidHeroBackground />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Hero Visual Spotlight with IdeaX - 創點子+IdeaX品牌焦點與關鍵字 */}
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
-          {/* Official IdeaX Brand Display */}
+          {/* Official IdeaX Brand Display - 液態光圈與透視磨砂玻璃 */}
           <div className="relative mb-4.5 sm:mb-5.5 group inline-flex max-w-[90%] sm:max-w-xl lg:max-w-2xl mx-auto justify-center">
-            {/* Ambient backlight ring */}
-            <div className="absolute inset-0 rounded-3xl bg-amber-300/35 blur-2xl scale-105 pointer-events-none" />
-            <div className="relative py-2 px-3 sm:py-2.5 sm:px-4 md:py-3 md:px-5 rounded-2xl sm:rounded-3xl bg-gradient-to-b from-amber-50/90 via-white/95 to-white/95 border border-amber-200/80 shadow-md flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2">
+            {/* Ambient liquid backlight glow */}
+            <div className="absolute inset-0 rounded-3xl bg-amber-400/45 blur-2xl scale-110 pointer-events-none animate-liquid-morph-1" />
+            <div className="relative py-2 px-3 sm:py-2.5 sm:px-4 md:py-3 md:px-5 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/80 border border-amber-200/90 shadow-[0_12px_36px_-10px_rgba(245,158,11,0.28)] ring-1 ring-amber-300/50 flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 transition-all duration-300 group-hover:shadow-[0_16px_45px_-10px_rgba(245,158,11,0.38)] group-hover:border-amber-300">
               <img
                 src="/logo-bulb.png"
                 alt="IdeaX 燈泡"
@@ -255,7 +241,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           {/* Value Proposition Badges below headline - 告訴造訪者網站能帶給用戶什麼 */}
           <div className="mt-4.5 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 max-w-2xl">
             {[
-              '徵創業痛點',
+              '微創業痛點',
               '團隊協作',
               '解題黑客松',
               '高額懸賞解方',
@@ -273,7 +259,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }
                 }}
-                className="px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-50 to-amber-100/90 text-amber-950 border border-amber-200/90 text-xs sm:text-[13px] font-extrabold shadow-2xs select-none flex items-center gap-1.5 cursor-pointer hover:bg-amber-200/80 hover:scale-105 transition-all"
+                className="px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full backdrop-blur-sm bg-white/75 hover:bg-amber-100/90 text-amber-950 border border-amber-200/90 text-xs sm:text-[13px] font-extrabold shadow-2xs select-none flex items-center gap-1.5 cursor-pointer hover:border-amber-400 hover:scale-105 transition-all"
               >
                 <span className="text-amber-500 font-bold">✦</span>
                 <span>{text}</span>

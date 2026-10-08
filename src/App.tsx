@@ -35,10 +35,11 @@ import { RatingModal } from './components/RatingModal';
 import { HelpTooltip } from './components/HelpTooltip';
 import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnboardingGuide';
 import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompass';
+import { GoogleSitelinksModal } from './components/GoogleSitelinksModal';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { isPainPointQuestion } from './utils/questionUtils';
-import { updateSEOForQuestion } from './services/seoService';
+import { updateSEOForQuestion, updateSEOForSubpage, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
 import {
   recordUserSearchKeyword,
   recordUserBoard,
@@ -105,6 +106,18 @@ function MainContent() {
         const search = window.location.search.toLowerCase();
         const hash = window.location.hash.toLowerCase();
         const redirectParam = (new URLSearchParams(window.location.search).get('redirect') || '').toLowerCase();
+
+        // 1. 發布懸賞子網址: /create
+        if (pathname.includes('/create') || search.includes('action=create') || hash.includes('create')) {
+          return 'create_question';
+        }
+
+        // 2. 找專家子網址: /solvers
+        if (pathname.includes('/solvers') || search.includes('tab=solvers') || hash.includes('solvers')) {
+          return 'solvers';
+        }
+
+        // 3. 創星季子網址與捷徑: /challenge, /challenge/join, /challenge/expert, /challenge/proposals, /challenge/rules
         if (
           pathname.includes('/challenge') ||
           redirectParam.includes('/challenge') ||
@@ -121,7 +134,6 @@ function MainContent() {
           pathname.includes('/participant') ||
           pathname.includes('/judge') ||
           pathname.includes('/ambassador') ||
-          pathname.includes('/explore') ||
           search.includes('tab=star_season') ||
           search.includes('tab=challenge') ||
           search.includes('tab=proposal') ||
@@ -133,7 +145,6 @@ function MainContent() {
           search.includes('view=participant') ||
           search.includes('view=judge') ||
           search.includes('view=ambassador') ||
-          search.includes('view=explore') ||
           hash.includes('rules') ||
           hash.includes('proposal') ||
           hash.includes('submit') ||
@@ -157,15 +168,25 @@ function MainContent() {
   const [specialZone, setSpecialZone] = useState<SpecialZone>(() => {
     try {
       if (typeof window !== 'undefined') {
+        const pathname = window.location.pathname.toLowerCase();
         const search = window.location.search.toLowerCase();
         const hash = window.location.hash.toLowerCase();
-        if (search.includes('zone=pain_points') || search.includes('pain_points') || hash.includes('pain_points')) {
+        if (
+          pathname.includes('/painpoints') ||
+          pathname.includes('/pain-points') ||
+          pathname.includes('/painpoint') ||
+          search.includes('zone=pain_points') ||
+          search.includes('pain_points') ||
+          hash.includes('pain_points') ||
+          hash.includes('painpoints')
+        ) {
           return 'pain_points';
         }
       }
     } catch {}
     return 'all';
   });
+  const [isSitelinksModalOpen, setIsSitelinksModalOpen] = useState(false);
   const [initialPostType, setInitialPostType] = useState<PostType>('seek_solution');
   const [initialPublishIdentity, setInitialPublishIdentity] = useState<'admin' | 'platform'>('admin');
   // 問題市場排序方式：按照用戶前一次使用的作為下次預設（預設為 recruiting_promoted 推薦）
@@ -382,21 +403,131 @@ function MainContent() {
   const [submitInitialType, setSubmitInitialType] = useState<'discussion' | 'solution'>('solution');
   const [aboutPageSection, setAboutPageSection] = useState<string>('others');
 
-  // Scroll to top and sync URL pathname when switching activeTab
+  // Scroll to top and sync URL pathname when switching activeTab / specialZone
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     try {
       if (typeof window !== 'undefined') {
+        const curPath = window.location.pathname.toLowerCase();
         if (activeTab === 'star_season') {
-          if (!window.location.pathname.startsWith('/challenge')) {
+          if (!curPath.startsWith('/challenge')) {
             window.history.pushState({ tab: 'star_season' }, '', '/challenge');
           }
-        } else if (window.location.pathname === '/challenge' || window.location.pathname === '/cases') {
-          window.history.pushState({ tab: activeTab }, '', '/');
+        } else if (activeTab === 'create_question') {
+          if (curPath !== '/create') {
+            window.history.pushState({ tab: 'create_question' }, '', '/create');
+            updateSEOForSubpage('create');
+          }
+        } else if (activeTab === 'solvers') {
+          if (curPath !== '/solvers') {
+            window.history.pushState({ tab: 'solvers' }, '', '/solvers');
+            updateSEOForSubpage('solvers');
+          }
+        } else if (activeTab === 'explore') {
+          if (specialZone === 'pain_points') {
+            if (curPath !== '/painpoints') {
+              window.history.pushState({ zone: 'pain_points' }, '', '/painpoints');
+              updateSEOForSubpage('painpoints');
+            }
+          } else if (curPath === '/painpoints' || curPath === '/create' || curPath === '/solvers' || curPath === '/challenge') {
+            window.history.pushState({ tab: 'explore' }, '', '/explore');
+            updateSEOForSubpage('explore');
+          }
         }
       }
     } catch {}
-  }, [activeTab]);
+  }, [activeTab, specialZone]);
+
+  const handleNavigateToSitelink = (item: GoogleSitelinkItem) => {
+    setSelectedQuestion(null);
+    setSelectedSolver(null);
+
+    if (item.id === 'explore') {
+      setActiveTab('explore');
+      setSpecialZone('all');
+      setSelectedCategory('全部');
+      setSelectedSubcategory('全部');
+      try {
+        window.history.pushState({ sitelink: 'explore' }, '', '/explore');
+      } catch {}
+      updateSEOForSubpage('explore');
+      setTimeout(() => {
+        const el = document.getElementById('market-grid');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 60);
+    } else if (item.id === 'create') {
+      setActiveTab('create_question');
+      try {
+        window.history.pushState({ sitelink: 'create' }, '', '/create');
+      } catch {}
+      updateSEOForSubpage('create');
+    } else if (item.id === 'painpoints') {
+      setActiveTab('explore');
+      setSpecialZone('pain_points');
+      setSelectedCategory('全部');
+      setSelectedSubcategory('全部');
+      try {
+        window.history.pushState({ sitelink: 'painpoints' }, '', '/painpoints');
+      } catch {}
+      updateSEOForSubpage('painpoints');
+      setTimeout(() => {
+        const el = document.getElementById('market-grid');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 60);
+    } else if (item.id === 'solvers') {
+      setActiveTab('solvers');
+      try {
+        window.history.pushState({ sitelink: 'solvers' }, '', '/solvers');
+      } catch {}
+      updateSEOForSubpage('solvers');
+    } else if (item.id === 'challenge_join') {
+      setActiveTab('star_season');
+      try {
+        window.history.pushState({ sitelink: 'challenge_join', subView: 'submit' }, '', '/challenge/join');
+      } catch {}
+      updateSEOForSubpage('challenge_join');
+    } else if (item.id === 'challenge_expert') {
+      setActiveTab('star_season');
+      try {
+        window.history.pushState({ sitelink: 'challenge_expert', subView: 'judge' }, '', '/challenge/expert');
+      } catch {}
+      updateSEOForSubpage('challenge_expert');
+    } else if (item.id === 'challenge_proposals') {
+      setActiveTab('star_season');
+      try {
+        window.history.pushState({ sitelink: 'challenge_proposals', subView: 'proposal' }, '', '/challenge/proposals');
+      } catch {}
+      updateSEOForSubpage('challenge_proposals');
+    } else if (item.id === 'challenge_rules') {
+      setActiveTab('star_season');
+      try {
+        window.history.pushState({ sitelink: 'challenge_rules', subView: 'rules' }, '', '/challenge/rules');
+      } catch {}
+      updateSEOForSubpage('challenge_rules');
+    }
+  };
+
+  // 監聽外部自訂事件以開啟 Google Sitelinks 捷徑預覽中心
+  useEffect(() => {
+    const handleOpenSitelinks = () => {
+      setIsSitelinksModalOpen(true);
+    };
+    const handleNavigateSitelink = (e: Event) => {
+      const customEvent = e as CustomEvent<{ id: string }>;
+      const targetId = customEvent.detail?.id;
+      if (!targetId) return;
+      const found = GOOGLE_SITELINKS.find((s) => s.id === targetId);
+      if (found) {
+        handleNavigateToSitelink(found);
+      }
+    };
+    window.addEventListener('ideax_open_sitelinks', handleOpenSitelinks);
+    window.addEventListener('ideax_navigate_sitelink', handleNavigateSitelink);
+    return () => {
+      window.removeEventListener('ideax_open_sitelinks', handleOpenSitelinks);
+      window.removeEventListener('ideax_navigate_sitelink', handleNavigateSitelink);
+    };
+  }, []);
 
   // Guest intercept: if guest tries to view personal center or my projects or create question, redirect to login
   useEffect(() => {
@@ -1552,6 +1683,7 @@ function MainContent() {
               setActiveTab('explore');
               setIsOnboardingOpen(true);
             }}
+            onNavigateToSitelink={handleNavigateToSitelink}
           />
         )}
 
@@ -1852,6 +1984,13 @@ function MainContent() {
 
       {/* 專家評分回饋彈窗 */}
       <RatingModal />
+
+      {/* Google 搜尋多個分頁捷徑 (Sitelinks) 預覽中心與子網址導航彈窗 */}
+      <GoogleSitelinksModal
+        isOpen={isSitelinksModalOpen}
+        onClose={() => setIsSitelinksModalOpen(false)}
+        onNavigateToSitelink={handleNavigateToSitelink}
+      />
 
       {/* 螢幕正中央提示浮窗 (Center Toast HUD: 中間跳出提示再消失) */}
       <CenterToast toast={centerToast} onDismiss={hideCenterToast} />

@@ -39,20 +39,97 @@
 
     <!-- PWA APP 行動與桌面專屬應用程式圖標 (使用 pwa-maskable) -->
     <link rel="apple-touch-icon" sizes="180x180" href="/pwa-maskable-512x512.png?v=pwa-app-17" />
+    <!-- Schema.org JSON-LD: 包含 WebApplication、WebSite (Google Sitelinks 搜尋框) 與 SiteNavigationElement (Google 搜尋多個分頁捷徑) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "IdeaX 創點子",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "All",
-      "description": "高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，讓想法發光！",
-      "image": "/圓角正向黃底燈泡.png",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "TWD"
-      }
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "@id": "https://www.ideax.tw/#webapp",
+          "name": "IdeaX 創點子",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "All",
+          "description": "高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，讓想法發光！",
+          "image": "https://www.ideax.tw/圓角正向黃底燈泡.png",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "TWD"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://www.ideax.tw/#website",
+          "url": "https://www.ideax.tw/",
+          "name": "IdeaX 創點子",
+          "alternateName": ["創點子", "IdeaX", "IdeaX 創點子平台"],
+          "description": "高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，Ideas Connect Possibilities。",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://www.ideax.tw/?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "@id": "https://www.ideax.tw/#sitelinks",
+          "name": "IdeaX 創點子與創星季快捷導航分頁",
+          "hasPart": [
+            {
+              "@type": "SiteNavigationElement",
+              "name": "探索問題",
+              "description": "探索各領域高額懸賞問題、市場提案與最新發案討論",
+              "url": "https://www.ideax.tw/explore"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "發布懸賞",
+              "description": "一鍵發布高價值難題懸賞，設定三階段驗收機制，吸引頂尖專家提案解題",
+              "url": "https://www.ideax.tw/create"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "痛點專區",
+              "description": "大眾與企業真實痛點募集，發掘未被滿足的高潛力創新需求與商業點子",
+              "url": "https://www.ideax.tw/painpoints"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "找專家",
+              "description": "尋找創新創業、軟硬體研發、法律財稅、AI 等各領域官方認證專家與專業顧問",
+              "url": "https://www.ideax.tw/solvers"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "我要參賽",
+              "description": "創星季全國創新提案挑戰賽：立即線上報名參賽、提交提案作品與簡報",
+              "url": "https://www.ideax.tw/challenge/join"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "專家申請",
+              "description": "創星季官方專家顧問與評審認證申請，實名審查入駐",
+              "url": "https://www.ideax.tw/challenge/expert"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "提案總覽",
+              "description": "創星季參賽提案、商業落地案例精選與各組評審即時動態",
+              "url": "https://www.ideax.tw/challenge/proposals"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "name": "活動辦法",
+              "description": "創星季大賽日程、參賽資格、評分規約、智財權保障與獎項說明",
+              "url": "https://www.ideax.tw/challenge/rules"
+            }
+          ]
+        }
+      ]
     }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">

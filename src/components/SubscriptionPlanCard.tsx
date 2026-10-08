@@ -295,6 +295,14 @@ export const SubscriptionPlanCard: React.FC = () => {
           </p>
         </div>
 
+        {/* 暫不開放訂閱付費會員公告 */}
+        <div className="p-3.5 rounded-xl bg-amber-100/80 border border-amber-300 text-amber-950 text-xs font-semibold flex items-center gap-2">
+          <span className="text-base select-none shrink-0">💡</span>
+          <span>
+            <strong>平台公告：</strong>目前為創星季競賽營運階段，暫不開放訂閱付費會員。所有用戶均可自由體驗專家方案與交流，敬請期待後續正式開通！
+          </span>
+        </div>
+
         {!isPaymentStep ? (
           /* 下拉選擇模式 */
           <div className="space-y-3 pt-0.5">
@@ -433,12 +441,13 @@ export const SubscriptionPlanCard: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={handleScheduleNextCyclePlan}
-                        disabled={isProcessing || (currentTier === selectedTier && !currentUser.nextSubscriptionTier)}
-                        className="px-4 py-2 rounded-xl bg-purple-900 hover:bg-purple-800 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => {
+                          setActionMsg({ text: '💡 目前為創星季競賽營運階段，暫不開放訂閱付費會員，全站功能均可自由使用！', isError: true });
+                        }}
+                        className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 active:bg-stone-100 text-stone-500 font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 border border-stone-200"
+                        title="目前暫不開放訂閱"
                       >
-                        <span>預約下期變換為「{targetPlan.name}」（下期生效）</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <span>暫不開放訂閱</span>
                       </button>
                     </div>
                   </div>
@@ -451,24 +460,26 @@ export const SubscriptionPlanCard: React.FC = () => {
                   <div className="text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="font-black text-xs text-amber-950">
-                        首次開通方案：{targetPlan.name}
+                        目標方案：{targetPlan.name}
                       </span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${targetPlan.badgeClass}`}>
                         {feeBadgeText}
                       </span>
                     </div>
                     <p className="text-[11px] text-amber-900/80 mt-0.5 font-bold">
-                      首次開通費用 <strong>NT$ {(targetCycleObj.price || 0).toLocaleString()}</strong>（開通後後續任何變換方案皆於下個期間開始）
+                      定價 <strong>NT$ {(targetCycleObj.price || 0).toLocaleString()}</strong>（創星季競賽期間暫不開放付費訂閱，敬請期待）
                     </p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => setIsPaymentStep(true)}
-                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                    onClick={() => {
+                      setActionMsg({ text: '💡 目前為創星季競賽營運階段，暫不開放訂閱付費會員，全站功能均可自由使用！', isError: true });
+                    }}
+                    className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 active:bg-stone-100 text-stone-500 font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0 border border-stone-200"
+                    title="目前暫不開放訂閱"
                   >
-                    <span>前往付款開通</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>暫不開放訂閱</span>
                   </button>
                 </div>
               );

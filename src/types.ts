@@ -292,7 +292,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
       'AI 初步問題分析報告：免費查看 50 次',
       'AI 提案架構整理：一鍵整理為 4 層架構',
       '🎯 AI-CRM 24hr 客情巡航：基礎巡航與意向偵測',
-      '🤝 雙向握手提案：市場顧問 × AICRM 雙向特聘媒合推播',
+      '🤝 雙向握手提案：市場顧問 × AICRM 雙向專屬媒合推播',
     ],
   },
   expert: {
@@ -318,7 +318,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
       'AI 初步問題分析報告：免費查看 50 次',
       'AI 提案架構整理：一鍵整理為 4 層架構',
       '🎯 AI-CRM 24hr 客情巡航：基礎巡航與意向偵測',
-      '🤝 雙向握手提案：市場顧問 × AICRM 雙向特聘媒合推播',
+      '🤝 雙向握手提案：市場顧問 × AICRM 雙向專屬媒合推播',
     ],
   },
   authority: {
@@ -345,7 +345,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
       'AI 提案架構整理：一鍵整理為 4 層架構',
       '✨ 升級高賞提案優先推薦曝光',
       '🎯 AI-CRM 24hr 客情巡航雷達：實時巡弋全站題庫與發案者猶豫期',
-      '🤝 雙向握手提案：市場顧問 × AICRM 即時推播雙向高契合特聘商機',
+      '🤝 雙向握手提案：市場顧問 × AICRM 即時推播雙向高契合專案商機',
       '💰 優質提案推薦您來賺：智能過濾高額懸賞好題與三階段破局方針',
     ],
   },
@@ -373,7 +373,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
       'AI 提案架構整理：一鍵整理為 4 層架構',
       '高賞提案最高優先級推薦曝光',
       '🎯 AI-CRM 24hr 客情巡航雷達：即時客情意向偵測與高價值客戶巡航',
-      '🤝 雙向握手提案：市場顧問 × AICRM 即時推播雙向高契合特聘商機',
+      '🤝 雙向握手提案：市場顧問 × AICRM 即時推播雙向高契合專案商機',
       '💰 優質提案推薦您來賺：智能過濾高額懸賞好題與三階段破局方針',
       '🧠 AI-CRM 24hr 策略軍師：心理學破冰話術擬定與時程推演',
       '🤖 24hr AI 特助代操：全自動化離線對談與排程破冰代操發送',
@@ -537,7 +537,9 @@ export interface UserSurveyData {
   desiredServicesCustom?: string; // 期望在IdeaX使用的服務 (自填)
   relatedDomains?: string[]; // 相關領域 (可多選)
   relatedDomainsCustom?: string; // 相關領域 (自行輸入)
-  willingQuestionBudget?: string; // 願意一次花多少錢在尋求解答(自行提問)?
+  willingPointsPerQuestion?: string; // 通常願意花多少點數提問懸賞？
+  willingQuestionBudget?: string; // 若遇到棘手問題，一次性尋求專家解答願支付多少預算？
+  monthlyQuestionBudget?: string; // 每個月願意花多少錢在提問上？（附點數儲值與新台幣對照）
   willingToProvideSolutions?: string; // 是否願意有償為其他提問提供解方(為人解答)?
   usageFrequency?: string; // 您多久打開一次 IdeaX ?
   willingToBeSideHustle?: string; // 您是否願意將解答作為您的副業(有償)?

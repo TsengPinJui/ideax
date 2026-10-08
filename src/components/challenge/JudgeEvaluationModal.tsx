@@ -188,7 +188,7 @@ export const JudgeEvaluationModal: React.FC<JudgeEvaluationModalProps> = ({
                   IdeaX 創星季 • 決選專家評審評分工作台
                 </h3>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500 text-white">
-                  特聘評審委員專屬
+                  決選評審委員專屬
                 </span>
               </div>
               <p className="text-xs text-purple-200 mt-0.5">

@@ -40,11 +40,13 @@ import {
   PLATFORM_GUIDE_E,
 } from '../../data/competitionTermsData';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
+import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 
 interface RulesFullPageProps {
   onNavigate: (view: 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador') => void;
   onBackToOldSite: () => void;
   onOpenAuth: () => void;
+  onGoToPainPoints?: () => void;
   onOpenAmbassadorModal?: () => void;
 }
 
@@ -52,6 +54,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
   onNavigate,
   onBackToOldSite,
   onOpenAuth,
+  onGoToPainPoints,
   onOpenAmbassadorModal,
 }) => {
   const { currentUser } = useApp();
@@ -71,11 +74,11 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
     },
     {
       q: '為什麼前 20 名進入決選？專家如何參與評選？',
-      a: '第二階段大眾注資模擬（11/16 ~ 12/04）旨在測試市場反應力與社群關注度（11/14 ~ 11/15 預先提案期間暫關閉注資，僅開放提案審核與預覽）。模擬募資達成度前 20 名之優秀提案將直接取得「入圍決選資格」。第三階段（12/05 ~ 12/11）由主辦方產學研專家進行專業審查與評分（創新突破性 40%、商業可行性 35%、社會與產業價值 25%），決選出前三名獲獎隊伍（冠軍 NT$30,000、亞軍 NT$10,000、季軍 NT$4,000）。',
+      a: '第二階段大眾注資模擬（11/16 ~ 12/04）旨在測試市場反應力與社群關注度（11/14 ~ 11/15 預先提案期間暫關閉注資，僅開放提案審核與預覽）。募得創星幣總額排名前 20 名之優秀提案將直接取得「入圍決選資格」。第三階段（12/05 ~ 12/11）由主辦方產學研專家進行專業審查與評分（創新突破性 40%、商業可行性 35%、社會與產業價值 25%），決選出前三名獲獎隊伍（冠軍 NT$30,000、亞軍 NT$10,000、季軍 NT$4,000）。',
     },
     {
       q: '「痛點提出者」如何獲得 200 點痛點獎勵與價值 NT$1,500 採用好禮？',
-      a: '只要成功提出痛點（需過審）即送 200 點（價值 $250 的 IdeaX 創點子平台點數，可用於發布懸賞問題、享受付費功能，點數效期 60 日）。此外，若參賽團隊選用並解決該痛點，且該解方提案最終經特聘專家評審評定為前三名（冠、亞、季軍），原痛點之提出者即可另獲價值 NT$1,500 等值好禮（含 1,200 點 IdeaX 平台提問金），共同共享創新成果！',
+      a: '只要成功提出痛點（需過審）即送 200 點（價值 $250 的 IdeaX 創點子平台點數，可用於發布懸賞問題、享受付費功能，點數效期 60 日）。此外，若參賽團隊選用並解決該痛點，且該解方提案最終經專家評審評定為前三名（冠、亞、季軍），原痛點之提出者即可另獲價值 NT$1,500 等值好禮（含 1,200 點 IdeaX 平台提問金），共同共享創新成果！',
     },
     {
       q: '推廣大使獎勵 400 點的核發條件是什麼？',
@@ -111,6 +114,8 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-24 font-sans">
       {/* 獨立頂部導覽列 */}
       <header className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
+        {/* 創星季廣播橫幅：誠徵各行業專家參與注資，注資額300萬（點擊申請） */}
+        <StarSeasonBroadcastBanner onApply={() => onNavigate('judge')} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 shrink-0 -ml-1 sm:-ml-2">
@@ -209,14 +214,14 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               探索Idea
             </button>
 
-            {/* 3. 先看痛點 */}
+            {/* 3. 痛點-> */}
             <button
               type="button"
-              onClick={onBackToOldSite}
+              onClick={onGoToPainPoints || onBackToOldSite}
               className="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-              title="前往舊站 創點子/痛點專區"
+              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
             >
-              先看痛點
+              痛點-&gt;
             </button>
 
             {/* 4. 申請參賽者 */}
@@ -259,14 +264,14 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               推廣大使
             </button>
 
-            {/* 行動版先看痛點 (風格一致) */}
+            {/* 行動版痛點-> (風格一致) */}
             <button
-              onClick={onBackToOldSite}
+              onClick={onGoToPainPoints || onBackToOldSite}
               className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
-              title="前往舊站 創點子/痛點專區"
+              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
             >
               <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>先看痛點</span>
+              <span>痛點-&gt;</span>
             </button>
           </div>
         </div>
@@ -367,7 +372,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               </p>
               <div className="pt-2 text-xs text-stone-700 bg-stone-50 p-3 rounded-lg border border-stone-200">
                 <b>【前言與約束力說明】</b>
-                本大賽規章依誠信、公開、市場實戰原則制定。凡參與「IdeaX 創星季」之全體參賽團隊、提痛點者、會員注資者及特聘專家評審，均受本競賽辦法各項條款之約束與保護。
+                本大賽規章依誠信、公開、市場實戰原則制定。凡參與「IdeaX 創星季」之全體參賽團隊、提痛點者、會員注資者及專家評審，均受本競賽辦法各項條款之約束與保護。
               </div>
             </div>
 
@@ -550,7 +555,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   一、評審遴選與名單保密：評審團由產學研專家名單中遴選組成，為確保評選公正客觀、杜絕人情干擾，評審委員名單暫不對外公布。
                 </p>
                 <p>
-                  二、初審入圍資格：第二階段大眾模擬注資達成度總額排名前 20 名之優秀提案，直接取得進入第三階段決審複審資格。
+                  二、初審入圍資格：第二階段大眾模擬注資募得創星幣總額排名前 20 名之優秀提案，直接取得進入第三階段決審複審資格。
                 </p>
                 <p>
                   三、決審四大維度與評分比重：
@@ -599,9 +604,15 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
 
             {/* 拾、其他注意事項 */}
             <section id="rules-notices" className="space-y-4 pt-6 border-t border-stone-200">
-              <h2 className="text-base sm:text-lg font-black text-stone-950 border-b border-stone-200 pb-2">
-                拾、其他注意事項
-              </h2>
+              <div className="border-b border-stone-200 pb-2">
+                <h2 className="text-base sm:text-lg font-black text-stone-950">
+                  拾、其他注意事項
+                </h2>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  請參賽團隊與全體會員務必詳閱以下完整權利義務、法律責任與平台規章
+                </p>
+              </div>
+
               <div className="text-xs sm:text-sm text-stone-800 leading-relaxed space-y-3">
                 <p>
                   一、帳號註冊連動與內容自動刊登存取約定：參與創星季競賽即同意註冊 IdeaX 創點子平台（ideax.tw），並同意由系統自動刊登與存取競賽期間所提出的痛點、提案內容、企劃簡報及社群討論內容，以利產學對接、資源媒合與成果展現。

@@ -86,7 +86,7 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
   const [activeTab, setActiveTab] = useState<'leads' | 'handshakes' | 'bounties' | 'assistant' | 'analytics'>('leads');
   const [assistantSubTab, setAssistantSubTab] = useState<'queue' | 'settings'>('queue');
 
-  // Handshake Matches (雙向握手特聘媒合)
+  // Handshake Matches (雙向握手專屬媒合)
   const [handshakeMatches, setHandshakeMatches] = useState<BidirectionalHandshakeMatch[]>(() => {
     return getHandshakesForSolver(currentUser.id);
   });

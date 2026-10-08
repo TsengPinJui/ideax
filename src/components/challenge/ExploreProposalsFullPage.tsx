@@ -40,15 +40,23 @@ import {
   STAR_SEASON_TRACKS,
   OFFICIAL_COMPETITION_TRACKS,
 } from '../../types/competition';
+import { DEFAULT_DEMO_PROPOSALS } from '../../data/competitionProposals';
 import {
   likeProposal,
   supportProposal,
   fetchProposalComments,
   postProposalComment,
   fetchUserLikedProposalIds,
+  fetchSingleProposal,
 } from '../../services/competitionClientService';
+import {
+  updateSEOForProposal,
+  resetSEOToDefault,
+  getProposalShareUrl,
+} from '../../services/seoService';
 import { auth } from '../../services/firebase';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
+import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 
 interface ExploreProposalsFullPageProps {
   onNavigate: (view: 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador') => void;
@@ -72,7 +80,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const { currentUser, addNotification } = useApp();
   const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
 
-  const [proposals, setProposals] = useState<StarSeasonProposal[]>(initialProposals);
+  const [proposals, setProposals] = useState<StarSeasonProposal[]>(() => {
+    return (initialProposals && initialProposals.length > 0) ? initialProposals : DEFAULT_DEMO_PROPOSALS;
+  });
   const [selectedTrack, setSelectedTrack] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
@@ -95,7 +105,11 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const [copiedProposalId, setCopiedProposalId] = useState<string | null>(null);
 
   useEffect(() => {
-    setProposals(initialProposals);
+    if (initialProposals && initialProposals.length > 0) {
+      setProposals(initialProposals);
+    } else {
+      setProposals(DEFAULT_DEMO_PROPOSALS);
+    }
   }, [initialProposals]);
 
   // 載入當前使用者收藏名單
@@ -110,6 +124,66 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
       setLikedProposalIds([]);
     }
   }, [currentUser?.id]);
+
+  // 監聽 URL 參數或子路徑，支援直接開箱提案詳情
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const parseAndOpenProposal = async () => {
+      let targetId: string | null = null;
+      const params = new URLSearchParams(window.location.search);
+      targetId = params.get('proposalId') || params.get('p') || params.get('id');
+
+      if (!targetId) {
+        const path = window.location.pathname;
+        if (path.includes('/proposal/')) {
+          targetId = path.split('/proposal/')[1].split('/')[0].split('?')[0];
+        }
+      }
+
+      if (!targetId && window.location.hash) {
+        const hashStr = window.location.hash.replace(/^#/, '');
+        const hashParams = new URLSearchParams(hashStr.startsWith('?') ? hashStr.slice(1) : hashStr);
+        targetId = hashParams.get('proposalId') || hashParams.get('p');
+        if (!targetId && hashStr.includes('/proposal/')) {
+          targetId = hashStr.split('/proposal/')[1].split('/')[0].split('?')[0];
+        }
+      }
+
+      if (targetId) {
+        let found = proposals.find((p) => p.id === targetId);
+        if (!found) {
+          found = (await fetchSingleProposal(targetId)) || undefined;
+        }
+        if (found) {
+          handleOpenProposalDetail(found);
+        }
+      }
+    };
+
+    parseAndOpenProposal();
+    window.addEventListener('popstate', parseAndOpenProposal);
+    return () => window.removeEventListener('popstate', parseAndOpenProposal);
+  }, [proposals]);
+
+  // 同步 URL 與動態 SEO
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (selectedProposalForDetail) {
+      updateSEOForProposal(selectedProposalForDetail);
+      const url = new URL(window.location.href);
+      url.searchParams.set('proposalId', selectedProposalForDetail.id);
+      window.history.replaceState({ proposalId: selectedProposalForDetail.id }, '', url.toString());
+    } else {
+      resetSEOToDefault();
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('proposalId')) {
+        url.searchParams.delete('proposalId');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [selectedProposalForDetail]);
 
   const showToast = (message: string) => {
     addNotification({
@@ -275,13 +349,18 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     }
   };
 
-  const handleCopyProposalLink = (pId: string) => {
-    const url = `${window.location.origin}/challenge/proposal?proposalId=${pId}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopiedProposalId(pId);
-      showToast('提案專屬網址已複製到剪貼簿！');
-      setTimeout(() => setCopiedProposalId(null), 2500);
-    });
+  const handleCopyProposalLink = async (pId: string) => {
+    const canonicalUrl = getProposalShareUrl(pId);
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(canonicalUrl);
+        setCopiedProposalId(pId);
+        showToast('🔗 提案專屬公開網址已複製！支援各搜尋引擎直接檢索與社群預覽。');
+        setTimeout(() => setCopiedProposalId(null), 2500);
+      } catch {
+        // fallback
+      }
+    }
   };
 
   // 總計數據
@@ -292,6 +371,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-24 selection:bg-amber-300 selection:text-stone-950 font-sans">
       {/* 頂部固定導覽列 */}
       <header className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
+        {/* 創星季廣播橫幅：誠徵各行業專家參與注資，注資額300萬（點擊申請） */}
+        <StarSeasonBroadcastBanner onApply={() => onNavigate('judge')} />
+
         {/* 導覽列核心主行 */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -347,11 +429,17 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         <div className="max-w-7xl mx-auto space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-4xl font-black text-stone-950 tracking-tight">
-                當前提案
-              </h1>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl sm:text-4xl font-black text-stone-950 tracking-tight">
+                  當前提案
+                </h1>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  目前為示範
+                </span>
+              </div>
               <p className="text-stone-700 text-xs sm:text-sm mt-1 max-w-2xl font-bold text-amber-900">
-                使用 創星幣 支持你認同的創新提案，模擬市場關注度
+                使用 創星幣 支持你認同的創新提案，模擬市場關注度（目前展示為示範提案）
               </p>
             </div>
 
@@ -599,207 +687,246 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               const currentPoints = proposal.supportPoints || 0;
               const targetPoints = proposal.targetFundingAmount || 100000;
               const progressPct = Math.min(Math.round((currentPoints / targetPoints) * 100), 999);
-              const trackMeta = STAR_SEASON_TRACKS[proposal.track];
+              const trackMeta = STAR_SEASON_TRACKS[proposal.track] || STAR_SEASON_TRACKS.ai_applications;
+              const supporterCount = proposal.supporterCount || Math.max(1, Math.round(currentPoints / 2500));
+              const coverImg = (proposal.images && proposal.images.length > 0)
+                ? proposal.images[0]
+                : trackMeta.id === 'ict'
+                ? 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=800&q=80'
+                : trackMeta.id === 'mechanical_transport'
+                ? 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=800&q=80'
+                : trackMeta.id === 'biomedical'
+                ? 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80'
+                : 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80';
 
               return (
                 <div
                   key={proposal.id}
-                  className="bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden"
+                  className="bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden"
                 >
-                  {/* 大卡片模式時才顯示圖片 */}
-                  {cardViewMode === 'large' && proposal.images && proposal.images.length > 0 && (
+                  {/* 大卡片模式或預設封面大圖 */}
+                  {cardViewMode === 'large' && (
                     <div
                       onClick={() => handleOpenProposalDetail(proposal)}
-                      className="relative -mx-5 -mt-5 mb-4 h-44 overflow-hidden cursor-pointer group/img bg-stone-100 border-b border-stone-100"
+                      className="relative h-44 sm:h-48 overflow-hidden bg-stone-100 border-b border-stone-100 cursor-pointer group/img"
                     >
                       <img
-                        src={proposal.images[0]}
+                        src={coverImg}
                         alt={proposal.title}
                         className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-                      {proposal.images.length > 1 && (
-                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-xs text-white text-[10px] font-mono font-bold flex items-center gap-1">
-                          <ImageIcon className="w-3 h-3 text-amber-300" />
-                          <span>+{proposal.images.length - 1} 張</span>
-                        </span>
-                      )}
-                    </div>
-                  )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
 
-                  {/* 卡片標題與標籤 */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-1.5">
+                      {/* 左上角標籤：梯次與賽道領域 */}
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-amber-300 border border-white/20 shadow-xs">
+                          第一梯次
+                        </span>
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-stone-900 border border-white/40 shadow-xs">
+                          {trackMeta.name}
+                        </span>
+                      </div>
+
+                      {/* 右上角標籤：示範標籤與階段標籤 */}
+                      <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-pulse" />
+                          示範
+                        </span>
                         <span
-                          className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          className={`text-[10px] font-black px-2.5 py-1 rounded-full backdrop-blur-md shadow-xs ${
                             proposal.stage === 'pain_point'
-                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                              : 'bg-amber-100 text-amber-900 border border-amber-300'
+                              ? 'bg-rose-500/90 text-white'
+                              : 'bg-emerald-600/90 text-white'
                           }`}
                         >
                           {proposal.stage === 'pain_point' ? '徵點子' : '想解方'}
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
-                          {trackMeta?.name || '專題賽道'}
-                        </span>
                       </div>
 
-                      {/* 入圍或排名標記 */}
-                      {idx < 20 ? (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-800 border border-cyan-300">
-                          前20名・入圍決選
-                        </span>
-                      ) : null}
+                      {/* 圖片底部學校與團隊 subtitle */}
+                      <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white/95 text-xs font-bold drop-shadow-sm">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <GraduationCap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                          <span className="truncate">{proposal.authorName}</span>
+                        </div>
+                        {idx < 20 && (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-cyan-400/90 text-stone-950 shrink-0">
+                            決選入圍
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 卡片內容主體 */}
+                  <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="space-y-2.5">
+                      {/* 簡潔模式時顯示的標籤列 */}
+                      {cardViewMode === 'compact' && (
+                        <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-stone-100">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                              第一梯次
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
+                              {trackMeta.name}
+                            </span>
+                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                              示範
+                            </span>
+                          </div>
+                          <span
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                              proposal.stage === 'pain_point'
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            {proposal.stage === 'pain_point' ? '徵點子' : '想解方'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 提案標題 */}
+                      <h3
+                        onClick={() => handleOpenProposalDetail(proposal)}
+                        className="text-base font-black text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2 cursor-pointer"
+                      >
+                        {proposal.title}
+                      </h3>
+
+                      {/* 若為解方且引用痛點 */}
+                      {proposal.sourcePainPointTitle && (
+                        <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 text-[11px] space-y-0.5">
+                          <span className="text-amber-900 font-bold flex items-center gap-1">
+                            <ArrowRight className="w-3 h-3 text-amber-600" />
+                            採用痛點提案：
+                          </span>
+                          <p className="text-stone-700 line-clamp-1 italic font-medium">
+                            {proposal.sourcePainPointTitle}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* 摘要說明 */}
+                      <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                        {proposal.summary}
+                      </p>
                     </div>
 
-                    {/* 提案標題 */}
-                    <h3
-                      onClick={() => handleOpenProposalDetail(proposal)}
-                      className="text-base font-black text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2 cursor-pointer"
-                    >
-                      {proposal.title}
-                    </h3>
-
-                    {/* 若為解方且引用痛點 */}
-                    {proposal.sourcePainPointTitle && (
-                      <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] space-y-1">
-                        <span className="text-amber-900 font-bold flex items-center gap-1">
-                          <ArrowRight className="w-3 h-3 text-amber-600" />
-                          採用痛點提案：
-                        </span>
-                        <p className="text-stone-700 line-clamp-1 italic font-medium">
-                          {proposal.sourcePainPointTitle}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* 摘要說明 */}
-                    <p className="text-xs text-stone-600 line-clamp-3 leading-relaxed">
-                      {proposal.summary}
-                    </p>
-
-                    {/* 虛擬注資進度條 */}
-                    <div className="pt-2 space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-stone-500 font-bold flex items-center gap-1">
-                          <Percent className="w-3 h-3 text-amber-500" />
-                          注資達成率
-                        </span>
-                        <span className="font-mono font-black text-amber-700">{progressPct}%</span>
-                      </div>
-                      <div className="w-full bg-stone-100 h-2 rounded-full overflow-hidden border border-stone-200">
-                        <div
-                          className="bg-gradient-to-r from-amber-400 to-yellow-500 h-full rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(progressPct, 100)}%` }}
-                        />
+                    {/* 純以募得創星幣為主展示 */}
+                    <div className="pt-2.5">
+                      <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-50/50 to-orange-50/40 border border-amber-200/90 flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] font-bold text-amber-900 flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-amber-600" />
+                            <span>募得創星幣</span>
+                          </div>
+                          <div className="font-mono font-black text-amber-950 text-base sm:text-lg flex items-baseline gap-1 mt-0.5">
+                            <span>{currentPoints.toLocaleString()}</span>
+                            <span className="text-xs font-bold text-amber-700">幣</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] font-bold text-stone-500 flex items-center justify-end gap-1">
+                            <Users className="w-3 h-3 text-stone-400" />
+                            <span>支持人數</span>
+                          </div>
+                          <div className="font-mono font-bold text-stone-800 text-xs sm:text-sm mt-0.5">
+                            {supporterCount} 人支持
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* 底部數據與操作按鈕 */}
-                  <div className="pt-4 mt-4 border-t border-stone-100 space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center text-[10px] font-black border border-amber-200">
-                          {proposal.authorName.charAt(0)}
-                        </div>
-                        <span className="text-stone-800 font-bold truncate max-w-[100px]">
-                          {proposal.authorName}
-                        </span>
-                      </div>
-
-                      <div className="text-right">
-                        <div className="font-mono font-black text-amber-700 text-sm">
-                          {currentPoints.toLocaleString()} 點
-                        </div>
-                        <div className="text-[10px] text-stone-500">
-                          {proposal.supporterCount || 0} 人支持
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 操作按鈕與互動計數 (按讚愛心、討論留言數、詳情、投點支持) */}
-                    <div className="flex items-center gap-2 pt-1">
-                      {/* 按讚愛心按鈕 */}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleLike(proposal.id)}
-                        className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
-                          likedProposalIds.includes(proposal.id)
-                            ? 'bg-rose-50 text-rose-600 border-rose-300'
-                            : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-rose-50 hover:text-rose-600'
-                        }`}
-                        title={likedProposalIds.includes(proposal.id) ? '已收藏' : '按讚收藏'}
-                      >
-                        <Heart
-                          className={`w-3.5 h-3.5 ${
+                  {/* 底部操作與互動列 */}
+                  <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-3 border-t border-stone-100 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      {/* 社群互動 (按讚愛心、留言、分享) */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLike(proposal.id)}
+                          className={`p-1.5 px-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                             likedProposalIds.includes(proposal.id)
-                              ? 'fill-rose-500 text-rose-500'
-                              : 'text-stone-400'
+                              ? 'bg-rose-50 text-rose-600 border-rose-300'
+                              : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-rose-50 hover:text-rose-600'
                           }`}
-                        />
-                        <span className="text-[11px] font-mono">{proposal.likeCount || 0}</span>
-                      </button>
+                          title={likedProposalIds.includes(proposal.id) ? '已收藏' : '按讚收藏'}
+                        >
+                          <Heart
+                            className={`w-3.5 h-3.5 ${
+                              likedProposalIds.includes(proposal.id)
+                                ? 'fill-rose-500 text-rose-500'
+                                : 'text-stone-400'
+                            }`}
+                          />
+                          <span className="text-[11px] font-mono">{proposal.likeCount || 0}</span>
+                        </button>
 
-                      {/* 留言討論計數 */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenProposalDetail(proposal)}
-                        className="p-2 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-600 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                        title="查看評論留言"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5 text-stone-400" />
-                        <span className="text-[11px] font-mono">{proposal.commentsCount || 0}</span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenProposalDetail(proposal)}
+                          className="p-1.5 px-2 rounded-lg bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-600 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          title="查看評論留言"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-stone-400" />
+                          <span className="text-[11px] font-mono">{proposal.commentsCount || 0}</span>
+                        </button>
 
-                      {/* 分享連結 */}
-                      <button
-                        type="button"
-                        onClick={() => handleCopyProposalLink(proposal.id)}
-                        className="p-2 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-600 text-xs font-bold transition-all cursor-pointer"
-                        title="複製提案分享連結"
-                      >
-                        {copiedProposalId === proposal.id ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Share2 className="w-3.5 h-3.5 text-stone-400" />
-                        )}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyProposalLink(proposal.id)}
+                          className="p-1.5 rounded-lg bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-600 text-xs font-bold transition-all cursor-pointer"
+                          title="複製提案分享連結"
+                        >
+                          {copiedProposalId === proposal.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Share2 className="w-3.5 h-3.5 text-stone-400" />
+                          )}
+                        </button>
+                      </div>
 
-                      {/* 查看詳情按鈕 */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenProposalDetail(proposal)}
-                        className="flex-1 py-2 px-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs transition-colors cursor-pointer text-center"
-                      >
-                        詳情
-                      </button>
+                      {/* 兩顆主要按鈕：查看提案 & 支持注資 */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenProposalDetail(proposal)}
+                          className="py-1.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs transition-colors cursor-pointer"
+                        >
+                          查看提案
+                        </button>
 
-                      {/* 支持按鈕 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (stageInfo.isPreProposalStage) {
-                            showToast('ℹ️ 11/14 ~ 11/15 為預先提案期，暫時關閉募資(投資)功能，僅供審核與預覽！11/16 起開放注資。');
-                            return;
-                          }
-                          if (!stageInfo.isInvestmentEnabled) {
-                            showToast('ℹ️ 模擬募資(投資)功能將於 11/16 ~ 12/04 開放！');
-                            return;
-                          }
-                          setSelectedProposalForSupport(proposal);
-                          setIsSupportModalOpen(true);
-                        }}
-                        className={`flex-1 py-2 px-2.5 rounded-xl text-xs transition-colors cursor-pointer text-center shadow-2xs ${
-                          !stageInfo.isInvestmentEnabled
-                            ? 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-                            : 'bg-amber-400 hover:bg-amber-300 text-stone-950 font-black'
-                        }`}
-                        title={!stageInfo.isInvestmentEnabled ? '預先提案期（11/14~11/15）募資功能關閉，11/16 開放' : undefined}
-                      >
-                        {stageInfo.isPreProposalStage ? '預覽中' : '支持'}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (stageInfo.activeStage === 0) {
+                              showToast('ℹ️ 創星季籌備中，第一階段痛點徵件將於 10/31 00:00 正式開跑！');
+                              return;
+                            }
+                            if (stageInfo.isPreProposalStage) {
+                              showToast('ℹ️ 11/14 ~ 11/15 為預先提案期，暫時關閉募資(投資)功能，僅供審核與預覽！11/16 起開放注資。');
+                              return;
+                            }
+                            if (!stageInfo.isInvestmentEnabled) {
+                              showToast('ℹ️ 模擬募資(投資)功能將於 11/16 ~ 12/04 開放！');
+                              return;
+                            }
+                            setSelectedProposalForSupport(proposal);
+                            setIsSupportModalOpen(true);
+                          }}
+                          className={`py-1.5 px-3 rounded-xl text-xs transition-colors cursor-pointer shadow-2xs ${
+                            !stageInfo.isInvestmentEnabled
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 font-bold'
+                              : 'bg-amber-400 hover:bg-amber-300 text-stone-950 font-black'
+                          }`}
+                        >
+                          {stageInfo.isPreProposalStage ? '預覽中' : '為他注資'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -828,12 +955,32 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   {STAR_SEASON_TRACKS[selectedProposalForDetail.track]?.name}
                 </span>
               </div>
-              <button
-                onClick={() => setSelectedProposalForDetail(null)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-800 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCopyProposalLink(selectedProposalForDetail.id)}
+                  className="px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-950 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                  title="複製此提案專屬公開網址（可於搜尋引擎檢索與社群分享）"
+                >
+                  {copiedProposalId === selectedProposalForDetail.id ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700 font-black">已複製連結</span>
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="w-3.5 h-3.5 text-amber-700" />
+                      <span>複製公開網址</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setSelectedProposalForDetail(null)}
+                  className="p-1 rounded-lg text-stone-400 hover:text-stone-800 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4 text-xs">
@@ -1068,7 +1215,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                 <div className="flex items-center justify-between border-b border-stone-100 pb-2">
                   <div className="flex items-center gap-2 font-black text-stone-900 text-xs">
                     <MessageSquare className="w-4 h-4 text-amber-500" />
-                    <span>社群討論與評審交流區</span>
+                    <span>社群討論與交流專區</span>
                     <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 text-[10px] font-bold">
                       {activeComments.length} 則留言
                     </span>
@@ -1086,7 +1233,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                     <div className="py-6 text-center text-stone-400 space-y-1">
                       <MessageSquare className="w-8 h-8 mx-auto text-stone-300 stroke-1" />
                       <p className="text-xs">目前尚無討論留言</p>
-                      <p className="text-[10px] text-stone-400">歡迎參賽者、特聘評審與會員提出建議、提問或交流！</p>
+                      <p className="text-[10px] text-stone-400">歡迎參賽者、顧問專家與會員提出建議、提問或交流！</p>
                     </div>
                   ) : (
                     activeComments.map((cm) => (

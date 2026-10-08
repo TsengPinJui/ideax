@@ -56,8 +56,19 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
     currentUser.verifiedBadge ||
     currentUser.expertApplicationStatus === 'approved';
 
-  // Form State
-  const initialData = currentUser.expertApplicationData;
+  // 依使用者指示：用戶申請任何驗證時，絕對不自動帶入虛擬測試資料
+  const isMockExpertData = Boolean(
+    currentUser.expertApplicationData && (
+      currentUser.expertApplicationData.professionalTitle?.includes('資深全端系統架構師') ||
+      currentUser.expertApplicationData.professionalTitle?.includes('測試') ||
+      currentUser.expertApplicationData.yearsOfExperience === '12年' ||
+      currentUser.expertApplicationData.credentialsFiles?.some((f) => f.name?.includes('TOGAF') || f.url?.includes('unsplash'))
+    )
+  );
+
+  // 若尚未審核通過或含有測試資料，一律保持空白，不帶入任何虛擬資料
+  const initialData = (!isApproved || isMockExpertData) ? null : currentUser.expertApplicationData;
+
   const [selectedDomains, setSelectedDomains] = useState<string[]>(() => {
     if (initialData?.domains && initialData.domains.length > 0) return initialData.domains;
     if (initialData?.domain && initialData.domain !== 'auto' && initialData.domain !== '由平台為您分類') return [initialData.domain];
@@ -69,10 +80,10 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
     return [];
   });
   const [professionalTitle, setProfessionalTitle] = useState(
-    currentUser.expertApplicationData?.professionalTitle || ''
+    initialData?.professionalTitle || ''
   );
   const [yearsOfExperience, setYearsOfExperience] = useState(
-    currentUser.expertApplicationData?.yearsOfExperience || ''
+    initialData?.yearsOfExperience || ''
   );
 
   const toggleSubdomain = (sub: string, parentCat: Category) => {
@@ -107,7 +118,7 @@ export const ExpertCertificationApplyModal: React.FC<ExpertCertificationApplyMod
       uploadedAt?: string;
     }>
   >(
-    currentUser.expertApplicationData?.credentialsFiles || []
+    initialData?.credentialsFiles || []
   );
   const [isProcessingCredential, setIsProcessingCredential] = useState(false);
   const [previewCredentialImg, setPreviewCredentialImg] = useState<{

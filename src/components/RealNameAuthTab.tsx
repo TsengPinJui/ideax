@@ -37,26 +37,40 @@ export const RealNameAuthTab: React.FC = () => {
     currentUser.bankAccount?.isVerified === true;
   const isPending = currentUser.realNameAuthStatus === 'pending';
 
-  // Form State
-  const initialData = currentUser.realNameAuthData;
-  const [legalName, setLegalName] = useState(
-    initialData?.legalName || ''
+  // 依使用者指示：用戶申請任何驗證時，絕對不自動帶入虛擬測試資料
+  const isMockAuthData = Boolean(
+    currentUser.realNameAuthData && (
+      currentUser.realNameAuthData.legalName?.includes('陳怡君') ||
+      currentUser.realNameAuthData.legalName?.includes('測試') ||
+      currentUser.realNameAuthData.idNumber === 'A223456789' ||
+      currentUser.realNameAuthData.idNumber === 'A123456789' ||
+      currentUser.realNameAuthData.phoneNumber?.includes('0933-221-100') ||
+      currentUser.realNameAuthData.phoneNumber?.includes('0912-345-678') ||
+      currentUser.realNameAuthData.email?.includes('ideax') ||
+      currentUser.realNameAuthData.email?.includes('yichun') ||
+      currentUser.realNameAuthData.idAddress?.includes('和平東路') ||
+      currentUser.realNameAuthData.idCardFrontFile?.name?.includes('陳怡君') ||
+      currentUser.realNameAuthData.idCardFrontFile?.url?.includes('unsplash')
+    )
   );
-  const [idNumber, setIdNumber] = useState(
-    initialData?.idNumber || ''
+
+  // 若尚未審核通過或含有測試資料，一律保持空白，不帶入任何虛擬資料
+  const initialData = (!isVerified || isMockAuthData) ? null : currentUser.realNameAuthData;
+  const isRealEmail = Boolean(
+    currentUser.email &&
+    !currentUser.email.includes('ideax') &&
+    !currentUser.email.includes('yichun') &&
+    !currentUser.email.includes('shuhao') &&
+    !currentUser.email.includes('test') &&
+    !currentUser.email.includes('guest')
   );
-  const [nationality, setNationality] = useState(
-    initialData?.nationality || ''
-  );
-  const [birthDate, setBirthDate] = useState(
-    initialData?.birthDate || ''
-  );
-  const [phoneNumber, setPhoneNumber] = useState(
-    initialData?.phoneNumber || ''
-  );
-  const [email, setEmail] = useState(
-    initialData?.email || currentUser.email || ''
-  );
+
+  const [legalName, setLegalName] = useState(initialData?.legalName || '');
+  const [idNumber, setIdNumber] = useState(initialData?.idNumber || '');
+  const [nationality, setNationality] = useState(initialData?.nationality || '');
+  const [birthDate, setBirthDate] = useState(initialData?.birthDate || '');
+  const [phoneNumber, setPhoneNumber] = useState(initialData?.phoneNumber || '');
+  const [email, setEmail] = useState(initialData?.email || (isRealEmail ? currentUser.email : ''));
 
   // Uploaded ID files (Front & Back) with photo URL
   const [frontFile, setFrontFile] = useState<{
@@ -66,9 +80,7 @@ export const RealNameAuthTab: React.FC = () => {
     storagePath?: string;
     isStorage?: boolean;
     uploadedAt?: string;
-  } | null>(
-    initialData?.idCardFrontFile || null
-  );
+  } | null>(initialData?.idCardFrontFile || null);
   const [backFile, setBackFile] = useState<{
     name: string;
     size?: string;
@@ -76,31 +88,17 @@ export const RealNameAuthTab: React.FC = () => {
     storagePath?: string;
     isStorage?: boolean;
     uploadedAt?: string;
-  } | null>(
-    initialData?.idCardBackFile || null
-  );
+  } | null>(initialData?.idCardBackFile || null);
   const [previewModalImg, setPreviewModalImg] = useState<{ title: string; url: string } | null>(null);
   const [isProcessingPhoto, setIsProcessingPhoto] = useState<'front' | 'back' | null>(null);
 
   // Optional & Registered Address Fields
-  const [idAddress, setIdAddress] = useState(
-    initialData?.idAddress || ''
-  );
-  const [address, setAddress] = useState(
-    initialData?.address || ''
-  );
-  const [idIssueDate, setIdIssueDate] = useState(
-    initialData?.idIssueDate || ''
-  );
-  const [idIssueType, setIdIssueType] = useState(
-    initialData?.idIssueType || ''
-  );
-  const [emergencyContactName, setEmergencyContactName] = useState(
-    initialData?.emergencyContactName || ''
-  );
-  const [emergencyContactPhone, setEmergencyContactPhone] = useState(
-    initialData?.emergencyContactPhone || ''
-  );
+  const [idAddress, setIdAddress] = useState(initialData?.idAddress || '');
+  const [address, setAddress] = useState(initialData?.address || '');
+  const [idIssueDate, setIdIssueDate] = useState(initialData?.idIssueDate || '');
+  const [idIssueType, setIdIssueType] = useState(initialData?.idIssueType || '');
+  const [emergencyContactName, setEmergencyContactName] = useState(initialData?.emergencyContactName || '');
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState(initialData?.emergencyContactPhone || '');
 
   // Compliance Checkbox
   const [agreedAml, setAgreedAml] = useState(false);

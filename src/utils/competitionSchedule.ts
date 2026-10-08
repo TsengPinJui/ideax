@@ -18,14 +18,16 @@
  *   - 封鎖功能：提案與募資已截止
  */
 
-export type CompetitionActiveStage = 1 | 2 | 3 | 4 | 5; // 1:痛點 2:預先提案 3:模擬募資 4:決選 5:公布
+export type CompetitionActiveStage = 0 | 1 | 2 | 3 | 4 | 5; // 0:籌備/即將開跑 1:痛點 2:預先提案 3:模擬募資 4:決選 5:公布
 
 export interface CompetitionStageInfo {
-  activeStage: number;           // 1:痛點 2:預先提案 3:模擬募資 4:決選 5:公布 (對應UI階梯或精細階段)
-  timelineStep: 1 | 2 | 3 | 4 | 5;
+  activeStage: number;           // 0:籌備/即將開跑 1:痛點 2:預先提案 3:模擬募資 4:決選 5:公布 (對應UI階梯或精細階段)
+  timelineStep: 0 | 1 | 2 | 3 | 4 | 5;
   registrationPeriod: string;    // 報名時段：10/24 00:00 ~ 12/04 16:30
   registrationNote: string;      // 提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名
-  isPainPointStage: boolean;     // 第一階段：痛點徵件 (11/13 前)
+  isBeforeStart: boolean;        // 10/31 痛點徵件前尚未正式開跑
+  isRegistrationOnlyStage: boolean; // 10/24 ~ 10/30 僅開放報名，尚未開放徵件
+  isPainPointStage: boolean;     // 第一階段：痛點徵件 (10/31 00:00 ~ 11/13 16:30)
   isPreProposalStage: boolean;   // 預先提案期 (11/14 ~ 11/15)：關閉募資/投資，可報名/提案/審核/預覽
   isCrowdfundingActiveStage: boolean; // 模擬募資期 (11/16 ~ 12/04)：可報名/提案/募資投資/審核
   isProposalStage: boolean;      // 廣義提案開放期 (11/14 ~ 12/04)：包含預先提案與模擬募資期
@@ -53,7 +55,10 @@ export function getCompetitionStageInfo(): CompetitionStageInfo {
   const currentYear = now.getFullYear();
 
   // 精確切點時間物件 (精確到分)
+  // 10/24 00:00 報名開始
+  const tRegistrationStart = new Date(currentYear, 9, 24, 0, 0, 0).getTime(); // 10/24 00:00
   // 10/31 00:00 ~ 11/13 16:30 痛點徵件
+  const tPainPointStart = new Date(currentYear, 9, 31, 0, 0, 0).getTime();   // 10/31 00:00
   const tPainPointEnd = new Date(currentYear, 10, 13, 16, 30, 0).getTime(); // 11/13 16:30
   // 11/14 10:00 ~ 11/15 16:30 預先提案
   const tPreProposalStart = new Date(currentYear, 10, 14, 10, 0, 0).getTime(); // 11/14 10:00
@@ -65,9 +70,11 @@ export function getCompetitionStageInfo(): CompetitionStageInfo {
   const tExpertReviewEnd = new Date(currentYear, 11, 11, 23, 59, 59).getTime(); // 12/11 23:59:59
 
   const nowTime = now.getTime();
-  let stage = 1;
+  let stage = 0;
 
-  if (override === 'stage1' || override === 'pain_point') {
+  if (override === 'stage0' || override === 'preparation') {
+    stage = 0;
+  } else if (override === 'stage1' || override === 'pain_point') {
     stage = 1;
   } else if (override === 'stage2_pre' || override === 'pre_proposal') {
     stage = 2; // 預先提案 (11/14 10:00 ~ 11/15 16:30)
@@ -79,12 +86,15 @@ export function getCompetitionStageInfo(): CompetitionStageInfo {
     stage = 5; // 公布 (12/16 前公布)
   } else {
     // 依精準詳細時程判定：
+    // • 10/31 00:00 前：尚未進入第一階段痛點徵件 (籌備預熱/即將開跑)
     // • 10/31 00:00 ~ 11/13 16:30：第一階段 痛點徵件
     // • 11/14 10:00 ~ 11/15 16:30：第二階段 (一) 預先提案（關閉投資募資，僅報名/提案/審核/預覽）
     // • 11/16 10:00 ~ 12/04 16:30：第二階段 (二) 模擬募資（開放投資募資、報名、提案、審核）
     // • 12/05 ~ 12/11：第三階段 進入決選(評審)
     // • 12/16 前公布結果：第四階段 公布結果
-    if (nowTime <= tPainPointEnd) {
+    if (nowTime < tPainPointStart) {
+      stage = 0; // 時間尚未到達 10/31 00:00，痛點徵件尚未開始！
+    } else if (nowTime <= tPainPointEnd) {
       stage = 1;
     } else if (nowTime < tPreProposalStart) {
       // 11/13 16:30 ~ 11/14 10:00 空檔緩衝：過渡至預先提案準備期
@@ -103,6 +113,8 @@ export function getCompetitionStageInfo(): CompetitionStageInfo {
     }
   }
 
+  const isBeforeStart = stage === 0;
+  const isRegistrationOnlyStage = isBeforeStart && nowTime >= tRegistrationStart;
   const isPainPointStage = stage === 1;
   const isPreProposalStage = stage === 2;
   const isCrowdfundingActiveStage = stage === 3;
@@ -114,12 +126,22 @@ export function getCompetitionStageInfo(): CompetitionStageInfo {
   // 核心：預先提案期間 (11/14 10:00 ~ 11/15 16:30) 關閉募資(投資)功能；僅 11/16 10:00 ~ 12/04 16:30 開放投資！
   const isInvestmentEnabled = stage === 3;
 
-  let stageTitle = '第一階段：痛點徵件';
-  let stagePeriod = '10/31 00:00 ~ 11/13 16:30';
-  let ctaButtonText = '提出痛點';
-  let ctaButtonSubtitle = '痛點徵件中 (過審送200點)';
+  let stageTitle = '籌備預熱中（即將開跑）';
+  let stagePeriod = '10/24 開放報名・10/31 00:00 痛點徵件開跑';
+  let ctaButtonText = '即將開跑 (10/31)';
+  let ctaButtonSubtitle = '10/31 00:00 痛點徵件正式開跑';
 
-  if (isPreProposalStage) {
+  if (isRegistrationOnlyStage) {
+    stageTitle = '報名起跑中（痛點徵件即將開跑）';
+    stagePeriod = '10/24 00:00 ~ 12/04 16:30 報名・10/31 徵件';
+    ctaButtonText = '即將徵件 (10/31)';
+    ctaButtonSubtitle = '線上報名已開跑・10/31 00:00 痛點徵件開跑';
+  } else if (isPainPointStage) {
+    stageTitle = '第一階段：痛點徵件';
+    stagePeriod = '10/31 00:00 ~ 11/13 16:30';
+    ctaButtonText = '提出痛點';
+    ctaButtonSubtitle = '痛點徵件中 (過審送200點)';
+  } else if (isPreProposalStage) {
     stageTitle = '第二階段 (一)：預先提案';
     stagePeriod = '11/14 10:00 ~ 11/15 16:30';
     ctaButtonText = '我想提案!';
@@ -143,9 +165,11 @@ export function getCompetitionStageInfo(): CompetitionStageInfo {
 
   return {
     activeStage: stage,
-    timelineStep: stage as 1 | 2 | 3 | 4 | 5,
+    timelineStep: stage as 0 | 1 | 2 | 3 | 4 | 5,
     registrationPeriod: '10/24 00:00 ~ 12/04 16:30',
     registrationNote: '提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名',
+    isBeforeStart,
+    isRegistrationOnlyStage,
     isPainPointStage,
     isPreProposalStage,
     isCrowdfundingActiveStage,

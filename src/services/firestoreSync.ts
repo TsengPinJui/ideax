@@ -267,6 +267,29 @@ export function subscribeToAnswers(onUpdate: (answers: Answer[]) => void): Unsub
   }
 }
 
+/**
+ * Real-time listener for users collection (同步帳號註銷、反悔猶豫期與身分審核狀態)
+ */
+export function subscribeToUsers(onUpdate: (users: User[]) => void): Unsubscribe {
+  try {
+    return onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list = snapshot.docs.map((d) => d.data() as User);
+          onUpdate(list);
+        }
+      },
+      (error) => {
+        handleFirestoreError('Real-time users sync error', error);
+      }
+    );
+  } catch (err) {
+    handleFirestoreError('Failed to attach users listener', err);
+    return () => {};
+  }
+}
+
 export async function syncQuestionsToFirestore(questions: Question[]): Promise<void> {
   if (!questions || questions.length === 0 || isQuotaExhausted) return;
   try {
