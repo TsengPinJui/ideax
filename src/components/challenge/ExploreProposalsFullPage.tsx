@@ -931,11 +931,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
 
-                      {/* 左上角標籤：梯次與賽道領域 */}
+                      {/* 左上角標籤：賽道領域 */}
                       <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-amber-300 border border-white/20 shadow-xs">
-                          第一梯次
-                        </span>
                         <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-stone-900 border border-white/40 shadow-xs">
                           {trackMeta.name}
                         </span>
@@ -982,9 +979,6 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                       {cardViewMode === 'compact' && (
                         <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-stone-100">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                              第一梯次
-                            </span>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
                               {trackMeta.name}
                             </span>
