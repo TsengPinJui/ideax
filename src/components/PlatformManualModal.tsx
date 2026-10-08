@@ -541,7 +541,7 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
                           {versionState.currentVersion}
                         </span>
                         <span className="px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-xs text-stone-600 font-medium font-mono">
-                          最後更新：{versionState.lastReleaseDate} {versionState.lastReleaseTime}
+                          最後更新：{versionState.lastReleaseDate} {versionState.lastReleaseTime} (UTC+8)
                         </span>
                       </div>
                       <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between gap-2 text-xs text-emerald-800 font-bold flex-wrap">
@@ -584,7 +584,7 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
                                   {log.version}
                                 </span>
                                 <span className="text-[11px] text-stone-500 font-mono">
-                                  {log.releaseDate} {log.releaseTime}
+                                  {log.releaseDate} {log.releaseTime} (UTC+8)
                                 </span>
                                 <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-medium">
                                   {log.author}

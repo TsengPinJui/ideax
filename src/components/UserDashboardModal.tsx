@@ -170,6 +170,7 @@ interface UserDashboardModalProps {
   onOpenAiCrm?: () => void;
   onStartOnboarding?: () => void;
   onNavigateToSitelink?: (item: GoogleSitelinkItem) => void;
+  onOpenChat?: () => void;
 }
 
 export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
@@ -183,6 +184,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   onOpenAiCrm,
   onStartOnboarding,
   onNavigateToSitelink,
+  onOpenChat,
 }) => {
   const {
     currentUser,
@@ -6203,7 +6205,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                                 { id: q.authorId, name: q.authorName, avatar: q.authorAvatar, title: q.authorTitle || '提問者' },
                                 q
                               );
-                              onClose();
+                              if (onOpenChat) {
+                                onOpenChat();
+                              } else {
+                                onClose();
+                              }
                             }}
                             className="px-3 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold cursor-pointer"
                           >
@@ -10168,7 +10174,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
         {/* 管理員專用：申訴與郵件 */}
         {activeTab === 'admin_mail_disputes' && currentUser.role === 'admin' && (
-          <AdminMailDisputesTab onOpenQuestion={onOpenQuestion} />
+          <AdminMailDisputesTab onOpenQuestion={onOpenQuestion} onOpenChat={onOpenChat} />
         )}
       </div>
 

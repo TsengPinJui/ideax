@@ -846,7 +846,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 space-y-6 shadow-xs text-xs">
+        <form onSubmit={handleSubmit} id="star-tour-proposal-editor" className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 space-y-6 shadow-xs text-xs">
           {/* 1. 提案階段選擇 */}
           <div className="space-y-2">
             <label className="block text-stone-800 font-black text-sm">

@@ -358,9 +358,29 @@ export function resetCompetitionDataToZero(): void {
  * 計算競賽全站聚合數據 (供管理員後台檢視)
  */
 export function getCompetitionAggregatedMetrics(): CompetitionAdminMetrics {
-  const registrations = getCompetitionRegistrations();
-  const proposals = getCompetitionProposalsForAdmin();
-  const experts = getCompetitionExperts();
+  // 依用戶指示：移除或隱藏所有測試帳號、假資料、模擬數據（不加入採計）
+  const registrations = getCompetitionRegistrations().filter(
+    (r) =>
+      !r.userId?.startsWith('test-') &&
+      !r.userId?.startsWith('user-expert-') &&
+      !r.id?.startsWith('test-') &&
+      r.userId !== 'user-guest'
+  );
+  const proposals = getCompetitionProposalsForAdmin().filter(
+    (p) =>
+      !p.id?.startsWith('demo-') &&
+      !p.id?.startsWith('test-') &&
+      !p.authorId?.startsWith('test-') &&
+      !p.authorId?.startsWith('user-expert-') &&
+      p.authorId !== 'user-guest'
+  );
+  const experts = getCompetitionExperts().filter(
+    (e) =>
+      !e.userId?.startsWith('test-') &&
+      !e.userId?.startsWith('user-expert-') &&
+      !e.id?.startsWith('test-') &&
+      e.userId !== 'user-guest'
+  );
 
   // 1. 登入用戶數（完全基於真實帳號、報名、專家與提案者集合）
   const userSet = new Set<string>();

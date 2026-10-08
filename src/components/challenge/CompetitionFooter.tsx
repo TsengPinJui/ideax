@@ -6,12 +6,14 @@ import { useApp } from '../../context/AppContext';
 interface CompetitionFooterProps {
   onBackToOldSite: () => void;
   onNavigate?: (view: 'home' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador') => void;
+  onOpenGuide?: () => void;
   className?: string;
 }
 
 export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
   onBackToOldSite,
   onNavigate,
+  onOpenGuide,
   className = '',
 }) => {
   const { isRaceMode, isDemoMode, isNoPaymentMode } = useApp();
@@ -110,6 +112,15 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
                 >
                   • 校園推廣大使
                 </button>
+                {onOpenGuide && (
+                  <button
+                    type="button"
+                    onClick={onOpenGuide}
+                    className="text-left text-amber-300 hover:text-amber-200 font-bold transition-colors cursor-pointer col-span-2 pt-1 flex items-center gap-1"
+                  >
+                    <span>• 🔰 創星季玩法導覽 (3大角色 30秒上手)</span>
+                  </button>
+                )}
               </div>
             </div>
           )}

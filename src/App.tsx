@@ -1752,7 +1752,38 @@ function MainContent() {
             onNavigateToTerms={() => setActiveTab('about')}
             onOpenAiCrm={() => setActiveTab('ai_crm')}
             onOpenQuestion={(qId) => {
-              const found = questions.find((q) => q.id === qId);
+              let found = questions.find((q) => q.id === qId);
+              if (!found && qId === 'q-demo-dispute-1') {
+                found = {
+                  id: 'q-demo-dispute-1',
+                  title: '高分子材料 TFDA 臨床申報專案諮詢履約爭議',
+                  authorName: '張先生',
+                  authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+                  bounty: 6000,
+                  category: '專業問題',
+                  description: '解答方提供的第二階段送審補件清單未包含今年度衛福部最新格式，提問方申請裁定和解退款。目前由官方仲裁委員會審理中。',
+                  status: 'open',
+                  createdAt: '4 小時前',
+                  views: 128,
+                  answersCount: 1,
+                  tags: ['生醫專利', 'TFDA', '法規諮詢', '履約爭議'],
+                } as any;
+              } else if (!found && qId === 'q-demo-dispute-2') {
+                found = {
+                  id: 'q-demo-dispute-2',
+                  title: 'D2C 外送淨利模型試算表交付延遲申訴',
+                  authorName: '李小姐',
+                  authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+                  bounty: 4500,
+                  category: '創新創業',
+                  description: '解答方承諾之財務模型延遲交付超過約定時限 48 小時，申請和解裁決。',
+                  status: 'open',
+                  createdAt: '1 天前',
+                  views: 94,
+                  answersCount: 1,
+                  tags: ['財務模型', 'D2C', '履約爭議'],
+                } as any;
+              }
               if (found) {
                 setSelectedQuestion(found);
                 setActiveTab('question_detail');
@@ -1764,6 +1795,7 @@ function MainContent() {
               setIsOnboardingOpen(true);
             }}
             onNavigateToSitelink={handleNavigateToSitelink}
+            onOpenChat={() => setActiveTab('chat')}
           />
         )}
 

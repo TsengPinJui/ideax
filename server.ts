@@ -3364,8 +3364,9 @@ app.post('/api/ai/inspect-id-card', async (req: Request, res: Response) => {
 app.get('/sitemap.xml', (req: Request, res: Response) => {
   const publicPath = path.join(process.cwd(), 'public', 'sitemap.xml');
   const distPath = path.join(process.cwd(), 'dist', 'sitemap.xml');
-  const targetFile = fs.existsSync(distPath) ? distPath : publicPath;
+  const targetFile = fs.existsSync(publicPath) ? publicPath : distPath;
   if (fs.existsSync(targetFile)) {
+    res.setHeader('Cache-Control', 'public, max-age=3600');
     res.type('application/xml; charset=utf-8');
     return res.sendFile(targetFile);
   }
@@ -3406,7 +3407,7 @@ async function startServer() {
         let html = fs.readFileSync(indexPath, 'utf-8');
         const canonicalUrl = `https://www.ideax.tw${reqPath}`;
         const title = '創星季 — 全國創新提案挑戰賽 讓校園與青年創新想法獲得真實市場驗證 | IdeaX 創點子';
-        const desc = '創星季全國創新提案挑戰賽官方專區：百萬總獎金、真實痛點徵件、跨領域創新提案與校園青年商業落地競賽。';
+        const desc = '創星季全國創新提案挑戰賽官方專區：豐厚競賽大獎、真實痛點徵件、跨領域創新提案與校園青年商業落地競賽。';
         const img = 'https://www.ideax.tw/去背創星季.png';
 
         html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);

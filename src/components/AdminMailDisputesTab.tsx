@@ -2,23 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Question,
-  User,
   CustomerSupportConversation,
   CustomerSupportTicket,
   FaqItem,
   CollectedUserQuestion,
   DraftFaqItem,
+  ChatConversation,
 } from '../types';
 import {
   Mail,
   Scale,
   AlertTriangle,
+  AlertCircle,
+  ShieldAlert,
   Send,
   CheckCircle2,
   Clock,
   Search,
   Filter,
   Users,
+  User,
   ShieldCheck,
   FileText,
   MessageSquare,
@@ -74,9 +77,10 @@ import { CopyableUserId } from './CopyableUserId';
 
 interface AdminMailDisputesTabProps {
   onOpenQuestion?: (questionId: string) => void;
+  onOpenChat?: () => void;
 }
 
-export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOpenQuestion }) => {
+export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOpenQuestion, onOpenChat }) => {
   const {
     questions,
     availableUsers,
@@ -86,6 +90,9 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     currentUser,
     resolvedDisputeIds,
     markDisputeResolved,
+    conversations,
+    setConversations,
+    setActiveConversationId,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'tickets' | 'disputes' | 'reports' | 'ai_logs'>('tickets');
@@ -232,9 +239,102 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
     type: 'split' | 'full_refund';
   } | null>(null);
 
+  // 爭議案件卷宗詳情彈窗
+  const [selectedCaseDetail, setSelectedCaseDetail] = useState<any | null>(null);
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  // 點擊案件詳情連結到該案件存證聊天室
+  const handleOpenDisputeChat = (item: any) => {
+    if (!item) return;
+    const qId = item.questionId || item.id;
+    const convId = `conv-dispute-${item.id || qId}`;
+
+    // 1. 先檢驗是否已有專屬聊天室或關聯此問題之對話
+    let targetConv = conversations.find(
+      (c) =>
+        c.id === convId ||
+        (item.questionId && (c.relatedQuestionId === item.questionId || c.questionId === item.questionId))
+    );
+
+    // 2. 若無則立即建立一間具法律存證效力之專屬爭議諮詢聊天室
+    if (!targetConv) {
+      const questionerObj = {
+        id: item.questionerId || `user-q-${item.id}`,
+        name: item.questionerName || '申訴提問方',
+        avatar: item.questionerAvatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+        title: '需求發起者',
+      };
+      const solverObj = {
+        id: item.solverId || `user-s-${item.id}`,
+        name: item.solverName || '交付專家',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
+        title: '交付顧問專家',
+      };
+
+      const newDisputeConv: ChatConversation = {
+        id: convId,
+        participantIds: [currentUser.id, questionerObj.id, solverObj.id],
+        conversationRole: 'questioner',
+        relatedQuestionId: item.questionId,
+        relatedQuestionTitle: item.title,
+        lastMessage: `【爭議存證存查室】案號 #${item.id}。雙方履約紀錄與 AI 調解分析已留存存證。`,
+        lastMessageTime: '剛剛',
+        unreadCount: 0,
+        participantDetails: [
+          {
+            id: currentUser.id,
+            name: currentUser.name || '平台仲裁委員會',
+            avatar: currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            title: '仲裁委員 / 管理員',
+          },
+          questionerObj,
+          solverObj,
+        ],
+        messages: [
+          {
+            id: `msg-${Date.now()}-1`,
+            senderId: questionerObj.id,
+            senderName: questionerObj.name,
+            senderAvatar: questionerObj.avatar,
+            timestamp: item.createdAt || '4 小時前',
+            content: `【提問方原始申訴】${item.reason}`,
+          },
+          {
+            id: `msg-${Date.now()}-2`,
+            senderId: solverObj.id,
+            senderName: solverObj.name,
+            senderAvatar: solverObj.avatar,
+            timestamp: '3 小時前',
+            content: `【專家回覆說明】已依照需求規範交付主要專案成果，詳細補充說明與交付物已上傳存查，請審理委員核閱。`,
+          },
+          {
+            id: `msg-${Date.now()}-3`,
+            senderId: 'system',
+            senderName: 'IdeaX 爭議仲裁與AI調解中心',
+            senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150',
+            timestamp: '剛剛',
+            content: `【官方履約存證】本案「${item.title}」懸賞爭議託管款項 NT$ ${(item.bounty || 0).toLocaleString()}。\nAI 智能研判建議：${item.aiSuggestedResolution}。\n雙方當事人與仲裁委員可在此存證聊天室進行進一步陳述與補充交付，亦可直接點擊上方執行裁決劃撥。`,
+          },
+        ],
+      };
+
+      setConversations((prev) => [newDisputeConv, ...prev.filter((c) => c.id !== convId)]);
+      targetConv = newDisputeConv;
+    }
+
+    if (targetConv) {
+      setActiveConversationId(targetConv.id);
+    }
+
+    if (onOpenChat) {
+      onOpenChat();
+    } else {
+      showToast('已切換至該案專屬聊天室！');
+    }
   };
 
   // Mock list of user appeals / disputes
@@ -920,16 +1020,28 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-between pt-1 border-t border-stone-100 gap-2 flex-wrap text-xs">
-                  {onOpenQuestion ? (
+                  {/* 案件詳情與聊天室捷徑按鈕組 */}
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => onOpenQuestion(item.questionId)}
-                      className="text-stone-500 hover:text-stone-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                      onClick={() => setSelectedCaseDetail(item)}
+                      className="text-stone-600 hover:text-stone-900 text-[11px] font-bold flex items-center gap-1 cursor-pointer py-1 px-2 rounded-md hover:bg-stone-100 transition-colors"
+                      title="點擊查看完整爭議案件卷宗、雙方履約記錄與AI調解依據"
                     >
-                      <ExternalLink className="w-3 h-3" />
+                      <ExternalLink className="w-3 h-3 text-stone-500" />
                       <span>案件詳情</span>
                     </button>
-                  ) : <div />}
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDisputeChat(item)}
+                      className="text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 text-[11px] font-bold flex items-center gap-1 cursor-pointer py-1 px-2 rounded-md border border-purple-200/80 transition-colors"
+                      title="直接前往此案件雙方存證聊天室"
+                    >
+                      <MessageSquare className="w-3 h-3 text-purple-600" />
+                      <span>該案聊天室</span>
+                    </button>
+                  </div>
 
                   {item.status === 'pending_review' ? (
                     <div className="flex items-center gap-1.5">
@@ -1800,6 +1912,190 @@ export const AdminMailDisputesTab: React.FC<AdminMailDisputesTabProps> = ({ onOp
                 <Send className="w-3.5 h-3.5" />
                 <span>確認裁定並自動派發官方郵件</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 爭議案件卷宗詳情彈窗 (Dispute Case Details Modal) */}
+      {selectedCaseDetail && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto">
+            {/* 標題列 */}
+            <div className="flex items-start justify-between border-b border-stone-100 pb-3 gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono font-bold bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full border border-stone-200">
+                      卷宗案號 #{selectedCaseDetail.id}
+                    </span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      selectedCaseDetail.status === 'resolved'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'
+                    }`}>
+                      {selectedCaseDetail.status === 'resolved' ? '已裁定結案' : '待仲裁委員裁定'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const item = selectedCaseDetail;
+                        setSelectedCaseDetail(null);
+                        handleOpenDisputeChat(item);
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-800 text-[10px] font-black border border-purple-300 transition-colors cursor-pointer"
+                      title="直接前往此案件雙方對話紀錄與官方存證聊天室"
+                    >
+                      <MessageSquare className="w-3 h-3 text-purple-700" />
+                      <span>連結到該聊天室</span>
+                    </button>
+                  </div>
+                  <h3 className="font-extrabold text-base text-stone-900 mt-1 leading-snug">
+                    {selectedCaseDetail.title}
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCaseDetail(null)}
+                className="text-stone-400 hover:text-stone-700 p-1.5 rounded-xl hover:bg-stone-100 cursor-pointer transition-colors"
+                title="關閉"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 案件核心金流與雙方當事人卡片 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200 space-y-1">
+                <span className="text-[11px] font-bold text-amber-800">懸賞爭議金額（託管）</span>
+                <p className="text-lg font-black text-amber-900">
+                  NT$ {selectedCaseDetail.bounty?.toLocaleString?.() || selectedCaseDetail.bounty}
+                </p>
+                <span className="text-[10px] text-amber-700 block">平台官方金流安全託管中</span>
+              </div>
+
+              <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
+                <span className="text-[11px] font-bold text-stone-500">提問申訴方</span>
+                <div className="flex items-center gap-2 pt-0.5">
+                  {selectedCaseDetail.questionerAvatar ? (
+                    <img src={selectedCaseDetail.questionerAvatar} alt="" className="w-6 h-6 rounded-full object-cover" />
+                  ) : (
+                    <User className="w-5 h-5 text-stone-400" />
+                  )}
+                  <span className="text-xs font-bold text-stone-800 truncate">{selectedCaseDetail.questionerName}</span>
+                </div>
+                <span className="text-[10px] text-stone-400 block">角色：需求發起者</span>
+              </div>
+
+              <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
+                <span className="text-[11px] font-bold text-stone-500">解答專家方</span>
+                <div className="flex items-center gap-2 pt-0.5">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold">專</span>
+                  <span className="text-xs font-bold text-stone-800 truncate">{selectedCaseDetail.solverName}</span>
+                </div>
+                <span className="text-[10px] text-stone-400 block">角色：交付顧問專家</span>
+              </div>
+            </div>
+
+            {/* 申訴事由詳情 */}
+            <div className="p-3.5 bg-rose-50/60 rounded-2xl border border-rose-200 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-rose-800 text-xs font-extrabold">
+                <AlertCircle className="w-4 h-4" />
+                <span>提問方提出之申訴事由與爭議原因：</span>
+              </div>
+              <p className="text-xs text-rose-950 font-medium leading-relaxed pl-5">
+                {selectedCaseDetail.reason}
+              </p>
+            </div>
+
+            {/* 平台 AI 履約爭議研判與調解建議 */}
+            <div className="p-3.5 bg-purple-50/70 rounded-2xl border border-purple-200 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-purple-900 text-xs font-extrabold">
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                <span>平台 AI 履約爭議智能研判分析：</span>
+              </div>
+              <p className="text-xs text-purple-950 leading-relaxed font-medium pl-5">
+                {selectedCaseDetail.aiSuggestedResolution}
+              </p>
+            </div>
+
+            {/* 裁定動作列 */}
+            <div className="flex items-center justify-between gap-2 pt-3 border-t border-stone-100 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* 進入該案存證聊天室按鈕 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const item = selectedCaseDetail;
+                    setSelectedCaseDetail(null);
+                    handleOpenDisputeChat(item);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all hover:scale-[1.02] active:scale-95"
+                  title="直接前往此案件雙方對話紀錄與官方存證聊天室"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>進入該案聊天室</span>
+                </button>
+
+                {onOpenQuestion && selectedCaseDetail.questionId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCaseDetail(null);
+                      onOpenQuestion(selectedCaseDetail.questionId);
+                    }}
+                    className="px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-600 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
+                    <span>前往原始問題詳情</span>
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selectedCaseDetail.status === 'pending_review' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = selectedCaseDetail;
+                        setSelectedCaseDetail(null);
+                        setRulingModal({ item: target, type: 'split' });
+                      }}
+                      className="px-3.5 py-2 rounded-xl border border-blue-300 hover:bg-blue-50 text-blue-700 font-black text-xs cursor-pointer transition-all shadow-2xs"
+                    >
+                      50/50 和解劃撥
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = selectedCaseDetail;
+                        setSelectedCaseDetail(null);
+                        setRulingModal({ item: target, type: 'full_refund' });
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs cursor-pointer transition-all shadow-xs"
+                    >
+                      全額退款
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs text-emerald-700 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4" />
+                    本案已裁定結案
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCaseDetail(null)}
+                  className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  關閉卷宗
+                </button>
+              </div>
             </div>
           </div>
         </div>

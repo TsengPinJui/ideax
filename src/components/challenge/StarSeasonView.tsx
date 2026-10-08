@@ -119,6 +119,8 @@ import { AdminFinalEvaluationManagementModal } from './AdminFinalEvaluationManag
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import { ShatterPageTurnTransition } from './ShatterPageTurnTransition';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
+import { StarSeasonGuideModal, GuideRole } from './StarSeasonGuideModal';
+import { FloatingStarSeasonGuide } from './FloatingStarSeasonGuide';
 import {
   getNominatedProposalIds,
   getIsFinalResultsPublished,
@@ -353,10 +355,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [isPainPointCarouselPaused, setIsPainPointCarouselPaused] = useState(false);
   const [isPainPointCarouselTransitionDisabled, setIsPainPointCarouselTransitionDisabled] = useState(false);
 
-  // 合併雲端真實提案與示範提案，確保隨時有豐富批次輪播
+  // 提案列表：優先採用真實提案，不將模擬數據加入採計
   const homepageAllProposals = useMemo(() => {
-    const liveIds = new Set(proposals.map((p) => p.id));
-    const normalizedLive = proposals.map((p) => ({
+    const liveFiltered = proposals.filter((p) => !p.id.startsWith('test-') && !p.id.startsWith('demo-'));
+    const normalizedLive = liveFiltered.map((p) => ({
       id: p.id,
       title: p.title,
       school: (p as any).schoolOrOrg || '參賽隊伍',
@@ -372,8 +374,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       likeCount: p.likeCount || 0,
       commentsCount: p.commentsCount || 0,
     }));
-    const extraDemos = defaultHomepageProposals.filter((d) => !liveIds.has(d.id));
-    return [...normalizedLive, ...extraDemos];
+    if (normalizedLive.length > 0) {
+      return normalizedLive;
+    }
+    return defaultHomepageProposals;
   }, [proposals, defaultHomepageProposals]);
 
   // 每批顯示 3 個提案
@@ -439,10 +443,6 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   }, [homepageProposalBatches.length, isHomepageCarouselPaused, handleCarouselNext]);
 
   const navigateToSubView = (view: ChallengeSubView) => {
-    if (view === 'submit' && (stageInfo.activeStage === 0 || stageInfo.isPainPointStage || !stageInfo.isProposalStage)) {
-      showToast('⚠️ 尚未開放：創星季第二階段「想解方/提案」將於 11/14 10:00 正式開放！目前為第一階段「痛點徵件」期，歡迎先提出痛點。');
-      return;
-    }
     const normalizedView = view === 'explore' ? 'proposal' : view;
     setCurrentSubView(normalizedView);
     try {
@@ -606,161 +606,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     };
   }, [currentUser]);
 
-  // 管理者專屬：專家與評審測試帳號定義（可供“管理者登入時”切換，其他人看不到）
-  const COMPETITION_TEST_PERSONAS = useMemo(() => [
-    {
-      id: 'user-expert-1',
-      name: '柯育任',
-      title: '國立大學院長 / 客座教授',
-      tag: '決選評審',
-      type: 'judge' as const,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      description: '決選評審委員 · 資通訊與AI領域 · 擁有決選專屬評分功能與300萬創星幣',
-    },
-    {
-      id: 'user-expert-2',
-      name: '林心儀',
-      title: '創投基金資深管理合夥人',
-      tag: '決選評審',
-      type: 'judge' as const,
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-      description: '決選評審委員 · 生醫化材與創投 · 擁有決選專屬評分功能與300萬創星幣',
-    },
-    {
-      id: 'user-expert-3',
-      name: '陳建宏',
-      title: '台智精密機械 研發總經理',
-      tag: '認證專家',
-      type: 'expert' as const,
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-      description: '認證專家 · 機械運輸智慧製造 · 擁有300萬創星幣注資評選額度',
-    },
-    {
-      id: 'user-expert-4',
-      name: '張雅琪',
-      title: '沃土文化顧問 品牌策略長',
-      tag: '認證專家',
-      type: 'expert' as const,
-      avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-      description: '認證專家 · 服務文創觀光 · 擁有300萬創星幣注資評選額度',
-    },
-    {
-      id: 'user-admin',
-      name: 'IdeaX 官方管理員',
-      title: '賽事主辦委員 / 超級管理員',
-      tag: '管理員',
-      type: 'admin' as const,
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-      description: '官方超級管理員 · 賽事全功能主辦與審核管理權限',
-    },
-  ], []);
-
-  // 僅限管理者登入時可見，其他人看不到
-  const isAdminEligible = useMemo(() => {
-    return Boolean(
-      currentUser?.role === 'admin' ||
-      currentUser?.accountType === 'admin' ||
-      currentUser?.id === 'user-admin' ||
-      currentUser?.id === 'a000000001' ||
-      localStorage.getItem('ideax_admin_switched_persona') === 'true'
-    );
-  }, [currentUser]);
-
-  const isSwitchedByAdmin = useMemo(() => {
-    return Boolean(
-      localStorage.getItem('ideax_admin_switched_persona') === 'true' &&
-      currentUser?.role !== 'admin' &&
-      currentUser?.id !== 'user-admin' &&
-      currentUser?.id !== 'a000000001'
-    );
-  }, [currentUser]);
-
-  const handleSwitchTestPersona = (persona: (typeof COMPETITION_TEST_PERSONAS)[0]) => {
-    if (persona.type === 'admin') {
-      localStorage.removeItem('ideax_admin_switched_persona');
-      const adminUser = {
-        id: 'user-admin',
-        name: 'IdeaX 官方管理員',
-        title: '超級管理員 / 賽事主辦委員',
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-        role: 'admin' as const,
-        accountType: 'admin' as const,
-        balance: 99999999,
-        points: 999999,
-        pendingEarnings: 0,
-        reputation: 100,
-        joinedDate: '2025-01-01',
-        email: 'admin@ideax.tw',
-      };
-      setCurrentUser(adminUser);
-      setAccount({
-        userId: 'user-admin',
-        role: 'admin',
-        availablePoints: 10000000,
-        initialPoints: 10000000,
-        isRegisteredParticipant: false,
-        sharedToday: false,
-      });
-      showToast('👑 已切換回「IdeaX 官方管理員」身分！');
-    } else {
-      localStorage.setItem('ideax_admin_switched_persona', 'true');
-      const targetUser = {
-        id: persona.id,
-        name: persona.name,
-        title: persona.title,
-        avatar: persona.avatar,
-        role: 'solver' as const,
-        accountType: 'user' as const,
-        balance: 50000,
-        points: 3000000,
-        pendingEarnings: 0,
-        reputation: 99,
-        joinedDate: '2025-02-01',
-        email: `${persona.id}@ideax.tw`,
-        verifiedExpert: true,
-        competitionBadges: ['創星季' as const],
-      };
-      setCurrentUser(targetUser);
-      setAccount({
-        userId: persona.id,
-        role: 'solver',
-        availablePoints: 3000000,
-        initialPoints: 3000000,
-        isRegisteredParticipant: true,
-        sharedToday: false,
-      });
-      showToast(`✨ 管理員切換成功：已切換至「${persona.name}」（${persona.tag}）！`);
-    }
-    setIsProfileMenuOpen(false);
-  };
-
-  const handleSwitchBackToAdmin = () => {
-    localStorage.removeItem('ideax_admin_switched_persona');
-    const adminUser = {
-      id: 'user-admin',
-      name: 'IdeaX 官方管理員',
-      title: '超級管理員 / 賽事主辦委員',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-      role: 'admin' as const,
-      accountType: 'admin' as const,
-      balance: 99999999,
-      points: 999999,
-      pendingEarnings: 0,
-      reputation: 100,
-      joinedDate: '2025-01-01',
-      email: 'admin@ideax.tw',
-    };
-    setCurrentUser(adminUser);
-    setAccount({
-      userId: 'user-admin',
-      role: 'admin',
-      availablePoints: 10000000,
-      initialPoints: 10000000,
-      isRegisteredParticipant: false,
-      sharedToday: false,
-    });
-    showToast('👑 已切換回「IdeaX 官方管理員」身分！');
-  };
+  // 依指示：競賽模式不設虛擬測試帳號與假資料，完全以真實用戶帳號運作
 
   // 點擊痛點捷徑直接平滑滑動至痛點專區看板
   const scrollToPainPointsBoard = (e?: React.MouseEvent) => {
@@ -861,6 +707,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [isProposalTutorialModalOpen, setIsProposalTutorialModalOpen] = useState<boolean>(false);
   const [quickPainPointSerial, setQuickPainPointSerial] = useState<string>('');
   const [selectedPainPointTopic, setSelectedPainPointTopic] = useState<{ id: string; title: string; serial?: string } | null>(null);
+
+  // 創星季 30 秒玩法導覽教學 (三大角色引導旅程)
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
+  const [guideRole, setGuideRole] = useState<GuideRole>('audience');
 
   const showToast = (message: string) => {
     addNotification({
@@ -2103,14 +1953,26 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   if (currentSubView === 'submit') {
     return (
-      <SubmitProposalFullPage
-        onNavigate={navigateToSubView}
-        onBackToOldSite={onBackToOldSite}
-        onOpenAuth={onOpenAuth}
-        onGoToPainPoints={onGoToPainPoints || onBackToOldSite}
-        painPointProposals={painPointProposals}
-        onSuccess={loadData}
-      />
+      <>
+        <SubmitProposalFullPage
+          onNavigate={navigateToSubView}
+          onBackToOldSite={onBackToOldSite}
+          onOpenAuth={onOpenAuth}
+          onGoToPainPoints={onGoToPainPoints || onBackToOldSite}
+          painPointProposals={painPointProposals}
+          onSuccess={loadData}
+        />
+        <StarSeasonGuideModal
+          isOpen={isGuideModalOpen}
+          onClose={() => setIsGuideModalOpen(false)}
+          initialRole={guideRole}
+          onNavigateToExplore={() => navigateToSubView('home')}
+          onNavigateToPainPoints={scrollToPainPointsBoard}
+          onNavigateToSubmit={() => navigateToSubView('submit')}
+          onOpenSubmitPainPoint={handleOpenPainPointSubmission}
+          onBackToOldSite={onBackToOldSite}
+        />
+      </>
     );
   }
 
@@ -2160,37 +2022,6 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         originY={shatterTransition.originY}
       />
 
-      {/* 管理員測試身分提示橫條 (只有切換到測試身分時亮起，提供隨時一鍵切換回管理員) */}
-      {isSwitchedByAdmin && (
-        <div className="bg-gradient-to-r from-purple-900 via-stone-900 to-amber-900 text-white px-3 sm:px-6 py-2 flex items-center justify-between text-xs border-b border-amber-400/50 z-50 relative shadow-md">
-          <div className="flex items-center gap-2 font-bold flex-wrap">
-            <span className="px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 font-black text-[10px] flex items-center gap-1 shadow-2xs">
-              <Sparkles className="w-3 h-3 text-stone-950" />
-              管理員測試身分
-            </span>
-            <span className="text-white/90">
-              目前切換為：<b className="text-amber-300 font-black">{currentUser.name}</b>（{currentUser.title}）
-            </span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsProfileMenuOpen(true)}
-              className="px-2.5 py-1 rounded-xl bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold cursor-pointer transition-colors"
-            >
-              更換測試帳號
-            </button>
-            <button
-              type="button"
-              onClick={handleSwitchBackToAdmin}
-              className="px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-[11px] font-black cursor-pointer transition-colors shadow-2xs"
-            >
-              切換回管理員
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 頂部全站提示列與導覽 */}
       <div className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
         {/* 創星季廣播橫幅：誠徵各行業專家參與注資，注資額300萬（點擊申請） */}
@@ -2239,56 +2070,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
           {/* 中間：核心導覽列 (風格統一、簡潔俐落) */}
           <nav className="hidden lg:flex items-center gap-1.5 text-xs font-bold text-stone-700 bg-stone-100/80 p-1 rounded-2xl border border-stone-200/80">
-            {/* 1. 痛點徵件前為「10/31徵件」，痛點徵件階段為「提出痛點」，11/14~12/04 轉為「我想提案!」，12/04後截止 */}
-            {stageInfo.activeStage === 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  showToast('⚠️ 尚未開放：創星季第一階段「痛點徵件」將於 10/31 00:00 正式開放！目前尚未開放徵件，敬請期待。');
-                  const el = document.getElementById('homepage-schedule-section') || document.getElementById('homepage-awards-section');
-                  el?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="px-3 py-1.5 rounded-xl text-stone-800 bg-amber-100/80 hover:bg-amber-200/80 border border-amber-300 transition-all cursor-pointer font-bold shadow-2xs active:scale-98 flex items-center gap-1.5"
-                title="創星季籌備中：第一階段痛點徵件將於 10/31 00:00 正式開放！點擊查看完整賽程時程"
-              >
-                <Clock className="w-3.5 h-3.5 text-amber-700" />
-                <span>10/31 徵件開跑</span>
-              </button>
-            ) : stageInfo.isPainPointStage ? (
-              <button
-                type="button"
-                onClick={handleOpenPainPointSubmission}
-                className="px-3.5 py-1.5 rounded-xl text-white bg-rose-600 hover:bg-rose-500 transition-all cursor-pointer font-black shadow-2xs active:scale-98 flex items-center gap-1.5"
-                title="第一階段痛點徵件中：立即提出生活或產業痛點（過審送200點）"
-              >
-                <Flame className="w-3.5 h-3.5 text-white" />
-                <span>提出痛點</span>
-              </button>
-            ) : stageInfo.isProposalStage ? (
-              <button
-                type="button"
-                onClick={() => setIsProposalTutorialModalOpen(true)}
-                className="px-3.5 py-1.5 rounded-xl text-stone-950 bg-amber-400 hover:bg-amber-300 transition-all cursor-pointer font-black shadow-2xs active:scale-98 flex items-center gap-1.5"
-                title="點擊查看提案教學與開始提案（提案開放至 12/04 截止）"
-              >
-                <Send className="w-3.5 h-3.5 text-stone-950" />
-                <span>我想提案!</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="px-3.5 py-1.5 rounded-xl text-stone-400 bg-stone-200 cursor-not-allowed font-bold flex items-center gap-1.5"
-                title="創星季提案已於 12/04 截止收件"
-              >
-                <Clock className="w-3.5 h-3.5 text-stone-400" />
-                <span>提案已截止</span>
-              </button>
-            )}
-
-            <div className="h-4 w-px bg-stone-300/80 mx-0.5" />
-
-            {/* 2. 探索Idea (前三項目之二：有色鮮明膠囊) */}
+            {/* 1. 探索Idea (有色鮮明膠囊) */}
             <button
               type="button"
               onClick={() => navigateToSubView('proposal')}
@@ -2298,7 +2080,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <span>探索Idea</span>
             </button>
 
-            {/* 3. 痛點 (前三項目之三：有色鮮明膠囊) */}
+            {/* 2. 痛點 (有色鮮明膠囊) */}
             <button
               type="button"
               onClick={scrollToPainPointsBoard}
@@ -2310,29 +2092,22 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <ArrowRight className="w-3.5 h-3.5 text-orange-800 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
-            {/* 賽程表 (文字連結連到下方賽程表) */}
+            {/* 3. 🔰 玩法導覽 (三大角色 30 秒上手) */}
             <button
               type="button"
+              id="star-tour-nav-guide"
               onClick={() => {
-                if (currentSubView !== 'home') {
-                  navigateToSubView('home');
-                  setTimeout(() => {
-                    const el = document.getElementById('homepage-schedule-section');
-                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }, 120);
-                } else {
-                  const el = document.getElementById('homepage-schedule-section');
-                  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                setGuideRole('audience');
+                setIsGuideModalOpen(true);
               }}
-              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold flex items-center gap-1.5"
-              title="點擊前往查看賽程時程表"
+              className="px-3 py-1.5 rounded-xl text-stone-900 bg-amber-400 hover:bg-amber-300 border border-amber-500/40 transition-all cursor-pointer font-black flex items-center gap-1.5 shadow-2xs active:scale-98"
+              title="查看創星季 30 秒玩法導覽（觀眾、提案參賽、痛點提問 3 大角色極速引導）"
             >
-              <Calendar className="w-3.5 h-3.5 text-stone-500" />
-              <span>賽程表</span>
+              <span className="text-xs">🔰</span>
+              <span>玩法導覽</span>
             </button>
 
-            {/* 競賽辦法 (直接前往專門競賽辦法頁) */}
+            {/* 4. 競賽辦法 (直接前往專門競賽辦法頁) */}
             <button
               type="button"
               onClick={() => {
@@ -2504,73 +2279,34 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     )}
                   </div>
 
-                  {/* 管理者專屬：專家與評審測試帳號快速切換 (其他人看不到) */}
-                  {isAdminEligible && (
-                    <div className="p-2.5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-purple-500/10 to-stone-100 border border-amber-300 shadow-2xs space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-black text-stone-900">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                          <span>專家 / 評審測試帳號切換</span>
-                        </div>
-                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-rose-600 text-white font-mono">
-                          管理員限定
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-stone-500 leading-tight">
-                        可供管理者登入時快速切換專家注資或評審打分測試身分，一般用戶與訪客不可見。
-                      </p>
-                      <div className="grid grid-cols-1 gap-1.5 pt-0.5 max-h-56 overflow-y-auto pr-0.5">
-                        {COMPETITION_TEST_PERSONAS.map((persona) => {
-                          const isCurrent = currentUser.id === persona.id;
-                          return (
-                            <button
-                              key={persona.id}
-                              type="button"
-                              onClick={() => handleSwitchTestPersona(persona)}
-                              className={`w-full px-2.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer border text-left ${
-                                isCurrent
-                                  ? 'bg-amber-400 text-stone-950 border-amber-500 shadow-2xs font-black ring-1 ring-amber-300'
-                                  : 'bg-white hover:bg-amber-50 text-stone-800 border-stone-200 hover:border-amber-300'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <img
-                                  src={persona.avatar}
-                                  alt=""
-                                  className="w-6 h-6 rounded-full object-cover border border-stone-300 shrink-0"
-                                />
-                                <div className="min-w-0 truncate">
-                                  <div className="text-xs truncate flex items-center gap-1">
-                                    <span>{persona.name}</span>
-                                    <span
-                                      className={`text-[9px] font-black px-1.5 py-0.2 rounded-full shrink-0 ${
-                                        persona.type === 'admin'
-                                          ? 'bg-rose-100 text-rose-800'
-                                          : persona.type === 'judge'
-                                          ? 'bg-purple-100 text-purple-800'
-                                          : 'bg-emerald-100 text-emerald-800'
-                                      }`}
-                                    >
-                                      {persona.tag}
-                                    </span>
-                                  </div>
-                                  <div className="text-[10px] text-stone-500 truncate font-normal">
-                                    {persona.title}
-                                  </div>
-                                </div>
-                              </div>
-                              {isCurrent && (
-                                <Check className="w-3.5 h-3.5 text-stone-950 shrink-0 ml-1 font-black" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
                   {/* 核心功能選單列表 */}
                   <div className="space-y-1 text-xs font-bold text-stone-700">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        setGuideRole('audience');
+                        setIsGuideModalOpen(true);
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-amber-50/70 border border-amber-200/80"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-amber-300 text-stone-950 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 font-black shadow-2xs">
+                          🔰
+                        </div>
+                        <div>
+                          <div className="font-black text-stone-900 flex items-center gap-1.5">
+                            <span>創星季玩法導覽</span>
+                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-400 text-stone-950 font-mono">
+                              30秒上手
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-stone-500 font-normal">觀眾、提案者、痛點提問 3 步教學與兩站功能對照</div>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => {
@@ -2823,6 +2559,20 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               )}
             </div>
 
+            {/* 手機版專屬：🔰 玩法導覽 */}
+            <button
+              type="button"
+              onClick={() => {
+                setGuideRole('audience');
+                setIsGuideModalOpen(true);
+              }}
+              className="lg:hidden inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-stone-900 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-98 shrink-0"
+              title="創星季 30 秒玩法導覽"
+            >
+              <span className="text-[12px]">🔰</span>
+              <span className="text-[11px]">導覽</span>
+            </button>
+
             {/* 手機版面空間有限：移除競賽辦法按鈕，優先保留痛點（隨著賽程變動，若換至提案階段則自動變換為提案捷徑），並採用向量箭頭圖標 */}
             {stageInfo.isProposalStage ? (
               <button
@@ -2863,28 +2613,6 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           </div>
 
           <div className="text-center max-w-3xl mx-auto space-y-4">
-            
-            {/* 綠色活動圓角膠囊標籤：10/31 痛點徵件即將開跑! 賽程→（賽程用文字超連結） */}
-            <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-emerald-900 text-xs sm:text-sm font-bold shadow-2xs">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span>{stageInfo.activeStage === 0 ? '10/31 痛點徵件即將開跑!' : stageBadgeSubtitle}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  const el = document.getElementById('homepage-schedule-section');
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                }}
-                className="inline-flex items-center gap-0.5 text-xs sm:text-sm font-black text-emerald-700 hover:text-emerald-950 cursor-pointer transition-colors group shrink-0 ml-0.5"
-                title="點擊前往查看賽程表"
-                aria-label="前往查看賽程表"
-              >
-                <span className="underline underline-offset-2 decoration-emerald-600 group-hover:decoration-emerald-950">賽程</span>
-                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 stroke-[2.5]" />
-              </button>
-            </div>
-
             {/* 3. 大標語：參考原創比賽海報風格（微傾斜動態、三行大字體交錯錯開排版、手繪粉紅與黃綠油漆筆刷、向前運動斜體感） */}
             <div className="pt-4 pb-2 flex justify-center overflow-visible">
               <div className="inline-block text-left transform -rotate-3 sm:-rotate-4 -skew-x-8 sm:-skew-x-10 italic origin-center select-none max-w-full">
@@ -2996,11 +2724,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             </div>
 
             {/* 5. 核心 CTA 按鍵組：風格高度統一，具備一致的圓角、邊框、圖示與視覺層次 */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3 max-w-lg mx-auto">
+            <div id="star-tour-hero-cta" className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3 max-w-lg mx-auto">
               {/* 主行動：在痛點徵件尚未開始前為「即將開跑 (10/31徵件)」，痛點徵件階段為「提出痛點」，痛點徵件後轉為「我想提案」直到 12/04，12/04後截止 */}
               {stageInfo.activeStage === 0 ? (
                 <button
                   type="button"
+                  id="star-tour-submit-proposal-btn"
                   onClick={() => {
                     showToast('⚠️ 尚未開放：創星季第一階段「痛點徵件」將於 10/31 00:00 正式開放！目前尚未開放徵件，敬請期待。');
                     const el = document.getElementById('homepage-schedule-section') || document.getElementById('homepage-awards-section');
@@ -3015,6 +2744,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               ) : stageInfo.isPainPointStage ? (
                 <button
                   type="button"
+                  id="star-tour-post-painpoint-btn"
                   onClick={handleOpenPainPointSubmission}
                   className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-sm sm:text-base shadow-sm border border-rose-600 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
                   title="第一階段痛點徵件中：立即提出產業或生活痛點（過審即送 200 點）"
@@ -3025,6 +2755,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               ) : stageInfo.isProposalStage ? (
                 <button
                   type="button"
+                  id="star-tour-submit-proposal-btn"
                   onClick={() => setIsProposalTutorialModalOpen(true)}
                   className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm sm:text-base shadow-sm border border-amber-400 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
                   title="點擊查看提案流程教學（提案開放至 12/04 截止）"
@@ -3228,7 +2959,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-200/60 pb-6">
             <div>
               <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-2xl border border-stone-200 shadow-2xs">
+                <div id="star-tour-overview-tabs" className="flex items-center gap-1 bg-stone-100 p-1 rounded-2xl border border-stone-200 shadow-2xs">
                   <button
                     type="button"
                     onClick={() => setHomepageSectionTab('solution')}
@@ -3284,7 +3015,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           {homepageSectionTab === 'solution' ? (
             <>
               {/* 領域探索標籤（四大領域分類：機電運輸、資通訊、生醫化材、服務文創） */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <div id="star-tour-painpoint-filter" className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <span className="text-[11px] font-bold text-stone-500 shrink-0">領域標注探索：</span>
                 {OFFICIAL_COMPETITION_TRACKS.map((tr) => (
                   <button
@@ -3357,6 +3088,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         return (
                           <div
                             key={p.id}
+                            id={batchIdx === 0 && pIdx === 0 ? 'star-tour-proposal-card' : undefined}
                             onClick={() => navigateToSubView('proposal')}
                             className="bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden cursor-pointer"
                           >
@@ -3449,7 +3181,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                 </span>
                               </div>
 
-                              <div className="flex items-center gap-1.5">
+                              <div
+                                id={batchIdx === 0 && pIdx === 0 ? 'star-tour-card-actions' : undefined}
+                                className="flex items-center gap-1.5"
+                              >
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -3551,9 +3286,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 >
                   {extendedPainPointBatches.map((batch, batchIdx) => (
                     <div key={`pp-batch-${batchIdx}`} className="w-full shrink-0 grid grid-cols-1 md:grid-cols-3 gap-5">
-                      {batch.map((pp) => (
+                      {batch.map((pp, ppIdx) => (
                         <div
                           key={pp.id}
+                          id={batchIdx === 0 && ppIdx === 0 ? 'star-tour-painpoint-card' : undefined}
                           onClick={() => {
                             // 點進去卡片一樣要連到創點子的對應痛點！
                             if (onOpenPainPointInChuangDianZi) {
@@ -3598,12 +3334,18 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             </div>
 
                             <div className="flex items-center gap-2 text-stone-400 text-xs shrink-0 font-mono">
-                              <span className="flex items-center gap-1 font-bold text-stone-600">
+                              <span
+                                id={batchIdx === 0 && ppIdx === 0 ? 'star-tour-solutions-received' : undefined}
+                                className="flex items-center gap-1 font-bold text-stone-600"
+                              >
                                 <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
                                 <span>{pp.solutionsCount} 個解方</span>
                               </span>
-                              <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg bg-amber-50 group-hover:bg-amber-400 group-hover:text-stone-950 text-amber-900 text-[10px] font-black transition-colors">
-                                前往查看 →
+                              <span
+                                id={batchIdx === 0 && ppIdx === 0 ? 'star-tour-solve-painpoint-btn' : undefined}
+                                className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg bg-amber-50 group-hover:bg-amber-400 group-hover:text-stone-950 text-amber-900 text-[10px] font-black transition-colors"
+                              >
+                                前往查看並提案 →
                               </span>
                             </div>
                           </div>
@@ -4052,7 +3794,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       </div>
 
       {/* 創星季獨立站頁尾 (主辦單位: IdeaX團隊 / logo-6-trans-dark / ideax.office@gmail.com / 造訪IdeaX創點子平台) */}
-      <CompetitionFooter onBackToOldSite={onBackToOldSite} onNavigate={navigateToSubView} />
+      <CompetitionFooter
+        onBackToOldSite={onBackToOldSite}
+        onNavigate={navigateToSubView}
+        onOpenGuide={() => {
+          setGuideRole('audience');
+          setIsGuideModalOpen(true);
+        }}
+      />
 
       {/* 提案詳情 Modal (教育部大專校院募資實戰模擬學習平台 cases 詳情與回饋風格) */}
       {selectedProposalForDetail && (
@@ -6309,6 +6058,26 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           initialDoc={competitionTermsDoc}
         />
       )}
+
+      {/* 創星季畫面中上「？」浮動教學導覽鍵 */}
+      <FloatingStarSeasonGuide
+        onOpenGuide={(role) => {
+          if (role) setGuideRole(role);
+          setIsGuideModalOpen(true);
+        }}
+      />
+
+      {/* 創星季 30 秒三大角色極速導覽視窗 Modal */}
+      <StarSeasonGuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
+        initialRole={guideRole}
+        onNavigateToExplore={() => navigateToSubView('proposal')}
+        onNavigateToPainPoints={scrollToPainPointsBoard}
+        onNavigateToSubmit={() => navigateToSubView('submit')}
+        onOpenSubmitPainPoint={handleOpenPainPointSubmission}
+        onBackToOldSite={onBackToOldSite}
+      />
     </div>
   );
 };

@@ -23,7 +23,7 @@
 
 import * as XLSX from 'xlsx';
 import { StarSeasonProposal } from '../types/competition';
-import { CompetitionExpertRecord, getCompetitionExperts } from './competitionAdminSync';
+import { CompetitionExpertRecord, getCompetitionExperts, getCompetitionRegistrations } from './competitionAdminSync';
 
 export interface FinalEvaluationCriterion {
   id: 'innovation' | 'completeness' | 'feasibility' | 'commercial';
@@ -168,76 +168,26 @@ export function getAllJudgeScoreRecords(): Record<string, ProposalJudgeScoreReco
     const raw = localStorage.getItem(JUDGE_SCORES_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (typeof parsed === 'object' && parsed !== null) return parsed;
+      if (typeof parsed === 'object' && parsed !== null) {
+        // 依指示：移除或隱藏所有測試帳號、假資料、模擬數據（不加入採計）
+        const filtered: Record<string, ProposalJudgeScoreRecord> = {};
+        for (const [key, val] of Object.entries(parsed)) {
+          if (
+            val &&
+            typeof val === 'object' &&
+            !(val as any).judgeId?.startsWith('user-expert-') &&
+            !(val as any).judgeId?.startsWith('test-')
+          ) {
+            filtered[key] = val as ProposalJudgeScoreRecord;
+          }
+        }
+        return filtered;
+      }
     }
   } catch {}
 
-  // 初始示範評審給分種子資料 (柯育任院長、林心儀創投合夥人)
-  const initialSeeds: Record<string, ProposalJudgeScoreRecord> = {
-    'user-expert-1_prop-star-1': {
-      judgeId: 'user-expert-1',
-      judgeName: '柯育任 院長/客座教授',
-      proposalId: 'prop-star-1',
-      scores: { innovation: 88, completeness: 85, feasibility: 92, commercial: 86 },
-      weightedScore: 88 * 0.4 + 85 * 0.2 + 92 * 0.2 + 86 * 0.2, // 87.8
-      feedbackNote: '硬體與 LIFF 整合度高，校園落地方案扎實，特約商家利潤結構清晰。',
-      isSubmitted: true,
-      updatedAt: '2026-10-06T10:00:00Z',
-    },
-    'user-expert-2_prop-star-1': {
-      judgeId: 'user-expert-2',
-      judgeName: '林心儀 創投合夥人',
-      proposalId: 'prop-star-1',
-      scores: { innovation: 85, completeness: 88, feasibility: 90, commercial: 92 },
-      weightedScore: 85 * 0.4 + 88 * 0.2 + 90 * 0.2 + 92 * 0.2, // 88.0
-      feedbackNote: '商業模式極具可複製性，跨校推廣邊際成本低，具備獲利前景。',
-      isSubmitted: true,
-      updatedAt: '2026-10-06T10:30:00Z',
-    },
-    'user-expert-1_prop-star-2': {
-      judgeId: 'user-expert-1',
-      judgeName: '柯育任 院長/客座教授',
-      proposalId: 'prop-star-2',
-      scores: { innovation: 92, completeness: 90, feasibility: 86, commercial: 94 },
-      weightedScore: 92 * 0.4 + 90 * 0.2 + 86 * 0.2 + 94 * 0.2, // 90.8
-      feedbackNote: '拼單裂變演算法相當具原創性，精準解決辦公大樓外送痛點。',
-      isSubmitted: true,
-      updatedAt: '2026-10-06T11:00:00Z',
-    },
-    'user-expert-2_prop-star-2': {
-      judgeId: 'user-expert-2',
-      judgeName: '林心儀 創投合夥人',
-      proposalId: 'prop-star-2',
-      scores: { innovation: 95, completeness: 92, feasibility: 88, commercial: 96 },
-      weightedScore: 95 * 0.4 + 92 * 0.2 + 88 * 0.2 + 96 * 0.2, // 93.2
-      feedbackNote: '高頻剛需市場，D2C 毛利優勢明顯，具備天使輪投資吸引力。',
-      isSubmitted: true,
-      updatedAt: '2026-10-06T11:20:00Z',
-    },
-    'user-expert-1_prop-star-3': {
-      judgeId: 'user-expert-1',
-      judgeName: '柯育任 院長/客座教授',
-      proposalId: 'prop-star-3',
-      scores: { innovation: 96, completeness: 88, feasibility: 82, commercial: 85 },
-      weightedScore: 96 * 0.4 + 88 * 0.2 + 82 * 0.2 + 85 * 0.2, // 89.4
-      feedbackNote: '深科技專利技術門檻極高，科研技轉路徑清晰。',
-      isSubmitted: true,
-      updatedAt: '2026-10-06T11:45:00Z',
-    },
-    'user-expert-2_prop-star-3': {
-      judgeId: 'user-expert-2',
-      judgeName: '林心儀 創投合夥人',
-      proposalId: 'prop-star-3',
-      scores: { innovation: 92, completeness: 85, feasibility: 80, commercial: 86 },
-      weightedScore: 92 * 0.4 + 85 * 0.2 + 80 * 0.2 + 86 * 0.2, // 87.0
-      feedbackNote: '醫療器材法規取證期較長，建議優先採取大廠技轉與策略結盟。',
-      isSubmitted: true,
-      updatedAt: '2026-10-06T12:00:00Z',
-    },
-  };
-
-  saveAllJudgeScoreRecords(initialSeeds);
-  return initialSeeds;
+  // 乾淨初始化：無假資料或測試帳號
+  return {};
 }
 
 export function saveAllJudgeScoreRecords(records: Record<string, ProposalJudgeScoreRecord>): void {
@@ -512,11 +462,25 @@ export function generateAggregatedRewardsReport(proposals: StarSeasonProposal[])
     }
   });
 
-  // 4. 校園推廣大使獎勵 (每案 300 點)
-  const ambassadors = [
-    { id: 'user-ambassador-1', name: '陳品潔 (臺大推廣大使)', approvedCases: 8 },
-    { id: 'user-expert-1', name: '柯育任 院長/客座教授', approvedCases: 3 }, // 專家兼推廣大使
-  ];
+  // 4. 校園推廣大使獎勵 (每案 300 點) - 依指示僅統計真實推薦紀錄，不使用假資料
+  const ambassadors: Array<{ id: string; name: string; approvedCases: number }> = [];
+  const registrations = getCompetitionRegistrations();
+  // 統計真實報名資料中帶有推薦碼的核准案
+  registrations.forEach((r) => {
+    const code = (r as any).referralCode;
+    if (r.status === 'approved' && code) {
+      const existing = ambassadors.find((a) => a.id === code);
+      if (existing) {
+        existing.approvedCases += 1;
+      } else {
+        ambassadors.push({
+          id: code,
+          name: `推廣大使 (${code})`,
+          approvedCases: 1,
+        });
+      }
+    }
+  });
   ambassadors.forEach((a) => {
     const user = ensureUser(a.id, a.name, '推廣大使');
     const pts = a.approvedCases * 300;
