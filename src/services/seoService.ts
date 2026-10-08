@@ -410,6 +410,18 @@ export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
   },
   // --- 創星季 ---
   {
+    id: 'challenge',
+    name: '創星季',
+    category: 'star_season',
+    categoryLabel: '創星季',
+    path: '/challenge',
+    queryParam: '?tab=challenge',
+    title: '創星季 — 全國創新提案挑戰賽 讓校園與青年創新想法獲得真實市場驗證 | IdeaX 創點子',
+    description: '創星季全國創新提案挑戰賽官方專區：百萬總獎金、真實痛點徵件、跨領域創新提案與校園青年商業落地競賽。',
+    keywords: ['創星季', '創新提案挑戰賽', '商業競賽', '校園競賽', '青年創業', '創星幣', 'IdeaX'],
+    icon: 'Trophy',
+  },
+  {
     id: 'challenge_join',
     name: '我要參賽',
     category: 'star_season',
@@ -549,6 +561,15 @@ export function updateSEOForSubpage(subpageId: string) {
  */
 export function resetSEOToDefault() {
   if (typeof document === 'undefined') return;
+
+  // 若當前在創星季專區，重設時應指向創星季 SEO，避免覆蓋標準網址 (Canonical)
+  if (typeof window !== 'undefined') {
+    const currentPath = window.location.pathname.toLowerCase();
+    if (currentPath === '/challenge' || currentPath === '/challenge/') {
+      updateSEOForSubpage('challenge');
+      return;
+    }
+  }
 
   const titleTag = document.querySelector('title');
   const metaDesc = document.querySelector('meta[name="description"]');

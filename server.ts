@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
@@ -3359,6 +3360,29 @@ app.post('/api/ai/inspect-id-card', async (req: Request, res: Response) => {
   });
 });
 
+// 確保 /sitemap.xml 與 /robots.txt 精確無誤返回
+app.get('/sitemap.xml', (req: Request, res: Response) => {
+  const publicPath = path.join(process.cwd(), 'public', 'sitemap.xml');
+  const distPath = path.join(process.cwd(), 'dist', 'sitemap.xml');
+  const targetFile = fs.existsSync(distPath) ? distPath : publicPath;
+  if (fs.existsSync(targetFile)) {
+    res.type('application/xml; charset=utf-8');
+    return res.sendFile(targetFile);
+  }
+  res.status(404).send('Sitemap not found');
+});
+
+app.get('/robots.txt', (req: Request, res: Response) => {
+  const publicPath = path.join(process.cwd(), 'public', 'robots.txt');
+  const distPath = path.join(process.cwd(), 'dist', 'robots.txt');
+  const targetFile = fs.existsSync(distPath) ? distPath : publicPath;
+  if (fs.existsSync(targetFile)) {
+    res.type('text/plain; charset=utf-8');
+    return res.sendFile(targetFile);
+  }
+  res.status(404).send('Robots not found');
+});
+
 // Vite Middleware & Production static serve
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
@@ -3371,7 +3395,35 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexPath = path.join(distPath, 'index.html');
+      if (!fs.existsSync(indexPath)) {
+        return res.status(404).send('index.html not found');
+      }
+
+      const reqPath = req.path.toLowerCase().replace(/\/+$/, '') || '/';
+
+      if (reqPath.startsWith('/challenge')) {
+        let html = fs.readFileSync(indexPath, 'utf-8');
+        const canonicalUrl = `https://www.ideax.tw${reqPath}`;
+        const title = '創星季 — 全國創新提案挑戰賽 讓校園與青年創新想法獲得真實市場驗證 | IdeaX 創點子';
+        const desc = '創星季全國創新提案挑戰賽官方專區：百萬總獎金、真實痛點徵件、跨領域創新提案與校園青年商業落地競賽。';
+        const img = 'https://www.ideax.tw/去背創星季.png';
+
+        html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);
+        html = html.replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i, `<meta name="description" content="${desc}" />`);
+        html = html.replace(/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/i, `<link rel="canonical" href="${canonicalUrl}" />`);
+        html = html.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+        html = html.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:title" content="${title}" />`);
+        html = html.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${desc}" />`);
+        html = html.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:image" content="${img}" />`);
+        html = html.replace(/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:title" content="${title}" />`);
+        html = html.replace(/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:description" content="${desc}" />`);
+        html = html.replace(/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:image" content="${img}" />`);
+
+        return res.type('text/html; charset=utf-8').send(html);
+      }
+
+      res.sendFile(indexPath);
     });
   }
 

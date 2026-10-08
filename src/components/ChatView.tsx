@@ -170,45 +170,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
     promptLogin,
   } = useApp();
 
-  // 若為訪客模式，顯示友善的登入攔截卡片，避免展示其他會員隱私對話
-  if (currentUser.id === 'user-guest') {
-    return (
-      <div className="min-h-[calc(100vh-140px)] flex items-center justify-center p-4 bg-stone-50">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-stone-200 shadow-xl text-center space-y-6 animate-in fade-in duration-200">
-          <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
-            <Lock className="w-8 h-8" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-xl sm:text-2xl font-black text-stone-900">請先登入帳號</h2>
-            <p className="text-sm text-stone-600 leading-relaxed">
-              聊天室、私訊諮詢與通知功能包含個人隱私與專屬交易訊息。訪客模式請先登入或註冊 IdeaX 帳號後繼續使用。
-            </p>
-          </div>
-          <div className="space-y-3 pt-2">
-            <button
-              onClick={() => openAuthModal('login')}
-              className="w-full py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-98 text-stone-950 font-black text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <span>立即登入 / 註冊</span>
-            </button>
-            <button
-              onClick={() => {
-                window.location.hash = '';
-                const searchParams = new URLSearchParams(window.location.search);
-                searchParams.delete('tab');
-                window.history.pushState({}, '', window.location.pathname);
-                window.location.reload();
-              }}
-              className="w-full py-3 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition-colors cursor-pointer"
-            >
-              返回探索問題首頁
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // --- 提出方案 (完整提案 Modal，同問題下方提出方案頁面) ---
   const [isSubmitAnswerModalOpen, setIsSubmitAnswerModalOpen] = useState(false);
 
@@ -1133,6 +1094,45 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
     { title: '核心架構診斷與重構方針規劃書', price: 3000, days: 5, cat: '架構規劃', desc: '1. 系統/商業模式盲點深度診斷報告\n2. 具體重構與執行時程規劃 PDF\n3. 附贈可復用評估試算模組' },
     { title: '商業企劃案完整審閱與精修建議', price: 2500, days: 3, cat: '商業顧問', desc: '1. 商業計畫書（BP）全面逐頁審閱\n2. 投資人視角提問模擬與應對方針\n3. 財務預估模型修正建議' },
   ];
+
+  // 若為訪客模式，在所有 Hook 執行完畢後再渲染攔截卡片，避免破壞 React Hook 呼叫順序
+  if (currentUser.id === 'user-guest') {
+    return (
+      <div className="min-h-[calc(100vh-140px)] flex items-center justify-center p-4 bg-stone-50">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-stone-200 shadow-xl text-center space-y-6 animate-in fade-in duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl sm:text-2xl font-black text-stone-900">請先登入帳號</h2>
+            <p className="text-sm text-stone-600 leading-relaxed">
+              聊天室、私訊諮詢與通知功能包含個人隱私與專屬交易訊息。訪客模式請先登入或註冊 IdeaX 帳號後繼續使用。
+            </p>
+          </div>
+          <div className="space-y-3 pt-2">
+            <button
+              onClick={() => openAuthModal('login')}
+              className="w-full py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-98 text-stone-950 font-black text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>立即登入 / 註冊</span>
+            </button>
+            <button
+              onClick={() => {
+                window.location.hash = '';
+                const searchParams = new URLSearchParams(window.location.search);
+                searchParams.delete('tab');
+                window.history.pushState({}, '', window.location.pathname);
+                window.location.reload();
+              }}
+              className="w-full py-3 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition-colors cursor-pointer"
+            >
+              返回探索問題首頁
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2 sm:py-6">

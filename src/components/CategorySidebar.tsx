@@ -411,7 +411,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                     </span>
                   </div>
                   <p className="text-[10px] text-stone-600 mt-0.5 line-clamp-1">
-                    徵點子痛點 × 想解方實戰評選
+                    分享痛點×腦力激盪 黑客松
                   </p>
                 </div>
               </div>

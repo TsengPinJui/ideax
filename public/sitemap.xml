@@ -36,39 +36,47 @@
   <!-- 4. 找專家 (Sitelink 4) -->
   <url>
     <loc>https://www.ideax.tw/solvers</loc>
-    <lastmod>2026-10-08</lastmod>
+    <lastmod>2026-10-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
-  <!-- 5. 創星季：我要參賽 (Sitelink 5) -->
+  <!-- 5. 創星季：官方首頁專區 (Sitelink 5 創星季主入口) -->
+  <url>
+    <loc>https://www.ideax.tw/challenge</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 6. 創星季：我要參賽 (Sitelink 6) -->
   <url>
     <loc>https://www.ideax.tw/challenge/join</loc>
-    <lastmod>2026-10-08</lastmod>
+    <lastmod>2026-10-09</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
-  <!-- 6. 創星季：專家申請 (Sitelink 6) -->
+  <!-- 7. 創星季：專家申請 (Sitelink 7) -->
   <url>
     <loc>https://www.ideax.tw/challenge/expert</loc>
-    <lastmod>2026-10-08</lastmod>
+    <lastmod>2026-10-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
-  <!-- 7. 創星季：提案總覽 (Sitelink 7) -->
+  <!-- 8. 創星季：提案總覽 (Sitelink 8) -->
   <url>
     <loc>https://www.ideax.tw/challenge/proposals</loc>
-    <lastmod>2026-10-08</lastmod>
+    <lastmod>2026-10-09</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
-  <!-- 8. 創星季：活動辦法 (Sitelink 8) -->
+  <!-- 9. 創星季：活動辦法 (Sitelink 9) -->
   <url>
     <loc>https://www.ideax.tw/challenge/rules</loc>
-    <lastmod>2026-10-08</lastmod>
+    <lastmod>2026-10-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

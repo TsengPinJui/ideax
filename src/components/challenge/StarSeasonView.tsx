@@ -98,6 +98,7 @@ import {
 } from '../../services/competitionClientService';
 import {
   updateSEOForProposal,
+  updateSEOForSubpage,
   resetSEOToDefault,
   getProposalShareUrl,
 } from '../../services/seoService';
@@ -1073,14 +1074,24 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       url.searchParams.set('proposalId', selectedProposalForDetail.id);
       window.history.replaceState({ proposalId: selectedProposalForDetail.id }, '', url.toString());
     } else {
-      resetSEOToDefault();
+      if (currentSubView === 'rules') {
+        updateSEOForSubpage('challenge_rules');
+      } else if (currentSubView === 'submit' || currentSubView === 'participant') {
+        updateSEOForSubpage('challenge_join');
+      } else if (currentSubView === 'judge') {
+        updateSEOForSubpage('challenge_expert');
+      } else if (currentSubView === 'proposal') {
+        updateSEOForSubpage('challenge_proposals');
+      } else {
+        updateSEOForSubpage('challenge');
+      }
       const url = new URL(window.location.href);
       if (url.searchParams.has('proposalId')) {
         url.searchParams.delete('proposalId');
         window.history.replaceState({}, '', url.toString());
       }
     }
-  }, [selectedProposalForDetail]);
+  }, [selectedProposalForDetail, currentSubView]);
 
   const [copiedProposalId, setCopiedProposalId] = useState<string | null>(null);
 

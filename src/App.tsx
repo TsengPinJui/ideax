@@ -407,6 +407,17 @@ function MainContent() {
           if (!curPath.startsWith('/challenge')) {
             window.history.pushState({ tab: 'star_season' }, '', '/challenge');
           }
+          if (curPath === '/challenge' || curPath === '/challenge/') {
+            updateSEOForSubpage('challenge');
+          } else if (curPath === '/challenge/rules') {
+            updateSEOForSubpage('challenge_rules');
+          } else if (curPath === '/challenge/join' || curPath === '/challenge/submit') {
+            updateSEOForSubpage('challenge_join');
+          } else if (curPath === '/challenge/expert' || curPath === '/challenge/judge') {
+            updateSEOForSubpage('challenge_expert');
+          } else if (curPath === '/challenge/proposals' || curPath === '/challenge/proposal') {
+            updateSEOForSubpage('challenge_proposals');
+          }
         } else if (activeTab === 'create_question') {
           if (curPath !== '/create') {
             window.history.pushState({ tab: 'create_question' }, '', '/create');
@@ -474,6 +485,12 @@ function MainContent() {
         window.history.pushState({ sitelink: 'solvers' }, '', '/solvers');
       } catch {}
       updateSEOForSubpage('solvers');
+    } else if (item.id === 'challenge') {
+      setActiveTab('star_season');
+      try {
+        window.history.pushState({ sitelink: 'challenge', subView: 'home' }, '', '/challenge');
+      } catch {}
+      updateSEOForSubpage('challenge');
     } else if (item.id === 'challenge_join') {
       setActiveTab('star_season');
       try {

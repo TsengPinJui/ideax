@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Layers,
   FileText,
+  Trophy,
   ChevronRight,
   History,
   Smartphone,
@@ -72,6 +73,8 @@ export const GoogleSitelinksModal: React.FC<GoogleSitelinksModalProps> = ({
         return <Layers className="w-4 h-4 text-blue-500 shrink-0" />;
       case 'FileText':
         return <FileText className="w-4 h-4 text-indigo-500 shrink-0" />;
+      case 'Trophy':
+        return <Trophy className="w-4 h-4 text-amber-500 shrink-0" />;
       default:
         return <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />;
     }
