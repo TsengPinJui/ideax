@@ -9,6 +9,7 @@ import {
   writeBatch,
   onSnapshot,
   Unsubscribe,
+  deleteField,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import {
@@ -390,7 +391,23 @@ export async function syncUserToFirestore(user: User): Promise<void> {
   try {
     const userRef = doc(db, 'users', user.id);
     const cleanUser = JSON.parse(JSON.stringify(user));
-    await setDoc(userRef, { ...cleanUser, id: user.id, updatedAt: new Date().toISOString() }, { merge: true });
+    const firestoreData: any = { ...cleanUser, id: user.id, updatedAt: new Date().toISOString() };
+
+    // 若使用者非處於註銷或反悔猶豫期，必須顯式透過 deleteField() 清除雲端舊殘留之猶豫期狀態
+    const isUserGraceOrDeact = Boolean(
+      user.isDeactivated ||
+      user.deactivationStatus === 'pending_grace' ||
+      user.deactivationStatus === 'deactivated'
+    );
+    if (!isUserGraceOrDeact) {
+      firestoreData.isDeactivated = false;
+      firestoreData.deactivationStatus = deleteField();
+      firestoreData.deactivationRequestedAt = deleteField();
+      firestoreData.deactivationScheduledPurgeAt = deleteField();
+      firestoreData.deactivationReason = deleteField();
+    }
+
+    await setDoc(userRef, firestoreData, { merge: true });
 
     // 同步提取使用者審核證書資料至 certifications 集合
     if (user.realNameAuthStatus || user.expertCertStatus) {
@@ -423,7 +440,22 @@ export async function syncUsersToFirestore(users: User[]): Promise<void> {
       if (!user.id) return;
       const userRef = doc(db, 'users', user.id);
       const cleanUser = JSON.parse(JSON.stringify(user));
-      batch.set(userRef, { ...cleanUser, updatedAt: new Date().toISOString() }, { merge: true });
+      const firestoreData: any = { ...cleanUser, updatedAt: new Date().toISOString() };
+
+      const isUserGraceOrDeact = Boolean(
+        user.isDeactivated ||
+        user.deactivationStatus === 'pending_grace' ||
+        user.deactivationStatus === 'deactivated'
+      );
+      if (!isUserGraceOrDeact) {
+        firestoreData.isDeactivated = false;
+        firestoreData.deactivationStatus = deleteField();
+        firestoreData.deactivationRequestedAt = deleteField();
+        firestoreData.deactivationScheduledPurgeAt = deleteField();
+        firestoreData.deactivationReason = deleteField();
+      }
+
+      batch.set(userRef, firestoreData, { merge: true });
 
       // 同步審核與認證集合
       if (user.realNameAuthStatus || user.expertCertStatus) {

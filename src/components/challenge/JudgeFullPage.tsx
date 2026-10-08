@@ -26,6 +26,7 @@ import { useApp } from '../../context/AppContext';
 import { applyJudge, uploadProposalAttachment } from '../../services/competitionClientService';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
+import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 
 interface JudgeFullPageProps {
   onNavigate: (view: 'home' | 'explore' | 'rules' | 'submit' | 'participant' | 'ambassador') => void;
@@ -49,6 +50,8 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
     addNotification,
     openAboutModal,
   } = useApp();
+
+  const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
 
   const [termsDoc, setTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
@@ -82,6 +85,10 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
   const [judgeYearsOfExp, setJudgeYearsOfExp] = useState<number | ''>('');
   const [judgeBio, setJudgeBio] = useState('');
   const [proofFile, setProofFile] = useState<{ url: string; name: string } | null>(null);
+
+  // 活動得知管道調查
+  const [referralSource, setReferralSource] = useState<string>('');
+  const [referralSourceOther, setReferralSourceOther] = useState<string>('');
 
   const [judgePledgeAgreed, setJudgePledgeAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -156,11 +163,13 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
         credentialProofUrl: proofFile?.url,
         credentialProofName: proofFile?.name,
         bio: judgeBio.trim() || `${judgeInstitution.trim()} ${judgeJobTitle.trim()}，專業領域涵蓋 ${judgeDomain}。`,
+        referralSource: referralSource === '其他' && referralSourceOther.trim() ? `其他 (${referralSourceOther.trim()})` : referralSource,
+        referralSourceOther: referralSourceOther.trim(),
         reviewPledgeAgreed: true,
       });
 
       if (res.success) {
-        showToast('評審申請已提交！已為您同步登錄舊站認證專家身分與評審額度。');
+        showToast('評審申請已提交！已為您同步登錄 IdeaX 創點子平台認證專家身分與評審額度。');
 
         // 同步更新用戶資料庫認證專家身分
         setCurrentUser((prev: any) => {
@@ -174,7 +183,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
           };
         });
 
-        // 同步更新舊站解題專家清單
+        // 同步更新 IdeaX 創點子平台解題專家清單
         setSolvers((prev: any) => {
           const exists = prev.some((s: any) => s.id === currentUser.id);
           if (exists) {
@@ -242,10 +251,10 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="p-1 -m-1 rounded-xl hover:bg-amber-100/60 active:scale-95 transition-all cursor-pointer flex items-center justify-center group"
-                title="點擊回到 IdeaX 舊站首頁"
-                aria-label="回到舊站首頁"
+                title="點擊回到 IdeaX 創點子平台首頁"
+                aria-label="回到 IdeaX 創點子平台首頁"
               >
-                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
+                <img src="/logo-bulb.png" alt="IdeaX 創點子平台 - 點擊回首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
               </button>
               <button
                 type="button"
@@ -301,17 +310,18 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
               探索Idea
             </button>
 
-            {/* 3. 痛點-> */}
+            {/* 3. 痛點 → */}
             <button
               type="button"
               onClick={onGoToPainPoints || onBackToOldSite}
-              className="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold group"
+              title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
             >
-              痛點-&gt;
+              <span>痛點</span>
+              <ArrowRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
-            {/* 4. 申請參賽者 */}
+            {/* 4. 報名參賽 */}
             <button
               type="button"
               onClick={() => {
@@ -323,7 +333,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
               }}
               className="hidden md:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
             >
-              申請參賽者
+              報名參賽
             </button>
 
             {/* 5. 成為專家 (當前頁) */}
@@ -340,15 +350,29 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
               推廣大使
             </button>
 
-            {/* 行動版痛點-> (風格一致) */}
-            <button
-              onClick={onGoToPainPoints || onBackToOldSite}
-              className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
-              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
-            >
-              <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>痛點-&gt;</span>
-            </button>
+            {/* 行動版：優先保留痛點（隨著賽程變動，若換至提案階段則自動變換為提案捷徑），移除競賽辦法 */}
+            {stageInfo.isProposalStage ? (
+              <button
+                type="button"
+                onClick={() => onNavigate('submit')}
+                className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-98"
+                title="進入創星季提案"
+              >
+                <Send className="w-3.5 h-3.5 text-stone-950" />
+                <span>提案</span>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-950" />
+              </button>
+            ) : (
+              <button
+                onClick={onGoToPainPoints || onBackToOldSite}
+                className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98 group"
+                title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
+              >
+                <Flame className="w-3.5 h-3.5 text-rose-500" />
+                <span>痛點</span>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -413,9 +437,9 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
             <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
               <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
                 <Award className="w-4 h-4 text-amber-600" />
-                <span>舊站認證專家身分</span>
+                <span>IdeaX 創點子平台認證專家身分</span>
               </div>
-              <p className="text-[11px] text-stone-600">自動登錄舊站「解題專家」官方推薦專區與榮譽標籤。</p>
+              <p className="text-[11px] text-stone-600">自動登錄 IdeaX 創點子平台「解題專家」官方推薦專區與榮譽標籤。</p>
             </div>
 
             <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-1">
@@ -433,7 +457,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
             <div className="space-y-0.5">
               <div className="font-black text-purple-900">⚠️ 競賽規範限制：不可兼任參賽者與專家（利益迴避）</div>
               <div className="leading-relaxed text-stone-700">
-                依創星季大賽規章，為落實評審客觀公正，<strong>不可兼任參賽者與專家</strong>。若您或您的團隊已登錄為參賽團隊，不得兼任專家或決審評審委員；請依實際參與身分擇一申請。
+                依創星季競賽規章，為落實評審客觀公正，<strong>不可兼任參賽者與專家</strong>。若您或您的團隊已登錄為參賽團隊，不得兼任專家或決審評審委員；請依實際參與身分擇一申請。
               </div>
             </div>
           </div>
@@ -595,6 +619,61 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
                   className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-purple-400"
                 />
               </div>
+            </div>
+
+            {/* 活動得知管道調查 */}
+            <div className="space-y-3 p-5 sm:p-6 rounded-3xl bg-stone-50/70 border border-stone-200">
+              <div className="flex items-center justify-between border-b border-stone-200/80 pb-2.5">
+                <div className="font-black text-stone-900 text-sm flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  <span>您從哪裡得知這個比賽？</span>
+                </div>
+                <span className="text-[11px] text-purple-700 font-bold bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+                  主辦單位統計 (單選)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                {[
+                  '獎金獵人',
+                  'ACCUPASS',
+                  '學校或創新中心',
+                  '社群媒體',
+                  '網路搜尋或瀏覽',
+                  '網路廣告',
+                  '朋友',
+                  '其他',
+                ].map((source) => {
+                  const isSelected = referralSource === source;
+                  return (
+                    <button
+                      type="button"
+                      key={source}
+                      onClick={() => setReferralSource(source)}
+                      className={`px-3 py-2.5 rounded-xl border text-xs text-left transition-all cursor-pointer flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-purple-600 text-white font-black border-purple-600 shadow-xs ring-2 ring-purple-300'
+                          : 'bg-white border-stone-300 hover:border-purple-300 hover:bg-stone-50 text-stone-700 font-medium'
+                      }`}
+                    >
+                      <span>{source}</span>
+                      {isSelected && <span className="text-white font-bold">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {referralSource === '其他' && (
+                <div className="pt-2 animate-in fade-in duration-150">
+                  <input
+                    type="text"
+                    value={referralSourceOther}
+                    onChange={(e) => setReferralSourceOther(e.target.value)}
+                    placeholder="請說明其他得知管道（例如: 官方邀請、同仁推薦、研討會宣傳...）"
+                    className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-purple-400 text-xs font-medium"
+                  />
+                </div>
+              )}
             </div>
 
             {/* 公正評審與利益迴避承諾 */}

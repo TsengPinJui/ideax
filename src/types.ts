@@ -205,7 +205,7 @@ export interface DeliveryPhase {
 
 export type PostType = 'seek_solution' | 'pain_point' | 'chat_discussion'; // 尋求解答 | 提出痛點 | 閒聊討論
 
-export type SpecialZone = 'all' | 'l0_discussion' | 'pain_points'; // 全部 | L0問題討論專區 | 創點子/痛點專區
+export type SpecialZone = 'all' | 'l0_discussion' | 'pain_points'; // 全部 | L0問題討論區 | 創點子/痛點集
 
 export interface LevelConfig {
   code: ProblemLevel;
@@ -561,6 +561,8 @@ export interface User {
   avatar: string;
   role: UserRole;
   balance: number; // 相容欄位（預設 0，全面以第三方支付與直接撥款為主）
+  points?: number; // 平台點數/提問金（可用於發布問題懸賞、付費服務與專家諮詢）
+  breakdown?: any; // 競賽與活動獎勵加總細項快照
   pendingEarnings: number; // 待結算/託管中收益 NT$
   reputation: number; // 信用值 / 聲望
   joinedDate: string;
@@ -848,6 +850,7 @@ export interface Question {
   invitedSolverIds?: string[];
   isFeatured?: boolean;
   postType?: PostType; // 尋求解答 | 提出痛點 | 閒聊討論
+  specialZone?: SpecialZone; // 專屬專區 (全部 | L0問題討論區 | 創點子/痛點集)
   withheldBounty?: number; // 已保留之懸賞點數（交易履約保障中，採納時發動撥付）
   disputeStatus?: 'none' | 'pending_review' | 'resolved_refunded' | 'rejected'; // 疑義檢舉審查狀態
   disputeReason?: string; // 檢舉疑義事由

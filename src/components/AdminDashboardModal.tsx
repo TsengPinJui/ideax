@@ -34,7 +34,21 @@ import {
   Coins,
   AlertTriangle,
   Crown,
+  ChevronUp,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  Copy,
+  Check,
+  Zap,
+  Compass,
+  PlusCircle,
+  Flame,
+  GraduationCap,
+  ExternalLink,
 } from 'lucide-react';
+import { GOOGLE_SITELINKS, GoogleSitelinkItem, getSitelinkFullUrl } from '../services/seoService';
+import { getAutomatedDistributionStatus, AutomatedDistributionStatus } from '../services/rewardAutomationService';
 
 interface AdminDashboardModalProps {
   onClose: () => void;
@@ -85,11 +99,57 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
   // Local state for public metrics
   const [localPublicMetrics, setLocalPublicMetrics] = useState({ ...publicMetricsConfig });
+  const [isPublicMetricsExpanded, setIsPublicMetricsExpanded] = useState<boolean>(false);
   const hasPublicMetricsChanges = JSON.stringify(localPublicMetrics) !== JSON.stringify(publicMetricsConfig);
 
   // Local state for AI-CRM config
   const [localAiCrmConfig, setLocalAiCrmConfig] = useState({ ...aiCrmConfig });
   const hasAiCrmChanges = JSON.stringify(localAiCrmConfig) !== JSON.stringify(aiCrmConfig);
+
+  // Google Sitelinks & 瀏覽器功能捷徑狀態
+  const [isSitelinksExpanded, setIsSitelinksExpanded] = useState<boolean>(false);
+  const [copiedSitelinkId, setCopiedSitelinkId] = useState<string | null>(null);
+  const [autoRewardStatus] = useState<AutomatedDistributionStatus>(() => getAutomatedDistributionStatus());
+
+  const handleCopySitelinkUrl = (e: React.MouseEvent, item: GoogleSitelinkItem) => {
+    e.stopPropagation();
+    const fullUrl = getSitelinkFullUrl(item);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        setCopiedSitelinkId(item.id);
+        setTimeout(() => setCopiedSitelinkId(null), 2000);
+      });
+    }
+  };
+
+  const handleSitelinkItemClick = (e: React.MouseEvent, item: GoogleSitelinkItem) => {
+    e.preventDefault();
+    window.dispatchEvent(new CustomEvent('ideax_navigate_sitelink', { detail: { id: item.id } }));
+    onClose();
+  };
+
+  const renderSitelinkIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'Compass':
+        return <Compass className="w-4 h-4 text-amber-600 shrink-0" />;
+      case 'PlusCircle':
+        return <PlusCircle className="w-4 h-4 text-amber-600 shrink-0" />;
+      case 'AlertCircle':
+        return <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />;
+      case 'GraduationCap':
+        return <GraduationCap className="w-4 h-4 text-emerald-600 shrink-0" />;
+      case 'Flame':
+        return <Flame className="w-4 h-4 text-orange-500 shrink-0" />;
+      case 'ShieldCheck':
+        return <ShieldCheck className="w-4 h-4 text-purple-600 shrink-0" />;
+      case 'Layers':
+        return <Layers className="w-4 h-4 text-blue-500 shrink-0" />;
+      case 'FileText':
+        return <FileSpreadsheet className="w-4 h-4 text-indigo-500 shrink-0" />;
+      default:
+        return <Search className="w-4 h-4 text-stone-400 shrink-0" />;
+    }
+  };
 
   // Local state for editing plans
   const [editablePlans, setEditablePlans] = useState(() => {
@@ -489,9 +549,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           </div>
         </div>
 
-        {/* 2. 首頁公開運營數據展示控制 (管理者自訂選擇要公開那些數據) */}
+        {/* 2. 首頁公開運營數據展示控制 (管理者自訂選擇要公開那些數據，可收合無畫線) */}
         <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div
+            onClick={() => setIsPublicMetricsExpanded((prev) => !prev)}
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer select-none group"
+          >
             <div>
               <h4 className="font-extrabold text-sm sm:text-base text-amber-950 flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-amber-600" />
@@ -501,13 +564,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 管理者可勾選決定在首頁對外公開呈現的平台真實統計指標，點擊儲存後將同步至全站首頁。
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300 w-fit">
                 已公開 {Object.values(localPublicMetrics).filter(Boolean).length} / 13 項指標
               </span>
               <button
                 type="button"
-                onClick={() => setPendingConfirm({ type: 'savePublicMetrics' })}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPendingConfirm({ type: 'savePublicMetrics' });
+                }}
                 disabled={!hasPublicMetricsChanges}
                 className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
                   hasPublicMetricsChanges
@@ -518,10 +584,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 <Save className="w-3.5 h-3.5" />
                 <span>{hasPublicMetricsChanges ? '儲存看板公開設定' : '已儲存'}</span>
               </button>
+              <button
+                type="button"
+                className="px-2.5 py-1.5 rounded-xl bg-white/80 hover:bg-white text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+              >
+                <span>{isPublicMetricsExpanded ? '收合' : '展開'}</span>
+                {isPublicMetricsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          {isPublicMetricsExpanded && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 animate-in fade-in duration-200 pt-1">
             {/* Metric 1: 總瀏覽量 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
@@ -845,6 +919,261 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   localPublicMetrics.showHighestBounty ? 'translate-x-5' : 'translate-x-0'
                 }`} />
               </button>
+            </div>
+          </div>
+          )}
+        </div>
+
+        {/* 3. Google 搜尋分頁捷徑與子網址導覽 (Google Sitelinks) - 瀏覽器搜尋結果子連結、功能捷徑 (可收合無畫線) */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
+          <div
+            onClick={() => setIsSitelinksExpanded((prev) => !prev)}
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none group"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                <Search className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-sm font-black text-stone-900 tracking-wide">
+                    Google 搜尋分頁捷徑與子網址導覽 (Google Sitelinks / 瀏覽器功能捷徑)
+                  </h4>
+                  <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
+                    8 大獨立子網址
+                  </span>
+                  <span className="text-[10px] bg-blue-100 text-blue-900 border border-blue-200 px-2 py-0.5 rounded-full font-bold">
+                    Schema.org 結構化規範
+                  </span>
+                </div>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  全站專屬獨立子路徑與搜尋引擎捷徑規範。點擊卡片可直達分頁功能捷徑，或複製獨立公開網址分享。
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.dispatchEvent(new CustomEvent('ideax_open_sitelinks'));
+                }}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-xs hover:shadow active:scale-95"
+                title="開啟 Google 搜尋捷徑完整預覽中心"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>開啟 Google 搜尋捷徑預覽中心</span>
+              </button>
+              <button
+                type="button"
+                className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <span>{isSitelinksExpanded ? '收合' : '展開'}</span>
+                {isSitelinksExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* 8 大子網址分類宮格 (受收合狀態控制，無下劃線) */}
+          {isSitelinksExpanded && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-200 pt-1">
+              {/* 群組 1: IdeaX 創點子 */}
+              <div className="p-3.5 rounded-2xl bg-amber-50/40 border border-amber-200/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span>IdeaX 創點子 (4 大入口捷徑)</span>
+                  </div>
+                  <span className="text-[10px] text-amber-700 font-mono font-semibold">主平台業務流</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {GOOGLE_SITELINKS.filter((s) => s.category === 'ideax').map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={(e) => handleSitelinkItemClick(e, item)}
+                      className="p-2.5 rounded-xl bg-white hover:bg-amber-50/60 border border-stone-200/90 hover:border-amber-400 transition-all cursor-pointer group shadow-2xs flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <div className="flex items-center gap-1.5">
+                            {renderSitelinkIcon(item.icon)}
+                            <span className="font-bold text-stone-900 group-hover:text-amber-800 text-xs">
+                              {item.name}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopySitelinkUrl(e, item)}
+                            title="複製完整網址"
+                            className="p-1 rounded-md text-stone-400 hover:text-amber-600 hover:bg-amber-100 transition-colors"
+                          >
+                            {copiedSitelinkId === item.id ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
+                        <div className="text-[10px] text-stone-500 line-clamp-1">
+                          {item.description}
+                        </div>
+                      </div>
+                      <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded font-bold truncate">
+                          {item.path}
+                        </span>
+                        <span className="text-[10px] text-stone-400 group-hover:text-amber-700 flex items-center gap-0.5 shrink-0">
+                          直達 <ChevronRight className="w-3 h-3" />
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 群組 2: 創星季 */}
+              <div className="p-3.5 rounded-2xl bg-purple-50/40 border border-purple-200/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-black text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-purple-500" />
+                    <span>創星季 (4 大入口捷徑)</span>
+                  </div>
+                  <span className="text-[10px] text-purple-700 font-mono font-semibold">競賽與專案庫</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {GOOGLE_SITELINKS.filter((s) => s.category === 'star_season').map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={(e) => handleSitelinkItemClick(e, item)}
+                      className="p-2.5 rounded-xl bg-white hover:bg-purple-50/60 border border-stone-200/90 hover:border-purple-400 transition-all cursor-pointer group shadow-2xs flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <div className="flex items-center gap-1.5">
+                            {renderSitelinkIcon(item.icon)}
+                            <span className="font-bold text-stone-900 group-hover:text-purple-800 text-xs">
+                              {item.name}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopySitelinkUrl(e, item)}
+                            title="複製完整網址"
+                            className="p-1 rounded-md text-stone-400 hover:text-purple-600 hover:bg-purple-100 transition-colors"
+                          >
+                            {copiedSitelinkId === item.id ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
+                        <div className="text-[10px] text-stone-500 line-clamp-1">
+                          {item.description}
+                        </div>
+                      </div>
+                      <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-purple-700 bg-purple-100/70 px-1.5 py-0.2 rounded font-bold truncate">
+                          {item.path}
+                        </span>
+                        <span className="text-[10px] text-stone-400 group-hover:text-purple-700 flex items-center gap-0.5 shrink-0">
+                          直達 <ChevronRight className="w-3 h-3" />
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 4. 痛點過審、推薦碼、痛點採用全自動發放監控中心 (三軌自動化流水狀態) */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50/70 via-teal-50/50 to-amber-50/70 border border-emerald-300 space-y-3.5 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white font-black flex items-center justify-center shrink-0 shadow-xs">
+                <Zap className="w-4 h-4 fill-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-black text-emerald-950">
+                    痛點過審 • 推薦碼 • 痛點採用 全自動發放監控中心
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-bold border border-emerald-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                    <span>三軌全自動發放中</span>
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-900/70 mt-0.5">
+                  系統於審核通過或採納發生當下，自動完成金額撥付、點數入帳、站內信推播與交易流水記錄。
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <span className="text-[11px] font-mono text-emerald-800 bg-white/80 px-2.5 py-1 rounded-xl border border-emerald-200">
+                審計更新：{new Date(autoRewardStatus.lastAuditTime).toLocaleTimeString('zh-TW')}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            {/* 軌道 1: 痛點過審 */}
+            <div className="p-3 rounded-xl bg-white border border-emerald-200 shadow-2xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-stone-900 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>1. 痛點過審自動化</span>
+                </span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                  200 點/案
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-500">提出生活/產業切身痛點通過審核，系統自動發放 200 點提問金（效期 60 日）。</p>
+              <div className="pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] font-mono">
+                <span className="text-stone-400">累計自動配發：</span>
+                <span className="font-bold text-emerald-700">{autoRewardStatus.painPointApproval.totalDistributedPoints.toLocaleString()} 點</span>
+              </div>
+            </div>
+
+            {/* 軌道 2: 推薦碼 */}
+            <div className="p-3 rounded-xl bg-white border border-emerald-200 shadow-2xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-stone-900 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  <span>2. 推薦碼引導過審</span>
+                </span>
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                  300 點/案
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-500">引導之提案通過審核時，系統自動為推廣大使發放 300 點（價值 $400，效期 60 日）。</p>
+              <div className="pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] font-mono">
+                <span className="text-stone-400">累計自動配發：</span>
+                <span className="font-bold text-blue-700">{autoRewardStatus.referralCode.totalDistributedPoints.toLocaleString()} 點</span>
+              </div>
+            </div>
+
+            {/* 軌道 3: 痛點採用 */}
+            <div className="p-3 rounded-xl bg-white border border-emerald-200 shadow-2xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-stone-900 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span>3. 痛點採用雙軌撥付</span>
+                </span>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
+                  託管結算+好禮
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-500">問答採納自動安全託管拆款撥款；競賽入選方案採用痛點自動撥發 400~1,200 點好禮。</p>
+              <div className="pt-1.5 border-t border-stone-100 flex items-center justify-between text-[11px] font-mono">
+                <span className="text-stone-400">競賽採用好禮：</span>
+                <span className="font-bold text-amber-700">{autoRewardStatus.painPointAdoption.totalDistributedPoints.toLocaleString()} 點</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1430,7 +1759,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     ? 'bg-emerald-400 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
                     : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                 }`}
-                title="切換至競賽模式 (舊站優先置頂痛點專區、L0創星季標籤、獨立方案卡片與專屬網址)"
+                title="切換至競賽模式 (舊站提供創星季、創點子/痛點集與L0討論區專屬入口捷徑、獨立方案卡片與專屬網址)"
               >
                 <span>🏎️ 競賽模式</span>
                 <span className="text-[9px] opacity-80 font-mono">(RACE)</span>
@@ -1446,7 +1775,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 <span className="text-base shrink-0">🏎️</span>
                 <div className="text-[11px] text-emerald-200 leading-tight">
                   <span className="font-bold text-white">競賽模式運作中：</span>
-                  舊站優先置頂痛點專區，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽卡片列出並可進獨立網頁；痛點依提案數/讚/觀看/討論排序。
+                  舊站提供創星季、創點子/痛點集與L0討論區專屬捷徑，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽卡片列出並可進獨立網頁；痛點依提案數/讚/觀看/討論排序。
                 </div>
               </div>
             )}
@@ -1600,7 +1929,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               )}
               {pendingConfirm.type === 'race' && (
                 pendingConfirm.nextState
-                  ? '即將開啟【競賽模式 (RACE)】：（全站平台同步生效）舊站問題市場將優先置頂「痛點專區」，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽圖文卡片展示並含獨立網址；頁尾同步顯示 RACE 簡稱。本模式與正式營運、無金流、測試環境為四選一互斥。'
+                  ? '即將開啟【競賽模式 (RACE)】：（全站平台同步生效）舊站問題市場將提供「創點子/痛點集」與「L0問題討論區」主題捷徑，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽圖文卡片展示並含獨立網址；頁尾同步顯示 RACE 簡稱。本模式與正式營運、無金流、測試環境為四選一互斥。'
                   : '即將關閉【競賽模式】：系統將自動切換為【正式營運模式 (NORM)】。'
               )}
               {pendingConfirm.type === 'demo' && (

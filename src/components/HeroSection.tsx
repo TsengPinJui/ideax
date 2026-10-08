@@ -207,39 +207,37 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     return count;
   }, [publicMetricsConfig]);
   return (
-    <section className="relative overflow-hidden bg-amber-50/20 border-b border-amber-200/80 pt-4 pb-2 sm:pt-8 sm:pb-8 md:pt-9 md:pb-8">
-      {/* 耀眼活力的黃色液態流動感動態背景 (Yellow Liquid Fluid Motion Background) */}
-      <YellowLiquidHeroBackground />
-
+    <section className="relative pt-6 pb-6 sm:pt-8 sm:pb-10 md:pt-10 md:pb-12 overflow-hidden">
+      <YellowLiquidHeroBackground className="h-full" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Hero Visual Spotlight with IdeaX - 創點子+IdeaX品牌焦點與關鍵字 */}
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* Official IdeaX Brand Display - 液態光圈與透視磨砂玻璃 */}
-          <div className="relative mb-4.5 sm:mb-5.5 group inline-flex max-w-[90%] sm:max-w-xl lg:max-w-2xl mx-auto justify-center">
+          <div className="relative mb-5 sm:mb-6 md:mb-7 group inline-flex max-w-[92%] sm:max-w-sm md:max-w-md mx-auto justify-center">
             {/* Ambient liquid backlight glow */}
-            <div className="absolute inset-0 rounded-3xl bg-amber-400/45 blur-2xl scale-110 pointer-events-none animate-liquid-morph-1" />
-            <div className="relative py-2 px-3 sm:py-2.5 sm:px-4 md:py-3 md:px-5 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/80 border border-amber-200/90 shadow-[0_12px_36px_-10px_rgba(245,158,11,0.28)] ring-1 ring-amber-300/50 flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 transition-all duration-300 group-hover:shadow-[0_16px_45px_-10px_rgba(245,158,11,0.38)] group-hover:border-amber-300">
+            <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/35 blur-xl sm:blur-2xl scale-105 pointer-events-none animate-liquid-morph-1" />
+            <div className="relative py-2.5 px-4 sm:py-3 sm:px-5 md:py-3.5 md:px-6 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/85 border border-amber-200/90 shadow-[0_8px_25px_-8px_rgba(245,158,11,0.22)] ring-1 ring-amber-300/50 flex items-center justify-center gap-3 sm:gap-3.5 md:gap-4 transition-all duration-300 group-hover:shadow-[0_12px_32px_-8px_rgba(245,158,11,0.3)] group-hover:border-amber-300">
               <img
                 src="/logo-bulb.png"
                 alt="IdeaX 燈泡"
-                className="h-26 xs:h-30 sm:h-32 md:h-34 lg:h-38 xl:h-42 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform drop-shadow-sm"
+                className="h-28 xs:h-34 sm:h-32 md:h-30 lg:h-32 xl:h-32 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform drop-shadow-sm"
               />
               <img
                 src="/logo-chuangdianzi-text.png"
                 alt="創點子 IdeaX"
-                className="h-15 xs:h-18 sm:h-20 md:h-22 lg:h-25 xl:h-27 w-auto object-contain shrink-0"
+                className="h-16 xs:h-20 sm:h-18 md:h-18 lg:h-20 xl:h-20 w-auto object-contain shrink-0"
               />
             </div>
           </div>
 
-          {/* Main Headline */}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-stone-900 tracking-tight leading-tight sm:leading-tight mt-2 sm:mt-2.5">
+          {/* Main Headline - 中間文案「一個問題，找到更多可能」調整至適宜字級與緊湊行距 */}
+          <h1 className="text-2xl sm:text-2xl md:text-3xl lg:text-[34px] font-black text-stone-900 tracking-tight leading-snug sm:leading-tight my-2.5 sm:my-3.5 md:my-4">
             一個問題，<br className="hidden sm:inline" />
-            找到<span className="text-amber-500 underline decoration-amber-300 decoration-wavy decoration-2">更多可能</span>。
+            找到<span className="text-amber-500 underline decoration-amber-300 decoration-wavy decoration-2 sm:decoration-2">更多可能</span>。
           </h1>
 
           {/* Value Proposition Badges below headline - 告訴造訪者網站能帶給用戶什麼 */}
-          <div className="mt-4.5 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 max-w-2xl">
+          <div className="mt-4 sm:mt-5 md:mt-6 mb-5 sm:mb-6 md:mb-7 flex flex-wrap items-center justify-center gap-x-2 sm:gap-x-2.5 gap-y-2 sm:gap-y-2.5 max-w-2xl px-2">
             {[
               '微創業痛點',
               '團隊協作',
@@ -259,7 +257,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }
                 }}
-                className="px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full backdrop-blur-sm bg-white/75 hover:bg-amber-100/90 text-amber-950 border border-amber-200/90 text-xs sm:text-[13px] font-extrabold shadow-2xs select-none flex items-center gap-1.5 cursor-pointer hover:border-amber-400 hover:scale-105 transition-all"
+                className="px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full backdrop-blur-sm bg-white/80 hover:bg-amber-100/90 text-amber-950 border border-amber-200/90 text-xs sm:text-[12px] font-extrabold shadow-2xs select-none flex items-center gap-1.5 cursor-pointer hover:border-amber-400 hover:scale-105 transition-all"
               >
                 <span className="text-amber-500 font-bold">✦</span>
                 <span>{text}</span>
@@ -268,7 +266,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
 
           {/* Primary, Pain Point & Explore Action Buttons (電腦版顯示，手機版已由底部導覽列與快捷按鈕取代) */}
-          <div className="mt-8 hidden sm:flex sm:flex-row items-center justify-center gap-3.5 sm:gap-4 w-full sm:w-auto">
+          <div className="mt-4 sm:mt-5 hidden sm:flex sm:flex-row items-center justify-center gap-3 sm:gap-3.5 w-full sm:w-auto">
             {/* 1. 主行動：發布懸賞 (金黃品牌核心，象徵重金賞金) */}
             <button
               onClick={onPostClick}

@@ -230,11 +230,58 @@ export const GoogleSitelinksModal: React.FC<GoogleSitelinksModalProps> = ({
                 </button>
               </div>
 
-              {/* Sitelinks 捷徑清單 (如同截圖中的格式：左邊標題文字，右邊歷史/箭頭符號) */}
-              <div className="divide-y divide-stone-150 border-t border-b border-stone-200">
+              {/* Sitelinks 捷徑清單 (桌面版 2 欄真實 Google SERP 宮格，手機版直列捷徑) */}
+              <div className={deviceMode === 'desktop' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2' : 'divide-y divide-stone-150 border-t border-b border-stone-200'}>
                 {(activeGroup === 'all' || activeGroup === 'ideax' ? ideaxSitelinks : []).map(
                   (item, idx) => {
                     const isCopied = copiedId === item.id;
+                    if (deviceMode === 'desktop') {
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            onNavigateToSitelink(item);
+                            onClose();
+                          }}
+                          className="p-3 rounded-2xl bg-stone-50/70 hover:bg-blue-50/50 border border-stone-200/90 hover:border-blue-400 transition-all cursor-pointer group shadow-2xs flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <div className="flex items-center gap-2">
+                                {getSitelinkIcon(item.icon)}
+                                <span className="font-bold text-sm text-[#1A0DAB] group-hover:underline">
+                                  {item.name}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => handleCopyUrl(e, item)}
+                                className="p-1 rounded-md text-stone-400 hover:text-blue-600 hover:bg-blue-100 transition-colors"
+                                title="複製完整網址"
+                              >
+                                {isCopied ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
+                            <div className="text-[11px] text-[#4D5156] line-clamp-2 leading-relaxed">
+                              {item.description}
+                            </div>
+                          </div>
+                          <div className="mt-2.5 pt-2 border-t border-stone-200/70 flex items-center justify-between text-[11px]">
+                            <span className="font-mono text-emerald-700 font-semibold truncate">
+                              https://www.ideax.tw{item.path}
+                            </span>
+                            <span className="text-[10px] font-bold text-blue-600 group-hover:text-blue-800 flex items-center gap-0.5 shrink-0">
+                              直達捷徑 <ChevronRight className="w-3 h-3" />
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div
                         key={item.id}
@@ -291,6 +338,53 @@ export const GoogleSitelinksModal: React.FC<GoogleSitelinksModalProps> = ({
                 {(activeGroup === 'all' || activeGroup === 'star_season' ? starSeasonSitelinks : []).map(
                   (item, idx) => {
                     const isCopied = copiedId === item.id;
+                    if (deviceMode === 'desktop') {
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            onNavigateToSitelink(item);
+                            onClose();
+                          }}
+                          className="p-3 rounded-2xl bg-purple-50/50 hover:bg-purple-100/60 border border-purple-200/90 hover:border-purple-400 transition-all cursor-pointer group shadow-2xs flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <div className="flex items-center gap-2">
+                                {getSitelinkIcon(item.icon)}
+                                <span className="font-bold text-sm text-[#1A0DAB] group-hover:underline">
+                                  {item.name}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => handleCopyUrl(e, item)}
+                                className="p-1 rounded-md text-stone-400 hover:text-purple-600 hover:bg-purple-100 transition-colors"
+                                title="複製完整網址"
+                              >
+                                {isCopied ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
+                            <div className="text-[11px] text-[#4D5156] line-clamp-2 leading-relaxed">
+                              {item.description}
+                            </div>
+                          </div>
+                          <div className="mt-2.5 pt-2 border-t border-purple-200/70 flex items-center justify-between text-[11px]">
+                            <span className="font-mono text-purple-800 font-semibold truncate">
+                              https://www.ideax.tw{item.path}
+                            </span>
+                            <span className="text-[10px] font-bold text-purple-700 group-hover:text-purple-900 flex items-center gap-0.5 shrink-0">
+                              直達捷徑 <ChevronRight className="w-3 h-3" />
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div
                         key={item.id}

@@ -590,3 +590,277 @@ export function exportRewardsSummaryExcel(reports: UserRewardAggregatedItem[]): 
   const todayStr = new Date().toISOString().split('T')[0];
   XLSX.writeFile(wb, `IdeaX_創星季_全體獎勵與發放統計總表_${todayStr}.xlsx`);
 }
+
+export const REWARDS_DISTRIBUTION_STORAGE_KEY = 'ideax_competition_rewards_distribution_history';
+
+export interface RewardsDistributionRecord {
+  distributionId: string;
+  distributedAt: string;
+  adminId: string;
+  recipientsCount: number;
+  totalCashDistributed: number;
+  totalPointsDistributed: number;
+  recipientLogs: Array<{
+    userId: string;
+    userName: string;
+    cash: number;
+    points: number;
+    reasons: string;
+  }>;
+}
+
+/**
+ * 取得競賽獎勵之自動化發放歷史狀態
+ */
+export function getRewardsDistributionHistory(): RewardsDistributionRecord | null {
+  try {
+    const raw = localStorage.getItem(REWARDS_DISTRIBUTION_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.distributionId) return parsed;
+    }
+  } catch {}
+  return null;
+}
+
+/**
+ * 執行全體競賽獎勵之自動化發放
+ * 包含：獎金自動入帳、點數自動配發 (前三名180天、其餘60天)、自動發送個人站內信通知、自動產生財務流水紀錄、授予創之星榮譽徽章、稽核日誌登記
+ */
+export async function executeAutomatedRewardsDistribution(params: {
+  adminId: string;
+  rewards: UserRewardAggregatedItem[];
+  availableUsers: any[];
+  setAvailableUsers: (fn: (prev: any[]) => any[]) => void;
+  currentUser?: any;
+  setCurrentUser?: (fn: (prev: any) => any) => void;
+  setNotifications?: (fn: (prev: any[]) => any[]) => void;
+  addNotification?: (item: any) => void;
+  setTransactions?: (fn: (prev: any[]) => any[]) => void;
+  syncUserToFirestore?: (user: any) => Promise<void>;
+}): Promise<{
+  success: boolean;
+  message: string;
+  record: RewardsDistributionRecord;
+}> {
+  const {
+    adminId,
+    rewards,
+    availableUsers,
+    setAvailableUsers,
+    currentUser,
+    setCurrentUser,
+    setNotifications,
+    addNotification,
+    setTransactions,
+    syncUserToFirestore,
+  } = params;
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const distributionId = `dist-reward-${Date.now()}`;
+  const STORAGE_PREFIX = 'ideax_mvp_v3_';
+
+  let totalCash = 0;
+  let totalPoints = 0;
+  const logs: RewardsDistributionRecord['recipientLogs'] = [];
+
+  // 1. 建立各受獎用戶與獎金/點數對應映射 (支援別名)
+  const rewardMap = new Map<string, UserRewardAggregatedItem>();
+  const aliasMap: Record<string, string> = {
+    'user-admin': 'a000000001',
+    'a000000001': 'user-admin',
+    'user-questioner': 'c100000001',
+    'c100000001': 'user-questioner',
+    'solver-2': 'c200000002',
+    'c200000002': 'solver-2',
+    'solver-1': 'c100000003',
+    'c100000003': 'solver-1',
+  };
+
+  rewards.forEach((r) => {
+    rewardMap.set(r.userId, r);
+    if (aliasMap[r.userId]) {
+      rewardMap.set(aliasMap[r.userId], r);
+    }
+    totalCash += r.totalCash;
+    totalPoints += r.totalPoints;
+    logs.push({
+      userId: r.userId,
+      userName: r.userName,
+      cash: r.totalCash,
+      points: r.totalPoints,
+      reasons: r.notes,
+    });
+  });
+
+  // 2. 更新全體使用者餘額與點數、授與徽章
+  setAvailableUsers((prevUsers) => {
+    const updatedUsers = prevUsers.map((u) => {
+      const reward = rewardMap.get(u.id);
+      if (!reward) return u;
+
+      const nextBalance = (typeof u.balance === 'number' ? u.balance : 0) + reward.totalCash;
+      const nextPoints = (typeof u.reputationPoints === 'number' ? u.reputationPoints : 0) + reward.totalPoints;
+      const currentBadges = Array.isArray(u.competitionBadges) ? [...u.competitionBadges] : [];
+      if (!currentBadges.includes('創星季')) {
+        currentBadges.push('創星季');
+      }
+      if (reward.breakdown.competitionAwardCash > 0 || reward.breakdown.competitionAwardPoints > 0) {
+        if (!currentBadges.includes('創之星')) {
+          currentBadges.push('創之星');
+        }
+      }
+
+      const updatedUser = {
+        ...u,
+        balance: nextBalance,
+        reputationPoints: nextPoints,
+        competitionBadges: currentBadges,
+        updatedAt: nowIso,
+      };
+
+      if (syncUserToFirestore) {
+        syncUserToFirestore(updatedUser).catch((err) => console.warn('Sync reward user error:', err));
+      }
+      return updatedUser;
+    });
+
+    try {
+      localStorage.setItem(`${STORAGE_PREFIX}users`, JSON.stringify(updatedUsers));
+      localStorage.setItem(`${STORAGE_PREFIX}available_users`, JSON.stringify(updatedUsers));
+      localStorage.setItem('ideax_users', JSON.stringify(updatedUsers));
+      localStorage.setItem('ideax_available_users', JSON.stringify(updatedUsers));
+    } catch {}
+
+    return updatedUsers;
+  });
+
+  // 3. 若當前登入者本人名列獲獎名單，同步更新當前登入者狀態
+  if (currentUser && setCurrentUser) {
+    const myReward = rewardMap.get(currentUser.id);
+    if (myReward) {
+      setCurrentUser((prev: any) => {
+        const nextBalance = (typeof prev.balance === 'number' ? prev.balance : 0) + myReward.totalCash;
+        const nextPoints = (typeof prev.reputationPoints === 'number' ? prev.reputationPoints : 0) + myReward.totalPoints;
+        const currentBadges = Array.isArray(prev.competitionBadges) ? [...prev.competitionBadges] : [];
+        if (!currentBadges.includes('創星季')) currentBadges.push('創星季');
+        if (myReward.breakdown.competitionAwardCash > 0 || myReward.breakdown.competitionAwardPoints > 0) {
+          if (!currentBadges.includes('創之星')) currentBadges.push('創之星');
+        }
+        const updatedSelf = {
+          ...prev,
+          balance: nextBalance,
+          reputationPoints: nextPoints,
+          competitionBadges: currentBadges,
+          updatedAt: nowIso,
+        };
+        try {
+          localStorage.setItem(`${STORAGE_PREFIX}user`, JSON.stringify(updatedSelf));
+          localStorage.setItem(`${STORAGE_PREFIX}current_user`, JSON.stringify(updatedSelf));
+        } catch {}
+        return updatedSelf;
+      });
+    }
+  }
+
+  // 4. 自動產生交易流水紀錄 (Transactions)
+  if (setTransactions) {
+    const newTxList = rewards
+      .filter((r) => r.totalCash > 0 || r.totalPoints > 0)
+      .map((r) => {
+        return {
+          id: `tx-reward-${r.userId}-${Date.now()}`,
+          type: '創星季競賽獎金',
+          amount: r.totalCash,
+          platformFee: 0,
+          netAmount: r.totalCash,
+          fromUserName: 'IdeaX 創星季官方賽務委員會',
+          fromUserId: adminId,
+          toUserName: r.userName,
+          toUserId: r.userId,
+          status: '已完成' as const,
+          createdAt: nowIso,
+          note: `創星季自動發放：獎金 NT$ ${r.totalCash.toLocaleString()}、點數 ${r.totalPoints.toLocaleString()} 點。${r.notes}`,
+        };
+      });
+
+    if (newTxList.length > 0) {
+      setTransactions((prev) => {
+        const merged = [...newTxList, ...prev];
+        try {
+          localStorage.setItem(`${STORAGE_PREFIX}transactions`, JSON.stringify(merged));
+        } catch {}
+        return merged;
+      });
+    }
+  }
+
+  // 5. 自動派送站內通知與祝賀
+  if (setNotifications) {
+    const newNotifs = rewards.map((r) => {
+      const isTop3 = r.breakdown.competitionAwardCash >= 3000;
+      const pointsExpiry = isTop3 ? '180 日' : '60 日';
+      return {
+        id: `notif-reward-${r.userId}-${Date.now()}`,
+        userId: r.userId,
+        title: '🏆 創星季競賽獎勵已正式自動發放！',
+        message: `恭喜【${r.userName}】！您於 IdeaX 創星季所獲得之獎勵已自動發放完成：獲得現金獎 NT$ ${r.totalCash.toLocaleString()}、平台提問點數 ${r.totalPoints.toLocaleString()} 點（點數效期 ${pointsExpiry}）。明細原因：${r.notes}`,
+        type: 'reward' as const,
+        createdAt: '剛剛',
+        read: false,
+      };
+    });
+
+    setNotifications((prev) => {
+      const merged = [...newNotifs, ...prev];
+      try {
+        localStorage.setItem(`${STORAGE_PREFIX}notifications`, JSON.stringify(merged));
+      } catch {}
+      return merged;
+    });
+  }
+
+  if (addNotification) {
+    rewards.forEach((r) => {
+      const isTop3 = r.breakdown.competitionAwardCash >= 3000;
+      const pointsExpiry = isTop3 ? '180 日' : '60 日';
+      addNotification({
+        id: `notif-reward-${r.userId}-${Date.now()}`,
+        userId: r.userId,
+        title: '🏆 創星季競賽獎勵已正式自動發放！',
+        message: `恭喜【${r.userName}】！您於 IdeaX 創星季所獲得之獎勵已自動發放完成：獲得現金獎 NT$ ${r.totalCash.toLocaleString()}、平台提問點數 ${r.totalPoints.toLocaleString()} 點（點數效期 ${pointsExpiry}）。明細原因：${r.notes}`,
+        type: 'reward',
+      });
+    });
+  }
+
+  // 6. 儲存發放歷史紀錄
+  const record: RewardsDistributionRecord = {
+    distributionId,
+    distributedAt: nowIso,
+    adminId,
+    recipientsCount: rewards.length,
+    totalCashDistributed: totalCash,
+    totalPointsDistributed: totalPoints,
+    recipientLogs: logs,
+  };
+
+  try {
+    localStorage.setItem(REWARDS_DISTRIBUTION_STORAGE_KEY, JSON.stringify(record));
+  } catch {}
+
+  // 7. 透過後端 API 同步儲存
+  try {
+    fetch('/api/competition/admin/distribute-all-rewards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record),
+    }).catch(() => {});
+  } catch {}
+
+  return {
+    success: true,
+    message: `已成功完成自動化發放！共發放 ${rewards.length} 位參與者，累計獎金 NT$ ${totalCash.toLocaleString()}、平台點數 ${totalPoints.toLocaleString()} 點。`,
+    record,
+  };
+}

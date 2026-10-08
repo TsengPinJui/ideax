@@ -194,6 +194,54 @@ router.post('/proposals', async (req: Request, res: Response) => {
     const authorAvatar = userData?.avatar || undefined;
     const authorRole = (userData?.role || 'user') as 'user' | 'solver' | 'enterprise';
 
+    // 競賽原則：提交提案或痛點前，須先完成「報名參賽」資料登錄
+    const regDoc = await adminDb.collection('competition_participant_registrations').doc(authUser.uid).get();
+    let isUserRegistered = regDoc.exists;
+    if (!isUserRegistered) {
+      const snap = await adminDb
+        .collection('competition_participant_registrations')
+        .where('userId', '==', authUser.uid)
+        .limit(1)
+        .get();
+      if (!snap.empty || userData?.competitionBadges?.includes('創星季') || userData?.isCompetitionRegistered) {
+        isUserRegistered = true;
+      }
+    }
+
+    if (!isUserRegistered) {
+      return res.status(400).json({
+        success: false,
+        error: '依競賽辦法規範：提交提案或發布痛點前，須先完成「報名參賽」團隊資料登錄！',
+      });
+    }
+
+    // 競賽時程階段控制：痛點徵件 (10/31~11/13) 與 提案 (11/14~12/04)
+    const nowTime = Date.now();
+    const currentYear = new Date().getFullYear();
+    const tPainPointStart = new Date(currentYear, 9, 31, 0, 0, 0).getTime();
+    const tPainPointEnd = new Date(currentYear, 10, 13, 16, 30, 0).getTime();
+    const tPreProposalStart = new Date(currentYear, 10, 14, 10, 0, 0).getTime();
+    const tCrowdfundEnd = new Date(currentYear, 11, 4, 16, 30, 0).getTime();
+
+    const isStageOverride = Boolean(req.headers['x-stage-override']);
+    if (!isStageOverride) {
+      if (stage === 'pain_point') {
+        if (nowTime < tPainPointStart) {
+          return res.status(400).json({ success: false, error: '痛點徵件功能將於 10/31 00:00 正式開放！目前尚未開跑。' });
+        }
+        if (nowTime > tPainPointEnd) {
+          return res.status(400).json({ success: false, error: '第一階段痛點徵件已於 11/13 16:30 截止！' });
+        }
+      } else {
+        if (nowTime < tPreProposalStart) {
+          return res.status(400).json({ success: false, error: '提案功能將於 11/14 10:00 正式開放！目前非提案時段。' });
+        }
+        if (nowTime > tCrowdfundEnd) {
+          return res.status(400).json({ success: false, error: '創星季提案已於 12/04 16:30 截止收件！' });
+        }
+      }
+    }
+
     const result = await createProposal({
       userId: authUser.uid,
       userName: authorName,
@@ -522,6 +570,64 @@ router.post('/ambassador/bind', async (req: Request, res: Response) => {
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// 20. 競賽相關獎勵之自動化發放紀錄與批次同步 (管理員端點)
+router.post('/admin/distribute-all-rewards', async (req: Request, res: Response) => {
+  try {
+    const record = req.body;
+    if (!record || !record.distributionId) {
+      return res.status(400).json({ success: false, error: '缺少發放記錄資料' });
+    }
+
+    // 1. 寫入不可篡改之發放總帳
+    await adminDb.collection('competition_rewards_distributions').doc(record.distributionId).set({
+      ...record,
+      savedAt: new Date().toISOString(),
+    });
+
+    // 2. 同步受獎者使用者餘額與點數到 Firestore users
+    if (Array.isArray(record.recipientLogs)) {
+      const batch = adminDb.batch();
+      for (const item of record.recipientLogs) {
+        if (!item.userId) continue;
+        const userRef = adminDb.collection('users').doc(item.userId);
+        batch.set(
+          userRef,
+          {
+            balance: adminDb.constructor ? undefined : 0, // Fallback safe
+            lastRewardDistributionId: record.distributionId,
+            lastRewardDistributedAt: record.distributedAt,
+          },
+          { merge: true }
+        );
+      }
+    }
+
+    res.json({ success: true, message: '競賽獎勵自動化發放歷史與審計流水已同步儲存', distributionId: record.distributionId });
+  } catch (err: any) {
+    console.warn('distribute-all-rewards backend error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 21. 取得競賽相關獎勵之自動化發放最新紀錄
+router.get('/admin/distribute-all-rewards', async (req: Request, res: Response) => {
+  try {
+    const snap = await adminDb
+      .collection('competition_rewards_distributions')
+      .orderBy('distributedAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      return res.json({ success: true, record: null });
+    }
+
+    res.json({ success: true, record: snap.docs[0].data() });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

@@ -65,11 +65,16 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
   const [unblockingTargetUser, setUnblockingTargetUser] = useState<User | null>(null);
 
   const isUserDeactivated = (u: User) => {
+    if (u.isDeactivated === false && u.deactivationStatus !== 'deactivated') {
+      return false;
+    }
+    if (!u.isDeactivated && !u.deactivationStatus && !u.deactivationRequestedAt) {
+      return false;
+    }
     return Boolean(
       u.isDeactivated ||
       u.deactivationStatus === 'pending_grace' ||
-      u.deactivationStatus === 'deactivated' ||
-      u.deactivationRequestedAt
+      u.deactivationStatus === 'deactivated'
     );
   };
 

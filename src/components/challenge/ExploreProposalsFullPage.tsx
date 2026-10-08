@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sparkles,
   Send,
@@ -31,6 +31,8 @@ import {
   Flame,
   Image as ImageIcon,
   Link as LinkIcon,
+  Eye,
+  Layers,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -39,6 +41,7 @@ import {
   ProposalComment,
   STAR_SEASON_TRACKS,
   OFFICIAL_COMPETITION_TRACKS,
+  getProposalCardAuthorText,
 } from '../../types/competition';
 import { DEFAULT_DEMO_PROPOSALS } from '../../data/competitionProposals';
 import {
@@ -62,6 +65,8 @@ interface ExploreProposalsFullPageProps {
   onNavigate: (view: 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador') => void;
   onBackToOldSite: () => void;
   onOpenAuth: () => void;
+  onOpenPainPointInChuangDianZi?: (item: any) => void;
+  initialSectionTab?: 'solution' | 'pain_point';
   proposals: StarSeasonProposal[];
   onRefreshProposals: () => Promise<void>;
   account: CompetitionAccount | null;
@@ -72,13 +77,18 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   onNavigate,
   onBackToOldSite,
   onOpenAuth,
+  onOpenPainPointInChuangDianZi,
+  initialSectionTab,
   proposals: initialProposals,
   onRefreshProposals,
   account,
   onRefreshAccount,
 }) => {
-  const { currentUser, addNotification } = useApp();
+  const { currentUser, addNotification, questions } = useApp();
   const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
+
+  // 區分「解方提案」與「痛點問題」兩大部分
+  const [activeSectionTab, setActiveSectionTab] = useState<'solution' | 'pain_point'>(initialSectionTab || 'solution');
 
   const [proposals, setProposals] = useState<StarSeasonProposal[]>(() => {
     return (initialProposals && initialProposals.length > 0) ? initialProposals : DEFAULT_DEMO_PROPOSALS;
@@ -193,10 +203,11 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     });
   };
 
-  // 篩選提案
+  // 篩選提案（依需求：提案總覽裡只會顯示提案/解方，不要顯示痛點，痛點統一於IdeaX創點子平台的創點子/痛點集展示）
   const filteredProposals = proposals.filter((p) => {
+    // 嚴格僅顯示提案解方 (stage === 'solution')，排除痛點
+    if (p.stage === 'pain_point') return false;
     if (selectedTrack !== 'all' && p.track !== selectedTrack) return false;
-    if (selectedStage !== 'all' && p.stage !== selectedStage) return false;
     if (searchKeyword.trim()) {
       const kw = searchKeyword.trim().toLowerCase();
       const matchTitle = p.title.toLowerCase().includes(kw);
@@ -221,6 +232,207 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     }
     return 0;
   });
+
+  // 依賽程階段與結果動態產生解方卡片圖片右下角標籤：
+  // 1. 進入決選階段：藍色「決選」
+  // 2. 名次公布後：金黃色「冠軍」、灰銀色「亞軍」、銅褐色「季軍」、「4~10名」
+  const renderCornerBadge = (proposal: StarSeasonProposal, idx: number) => {
+    const rank = proposal.finalRank;
+    const isResultsPublished = stageInfo.isResultsStage || (rank !== undefined && rank > 0);
+
+    if (isResultsPublished && rank && rank > 0) {
+      if (rank === 1) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 border border-amber-300 shadow-sm shrink-0 flex items-center gap-0.5">
+            <span>🏆</span>
+            <span>冠軍</span>
+          </span>
+        );
+      }
+      if (rank === 2) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-slate-200 to-gray-300 text-slate-800 border border-slate-300 shadow-sm shrink-0 flex items-center gap-0.5">
+            <span>🥈</span>
+            <span>亞軍</span>
+          </span>
+        );
+      }
+      if (rank === 3) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-700 to-amber-800 text-white border border-amber-600 shadow-sm shrink-0 flex items-center gap-0.5">
+            <span>🥉</span>
+            <span>季軍</span>
+          </span>
+        );
+      }
+      if (rank >= 4 && rank <= 10) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-700/95 text-stone-100 border border-stone-600 shadow-sm shrink-0">
+            4~10名
+          </span>
+        );
+      }
+      return (
+        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white shadow-sm shrink-0">
+          決選
+        </span>
+      );
+    }
+
+    // 當賽事進入決選階段時 (stageInfo.isExpertReviewStage 或入圍前20名)：
+    const isFinalist = proposal.isFinalist || (proposal.isFinalistSelected) || idx < 20;
+    if (stageInfo.isExpertReviewStage || isFinalist) {
+      return (
+        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white shadow-sm shrink-0">
+          決選
+        </span>
+      );
+    }
+
+    return null;
+  };
+
+  // 彙整全部痛點問題（來自創星季第一階段痛點徵件與平台痛點提問）
+  const allPainPoints = useMemo(() => {
+    const list: Array<{
+      id: string;
+      title: string;
+      category: string;
+      subcategory: string;
+      tags: string[];
+      authorName: string;
+      authorAvatar: string;
+      views: number;
+      solutionsCount: number;
+      description?: string;
+      rawProposal?: StarSeasonProposal;
+      rawQuestion?: any;
+    }> = [];
+
+    // 1. 創星季徵件之痛點提案
+    (proposals || [])
+      .filter((p) => p.stage === 'pain_point')
+      .forEach((p) => {
+        const trackMeta = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
+        list.push({
+          id: p.id,
+          title: p.title,
+          category: trackMeta.name || '日常疑難',
+          subcategory: p.cohort || '痛點徵件',
+          tags: ['痛點', trackMeta.name, '徵點子'],
+          authorName: p.authorName || '創星季參賽者',
+          authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+          views: p.viewsCount || 36,
+          solutionsCount: p.commentsCount || 0,
+          description: p.summary,
+          rawProposal: p,
+        });
+      });
+
+    // 2. 舊站創點子/痛點集問題
+    (questions || [])
+      .filter((q) => q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points')
+      .forEach((q) => {
+        if (!list.some((item) => item.id === q.id || item.title === q.title)) {
+          list.push({
+            id: q.id,
+            title: q.title,
+            category: q.category || '日常疑難',
+            subcategory: q.subcategory || '其他',
+            tags: q.tags || ['測試內容', '無效痛點', '待補充說明', '系統測試'],
+            authorName: q.authorName || 'IdeaX 管理團隊',
+            authorAvatar: q.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            views: q.views || 0,
+            solutionsCount: q.answersCount || 0,
+            description: q.description,
+            rawQuestion: q,
+          });
+        }
+      });
+
+    return list;
+  }, [proposals, questions]);
+
+  const filteredPainPoints = useMemo(() => {
+    return allPainPoints.filter((item: any) => {
+      if (selectedTrack !== 'all') {
+        const trackMeta = STAR_SEASON_TRACKS[selectedTrack as keyof typeof STAR_SEASON_TRACKS];
+        if (trackMeta && !item.category.includes(trackMeta.name) && !item.tags.includes(trackMeta.name)) {
+          return false;
+        }
+      }
+      if (searchKeyword.trim()) {
+        const kw = searchKeyword.trim().toLowerCase();
+        const matchTitle = item.title.toLowerCase().includes(kw);
+        const matchDesc = item.description?.toLowerCase().includes(kw);
+        const matchAuthor = item.authorName.toLowerCase().includes(kw);
+        const matchTag = item.tags.some((t: string) => t.toLowerCase().includes(kw));
+        if (!matchTitle && !matchDesc && !matchAuthor && !matchTag) return false;
+      }
+      return true;
+    });
+  }, [allPainPoints, selectedTrack, searchKeyword]);
+
+  // 依採用此痛點的獲獎方案，為對應痛點標注冠軍痛點、亞軍痛點、季軍痛點、4~10名痛點
+  const getPainPointAwardBadge = (painPointTitle: string, painPointId: string) => {
+    // 尋找採用此痛點之獲獎提案
+    const adoptingWinner = proposals.find((p) => {
+      if (p.stage === 'pain_point') return false;
+      const matchId = p.sourcePainPointId && (p.sourcePainPointId === painPointId || p.sourcePainPointId === painPointTitle);
+      const matchTitle = p.sourcePainPointTitle && (p.sourcePainPointTitle.includes(painPointTitle) || painPointTitle.includes(p.sourcePainPointTitle));
+      return (matchId || matchTitle) && (p.finalRank || p.isFinalist);
+    });
+
+    if (!adoptingWinner) return null;
+
+    const rank = adoptingWinner.finalRank;
+    const isResultsPublished = stageInfo.isResultsStage || (rank !== undefined && rank > 0);
+
+    if (isResultsPublished && rank && rank > 0) {
+      if (rank === 1) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 border border-amber-300 shadow-2xs shrink-0 flex items-center gap-1">
+            <span>🏆</span>
+            <span>冠軍痛點</span>
+          </span>
+        );
+      }
+      if (rank === 2) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-slate-200 to-gray-300 text-slate-800 border border-slate-300 shadow-2xs shrink-0 flex items-center gap-1">
+            <span>🥈</span>
+            <span>亞軍痛點</span>
+          </span>
+        );
+      }
+      if (rank === 3) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-700 to-amber-800 text-white border border-amber-600 shadow-2xs shrink-0 flex items-center gap-1">
+            <span>🥉</span>
+            <span>季軍痛點</span>
+          </span>
+        );
+      }
+      if (rank >= 4 && rank <= 10) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-700/95 text-stone-100 border border-stone-600 shadow-2xs shrink-0">
+            4~10名痛點
+          </span>
+        );
+      }
+    }
+
+    // 決選階段或決選提案所採用
+    if (stageInfo.isExpertReviewStage || adoptingWinner.isFinalist) {
+      return (
+        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white shadow-2xs shrink-0">
+          決選痛點
+        </span>
+      );
+    }
+
+    return null;
+  };
 
   // 愛心按讚/收藏切換
   const handleToggleLike = async (proposalId: string) => {
@@ -377,7 +589,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         {/* 導覽列核心主行 */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            {/* 左側：品牌 Logo (點燈泡回舊站首頁，點創星季回競賽首頁) */}
+            {/* 左側：品牌 Logo (點燈泡回 IdeaX 創點子平台首頁，點創星季回競賽首頁) */}
             <div className="flex items-center gap-1.5 shrink-0 -ml-1 sm:-ml-2">
               <button
                 type="button"
@@ -386,10 +598,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="p-1 -m-1 rounded-xl hover:bg-amber-100/60 active:scale-95 transition-all cursor-pointer flex items-center justify-center group"
-                title="點擊回到 IdeaX 舊站首頁"
-                aria-label="回到舊站首頁"
+                title="點擊回到 IdeaX 創點子平台首頁"
+                aria-label="回到 IdeaX 創點子平台首頁"
               >
-                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
+                <img src="/logo-bulb.png" alt="IdeaX 創點子平台 - 點擊回首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
               </button>
               <button
                 type="button"
@@ -431,7 +643,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-2xl sm:text-4xl font-black text-stone-950 tracking-tight">
-                  當前提案
+                  解方提案
                 </h1>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
@@ -501,37 +713,38 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         {/* 階段與賽道篩選器 */}
         <div className="space-y-4 pb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* 兩階段分頁標籤切換 */}
-            <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-stone-200 shadow-2xs max-w-fit">
+            {/* 切換「解方提案」與「痛點問題」兩大專區 */}
+            <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-2xl border border-stone-200/90 shadow-2xs">
               <button
-                onClick={() => setSelectedStage('all')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedStage === 'all'
-                    ? 'bg-amber-400 text-stone-950 shadow-2xs font-black'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                type="button"
+                onClick={() => setActiveSectionTab('solution')}
+                className={`px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
+                  activeSectionTab === 'solution'
+                    ? 'bg-amber-400 text-stone-950 shadow-xs'
+                    : 'text-stone-600 hover:text-stone-950 hover:bg-white/60'
                 }`}
               >
-                全部提案總覽
+                <Sparkles className="w-4 h-4 text-stone-950" />
+                <span>解方提案</span>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-stone-950/10 font-bold">
+                  {filteredProposals.length}
+                </span>
               </button>
+
               <button
-                onClick={() => setSelectedStage('pain_point')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedStage === 'pain_point'
-                    ? 'bg-amber-400 text-stone-950 shadow-2xs font-black'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                type="button"
+                onClick={() => setActiveSectionTab('pain_point')}
+                className={`px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
+                  activeSectionTab === 'pain_point'
+                    ? 'bg-rose-500 text-white shadow-xs'
+                    : 'text-stone-600 hover:text-stone-950 hover:bg-white/60'
                 }`}
               >
-                第一階段：徵點子（痛點徵件）
-              </button>
-              <button
-                onClick={() => setSelectedStage('solution')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedStage === 'solution'
-                    ? 'bg-amber-400 text-stone-950 shadow-2xs font-black'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
-                }`}
-              >
-                第二階段：想解方（解法提案）
+                <Flame className="w-4 h-4" />
+                <span>痛點問題</span>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/20 font-bold">
+                  {filteredPainPoints.length}
+                </span>
               </button>
             </div>
 
@@ -659,8 +872,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           </div>
         </div>
 
-        {/* 提案總覽卡片清單 (白色背景，高質感科技感，MOE SSP 風格) */}
-        {sortedProposals.length === 0 ? (
+        {/* 提案總覽卡片清單 / 痛點問題專區 (依分頁切換) */}
+        {activeSectionTab === 'solution' ? (
+          sortedProposals.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-3xl border border-stone-200 p-8 space-y-4 shadow-xs">
             <FileText className="w-12 h-12 text-stone-400 mx-auto" />
             <h3 className="text-base font-bold text-stone-800">目前尚無符合篩選條件的競賽提案</h3>
@@ -727,7 +941,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                         </span>
                       </div>
 
-                      {/* 右上角標籤：示範標籤與階段標籤 */}
+                      {/* 右上角標籤：示範標籤與階段標籤 (競賽網站不需要綠色創星季標籤) */}
                       <div className="absolute top-3 right-3 flex items-center gap-1.5">
                         <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-pulse" />
@@ -744,17 +958,19 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                         </span>
                       </div>
 
-                      {/* 圖片底部學校與團隊 subtitle */}
+                      {/* 圖片底部學校/機構與團隊 subtitle 及右下角獲獎/決選標籤 */}
                       <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white/95 text-xs font-bold drop-shadow-sm">
                         <div className="flex items-center gap-1.5 truncate">
-                          <GraduationCap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                          <span className="truncate">{proposal.authorName}</span>
+                          {getProposalCardAuthorText(proposal).isOrgVisible ? (
+                            <GraduationCap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                          ) : (
+                            <Users className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                          )}
+                          <span className="truncate">{getProposalCardAuthorText(proposal).displayText}</span>
                         </div>
-                        {idx < 20 && (
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-cyan-400/90 text-stone-950 shrink-0">
-                            決選入圍
-                          </span>
-                        )}
+                        <div className="shrink-0">
+                          {renderCornerBadge(proposal, idx)}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -776,15 +992,32 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                               示範
                             </span>
                           </div>
-                          <span
-                            className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                              proposal.stage === 'pain_point'
-                                ? 'bg-rose-100 text-rose-800'
-                                : 'bg-emerald-100 text-emerald-800'
-                            }`}
-                          >
-                            {proposal.stage === 'pain_point' ? '徵點子' : '想解方'}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                proposal.stage === 'pain_point'
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {proposal.stage === 'pain_point' ? '徵點子' : '想解方'}
+                            </span>
+                            <div className="shrink-0">
+                              {renderCornerBadge(proposal, idx)}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 簡潔模式時顯示團隊與機構資訊 */}
+                      {cardViewMode === 'compact' && (
+                        <div className="flex items-center gap-1.5 text-xs text-stone-600 font-bold truncate">
+                          {getProposalCardAuthorText(proposal).isOrgVisible ? (
+                            <GraduationCap className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          ) : (
+                            <Users className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          )}
+                          <span className="truncate">{getProposalCardAuthorText(proposal).displayText}</span>
                         </div>
                       )}
 
@@ -810,32 +1043,26 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                       )}
 
                       {/* 摘要說明 */}
-                      <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-stone-600 line-clamp-3 leading-relaxed">
                         {proposal.summary}
                       </p>
                     </div>
 
-                    {/* 純以募得創星幣為主展示 */}
+                    {/* 募得創星幣與支持人數數據展示 */}
                     <div className="pt-2.5">
-                      <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-50/50 to-orange-50/40 border border-amber-200/90 flex items-center justify-between">
-                        <div>
-                          <div className="text-[10px] font-bold text-amber-900 flex items-center gap-1">
-                            <Sparkles className="w-3 h-3 text-amber-600" />
-                            <span>募得創星幣</span>
-                          </div>
-                          <div className="font-mono font-black text-amber-950 text-base sm:text-lg flex items-baseline gap-1 mt-0.5">
-                            <span>{currentPoints.toLocaleString()}</span>
-                            <span className="text-xs font-bold text-amber-700">幣</span>
-                          </div>
+                      <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-50/50 to-orange-50/40 border border-amber-200/90 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-amber-950 font-black">
+                          <Coins className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span className="font-mono text-sm sm:text-base font-black">
+                            {currentPoints.toLocaleString()}
+                          </span>
+                          <span className="text-xs font-bold text-amber-800">創星幣</span>
                         </div>
-                        <div className="text-right">
-                          <div className="text-[10px] font-bold text-stone-500 flex items-center justify-end gap-1">
-                            <Users className="w-3 h-3 text-stone-400" />
-                            <span>支持人數</span>
-                          </div>
-                          <div className="font-mono font-bold text-stone-800 text-xs sm:text-sm mt-0.5">
+                        <div className="flex items-center gap-1.5 text-stone-700 font-bold text-xs sm:text-sm">
+                          <Users className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span className="font-mono font-bold text-stone-800">
                             {supporterCount} 人支持
-                          </div>
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -933,7 +1160,118 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               );
             })}
           </div>
-        )}
+        )
+      ) : (
+        /* 痛點問題專區（附圖一卡片形式不顯示圖片，3欄展示） */
+        filteredPainPoints.length === 0 ? (
+          <div className="py-16 text-center bg-white rounded-3xl border border-stone-200 p-8 space-y-4 shadow-xs">
+            <Layers className="w-12 h-12 text-stone-400 mx-auto" />
+            <h3 className="text-base font-bold text-stone-800">目前尚無符合篩選條件的痛點問題</h3>
+            <p className="text-xs text-stone-500 max-w-md mx-auto">
+              成為本屆創星季的開創先行者！提出切身的生活、校園或產業瓶頸痛點，過審即享 200 點獎勵！
+            </p>
+            <button
+              onClick={() => {
+                if (!auth.currentUser || currentUser.id === 'user-guest') {
+                  onOpenAuth();
+                  return;
+                }
+                onNavigate('submit');
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 text-stone-950 font-black text-xs hover:bg-amber-300 transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>提出生活或產業痛點</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredPainPoints.map((pp: any) => (
+              <div
+                key={pp.id}
+                onClick={() => {
+                  // 點進去卡片一樣要連到創點子的對應痛點！
+                  if (onOpenPainPointInChuangDianZi) {
+                    onOpenPainPointInChuangDianZi(pp);
+                  } else if (onBackToOldSite) {
+                    onBackToOldSite();
+                  }
+                }}
+                className="group bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 p-5 sm:p-6 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer space-y-4 hover:-translate-y-0.5"
+              >
+                <div className="space-y-3">
+                  {/* 標籤列：領域/分類 + 痛點獎項標籤 (冠軍痛點/亞軍痛點/季軍痛點/4~10名痛點/決選痛點) */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-950 border border-amber-200/80">
+                        {pp.subcategory || pp.category}
+                      </span>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600">
+                        痛點徵件
+                      </span>
+                    </div>
+                    <div>{getPainPointAwardBadge(pp.title, pp.id)}</div>
+                  </div>
+
+                  {/* 痛點標題 */}
+                  <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2 text-base">
+                    {pp.title}
+                  </h3>
+
+                  {/* 痛點描述/概述 (3行) */}
+                  <p className="text-stone-600 text-xs line-clamp-3 leading-relaxed bg-stone-50/70 p-3 rounded-2xl border border-stone-100">
+                    {pp.description || '生活切身痛點，徵求落地架構與完整解方！點擊卡片直接連至創點子查看完整提問與回覆方案。'}
+                  </p>
+
+                  {/* 標籤 */}
+                  {pp.tags && pp.tags.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {pp.tags.slice(0, 4).map((t: string, tidx: number) => (
+                        <span
+                          key={tidx}
+                          className="text-[10px] text-stone-500 font-medium bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-150"
+                        >
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 底部作者與互動 */}
+                <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <img
+                      src={pp.authorAvatar}
+                      alt=""
+                      className="w-7 h-7 rounded-full object-cover border border-stone-200 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-stone-800 truncate">
+                        {pp.authorName}
+                      </div>
+                      <div className="text-[10px] text-stone-400">
+                        痛點提問人
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-stone-400 text-xs shrink-0 font-mono">
+                    <span className="flex items-center gap-1 font-bold text-stone-600" title="已有解方或回答數量">
+                      <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+                      <span>{pp.solutionsCount} 個解方</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 group-hover:bg-amber-400 group-hover:text-stone-950 text-amber-900 text-xs font-black transition-colors shadow-2xs">
+                      <span>前往創點子</span>
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      )}
       </main>
 
       {/* 提案詳細 Modal */}
@@ -989,7 +1327,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   {selectedProposalForDetail.title}
                 </h3>
                 <div className="flex items-center gap-2 mt-1 text-stone-500 text-xs">
-                  <span>提案人：{selectedProposalForDetail.authorName}</span>
+                  <span>提案團隊：{getProposalCardAuthorText(selectedProposalForDetail).displayText}</span>
                   <span>·</span>
                   <span>提交時間：{new Date(selectedProposalForDetail.createdAt).toLocaleDateString()}</span>
                 </div>
@@ -1123,11 +1461,20 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                     </span>
                   </div>
                   <p className="text-stone-700 text-xs leading-relaxed">
-                    你有解決此痛點的創新產品、商業模式或技術架構嗎？直接點擊下方按鈕提出解方，系統將自動預選帶入此痛點，填寫資料與規格完全比照大賽提案頁！
+                    你有解決此痛點的創新產品、商業模式或技術架構嗎？直接點擊下方按鈕提出解方，系統將自動預選帶入此痛點，填寫資料與規格完全比照競賽提案頁！
                   </p>
                   <button
                     type="button"
                     onClick={() => {
+                      if (!stageInfo.isProposalStage) {
+                        if (stageInfo.isBeforeStart || stageInfo.isPainPointStage) {
+                          showToast('提案功能將於 11/14 10:00 正式開放！目前為痛點徵件階段。');
+                          return;
+                        } else {
+                          showToast('創星季提案已於 12/04 16:30 截止收件！');
+                          return;
+                        }
+                      }
                       try {
                         sessionStorage.setItem(
                           'ideax_challenge_prefill_topic',
@@ -1143,6 +1490,15 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                       setSelectedProposalForDetail(null);
                       if (!currentUser || currentUser.id === 'user-guest') {
                         onOpenAuth();
+                        return;
+                      }
+                      const isRegistered =
+                        currentUser.competitionBadges?.includes('創星季') ||
+                        (currentUser as any).isCompetitionRegistered ||
+                        (typeof window !== 'undefined' && localStorage.getItem(`ideax_participant_registered_${currentUser.id}`));
+                      if (!isRegistered) {
+                        showToast('【尚未完成報名】針對痛點提出方案前，須先完成「報名參賽」團隊資料登錄。系統將為您導向報名頁面，完成後即可繼續提案！');
+                        onNavigate('participant');
                         return;
                       }
                       onNavigate('submit');

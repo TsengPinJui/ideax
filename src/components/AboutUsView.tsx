@@ -841,7 +841,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                   </div>
                 </div>
                 <div className="pt-3 mt-1 border-t border-emerald-200/60 flex items-center justify-between text-xs font-bold text-emerald-700">
-                  <span>前往創星季大賽專區</span>
+                  <span>前往創星季競賽專區</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </div>
               </button>

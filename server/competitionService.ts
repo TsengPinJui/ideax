@@ -290,7 +290,7 @@ export async function supportProposalWithPoints(params: {
 
     // 扣除帳戶點數
     const newAvailable = account.availablePoints - points;
-    const newSpent = account.spentPoints + points;
+    const newSpent = (account.spentPoints || 0) + points;
     transaction.update(accountRef, {
       availablePoints: newAvailable,
       spentPoints: newSpent,
@@ -890,29 +890,84 @@ export async function addProposalComment(params: {
 
 /**
  * 參賽者報名（大專校院創新創業募資模擬學習平台體驗規格）：
- * 1. 登記團隊成員、學校、BP計畫書、原型圖、宣傳影片、模擬目標金額、回饋承諾
- * 2. 舊站用戶多了一個「創星季」徽章 (competitionBadges union '創星季')
- * 3. 建立競賽提案至 competition_proposals
- * 4. 若有引用痛點，於舊站 questions 之下的 answers 建立該提案之對應解方，並附上參賽網站專屬連結
+ * 1. 登記團隊成員、學校、聯絡資料（與提案頁分離）
+ * 2. 用戶新增「創星季」徽章 (competitionBadges union '創星季') 與 isCompetitionRegistered
+ * 3. 僅完成報名不產生提案、不派發點數獎勵（待後續正式提案與時程驗證）
  */
+export async function registerParticipantTeam(
+  userId: string,
+  userProfile: { name: string; avatar?: string; email?: string; role?: string },
+  data: ParticipantRegistrationData
+): Promise<{ success: boolean; message: string }> {
+  const now = new Date().toISOString();
+  const regRef = adminDb.collection('competition_participant_registrations').doc(userId);
+  await regRef.set(
+    {
+      userId,
+      teamName: (data.teamName || '').trim(),
+      leaderName: (data.leaderName || '').trim(),
+      leaderPhone: (data.leaderPhone || '').trim(),
+      leaderEmail: (data.leaderEmail || '').trim(),
+      schoolName: (data.schoolName || '').trim(),
+      department: (data.department || '').trim(),
+      advisorName: (data.advisorName || '').trim(),
+      teamMembers: data.teamMembers || [],
+      track: data.track || 'ai_applications',
+      expectedItems: data.expectedItems || [],
+      referralSource: (data.referralSource || '').trim(),
+      referralSourceOther: (data.referralSourceOther || '').trim(),
+      pledgeAgreed: true,
+      registeredAt: now,
+      updatedAt: now,
+    },
+    { merge: true }
+  );
+
+  const userRef = adminDb.collection('users').doc(userId);
+  await userRef.set(
+    {
+      competitionBadges: FieldValue.arrayUnion('創星季'),
+      isCompetitionRegistered: true,
+      updatedAt: now,
+    },
+    { merge: true }
+  );
+
+  return {
+    success: true,
+    message: '報名參賽成功！您已完成創星季參賽者登錄。',
+  };
+}
+
 export async function registerParticipant(
   userId: string,
   userProfile: { name: string; avatar?: string; email?: string; role?: string },
   data: ParticipantRegistrationData
-): Promise<{ success: boolean; proposalId: string; message: string }> {
+): Promise<{ success: boolean; proposalId?: string; message: string }> {
+  // 若未提供 projectTitle 或 summary，代表為獨立報名資料填寫
+  if (!data.projectTitle || !data.summary) {
+    return await registerParticipantTeam(userId, userProfile, data);
+  }
+
   const now = new Date().toISOString();
   const proposalId = `star-prop-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const exclusiveChallengeUrl = `https://ideax.tw/challenge?proposalId=${proposalId}`;
 
   const publicProposal: StarSeasonProposal = {
     id: proposalId,
-    title: data.projectTitle.trim(),
+    title: (data.projectTitle || '').trim(),
     stage: 'solution',
-    track: data.track,
-    summary: data.summary.trim(),
-    description: `${data.description.trim()}\n\n【團隊資訊】\n• 團隊：${data.teamName}\n• 學校：${data.schoolName} ${data.department}\n• 隊長：${data.leaderName}\n• 募資目標：NT$ ${data.targetFundingAmount.toLocaleString()}\n• 回饋方案：${data.rewardPlanDescription}`,
+    track: data.track || 'ai_applications',
+    summary: (data.summary || '').trim(),
+    description: `${(data.description || '').trim()}\n\n【團隊資訊】\n• 團隊：${data.teamName}\n• 學校：${data.schoolName} ${data.department}\n• 隊長：${data.leaderName}\n• 募資目標：NT$ ${(data.targetFundingAmount || 100000).toLocaleString()}\n• 回饋方案：${data.rewardPlanDescription || ''}`,
     authorId: userId,
-    authorName: userProfile.name || data.leaderName,
+    authorName: data.showOrganization && data.schoolName?.trim()
+      ? `${data.schoolName.trim()} ｜ ${data.teamName.trim()}`
+      : (data.teamName?.trim() || userProfile.name || data.leaderName),
+    teamName: (data.teamName || '').trim(),
+    schoolName: (data.schoolName || '').trim() || undefined,
+    organizationName: (data.schoolName || '').trim() || undefined,
+    showOrganization: Boolean(data.showOrganization),
     authorAvatar: userProfile.avatar,
     authorRole: 'user',
     sourcePainPointProposalId: data.sourcePainPointId || undefined,
@@ -939,7 +994,19 @@ export async function registerParticipant(
   const propRef = adminDb.collection('competition_proposals').doc(proposalId);
   batch.set(propRef, publicProposal);
 
-  // 2. 儲存大專校院募資模擬平台完整報名資料
+  // 2. 儲存大專校院募資模擬平台完整報名資料 (doc userId 與 doc proposalId 雙向寫入)
+  const regUserRef = adminDb.collection('competition_participant_registrations').doc(userId);
+  batch.set(
+    regUserRef,
+    {
+      proposalId,
+      userId,
+      ...data,
+      updatedAt: now,
+    },
+    { merge: true }
+  );
+
   const regRef = adminDb.collection('competition_participant_registrations').doc(proposalId);
   batch.set(regRef, {
     proposalId,
@@ -948,18 +1015,19 @@ export async function registerParticipant(
     createdAt: now,
   });
 
-  // 3. 舊站用戶新增「創星季」徽章（一般用戶身分不變，但多了一個創星季徽章）
+  // 3. IdeaX 創點子平台用戶新增「創星季」徽章（一般用戶身分不變，但多了一個創星季徽章）
   const userRef = adminDb.collection('users').doc(userId);
   batch.set(
     userRef,
     {
       competitionBadges: FieldValue.arrayUnion('創星季'),
+      isCompetitionRegistered: true,
       updatedAt: now,
     },
     { merge: true }
   );
 
-  // 4. 若有引用痛點，於舊站 questions 之下的 answers 建立該提案之對應解方，附上參賽網站專屬連結
+  // 4. 若有引用痛點，於 IdeaX 創點子平台 questions 之下的 answers 建立該提案之對應解方，附上參賽網站專屬連結
   const targetQuestionId = data.sourcePainPointId || 'default-pain-point';
   const answerId = `ans-${proposalId}`;
   const answerRef = adminDb.collection('answers').doc(answerId);
@@ -971,8 +1039,8 @@ export async function registerParticipant(
       solverId: userId,
       solverName: userProfile.name || data.leaderName,
       solverAvatar: userProfile.avatar || '',
-      title: data.projectTitle.trim(),
-      content: `💡【創星季提案解方】${data.projectTitle.trim()}\n\n${data.summary.trim()}\n\n${data.description.trim()}\n\n🔗 參賽網站專屬專案連結：${exclusiveChallengeUrl}`,
+      title: (data.projectTitle || '').trim(),
+      content: `💡【創星季提案解方】${(data.projectTitle || '').trim()}\n\n${(data.summary || '').trim()}\n\n${(data.description || '').trim()}\n\n🔗 參賽網站專屬專案連結：${exclusiveChallengeUrl}`,
       exclusiveChallengeUrl,
       isStarSeasonSolution: true,
       starSeasonProposalId: proposalId,
@@ -980,8 +1048,7 @@ export async function registerParticipant(
       price: 0,
       createdAt: now,
       updatedAt: now,
-    },
-    { merge: true }
+    }
   );
 
   if (data.sourcePainPointId) {
@@ -1001,7 +1068,7 @@ export async function registerParticipant(
   return {
     success: true,
     proposalId,
-    message: '參賽報名成功！已授予「創星季」榮譽徽章，提案將進入模擬募資專案！',
+    message: '報名登錄與提案送審成功！',
   };
 }
 
@@ -1123,7 +1190,7 @@ export async function getMyAmbassadorData(userId: string): Promise<{
   }>;
 }> {
   const account = await getOrCreateCompetitionAccount(userId);
-  const code = account.referralCode;
+  const code = account.referralCode || '';
 
   // 查詢以該推薦碼推薦之紀錄
   const refSnaps = await adminDb

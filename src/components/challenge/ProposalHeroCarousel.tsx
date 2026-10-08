@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Camera, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
-import { StarSeasonProposal, STAR_SEASON_TRACKS } from '../../types/competition';
+import { StarSeasonProposal, STAR_SEASON_TRACKS, getProposalCardAuthorText } from '../../types/competition';
 
 interface ProposalHeroCarouselProps {
   proposals: StarSeasonProposal[];
@@ -113,7 +113,7 @@ export const ProposalHeroCarousel: React.FC<ProposalHeroCarouselProps> = ({
             {currentItem.proposal.title}
           </div>
           <div className="text-white/80 text-[10px] line-clamp-1 mt-0.5 font-medium drop-shadow-sm">
-            提案人：{currentItem.proposal.authorName} • {currentItem.proposal.stage === 'pain_point' ? '痛點徵件' : '創新解方'}
+            提案團隊：{getProposalCardAuthorText(currentItem.proposal).displayText} • {currentItem.proposal.stage === 'pain_point' ? '痛點徵件' : '創新解方'}
           </div>
         </div>
 

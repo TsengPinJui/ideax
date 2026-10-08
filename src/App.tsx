@@ -39,7 +39,7 @@ import { GoogleSitelinksModal } from './components/GoogleSitelinksModal';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
 import { isPainPointQuestion } from './utils/questionUtils';
-import { updateSEOForQuestion, updateSEOForSubpage, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
+import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
 import {
   recordUserSearchKeyword,
   recordUserBoard,
@@ -312,14 +312,8 @@ function MainContent() {
           setSelectedSubcategory(board.id);
           setSpecialZone('all');
         }
-      } else if (!saved && isRaceMode) {
-        // 競賽模式: 舊站優先置頂痛點專區，除非後面用戶自己換成其他置頂看板
-        const defaultRaceBoard = { type: 'special_zone' as const, id: 'pain_points' };
-        setPinnedBoard(defaultRaceBoard);
-        setSpecialZone('pain_points');
-        setSelectedCategory('全部');
-        setSelectedSubcategory('全部');
       }
+      // 注意：不可在首頁未儲存時預設強制置頂痛點專區，確保首頁永遠保留完整的「探索問題/全部問題」大盤入口與 Google 條列式捷徑
     } catch (e) {
       console.error(e);
     }
@@ -429,9 +423,9 @@ function MainContent() {
               window.history.pushState({ zone: 'pain_points' }, '', '/painpoints');
               updateSEOForSubpage('painpoints');
             }
-          } else if (curPath === '/painpoints' || curPath === '/create' || curPath === '/solvers' || curPath === '/challenge') {
-            window.history.pushState({ tab: 'explore' }, '', '/explore');
-            updateSEOForSubpage('explore');
+          } else if (curPath === '/painpoints' || curPath === '/create' || curPath === '/solvers' || curPath === '/explore' || curPath.startsWith('/challenge')) {
+            window.history.pushState({ tab: 'explore' }, '', '/');
+            resetSEOToDefault();
           }
         }
       }
@@ -657,13 +651,13 @@ function MainContent() {
           q.tags.includes(selectedSubcategory);
         const matchesLevel = selectedLevel === '全部' || q.level === selectedLevel;
 
-        // Special zone filtering (此二分類與看板類型不衝突，痛點特性 > L0，優先歸屬痛點專區)
+        // Special zone filtering (此二分類與看板類型不衝突，痛點特性 > L0，優先歸屬創點子/痛點集)
         let matchesSpecialZone = true;
         if (specialZone === 'pain_points') {
-          // 痛點專區：所有透過提出痛點提出的問題和標註痛點/創點子的問題（優先歸屬痛點專區）
+          // 創點子/痛點集：所有透過提出痛點提出的問題和標註痛點/創點子的問題（優先歸屬創點子/痛點集）
           matchesSpecialZone = isPainPointQuestion(q);
         } else if (specialZone === 'l0_discussion') {
-          // L0問題討論專區：包含所有純L0的問題和點選閒聊討論提出的問題，明確排除痛點提問（痛點特性 > L0）
+          // L0問題討論區：包含所有純L0的問題和點選閒聊討論提出的問題，明確排除痛點提問（痛點特性 > L0）
           matchesSpecialZone =
             (q.level === 'L0' ||
               q.postType === 'chat_discussion' ||
@@ -1045,28 +1039,30 @@ function MainContent() {
       <main className="flex-1 pb-16 lg:pb-0">
         {/* 1. Explore Tab: Market Grid & Hero */}
         {activeTab === 'explore' && (
-          <div>
-            {/* Hero Section */}
-            <HeroSection
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              selectedCategory={selectedCategory}
-              setSelectedCategory={setSelectedCategory}
-              onPostClick={() => handleOpenCreateWithType('seek_solution')}
-              onPostPainPointClick={() => handleOpenCreateWithType('pain_point')}
-              onExploreClick={() => {
-                const el = document.getElementById('market-grid');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              onLeaderboardClick={() => {
-                handleSetSortBy('highest_bounty');
-                const el = document.getElementById('market-grid');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
+          <div className="relative">
+            {/* Hero Section (探索問題上方區域往下延伸，具備溫潤微金流體光與舒適留白) */}
+            <div className="relative bg-gradient-to-b from-amber-50/70 via-amber-50/30 to-stone-50/40 pb-4 sm:pb-8">
+              <HeroSection
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                onPostClick={() => handleOpenCreateWithType('seek_solution')}
+                onPostPainPointClick={() => handleOpenCreateWithType('pain_point')}
+                onExploreClick={() => {
+                  const el = document.getElementById('market-grid');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                onLeaderboardClick={() => {
+                  handleSetSortBy('highest_bounty');
+                  const el = document.getElementById('market-grid');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+              />
+            </div>
 
             {/* Questions Market Grid Section */}
-            <div id="market-grid" className="scroll-mt-20 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 pb-8 sm:py-10">
+            <div id="market-grid" className="scroll-mt-20 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-4 pb-12 sm:pt-6 sm:pb-16">
               <div className="space-y-3 sm:space-y-6">
                 {/* Special Zone Banners */}
                 {specialZone === 'pain_points' && (
@@ -1077,7 +1073,7 @@ function MainContent() {
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
-                          <span>創點子 / 痛點專區</span>
+                          <span>創點子 / 痛點集</span>
                           <button
                             onClick={() => handleTogglePin('special_zone', 'pain_points')}
                             className={`p-1 rounded-lg transition-all cursor-pointer ${
@@ -1094,8 +1090,12 @@ function MainContent() {
                           </span>
                         </h3>
                         <HelpTooltip
-                          title="創點子 / 痛點專區說明"
-                          content="匯集真實生活與產業未解痛點。發布痛點 0 元免費上架，各界專家可自訂解鎖金額提供落地解法，由第三方金流安全託管拆款。"
+                          title="創點子 / 痛點集說明"
+                          content={
+                            isRaceMode
+                              ? "匯集真實生活與產業未解痛點。創星季競賽期間免費，開放給參賽團隊作為解題題目與共創解方。"
+                              : "匯集真實生活與產業未解痛點。發布痛點徵集創新腦洞，各領域人才提供落地解法，由第三方金流安全託管拆款。"
+                          }
                           learnMoreText="前往查閱完整「說明二 • 痛點機制」→"
                           onLearnMore={() => {
                             setAboutPageSection('other_2');
@@ -1135,7 +1135,7 @@ function MainContent() {
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
-                          <span>L0問題討論專區</span>
+                          <span>L0問題討論區</span>
                           <button
                             onClick={() => handleTogglePin('special_zone', 'l0_discussion')}
                             className={`p-1 rounded-lg transition-all cursor-pointer ${
@@ -1152,7 +1152,7 @@ function MainContent() {
                           </span>
                         </h3>
                         <HelpTooltip
-                          title="L0問題討論專區說明"
+                          title="L0問題討論區說明"
                           content="無門檻日常交流、閒聊討論、觀點碰撞與輕量求助。完全免費公開，適合社群激盪與早期方向探索。"
                           onLearnMore={() => setActiveTab('about')}
                         />
@@ -1486,6 +1486,69 @@ function MainContent() {
               setTimeout(scrollToQuestionsGrid, 80);
               setTimeout(scrollToQuestionsGrid, 250);
               setTimeout(scrollToQuestionsGrid, 450);
+            }}
+            onOpenPainPointInChuangDianZi={(targetPainPoint: any) => {
+              let foundQ: Question | undefined;
+              if (typeof targetPainPoint === 'string') {
+                foundQ = questions.find((q) => q.id === targetPainPoint || q.title === targetPainPoint || q.title.includes(targetPainPoint));
+              } else if (targetPainPoint && targetPainPoint.id) {
+                foundQ = questions.find((q) => q.id === targetPainPoint.id || q.title === targetPainPoint.title || q.title.includes(targetPainPoint.title));
+                if (!foundQ && targetPainPoint.rawQuestion) {
+                  foundQ = targetPainPoint.rawQuestion;
+                }
+              }
+
+              if (!foundQ && targetPainPoint) {
+                const titleStr = typeof targetPainPoint === 'string' ? targetPainPoint : (targetPainPoint.title || '痛點提問');
+                const cleanTitle = titleStr.startsWith('【痛點】') ? titleStr : `【痛點】${titleStr}`;
+                const descStr = targetPainPoint.description || targetPainPoint.summary || '此為創星季參賽者所提出之切身真實痛點問題，歡迎提供落地解決方案。';
+                const catStr = targetPainPoint.category || '創新創業';
+                const subStr = targetPainPoint.subcategory || '創點子/痛點集';
+                const authName = targetPainPoint.authorName || '創星季參賽者';
+                const authAvatar = targetPainPoint.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
+                const qId = targetPainPoint.id || `star-pain-${Date.now()}`;
+
+                foundQ = {
+                  id: qId,
+                  title: cleanTitle,
+                  description: descStr,
+                  category: catStr as any,
+                  subcategory: subStr,
+                  level: 'L0',
+                  bounty: 0,
+                  views: targetPainPoint.views || 25,
+                  viewsCount: targetPainPoint.views || 25,
+                  likes: 8,
+                  answersCount: targetPainPoint.solutionsCount || 0,
+                  status: 'open',
+                  postType: 'pain_point',
+                  specialZone: 'pain_points',
+                  tags: targetPainPoint.tags || ['痛點', '創星季', '徵點子'],
+                  createdAt: new Date().toISOString(),
+                  deadline: new Date(Date.now() + 30 * 86400000).toISOString(),
+                  authorId: 'participant-user',
+                  authorName: authName,
+                  authorAvatar: authAvatar,
+                  isStarSeason: true,
+                };
+              }
+
+              if (foundQ) {
+                incrementQuestionViews(foundQ.id, 1);
+                const nextV = (foundQ.views || 0) + 1;
+                setSelectedQuestion({ ...foundQ, views: nextV, viewsCount: nextV });
+                setSpecialZone('pain_points');
+                setSelectedCategory('全部');
+                setSelectedSubcategory('全部');
+                setSelectedSolver(null);
+                setActiveTab('question_detail');
+                try {
+                  if (typeof window !== 'undefined') {
+                    window.history.pushState(null, '', `/?question=${foundQ.id}`);
+                  }
+                } catch {}
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
             }}
             onOpenAuth={() => openAuthModal('login', 'email')}
           />
@@ -1880,6 +1943,16 @@ function MainContent() {
             }
             if (tab === 'explore') {
               setActiveTab('explore');
+              setSpecialZone('all');
+              setSelectedCategory('全部');
+              setSelectedSubcategory('全部');
+              setSearchQuery('');
+              try {
+                if (typeof window !== 'undefined') {
+                  window.history.pushState(null, '', '/');
+                }
+              } catch {}
+              resetSEOToDefault();
               const scrollToMarket = () => {
                 const el = document.getElementById('market-grid');
                 if (el) {

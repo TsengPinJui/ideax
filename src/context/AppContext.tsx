@@ -1875,9 +1875,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             updatedCloudUsers.forEach((cu) => {
               const local = userMap.get(cu.id);
               if (local) {
+                // 若本地該用戶處於正常使用（非註銷/已取消猶豫期），雲端不得重新蓋回猶豫期
+                const isLocalActive = !local.isDeactivated && !local.deactivationStatus;
+                const isCloudDeactivated = Boolean(
+                  cu.isDeactivated ||
+                  cu.deactivationStatus === 'pending_grace' ||
+                  cu.deactivationStatus === 'deactivated'
+                );
+                const finalDeact = isLocalActive ? false : isCloudDeactivated;
+
                 userMap.set(cu.id, {
                   ...local,
                   ...cu,
+                  isDeactivated: finalDeact,
+                  deactivationStatus: finalDeact ? (cu.deactivationStatus || (cu.isDeactivated ? 'pending_grace' : undefined)) : undefined,
+                  deactivationRequestedAt: finalDeact ? cu.deactivationRequestedAt : undefined,
+                  deactivationScheduledPurgeAt: finalDeact ? cu.deactivationScheduledPurgeAt : undefined,
+                  deactivationReason: finalDeact ? cu.deactivationReason : undefined,
                 });
               } else {
                 userMap.set(cu.id, cu);
@@ -2619,14 +2633,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const switchAccount = (userId: string): boolean => {
-    let target = availableUsers.find((u) => u.id === userId);
+    // 支援別名映射 (例如 user-questioner <-> c100000001, user-admin <-> a000000001, solver-2 <-> c200000002, solver-1 <-> c100000003)
+    const aliasMap: Record<string, string> = {
+      'user-admin': 'a000000001',
+      'a000000001': 'user-admin',
+      'user-questioner': 'c100000001',
+      'c100000001': 'user-questioner',
+      'solver-2': 'c200000002',
+      'c200000002': 'solver-2',
+      'solver-1': 'c100000003',
+      'c100000003': 'solver-1',
+    };
+    const aliasId = aliasMap[userId];
+
+    let target = availableUsers.find((u) => u.id === userId || (aliasId && u.id === aliasId));
     if (!target) {
       // 找不到時自動自固定保留之核心測試帳號或模擬名單中尋找並補齊
       target =
-        CORE_TEST_ACCOUNTS.find((u) => u.id === userId) ||
-        DEMO_CORE_TEST_USERS.find((u) => u.id === userId) ||
-        MOCK_USERS.find((u) => u.id === userId) ||
-        CLEAN_CORE_USERS.find((u) => u.id === userId);
+        CORE_TEST_ACCOUNTS.find((u) => u.id === userId || (aliasId && u.id === aliasId)) ||
+        DEMO_CORE_TEST_USERS.find((u) => u.id === userId || (aliasId && u.id === aliasId)) ||
+        MOCK_USERS.find((u) => u.id === userId || (aliasId && u.id === aliasId)) ||
+        CLEAN_CORE_USERS.find((u) => u.id === userId || (aliasId && u.id === aliasId));
 
       if (target) {
         setAvailableUsers((prev) => {
@@ -2650,24 +2677,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    const effectiveUser = restoredUser;
+    // 徹底清理反悔猶豫期與註銷相關狀態
+    const effectiveUser: User = {
+      ...target,
+      ...restoredUser,
+      isDeactivated: false,
+      deactivationStatus: undefined,
+      deactivationRequestedAt: undefined,
+      deactivationScheduledPurgeAt: undefined,
+      deactivationReason: undefined,
+    };
+
     setCurrentUser(effectiveUser);
     localStorage.setItem(`${STORAGE_KEY_PREFIX}is_authenticated`, 'true');
     localStorage.setItem(`${STORAGE_KEY_PREFIX}is_explicit_login`, 'true');
     localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(effectiveUser));
     localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(effectiveUser));
 
-    if (wasInGracePeriod) {
-      setAvailableUsers((prev) =>
-        prev.map((u) => (u.id === effectiveUser.id ? effectiveUser : u))
-      );
+    const isPreviouslyDeactivated = Boolean(
+      wasInGracePeriod ||
+      target.isDeactivated ||
+      target.deactivationStatus === 'pending_grace' ||
+      target.deactivationRequestedAt
+    );
+
+    // 一律同步更新 availableUsers 中該用戶與其別名帳號之正常狀態（比對 id、別名、帳號名稱與姓名）
+    setAvailableUsers((prev) => {
+      const next = prev.map((u) => {
+        const isMatch =
+          u.id === effectiveUser.id ||
+          u.id === userId ||
+          (aliasId && u.id === aliasId) ||
+          (aliasMap[u.id] && (aliasMap[u.id] === effectiveUser.id || aliasMap[u.id] === userId)) ||
+          (u.username && effectiveUser.username && u.username.toLowerCase() === effectiveUser.username.toLowerCase()) ||
+          (u.name && effectiveUser.name && (u.name.trim() === effectiveUser.name.trim() || u.name.includes(effectiveUser.name) || effectiveUser.name.includes(u.name)));
+
+        if (isMatch) {
+          return {
+            ...u,
+            ...effectiveUser,
+            id: u.id,
+            isDeactivated: false,
+            deactivationStatus: undefined,
+            deactivationRequestedAt: undefined,
+            deactivationScheduledPurgeAt: undefined,
+            deactivationReason: undefined,
+          };
+        }
+        return u;
+      });
       try {
-        localStorage.setItem(
-          `${STORAGE_KEY_PREFIX}available_users`,
-          JSON.stringify(availableUsers.map((u) => (u.id === effectiveUser.id ? effectiveUser : u)))
-        );
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(next));
       } catch {}
-      syncUserToFirestore(effectiveUser);
+      return next;
+    });
+
+    syncUserToFirestore(effectiveUser);
+    if (aliasId) {
+      syncUserToFirestore({ ...effectiveUser, id: aliasId });
+    }
+
+    if (isPreviouslyDeactivated) {
       setNotifications((prev) => [
         {
           id: `notif-cancel-deact-${Date.now()}`,
@@ -2823,7 +2894,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       : (newQ.category || '創新創業');
     const finalSubcategory = newQ.subcategory || '資訊科技';
 
-    // 競賽模式規則：從痛點專區提出的問題僅限 L0 且標注綠色「創星季」標籤並擁有獨立網址
+    // 競賽模式規則：從創點子/痛點集提出的問題僅限 L0 且標注綠色「創星季」標籤並擁有獨立網址
     const finalLevel = isRaceModeActive ? 'L0' : (newQ.level || 'L2');
     const finalBounty = isRaceModeActive ? 0 : (newQ.bounty ?? (finalLevel === 'L0' ? 0 : 1000));
     
@@ -2831,7 +2902,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const tagsSet = new Set(baseTags);
     tagsSet.add(finalSubcategory);
     if (isPainPoint) tagsSet.add('痛點');
-    if (isRaceModeActive || isPainPoint || newQ.isStarSeason) {
+    // 若在創點子提出則不算入競賽提案或點子，僅競賽期間內的競賽提案或痛點才顯示「創星季」
+    const isCompetitionItem = Boolean(isRaceModeActive || newQ.isStarSeason);
+    if (isCompetitionItem) {
       tagsSet.add('創星季');
     }
     const finalTags = Array.from(tagsSet);
@@ -2854,6 +2927,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isOfficial: newQ.isOfficial,
       publishIdentity: newQ.publishIdentity || (currentUser.role === 'admin' ? 'admin' : undefined),
       isFeatured: newQ.isFeatured,
+      isStarSeason: isCompetitionItem,
       createdAt: new Date().toISOString(),
       deadline: newQ.deadline || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
       views: newQ.views ?? 0,
@@ -2864,8 +2938,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       withheldBounty: finalBounty,
       disputeStatus: 'none',
       phases: newQ.phases,
-      isStarSeason: isRaceModeActive ? true : (newQ.isStarSeason ?? (isPainPoint ? true : false)),
-      exclusiveChallengeUrl: newQ.exclusiveChallengeUrl || (isRaceModeActive || isPainPoint ? `https://ideax.tw/challenge?questionId=${qId}` : undefined),
+      exclusiveChallengeUrl: newQ.exclusiveChallengeUrl || (isCompetitionItem ? `https://ideax.tw/challenge?questionId=${qId}` : undefined),
       starSeasonProposalId: newQ.starSeasonProposalId,
     };
 
@@ -4036,13 +4109,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Action: Cancel account deactivation (撤銷註銷帳號，恢復正常狀態)
   const cancelAccountDeactivation = async (targetUser?: User | string): Promise<User | null> => {
+    const aliasMap: Record<string, string> = {
+      'user-admin': 'a000000001',
+      'a000000001': 'user-admin',
+      'user-questioner': 'c100000001',
+      'c100000001': 'user-questioner',
+      'solver-2': 'c200000002',
+      'c200000002': 'solver-2',
+      'solver-1': 'c100000003',
+      'c100000003': 'solver-1',
+    };
+
     let userToRestore: User | undefined;
     if (typeof targetUser === 'string') {
-      userToRestore = availableUsers.find((u) => u.id === targetUser) || (currentUser.id === targetUser ? currentUser : undefined);
+      const aliasId = aliasMap[targetUser];
+      userToRestore = availableUsers.find((u) => u.id === targetUser || (aliasId && u.id === aliasId)) || (currentUser.id === targetUser ? currentUser : undefined);
     } else {
       userToRestore = targetUser || currentUser;
     }
     if (!userToRestore) return null;
+
+    const restoredId = userToRestore.id;
+    const restoredAliasId = aliasMap[restoredId];
 
     const updatedUser: User = {
       ...userToRestore,
@@ -4054,7 +4142,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setAvailableUsers((prev) => {
-      const next = prev.map((u) => (u.id === userToRestore!.id ? updatedUser : u));
+      const next = prev.map((u) => {
+        const isMatch =
+          u.id === restoredId ||
+          (restoredAliasId && u.id === restoredAliasId) ||
+          (aliasMap[u.id] && (aliasMap[u.id] === restoredId || aliasMap[u.id] === restoredAliasId)) ||
+          (u.username && userToRestore!.username && u.username.toLowerCase() === userToRestore!.username.toLowerCase()) ||
+          (u.name && userToRestore!.name && (u.name.trim() === userToRestore!.name.trim() || u.name.includes(userToRestore!.name) || userToRestore!.name.includes(u.name)));
+
+        if (isMatch) {
+          return {
+            ...u,
+            ...updatedUser,
+            id: u.id,
+            isDeactivated: false,
+            deactivationStatus: undefined,
+            deactivationRequestedAt: undefined,
+            deactivationScheduledPurgeAt: undefined,
+            deactivationReason: undefined,
+          };
+        }
+        return u;
+      });
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
         localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(next));
@@ -4062,7 +4171,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
 
-    if (currentUser.id === userToRestore.id) {
+    if (currentUser.id === userToRestore.id || (restoredAliasId && currentUser.id === restoredAliasId)) {
       setCurrentUser(updatedUser);
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updatedUser));
@@ -4071,6 +4180,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     await syncUserToFirestore(updatedUser);
+    if (restoredAliasId) {
+      await syncUserToFirestore({ ...updatedUser, id: restoredAliasId });
+    }
 
     setNotifications((prev) => [
       {
@@ -4778,6 +4890,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     targetUser: { id: string; name: string; avatar: string; title: string },
     question?: Question
   ): string => {
+    if (currentUser.id === 'user-guest') {
+      promptLogin('訪客請先登入帳號以開始私訊交流');
+      return '';
+    }
     // Check if conversation already exists between currentUser and targetUser
     const existing = conversations.find(
       (c) => !c.isGroup && c.participantIds.includes(currentUser.id) && c.participantIds.includes(targetUser.id)
@@ -6065,6 +6181,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 單一用戶個人通知過濾（非全站混雜，只呈現當前登入用戶之個人專屬通知與特定系統信件，且徹底排除模式與環境設定通知）
   const userPersonalNotifications = useMemo(() => {
+    if (currentUser.id === 'user-guest') {
+      return [];
+    }
     return notifications.filter((n) => {
       if (isModeOrEnvNotification(n.title, n.message)) {
         return false;
@@ -6078,33 +6197,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return n.userId === currentUser.id;
       }
-      return true;
+      return false;
     });
   }, [notifications, currentUser]);
 
   // 1. 個人通知（互動、方案提交、得標、懸賞入帳、私聊，計入郵件圖示右上角數字）
   const personalNotifications = useMemo(() => {
+    if (currentUser.id === 'user-guest') return [];
     return userPersonalNotifications.filter((n) => {
       const cat = n.category || (n.type === 'system' || n.type === 'ai_match' ? 'system' : 'personal');
       return cat === 'personal';
     });
-  }, [userPersonalNotifications]);
+  }, [userPersonalNotifications, currentUser]);
 
   // 2. 系統通知（平台廣播、AI推薦、系統升級，在系統通知區亮紅點，不計入郵件記數）
   const systemNotifications = useMemo(() => {
+    if (currentUser.id === 'user-guest') return [];
     return userPersonalNotifications.filter((n) => {
       const cat = n.category || (n.type === 'system' || n.type === 'ai_match' ? 'system' : 'personal');
       return cat === 'system';
     });
-  }, [userPersonalNotifications]);
+  }, [userPersonalNotifications, currentUser]);
 
   const unreadPersonalCount = useMemo(() => {
+    if (currentUser.id === 'user-guest') return 0;
     return personalNotifications.filter((n) => !n.read).length;
-  }, [personalNotifications]);
+  }, [personalNotifications, currentUser]);
 
   const unreadSystemCount = useMemo(() => {
+    if (currentUser.id === 'user-guest') return 0;
     return systemNotifications.filter((n) => !n.read).length;
-  }, [systemNotifications]);
+  }, [systemNotifications, currentUser]);
 
   const hasUnreadSystemNotifs = unreadSystemCount > 0;
 

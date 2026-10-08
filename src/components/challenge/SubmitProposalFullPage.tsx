@@ -26,6 +26,7 @@ import {
   Bot,
   Save,
   FolderOpen,
+  GraduationCap,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -43,6 +44,7 @@ import { getCompetitionProposalsForAdmin, saveAllCompetitionProposals } from '..
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import { PainPointSelector } from './PainPointSelector';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
+import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 import { analyzeCompetitionItemWithAgent } from '../../services/competitionAiAgent';
 import {
   ProposalDraft,
@@ -81,6 +83,8 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
     openAboutModal,
   } = useApp();
 
+  const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
+
   const [termsDoc, setTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
   const [editingDraftId, setEditingDraftId] = useState<string | null>(initialDraftId || null);
@@ -109,6 +113,8 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
   } | null>(null);
 
   // 聯絡個資與撥款資料 (隔離保存)
+  const [teamName, setTeamName] = useState<string>('');
+  const [showOrganizationOnCard, setShowOrganizationOnCard] = useState<boolean>(false);
   const [contactName, setContactName] = useState<string>(currentUser?.name || '');
   const [contactPhone, setContactPhone] = useState<string>('');
   const [contactEmail, setContactEmail] = useState<string>(currentUser?.email || '');
@@ -342,6 +348,29 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
       return;
     }
 
+    const isRegisteredParticipant = Boolean(
+      currentUser?.competitionBadges?.includes('創星季') ||
+      (currentUser as any)?.isCompetitionRegistered ||
+      (typeof window !== 'undefined' && currentUser?.id && localStorage.getItem(`ideax_participant_registered_${currentUser.id}`))
+    );
+
+    if (!isRegisteredParticipant) {
+      showToast('【尚未完成報名】提案參賽前須先完成「報名參賽」團隊資料登錄！系統將為您導向報名頁。');
+      onNavigate('participant');
+      return;
+    }
+
+    const stageInfo = getCompetitionStageInfo();
+    if (!stageInfo.isProposalStage) {
+      if (stageInfo.isBeforeStart || stageInfo.isPainPointStage) {
+        showToast('提案功能將於 11/14 10:00 正式開放！目前為痛點徵件階段。');
+        return;
+      } else {
+        showToast('創星季提案已於 12/04 16:30 截止收件！目前已進入決選評審階段。');
+        return;
+      }
+    }
+
     if (!formTitle.trim() || !formSummary.trim() || !contactName.trim() || !contactPhone.trim()) {
       showToast('請完整填寫標題、簡述/概述、聯絡人姓名與手機');
       return;
@@ -430,7 +459,13 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               summary: formSummary.trim(),
               description: formDescription.trim(),
               authorId: currentUser.id,
-              authorName: currentUser.name || contactName,
+              authorName: showOrganizationOnCard && schoolOrOrg.trim()
+                ? `${schoolOrOrg.trim()} ｜ ${(teamName.trim() || currentUser.name || contactName)}`
+                : (teamName.trim() || currentUser.name || contactName),
+              teamName: teamName.trim() || currentUser.name || contactName,
+              schoolName: schoolOrOrg.trim() || undefined,
+              organizationName: schoolOrOrg.trim() || undefined,
+              showOrganization: showOrganizationOnCard,
               authorAvatar: currentUser.avatar,
               authorRole: (currentUser.role as any) || 'user',
               sourcePainPointProposalId: formSourcePainPointId || undefined,
@@ -543,10 +578,10 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="p-1 -m-1 rounded-xl hover:bg-amber-100/60 active:scale-95 transition-all cursor-pointer flex items-center justify-center group"
-                title="點擊回到 IdeaX 舊站首頁"
-                aria-label="回到舊站首頁"
+                title="點擊回到 IdeaX 創點子平台首頁"
+                aria-label="回到 IdeaX 創點子平台首頁"
               >
-                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
+                <img src="/logo-bulb.png" alt="IdeaX 創點子平台 - 點擊回首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
               </button>
               <button
                 type="button"
@@ -592,17 +627,18 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               探索Idea
             </button>
 
-            {/* 3. 痛點-> */}
+            {/* 3. 痛點 → */}
             <button
               type="button"
               onClick={onGoToPainPoints || onBackToOldSite}
-              className="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold group"
+              title="前往 IdeaX 創點子平台 創點子/痛點集並自動滾動至痛點區域"
             >
-              痛點-&gt;
+              <span>痛點</span>
+              <ArrowRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
-            {/* 4. 申請參賽者 */}
+            {/* 4. 報名參賽 */}
             <button
               type="button"
               onClick={() => {
@@ -614,7 +650,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               }}
               className="hidden md:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
             >
-              申請參賽者
+              報名參賽
             </button>
 
             {/* 5. 成為專家 */}
@@ -642,15 +678,23 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               推廣大使
             </button>
 
-            {/* 行動版痛點-> (風格一致) */}
-            <button
-              onClick={onGoToPainPoints || onBackToOldSite}
-              className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
-              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
-            >
-              <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>痛點-&gt;</span>
-            </button>
+            {/* 行動版：優先保留痛點（隨著賽程變動，若換至提案階段則自動變換為提案捷徑），移除競賽辦法 */}
+            {stageInfo.isProposalStage ? (
+              <span className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-400 text-stone-950 text-xs font-black shadow-2xs">
+                <Send className="w-3.5 h-3.5 text-stone-950" />
+                <span>提案中</span>
+              </span>
+            ) : (
+              <button
+                onClick={onGoToPainPoints || onBackToOldSite}
+                className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98 group"
+                title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
+              >
+                <Flame className="w-3.5 h-3.5 text-rose-500" />
+                <span>痛點</span>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -683,6 +727,38 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
             >
               立即登入
             </button>
+          </div>
+        )}
+
+        {/* 未完成報名參賽之導引卡片 */}
+        {currentUser && currentUser.id !== 'user-guest' && !currentUser.competitionBadges?.includes('創星季') && !(currentUser as any)?.isCompetitionRegistered && !(typeof window !== 'undefined' && localStorage.getItem(`ideax_participant_registered_${currentUser.id}`)) && (
+          <div className="mb-6 p-5 rounded-2xl bg-amber-50 border-2 border-amber-400 space-y-3 shadow-xs">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+              <div className="space-y-1 text-xs">
+                <h4 className="font-black text-amber-950 text-sm">【尚未完成報名】提案前請先登錄「報名參賽」團隊資料</h4>
+                <p className="text-stone-700 leading-relaxed">
+                  依創星季競賽規定，提交創新解方提案前，須先完成「報名參賽」團隊基本資料登錄。完成登錄後即可正式投件！
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => onNavigate('participant')}
+                className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <GraduationCap className="w-4 h-4" />
+                <span>立即前往填寫「報名參賽」團隊資料 →</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('home')}
+                className="px-4 py-2.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 font-bold text-xs cursor-pointer"
+              >
+                返回競賽首頁
+              </button>
+            </div>
           </div>
         )}
 
@@ -1132,6 +1208,40 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
+                <label className="block text-stone-600 font-bold mb-1">團隊名稱 *（卡片固定公開顯示）</label>
+                <input
+                  type="text"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="例如: 智創綠能隊"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-stone-600 font-bold mb-1">學校 / 機構單位（選填）</label>
+                <input
+                  type="text"
+                  value={schoolOrOrg}
+                  onChange={(e) => setSchoolOrOrg(e.target.value)}
+                  placeholder="例如: 國立臺灣大學"
+                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900"
+                />
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    id="submit-show-org-checkbox"
+                    checked={showOrganizationOnCard}
+                    onChange={(e) => setShowOrganizationOnCard(e.target.checked)}
+                    className="rounded border-stone-300 text-amber-600 focus:ring-amber-400"
+                  />
+                  <label htmlFor="submit-show-org-checkbox" className="text-xs text-stone-600 cursor-pointer select-none">
+                    <span className="font-bold text-stone-800">在卡片上顯示機構名稱</span>
+                    <span className="text-[10px] text-stone-500 ml-1">（未勾選則卡片僅顯示團隊名稱）</span>
+                  </label>
+                </div>
+              </div>
+              <div>
                 <label className="block text-stone-600 font-bold mb-1">聯絡人真實姓名 *</label>
                 <input
                   type="text"
@@ -1160,16 +1270,6 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder="email@example.com"
-                  className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900"
-                />
-              </div>
-              <div>
-                <label className="block text-stone-600 font-bold mb-1">學校 / 機構單位</label>
-                <input
-                  type="text"
-                  value={schoolOrOrg}
-                  onChange={(e) => setSchoolOrOrg(e.target.value)}
-                  placeholder="例如: 國立臺灣大學"
                   className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900"
                 />
               </div>

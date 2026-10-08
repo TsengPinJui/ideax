@@ -65,14 +65,14 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
       className={`absolute inset-0 overflow-hidden pointer-events-none select-none -z-10 ${className}`}
       aria-hidden="true"
     >
-      {/* 1. 溫潤金黃流體基底 (Amber-Yellow Liquid Reservoir Backdrop) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-amber-100/80 via-yellow-100/60 to-amber-50/40" />
+      {/* 1. 溫潤金黃流體基底 (Amber-Yellow Liquid Reservoir Backdrop) - 淺淡柔和 */}
+      <div className="absolute inset-0 bg-gradient-to-b from-amber-50/30 via-yellow-50/15 to-white/20" />
 
-      {/* 2. 深度環境光：流動金黃光環 (Deep Molten Amber Atmosphere) */}
-      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[1200px] h-[400px] bg-gradient-to-b from-yellow-300/40 via-amber-400/30 to-transparent blur-3xl rounded-full" />
+      {/* 2. 深度環境光：流動金黃光環 (Deep Molten Amber Atmosphere) - 輕柔光暈 */}
+      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[1200px] h-[400px] bg-gradient-to-b from-yellow-200/12 via-amber-300/10 to-transparent blur-3xl rounded-full" />
 
-      {/* 3. 無縫橫向滾動「第一層黃金洋流」(Surface Golden Wave Stream) */}
-      <div className="absolute top-0 left-0 w-[200%] h-full opacity-85 animate-liquid-flow-1">
+      {/* 3. 無縫橫向滾動「第一層黃金洋流」(Surface Golden Wave Stream) - 淺淡流動 */}
+      <div className="absolute top-0 left-0 w-[200%] h-full opacity-20 animate-liquid-flow-1">
         <svg
           className="w-full h-full"
           xmlns="http://www.w3.org/2000/svg"
@@ -81,11 +81,11 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
         >
           <defs>
             <linearGradient id="vibrantGold1" x1="0%" y1="0%" x2="100%" y2="80%">
-              <stop offset="0%" stopColor="#fef08a" stopOpacity="0.85" />
-              <stop offset="25%" stopColor="#fde047" stopOpacity="0.9" />
-              <stop offset="50%" stopColor="#fbbf24" stopOpacity="0.8" />
-              <stop offset="75%" stopColor="#f59e0b" stopOpacity="0.75" />
-              <stop offset="100%" stopColor="#fef08a" stopOpacity="0.85" />
+              <stop offset="0%" stopColor="#fef08a" stopOpacity="0.3" />
+              <stop offset="25%" stopColor="#fde047" stopOpacity="0.32" />
+              <stop offset="50%" stopColor="#fcd34d" stopOpacity="0.25" />
+              <stop offset="75%" stopColor="#fbbf24" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#fef08a" stopOpacity="0.3" />
             </linearGradient>
           </defs>
           <path
@@ -95,8 +95,8 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
         </svg>
       </div>
 
-      {/* 4. 反向流動「第二層深層蜂蜜金波浪」(Mid-Depth Viscous Honey Wave Stream) */}
-      <div className="absolute top-0 left-0 w-[200%] h-full opacity-80 animate-liquid-flow-rev">
+      {/* 4. 反向流動「第二層深層蜂蜜金波浪」(Mid-Depth Viscous Honey Wave Stream) - 淺透層次 */}
+      <div className="absolute top-0 left-0 w-[200%] h-full opacity-18 animate-liquid-flow-rev">
         <svg
           className="w-full h-full"
           xmlns="http://www.w3.org/2000/svg"
@@ -105,11 +105,11 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
         >
           <defs>
             <linearGradient id="vibrantGold2" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.65" />
-              <stop offset="30%" stopColor="#f59e0b" stopOpacity="0.75" />
-              <stop offset="60%" stopColor="#d97706" stopOpacity="0.5" />
-              <stop offset="85%" stopColor="#fde047" stopOpacity="0.7" />
-              <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.65" />
+              <stop offset="0%" stopColor="#fde047" stopOpacity="0.22" />
+              <stop offset="30%" stopColor="#fbbf24" stopOpacity="0.25" />
+              <stop offset="60%" stopColor="#f59e0b" stopOpacity="0.18" />
+              <stop offset="85%" stopColor="#fef08a" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#fde047" stopOpacity="0.22" />
             </linearGradient>
           </defs>
           <path
@@ -119,8 +119,8 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
         </svg>
       </div>
 
-      {/* 5. 緩慢深沉「第三層底部金黃湧泉湧浪」(Deep Golden Viscous Undercurrent) */}
-      <div className="absolute top-0 left-0 w-[200%] h-full opacity-65 animate-liquid-flow-2">
+      {/* 5. 緩慢深沉「第三層底部金黃湧泉湧浪」(Deep Golden Viscous Undercurrent) - 細膩薄霧 */}
+      <div className="absolute top-0 left-0 w-[200%] h-full opacity-14 animate-liquid-flow-2">
         <svg
           className="w-full h-full"
           xmlns="http://www.w3.org/2000/svg"
@@ -129,10 +129,10 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
         >
           <defs>
             <linearGradient id="vibrantGold3" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#fef3c7" stopOpacity="0.7" />
-              <stop offset="40%" stopColor="#fde047" stopOpacity="0.6" />
-              <stop offset="70%" stopColor="#f59e0b" stopOpacity="0.55" />
-              <stop offset="100%" stopColor="#fef3c7" stopOpacity="0.7" />
+              <stop offset="0%" stopColor="#fef9c3" stopOpacity="0.22" />
+              <stop offset="40%" stopColor="#fef08a" stopOpacity="0.2" />
+              <stop offset="70%" stopColor="#fcd34d" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#fef9c3" stopOpacity="0.22" />
             </linearGradient>
           </defs>
           <path
@@ -142,61 +142,61 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
         </svg>
       </div>
 
-      {/* 6. 動態熔融有機變形液態核心泡 (Organic High-Contrast Morphing Blobs) */}
+      {/* 6. 動態熔融有機變形液態核心泡 (Organic High-Contrast Morphing Blobs) - 輕柔淡雅 */}
 
-      {/* 中央主核：直襯於 IdeaX Logo 與標語正後方，高飽和度流淌 */}
+      {/* 中央主核：直襯於 IdeaX Logo 與標語正後方，柔淡淡金透光流淌 */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[62%] w-[640px] sm:w-[780px] md:w-[920px] h-[360px] sm:h-[440px] md:h-[500px] bg-gradient-to-tr from-amber-400/65 via-yellow-300/80 to-amber-300/70 blur-xl sm:blur-2xl animate-liquid-morph-1 rounded-[42%_58%_70%_30%/45%_45%_55%_55%]"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[62%] w-[640px] sm:w-[780px] md:w-[920px] h-[360px] sm:h-[440px] md:h-[500px] bg-gradient-to-tr from-amber-300/22 via-yellow-200/35 to-amber-200/22 blur-2xl sm:blur-3xl animate-liquid-morph-1 rounded-[42%_58%_70%_30%/45%_45%_55%_55%]"
         style={{ transformOrigin: 'center center' }}
       />
 
-      {/* 左上方流動蜂蜜金旋流 (Left Molten Honey Whirl) */}
+      {/* 左上方流動蜂蜜金旋流 (Left Molten Honey Whirl) - 輕透淺淡 */}
       <div
-        className="absolute -top-8 left-[3%] sm:left-[8%] w-[360px] sm:w-[480px] h-[340px] sm:h-[460px] bg-gradient-to-br from-yellow-300/70 via-amber-400/60 to-amber-500/50 blur-lg sm:blur-xl animate-liquid-morph-2 rounded-[60%_40%_30%_70%/60%_30%_70%_40%]"
+        className="absolute -top-8 left-[3%] sm:left-[8%] w-[360px] sm:w-[480px] h-[340px] sm:h-[460px] bg-gradient-to-br from-yellow-200/25 via-amber-300/18 to-yellow-400/15 blur-xl sm:blur-2xl animate-liquid-morph-2 rounded-[60%_40%_30%_70%/60%_30%_70%_40%]"
         style={{ animationDelay: '-2.5s' }}
       />
 
-      {/* 右上方澄澈琥珀渦流 (Right Amber Eddy) */}
+      {/* 右上方澄澈琥珀渦流 (Right Amber Eddy) - 輕透淺淡 */}
       <div
-        className="absolute top-6 right-[3%] sm:right-[7%] w-[380px] sm:w-[500px] h-[360px] sm:h-[480px] bg-gradient-to-bl from-yellow-200/75 via-amber-400/65 to-yellow-500/55 blur-lg sm:blur-xl animate-liquid-morph-3 rounded-[35%_65%_60%_40%/55%_45%_55%_45%]"
+        className="absolute top-6 right-[3%] sm:right-[7%] w-[380px] sm:w-[500px] h-[360px] sm:h-[480px] bg-gradient-to-bl from-yellow-100/30 via-amber-200/20 to-yellow-300/18 blur-xl sm:blur-2xl animate-liquid-morph-3 rounded-[35%_65%_60%_40%/55%_45%_55%_45%]"
         style={{ animationDelay: '-4.5s' }}
       />
 
-      {/* 7. 滑鼠/觸控互動跟隨液態波紋 (Interactive Viscous Ripple) */}
+      {/* 7. 滑鼠/觸控互動跟隨液態波紋 (Interactive Viscous Ripple) - 輕透靈動 */}
       <div
-        className="absolute w-[260px] sm:w-[380px] h-[260px] sm:h-[380px] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-yellow-300/70 via-amber-300/85 to-yellow-400/60 blur-xl rounded-full transition-opacity duration-500 ease-out animate-liquid-morph-1 pointer-events-none"
+        className="absolute w-[260px] sm:w-[380px] h-[260px] sm:h-[380px] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-yellow-200/30 via-amber-200/35 to-yellow-300/25 blur-2xl rounded-full transition-opacity duration-500 ease-out animate-liquid-morph-1 pointer-events-none"
         style={{
           ...interactiveBlobStyle,
-          opacity: mousePos ? 0.9 : 0.5,
+          opacity: mousePos ? 0.45 : 0.2,
         }}
       />
 
-      {/* 8. 陽光水波折射粼光掃描 (Sunlit Caustic Sheen Sweep) */}
+      {/* 8. 陽光水波折射粼光掃描 (Sunlit Caustic Sheen Sweep) - 細微光芒 */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-[50%] -left-[50%] w-[200%] h-[200%] bg-gradient-to-r from-transparent via-white/50 to-transparent -rotate-45 animate-liquid-caustic pointer-events-none" />
+        <div className="absolute -top-[50%] -left-[50%] w-[200%] h-[200%] bg-gradient-to-r from-transparent via-white/30 to-transparent -rotate-45 animate-liquid-caustic pointer-events-none" />
       </div>
 
-      {/* 9. 鮮明立體浮動金黃液滴 (Vivid Viscous Amber Dews) */}
+      {/* 9. 鮮明立體浮動金黃液滴 (Vivid Viscous Amber Dews) - 晶瑩微亮 */}
       <div
-        className="absolute top-[20%] left-[16%] w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-gradient-to-br from-yellow-200 to-amber-500 shadow-[0_0_16px_rgba(245,158,11,0.95)] animate-liquid-droplet"
+        className="absolute top-[20%] left-[16%] w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-gradient-to-br from-yellow-100 to-amber-300/70 shadow-[0_0_10px_rgba(245,158,11,0.45)] animate-liquid-droplet"
         style={{ animationDelay: '0s' }}
       />
       <div
-        className="absolute top-[32%] right-[18%] w-5 sm:w-6 h-5 sm:h-6 rounded-full bg-gradient-to-br from-amber-200 to-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.95)] animate-liquid-droplet"
+        className="absolute top-[32%] right-[18%] w-5 sm:w-6 h-5 sm:h-6 rounded-full bg-gradient-to-br from-amber-100 to-yellow-300/70 shadow-[0_0_12px_rgba(250,204,21,0.45)] animate-liquid-droplet"
         style={{ animationDelay: '1.5s' }}
       />
       <div
-        className="absolute top-[56%] left-[22%] w-3 sm:w-4 h-3 sm:h-4 rounded-full bg-gradient-to-br from-yellow-100 to-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.85)] animate-liquid-droplet"
+        className="absolute top-[56%] left-[22%] w-3 sm:w-4 h-3 sm:h-4 rounded-full bg-gradient-to-br from-yellow-50 to-amber-300/60 shadow-[0_0_8px_rgba(245,158,11,0.35)] animate-liquid-droplet"
         style={{ animationDelay: '2.8s' }}
       />
       <div
-        className="absolute top-[68%] right-[22%] w-4 sm:w-4.5 h-4 sm:h-4.5 rounded-full bg-gradient-to-br from-yellow-300 to-amber-600 shadow-[0_0_14px_rgba(217,119,6,0.9)] animate-liquid-droplet"
+        className="absolute top-[68%] right-[22%] w-4 sm:w-4.5 h-4 sm:h-4.5 rounded-full bg-gradient-to-br from-yellow-200 to-amber-400/65 shadow-[0_0_10px_rgba(217,119,6,0.4)] animate-liquid-droplet"
         style={{ animationDelay: '2.1s' }}
       />
 
-      {/* 10. 精緻水面流動微波細紋 (Liquid Surface Ripple Micro-Contours) */}
+      {/* 10. 精緻水面流動微波細紋 (Liquid Surface Ripple Micro-Contours) - 淺淡細紋 */}
       <svg
-        className="absolute inset-0 w-full h-full opacity-45 pointer-events-none"
+        className="absolute inset-0 w-full h-full opacity-20 pointer-events-none"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 1440 600"
       >
@@ -204,7 +204,7 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
           d="M 100,160 Q 400,60 720,150 T 1360,110"
           fill="none"
           stroke="#f59e0b"
-          strokeWidth="2"
+          strokeWidth="1.5"
           strokeDasharray="6 10"
           className="animate-liquid-wave"
         />
@@ -212,7 +212,7 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
           d="M 60,300 Q 360,220 740,280 T 1420,240"
           fill="none"
           stroke="#eab308"
-          strokeWidth="2"
+          strokeWidth="1.5"
           strokeDasharray="8 14"
           className="animate-liquid-wave-rev"
         />

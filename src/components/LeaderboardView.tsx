@@ -755,9 +755,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-stone-700">
               <div className="p-3 bg-white rounded-xl border border-amber-200">
-                <span className="font-black text-amber-950 block mb-1">1. 痛點免費提出</span>
+                <span className="font-black text-amber-950 block mb-1">1. 痛點提出與解鎖機制</span>
                 <p className="text-[11px] leading-relaxed text-stone-600">
-                  痛點可 NT$ 0 元免費提出；下方各專家可留專屬落地方案並自訂解鎖金額，需付解答者所設金額解鎖。
+                  痛點可發布生活與產業難題；各領域人才可提供專屬落地方案並自訂解鎖金額，需付解答者所設金額解鎖。
                 </p>
               </div>
 

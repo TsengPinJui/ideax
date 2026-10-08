@@ -214,17 +214,18 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               探索Idea
             </button>
 
-            {/* 3. 痛點-> */}
+            {/* 3. 痛點 → */}
             <button
               type="button"
               onClick={onGoToPainPoints || onBackToOldSite}
-              className="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold group"
+              title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
             >
-              痛點-&gt;
+              <span>痛點</span>
+              <ArrowRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
-            {/* 4. 申請參賽者 */}
+            {/* 4. 報名參賽 */}
             <button
               type="button"
               onClick={() => {
@@ -236,7 +237,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               }}
               className="hidden md:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
             >
-              申請參賽者
+              報名參賽
             </button>
 
             {/* 5. 成為專家 */}
@@ -264,15 +265,29 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               推廣大使
             </button>
 
-            {/* 行動版痛點-> (風格一致) */}
-            <button
-              onClick={onGoToPainPoints || onBackToOldSite}
-              className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
-              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
-            >
-              <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>痛點-&gt;</span>
-            </button>
+            {/* 行動版：優先保留痛點（隨著賽程變動，若換至提案階段則自動變換為提案捷徑），移除競賽辦法 */}
+            {stageInfo.isProposalStage ? (
+              <button
+                type="button"
+                onClick={() => onNavigate('submit')}
+                className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-98"
+                title="進入創星季提案"
+              >
+                <Send className="w-3.5 h-3.5 text-stone-950" />
+                <span>提案</span>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-950" />
+              </button>
+            ) : (
+              <button
+                onClick={onGoToPainPoints || onBackToOldSite}
+                className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98 group"
+                title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
+              >
+                <Flame className="w-3.5 h-3.5 text-rose-500" />
+                <span>痛點</span>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -372,7 +387,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               </p>
               <div className="pt-2 text-xs text-stone-700 bg-stone-50 p-3 rounded-lg border border-stone-200">
                 <b>【前言與約束力說明】</b>
-                本大賽規章依誠信、公開、市場實戰原則制定。凡參與「IdeaX 創星季」之全體參賽團隊、提痛點者、會員注資者及專家評審，均受本競賽辦法各項條款之約束與保護。
+                本競賽規章依誠信、公開、市場實戰原則制定。凡參與「IdeaX 創星季」之全體參賽團隊、提痛點者、會員注資者及專家評審，均受本競賽辦法各項條款之約束與保護。
               </div>
             </div>
 
@@ -460,7 +475,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   一、註冊與登入：註冊為 IdeaX 創點子用戶帳號並完成登入，系統即自動配發 100,000 創星幣模擬額度。
                 </p>
                 <p>
-                  二、選擇身分角色：進入競賽專區，依意願點選「申請參賽者」（填寫團隊名稱與基本資料）或「成為專家」（填寫專業背景與資歷）。<b>【特別提醒：不可兼任參賽者與專家】</b>，為維持評審客觀與利益迴避，請依實際角色擇一申請。
+                  二、選擇身分角色：進入競賽專區，依意願點選「報名參賽」（填寫團隊名稱與基本資料）或「成為專家」（填寫專業背景與資歷）。<b>【特別提醒：不可兼任參賽者與專家】</b>，為維持評審客觀與利益迴避，請依實際角色擇一申請。
                 </p>
                 <p>
                   三、送出申請與審核：線上送出申請後等待主辦方管理員審核。審核通過之專家享有專屬 3,000,000 創星幣投資評選額度。
@@ -588,7 +603,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   一、第一階段 • 痛點徵件（10/31 00:00 – 11/13 16:30）：全體會員發布生活不便與產業切身痛點，過審即送 200 點，建立題庫供各隊選題解題。
                 </p>
                 <p>
-                  二、第二階段 (一) • 預先提案（11/14 10:00 – 11/15 16:30）：【關閉募資(投資)功能】，開放用戶註冊報名、申請參賽者/專家身分、線上投件提案、主辦單位進行審核與提案預覽。
+                  二、第二階段 (一) • 預先提案（11/14 10:00 – 11/15 16:30）：【關閉募資(投資)功能】，開放用戶註冊報名、報名參賽/專家身分、線上投件提案、主辦單位進行審核與提案預覽。
                 </p>
                 <p>
                   三、第二階段 (二) • 模擬募資（11/16 10:00 – 12/04 16:30）：【全面開放功能】，期間持續開放報名與提案（至 12/04 16:30 截止收件）！全體會員使用創星幣模擬注資投票，主辦單位持續審核，總額前 20 名晉級決審。
@@ -621,13 +636,13 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   二、原創性保證與智慧財產權聲明：參賽作品必須為團隊或個人原創，嚴禁抄襲、剽竊、冒名頂替或侵犯他人專利權、著作權、商標權或營業秘密。若經查證屬實或第三方檢舉侵權成立，主辦單位將立即撤銷其參賽及獲獎資格，並追回全數發放之獎金、點數與榮譽徽章，衍生之一切法律與賠償責任由參賽者自行承擔。
                 </p>
                 <p>
-                  三、身分利益迴避與嚴格不可兼任原則：為維持大賽之客觀公正與公信力，參賽者與專家評審身分嚴格互斥，<b>不可兼任參賽者與專家</b>。若經查獲同時具備參賽者與專家雙重身分或未主動揭露利害關係者，主辦單位得主動取消該團隊之評選資格。
+                  三、身分利益迴避與嚴格不可兼任原則：為維持競賽之客觀公正與公信力，參賽者與專家評審身分嚴格互斥，<b>不可兼任參賽者與專家</b>。若經查獲同時具備參賽者與專家雙重身分或未主動揭露利害關係者，主辦單位得主動取消該團隊之評選資格。
                 </p>
                 <p>
                   四、多件提案與雙軌並行權利：參賽團隊可以同時提出痛點與創新解方，提案件數不設上限。若同一團隊有多件作品入圍，決選時各專案將獨立受評；但若獲獎名次重複，各項獎項與獎勵均獨立計算享有。
                 </p>
                 <p>
-                  五、流通幣別「創星幣」性質與禁止兌現買賣：創星幣純屬大賽市場模擬關注度驗證權益，非真實法幣亦不具實體財產價值，嚴禁私下以現金或任何對價進行買賣、轉讓、質押或兌現；競賽錢包獨立隔離，絕不影響主站真實錢包資產與餘額。
+                  五、流通幣別「創星幣」性質與禁止兌現買賣：創星幣純屬競賽市場模擬關注度驗證權益，非真實法幣亦不具實體財產價值，嚴禁私下以現金或任何對價進行買賣、轉讓、質押或兌現；競賽錢包獨立隔離，絕不影響主站真實錢包資產與餘額。
                 </p>
                 <p>
                   六、誠信原則、防洗票與系統反作弊機制：嚴禁利用多重分身帳號、自動化腳本機器人、代理伺服器或漏洞進行灌票、洗幣、自我注資或干擾正常營運秩序。系統全天候啟動可信後端簽章查核與防刷監控，經查有惡意刷票情事者，主辦單位有權扣除違規票數並直接取消參賽資格。
@@ -645,7 +660,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   八、各項獎勵點數使用效期與折現約定：除了前三名（冠、亞、季軍）獲獎團隊所獲得之平台點數效期為 180 日外，其餘所有活動獎勵點數（含提出痛點獎 200 點、痛點採用好禮、推廣大使推薦獎勵 300 點等）效期皆為 60 日。點數皆可用於 IdeaX 創點子平台提問與付費服務，不得轉讓他人、拍賣或要求折換等值現金。
                 </p>
                 <p>
-                  九、成果展示、肖像權與影音素材宣傳授權：參賽者同意無償授權主辦單位於非營利、大賽推廣及成果展示之目的下，得公開使用、重製、改作、公開傳輸、公開播送參賽團隊所繳交之提案資料、簡報、影片、照片及隊員肖像，並於相關媒體報導與成果手冊中刊載。
+                  九、成果展示、肖像權與影音素材宣傳授權：參賽者同意無償授權主辦單位於非營利、競賽推廣及成果展示之目的下，得公開使用、重製、改作、公開傳輸、公開播送參賽團隊所繳交之提案資料、簡報、影片、照片及隊員肖像，並於相關媒體報導與成果手冊中刊載。
                 </p>
                 <p>
                   十、個人資料保護與隱私權聲明：主辦單位為辦理本競賽活動，需蒐集、處理及利用參賽者之個人資料（包括姓名、電話、電子郵件、學校或任職單位等）。蒐集之個資僅供本競賽活動之身分確認、賽程聯繫、獲獎公告與稅務申報等法定行政用途使用，主辦單位嚴格恪守個人資料保護法規定。

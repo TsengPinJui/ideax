@@ -19,7 +19,9 @@ import {
   Download,
   Info,
   Check,
+  Zap,
 } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 import { StarSeasonProposal } from '../../types/competition';
 import {
   CompetitionExpertRecord,
@@ -38,7 +40,11 @@ import {
   exportRewardsSummaryExcel,
   FinalProposalAggregateScore,
   UserRewardAggregatedItem,
+  executeAutomatedRewardsDistribution,
+  getRewardsDistributionHistory,
+  RewardsDistributionRecord,
 } from '../../services/finalEvaluationService';
+import { syncUserToFirestore } from '../../services/firestoreSync';
 
 interface AdminFinalEvaluationManagementModalProps {
   isOpen: boolean;
@@ -60,12 +66,17 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
   const [experts, setExperts] = useState<CompetitionExpertRecord[]>(() => getCompetitionExperts());
   const [isPublished, setIsPublished] = useState<boolean>(() => getIsFinalResultsPublished());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [distributionRecord, setDistributionRecord] = useState<RewardsDistributionRecord | null>(() => getRewardsDistributionHistory());
+  const [isDistributingRewards, setIsDistributingRewards] = useState<boolean>(false);
+
+  const { currentUser, setCurrentUser, availableUsers, setAvailableUsers, setTransactions, addNotification } = useApp();
 
   // 重新載入最新狀態
   const reloadData = () => {
     setNominatedIds(getNominatedProposalIds());
     setExperts(getCompetitionExperts());
     setIsPublished(getIsFinalResultsPublished());
+    setDistributionRecord(getRewardsDistributionHistory());
   };
 
   useEffect(() => {
@@ -170,6 +181,40 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
       triggerToast('📥 全體獎勵統計總表 Excel 已成功下載！');
     } catch (e: any) {
       triggerToast('匯出失敗：' + (e.message || '檔案生成錯誤'));
+    }
+  };
+
+  // 執行競賽相關獎勵之自動化發放 (現金自動入帳、點數自動配發、站內信自動推送、創之星徽章自動授予)
+  const handleDistributeAllRewards = async () => {
+    if (isDistributingRewards) return;
+    const totalCashSum = rewardsSummary.reduce((acc, r) => acc + r.totalCash, 0);
+    const totalPointsSum = rewardsSummary.reduce((acc, r) => acc + r.totalPoints, 0);
+
+    const confirmText = `確定要執行【競賽相關獎勵之自動化發放】嗎？\n\n系統將自動為全體獲獎者（共 ${rewardsSummary.length} 位）：\n1. 自動發放現金獎金（累計 NT$ ${totalCashSum.toLocaleString()}）入各帳號餘額\n2. 自動配發平台提問點數（累計 ${totalPointsSum.toLocaleString()} 點，前三名180日、其餘60日）\n3. 系統自動推送獲獎專屬站內信通知\n4. 前十名獲獎團隊自動授予「創之星」榮譽徽章\n5. 自動記錄稽核日誌與發放流水帳！`;
+
+    if (!window.confirm(confirmText)) return;
+
+    setIsDistributingRewards(true);
+    try {
+      const res = await executeAutomatedRewardsDistribution({
+        adminId: currentUser?.id || 'user-admin',
+        rewards: rewardsSummary,
+        availableUsers,
+        setAvailableUsers,
+        currentUser,
+        setCurrentUser,
+        addNotification,
+        setTransactions,
+        syncUserToFirestore,
+      });
+
+      setDistributionRecord(res.record);
+      triggerToast(res.message);
+      if (onProposalsUpdated) onProposalsUpdated();
+    } catch (err: any) {
+      triggerToast('發放失敗：' + (err.message || '系統錯誤'));
+    } finally {
+      setIsDistributingRewards(false);
     }
   };
 
@@ -697,7 +742,18 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleDistributeAllRewards}
+                    disabled={isDistributingRewards}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                    title="系統自動將現金入帳、配發平台點數、推播獲獎站內信、授予創之星徽章並寫入審計流水"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-stone-950 fill-stone-950" />
+                    <span>{isDistributingRewards ? '自動發放執行中...' : '⚡ 一鍵自動化發放全體競賽獎勵'}</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleExportRewardsExcel}
@@ -708,6 +764,28 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
                   </button>
                 </div>
               </div>
+
+              {/* 自動發放歷史狀態橫幅 */}
+              {distributionRecord && (
+                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                  <div className="flex items-center gap-2.5 text-emerald-950">
+                    <div className="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <span className="font-black text-emerald-900">
+                        全體競賽獎勵已自動化發放完成！
+                      </span>
+                      <p className="text-[11px] text-emerald-800 mt-0.5">
+                        累計發放 <b>{distributionRecord.recipientsCount}</b> 位獲獎者 • 總發放獎金 <b>NT$ {distributionRecord.totalCashDistributed.toLocaleString()}</b> • 總配發平台點數 <b>{distributionRecord.totalPointsDistributed.toLocaleString()} 點</b>（最後執行時間：{new Date(distributionRecord.distributedAt).toLocaleString('zh-TW')}）
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold shrink-0 self-start sm:self-auto">
+                    流水號: {distributionRecord.distributionId.slice(-10)}
+                  </span>
+                </div>
+              )}
 
               {/* 獎勵統計總表 */}
               <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">

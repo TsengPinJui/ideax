@@ -50,6 +50,18 @@ export class PwaNotificationService {
   }
 
   /**
+   * 偵測當前是否處於 iFrame 框架內（例如預覽環境或第三方內嵌）
+   */
+  public static isInIframe(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
    * 取得當前通知權限狀態
    */
   public static getPermissionState(): NotificationPermission | 'unsupported' {
@@ -79,7 +91,7 @@ export class PwaNotificationService {
   }
 
   /**
-   * 主動請求瀏覽器與系統原生通知授權
+   * 主動請求瀏覽器與系統原生通知授權（標準呼叫）
    */
   public static async requestPermission(): Promise<NotificationPermission | 'unsupported'> {
     if (!this.isNotificationSupported()) {
@@ -95,6 +107,47 @@ export class PwaNotificationService {
     } catch (error) {
       console.warn('Notification permission request error:', error);
       return Notification.permission;
+    }
+  }
+
+  /**
+   * 直接叫出瀏覽器授權視窗，並附帶環境與錯誤狀態診斷
+   */
+  public static async requestPermissionDirect(): Promise<{
+    permission: NotificationPermission | 'unsupported';
+    inIframe: boolean;
+    wasDeniedBefore: boolean;
+    error?: string;
+  }> {
+    if (!this.isNotificationSupported()) {
+      return {
+        permission: 'unsupported',
+        inIframe: this.isInIframe(),
+        wasDeniedBefore: false,
+      };
+    }
+
+    const inIframe = this.isInIframe();
+    const wasDeniedBefore = Notification.permission === 'denied';
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        this.setPushEnabled(true);
+      }
+      return {
+        permission,
+        inIframe,
+        wasDeniedBefore,
+      };
+    } catch (error: any) {
+      console.warn('Direct notification request error:', error);
+      return {
+        permission: Notification.permission,
+        inIframe,
+        wasDeniedBefore,
+        error: error?.message || String(error),
+      };
     }
   }
 

@@ -4,44 +4,32 @@ import {
   Send,
   ArrowLeft,
   ArrowRight,
-  Upload,
-  X,
-  FileText,
   AlertCircle,
   CheckCircle2,
-  Coins,
-  LogIn,
   RefreshCw,
-  Plus,
   Users,
   GraduationCap,
-  TrendingUp,
-  ShieldCheck,
-  Megaphone,
   Flame,
+  Check,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
   StarSeasonProposal,
   StarSeasonTrack,
-  STAR_SEASON_TRACKS,
   OFFICIAL_COMPETITION_TRACKS,
 } from '../../types/competition';
-import {
-  registerParticipant,
-  uploadProposalAttachment,
-} from '../../services/competitionClientService';
+import { registerParticipant } from '../../services/competitionClientService';
 import { recordNewParticipantRegistration } from '../../services/competitionAdminSync';
-import { PainPointSelector } from './PainPointSelector';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
+import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 
 interface ParticipantFullPageProps {
   onNavigate: (view: 'home' | 'explore' | 'rules' | 'submit' | 'judge' | 'ambassador') => void;
   onBackToOldSite: () => void;
   onOpenAuth: () => void;
   onGoToPainPoints?: () => void;
-  painPointProposals: StarSeasonProposal[];
+  painPointProposals?: StarSeasonProposal[];
   onSuccess: () => void;
 }
 
@@ -50,22 +38,20 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
   onBackToOldSite,
   onOpenAuth,
   onGoToPainPoints,
-  painPointProposals,
   onSuccess,
 }) => {
   const {
     currentUser,
     setCurrentUser,
-    setQuestions,
-    setAnswers,
-    setAvailableUsers,
     addNotification,
     openAboutModal,
   } = useApp();
 
+  const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
+
   const [termsDoc, setTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
-  // 依使用者指示：用戶申請任何驗證或報名時，絕對不自動帶入虛擬測試資料
+  // 依指示：用戶申請任何驗證或報名時，不自動帶入虛擬測試資料
   const isRealName = Boolean(
     currentUser?.name &&
     !currentUser.name.includes('測試') &&
@@ -86,90 +72,40 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
     !currentUser.email.includes('guest')
   );
 
-  // 團隊基本資料
+  // 團隊基本資料 (報名輸入資料)
   const [teamName, setTeamName] = useState('');
   const [leaderName, setLeaderName] = useState(isRealName ? currentUser?.name || '' : '');
   const [leaderPhone, setLeaderPhone] = useState('');
   const [leaderEmail, setLeaderEmail] = useState(isRealEmail ? currentUser?.email || '' : '');
   const [schoolName, setSchoolName] = useState('');
+  const [showOrganizationOnCard, setShowOrganizationOnCard] = useState(false);
   const [department, setDepartment] = useState('');
   const [advisorName, setAdvisorName] = useState('');
   const [teamMembersInput, setTeamMembersInput] = useState('');
-
-  // 提案內容與對接痛點
   const [participantTrack, setParticipantTrack] = useState<StarSeasonTrack>('ai_applications');
-  const [projectTitle, setProjectTitle] = useState('');
-  const [participantSourcePainPointId, setParticipantSourcePainPointId] = useState('');
-  const [participantSummary, setParticipantSummary] = useState('');
-  const [participantDescription, setParticipantDescription] = useState('');
 
-  // 實戰募資模擬與佐證檔案 (SSP體驗規格)
-  const [targetFundingAmount, setTargetFundingAmount] = useState(100000);
-  const [videoUrl, setVideoUrl] = useState('');
-  const [rewardPlanDescription, setRewardPlanDescription] = useState('');
-  const [bpFile, setBpFile] = useState<{ url: string; name: string; size?: number } | null>(null);
-  const [prototypeImgFile, setPrototypeImgFile] = useState<{ url: string; name: string } | null>(null);
+  // 報名意向調查 (主辦單位統計參賽分布與得知管道)
+  const [expectedItems, setExpectedItems] = useState<string[]>(['痛點', '解方']);
+  const [referralSource, setReferralSource] = useState<string>('');
+  const [referralSourceOther, setReferralSourceOther] = useState<string>('');
 
   const [participantPledgeAgreed, setParticipantPledgeAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingBp, setIsUploadingBp] = useState(false);
-  const [isUploadingProto, setIsUploadingProto] = useState(false);
+  const [isRegisteredSuccess, setIsRegisteredSuccess] = useState(false);
+
+  // 檢查用戶是否已完成報名
+  const isAlreadyRegistered = Boolean(
+    currentUser?.competitionBadges?.includes('創星季') ||
+    (currentUser as any)?.isCompetitionRegistered ||
+    (typeof window !== 'undefined' && currentUser?.id && localStorage.getItem(`ideax_participant_registered_${currentUser.id}`))
+  );
 
   const showToast = (message: string) => {
     addNotification({
-      title: '創星季參賽者報名',
+      title: '創星季報名參賽',
       message,
       type: 'system',
     });
-  };
-
-  const handleBpUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      showToast('簡報檔案請勿超過 20MB');
-      return;
-    }
-    setIsUploadingBp(true);
-    try {
-      const res = await uploadProposalAttachment(file);
-      if (res && res.url) {
-        setBpFile({
-          url: res.url,
-          name: res.name || file.name,
-          size: res.size || file.size,
-        });
-        showToast('BP 簡報上傳成功！');
-      }
-    } catch (err: any) {
-      showToast(err.message || '上傳失敗');
-    } finally {
-      setIsUploadingBp(false);
-    }
-  };
-
-  const handleProtoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 15 * 1024 * 1024) {
-      showToast('展示圖檔請勿超過 15MB');
-      return;
-    }
-    setIsUploadingProto(true);
-    try {
-      const res = await uploadProposalAttachment(file);
-      if (res && res.url) {
-        setPrototypeImgFile({
-          url: res.url,
-          name: res.name || file.name,
-        });
-        showToast('成果原型圖上傳成功！');
-      }
-    } catch (err: any) {
-      showToast(err.message || '上傳失敗');
-    } finally {
-      setIsUploadingProto(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -189,10 +125,10 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
       !teamName.trim() ||
       !leaderName.trim() ||
       !leaderPhone.trim() ||
-      !projectTitle.trim() ||
-      !participantSummary.trim()
+      !leaderEmail.trim() ||
+      !schoolName.trim()
     ) {
-      showToast('請完整填寫團隊名稱、負責人、電話、提案主題與構想摘要');
+      showToast('請完整填寫團隊名稱、負責人、電話、Email 與學校/機構名稱');
       return;
     }
 
@@ -216,31 +152,27 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
         leaderEmail: leaderEmail.trim(),
         schoolName: schoolName.trim(),
         department: department.trim(),
+        showOrganization: showOrganizationOnCard,
         advisorName: advisorName.trim(),
         teamMembers: members,
-        projectTitle: projectTitle.trim(),
         track: participantTrack,
-        summary: participantSummary.trim(),
-        description: participantDescription.trim(),
-        sourcePainPointId: participantSourcePainPointId || undefined,
-        targetFundingAmount: Number(targetFundingAmount) || 100000,
-        videoUrl: videoUrl.trim() || undefined,
-        rewardPlanDescription: rewardPlanDescription.trim() || '贊助者搶先體驗方案',
-        bpDocumentUrl: bpFile?.url,
-        bpDocumentName: bpFile?.name,
-        bpDocumentSize: bpFile?.size,
-        prototypeImageUrl: prototypeImgFile?.url,
-        prototypeImageName: prototypeImgFile?.name,
+        expectedItems,
+        referralSource: referralSource === '其他' && referralSourceOther.trim() ? `其他 (${referralSourceOther.trim()})` : referralSource,
+        referralSourceOther: referralSourceOther.trim(),
         pledgeAgreed: true,
       });
 
       if (res.success) {
-        showToast('恭喜！參賽報名成功，已榮獲【創星季參賽者】專屬徽章！');
+        showToast('恭喜！報名參賽登錄成功，您已獲得【創星季參賽者】專屬榮譽徽章！');
+
+        try {
+          if (typeof window !== 'undefined' && currentUser?.id) {
+            localStorage.setItem(`ideax_participant_registered_${currentUser.id}`, 'true');
+          }
+        } catch {}
 
         // 同步錄入管理員後台審核資料庫
         try {
-          const propId = res.proposalId || `prop-reg-${Date.now()}`;
-          const painPointObj = painPointProposals.find((p) => p.id === participantSourcePainPointId);
           recordNewParticipantRegistration({
             teamName: teamName.trim(),
             leaderName: leaderName.trim(),
@@ -251,21 +183,8 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
             advisorName: advisorName.trim() || undefined,
             teamMembers: members,
             track: participantTrack,
-            projectTitle: projectTitle.trim(),
-            summary: participantSummary.trim(),
-            description: participantDescription.trim(),
-            sourcePainPointId: participantSourcePainPointId || undefined,
-            sourcePainPointTitle: painPointObj?.title || undefined,
-            bpDocumentUrl: bpFile?.url,
-            bpDocumentName: bpFile?.name,
-            bpDocumentSize: bpFile?.size,
-            prototypeImageUrl: prototypeImgFile?.url,
-            prototypeImageName: prototypeImgFile?.name,
-            videoUrl: videoUrl.trim() || undefined,
-            targetFundingAmount,
-            rewardPlanDescription: rewardPlanDescription.trim() || '贊助者搶先體驗方案',
             pledgeAgreed: true,
-          }, currentUser.id, propId);
+          }, currentUser.id, `reg-${currentUser.id}`);
         } catch {}
 
         // 同步更新用戶資料庫徽章
@@ -275,40 +194,12 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
           return {
             ...prev,
             competitionBadges: badges.includes('創星季') ? badges : [...badges, '創星季'],
+            isCompetitionRegistered: true,
           };
         });
 
-        // 同步寫入舊站創點子/痛點專區與對應解方
-        const exclusiveChallengeUrl = `https://ideax.tw/challenge?proposalId=${res.proposalId || 'new'}`;
-        if (participantSourcePainPointId) {
-          const newAns = {
-            id: `ans-${res.proposalId || Date.now()}`,
-            questionId: participantSourcePainPointId,
-            solverId: currentUser.id,
-            solverName: leaderName.trim() || currentUser.name,
-            solverAvatar: currentUser.avatar,
-            title: projectTitle.trim(),
-            content: `💡【創星季參賽提案】${projectTitle.trim()}\n\n${participantSummary.trim()}\n\n${participantDescription.trim()}\n\n🔗 參賽網站專屬專案連結：${exclusiveChallengeUrl}`,
-            exclusiveChallengeUrl,
-            isStarSeasonSolution: true,
-            starSeasonProposalId: res.proposalId,
-            sourcePainPointProposalId: participantSourcePainPointId,
-            price: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          setAnswers((prev: any) => [newAns, ...prev]);
-          setQuestions((prev: any) =>
-            prev.map((q: any) =>
-              q.id === participantSourcePainPointId
-                ? { ...q, answersCount: (q.answersCount || 0) + 1 }
-                : q
-            )
-          );
-        }
-
+        setIsRegisteredSuccess(true);
         onSuccess();
-        onNavigate('home');
       } else {
         showToast(res.message || '報名失敗');
       }
@@ -323,7 +214,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-24 font-sans">
       {/* 頂部導覽列 */}
       <header className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
-        {/* 創星季廣播橫幅：誠徵各行業專家參與注資，注資額300萬（點擊申請） */}
+        {/* 創星季廣播橫幅 */}
         <StarSeasonBroadcastBanner onApply={() => onNavigate('judge')} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -335,10 +226,10 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="p-1 -m-1 rounded-xl hover:bg-amber-100/60 active:scale-95 transition-all cursor-pointer flex items-center justify-center group"
-                title="點擊回到 IdeaX 舊站首頁"
-                aria-label="回到舊站首頁"
+                title="點擊回到 IdeaX 創點子平台首頁"
+                aria-label="回到 IdeaX 創點子平台首頁"
               >
-                <img src="/logo-bulb.png" alt="IdeaX - 點擊回舊站首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
+                <img src="/logo-bulb.png" alt="IdeaX 創點子平台 - 點擊回首頁" className="w-10.5 h-10.5 sm:w-12 sm:h-12 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:scale-105 transition-all" />
               </button>
               <button
                 type="button"
@@ -362,7 +253,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
               className="inline-flex items-center gap-1 text-xs font-bold text-stone-600 hover:text-amber-700 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>返回提案總覽</span>
+              <span>返回競賽首頁</span>
             </button>
           </div>
 
@@ -373,6 +264,10 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
               onClick={() => {
                 if (!currentUser || currentUser.id === 'user-guest') {
                   onOpenAuth();
+                  return;
+                }
+                if (!isAlreadyRegistered && !isRegisteredSuccess) {
+                  showToast('請先於本頁完成「報名參賽」團隊資料登錄，即可前往提案！');
                   return;
                 }
                 onNavigate('submit');
@@ -394,19 +289,20 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
               探索Idea
             </button>
 
-            {/* 3. 痛點-> */}
+            {/* 3. 痛點 → */}
             <button
               type="button"
               onClick={onGoToPainPoints || onBackToOldSite}
-              className="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold"
-              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold group"
+              title="前往 IdeaX 創點子平台 痛點專區並自動滾動至痛點區域"
             >
-              痛點-&gt;
+              <span>痛點</span>
+              <ArrowRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
-            {/* 4. 申請參賽者 (當前頁) */}
+            {/* 4. 報名參賽 (當前頁) */}
             <span className="px-3 py-1.5 rounded-xl text-stone-950 bg-white font-black shadow-2xs">
-              申請參賽者
+              報名參賽
             </span>
 
             {/* 5. 成為專家 */}
@@ -434,15 +330,29 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
               推廣大使
             </button>
 
-            {/* 行動版痛點-> (風格一致) */}
-            <button
-              onClick={onGoToPainPoints || onBackToOldSite}
-              className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98"
-              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
-            >
-              <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>痛點-&gt;</span>
-            </button>
+            {/* 行動版：優先保留痛點（隨著賽程變動，若換至提案階段則自動變換為提案捷徑），移除競賽辦法 */}
+            {stageInfo.isProposalStage ? (
+              <button
+                type="button"
+                onClick={() => onNavigate('submit')}
+                className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-98"
+                title="進入創星季提案"
+              >
+                <Send className="w-3.5 h-3.5 text-stone-950" />
+                <span>提案</span>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-950" />
+              </button>
+            ) : (
+              <button
+                onClick={onGoToPainPoints || onBackToOldSite}
+                className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98 group"
+                title="前往 IdeaX 創點子平台 痛點專區"
+              >
+                <Flame className="w-3.5 h-3.5 text-rose-500" />
+                <span>痛點</span>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -450,16 +360,21 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
       {/* 滿版 Hero 標題區 */}
       <section className="bg-gradient-to-b from-amber-100/70 via-yellow-50/50 to-stone-50 border-b border-amber-200/70 pt-8 pb-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center space-y-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/90 text-stone-950 font-black text-xs shadow-2xs">
+            <GraduationCap className="w-4 h-4 text-stone-950" />
+            <span>第一步：團隊報名資料登錄</span>
+          </div>
+
           <h1 className="text-2xl sm:text-4xl font-black text-stone-950 tracking-tight leading-snug">
-            申請成為創星季參賽者
+            報名參賽 — IdeaX 創星季
           </h1>
 
           <p className="text-xs sm:text-sm text-stone-700 max-w-2xl mx-auto leading-relaxed">
-            完成報名登錄後，您的帳號將在全站獲得「創星季」專屬榮譽徽章！提案將同步納入舊站「創點子/痛點」對應專區，並享有參賽專屬專案連結。
+            依競賽規定，提案或發表痛點前須先完成參賽團隊基本資料登記。登錄成功後，您的帳號將獲得「創星季」專屬身分徽章，並即可開始提案！
           </p>
 
           <div className="inline-flex flex-wrap items-center justify-center gap-2 pt-1 text-xs">
-            <span className="px-3 py-1 rounded-full bg-amber-400/90 text-stone-950 font-black shadow-2xs font-mono">
+            <span className="px-3 py-1 rounded-full bg-white border border-amber-300 text-stone-800 font-bold font-mono shadow-2xs">
               📝 報名時段：10/24 00:00 ～ 12/04 16:30
             </span>
             <span className="text-[11px] text-amber-900 font-bold">
@@ -472,7 +387,55 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
       {/* 滿版表單主體 */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4">
         <div className="bg-white rounded-3xl border border-stone-200/90 shadow-xl p-6 sm:p-10 space-y-8">
-          
+
+          {/* 若已報名成功或當前已具備參賽資格 */}
+          {(isRegisteredSuccess || isAlreadyRegistered) && (
+            <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-50 via-teal-50 to-amber-50 border-2 border-emerald-400 shadow-sm space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Check className="w-6 h-6 stroke-[3]" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-emerald-950">
+                    您已完成「報名參賽」團隊登錄！
+                  </h3>
+                  <p className="text-xs text-emerald-800 font-medium">
+                    您的帳號已具備「創星季」參賽者榮譽徽章，隨時可以前往提案專區提交創新提案。
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => onNavigate('submit')}
+                  className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all active:scale-98"
+                >
+                  <Send className="w-4 h-4 text-stone-950" />
+                  <span>前往提案頁面撰寫解方</span>
+                  <ArrowRight className="w-4 h-4 stroke-[3]" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onGoToPainPoints || onBackToOldSite}
+                  className="py-3 px-5 rounded-2xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-2xs"
+                >
+                  <Flame className="w-4 h-4 text-rose-500" />
+                  <span>查看創點子/痛點集 (IdeaX 平台)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigate('home')}
+                  className="py-3 px-5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  返回競賽首頁
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* 未登入提醒 */}
           {(!currentUser || currentUser.id === 'user-guest') && (
             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 flex items-center justify-between gap-4">
@@ -480,7 +443,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                 <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
                 <div className="text-xs">
                   <div className="font-black text-stone-900">尚未登入 IdeaX 會員帳號</div>
-                  <div className="text-stone-600">參賽者需綁定會員以核發「創星季」榮譽徽章與記錄提案權益。</div>
+                  <div className="text-stone-600">參賽者需綁定會員以核發「創星季」榮譽徽章與記錄團隊權益。</div>
                 </div>
               </div>
               <button
@@ -500,19 +463,19 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
               <div className="space-y-1">
                 <div className="font-black text-rose-900">⚠️ 競賽規範限制：不可兼任參賽者與專家</div>
                 <div className="leading-relaxed text-rose-800">
-                  您目前帳號具備「專家」身分。為維持大賽評審之客觀公正與利益迴避原則，<strong>不可兼任參賽者</strong>。若欲代表團隊投件參賽，請改以獨立之參賽團隊帳號登入。
+                  您目前帳號具備「專家」身分。為維持競賽評審之客觀公正與利益迴避原則，<strong>不可兼任參賽者</strong>。若欲代表團隊投件參賽，請改以獨立之參賽團隊帳號登入。
                 </div>
               </div>
             </div>
           )}
 
-          {/* 提痛點與提案雙軌並行提醒 */}
+          {/* 流程說明提示卡片 */}
           <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-300 flex items-start gap-3 text-xs text-amber-950">
             <CheckCircle2 className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <div className="font-black text-amber-900">💡 溫馨提醒：可以同時提出痛點與解決方案！</div>
+            <div className="space-y-1">
+              <div className="font-black text-amber-900">📋 參賽流程：先報名登錄團隊資料，後續即可自由提案</div>
               <div className="leading-relaxed text-stone-700">
-                若您已在「痛點徵件專區」發布生活痛點（過審贈 200 點），您依然可以在此提交創新解方企劃，爭取大眾模擬注資與前三名最高 3 萬元等值大獎，雙向權益與獎勵完全享有！
+                本頁面專供登錄參賽團隊之成員、學校與聯絡資料。完成報名後，系統即開放完整的提案頁面（含專案構想、商業計畫書、成果展示圖與募資目標設計），您可以立即前往提案或隨時登入修改！
               </div>
             </div>
           </div>
@@ -524,7 +487,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
               <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
                 <div className="font-black text-stone-900 text-sm flex items-center gap-2">
                   <Users className="w-4 h-4 text-amber-600" />
-                  <span>團隊成員與指導老師</span>
+                  <span>團隊基本資料與成員名冊</span>
                 </div>
                 <span className="text-[11px] text-stone-500 font-bold">* 為必填項目</span>
               </div>
@@ -536,19 +499,19 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                     type="text"
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
-                    placeholder="例如: 智創綠能青年隊"
+                    placeholder="例如: 智創綠能青年隊 (個人參賽可填隊名或稱號)"
                     className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400 text-xs font-bold"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">隊長 / 負責人姓名 *</label>
+                  <label className="block font-bold text-stone-700 mb-1.5">隊長 / 主要聯絡人姓名 *</label>
                   <input
                     type="text"
                     value={leaderName}
                     onChange={(e) => setLeaderName(e.target.value)}
-                    placeholder="請填寫隊長姓名"
+                    placeholder="請填寫隊長或聯絡人姓名"
                     className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400 text-xs font-bold"
                     required
                   />
@@ -567,29 +530,44 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">聯絡電子信箱</label>
+                  <label className="block font-bold text-stone-700 mb-1.5">聯絡電子信箱 *</label>
                   <input
                     type="email"
                     value={leaderEmail}
                     onChange={(e) => setLeaderEmail(e.target.value)}
                     placeholder="team@example.com"
                     className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400 text-xs"
+                    required
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">就讀學校 / 機構單位</label>
+                  <label className="block font-bold text-stone-700 mb-1.5">就讀學校 / 機構單位 *</label>
                   <input
                     type="text"
                     value={schoolName}
                     onChange={(e) => setSchoolName(e.target.value)}
                     placeholder="例如: 國立臺灣科技大學"
                     className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400 text-xs"
+                    required
                   />
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      id="part-show-org-checkbox"
+                      checked={showOrganizationOnCard}
+                      onChange={(e) => setShowOrganizationOnCard(e.target.checked)}
+                      className="rounded border-stone-300 text-amber-600 focus:ring-amber-400"
+                    />
+                    <label htmlFor="part-show-org-checkbox" className="text-xs text-stone-600 cursor-pointer select-none">
+                      <span className="font-bold text-stone-800">在卡片上顯示機構名稱</span>
+                      <span className="text-[10px] text-stone-500 ml-1">（未勾選則卡片僅顯示團隊名稱）</span>
+                    </label>
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">系所 / 年級</label>
+                  <label className="block font-bold text-stone-700 mb-1.5">系所 / 年級 / 部門</label>
                   <input
                     type="text"
                     value={department}
@@ -600,7 +578,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">指導老師 / 業師</label>
+                  <label className="block font-bold text-stone-700 mb-1.5">指導老師 / 業師顧問 (選填)</label>
                   <input
                     type="text"
                     value={advisorName}
@@ -611,30 +589,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">團隊其他核心成員</label>
-                  <input
-                    type="text"
-                    value={teamMembersInput}
-                    onChange={(e) => setTeamMembersInput(e.target.value)}
-                    placeholder="陳小明(UI設計), 李大華(技術開發)"
-                    className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400 text-xs"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 區塊 2: 提案主題與創新解方構想 */}
-            <div className="space-y-4 p-5 sm:p-6 rounded-3xl bg-stone-50/70 border border-stone-200">
-              <div className="border-b border-stone-200/80 pb-3">
-                <div className="font-black text-stone-900 text-sm flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-600" />
-                  <span>提案主題與創新解方構想</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">相關領域標注（參考實戰平台分類） *</label>
+                  <label className="block font-bold text-stone-700 mb-1.5">預計參賽賽道領域</label>
                   <select
                     value={participantTrack}
                     onChange={(e) => setParticipantTrack(e.target.value as StarSeasonTrack)}
@@ -646,180 +601,121 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                       </option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-stone-500 mt-1">
-                    此競賽不另設類別，分類僅作為方便識別不作為競賽依據。
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">提案主題名稱 *</label>
-                  <input
-                    type="text"
-                    value={projectTitle}
-                    onChange={(e) => setProjectTitle(e.target.value)}
-                    placeholder="例如: 智農 AI 蔬果病蟲害即時預警無人機"
-                    className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 font-bold focus:outline-none focus:border-amber-400"
-                    required
-                  />
                 </div>
               </div>
 
-              {/* 選擇採用來源痛點 (支援輸入序號/名稱查詢與痛點捷徑) */}
-              <PainPointSelector
-                value={participantSourcePainPointId}
-                onChange={(id, pp) => {
-                  setParticipantSourcePainPointId(id);
-                  if (pp?.trackId) {
-                    setParticipantTrack(pp.trackId);
-                  }
-                }}
-                painPointProposals={painPointProposals}
-                onApplySuggestedTitle={(suggestedTitle, suggestedSummary) => {
-                  setProjectTitle(suggestedTitle);
-                  setParticipantSummary(suggestedSummary);
-                }}
-              />
-
               <div>
-                <label className="block font-bold text-stone-700 mb-1.5">構想摘要 * (300字以內)</label>
+                <label className="block font-bold text-stone-700 mb-1.5">團隊成員名單與專長分工 (選填)</label>
                 <textarea
                   rows={3}
-                  value={participantSummary}
-                  onChange={(e) => setParticipantSummary(e.target.value)}
-                  placeholder="簡述本提案欲解決之核心問題、目標客群與創新切入點..."
-                  className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-stone-700 mb-1.5">詳細執行方案與創新價值</label>
-                <textarea
-                  rows={4}
-                  value={participantDescription}
-                  onChange={(e) => setParticipantDescription(e.target.value)}
-                  placeholder="詳細說明產品功能、技術架構、市場競爭優勢與商業化落地計畫..."
-                  className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400"
+                  value={teamMembersInput}
+                  onChange={(e) => setTeamMembersInput(e.target.value)}
+                  placeholder="隊員1: 陳小明 (UI設計), 隊員2: 李大華 (後端開發)..."
+                  className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400 text-xs"
                 />
               </div>
             </div>
 
-            {/* 區塊 3: 實戰募資模擬與佐證檔案 */}
+            {/* 區塊 2: 參賽意向調查與得知管道 */}
             <div className="space-y-4 p-5 sm:p-6 rounded-3xl bg-stone-50/70 border border-stone-200">
-              <div className="border-b border-stone-200/80 pb-3">
+              <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
                 <div className="font-black text-stone-900 text-sm flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-amber-600" />
-                  <span>實戰募資模擬與佐證檔案</span>
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>參賽意向與活動得知管道</span>
                 </div>
+                <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                  主辦單位統計
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">模擬目標募資額度 (創星幣)</label>
-                  <input
-                    type="number"
-                    step={10000}
-                    value={targetFundingAmount}
-                    onChange={(e) => setTargetFundingAmount(Number(e.target.value))}
-                    className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900 font-bold"
-                  />
-                  <p className="text-[10px] text-stone-500 mt-1">基準 100,000 創星幣，大眾可注資支持</p>
+              {/* 問題一: 預計參加項目? 痛點or解方 (可複選) */}
+              <div className="space-y-2">
+                <label className="block font-bold text-stone-800 text-xs">
+                  預計參加項目？（可複選） <span className="text-amber-600 font-semibold">痛點 or 解方</span>
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { id: '痛點', label: '🔥 痛點（提出真實痛點）' },
+                    { id: '解方', label: '💡 解方（提交創新專案與企劃）' },
+                  ].map((item) => {
+                    const isChecked = expectedItems.includes(item.id);
+                    return (
+                      <label
+                        key={item.id}
+                        className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border cursor-pointer transition-all select-none ${
+                          isChecked
+                            ? 'bg-amber-100/90 border-amber-400 text-amber-950 font-black shadow-xs ring-1 ring-amber-300'
+                            : 'bg-white border-stone-300 hover:border-stone-400 text-stone-700 font-medium'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setExpectedItems([...expectedItems, item.id]);
+                            } else {
+                              setExpectedItems(expectedItems.filter((i) => i !== item.id));
+                            }
+                          }}
+                          className="rounded text-amber-600 focus:ring-amber-500 h-4 w-4 shrink-0 cursor-pointer"
+                        />
+                        <span className="text-xs">{item.label}</span>
+                      </label>
+                    );
+                  })}
                 </div>
-
-                <div>
-                  <label className="block font-bold text-stone-700 mb-1.5">Demo展示影片連結 (YouTube / Drive)</label>
-                  <input
-                    type="url"
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    placeholder="https://youtu.be/..."
-                    className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900"
-                  />
-                </div>
+                <p className="text-[11px] text-stone-600 leading-relaxed bg-amber-50/70 p-2.5 rounded-xl border border-amber-200 font-medium">
+                  📌 <strong>備註說明：</strong>此填答僅為讓主辦單位提前了解全體參賽者分布，並不影響參賽權益，仍可一隊提多個痛點與多個解方。
+                </p>
               </div>
 
-              <div>
-                <label className="block font-bold text-stone-700 mb-1.5">贊助者回饋方案規劃</label>
-                <input
-                  type="text"
-                  value={rewardPlanDescription}
-                  onChange={(e) => setRewardPlanDescription(e.target.value)}
-                  placeholder="搶先體驗名額、限量紀念品、感謝白皮書"
-                  className="w-full bg-white border border-stone-300 rounded-xl p-3 text-stone-900"
-                />
-              </div>
-
-              {/* 上傳檔案 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                {/* 營運計畫簡報 (BP) */}
-                <div className="p-4 bg-white rounded-2xl border border-stone-300 space-y-3">
-                  <div className="font-bold text-stone-800 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-amber-600" />
-                      <span>營運計畫簡報 (BP/Pitch Deck)</span>
-                    </span>
-                    <span className="text-[10px] text-stone-400">PDF / PPT / 20MB內</span>
-                  </div>
-
-                  {bpFile ? (
-                    <div className="flex items-center justify-between bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-                      <span className="truncate font-medium text-stone-900">{bpFile.name}</span>
+              {/* 問題二: 您從哪裡得知這個比賽? */}
+              <div className="space-y-2 pt-2 border-t border-stone-200/60">
+                <label className="block font-bold text-stone-800 text-xs">
+                  您從哪裡得知這個比賽？ <span className="text-stone-400 font-normal">(單選)</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    '獎金獵人',
+                    'ACCUPASS',
+                    '學校或創新中心',
+                    '社群媒體',
+                    '網路搜尋或瀏覽',
+                    '網路廣告',
+                    '朋友',
+                    '其他',
+                  ].map((source) => {
+                    const isSelected = referralSource === source;
+                    return (
                       <button
                         type="button"
-                        onClick={() => setBpFile(null)}
-                        className="text-stone-400 hover:text-stone-700 ml-2"
+                        key={source}
+                        onClick={() => setReferralSource(source)}
+                        className={`px-3 py-2 rounded-xl border text-xs text-left transition-all cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-amber-500 text-stone-950 font-black border-amber-500 shadow-xs ring-2 ring-amber-300'
+                            : 'bg-white border-stone-300 hover:border-amber-300 hover:bg-stone-50 text-stone-700 font-medium'
+                        }`}
                       >
-                        <X className="w-4 h-4" />
+                        <span>{source}</span>
+                        {isSelected && <span className="text-stone-950 font-bold">✓</span>}
                       </button>
-                    </div>
-                  ) : (
-                    <label className="w-full py-4 border-2 border-dashed border-stone-300 hover:border-amber-400 rounded-xl text-stone-500 hover:text-amber-800 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all bg-stone-50/50 hover:bg-amber-50/30">
-                      <Upload className="w-4 h-4" />
-                      <span>{isUploadingBp ? '上傳中...' : '點擊上傳 BP 檔案'}</span>
-                      <input
-                        type="file"
-                        accept=".pdf,.ppt,.pptx,.doc,.docx"
-                        onChange={handleBpUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
+                    );
+                  })}
                 </div>
 
-                {/* 產品原型 / 成果圖片 */}
-                <div className="p-4 bg-white rounded-2xl border border-stone-300 space-y-3">
-                  <div className="font-bold text-stone-800 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
-                      <span>產品原型 / 成果展示圖片</span>
-                    </span>
-                    <span className="text-[10px] text-stone-400">JPG / PNG / 15MB內</span>
+                {referralSource === '其他' && (
+                  <div className="pt-2 animate-in fade-in duration-150">
+                    <input
+                      type="text"
+                      value={referralSourceOther}
+                      onChange={(e) => setReferralSourceOther(e.target.value)}
+                      placeholder="請說明其他得知管道（例如: 實體海報、系所公告信、社團推播...）"
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400 text-xs font-medium"
+                    />
                   </div>
-
-                  {prototypeImgFile ? (
-                    <div className="flex items-center justify-between bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
-                      <span className="truncate font-medium text-stone-900">{prototypeImgFile.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setPrototypeImgFile(null)}
-                        className="text-stone-400 hover:text-stone-700 ml-2"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="w-full py-4 border-2 border-dashed border-stone-300 hover:border-emerald-400 rounded-xl text-stone-500 hover:text-emerald-800 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all bg-stone-50/50 hover:bg-emerald-50/30">
-                      <Upload className="w-4 h-4" />
-                      <span>{isUploadingProto ? '上傳中...' : '點擊上傳成果展示圖'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleProtoUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
+                )}
               </div>
             </div>
 
@@ -830,7 +726,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                 id="participantFullPledge"
                 checked={participantPledgeAgreed}
                 onChange={(e) => setParticipantPledgeAgreed(e.target.checked)}
-                className="mt-0.5 rounded text-amber-500 focus:ring-amber-400 h-4 w-4 shrink-0"
+                className="mt-0.5 rounded text-amber-500 focus:ring-amber-400 h-4 w-4 shrink-0 cursor-pointer"
                 required
               />
               <label htmlFor="participantFullPledge" className="text-xs text-stone-700 cursor-pointer leading-relaxed">
@@ -858,7 +754,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                 >
                   《創星季參賽者條款》
                 </button>
-                。
+                。本人保證所填資料真實無訛，恪守學術與創新倫理。
               </label>
             </div>
 
@@ -885,7 +781,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                 ) : (
                   <>
                     <GraduationCap className="w-4 h-4 stroke-[2.5]" />
-                    <span>送出參賽報名（取得創星季徽章）</span>
+                    <span>確認送出報名參賽</span>
                   </>
                 )}
               </button>

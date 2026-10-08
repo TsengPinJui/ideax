@@ -6,6 +6,7 @@ import { NotificationsSidebar } from './NotificationsSidebar';
 import { AuthModal } from './AuthModal';
 import { AppTab, Category, QuestionSortOption, PostType, SpecialZone, User as UserType, SUBSCRIPTION_PLANS, UserDashboardTab } from '../types';
 import { isTestAccountUserId } from '../data/mockData';
+import { resetSEOToDefault } from '../services/seoService';
 import {
   Lightbulb,
   PlusCircle,
@@ -137,6 +138,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     addTestAccount,
     promptLogin,
     getAdminRemainingDailyQuota,
+    isRaceMode,
+    isHideTestAccounts,
   } = useApp();
 
   const [internalIsCategorySidebarOpen, setInternalIsCategorySidebarOpen] = useState(false);
@@ -153,24 +156,29 @@ export const Navbar: React.FC<NavbarProps> = ({
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const isGuest = currentUser?.id === 'user-guest';
 
   const userConversations = useMemo(() => {
+    if (isGuest) return [];
     return (conversations || []).filter((c) => {
       if (!c) return false;
-      if (c.isGroup) return true;
       if (c.participantDetails) {
         return c.participantDetails.some((p) => p.id === currentUser?.id);
       }
-      return true;
+      if (c.participantIds) {
+        return c.participantIds.includes(currentUser?.id);
+      }
+      return false;
     });
-  }, [conversations, currentUser]);
+  }, [conversations, currentUser, isGuest]);
 
   const unreadChatCount = useMemo(() => {
+    if (isGuest) return 0;
     return userConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
-  }, [userConversations]);
+  }, [userConversations, isGuest]);
 
-  // 管理員身分：郵件圖示顯示總待辦（客服工單、案件申訴調解、檢舉反饋）數量！一般用戶：僅根據「個人通知」未讀數量（系統通知不計入郵件數字）
-  const displayBadgeCount = currentUser.role === 'admin' ? adminMailBadgeCount : unreadPersonalCount;
+  // 管理員身分：郵件圖示顯示總待辦數量！一般用戶：僅根據「個人通知」未讀數量（訪客不顯示數字徽章）
+  const displayBadgeCount = isGuest ? 0 : (currentUser.role === 'admin' ? adminMailBadgeCount : unreadPersonalCount);
 
   // Close menus on outside click
   useEffect(() => {
@@ -313,6 +321,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [questions]);
 
   const handleStartChatWithUser = (target: { id: string; name: string; avatar: string; title: string }) => {
+    if (isGuest) {
+      promptLogin('訪客請先登入帳號以開始私訊交流');
+      return;
+    }
     if (currentUser.id === target.id) {
       addNotification({ title: '提醒', message: '這是您自己的帳號！', type: 'system' });
       return;
@@ -411,8 +423,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     setActiveTab('explore');
   };
 
-  const isGuest = currentUser.id === 'user-guest';
-
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
@@ -438,6 +448,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               setActiveTab('explore');
               setSelectedQuestion(null);
               setSelectedSolver(null);
+              setSpecialZone?.('all');
+              setSelectedCategory?.('全部');
+              setSelectedSubcategory?.('全部');
+              setSearchQuery?.('');
+              try {
+                if (typeof window !== 'undefined') {
+                  window.history.pushState(null, '', '/');
+                }
+              } catch {}
+              resetSEOToDefault();
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onKeyDown={(e) => {
@@ -446,6 +466,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setActiveTab('explore');
                 setSelectedQuestion(null);
                 setSelectedSolver(null);
+                setSpecialZone?.('all');
+                setSelectedCategory?.('全部');
+                setSelectedSubcategory?.('全部');
+                setSearchQuery?.('');
+                try {
+                  if (typeof window !== 'undefined') {
+                    window.history.pushState(null, '', '/');
+                  }
+                } catch {}
+                resetSEOToDefault();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }
             }}
@@ -462,6 +492,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setActiveTab('explore');
                 setSelectedQuestion(null);
                 setSelectedSolver(null);
+                setSpecialZone?.('all');
+                setSelectedCategory?.('全部');
+                setSelectedSubcategory?.('全部');
+                setSearchQuery?.('');
+                try {
+                  if (typeof window !== 'undefined') {
+                    window.history.pushState(null, '', '/');
+                  }
+                } catch {}
+                resetSEOToDefault();
                 const scrollToMarket = () => {
                   const el = document.getElementById('market-grid');
                   if (el) {
@@ -481,34 +521,51 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Compass className="w-4 h-4 text-amber-600 shrink-0" />
               <span>探索問題</span>
             </button>
-            <button
-              id="onboarding-step-8-solvers-desktop"
-              onClick={() => {
-                setActiveTab('solvers');
-                setSelectedQuestion(null);
-                setSelectedSolver(null);
-              }}
-              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
-                activeTab === 'solvers'
-                  ? 'bg-emerald-50/90 text-emerald-950 font-black border-emerald-400 ring-2 ring-emerald-200 shadow-2xs'
-                  : 'bg-white text-stone-800 border-stone-200 hover:border-emerald-400 hover:bg-emerald-50/40 hover:text-emerald-950 shadow-2xs'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>找專家</span>
-            </button>
+            {!isRaceMode && (
+              <button
+                id="onboarding-step-8-solvers-desktop"
+                onClick={() => {
+                  setActiveTab('solvers');
+                  setSelectedQuestion(null);
+                  setSelectedSolver(null);
+                }}
+                className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
+                  activeTab === 'solvers'
+                    ? 'bg-emerald-50/90 text-emerald-950 font-black border-emerald-400 ring-2 ring-emerald-200 shadow-2xs'
+                    : 'bg-white text-stone-800 border-stone-200 hover:border-emerald-400 hover:bg-emerald-50/40 hover:text-emerald-950 shadow-2xs'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>找專家</span>
+              </button>
+            )}
 
-            {/* Google 搜尋多個分頁捷徑與子網址中心 */}
+            {/* 創星季 (創星季圖片，點擊回到創星季首頁) */}
             <button
               type="button"
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('ideax_open_sitelinks'));
+                setActiveTab('star_season');
+                setSelectedQuestion(null);
+                setSelectedSolver(null);
+                try {
+                  if (typeof window !== 'undefined') {
+                    window.location.hash = '#/star-season';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                } catch {}
               }}
-              className="px-2.5 py-1.5 rounded-xl border border-stone-200 hover:border-blue-400 bg-white hover:bg-blue-50/40 text-stone-700 hover:text-blue-900 transition-all cursor-pointer text-xs flex items-center gap-1.5 shadow-2xs group"
-              title="查看 Google 搜尋多個分頁捷徑 (Sitelinks) 與 8 大子網址"
+              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs group active:scale-98 ${
+                activeTab === 'star_season'
+                  ? 'bg-amber-100 text-stone-950 font-black border-amber-400 ring-2 ring-amber-200 shadow-2xs'
+                  : 'bg-white hover:bg-amber-50/60 border-stone-200 hover:border-amber-400 text-stone-800'
+              }`}
+              title="前往 IdeaX 創星季 競賽首頁"
             >
-              <Search className="w-3.5 h-3.5 text-blue-600 shrink-0 group-hover:scale-110 transition-transform" />
-              <span>分頁捷徑</span>
+              <img
+                src="/logo-chuangxingji-text.png"
+                alt="創星季"
+                className="h-5 sm:h-5.5 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform drop-shadow-2xs"
+              />
             </button>
           </nav>
         </div>
@@ -943,6 +1000,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* 2. 訊息 (電腦版 - 僅保留圖示，數字徽章移至右上角) */}
           <button
             onClick={() => {
+              if (isGuest) {
+                promptLogin('訪客請先登入帳號以查看您的訊息與聊天室');
+                return;
+              }
               setActiveTab('chat');
               setSelectedQuestion(null);
               setSelectedSolver(null);
@@ -953,11 +1014,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-amber-100/90 text-amber-950 border-amber-300 ring-2 ring-amber-300'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:bg-amber-50 border-stone-200/80'
             }`}
-            title={`開啟訊息${unreadChatCount > 0 ? `（${unreadChatCount} 則未讀訊息）` : ''}`}
+            title={`開啟訊息${!isGuest && unreadChatCount > 0 ? `（${unreadChatCount} 則未讀訊息）` : ''}`}
             aria-label="開啟訊息"
           >
             <MessageCircle className={`w-5 h-5 ${activeTab === 'chat' ? 'text-amber-700' : 'text-stone-700'}`} />
-            {unreadChatCount > 0 && (
+            {!isGuest && unreadChatCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-amber-500 text-stone-950 font-black text-[10px] rounded-full ring-2 ring-white flex items-center justify-center shadow-2xs font-mono">
                 {unreadChatCount > 99 ? '99+' : unreadChatCount}
               </span>
@@ -968,6 +1029,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => {
+              if (isGuest) {
+                promptLogin('訪客請先登入帳號以查看個人通知與重要訊息');
+                return;
+              }
               if (currentUser.role === 'admin') {
                 handleOpenDashboard('admin_mail_disputes');
               } else {
@@ -976,14 +1041,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             }}
             className="hidden sm:flex relative p-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:bg-amber-50 transition-colors cursor-pointer border border-stone-200/80"
             aria-label={currentUser.role === 'admin' ? "申訴與郵件管理中心" : "開啟通知中心右側欄"}
-            title={currentUser.role === 'admin' ? `申訴與郵件管理中心（待辦總計：${adminMailBadgeCount} 件，含客服工單 ${pendingTicketsCount} 件、案件申訴調解 ${pendingDisputesCount} 件、檢舉反饋 ${pendingReportsCount} 件）` : "開啟通知中心右側欄"}
+            title={
+              isGuest
+                ? "請登入以查看通知"
+                : currentUser.role === 'admin'
+                ? `申訴與郵件管理中心（待辦總計：${adminMailBadgeCount} 件，含客服工單 ${pendingTicketsCount} 件、案件申訴調解 ${pendingDisputesCount} 件、檢舉反饋 ${pendingReportsCount} 件）`
+                : "開啟通知中心右側欄"
+            }
           >
             {currentUser.role === 'admin' ? (
               <Mail className="w-5 h-5 text-purple-700" />
             ) : (
               <Bell className="w-5 h-5 text-stone-700" />
             )}
-            {displayBadgeCount > 0 && (
+            {!isGuest && displayBadgeCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-amber-500 text-stone-950 font-black text-[10px] rounded-full ring-2 ring-white flex items-center justify-center shadow-2xs font-mono">
                 {displayBadgeCount > 99 ? '99+' : displayBadgeCount}
               </span>
@@ -1080,6 +1151,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Mobile Message Center Entry (替代頭像) */}
           <button
             onClick={() => {
+              if (isGuest) {
+                promptLogin('訪客請先登入帳號以查看您的訊息與聊天室');
+                return;
+              }
               setActiveTab('chat');
               setSelectedQuestion(null);
               setSelectedSolver(null);
@@ -1089,7 +1164,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="訊息"
           >
             <MessageCircle className="w-5 h-5 text-stone-700" />
-            {unreadChatCount > 0 && (
+            {!isGuest && unreadChatCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 bg-amber-500 text-stone-950 font-black text-[9px] rounded-full ring-2 ring-white flex items-center justify-center shadow-2xs font-mono">
                 {unreadChatCount > 99 ? '99+' : unreadChatCount}
               </span>

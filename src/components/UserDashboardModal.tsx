@@ -301,6 +301,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
   const [isRechargeExpanded, setIsRechargeExpanded] = useState(false);
   const [isCloudDbExpanded, setIsCloudDbExpanded] = useState(false);
+  const [isPublicMetricsExpanded, setIsPublicMetricsExpanded] = useState(false);
+  const [isSitelinksExpanded, setIsSitelinksExpanded] = useState(false);
   const [copiedSitelinkId, setCopiedSitelinkId] = useState<string | null>(null);
 
   const handleCopySitelinkUrl = (e: React.MouseEvent, item: GoogleSitelinkItem) => {
@@ -3365,24 +3367,41 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </div>
               </div>
 
-              {/* 首頁公開運營數據展示控制 (管理者自訂選擇要公開那些數據) */}
+              {/* 首頁公開運營數據展示控制 (管理者自訂選擇要公開那些數據，可收合) */}
               <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3.5 shadow-2xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <h4 className="font-black text-sm sm:text-base text-amber-950 flex items-center gap-2">
-                      <Sliders className="w-4 h-4 text-amber-600" />
-                      <span>首頁公開運營數據展示控制（首頁看板開關）</span>
-                    </h4>
-                    <p className="text-xs text-amber-900/70 mt-0.5">
-                      管理者可自由勾選決定在首頁對外公開呈現的平台真實統計指標，關閉項目將即時於首頁隱藏。
-                    </p>
+                <div
+                  onClick={() => setIsPublicMetricsExpanded((prev) => !prev)}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer select-none group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                      <Sliders className="w-5 h-5 text-stone-950" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm sm:text-base text-amber-950 flex items-center gap-2">
+                        <span>首頁公開運營數據展示控制（首頁看板開關）</span>
+                      </h4>
+                      <p className="text-xs text-amber-900/70 mt-0.5">
+                        管理者可自由勾選決定在首頁對外公開呈現的平台真實統計指標，關閉項目將即時於首頁隱藏。
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-200/90 text-amber-950 border border-amber-300 w-fit">
-                    已公開 {Object.values(publicMetricsConfig).filter(Boolean).length} / 13 項指標
-                  </span>
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-200/90 text-amber-950 border border-amber-300 w-fit">
+                      已公開 {Object.values(publicMetricsConfig).filter(Boolean).length} / 13 項指標
+                    </span>
+                    <button
+                      type="button"
+                      className="px-2.5 py-1 rounded-xl bg-white/80 hover:bg-white text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <span>{isPublicMetricsExpanded ? '收合' : '展開'}</span>
+                      {isPublicMetricsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {isPublicMetricsExpanded && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1 animate-in fade-in duration-200">
                   {/* Metric 1: 總瀏覽量 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                     publicMetricsConfig.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
@@ -3708,6 +3727,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </button>
                   </div>
                 </div>
+                )}
               </div>
 
               {/* Firebase Cloud Firestore 雲端資料庫狀態與同步管理 (可收合面板) */}
@@ -3971,12 +3991,15 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 )}
               </div>
 
-              {/* Google 搜尋分頁捷徑與子網址導覽 (Google Sitelinks) - 原管理員功能模組快捷導覽區塊替換 */}
+              {/* Google 搜尋分頁捷徑與子網址導覽 (Google Sitelinks) - 原管理員功能模組快捷導覽區塊替換，支援收合無畫線 */}
               <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4 shadow-2xs">
-                {/* 區塊標題與快捷預覽按鈕 */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
+                {/* 區塊標題與快捷預覽按鈕 (移除下畫線，支援點擊收合/展開) */}
+                <div
+                  onClick={() => setIsSitelinksExpanded((prev) => !prev)}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none group"
+                >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center justify-center shrink-0 shadow-xs">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
                       <Search className="w-4 h-4" />
                     </div>
                     <div>
@@ -3997,21 +4020,32 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent('ideax_open_sitelinks'));
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-xs hover:shadow self-start sm:self-auto shrink-0 active:scale-95"
-                    title="開啟 Google 搜尋捷徑完整預覽中心"
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                    <span>開啟 Google 搜尋捷徑預覽中心</span>
-                  </button>
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent('ideax_open_sitelinks'));
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-xs hover:shadow active:scale-95"
+                      title="開啟 Google 搜尋捷徑完整預覽中心"
+                    >
+                      <Search className="w-3.5 h-3.5" />
+                      <span>開啟 Google 搜尋捷徑預覽中心</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <span>{isSitelinksExpanded ? '收合' : '展開'}</span>
+                      {isSitelinksExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
 
-                {/* 8 大子網址分類宮格 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 8 大子網址分類宮格 (受收合狀態控制) */}
+                {isSitelinksExpanded && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-200 pt-1">
                   {/* 群組 1: IdeaX 創點子 */}
                   <div className="p-3.5 rounded-2xl bg-amber-50/40 border border-amber-200/80 space-y-2.5">
                     <div className="flex items-center justify-between">
@@ -4122,6 +4156,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                   </div>
                 </div>
+                )}
               </div>
 
               {/* 特殊環境開關 (共用相對開關 + 權限範圍) */}
@@ -4216,7 +4251,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           ? 'bg-emerald-400 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
                           : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                       }`}
-                      title="切換至競賽模式 (舊站優先置頂痛點專區、L0創星季標籤、獨立方案卡片與專屬網址)"
+                      title="切換至競賽模式 (舊站提供創星季、創點子/痛點集與L0討論區專屬入口捷徑、獨立方案卡片與專屬網址)"
                     >
                       <span>🏎️ 競賽模式</span>
                       <span className="text-[9px] opacity-80 font-mono">(RACE)</span>
@@ -7003,7 +7038,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                             ? 'bg-emerald-400 text-stone-950 shadow-md font-black ring-1 ring-emerald-300'
                             : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
                         }`}
-                        title="切換至競賽模式 (舊站優先置頂痛點專區、L0創星季標籤、獨立方案卡片與專屬網址)"
+                        title="切換至競賽模式 (舊站提供創星季、創點子/痛點集與L0討論區專屬入口捷徑、獨立方案卡片與專屬網址)"
                       >
                         <span>🏎️ 競賽模式</span>
                         <span className="text-[9px] opacity-80 font-mono">(RACE)</span>
@@ -10482,7 +10517,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 pendingModeConfirm.nextState ? (
                   <p>
                     <strong>即將開啟【競賽模式 (RACE)】：（全站平台同步生效）</strong><br />
-                    舊站問題市場將<strong>優先置頂「痛點專區」</strong>，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽圖文卡片展示並含獨立網址；全站頁尾同步顯示英文簡稱 <strong>RACE</strong>。本模式與正式營運、無金流、測試環境為四選一互斥。
+                    舊站問題市場將提供<strong>「創點子/痛點集」與「L0問題討論區」主題捷徑</strong>，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽圖文卡片展示並含獨立網址；全站頁尾同步顯示英文簡稱 <strong>RACE</strong>。本模式與正式營運、無金流、測試環境為四選一互斥。
                   </p>
                 ) : (
                   <p>

@@ -31,7 +31,17 @@ import {
   Share2,
   Trophy,
   Folder,
+  Zap,
 } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { syncUserToFirestore } from '../services/firestoreSync';
+import {
+  distributePainPointApprovalReward,
+  distributeReferralApprovalReward,
+  distributePainPointAdoptionReward,
+  getAutomatedDistributionStatus,
+  AutomatedDistributionStatus,
+} from '../services/rewardAutomationService';
 import { AdminCompetitionRulesArchiveFolder } from './challenge/AdminCompetitionRulesArchiveFolder';
 import {
   CompetitionRegistrationRecord,
@@ -61,12 +71,22 @@ interface CompetitionAdminReviewTabProps {
 }
 
 export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps> = ({ onNotify }) => {
+  const {
+    availableUsers,
+    setAvailableUsers,
+    currentUser,
+    setCurrentUser,
+    setTransactions,
+    addNotification,
+  } = useApp();
+
   const [subTab, setSubTab] = useState<'metrics' | 'registrations' | 'experts' | 'proposals' | 'awards' | 'rules_archive'>('metrics');
   const [registrations, setRegistrations] = useState<CompetitionRegistrationRecord[]>([]);
   const [proposals, setProposals] = useState<StarSeasonProposal[]>([]);
   const [experts, setExperts] = useState<CompetitionExpertRecord[]>([]);
   const [statsConfig, setStatsConfig] = useState<CompetitionHomepageStatsConfig>(() => getCompetitionHomepageStatsConfig());
   const [adminMetrics, setAdminMetrics] = useState<CompetitionAdminMetrics>(() => getCompetitionAggregatedMetrics());
+  const [autoRewardStatus, setAutoRewardStatus] = useState<AutomatedDistributionStatus>(() => getAutomatedDistributionStatus());
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -86,6 +106,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     setExperts(getCompetitionExperts());
     setStatsConfig(getCompetitionHomepageStatsConfig());
     setAdminMetrics(getCompetitionAggregatedMetrics());
+    setAutoRewardStatus(getAutomatedDistributionStatus());
   };
 
   useEffect(() => {
@@ -138,6 +159,28 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       defaultNote || (status === 'approved' ? '提案審核通過' : '提案未通過')
     );
     if (success) {
+      // 若審核通過且有填寫推薦碼，自動為推薦大使發放 300 點獎勵（價值 $400，效期 60 日）！
+      if (status === 'approved') {
+        const targetProp = proposals.find((p) => p.id === proposalId);
+        if (targetProp && targetProp.ambassadorCode) {
+          const autoRes = distributeReferralApprovalReward({
+            proposalId: targetProp.id,
+            proposalTitle: targetProp.title,
+            ambassadorCode: targetProp.ambassadorCode,
+            proposerName: targetProp.authorName,
+            availableUsers,
+            setAvailableUsers,
+            currentUser,
+            setCurrentUser,
+            setTransactions,
+            addNotification,
+            syncUserToFirestore,
+          });
+          if (autoRes.success) {
+            triggerToast(`✅ 已核准提案！${autoRes.message}`);
+          }
+        }
+      }
       loadAll();
       triggerToast(status === 'approved' ? '✅ 已核准該競賽提案！' : '❌ 已退回該提案。');
     }
@@ -147,6 +190,28 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   const handleAward = (proposalId: string, rank: number, adoptedApproved: boolean) => {
     const success = updateCompetitionProposalAward(proposalId, rank, true, adoptedApproved);
     if (success) {
+      // 若核准痛點採用獎勵，系統自動為原痛點提出者發放好禮提問金（前三名 1,200 點、其餘 400 點，效期 60 日）！
+      if (adoptedApproved) {
+        const targetProp = proposals.find((p) => p.id === proposalId);
+        if (targetProp && targetProp.sourcePainPointTitle) {
+          const autoRes = distributePainPointAdoptionReward({
+            proposalId: targetProp.id,
+            proposalTitle: targetProp.title,
+            sourcePainPointTitle: targetProp.sourcePainPointTitle,
+            rank,
+            availableUsers,
+            setAvailableUsers,
+            currentUser,
+            setCurrentUser,
+            setTransactions,
+            addNotification,
+            syncUserToFirestore,
+          });
+          if (autoRes.success) {
+            triggerToast(`🏆 痛點採用獎勵核定成功！${autoRes.message}`);
+          }
+        }
+      }
       loadAll();
       triggerToast(`🏆 已成功核定名次（第 ${rank} 名）與獎勵撥付審核狀態！`);
     }
@@ -198,7 +263,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       const matchTeam = r.teamName.toLowerCase().includes(q);
       const matchLeader = r.leaderName.toLowerCase().includes(q);
       const matchSchool = r.schoolName.toLowerCase().includes(q);
-      const matchTitle = r.projectTitle.toLowerCase().includes(q);
+      const matchTitle = (r.projectTitle || '').toLowerCase().includes(q);
       return matchTeam || matchLeader || matchSchool || matchTitle;
     }
     return true;
@@ -807,6 +872,104 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
               </div>
             </div>
           </div>
+
+          {/* ⚡ 痛點過審、推薦碼、痛點採用 全自動發放流水監控中樞 */}
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-950 via-stone-900 to-amber-950 text-white border-2 border-emerald-400 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-stone-950 font-black flex items-center justify-center shadow-lg">
+                  <Zap className="w-5 h-5 fill-stone-950" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-base font-black tracking-wide text-white">
+                      痛點過審 • 推薦碼 • 痛點採用 全自動發放流水系統
+                    </h4>
+                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500 text-stone-950 animate-pulse flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-stone-950" />
+                      <span>三軌全自動發放運作中</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-300 mt-0.5">
+                    系統於管理員點選審核通過或採納發生當下，即時自動化完成金額與點數發放、站內信推播與交易流水記帳。
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={loadAll}
+                  className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-stone-700"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>即時重整</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs">
+              {/* 軌道 1: 痛點過審 */}
+              <div className="p-3.5 rounded-2xl bg-stone-900/90 border border-emerald-500/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>1. 痛點過審自動化</span>
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/40">
+                    200 點/案
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-300 leading-relaxed">
+                  會員提出切身痛點通過審核時，系統即時自動發放 <b>200 點</b>提問金（價值 $250，效期 60 日）。
+                </p>
+                <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-[11px] font-mono text-stone-400">
+                  <span>累計發放案件：</span>
+                  <span className="font-bold text-emerald-300">{autoRewardStatus.painPointApproval.totalDistributedCases} 案 ({autoRewardStatus.painPointApproval.totalDistributedPoints.toLocaleString()} 點)</span>
+                </div>
+              </div>
+
+              {/* 軌道 2: 推薦碼 */}
+              <div className="p-3.5 rounded-2xl bg-stone-900/90 border border-blue-500/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-cyan-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                    <span>2. 推薦碼引導過審</span>
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 border border-cyan-400/40">
+                    300 點/案
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-300 leading-relaxed">
+                  填寫推薦碼之提案審核通過時，系統自動為推廣大使配發 <b>300 點</b>獎勵（價值 $400，效期 60 日）。
+                </p>
+                <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-[11px] font-mono text-stone-400">
+                  <span>累計發放案件：</span>
+                  <span className="font-bold text-cyan-300">{autoRewardStatus.referralCode.totalDistributedCases} 案 ({autoRewardStatus.referralCode.totalDistributedPoints.toLocaleString()} 點)</span>
+                </div>
+              </div>
+
+              {/* 軌道 3: 痛點採用 */}
+              <div className="p-3.5 rounded-2xl bg-stone-900/90 border border-amber-500/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-amber-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                    <span>3. 痛點採用雙軌撥付</span>
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                    託管撥付+好禮
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-300 leading-relaxed">
+                  日常問答採納自動第三方託管結算拆款撥付；創星季入選提案採用切身痛點時自動撥發 <b>400~1,200 點</b>好禮。
+                </p>
+                <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-[11px] font-mono text-stone-400">
+                  <span>累計採用好禮：</span>
+                  <span className="font-bold text-amber-300">{autoRewardStatus.painPointAdoption.totalAdoptedCases} 案 ({autoRewardStatus.painPointAdoption.totalDistributedPoints.toLocaleString()} 點)</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -828,7 +991,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
           ) : (
             <div className="grid grid-cols-1 gap-3">
               {filteredRegistrations.map((reg) => {
-                const trackObj = STAR_SEASON_TRACKS[reg.track] || Object.values(STAR_SEASON_TRACKS).find((t) => t.id === reg.track);
+                const trackObj = (reg.track && STAR_SEASON_TRACKS[reg.track]) || (reg.track ? Object.values(STAR_SEASON_TRACKS).find((t) => t.id === reg.track) : undefined);
                 return (
                   <div
                     key={reg.id}
@@ -1207,7 +1370,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
             </div>
           ) : (
             filteredRegistrations.map((reg) => {
-              const trackMeta = STAR_SEASON_TRACKS[reg.track];
+              const trackMeta = reg.track ? STAR_SEASON_TRACKS[reg.track] : undefined;
               const isPending = reg.status === 'pending_review';
               const isApproved = reg.status === 'approved';
               const isRejected = reg.status === 'rejected';
@@ -1373,7 +1536,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                         setActiveReviewNoteModal({
                           id: reg.id,
                           type: 'reg',
-                          title: reg.projectTitle,
+                          title: reg.projectTitle || reg.teamName,
                           targetStatus: 'rejected',
                         });
                         setNoteInput('');

@@ -89,12 +89,12 @@ const ONBOARDING_STEPS: OnboardingStepConfig[] = [
   },
   {
     id: 7,
-    title: '7. 創點子/痛點專區 & L0問題討論區',
+    title: '7. 創點子/痛點集 & L0問題討論區',
     targetId: 'onboarding-step-7-special-zones',
     icon: Lightbulb,
     targetTab: 'explore',
     actionType: 'open_sidebar',
-    summary: '「創點子/痛點」彙整大眾痛點找靈感；「L0討論區」供免懸賞自由交流。',
+    summary: '「創點子/痛點集」彙整大眾痛點找靈感；「L0討論區」供免懸賞自由交流。',
   },
   {
     id: 8,

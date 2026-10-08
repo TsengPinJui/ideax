@@ -200,12 +200,13 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
   }
 
   return (
-    <div
+    <aside
+      aria-label="網站使用導覽入口"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="relative flex items-center justify-end select-none group pointer-events-auto"
+      className="fixed right-3.5 sm:right-6 bottom-28 sm:bottom-32 md:bottom-36 z-40 flex items-center justify-end select-none group pointer-events-none transition-all duration-300"
     >
-      <div className="relative flex flex-col items-center">
+      <div className="relative flex flex-col items-center pointer-events-auto">
         {/* 關閉/隱藏教學按鈕 */}
         <button
           type="button"
@@ -217,11 +218,11 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
           <X className="w-2.5 h-2.5 stroke-[2.5]" />
         </button>
 
-        {/* 金黃外框、白錶盤、紅白藍指針的經典羅盤按鈕 (與下方下載按鈕保持一致黃金尺寸) */}
+        {/* 金黃外框、白錶盤、紅白藍指針的經典羅盤按鈕 (位置上移，徹底避開底部分頁與滑動死區) */}
         <button
           type="button"
           onClick={onStartOnboarding}
-          className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-full p-0.5 bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center shadow-[0_6px_22px_rgba(217,119,6,0.45)] hover:shadow-[0_8px_28px_rgba(217,119,6,0.65)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer border-2 border-white/90 ring-2 ring-amber-400/50 shrink-0"
+          className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full p-0.5 bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center shadow-[0_6px_22px_rgba(217,119,6,0.45)] hover:shadow-[0_8px_28px_rgba(217,119,6,0.65)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer border-2 border-white/90 ring-2 ring-amber-400/50 shrink-0 touch-manipulation"
           aria-label="開啟使用導覽（含聊天室教學）"
           title="開啟使用教學導覽"
         >
@@ -235,13 +236,13 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
 
       {/* 滑鼠懸停對話氣泡 (向左冒出 Speech Bubble，指向右側羅盤按鈕) */}
       <div
-        className={`absolute right-full mr-2.5 top-1/2 -translate-y-1/2 transition-all duration-200 ease-out ${
+        className={`absolute right-full mr-2.5 top-1/2 -translate-y-1/2 transition-all duration-200 ease-out pointer-events-none ${
           isHovered
-            ? 'opacity-100 translate-x-0 scale-100 pointer-events-auto'
-            : 'opacity-0 translate-x-2 scale-95 pointer-events-none'
+            ? 'opacity-100 translate-x-0 scale-100'
+            : 'opacity-0 translate-x-2 scale-95'
         }`}
       >
-        <div className="relative bg-stone-900/95 text-white px-3 py-2 rounded-2xl shadow-2xl border border-amber-400/80 backdrop-blur-md flex flex-col gap-1.5 whitespace-nowrap min-w-[136px]">
+        <div className="relative bg-stone-900/95 text-white px-3 py-2 rounded-2xl shadow-2xl border border-amber-400/80 backdrop-blur-md flex flex-col gap-1.5 whitespace-nowrap min-w-[136px] pointer-events-auto">
           {/* 對話氣泡向右尖角 (Triangle Arrow pointing right to Compass) */}
           <div className="absolute -right-1 top-3.5 w-2.5 h-2.5 bg-stone-900 border-r border-t border-amber-400/80 rotate-45" />
 
@@ -269,6 +270,6 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
           </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
 };

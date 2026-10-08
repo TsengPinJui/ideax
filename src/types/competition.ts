@@ -124,6 +124,10 @@ export interface StarSeasonProposal {
   authorName: string;
   authorAvatar?: string;
   authorRole: 'user' | 'solver' | 'enterprise'; // 在舊站仍為普通身分
+  teamName?: string; // 團隊名稱（卡片上固定公開顯示）
+  schoolName?: string; // 學校 / 機構名稱
+  organizationName?: string; // 機構名稱 / 服務單位
+  showOrganization?: boolean; // 由團隊選擇是否於卡片上公開顯示機構/學校名稱
   
   // 兩階段關聯：想解方採用特定痛點
   sourcePainPointProposalId?: string; // 關聯之來源痛點 ID
@@ -139,6 +143,7 @@ export interface StarSeasonProposal {
   
   // 補充資料與外部連結
   externalLink?: string; // 補充資料連結 / 外部連結 (選填)
+  ambassadorCode?: string; // 校園推廣大使推薦碼 (選填)
   technicalFeasibility?: string; // 技術可行性 (補充資料)
   marketAnalysis?: string; // 市場分析與定位 (補充資料)
   businessModelFinancials?: string; // 商業模式與財務預測 (補充資料)
@@ -158,6 +163,13 @@ export interface StarSeasonProposal {
   supporterCount: number; // 支持人次
   targetFundingAmount?: number; // 模擬募資目標額度
   
+  // 梯次與瀏覽
+  cohort?: string; // 梯次（例如「第一梯次」）
+  viewsCount?: number; // 瀏覽次數
+  isFinalist?: boolean; // 進入決選
+  isFinalistSelected?: boolean;
+  sourcePainPointId?: string; // 關聯之來源痛點 ID (別名)
+
   // 複賽入圍與最終獎項
   rankQualifiedForFinal?: boolean; // 募資前 20 名進入複賽資格（僅為入圍，非最終得獎）
   finalRank?: number; // 專家評選最終名次 (1: 冠軍 NT$30,000, 2: 亞軍 NT$10,000, 3: 季軍 NT$4,000)
@@ -205,14 +217,15 @@ export interface ParticipantRegistrationData {
   leaderName: string; // 隊長/負責人姓名
   leaderPhone: string; // 隊長聯絡電話
   leaderEmail: string; // 隊長 Email
-  schoolName: string; // 就讀大專院校
-  department: string; // 系所年級
+  schoolName: string; // 就讀大專院校 / 服務單位
+  department: string; // 系所年級 / 部門
   advisorName?: string; // 指導老師/業師 (選填)
+  showOrganization?: boolean; // 由團隊選擇是否於卡片上公開顯示機構/學校名稱 (未選則僅顯示團隊名稱)
   teamMembers?: Array<{ name: string; department?: string; role?: string }>; // 團隊成員名單
-  track: StarSeasonTrack; // 參賽賽道
-  projectTitle: string; // 提案主題
-  summary: string; // 提案構想摘要
-  description: string; // 核心解方詳細說明
+  track?: StarSeasonTrack; // 預計參賽賽道
+  projectTitle?: string; // 提案主題 (提案頁分離填寫)
+  summary?: string; // 提案構想摘要
+  description?: string; // 核心解方詳細說明
   sourcePainPointId?: string; // 關聯第一階段痛點 ID
   sourcePainPointTitle?: string;
   
@@ -223,9 +236,14 @@ export interface ParticipantRegistrationData {
   prototypeImageUrl?: string; // ② 產品或原型展示圖
   prototypeImageName?: string;
   videoUrl?: string; // ③ 創業宣傳概念影片連結 (YouTube / 影音宣傳連結)
-  targetFundingAmount: number; // ④ 模擬募資目標金額 (NT$100,000 ~ NT$1,000,000)
-  rewardPlanDescription: string; // ⑤ 模擬募資回饋承諾方案 (支持者回饋設計)
+  targetFundingAmount?: number; // ④ 模擬募資目標金額
+  rewardPlanDescription?: string; // ⑤ 模擬募資回饋承諾方案
   pledgeAgreed: boolean; // 原創性與競賽自律規範承諾
+
+  // 報名意向調查 (主辦單位統計參賽分布與管道)
+  expectedItems?: string[]; // 預計參加項目: '痛點' | '解方' (可複選)
+  referralSource?: string; // 您從哪裡得知這個比賽? (獎金獵人/ACCUPASS/學校或創新中心/社群媒體/網路搜尋或瀏覽/網路廣告/朋友/其他)
+  referralSourceOther?: string; // 其他來源說明
 }
 
 /**
@@ -244,6 +262,8 @@ export interface JudgeApplicationData {
   credentialProofName?: string;
   bio: string; // 個人經歷與審查簡歷
   reviewPledgeAgreed: boolean; // 恪守保密與公正評審承諾
+  referralSource?: string; // 您從哪裡得知這個比賽? (獎金獵人/ACCUPASS/學校或創新中心/社群媒體/網路搜尋或瀏覽/網路廣告/朋友/其他)
+  referralSourceOther?: string; // 其他來源說明
 }
 
 /**
@@ -271,11 +291,13 @@ export interface CompetitionAccount {
   role: 'user' | 'solver' | 'admin';
   initialPoints: number; // 一般用戶 100,000 / 專家 3,000,000
   availablePoints: number;
-  spentPoints: number;
-  referralCode: string;
-  shareBonusClaimed: boolean; // 分享推薦碼 100 點獎勵防重
-  createdAt: string;
-  updatedAt: string;
+  spentPoints?: number;
+  referralCode?: string;
+  shareBonusClaimed?: boolean; // 分享推薦碼 100 點獎勵防重
+  isRegisteredParticipant?: boolean; // 是否為已註冊參賽者
+  sharedToday?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export const COMPETITION_POINTS_CONFIG = {
@@ -539,4 +561,52 @@ export interface CompetitionAdminMetrics {
   rewardsMetrics: AdminTotalRewardsMetrics;
   userRewardSummaries: UserCompetitionRewardSummary[];
 }
+
+/**
+ * 依最新規範取得提案卡片上展示的作者與團隊資訊：
+ * 「卡片上會顯示團隊名稱，機構名稱則是由團隊選擇是否顯示」
+ */
+export function getProposalCardAuthorText(proposal?: {
+  teamName?: string;
+  authorName?: string;
+  schoolName?: string;
+  organizationName?: string;
+  school?: string;
+  team?: string;
+  showOrganization?: boolean;
+  showSchool?: boolean;
+} | null): { teamName: string; organizationName?: string; displayText: string; isOrgVisible: boolean } {
+  if (!proposal) {
+    return { teamName: '參賽團隊', displayText: '參賽團隊', isOrgVisible: false };
+  }
+
+  let team = proposal.teamName || proposal.team || '';
+  let org = proposal.organizationName || proposal.schoolName || proposal.school || '';
+
+  // 若原作者字串包含分隔線（例如 "國立臺灣大學 ｜ 臺大智慧農創隊"），解析出機構與團隊名稱
+  if (proposal.authorName) {
+    if (proposal.authorName.includes('｜')) {
+      const parts = proposal.authorName.split('｜').map((s) => s.trim());
+      org = org || parts[0];
+      if (!team) team = parts[1] || parts[0];
+    } else if (proposal.authorName.includes('|')) {
+      const parts = proposal.authorName.split('|').map((s) => s.trim());
+      org = org || parts[0];
+      if (!team) team = parts[1] || parts[0];
+    } else if (!team) {
+      team = proposal.authorName;
+    }
+  }
+
+  if (!team) {
+    team = '參賽團隊';
+  }
+
+  // 卡片上固定顯示團隊名稱，機構/學校名稱則由團隊自主選擇是否於卡片上公開顯示
+  const isOrgVisible = Boolean((proposal.showOrganization ?? proposal.showSchool ?? false) && org);
+  const displayText = isOrgVisible && org ? `${org} ｜ ${team}` : team;
+
+  return { teamName: team, organizationName: org, displayText, isOrgVisible };
+}
+
 

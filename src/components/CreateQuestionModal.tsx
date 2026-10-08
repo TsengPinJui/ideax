@@ -370,7 +370,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-stone-900">提出問題或痛點 Idea</h2>
-            <p className="text-xs text-stone-500">痛點免費提出 • 專家自訂解鎖金額 • 第三方支付安全拆款</p>
+            <p className="text-xs text-stone-500">
+              {isRaceMode ? '競賽期間免費 • 第三方安全防護' : '痛點提出 • 落地解法 • 第三方支付安全拆款'}
+            </p>
           </div>
         </div>
         {!isFullPage && (
@@ -488,7 +490,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               </div>
             </button>
 
-            {/* 提出痛點 (免費提出，下方可留方案解鎖) */}
+            {/* 提出痛點 */}
             <button
               type="button"
               onClick={() => handlePostTypeChange('pain_point')}
@@ -503,13 +505,13 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                   <Flame className="w-4 h-4" />
                 </div>
                 <span className="text-[10px] font-black bg-rose-600 text-white px-1.5 py-0.2 rounded-md shadow-2xs">
-                  免費提出
+                  {isRaceMode ? '競賽期間免費' : '提出痛點'}
                 </span>
               </div>
               <div>
                 <h4 className="text-xs sm:text-sm font-extrabold text-stone-900">提出痛點</h4>
                 <p className="text-[11px] text-stone-500 line-clamp-1 mt-0.5">
-                  0元免費提痛點・專家留方案
+                  {isRaceMode ? '競賽期間免費' : '生活與產業真實痛點'}
                 </p>
               </div>
             </button>
@@ -536,16 +538,22 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             </button>
           </div>
 
-          {/* 痛點免費提出特別提示 */}
+          {/* 痛點發布提示 */}
           {postType === 'pain_point' && (
             <div className="px-3.5 py-2 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-950 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Gift className="w-4 h-4 text-rose-600 shrink-0" />
-                <span className="font-extrabold text-rose-900 text-xs">痛點免服務費 0 元發布</span>
+                <span className="font-extrabold text-rose-900 text-xs">
+                  {isRaceMode ? '競賽期間免費' : '痛點發布'}
+                </span>
               </div>
               <HelpTooltip
-                title="痛點免費提出機制"
-                content="發布痛點完全免服務費、免付懸賞金額（NT$ 0 免費上架）。各領域專家可在下方提交落地解決方案並自訂解鎖金額，提問者或其他人需透過第三方支付解鎖後查閱。"
+                title={isRaceMode ? '競賽期間免費' : '痛點發布機制'}
+                content={
+                  isRaceMode
+                    ? '創星季競賽期間免費。匯集生活與產業真實痛點，開放給參賽團隊作為解題題目與共創解方。'
+                    : '發布生活或產業痛點無須懸賞，各領域人才可在下方提交落地解決方案，提問者或其他人需透過第三方支付解鎖後查閱。'
+                }
               />
             </div>
           )}
@@ -829,18 +837,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
         </div>
 
-        {/* Problem Level & Bounty Configuration (競賽模式痛點免費；其他提問正常懸賞並開放付點) */}
-        {postType === 'pain_point' ? (
-          <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-xs font-bold text-emerald-950 flex items-center gap-2.5 shadow-2xs">
-            <Sparkles className="w-5 h-5 text-emerald-600 shrink-0" />
-            <div>
-              <div className="font-black text-emerald-900">【🏆 創星季競賽痛點徵件】：免收懸賞金（0 點免費發布）</div>
-              <div className="text-[11px] text-emerald-800/90 font-medium mt-0.5">
-                痛點提問一律免收點數，成功發布後享有專屬獨立網址，由參賽專家量身打造商業落地方案！
-              </div>
-            </div>
-          </div>
-        ) : isNoPaymentMode ? (
+        {/* Problem Level & Bounty Configuration (痛點無須選擇賞金；無金流模式與正常懸賞處理) */}
+        {postType === 'pain_point' ? null : isNoPaymentMode ? (
           <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 text-xs font-bold text-amber-950 flex items-center gap-2.5 shadow-2xs">
             <Coins className="w-5 h-5 text-amber-600 shrink-0" />
             <div>
@@ -928,14 +926,20 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             <div className="mt-2.5 px-3.5 py-2.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-600 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Gift className="w-4 h-4 text-emerald-600" />
-                <span className="font-bold text-stone-800">L0 免費提出（NT$ 0）</span>
+                <span className="font-bold text-stone-800">
+                  {isRaceMode ? '競賽期間免費' : 'L0 發布（NT$ 0）'}
+                </span>
                 <HelpTooltip
-                  title="免費提出說明"
-                  content="無門檻免費發布痛點或討論，專家仍可在下方提交付費落地方案！"
+                  title={isRaceMode ? '競賽期間免費說明' : '痛點與討論發布說明'}
+                  content={
+                    isRaceMode
+                      ? '創星季競賽期間免費！匯集生活與產業真實痛點，開放給參賽團隊作為解題題目與共創解方。'
+                      : '無門檻發布痛點或討論，各領域人才可在下方提交落地方案！'
+                  }
                 />
               </div>
               <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                免付懸賞金
+                {isRaceMode ? '競賽期間免費' : '免付懸賞金'}
               </span>
             </div>
           )}
@@ -1102,7 +1106,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               </span>
             ) : (
               <span>
-                痛點提出完全免費。專家提交的專屬方案可自訂解鎖金額，您可自由評估後付費解鎖。
+                {isRaceMode ? '痛點提出競賽期間免費，開放給參賽團隊作為解題題目與共創解方。' : '痛點提出無門檻發布，各領域人才提供落地解法，您可自由評估後付費解鎖。'}
               </span>
             )}
           </div>
@@ -1197,7 +1201,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 <CheckCircle2 className="w-4 h-4" />
                 <span>
                   {currentBounty === 0 && !isPromotedWithMegaphone
-                    ? '確認免費發布'
+                    ? (isRaceMode ? '確認發布（競賽期間免費）' : '確認發布')
                     : `預扣 ${(currentBounty + (isPromotedWithMegaphone ? 50 : 0)).toLocaleString()} 點懸賞金 並發布`}
                 </span>
               </>

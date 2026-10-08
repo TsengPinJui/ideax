@@ -73,7 +73,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         }`}
       >
         <div className="space-y-1.5">
-          {/* Top Line: 子領域 + $+數字 (招募中不貼標籤，純以紫框突顯) */}
+          {/* Top Line: 子領域 (左) + 綠色「創星季」與 $+數字懸賞 (右上) */}
           <div className="flex items-center justify-between gap-1.5">
             <div className="flex items-center gap-1 min-w-0">
               <span
@@ -83,18 +83,16 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               >
                 {question.subcategory || question.category}
               </span>
+            </div>
 
-              {/* 綠色創星季標籤 */}
+            {/* 右上角：綠色創星季標籤 + $+數字懸賞 */}
+            <div className="shrink-0 font-mono text-right flex items-center gap-1.5">
               {(question.isStarSeason || question.tags?.includes('創星季')) && (
-                <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow-2xs shrink-0 flex items-center gap-0.5" title="創星季參賽題目（擁有獨立網址）">
+                <span className="bg-emerald-600 text-white text-[9.5px] font-black px-2 py-0.5 rounded-full shadow-2xs shrink-0 flex items-center gap-0.5" title="創星季參賽題目（擁有獨立網址）">
                   <Sparkles className="w-2.5 h-2.5" />
                   <span>創星季</span>
                 </span>
               )}
-            </div>
-
-            {/* $+數字 (痛點提問懸賞匡用紅色框起來) */}
-            <div className="shrink-0 font-mono text-right">
               {isNoPaymentMode ? (
                 <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                   免費

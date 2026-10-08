@@ -163,12 +163,12 @@ export function saveAllCompetitionProposals(proposals: StarSeasonProposal[]): vo
 function recordNewProposalFromRegistration(reg: CompetitionRegistrationRecord): void {
   const proposals = getCompetitionProposalsForAdmin();
   const newProp: StarSeasonProposal = {
-    id: reg.proposalId,
-    title: reg.projectTitle,
+    id: reg.proposalId || `prop-${Date.now()}`,
+    title: reg.projectTitle || reg.teamName,
     stage: 'solution',
-    track: reg.track,
-    summary: reg.summary,
-    description: reg.description,
+    track: reg.track || 'ai_applications',
+    summary: reg.summary || '',
+    description: reg.description || '',
     authorId: reg.userId,
     authorName: reg.leaderName,
     authorRole: 'user',

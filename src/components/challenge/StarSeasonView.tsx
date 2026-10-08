@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Sparkles,
   Trophy,
@@ -54,6 +54,8 @@ import {
   Link as LinkIcon,
   Folder,
   Download,
+  Eye,
+  Lightbulb,
 } from 'lucide-react';
 import {
   StarSeasonProposal,
@@ -69,6 +71,7 @@ import {
   ProposalComment,
   CompetitionHomepageStatsConfig,
   CompetitionAdminMetrics,
+  getProposalCardAuthorText,
 } from '../../types/competition';
 import {
   getCompetitionHomepageStatsConfig,
@@ -131,16 +134,19 @@ interface StarSeasonViewProps {
   onBackToOldSite: () => void;
   onGoToPainPoints?: () => void;
   onOpenAuth: () => void;
+  onOpenPainPointInChuangDianZi?: (item: any) => void;
 }
 
 export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   onBackToOldSite,
   onGoToPainPoints,
   onOpenAuth,
+  onOpenPainPointInChuangDianZi,
 }) => {
   const {
     currentUser,
     setCurrentUser,
+    questions,
     setQuestions,
     setAnswers,
     setSolvers,
@@ -155,6 +161,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [account, setAccount] = useState<CompetitionAccount | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
+  const [exploreInitialTab, setExploreInitialTab] = useState<'solution' | 'pain_point'>('solution');
+  const [homepageSectionTab, setHomepageSectionTab] = useState<'solution' | 'pain_point'>('solution');
 
   // 首頁公開展示數據開關與即時聚合數據
   const [statsConfig, setStatsConfig] = useState<CompetitionHomepageStatsConfig>(() => getCompetitionHomepageStatsConfig());
@@ -339,6 +347,11 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [homepageCarouselBatchIndex, setHomepageCarouselBatchIndex] = useState(0);
   const [isHomepageCarouselPaused, setIsHomepageCarouselPaused] = useState(false);
 
+  // 痛點問題輪播狀態（三張一批）
+  const [homepagePainPointBatchIndex, setHomepagePainPointBatchIndex] = useState(0);
+  const [isPainPointCarouselPaused, setIsPainPointCarouselPaused] = useState(false);
+  const [isPainPointCarouselTransitionDisabled, setIsPainPointCarouselTransitionDisabled] = useState(false);
+
   // 合併雲端真實提案與示範提案，確保隨時有豐富批次輪播
   const homepageAllProposals = useMemo(() => {
     const liveIds = new Set(proposals.map((p) => p.id));
@@ -364,7 +377,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 每批顯示 3 個提案
   const homepageProposalBatches = useMemo(() => {
-    const list = homepageAllProposals;
+    const list = homepageAllProposals.filter((p) => p.stage !== 'pain_point'); // 依需求：提案輪播只顯示提案解方，不顯示痛點
     const batches: typeof homepageAllProposals[] = [];
     for (let i = 0; i < list.length; i += 3) {
       batches.push(list.slice(i, i + 3));
@@ -372,16 +385,63 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return batches;
   }, [homepageAllProposals]);
 
-  // 自動定時一批一批向左輪播 (每 4.5 秒向左滑動至下一批)
+  // 建立無限向左循環輪播批次 (末端追加首批，確保輪播完一輪依然持續往左滑動)
+  const extendedProposalBatches = useMemo(() => {
+    if (homepageProposalBatches.length <= 1) return homepageProposalBatches;
+    return [...homepageProposalBatches, homepageProposalBatches[0]];
+  }, [homepageProposalBatches]);
+
+  const [isCarouselTransitionDisabled, setIsCarouselTransitionDisabled] = useState(false);
+
+  // 向左前進下一批
+  const handleCarouselNext = useCallback(() => {
+    if (homepageProposalBatches.length <= 1) return;
+    setHomepageCarouselBatchIndex((prev) => {
+      if (prev >= homepageProposalBatches.length) {
+        return 1;
+      }
+      return prev + 1;
+    });
+  }, [homepageProposalBatches.length]);
+
+  // 向右上一批
+  const handleCarouselPrev = useCallback(() => {
+    if (homepageProposalBatches.length <= 1) return;
+    setHomepageCarouselBatchIndex((prev) => {
+      if (prev <= 0) {
+        return homepageProposalBatches.length - 1;
+      }
+      return prev - 1;
+    });
+  }, [homepageProposalBatches.length]);
+
+  // 當滑動到末端的複製批次 (index === homepageProposalBatches.length) 時，動畫結束後無縫歸零
+  const handleCarouselTransitionEnd = useCallback(() => {
+    if (homepageCarouselBatchIndex >= homepageProposalBatches.length) {
+      setIsCarouselTransitionDisabled(true);
+      setHomepageCarouselBatchIndex(0);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsCarouselTransitionDisabled(false);
+        });
+      });
+    }
+  }, [homepageCarouselBatchIndex, homepageProposalBatches.length]);
+
+  // 自動定時持續向左輪播 (每 4.5 秒向左滑動至下一批，一輪結束後無縫繼續向左)
   useEffect(() => {
     if (homepageProposalBatches.length <= 1 || isHomepageCarouselPaused) return;
     const timer = setInterval(() => {
-      setHomepageCarouselBatchIndex((prev) => (prev + 1) % homepageProposalBatches.length);
+      handleCarouselNext();
     }, 4500);
     return () => clearInterval(timer);
-  }, [homepageProposalBatches.length, isHomepageCarouselPaused]);
+  }, [homepageProposalBatches.length, isHomepageCarouselPaused, handleCarouselNext]);
 
   const navigateToSubView = (view: ChallengeSubView) => {
+    if (view === 'submit' && (stageInfo.activeStage === 0 || stageInfo.isPainPointStage || !stageInfo.isProposalStage)) {
+      showToast('⚠️ 尚未開放：創星季第二階段「想解方/提案」將於 11/14 10:00 正式開放！目前為第一階段「痛點徵件」期，歡迎先提出痛點。');
+      return;
+    }
     const normalizedView = view === 'explore' ? 'proposal' : view;
     setCurrentSubView(normalizedView);
     try {
@@ -545,6 +605,162 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     };
   }, [currentUser]);
 
+  // 管理者專屬：專家與評審測試帳號定義（可供“管理者登入時”切換，其他人看不到）
+  const COMPETITION_TEST_PERSONAS = useMemo(() => [
+    {
+      id: 'user-expert-1',
+      name: '柯育任',
+      title: '國立大學院長 / 客座教授',
+      tag: '決選評審',
+      type: 'judge' as const,
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      description: '決選評審委員 · 資通訊與AI領域 · 擁有決選專屬評分功能與300萬創星幣',
+    },
+    {
+      id: 'user-expert-2',
+      name: '林心儀',
+      title: '創投基金資深管理合夥人',
+      tag: '決選評審',
+      type: 'judge' as const,
+      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+      description: '決選評審委員 · 生醫化材與創投 · 擁有決選專屬評分功能與300萬創星幣',
+    },
+    {
+      id: 'user-expert-3',
+      name: '陳建宏',
+      title: '台智精密機械 研發總經理',
+      tag: '認證專家',
+      type: 'expert' as const,
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      description: '認證專家 · 機械運輸智慧製造 · 擁有300萬創星幣注資評選額度',
+    },
+    {
+      id: 'user-expert-4',
+      name: '張雅琪',
+      title: '沃土文化顧問 品牌策略長',
+      tag: '認證專家',
+      type: 'expert' as const,
+      avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+      description: '認證專家 · 服務文創觀光 · 擁有300萬創星幣注資評選額度',
+    },
+    {
+      id: 'user-admin',
+      name: 'IdeaX 官方管理員',
+      title: '賽事主辦委員 / 超級管理員',
+      tag: '管理員',
+      type: 'admin' as const,
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+      description: '官方超級管理員 · 賽事全功能主辦與審核管理權限',
+    },
+  ], []);
+
+  // 僅限管理者登入時可見，其他人看不到
+  const isAdminEligible = useMemo(() => {
+    return Boolean(
+      currentUser?.role === 'admin' ||
+      currentUser?.accountType === 'admin' ||
+      currentUser?.id === 'user-admin' ||
+      currentUser?.id === 'a000000001' ||
+      localStorage.getItem('ideax_admin_switched_persona') === 'true'
+    );
+  }, [currentUser]);
+
+  const isSwitchedByAdmin = useMemo(() => {
+    return Boolean(
+      localStorage.getItem('ideax_admin_switched_persona') === 'true' &&
+      currentUser?.role !== 'admin' &&
+      currentUser?.id !== 'user-admin' &&
+      currentUser?.id !== 'a000000001'
+    );
+  }, [currentUser]);
+
+  const handleSwitchTestPersona = (persona: (typeof COMPETITION_TEST_PERSONAS)[0]) => {
+    if (persona.type === 'admin') {
+      localStorage.removeItem('ideax_admin_switched_persona');
+      const adminUser = {
+        id: 'user-admin',
+        name: 'IdeaX 官方管理員',
+        title: '超級管理員 / 賽事主辦委員',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+        role: 'admin' as const,
+        accountType: 'admin' as const,
+        balance: 99999999,
+        points: 999999,
+        pendingEarnings: 0,
+        reputation: 100,
+        joinedDate: '2025-01-01',
+        email: 'admin@ideax.tw',
+      };
+      setCurrentUser(adminUser);
+      setAccount({
+        userId: 'user-admin',
+        role: 'admin',
+        availablePoints: 10000000,
+        initialPoints: 10000000,
+        isRegisteredParticipant: false,
+        sharedToday: false,
+      });
+      showToast('👑 已切換回「IdeaX 官方管理員」身分！');
+    } else {
+      localStorage.setItem('ideax_admin_switched_persona', 'true');
+      const targetUser = {
+        id: persona.id,
+        name: persona.name,
+        title: persona.title,
+        avatar: persona.avatar,
+        role: 'solver' as const,
+        accountType: 'user' as const,
+        balance: 50000,
+        points: 3000000,
+        pendingEarnings: 0,
+        reputation: 99,
+        joinedDate: '2025-02-01',
+        email: `${persona.id}@ideax.tw`,
+        verifiedExpert: true,
+        competitionBadges: ['創星季' as const],
+      };
+      setCurrentUser(targetUser);
+      setAccount({
+        userId: persona.id,
+        role: 'solver',
+        availablePoints: 3000000,
+        initialPoints: 3000000,
+        isRegisteredParticipant: true,
+        sharedToday: false,
+      });
+      showToast(`✨ 管理員切換成功：已切換至「${persona.name}」（${persona.tag}）！`);
+    }
+    setIsProfileMenuOpen(false);
+  };
+
+  const handleSwitchBackToAdmin = () => {
+    localStorage.removeItem('ideax_admin_switched_persona');
+    const adminUser = {
+      id: 'user-admin',
+      name: 'IdeaX 官方管理員',
+      title: '超級管理員 / 賽事主辦委員',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+      role: 'admin' as const,
+      accountType: 'admin' as const,
+      balance: 99999999,
+      points: 999999,
+      pendingEarnings: 0,
+      reputation: 100,
+      joinedDate: '2025-01-01',
+      email: 'admin@ideax.tw',
+    };
+    setCurrentUser(adminUser);
+    setAccount({
+      userId: 'user-admin',
+      role: 'admin',
+      availablePoints: 10000000,
+      initialPoints: 10000000,
+      isRegisteredParticipant: false,
+      sharedToday: false,
+    });
+    showToast('👑 已切換回「IdeaX 官方管理員」身分！');
+  };
+
   // 點擊痛點捷徑直接平滑滑動至痛點專區看板
   const scrollToPainPointsBoard = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
@@ -570,6 +786,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 痛點徵件階段：點擊提出痛點
   const handleOpenPainPointSubmission = () => {
+    if (stageInfo.activeStage === 0 || stageInfo.isBeforeStart) {
+      showToast('⚠️ 尚未開放：創星季第一階段「痛點徵件」將於 10/31 00:00 正式開放！目前尚未開放徵件，敬請期待。');
+      const el = document.getElementById('homepage-schedule-section') || document.getElementById('homepage-awards-section');
+      el?.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
     if (!isLoggedIn) {
       onOpenAuth();
       return;
@@ -594,6 +816,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [leaderPhone, setLeaderPhone] = useState<string>('');
   const [leaderEmail, setLeaderEmail] = useState<string>('');
   const [schoolName, setSchoolName] = useState<string>('');
+  const [showOrganizationOnCard, setShowOrganizationOnCard] = useState<boolean>(false);
   const [department, setDepartment] = useState<string>('');
   const [advisorName, setAdvisorName] = useState<string>('');
   const [teamMembersInput, setTeamMembersInput] = useState<string>('');
@@ -610,6 +833,11 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [participantPledgeAgreed, setParticipantPledgeAgreed] = useState<boolean>(false);
   const [isSubmittingParticipant, setIsSubmittingParticipant] = useState<boolean>(false);
 
+  // 參賽意向調查 (主辦單位統計參賽分布與管道)
+  const [participantExpectedItems, setParticipantExpectedItems] = useState<string[]>(['痛點', '解方']);
+  const [participantReferralSource, setParticipantReferralSource] = useState<string>('');
+  const [participantReferralSourceOther, setParticipantReferralSourceOther] = useState<string>('');
+
   // 評審團申請表單（專業評審審查）
   const [judgeName, setJudgeName] = useState<string>('');
   const [judgePhone, setJudgePhone] = useState<string>('');
@@ -623,6 +851,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [judgeBio, setJudgeBio] = useState<string>('');
   const [judgePledgeAgreed, setJudgePledgeAgreed] = useState<boolean>(false);
   const [isSubmittingJudge, setIsSubmittingJudge] = useState<boolean>(false);
+
+  // 專家活動得知管道調查
+  const [judgeReferralSource, setJudgeReferralSource] = useState<string>('');
+  const [judgeReferralSourceOther, setJudgeReferralSourceOther] = useState<string>('');
 
   // 投稿創新idea 教學視窗狀態
   const [isProposalTutorialModalOpen, setIsProposalTutorialModalOpen] = useState<boolean>(false);
@@ -871,6 +1103,319 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return proposals.filter((p) => p.stage === 'pain_point' && p.status === 'approved');
   }, [proposals]);
 
+  // 彙整首頁痛點清單（來自創星季痛點提案與創點子平台痛點提問）
+  const homepagePainPoints = useMemo(() => {
+    const list: Array<{
+      id: string;
+      title: string;
+      category: string;
+      subcategory: string;
+      tags: string[];
+      authorName: string;
+      authorAvatar: string;
+      views: number;
+      solutionsCount: number;
+      description?: string;
+      rawProposal?: StarSeasonProposal;
+      rawQuestion?: any;
+    }> = [];
+
+    // 1. 創星季徵件之痛點提案
+    (proposals || [])
+      .filter((p) => p.stage === 'pain_point')
+      .forEach((p) => {
+        const trackMeta = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
+        list.push({
+          id: p.id,
+          title: p.title,
+          category: trackMeta.name || '日常疑難',
+          subcategory: p.cohort || '痛點徵件',
+          tags: ['痛點', trackMeta.name, '徵點子'],
+          authorName: p.authorName || '創星季參賽者',
+          authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+          views: p.viewsCount || 36,
+          solutionsCount: p.commentsCount || 0,
+          description: p.summary,
+          rawProposal: p,
+        });
+      });
+
+    // 2. 舊站創點子痛點專區問題
+    (questions || [])
+      .filter((q) => q.postType === 'pain_point' || q.tags?.includes('痛點') || q.specialZone === 'pain_points')
+      .forEach((q) => {
+        if (!list.some((item) => item.id === q.id || item.title === q.title)) {
+          list.push({
+            id: q.id,
+            title: q.title,
+            category: q.category || '日常疑難',
+            subcategory: q.subcategory || '其他',
+            tags: q.tags || ['生活痛點', '校園難題'],
+            authorName: q.authorName || 'IdeaX 創點子用戶',
+            authorAvatar: q.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            views: q.views || 0,
+            solutionsCount: q.answersCount || 0,
+            description: q.description,
+            rawQuestion: q,
+          });
+        }
+      });
+
+    // 3. 精選示範痛點補齊（確保首頁能順暢進行三張一批輪播，且真實題目優先置頂）
+    const defaultDemoPainPoints = [
+      {
+        id: 'demo-pp-1',
+        title: '大學校園循環包材共享快遞站系統',
+        category: '日常疑難',
+        subcategory: '校園環保',
+        tags: ['痛點', '校園生活', '徵點子'],
+        authorName: '成大淨零綠生活專案組',
+        authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        views: 240,
+        solutionsCount: 3,
+        description: '每年全國大專校園產生數百萬個一次性網購紙箱與氣泡袋。宿舍包裹區堆積如山缺乏回收機制，需建置模組化循環緩衝箱與歸還站。',
+      },
+      {
+        id: 'demo-pp-2',
+        title: '偏鄉弱勢學童遠距自適應微學習平台',
+        category: '日常疑難',
+        subcategory: '偏鄉教育',
+        tags: ['痛點', '教育科技', '徵點子'],
+        authorName: '政大數位教育創生隊',
+        authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        views: 310,
+        solutionsCount: 4,
+        description: '偏鄉孩童面臨網路頻寬受限與缺乏課後伴讀資源，導致學習進度落後。需要離線快取推論與遊戲化伴讀系統。',
+      },
+      {
+        id: 'demo-pp-3',
+        title: '高齡獨居長者夜間離床跌倒即時毫米波預警',
+        category: '日常疑難',
+        subcategory: '高齡長照',
+        tags: ['痛點', '智慧醫療', '徵點子'],
+        authorName: '陽明交大銀髮智慧生活團隊',
+        authorAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+        views: 450,
+        solutionsCount: 5,
+        description: '長照機構與獨居長者在夜間如廁離床時跌倒風險極高，穿戴式裝置常被長者排斥或忘記配戴，急需無接觸式毫米波雷達監控。',
+      },
+      {
+        id: 'demo-pp-4',
+        title: '在地小農冷鏈斷鏈損耗預防與共享車隊派遣',
+        category: '日常疑難',
+        subcategory: '農產物流',
+        tags: ['痛點', '智慧物流', '徵點子'],
+        authorName: '臺大智慧農創隊',
+        authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        views: 190,
+        solutionsCount: 2,
+        description: '偏遠產地農產運銷至都會區時，傳統冷鏈車調度成本過高，導致高價值蔬果因溫控失誤損耗率達 18%，需智慧溫控與共享冷鏈派遣。',
+      },
+      {
+        id: 'demo-pp-5',
+        title: '大專院校二手教科書跨校免運循環市集',
+        category: '日常疑難',
+        subcategory: '學生福利',
+        tags: ['痛點', '校園經濟', '徵點子'],
+        authorName: '中央大學微光永續社',
+        authorAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
+        views: 280,
+        solutionsCount: 3,
+        description: '原文書籍昂貴且每學期替換率高，系所二手書交流分散在不同社團且面交不便，急需跨校智慧媒合與無人置物櫃借還機制。',
+      },
+      {
+        id: 'demo-pp-6',
+        title: '社區型智慧微電網動態需量削峰填谷調控',
+        category: '日常疑難',
+        subcategory: '綠色能源',
+        tags: ['痛點', '智慧電網', '徵點子'],
+        authorName: '清華綠能前瞻研究組',
+        authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+        views: 320,
+        solutionsCount: 4,
+        description: '老舊社區與園區因電動車充電樁大量裝設導致變壓器過載，尖峰用電電費高昂，需要結合儲能電池的動態需量反應調控系統。',
+      },
+    ];
+
+    defaultDemoPainPoints.forEach((demo) => {
+      if (!list.some((item) => item.id === demo.id || item.title === demo.title)) {
+        list.push(demo);
+      }
+    });
+
+    return list;
+  }, [proposals, questions]);
+
+  // 痛點問題每批 3 個（三張一批輪播）
+  const homepagePainPointBatches = useMemo(() => {
+    const list = homepagePainPoints;
+    const batches: typeof homepagePainPoints[] = [];
+    for (let i = 0; i < list.length; i += 3) {
+      batches.push(list.slice(i, i + 3));
+    }
+    return batches;
+  }, [homepagePainPoints]);
+
+  // 建立痛點無限向左循環輪播批次
+  const extendedPainPointBatches = useMemo(() => {
+    if (homepagePainPointBatches.length <= 1) return homepagePainPointBatches;
+    return [...homepagePainPointBatches, homepagePainPointBatches[0]];
+  }, [homepagePainPointBatches]);
+
+  // 痛點向左前進下一批
+  const handlePainPointCarouselNext = useCallback(() => {
+    if (homepagePainPointBatches.length <= 1) return;
+    setHomepagePainPointBatchIndex((prev) => {
+      if (prev >= homepagePainPointBatches.length) {
+        return 1;
+      }
+      return prev + 1;
+    });
+  }, [homepagePainPointBatches.length]);
+
+  // 痛點向右上一批
+  const handlePainPointCarouselPrev = useCallback(() => {
+    if (homepagePainPointBatches.length <= 1) return;
+    setHomepagePainPointBatchIndex((prev) => {
+      if (prev <= 0) {
+        return homepagePainPointBatches.length - 1;
+      }
+      return prev - 1;
+    });
+  }, [homepagePainPointBatches.length]);
+
+  // 痛點輪播過渡結束處理
+  const handlePainPointCarouselTransitionEnd = useCallback(() => {
+    if (homepagePainPointBatchIndex >= homepagePainPointBatches.length) {
+      setIsPainPointCarouselTransitionDisabled(true);
+      setHomepagePainPointBatchIndex(0);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsPainPointCarouselTransitionDisabled(false);
+        });
+      });
+    }
+  }, [homepagePainPointBatchIndex, homepagePainPointBatches.length]);
+
+  // 痛點自動定時持續向左輪播 (每 4.5 秒向左滑動至下一批)
+  useEffect(() => {
+    if (homepagePainPointBatches.length <= 1 || isPainPointCarouselPaused || homepageSectionTab !== 'pain_point') return;
+    const timer = setInterval(() => {
+      handlePainPointCarouselNext();
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [homepagePainPointBatches.length, isPainPointCarouselPaused, homepageSectionTab, handlePainPointCarouselNext]);
+
+  // 解方卡片角標 (決選 / 冠軍 / 亞軍 / 季軍 / 4~10名)
+  const renderProposalCornerBadge = (proposal: any, idx: number) => {
+    const rank = proposal.finalRank;
+    const isResultsPublished = stageInfo.isResultsStage || (rank !== undefined && rank > 0);
+
+    if (isResultsPublished && rank && rank > 0) {
+      if (rank === 1) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 border border-amber-300 shadow-sm shrink-0 flex items-center gap-0.5">
+            <span>🏆</span>
+            <span>冠軍</span>
+          </span>
+        );
+      }
+      if (rank === 2) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-slate-200 to-gray-300 text-slate-800 border border-slate-300 shadow-sm shrink-0 flex items-center gap-0.5">
+            <span>🥈</span>
+            <span>亞軍</span>
+          </span>
+        );
+      }
+      if (rank === 3) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-700 to-amber-800 text-white border border-amber-600 shadow-sm shrink-0 flex items-center gap-0.5">
+            <span>🥉</span>
+            <span>季軍</span>
+          </span>
+        );
+      }
+      if (rank >= 4 && rank <= 10) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-700/95 text-stone-100 border border-stone-600 shadow-sm shrink-0">
+            4~10名
+          </span>
+        );
+      }
+    }
+
+    const isFinalist = proposal.isFinalist || proposal.isFinalistSelected || idx < 20;
+    if (stageInfo.isExpertReviewStage || isFinalist) {
+      return (
+        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white shadow-sm shrink-0">
+          決選
+        </span>
+      );
+    }
+
+    return null;
+  };
+
+  // 痛點獲獎標籤 (冠軍痛點 / 亞軍痛點 / 季軍痛點 / 4~10名痛點 / 決選痛點)
+  const getPainPointAwardBadge = (painPointTitle: string, painPointId: string) => {
+    const adoptingWinner = proposals.find((p) => {
+      if (p.stage === 'pain_point') return false;
+      const matchId = p.sourcePainPointId && (p.sourcePainPointId === painPointId || p.sourcePainPointId === painPointTitle);
+      const matchTitle = p.sourcePainPointTitle && (p.sourcePainPointTitle.includes(painPointTitle) || painPointTitle.includes(p.sourcePainPointTitle));
+      return (matchId || matchTitle) && (p.finalRank || p.isFinalist);
+    });
+
+    if (!adoptingWinner) return null;
+
+    const rank = adoptingWinner.finalRank;
+    const isResultsPublished = stageInfo.isResultsStage || (rank !== undefined && rank > 0);
+
+    if (isResultsPublished && rank && rank > 0) {
+      if (rank === 1) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 border border-amber-300 shadow-2xs shrink-0 flex items-center gap-1">
+            <span>🏆</span>
+            <span>冠軍痛點</span>
+          </span>
+        );
+      }
+      if (rank === 2) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-slate-200 to-gray-300 text-slate-800 border border-slate-300 shadow-2xs shrink-0 flex items-center gap-1">
+            <span>🥈</span>
+            <span>亞軍痛點</span>
+          </span>
+        );
+      }
+      if (rank === 3) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-700 to-amber-800 text-white border border-amber-600 shadow-2xs shrink-0 flex items-center gap-1">
+            <span>🥉</span>
+            <span>季軍痛點</span>
+          </span>
+        );
+      }
+      if (rank >= 4 && rank <= 10) {
+        return (
+          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-700/95 text-stone-100 border border-stone-600 shadow-2xs shrink-0">
+            4~10名痛點
+          </span>
+        );
+      }
+    }
+
+    if (stageInfo.isExpertReviewStage || adoptingWinner.isFinalist) {
+      return (
+        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white shadow-2xs shrink-0">
+          決選痛點
+        </span>
+      );
+    }
+
+    return null;
+  };
+
   // 全站統計指標（參賽件數、全網虛擬支持金池、社群支持熱度人次）
   const competitionStats = useMemo(() => {
     const totalCount = proposals.length;
@@ -1024,6 +1569,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         leaderEmail: leaderEmail || currentUser.email || '',
         schoolName: schoolName || '學校/機構',
         department: department || '創新學程',
+        showOrganization: showOrganizationOnCard,
         advisorName,
         track: participantTrack,
         projectTitle,
@@ -1039,6 +1585,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         videoUrl,
         targetFundingAmount: Number(targetFundingAmount) || 300000,
         rewardPlanDescription: rewardPlanDescription || '搶先體驗資格、限量特製紀念徽章、技術感謝白皮書',
+        expectedItems: participantExpectedItems,
+        referralSource: participantReferralSource === '其他' && participantReferralSourceOther.trim() ? `其他 (${participantReferralSourceOther.trim()})` : participantReferralSource,
+        referralSourceOther: participantReferralSourceOther.trim(),
         pledgeAgreed: true,
       });
 
@@ -1121,6 +1670,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         credentialProofUrl: judgeProofFile?.url,
         credentialProofName: judgeProofFile?.name,
         bio: judgeBio || `${judgeOrg} ${judgeJobTitle}，創星季專業評審團委員。`,
+        referralSource: judgeReferralSource === '其他' && judgeReferralSourceOther.trim() ? `其他 (${judgeReferralSourceOther.trim()})` : judgeReferralSource,
+        referralSourceOther: judgeReferralSourceOther.trim(),
         reviewPledgeAgreed: true,
       });
 
@@ -1516,6 +2067,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           onNavigate={navigateToSubView}
           onBackToOldSite={onBackToOldSite}
           onOpenAuth={onOpenAuth}
+          onOpenPainPointInChuangDianZi={onOpenPainPointInChuangDianZi}
+          initialSectionTab={exploreInitialTab}
           proposals={proposals}
           onRefreshProposals={loadData}
           account={account}
@@ -1596,6 +2149,37 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         originY={shatterTransition.originY}
       />
 
+      {/* 管理員測試身分提示橫條 (只有切換到測試身分時亮起，提供隨時一鍵切換回管理員) */}
+      {isSwitchedByAdmin && (
+        <div className="bg-gradient-to-r from-purple-900 via-stone-900 to-amber-900 text-white px-3 sm:px-6 py-2 flex items-center justify-between text-xs border-b border-amber-400/50 z-50 relative shadow-md">
+          <div className="flex items-center gap-2 font-bold flex-wrap">
+            <span className="px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 font-black text-[10px] flex items-center gap-1 shadow-2xs">
+              <Sparkles className="w-3 h-3 text-stone-950" />
+              管理員測試身分
+            </span>
+            <span className="text-white/90">
+              目前切換為：<b className="text-amber-300 font-black">{currentUser.name}</b>（{currentUser.title}）
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsProfileMenuOpen(true)}
+              className="px-2.5 py-1 rounded-xl bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold cursor-pointer transition-colors"
+            >
+              更換測試帳號
+            </button>
+            <button
+              type="button"
+              onClick={handleSwitchBackToAdmin}
+              className="px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-[11px] font-black cursor-pointer transition-colors shadow-2xs"
+            >
+              切換回管理員
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 頂部全站提示列與導覽 */}
       <div className="bg-white/95 border-b border-amber-200 sticky top-0 z-40 backdrop-blur-md shadow-xs">
         {/* 創星季廣播橫幅：誠徵各行業專家參與注資，注資額300萬（點擊申請） */}
@@ -1613,12 +2197,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="p-1 -m-1 rounded-xl hover:bg-amber-100/60 active:scale-95 transition-all cursor-pointer flex items-center justify-center group"
-              title="點擊回到 IdeaX 舊站首頁"
-              aria-label="回到舊站首頁"
+              title="點擊回到 IdeaX 創點子平台首頁"
+              aria-label="回到 IdeaX 創點子平台首頁"
             >
               <img
                 src="/logo-bulb.png"
-                alt="IdeaX 創點子 - 點擊回舊站首頁"
+                alt="IdeaX 創點子平台 - 點擊回首頁"
                 className="w-12 h-12 sm:w-13 sm:h-13 md:w-14 md:h-14 object-contain shrink-0 drop-shadow-xs group-hover:drop-shadow-md transition-all group-hover:scale-105"
               />
             </button>
@@ -1649,6 +2233,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  showToast('⚠️ 尚未開放：創星季第一階段「痛點徵件」將於 10/31 00:00 正式開放！目前尚未開放徵件，敬請期待。');
                   const el = document.getElementById('homepage-schedule-section') || document.getElementById('homepage-awards-section');
                   el?.scrollIntoView({ behavior: 'smooth' });
                 }}
@@ -1702,28 +2287,55 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <span>探索Idea</span>
             </button>
 
-            {/* 3. 痛點-> (前三項目之三：有色鮮明膠囊) */}
+            {/* 3. 痛點 (前三項目之三：有色鮮明膠囊) */}
             <button
               type="button"
               onClick={scrollToPainPointsBoard}
-              className="px-3 py-1.5 rounded-xl text-orange-950 bg-orange-200/90 hover:bg-orange-300 border border-orange-300/80 transition-all cursor-pointer font-black flex items-center gap-1.5 shadow-2xs active:scale-98"
-              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
+              className="px-3 py-1.5 rounded-xl text-orange-950 bg-orange-200/90 hover:bg-orange-300 border border-orange-300/80 transition-all cursor-pointer font-black flex items-center gap-1.5 shadow-2xs active:scale-98 group"
+              title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
             >
               <Layers className="w-3.5 h-3.5 text-orange-700" />
-              <span>痛點-&gt;</span>
+              <span>痛點</span>
+              <ArrowRight className="w-3.5 h-3.5 text-orange-800 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+
+            {/* 賽程表 (文字連結連到下方賽程表) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (currentSubView !== 'home') {
+                  navigateToSubView('home');
+                  setTimeout(() => {
+                    const el = document.getElementById('homepage-schedule-section');
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 120);
+                } else {
+                  const el = document.getElementById('homepage-schedule-section');
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold flex items-center gap-1.5"
+              title="點擊前往查看賽程時程表"
+            >
+              <Calendar className="w-3.5 h-3.5 text-stone-500" />
+              <span>賽程表</span>
             </button>
 
             {/* 競賽辦法 (直接前往專門競賽辦法頁) */}
             <button
               type="button"
-              onClick={() => navigateToSubView('rules')}
+              onClick={() => {
+                navigateToSubView('rules');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold flex items-center gap-1.5"
+              title="前往閱讀完整官方競賽辦法規章"
             >
-              <BookOpen className="w-3.5 h-3.5 text-stone-500" />
+              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
               <span>競賽辦法</span>
             </button>
 
-            {/* 4. 申請參賽者 */}
+            {/* 4. 報名參賽 */}
             <button
               type="button"
               onClick={() => {
@@ -1736,7 +2348,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               className="px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold flex items-center gap-1.5"
             >
               <GraduationCap className="w-3.5 h-3.5 text-stone-500" />
-              <span>申請參賽者</span>
+              <span>報名參賽</span>
             </button>
 
             {/* 5. 成為專家 */}
@@ -1881,6 +2493,71 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     )}
                   </div>
 
+                  {/* 管理者專屬：專家與評審測試帳號快速切換 (其他人看不到) */}
+                  {isAdminEligible && (
+                    <div className="p-2.5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-purple-500/10 to-stone-100 border border-amber-300 shadow-2xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-black text-stone-900">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                          <span>專家 / 評審測試帳號切換</span>
+                        </div>
+                        <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-rose-600 text-white font-mono">
+                          管理員限定
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-stone-500 leading-tight">
+                        可供管理者登入時快速切換專家注資或評審打分測試身分，一般用戶與訪客不可見。
+                      </p>
+                      <div className="grid grid-cols-1 gap-1.5 pt-0.5 max-h-56 overflow-y-auto pr-0.5">
+                        {COMPETITION_TEST_PERSONAS.map((persona) => {
+                          const isCurrent = currentUser.id === persona.id;
+                          return (
+                            <button
+                              key={persona.id}
+                              type="button"
+                              onClick={() => handleSwitchTestPersona(persona)}
+                              className={`w-full px-2.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer border text-left ${
+                                isCurrent
+                                  ? 'bg-amber-400 text-stone-950 border-amber-500 shadow-2xs font-black ring-1 ring-amber-300'
+                                  : 'bg-white hover:bg-amber-50 text-stone-800 border-stone-200 hover:border-amber-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <img
+                                  src={persona.avatar}
+                                  alt=""
+                                  className="w-6 h-6 rounded-full object-cover border border-stone-300 shrink-0"
+                                />
+                                <div className="min-w-0 truncate">
+                                  <div className="text-xs truncate flex items-center gap-1">
+                                    <span>{persona.name}</span>
+                                    <span
+                                      className={`text-[9px] font-black px-1.5 py-0.2 rounded-full shrink-0 ${
+                                        persona.type === 'admin'
+                                          ? 'bg-rose-100 text-rose-800'
+                                          : persona.type === 'judge'
+                                          ? 'bg-purple-100 text-purple-800'
+                                          : 'bg-emerald-100 text-emerald-800'
+                                      }`}
+                                    >
+                                      {persona.tag}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-stone-500 truncate font-normal">
+                                    {persona.title}
+                                  </div>
+                                </div>
+                              </div>
+                              {isCurrent && (
+                                <Check className="w-3.5 h-3.5 text-stone-950 shrink-0 ml-1 font-black" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* 核心功能選單列表 */}
                   <div className="space-y-1 text-xs font-bold text-stone-700">
                     <button
@@ -1968,6 +2645,27 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         <div>
                           <div className="font-black text-stone-900">推廣大使推薦碼</div>
                           <div className="text-[10px] text-stone-500 font-normal">專屬推薦碼、輸入綁定與推薦名單滿版專區</div>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        navigateToSubView('rules');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl hover:bg-blue-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                          <BookOpen className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-black text-stone-900">競賽辦法與規章</div>
+                          <div className="text-[10px] text-stone-500 font-normal">官方賽制規則、評選權重與獎金辦法</div>
                         </div>
                       </div>
                       <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
@@ -2114,16 +2812,30 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               )}
             </div>
 
-            {/* 痛點-> (行動版快捷鍵，風格與全站一致) */}
-            <button
-              type="button"
-              onClick={scrollToPainPointsBoard}
-              className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 hover:border-amber-300 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98 shrink-0"
-              title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
-            >
-              <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>痛點-&gt;</span>
-            </button>
+            {/* 手機版面空間有限：移除競賽辦法按鈕，優先保留痛點（隨著賽程變動，若換至提案階段則自動變換為提案捷徑），並採用向量箭頭圖標 */}
+            {stageInfo.isProposalStage ? (
+              <button
+                type="button"
+                onClick={() => setIsProposalTutorialModalOpen(true)}
+                className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-98 shrink-0 group border border-amber-300"
+                title="進入創星季提案教學指南並開始提案"
+              >
+                <Send className="w-3.5 h-3.5 text-stone-950" />
+                <span>提案</span>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-950 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={scrollToPainPointsBoard}
+                className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 hover:border-amber-300 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98 shrink-0 group"
+                title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
+              >
+                <Flame className="w-3.5 h-3.5 text-rose-500" />
+                <span>痛點</span>
+                <ArrowRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -2141,13 +2853,25 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
           <div className="text-center max-w-3xl mx-auto space-y-4">
             
-            {/* 1. 綠色活動圓角膠囊標籤（第一行：活動名稱，第二行：日期+階段名稱中!） */}
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-emerald-900 text-xs sm:text-sm font-bold shadow-2xs">
+            {/* 綠色活動圓角膠囊標籤：10/31 痛點徵件即將開跑! 賽程→（賽程用文字超連結） */}
+            <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-emerald-900 text-xs sm:text-sm font-bold shadow-2xs">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <div className="leading-snug text-center">
-                <div>【11月創新月】IdeaX 創星季・創新挑戰賽</div>
-                <div className="text-emerald-700 font-extrabold tracking-wide">{stageBadgeSubtitle}</div>
-              </div>
+              <span>{stageInfo.activeStage === 0 ? '10/31 痛點徵件即將開跑!' : stageBadgeSubtitle}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('homepage-schedule-section');
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }}
+                className="inline-flex items-center gap-0.5 text-xs sm:text-sm font-black text-emerald-700 hover:text-emerald-950 cursor-pointer transition-colors group shrink-0 ml-0.5"
+                title="點擊前往查看賽程表"
+                aria-label="前往查看賽程表"
+              >
+                <span className="underline underline-offset-2 decoration-emerald-600 group-hover:decoration-emerald-950">賽程</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 stroke-[2.5]" />
+              </button>
             </div>
 
             {/* 3. 大標語：參考原創比賽海報風格（微傾斜動態、三行大字體交錯錯開排版、手繪粉紅與黃綠油漆筆刷、向前運動斜體感） */}
@@ -2159,8 +2883,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <button
                     type="button"
                     onClick={(e) => handleTriggerShatterAndJump(e, 'painPoint')}
-                    title="點擊擊碎痛點：字體化為碎片掉落，直接跳轉進入痛點專區！"
-                    aria-label="點擊擊碎痛點並跳轉進入痛點專區"
+                    title="點擊擊碎痛點：字體化為碎片掉落，直接跳轉進入創點子/痛點集！"
+                    aria-label="點擊擊碎痛點並跳轉進入創點子/痛點集"
                     className={`relative inline-block ml-2 sm:ml-3 cursor-pointer group active:scale-95 transition-all text-left focus:outline-none ${
                       shatterTransition.isActive && shatterTransition.clickedWord === 'painPoint'
                         ? 'opacity-0 scale-90 pointer-events-none'
@@ -2267,6 +2991,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    showToast('⚠️ 尚未開放：創星季第一階段「痛點徵件」將於 10/31 00:00 正式開放！目前尚未開放徵件，敬請期待。');
                     const el = document.getElementById('homepage-schedule-section') || document.getElementById('homepage-awards-section');
                     el?.scrollIntoView({ behavior: 'smooth' });
                   }}
@@ -2319,15 +3044,16 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 <span>探索Idea</span>
               </button>
 
-              {/* 次行動 2：痛點-> (同風格白底微邊框卡片，統一圖示與圓角尺寸) */}
+              {/* 次行動 2：痛點 (同風格白底微邊框卡片，統一圖示與圓角尺寸) */}
               <button
                 type="button"
                 onClick={scrollToPainPointsBoard}
-                className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-white hover:bg-stone-50 text-stone-800 hover:text-stone-950 font-bold text-sm sm:text-base shadow-2xs border border-stone-200/90 hover:border-amber-300 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
-                title="前往 IdeaX創點子 痛點專區並自動滾動至痛點區域"
+                className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-white hover:bg-stone-50 text-stone-800 hover:text-stone-950 font-bold text-sm sm:text-base shadow-2xs border border-stone-200/90 hover:border-amber-300 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 group"
+                title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
               >
                 <Flame className="w-4 h-4 text-rose-500" />
-                <span>痛點-&gt;</span>
+                <span>痛點</span>
+                <ArrowRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
 
@@ -2356,7 +3082,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white hover:bg-stone-50 text-stone-800 hover:text-stone-950 border border-stone-200/90 hover:border-stone-300 text-xs sm:text-sm font-bold shadow-2xs transition-all cursor-pointer active:scale-98"
                 >
                   <GraduationCap className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>申請參賽者</span>
+                  <span>報名參賽</span>
                 </button>
 
                 <button
@@ -2396,275 +3122,22 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <TrendingUp className="w-3.5 h-3.5 text-yellow-600" />
                   <span>模擬募資前 20 名 <strong>取得入圍決選資格</strong></span>
                 </span>
+                <span className="text-stone-300">•</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('homepage-schedule-section');
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="flex items-center gap-1 font-bold text-emerald-700 hover:text-emerald-950 hover:underline cursor-pointer transition-colors"
+                  title="點擊前往查看賽程時程表"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>賽程表 →</span>
+                </button>
               </div>
             </div>
 
-          </div>
-        </div>
-      </div>
-
-      {/* 競賽四階段時程進度條 (10/31~11/13 痛點徵件、11/14~12/04 模擬募資、12/05~12/11 進入決選、12/16前公布結果) */}
-      <div id="homepage-schedule-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="bg-white/90 backdrop-blur-xs p-5 rounded-3xl border border-stone-200/90 shadow-2xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-b border-stone-100 pb-3">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-amber-600" />
-              <h2 className="text-sm sm:text-base font-black text-stone-900">
-                IdeaX 創星季 賽程時程表
-              </h2>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-stone-600">
-              {stageInfo.activeStage === 0 ? (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  <span>當前狀態：<strong className="text-amber-800 font-black">{stageInfo.stageTitle}</strong>（{stageInfo.stagePeriod}）</span>
-                </>
-              ) : (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>當前進行：<strong className="text-emerald-800 font-black">{stageInfo.stageTitle}</strong>（{stageInfo.stagePeriod}）</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* 報名時段特別公告標籤 */}
-          <div className="mb-4 p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2.5">
-              <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-stone-950 font-black text-[11px] shrink-0 shadow-2xs">
-                📝 報名時段
-              </span>
-              <span className="font-black text-stone-900 font-mono text-sm">
-                10/24 00:00 ～ 12/04 16:30
-              </span>
-            </div>
-            <div className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0" />
-              <span>提痛點之參賽者請於 <strong className="font-black text-stone-900 underline underline-offset-2">11/13 16:30</strong> 痛點徵件截止前完成報名</span>
-            </div>
-          </div>
-
-          {(() => {
-            const activeStage = stageInfo.activeStage;
-
-            return (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                {/* 階段 1: 痛點徵件 */}
-                <div
-                  className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
-                    activeStage === 1
-                      ? 'bg-white border-2 border-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
-                      : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                        activeStage === 1
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-stone-200 text-stone-600'
-                      }`}
-                    >
-                      第一階段
-                    </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
-                        activeStage === 1
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                          : activeStage === 0
-                          ? 'bg-amber-50 text-amber-900 border border-amber-200'
-                          : 'bg-stone-200/70 text-stone-500 border border-stone-200'
-                      }`}
-                    >
-                      {activeStage === 1 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      <span>{activeStage === 1 ? '徵件中（當前）' : activeStage === 0 ? '即將開放（10/31 00:00）' : '已截止'}</span>
-                    </span>
-                  </div>
-                  <div className={`text-sm ${activeStage === 1 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
-                    痛點徵件
-                  </div>
-                  <div className={`text-xs font-mono ${activeStage === 1 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
-                    10/31 00:00 ~ 11/13 16:30
-                  </div>
-                  <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 1 ? 'text-stone-600' : 'text-stone-400'}`}>
-                    提出生活與產業切身痛點（過審即送 200 點），開放各隊選題解題。
-                  </p>
-                </div>
-
-                {/* 階段 2A: 預先提案 (11/14 10:00 ~ 11/15 16:30) */}
-                <div
-                  className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
-                    activeStage === 2
-                      ? 'bg-white border-2 border-amber-500 ring-2 ring-amber-400/20 shadow-md'
-                      : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                        activeStage === 2
-                          ? 'bg-amber-500 text-stone-950 font-bold'
-                          : 'bg-stone-200 text-stone-600'
-                      }`}
-                    >
-                      第二階段 (一)
-                    </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
-                        activeStage === 2
-                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                          : 'bg-stone-200/70 text-stone-500 border border-stone-200'
-                      }`}
-                    >
-                      {activeStage === 2 && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
-                      <span>{activeStage === 2 ? '預先提案中（當前）' : activeStage > 2 ? '已結束' : '即將開放'}</span>
-                    </span>
-                  </div>
-                  <div className={`text-sm ${activeStage === 2 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
-                    預先提案
-                  </div>
-                  <div className={`text-xs font-mono ${activeStage === 2 ? 'font-black text-amber-700' : 'font-medium text-stone-400'}`}>
-                    11/14 10:00 ~ 11/15 16:30
-                  </div>
-                  <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 2 ? 'text-stone-700 font-medium' : 'text-stone-400'}`}>
-                    關閉募資(投資)功能。開放報名、線上提案、主辦審核與預覽。
-                  </p>
-                </div>
-
-                {/* 階段 2B: 模擬募資與提案 (11/16 10:00 ~ 12/04 16:30) */}
-                <div
-                  className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
-                    activeStage === 3
-                      ? 'bg-white border-2 border-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
-                      : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                        activeStage === 3
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-stone-200 text-stone-600'
-                      }`}
-                    >
-                      第二階段 (二)
-                    </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
-                        activeStage === 3
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                          : 'bg-stone-200/70 text-stone-500 border border-stone-200'
-                      }`}
-                    >
-                      {activeStage === 3 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      <span>{activeStage === 3 ? '募資與提案中（當前）' : activeStage > 3 ? '已截止 (12/04 16:30)' : '即將開跑 (11/16 10:00)'}</span>
-                    </span>
-                  </div>
-                  <div className={`text-sm ${activeStage === 3 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
-                    模擬募資與提案
-                  </div>
-                  <div className={`text-xs font-mono ${activeStage === 3 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
-                    11/16 10:00 ~ 12/04 16:30
-                  </div>
-                  <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 3 ? 'text-stone-600' : 'text-stone-400'}`}>
-                    開放報名、提案、創星幣注資與審核！總額前 20 名取得決選資格。
-                  </p>
-                </div>
-
-                {/* 階段 3: 進入決選(評審) */}
-                <div
-                  className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
-                    activeStage === 4
-                      ? 'bg-white border-2 border-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
-                      : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                        activeStage === 4
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-stone-200 text-stone-600'
-                      }`}
-                    >
-                      第三階段
-                    </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
-                        activeStage === 4
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                          : 'bg-stone-200/70 text-stone-500 border border-stone-200'
-                      }`}
-                    >
-                      {activeStage === 4 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      <span>{activeStage === 4 ? '決選審查中（當前）' : activeStage > 4 ? '已結束' : '專家審查'}</span>
-                    </span>
-                  </div>
-                  <div className={`text-sm ${activeStage === 4 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
-                    進入決選(評審)
-                  </div>
-                  <div className={`text-xs font-mono ${activeStage === 4 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
-                    12/05 ~ 12/11
-                  </div>
-                  <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 4 ? 'text-stone-600' : 'text-stone-400'}`}>
-                    由評審團進行專業審查與評分。
-                  </p>
-                </div>
-
-                {/* 階段 4: 公布結果 */}
-                <div
-                  className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
-                    activeStage === 5
-                      ? 'bg-white border-2 border-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
-                      : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                        activeStage === 5
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-stone-200 text-stone-600'
-                      }`}
-                    >
-                      第四階段
-                    </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
-                        activeStage === 5
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                          : 'bg-stone-200/70 text-stone-500 border border-stone-200'
-                      }`}
-                    >
-                      {activeStage === 5 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      <span>{activeStage === 5 ? '已公布榜單（當前）' : '創星季榮耀'}</span>
-                    </span>
-                  </div>
-                  <div className={`text-sm ${activeStage === 5 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
-                    公布結果
-                  </div>
-                  <div className={`text-xs font-mono ${activeStage === 5 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
-                    12/16 前公布
-                  </div>
-                  <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 5 ? 'text-stone-600' : 'text-stone-400'}`}>
-                    於首頁盛大公告最終榜單，頒發榮譽與獎勵。
-                  </p>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* 賽程表區塊右下：完整競賽辦法-> */}
-          <div className="pt-3 border-t border-stone-100 flex items-center justify-end mt-3">
-            <button
-              type="button"
-              onClick={() => navigateToSubView('rules')}
-              className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline transition-colors cursor-pointer group"
-              title="前往閱讀完整競賽辦法與規章章程"
-            >
-              <span>完整競賽辦法</span>
-              <span className="transition-transform group-hover:translate-x-0.5">→</span>
-            </button>
           </div>
         </div>
       </div>
@@ -2743,24 +3216,52 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         <div className="bg-gradient-to-br from-amber-50/80 via-white to-stone-50 rounded-3xl border border-amber-300/80 p-6 sm:p-8 shadow-xs space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-200/60 pb-6">
             <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-2xl sm:text-3xl font-black text-stone-950 tracking-tight">
-                  當前提案
-                </h2>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-2xl border border-stone-200 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setHomepageSectionTab('solution')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      homepageSectionTab === 'solution'
+                        ? 'bg-amber-400 text-stone-950 shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <Lightbulb className="w-4 h-4 text-amber-700" />
+                    <span>解方提案</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHomepageSectionTab('pain_point')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      homepageSectionTab === 'pain_point'
+                        ? 'bg-rose-500 text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <Layers className="w-4 h-4" />
+                    <span>痛點問題</span>
+                  </button>
+                </div>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  目前為示範
+                  目前為示範展示
                 </span>
               </div>
               <p className="text-stone-600 text-xs sm:text-sm mt-1 max-w-2xl font-medium leading-relaxed">
-                本屆創星季提案庫已全面獨立至專屬滿版網頁！匯聚青年原創解法，支援依賽道篩選、按讚收藏與模擬注資投點。（目前為示範提案展示）
+                {homepageSectionTab === 'solution'
+                  ? '本屆創星季解方提案庫！匯聚青年原創解法，支援依賽道篩選、按讚收藏與模擬注資投點。'
+                  : '生活與產業的真實痛點問題庫！歡迎針對切身痛點進行探索，點進去卡片直接連至創點子查看詳情與提出解方。'}
               </p>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => navigateToSubView('proposal')}
+                onClick={() => {
+                  setExploreInitialTab(homepageSectionTab);
+                  navigateToSubView('proposal');
+                }}
                 className="px-5 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs sm:text-sm shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-98"
               >
                 <Compass className="w-4 h-4" />
@@ -2769,265 +3270,398 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             </div>
           </div>
 
-          {/* 領域探索標籤（四大領域分類：機電運輸、資通訊、生醫化材、服務文創） */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            <span className="text-[11px] font-bold text-stone-500 shrink-0">領域標注探索：</span>
-            {OFFICIAL_COMPETITION_TRACKS.map((tr) => (
-              <button
-                key={tr.id}
-                type="button"
-                onClick={() => navigateToSubView('proposal')}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100 text-stone-700 border border-stone-200 text-xs font-bold whitespace-nowrap cursor-pointer transition-colors shadow-2xs flex items-center gap-1.5"
-              >
-                <span>{tr.name}</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
-                  {tr.tag}
-                </span>
-              </button>
-            ))}
-          </div>
+          {homepageSectionTab === 'solution' ? (
+            <>
+              {/* 領域探索標籤（四大領域分類：機電運輸、資通訊、生醫化材、服務文創） */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <span className="text-[11px] font-bold text-stone-500 shrink-0">領域標注探索：</span>
+                {OFFICIAL_COMPETITION_TRACKS.map((tr) => (
+                  <button
+                    key={tr.id}
+                    type="button"
+                    onClick={() => navigateToSubView('proposal')}
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100 text-stone-700 border border-stone-200 text-xs font-bold whitespace-nowrap cursor-pointer transition-colors shadow-2xs flex items-center gap-1.5"
+                  >
+                    <span>{tr.name}</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                      {tr.tag}
+                    </span>
+                  </button>
+                ))}
+              </div>
 
-          {/* 批次輪播控制列 (一次顯示三個提案，一批一批向左輪播) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                <span>精選提案輪播</span>
-                <span className="text-[11px] font-mono text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300">
-                  第 {homepageCarouselBatchIndex + 1} / {Math.max(1, homepageProposalBatches.length)} 批
-                </span>
-              </span>
-              <span className="text-xs text-stone-500 hidden md:inline">
-                · 共 {homepageAllProposals.length} 隊參賽（每批 3 隊向左滑動）
-              </span>
-            </div>
-
-            {/* 輪播左右切換按鈕、暫停與批次按鈕 */}
-            <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setIsHomepageCarouselPaused((prev) => !prev)}
-                className={`p-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                  isHomepageCarouselPaused
-                    ? 'bg-amber-100 text-amber-900 border-amber-300'
-                    : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
-                }`}
-                title={isHomepageCarouselPaused ? '繼續自動向左輪播' : '暫停自動輪播'}
-              >
-                {isHomepageCarouselPaused ? <Play className="w-3.5 h-3.5 text-amber-700" /> : <Pause className="w-3.5 h-3.5 text-stone-600" />}
-                <span className="text-[10px] hidden xs:inline">{isHomepageCarouselPaused ? '播放' : '暫停'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setHomepageCarouselBatchIndex(
-                    (prev) => (prev - 1 + homepageProposalBatches.length) % homepageProposalBatches.length
-                  );
-                }}
-                className="p-1.5 rounded-xl bg-white hover:bg-amber-50 active:scale-95 text-stone-800 border border-stone-200 hover:border-amber-300 shadow-2xs transition-all cursor-pointer"
-                title="上一批提案 (向右回播)"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setHomepageCarouselBatchIndex(
-                    (prev) => (prev + 1) % homepageProposalBatches.length
-                  );
-                }}
-                className="p-1.5 rounded-xl bg-white hover:bg-amber-50 active:scale-95 text-stone-800 border border-stone-200 hover:border-amber-300 shadow-2xs transition-all cursor-pointer"
-                title="下一批提案 (向左輪播)"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* 提案滑動輪播視窗：一次顯示 3 個提案，一批一批向左滑動 */}
-          <div
-            className="overflow-hidden relative w-full rounded-3xl"
-            onMouseEnter={() => setIsHomepageCarouselPaused(true)}
-            onMouseLeave={() => setIsHomepageCarouselPaused(false)}
-          >
-            <div
-              className="flex transition-transform duration-700 ease-in-out"
-              style={{ transform: `translateX(-${homepageCarouselBatchIndex * 100}%)` }}
-            >
-              {homepageProposalBatches.map((batch, batchIdx) => (
-                <div
-                  key={`batch-${batchIdx}`}
-                  className="w-full shrink-0 grid grid-cols-1 md:grid-cols-3 gap-5 px-0.5"
+              {/* 批次輪播切換與暫停控制按鈕 */}
+              <div className="flex items-center justify-end gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsHomepageCarouselPaused((prev) => !prev)}
+                  className={`p-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    isHomepageCarouselPaused
+                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                      : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                  }`}
+                  title={isHomepageCarouselPaused ? '繼續自動向左輪播' : '暫停自動輪播'}
                 >
-                  {batch.map((p) => {
-                    const trackInfo = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => navigateToSubView('proposal')}
-                        className="bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden cursor-pointer"
-                      >
-                        {/* 卡片封面大圖與標籤 */}
-                        <div className="relative h-44 overflow-hidden bg-stone-100 border-b border-stone-100">
-                          <img
-                            src={p.imageUrl}
-                            alt={p.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
+                  {isHomepageCarouselPaused ? <Play className="w-3.5 h-3.5 text-amber-700" /> : <Pause className="w-3.5 h-3.5 text-stone-600" />}
+                  <span className="text-[10px] hidden xs:inline">{isHomepageCarouselPaused ? '播放' : '暫停'}</span>
+                </button>
 
-                          {/* 左上角標籤：梯次與賽道領域 */}
-                          <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-amber-300 border border-white/20 shadow-xs">
-                              {p.cohort}
-                            </span>
-                            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-stone-900 border border-white/40 shadow-xs">
-                              {trackInfo.name}
-                            </span>
-                          </div>
+                <button
+                  type="button"
+                  onClick={handleCarouselPrev}
+                  className="p-1.5 rounded-xl bg-white hover:bg-amber-50 active:scale-95 text-stone-800 border border-stone-200 hover:border-amber-300 shadow-2xs transition-all cursor-pointer"
+                  title="上一批提案 (向右回播)"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
 
-                          {/* 右上角標籤：示範標記與階段 */}
-                          <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 border border-amber-300 shadow-xs flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-pulse" />
-                              精選
-                            </span>
-                            <span
-                              className={`text-[10px] font-black px-2.5 py-1 rounded-full backdrop-blur-md shadow-xs ${
-                                p.stage === 'pain_point'
-                                  ? 'bg-rose-500/90 text-white'
-                                  : 'bg-emerald-600/90 text-white'
-                              }`}
-                            >
-                              {p.stage === 'pain_point' ? '徵點子' : '想解方'}
-                            </span>
-                          </div>
+                <button
+                  type="button"
+                  onClick={handleCarouselNext}
+                  className="p-1.5 rounded-xl bg-white hover:bg-amber-50 active:scale-95 text-stone-800 border border-stone-200 hover:border-amber-300 shadow-2xs transition-all cursor-pointer"
+                  title="下一批提案 (向左輪播)"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
 
-                          {/* 圖片底部學校與團隊 */}
-                          <div className="absolute bottom-2.5 left-3 right-3 flex items-center gap-1.5 text-white/95 text-xs font-bold truncate drop-shadow-sm">
-                            <GraduationCap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                            <span className="truncate">{p.school} ｜ {p.team}</span>
-                          </div>
-                        </div>
+              {/* 提案滑動輪播視窗：一次顯示 3 個提案，一批一批持續向左滑動 */}
+              <div
+                className="overflow-hidden relative w-full rounded-3xl"
+                onMouseEnter={() => setIsHomepageCarouselPaused(true)}
+                onMouseLeave={() => setIsHomepageCarouselPaused(false)}
+              >
+                <div
+                  className={`flex ${isCarouselTransitionDisabled ? '' : 'transition-transform duration-700 ease-in-out'}`}
+                  style={{ transform: `translateX(-${homepageCarouselBatchIndex * 100}%)` }}
+                  onTransitionEnd={handleCarouselTransitionEnd}
+                >
+                  {extendedProposalBatches.map((batch, batchIdx) => (
+                    <div
+                      key={`batch-${batchIdx}`}
+                      className="w-full shrink-0 grid grid-cols-1 md:grid-cols-3 gap-5 px-0.5"
+                    >
+                      {batch.map((p, pIdx) => {
+                        const trackInfo = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => navigateToSubView('proposal')}
+                            className="bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden cursor-pointer"
+                          >
+                            {/* 卡片封面大圖與標籤 */}
+                            <div className="relative h-44 overflow-hidden bg-stone-100 border-b border-stone-100">
+                              <img
+                                src={p.imageUrl}
+                                alt={p.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
 
-                        {/* 卡片內容主體 */}
-                        <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
-                          <div className="space-y-2">
-                            <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2 text-base leading-snug">
-                              {p.title}
-                            </h3>
-                            <p className="text-stone-600 text-xs line-clamp-2 leading-relaxed">
-                              {p.summary}
-                            </p>
-                          </div>
-
-                          {/* 純以募得創星幣為主展示（已取消達成率機制） */}
-                          <div className="pt-2">
-                            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-50/50 to-orange-50/40 border border-amber-200/90 flex items-center justify-between">
-                              <div>
-                                <div className="text-[10px] font-bold text-amber-900 flex items-center gap-1">
-                                  <Sparkles className="w-3 h-3 text-amber-600" />
-                                  <span>募得創星幣</span>
-                                </div>
-                                <div className="font-mono font-black text-amber-950 text-base sm:text-lg flex items-baseline gap-1 mt-0.5">
-                                  <span>{p.supportPoints.toLocaleString()}</span>
-                                  <span className="text-xs font-bold text-amber-700">幣</span>
-                                </div>
+                              {/* 左上角標籤：梯次與賽道領域 */}
+                              <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-amber-300 border border-white/20 shadow-xs">
+                                  {p.cohort}
+                                </span>
+                                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-stone-900 border border-white/40 shadow-xs">
+                                  {trackInfo.name}
+                                </span>
                               </div>
-                              <div className="text-right">
-                                <div className="text-[10px] font-bold text-stone-500 flex items-center justify-end gap-1">
-                                  <Users className="w-3 h-3 text-stone-400" />
-                                  <span>支持人數</span>
+
+                              {/* 右上角標籤：階段 (競賽網站不需要綠色創星季標籤) */}
+                              <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                                <span
+                                  className={`text-[10px] font-black px-2.5 py-1 rounded-full backdrop-blur-md shadow-xs ${
+                                    p.stage === 'pain_point'
+                                      ? 'bg-rose-500/90 text-white'
+                                      : 'bg-emerald-600/90 text-white'
+                                  }`}
+                                >
+                                  {p.stage === 'pain_point' ? '徵點子' : '想解方'}
+                                </span>
+                              </div>
+
+                              {/* 圖片底部學校/機構與團隊 subtitle 及右下角獲獎/決選標籤 */}
+                              <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white/95 text-xs font-bold truncate drop-shadow-sm">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  {getProposalCardAuthorText(p).isOrgVisible ? (
+                                    <GraduationCap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                                  ) : (
+                                    <Users className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                                  )}
+                                  <span className="truncate">{getProposalCardAuthorText(p).displayText}</span>
                                 </div>
-                                <div className="font-mono font-bold text-stone-800 text-xs sm:text-sm mt-0.5">
-                                  {p.supporterCount} 人支持
+                                <div className="shrink-0">
+                                  {renderProposalCornerBadge(p, batchIdx * 3 + pIdx)}
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* 卡片底部操作按鈕與互動計數 */}
-                        <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 text-stone-400 text-xs">
-                            <span className="flex items-center gap-1 font-bold hover:text-rose-600 transition-colors">
-                              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/20" />
-                              <span className="font-mono text-[11px]">{p.likeCount}</span>
-                            </span>
-                            <span className="flex items-center gap-1 font-bold hover:text-amber-600 transition-colors">
-                              <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
-                              <span className="font-mono text-[11px]">{p.commentsCount}</span>
-                            </span>
-                          </div>
+                            {/* 卡片內容主體 */}
+                            <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
+                              <div className="space-y-2">
+                                <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2 text-base leading-snug">
+                                  {p.title}
+                                </h3>
+                                <p className="text-stone-600 text-xs line-clamp-3 leading-relaxed">
+                                  {p.summary}
+                                </p>
+                              </div>
 
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigateToSubView('proposal');
-                              }}
-                              className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-colors cursor-pointer"
-                            >
-                              查看提案
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigateToSubView('proposal');
-                              }}
-                              className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-colors cursor-pointer shadow-2xs"
-                            >
-                              為他注資
-                            </button>
+                              {/* 募得創星幣與支持人數數據展示 */}
+                              <div className="pt-2">
+                                <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-amber-50/50 to-orange-50/40 border border-amber-200/90 flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 text-amber-950 font-black">
+                                    <Coins className="w-4 h-4 text-amber-600 shrink-0" />
+                                    <span className="font-mono text-sm sm:text-base font-black">
+                                      {p.supportPoints.toLocaleString()}
+                                    </span>
+                                    <span className="text-xs font-bold text-amber-800">創星幣</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-stone-700 font-bold text-xs sm:text-sm">
+                                    <Users className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                                    <span className="font-mono font-bold text-stone-800">
+                                      {p.supporterCount} 人支持
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 卡片底部操作按鈕與互動計數 */}
+                            <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 text-stone-400 text-xs">
+                                <span className="flex items-center gap-1 font-bold hover:text-rose-600 transition-colors">
+                                  <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/20" />
+                                  <span className="font-mono text-[11px]">{p.likeCount}</span>
+                                </span>
+                                <span className="flex items-center gap-1 font-bold hover:text-amber-600 transition-colors">
+                                  <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+                                  <span className="font-mono text-[11px]">{p.commentsCount}</span>
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigateToSubView('proposal');
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  查看提案
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigateToSubView('proposal');
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-colors cursor-pointer shadow-2xs"
+                                >
+                                  為他注資
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* 批次指示圓點導航列 */}
-          <div className="flex items-center justify-center gap-2 pt-1 pb-1">
-            {homepageProposalBatches.map((_, dotIdx) => (
+              {/* 批次指示圓點導航列 */}
+              <div className="flex items-center justify-center gap-2 pt-1 pb-1">
+                {homepageProposalBatches.map((_, dotIdx) => (
+                  <button
+                    key={`dot-${dotIdx}`}
+                    type="button"
+                    onClick={() => setHomepageCarouselBatchIndex(dotIdx)}
+                    className={`transition-all duration-300 rounded-full cursor-pointer ${
+                      homepageCarouselBatchIndex === dotIdx
+                        ? 'w-8 h-2.5 bg-amber-500 shadow-2xs'
+                        : 'w-2.5 h-2.5 bg-stone-300 hover:bg-stone-400'
+                    }`}
+                    title={`切換至第 ${dotIdx + 1} 批提案`}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            /* 痛點問題專區（三張一批輪播展示） */
+            <div className="space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-stone-500 font-medium">
+                <span>生活與校園真實切身痛點，點擊卡片直接進入創點子查看詳情與提出解方：</span>
+                <div className="flex items-center gap-3 self-end sm:self-auto">
+                  <span className="font-mono text-amber-900 font-black">共 {homepagePainPoints.length} 個切身痛點</span>
+                  {homepagePainPointBatches.length > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handlePainPointCarouselPrev}
+                        className="p-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 shadow-2xs transition-all cursor-pointer"
+                        title="上一批痛點"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handlePainPointCarouselNext}
+                        className="p-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 shadow-2xs transition-all cursor-pointer"
+                        title="下一批痛點"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsPainPointCarouselPaused((prev) => !prev)}
+                        className={`p-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                          isPainPointCarouselPaused
+                            ? 'bg-rose-100 text-rose-900 border-rose-300'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                        }`}
+                        title={isPainPointCarouselPaused ? '繼續自動向左輪播' : '暫停自動輪播'}
+                      >
+                        {isPainPointCarouselPaused ? <Play className="w-3.5 h-3.5 text-rose-700" /> : <Pause className="w-3.5 h-3.5 text-stone-600" />}
+                        <span className="text-[10px] hidden xs:inline">{isPainPointCarouselPaused ? '播放' : '暫停'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 痛點輪播容器（三張一批） */}
+              <div className="overflow-hidden">
+                <div
+                  className={`flex ${isPainPointCarouselTransitionDisabled ? '' : 'transition-transform duration-700 ease-out'}`}
+                  style={{
+                    transform: `translateX(-${homepagePainPointBatchIndex * 100}%)`,
+                  }}
+                  onTransitionEnd={handlePainPointCarouselTransitionEnd}
+                >
+                  {extendedPainPointBatches.map((batch, batchIdx) => (
+                    <div key={`pp-batch-${batchIdx}`} className="w-full shrink-0 grid grid-cols-1 md:grid-cols-3 gap-5">
+                      {batch.map((pp) => (
+                        <div
+                          key={pp.id}
+                          onClick={() => {
+                            // 點進去卡片一樣要連到創點子的對應痛點！
+                            if (onOpenPainPointInChuangDianZi) {
+                              onOpenPainPointInChuangDianZi(pp);
+                            } else if (onBackToOldSite) {
+                              onBackToOldSite();
+                            }
+                          }}
+                          className="group bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 p-5 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer space-y-4 hover:-translate-y-0.5"
+                        >
+                          <div className="space-y-3">
+                            {/* 標籤列：領域/分類 + 痛點獎項標籤 (冠軍痛點/亞軍痛點/季軍痛點/4~10名痛點/決選痛點) */}
+                            <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200/80">
+                                {pp.subcategory || pp.category}
+                              </span>
+                              {getPainPointAwardBadge(pp.title, pp.id)}
+                            </div>
+
+                            {/* 痛點標題 */}
+                            <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2 text-base leading-snug">
+                              {pp.title}
+                            </h3>
+
+                            {/* 痛點簡述 (3行) */}
+                            <p className="text-stone-600 text-xs line-clamp-3 leading-relaxed bg-stone-50/70 p-3 rounded-2xl border border-stone-100">
+                              {pp.description || (pp as any).summary || '生活切身痛點，徵求落地架構與完整解方！點擊卡片直接連至創點子查看完整提問與回覆方案。'}
+                            </p>
+                          </div>
+
+                          {/* 底部作者與互動 */}
+                          <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <img
+                                src={pp.authorAvatar}
+                                alt=""
+                                className="w-6 h-6 rounded-full object-cover border border-stone-200 shrink-0"
+                              />
+                              <span className="text-xs font-bold text-stone-700 truncate">
+                                {pp.authorName}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-stone-400 text-xs shrink-0 font-mono">
+                              <span className="flex items-center gap-1 font-bold text-stone-600">
+                                <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+                                <span>{pp.solutionsCount} 個解方</span>
+                              </span>
+                              <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg bg-amber-50 group-hover:bg-amber-400 group-hover:text-stone-950 text-amber-900 text-[10px] font-black transition-colors">
+                                前往查看 →
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 批次指示圓點導航列 */}
+              {homepagePainPointBatches.length > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-1 pb-1">
+                  {homepagePainPointBatches.map((_, dotIdx) => (
+                    <button
+                      key={`pp-dot-${dotIdx}`}
+                      type="button"
+                      onClick={() => setHomepagePainPointBatchIndex(dotIdx)}
+                      className={`transition-all duration-300 rounded-full cursor-pointer ${
+                        homepagePainPointBatchIndex === dotIdx
+                          ? 'w-8 h-2.5 bg-rose-500 shadow-2xs'
+                          : 'w-2.5 h-2.5 bg-stone-300 hover:bg-stone-400'
+                      }`}
+                      title={`切換至第 ${dotIdx + 1} 批痛點`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* 查看更多痛點按鈕 */}
+              <div className="pt-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExploreInitialTab('pain_point');
+                    navigateToSubView('proposal');
+                  }}
+                  className="px-6 py-2.5 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-black text-xs sm:text-sm shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-98"
+                >
+                  <span>查看所有痛點問題總覽</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 底部醒目 CTA 橫幅 (僅在提案專區展示，痛點專區依需求移除) */}
+          {homepageSectionTab === 'solution' && (
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-amber-100/60 p-4 rounded-2xl border border-amber-300/80">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-950">
+                <Sparkles className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>探索全部參賽隊伍、完整計畫簡報、模擬注資與智庫專家回饋</span>
+              </div>
               <button
-                key={`dot-${dotIdx}`}
                 type="button"
-                onClick={() => setHomepageCarouselBatchIndex(dotIdx)}
-                className={`transition-all duration-300 rounded-full cursor-pointer ${
-                  homepageCarouselBatchIndex === dotIdx
-                    ? 'w-8 h-2.5 bg-amber-500 shadow-2xs'
-                    : 'w-2.5 h-2.5 bg-stone-300 hover:bg-stone-400'
-                }`}
-                title={`切換至第 ${dotIdx + 1} 批提案`}
-              />
-            ))}
-          </div>
-
-          {/* 底部醒目 CTA 橫幅 */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-amber-100/60 p-4 rounded-2xl border border-amber-300/80">
-            <div className="flex items-center gap-2 text-xs font-bold text-amber-950">
-              <Sparkles className="w-4 h-4 text-amber-700 shrink-0" />
-              <span>探索全部參賽隊伍、完整計畫簡報、模擬注資與智庫專家回饋</span>
+                onClick={() => navigateToSubView('proposal')}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-stone-950 hover:bg-stone-800 text-amber-300 hover:text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-98"
+              >
+                <span>進入總覽</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => navigateToSubView('proposal')}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-stone-950 hover:bg-stone-800 text-amber-300 hover:text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-98"
-            >
-              <span>進入總覽</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
+          )}
         </div>
 
-        {/* 首頁資訊：活動獎項、大略規則與前往專門競賽辦法頁之文字連結 */}
+        {/* 首頁資訊：活動獎項與賽程時程表專區 */}
         <div className="mt-16 pt-10 border-t border-stone-200 space-y-12">
           {/* 1. 活動獎項專區 */}
           <section id="homepage-awards-section" className="space-y-6">
@@ -3162,7 +3796,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <span>推廣大使推薦獎</span>
                 </div>
                 <p className="leading-relaxed text-stone-600">
-                  每成功推薦 1 案審核通過，推薦人享 <b>300 點</b>（價值 $400）IdeaX 平台點數（效期 60 日，多推多得無上限）。
+                  每成功推薦 1 案<b className="text-purple-800">解方提案（非痛點）</b>審核通過，推薦人享 <b>300 點</b>（價值 $400）IdeaX 平台點數（效期 60 日，多推多得無上限）。（註：受推薦項目需為「解方提案」，不包含單純痛點提出）
                 </p>
               </div>
             </div>
@@ -3176,115 +3810,234 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             </div>
           </section>
 
-          {/* 2. 競賽辦法專區 */}
-          <section id="homepage-brief-rules-section" className="space-y-6 pt-6 border-t border-stone-200/80">
+          {/* 2. 賽程時程表專區 (移至活動獎項下方) */}
+          <section id="homepage-schedule-section" className="space-y-6 pt-6 border-t border-stone-200/80">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200/80 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-4.5 h-4.5 text-blue-600" />
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <Calendar className="w-4.5 h-4.5 text-amber-600" />
                 </div>
                 <div>
                   <h2 className="text-lg sm:text-xl font-black text-stone-900">
-                    競賽辦法
+                    賽程時程表
                   </h2>
-                  <p className="text-xs text-stone-500 font-medium">免預先報名、題目設定、模擬募資與專業評審機制</p>
+                  <p className="text-xs text-stone-500 font-medium">IdeaX 創星季競賽四階段時程與重要截止時間</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => navigateToSubView('rules')}
-                className="text-xs font-bold text-blue-700 hover:text-blue-800 flex items-center gap-1 cursor-pointer transition-colors self-start sm:self-auto"
-              >
-                <span>完整競賽辦法</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* 大略規則四大核心卡片 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* 規則 1: 參加資格與報名方式 */}
-              <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">1</span>
-                  <h3 className="font-black text-stone-900 text-sm">參加資格與報名方式</h3>
+              <div className="flex items-center gap-3 self-start sm:self-auto">
+                <div className="flex items-center gap-2 text-xs font-bold text-stone-600">
+                  {stageInfo.activeStage === 0 ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span>當前狀態：<strong className="text-amber-800 font-black">{stageInfo.stageTitle}</strong>（{stageInfo.stagePeriod}）</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>當前進行：<strong className="text-emerald-800 font-black">{stageInfo.stageTitle}</strong>（{stageInfo.stagePeriod}）</span>
+                    </>
+                  )}
                 </div>
-                <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
-                  <li><b>身分不限：</b>不限在學學生或社會人士，個人獨立或 1~5 人自由組隊皆可參加。</li>
-                  <li><b>不可兼任：</b><b>不可兼任參賽者與專家</b>，為維護評選公正與利益迴避，身分嚴格互斥。</li>
-                  <li><b>隊伍計算：</b>以每個帳號算計一隊，每隊不限提案或痛點數量。</li>
-                  <li><b>報名時段：</b>10/24 00:00 ~ 12/04 16:30（提痛點請於 11/13 16:30 前報名）。</li>
-                </ul>
-              </div>
-
-              {/* 規則 2: 競賽主題與交稿方式 */}
-              <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">2</span>
-                  <h3 className="font-black text-stone-900 text-sm">競賽主題與交稿方式</h3>
-                </div>
-                <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
-                  <li><b>雙軌並行：</b><b>可以同時提出痛點與解決方案</b>，提痛點過審即享 200 點，亦可提方案角逐大獎。</li>
-                  <li><b>提痛點：</b>提出生活中感到煩惱困擾的地方共同腦力激盪（過審送 200 點）。</li>
-                  <li><b>提方案：</b>從痛點庫選題，尋找能解決問題的「創新方法」或「創新事物」。</li>
-                  <li><b>線上交稿：</b>至提案專頁填寫標題、領域分類、摘要、企劃四部曲與 BP 簡報附件。</li>
-                </ul>
-              </div>
-
-              {/* 規則 3: 評審機制與評分比重 */}
-              <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">3</span>
-                  <h3 className="font-black text-stone-900 text-sm">評審機制與指標比重</h3>
-                </div>
-                <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
-                  <li><b>初審入圍：</b>第二階段大眾模擬注資總額排名前 20 名晉級決審。</li>
-                  <li><b>專家評審：</b>由評審團審查（名單暫不公布以維持公正）。</li>
-                  <li><b>四大維度比重：</b><b>創新性 40%</b>、<b>完整度 20%</b>、<b>可行性 20%</b>、<b>商業潛力 20%</b>。</li>
-                </ul>
-              </div>
-
-              {/* 規則 4: 核心注意事項與權益 */}
-              <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">4</span>
-                  <h3 className="font-black text-stone-900 text-sm">核心注意事項與權益</h3>
-                </div>
-                <ul className="text-xs text-stone-600 leading-relaxed space-y-1.5 list-disc list-inside">
-                  <li><b>原創保證：</b>嚴禁抄襲剽竊或冒名侵權，違者取消資格並追回全數獎勵。</li>
-                  <li><b>幣別性質：</b>創星幣純屬大賽模擬驗證，非真實法幣，禁止私下兌現買賣。</li>
-                  <li><b>防刷反作弊：</b>嚴禁分身機器人灌票洗幣，經查違規直接取消評選資格。</li>
-                  <li><b>獎金與點數：</b>獎金依法申報代扣稅額，前三名點數效期 180 日，其餘 60 日。</li>
-                </ul>
-              </div>
-            </div>
-          </section>
-
-          {/* 3. 專屬文字連結卡片：引導進入專門的競賽辦法頁 */}
-          <section className="bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 rounded-3xl p-6 sm:p-8 text-white shadow-md border border-stone-700/80">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2">
-                <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                  想深入瞭解完整競賽章程、報名細節與常見問答？
-                </h3>
-                <p className="text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
-                  包含：壹、競賽緣起 ｜ 貳、報名時間 ｜ 參、參賽資格 ｜ 肆、報名方式 ｜ 伍、競賽主題設定 ｜ 陸、交稿方式 ｜ 柒、活動獎項 ｜ 捌、評審機制 ｜ 玖、活動時程 ｜ 拾、其他注意事項與詳細常見問答 FAQ。
-                </p>
-              </div>
-
-              <div className="shrink-0">
                 <button
                   type="button"
-                  onClick={() => {
-                    navigateToSubView('rules');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-98 group"
+                  onClick={() => navigateToSubView('rules')}
+                  className="text-xs font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer transition-colors"
+                  title="前往閱讀完整競賽辦法"
                 >
-                  <BookOpen className="w-4 h-4 text-stone-950" />
-                  <span>前往［競賽辦法］</span>
-                  <span className="transition-transform group-hover:translate-x-1 font-bold">→</span>
+                  <span>完整競賽辦法</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
+            </div>
+
+            {/* 報名時段特別公告標籤 */}
+            <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-stone-950 font-black text-[11px] shrink-0 shadow-2xs">
+                  📝 報名時段
+                </span>
+                <span className="font-black text-stone-900 font-mono text-sm">
+                  10/24 00:00 ～ 12/04 16:30
+                </span>
+              </div>
+              <div className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0" />
+                <span>提痛點之參賽者請於 <strong className="font-black text-stone-900 underline underline-offset-2">11/13 16:30</strong> 痛點徵件截止前完成報名</span>
+              </div>
+            </div>
+
+            {(() => {
+              const activeStage = stageInfo.activeStage;
+
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  {/* 階段 1: 痛點徵件 */}
+                  <div
+                    className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
+                      activeStage === 1
+                        ? 'bg-white border-2 border-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
+                        : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          activeStage === 1
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-stone-200 text-stone-600'
+                        }`}
+                      >
+                        第一階段
+                      </span>
+                    </div>
+                    <div className={`text-sm ${activeStage === 1 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
+                      痛點徵件
+                    </div>
+                    <div className={`text-xs font-mono ${activeStage === 1 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
+                      10/31 00:00 ~ 11/13 16:30
+                    </div>
+                    <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 1 ? 'text-stone-600' : 'text-stone-400'}`}>
+                      提出生活與產業切身痛點（過審即送 200 點），開放各隊選題解題。
+                    </p>
+                  </div>
+
+                  {/* 階段 2A: 預先提案 (11/14 10:00 ~ 11/15 16:30) */}
+                  <div
+                    className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
+                      activeStage === 2
+                        ? 'bg-white border-2 border-amber-500 ring-2 ring-amber-400/20 shadow-md'
+                        : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          activeStage === 2
+                            ? 'bg-amber-500 text-stone-950 font-bold'
+                            : 'bg-stone-200 text-stone-600'
+                        }`}
+                      >
+                        第二階段 (一)
+                      </span>
+                    </div>
+                    <div className={`text-sm ${activeStage === 2 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
+                      預先提案
+                    </div>
+                    <div className={`text-xs font-mono ${activeStage === 2 ? 'font-black text-amber-700' : 'font-medium text-stone-400'}`}>
+                      11/14 10:00 ~ 11/15 16:30
+                    </div>
+                    <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 2 ? 'text-stone-700 font-medium' : 'text-stone-400'}`}>
+                      關閉募資(投資)功能。開放報名、線上提案、主辦審核與預覽。
+                    </p>
+                  </div>
+
+                  {/* 階段 2B: 模擬募資與提案 (11/16 10:00 ~ 12/04 16:30) */}
+                  <div
+                    className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
+                      activeStage === 3
+                        ? 'bg-white border-2 border-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
+                        : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          activeStage === 3
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-stone-200 text-stone-600'
+                        }`}
+                      >
+                        第二階段 (二)
+                      </span>
+                    </div>
+                    <div className={`text-sm ${activeStage === 3 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
+                      模擬募資與提案
+                    </div>
+                    <div className={`text-xs font-mono ${activeStage === 3 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
+                      11/16 10:00 ~ 12/04 16:30
+                    </div>
+                    <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 3 ? 'text-stone-600' : 'text-stone-400'}`}>
+                      開放報名、提案、創星幣注資與審核！總額前 20 名取得決選資格。
+                    </p>
+                  </div>
+
+                  {/* 階段 3: 進入決選(評審) */}
+                  <div
+                    className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
+                      activeStage === 4
+                        ? 'bg-white border-2 border-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
+                        : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          activeStage === 4
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-stone-200 text-stone-600'
+                        }`}
+                      >
+                        第三階段
+                      </span>
+                    </div>
+                    <div className={`text-sm ${activeStage === 4 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
+                      進入決選(評審)
+                    </div>
+                    <div className={`text-xs font-mono ${activeStage === 4 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
+                      12/05 ~ 12/11
+                    </div>
+                    <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 4 ? 'text-stone-600' : 'text-stone-400'}`}>
+                      由評審團進行專業審查與評分。
+                    </p>
+                  </div>
+
+                  {/* 階段 4: 公布結果 */}
+                  <div
+                    className={`p-4 rounded-2xl space-y-1.5 relative overflow-hidden transition-all ${
+                      activeStage === 5
+                        ? 'bg-white border-2 border-emerald-500 ring-2 ring-emerald-400/20 shadow-md'
+                        : 'bg-stone-50 border border-stone-200 text-stone-500 shadow-none'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          activeStage === 5
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-stone-200 text-stone-600'
+                        }`}
+                      >
+                        第四階段
+                      </span>
+                    </div>
+                    <div className={`text-sm ${activeStage === 5 ? 'font-black text-stone-950' : 'font-bold text-stone-700'}`}>
+                      公布結果
+                    </div>
+                    <div className={`text-xs font-mono ${activeStage === 5 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
+                      12/16 前公布
+                    </div>
+                    <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 5 ? 'text-stone-600' : 'text-stone-400'}`}>
+                      於首頁盛大公告最終榜單，頒發榮譽與獎勵。
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 賽程表區塊右下：前往閱讀完整競賽辦法規章 */}
+            <div className="pt-3 border-t border-stone-100 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  navigateToSubView('rules');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline transition-colors cursor-pointer group"
+                title="前往閱讀完整競賽辦法與規章章程"
+              >
+                <span>前往完整競賽辦法規章</span>
+                <span className="transition-transform group-hover:translate-x-0.5">→</span>
+              </button>
             </div>
           </section>
         </div>
@@ -3359,7 +4112,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
                 <div>
                   <div className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
-                    <span>{selectedProposalForDetail.authorName}</span>
+                    <span>{getProposalCardAuthorText(selectedProposalForDetail).displayText}</span>
                     <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300">
                       創新盃
                     </span>
@@ -3501,7 +4254,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     </span>
                   </div>
                   <p className="text-stone-700 text-xs leading-relaxed">
-                    你有解決此痛點的創新產品、商業模式或技術架構嗎？直接點擊下方按鈕提出解方，系統將自動預選帶入此痛點，填寫資料與規格完全比照大賽提案頁！
+                    你有解決此痛點的創新產品、商業模式或技術架構嗎？直接點擊下方按鈕提出解方，系統將自動預選帶入此痛點，填寫資料與規格完全比照競賽提案頁！
                   </p>
                   <button
                     type="button"
@@ -4357,7 +5110,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     <span>輸入推薦碼（綁定您的推薦人）</span>
                   </div>
                   <p className="text-[11px] text-stone-500 leading-relaxed">
-                    若您是由特定推廣大使或夥伴推薦前來參賽，可在此輸入對方的推薦碼。提案通過初審時，對方將獲得 300 點（價值 $400）推薦獎勵（IdeaX平台點數，用於提問、享受付費服務）！
+                    若您是由特定推廣大使或夥伴推薦前來參賽，可在此輸入對方的推薦碼。解方提案通過初審時（非單純痛點提出），對方將獲得 300 點（價值 $400）推薦獎勵（IdeaX平台點數，用於提問、享受付費服務）！
                   </p>
                   <form onSubmit={handleBindReferral} className="flex items-center gap-2 pt-1">
                     <input
@@ -4570,6 +5323,19 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         placeholder="例如: 國立臺灣科技大學、XX科技公司或自由創客"
                         className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400"
                       />
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          id="star-modal-show-org-checkbox"
+                          checked={showOrganizationOnCard}
+                          onChange={(e) => setShowOrganizationOnCard(e.target.checked)}
+                          className="rounded border-stone-300 text-amber-600 focus:ring-amber-400"
+                        />
+                        <label htmlFor="star-modal-show-org-checkbox" className="text-xs text-stone-600 cursor-pointer select-none">
+                          <span className="font-bold text-stone-800">在卡片上顯示機構名稱</span>
+                          <span className="text-[10px] text-stone-500 ml-1">（未勾選則卡片僅顯示團隊名稱）</span>
+                        </label>
+                      </div>
                     </div>
                     <div>
                       <label className="block font-bold text-stone-700 mb-1">系所 / 職稱 (選填)</label>
@@ -4784,6 +5550,109 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         </button>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* 參賽意向調查與得知管道 */}
+                <div className="space-y-3 p-4 rounded-2xl bg-stone-50 border border-stone-200">
+                  <div className="font-bold text-stone-900 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-600" />
+                      <span>參賽意向與活動得知管道</span>
+                    </div>
+                    <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      主辦單位統計
+                    </span>
+                  </div>
+
+                  {/* 問題一: 預計參加項目? 痛點or解方 (可複選) */}
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-stone-800 text-[11px]">
+                      預計參加項目？（可複選） <span className="text-amber-600 font-semibold">痛點 or 解方</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2.5">
+                      {[
+                        { id: '痛點', label: '🔥 痛點（提出真實痛點）' },
+                        { id: '解方', label: '💡 解方（提交創新專案與企劃）' },
+                      ].map((item) => {
+                        const isChecked = participantExpectedItems.includes(item.id);
+                        return (
+                          <label
+                            key={item.id}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all text-xs select-none ${
+                              isChecked
+                                ? 'bg-amber-100/90 border-amber-400 text-amber-950 font-black shadow-2xs ring-1 ring-amber-300'
+                                : 'bg-white border-stone-300 hover:border-stone-400 text-stone-700 font-medium'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setParticipantExpectedItems([...participantExpectedItems, item.id]);
+                                } else {
+                                  setParticipantExpectedItems(participantExpectedItems.filter((i) => i !== item.id));
+                                }
+                              }}
+                              className="rounded text-amber-600 focus:ring-amber-500 h-3.5 w-3.5 shrink-0 cursor-pointer"
+                            />
+                            <span>{item.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-stone-600 leading-relaxed bg-amber-50/70 p-2 rounded-xl border border-amber-200 font-medium">
+                      📌 <strong>備註說明：</strong>此填答僅為讓主辦單位提前了解全體參賽者分布，並不影響參賽權益，仍可一隊提多個痛點與多個解方。
+                    </p>
+                  </div>
+
+                  {/* 問題二: 您從哪裡得知這個比賽? */}
+                  <div className="space-y-1.5 pt-2 border-t border-stone-200/60">
+                    <label className="block font-bold text-stone-800 text-[11px]">
+                      您從哪裡得知這個比賽？ <span className="text-stone-400 font-normal">(單選)</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                      {[
+                        '獎金獵人',
+                        'ACCUPASS',
+                        '學校或創新中心',
+                        '社群媒體',
+                        '網路搜尋或瀏覽',
+                        '網路廣告',
+                        '朋友',
+                        '其他',
+                      ].map((source) => {
+                        const isSelected = participantReferralSource === source;
+                        return (
+                          <button
+                            type="button"
+                            key={source}
+                            onClick={() => setParticipantReferralSource(source)}
+                            className={`px-2.5 py-1.5 rounded-xl border text-[11px] text-left transition-all cursor-pointer flex items-center justify-between ${
+                              isSelected
+                                ? 'bg-amber-500 text-stone-950 font-black border-amber-500 shadow-2xs ring-1 ring-amber-300'
+                                : 'bg-white border-stone-300 hover:border-amber-300 hover:bg-stone-50 text-stone-700 font-medium'
+                            }`}
+                          >
+                            <span>{source}</span>
+                            {isSelected && <span className="text-stone-950 font-bold">✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {participantReferralSource === '其他' && (
+                      <div className="pt-1.5">
+                        <input
+                          type="text"
+                          value={participantReferralSourceOther}
+                          onChange={(e) => setParticipantReferralSourceOther(e.target.value)}
+                          placeholder="請說明其他得知管道（例如: 實體海報、系所公告信、社團推播...）"
+                          className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900 focus:outline-none focus:border-amber-400 text-xs font-medium"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -5007,6 +5876,61 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   </div>
                 </div>
 
+                {/* 專家活動得知管道調查 */}
+                <div className="space-y-2.5 p-4 rounded-2xl bg-stone-50 border border-stone-200">
+                  <div className="font-bold text-stone-900 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
+                      <span>您從哪裡得知這個比賽？</span>
+                    </div>
+                    <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                      主辦單位統計 (單選)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
+                    {[
+                      '獎金獵人',
+                      'ACCUPASS',
+                      '學校或創新中心',
+                      '社群媒體',
+                      '網路搜尋或瀏覽',
+                      '網路廣告',
+                      '朋友',
+                      '其他',
+                    ].map((source) => {
+                      const isSelected = judgeReferralSource === source;
+                      return (
+                        <button
+                          type="button"
+                          key={source}
+                          onClick={() => setJudgeReferralSource(source)}
+                          className={`px-2.5 py-1.5 rounded-xl border text-[11px] text-left transition-all cursor-pointer flex items-center justify-between ${
+                            isSelected
+                              ? 'bg-purple-600 text-white font-black border-purple-600 shadow-2xs ring-1 ring-purple-300'
+                              : 'bg-white border-stone-300 hover:border-purple-300 hover:bg-stone-50 text-stone-700 font-medium'
+                          }`}
+                        >
+                          <span>{source}</span>
+                          {isSelected && <span className="text-white font-bold">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {judgeReferralSource === '其他' && (
+                    <div className="pt-1.5 animate-in fade-in duration-150">
+                      <input
+                        type="text"
+                        value={judgeReferralSourceOther}
+                        onChange={(e) => setJudgeReferralSourceOther(e.target.value)}
+                        placeholder="請說明其他得知管道（例如: 官方邀請、同仁推薦、研討會宣傳...）"
+                        className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900 focus:outline-none focus:border-purple-400 text-xs font-medium"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 {/* 公正保密承諾 */}
                 <div className="flex items-start gap-2 pt-1">
                   <input
@@ -5221,7 +6145,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       進入痛點區查看痛點，或是直接輸入「問題序號」開始提案
                     </h4>
                     <p className="text-stone-600 text-[11px] mt-1 leading-relaxed">
-                      你可以前往「創點子/痛點專區」探索大眾生活與產業目前尚未解決之真實問題；若已知題目序號，可直接在下方輸入快速啟動提案。
+                      你可以前往「創點子/痛點集」探索大眾生活與產業目前尚未解決之真實問題；若已知題目序號，可直接在下方輸入快速啟動提案。
                     </p>
                   </div>
                 </div>

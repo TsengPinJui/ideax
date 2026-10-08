@@ -342,7 +342,7 @@ export function updateSEOForProposal(proposal: StarSeasonProposal | null) {
 /**
  * Google 搜尋引擎多個分頁捷徑 (Sitelinks) 定義與獨立子網址配置
  * 對應使用者指定：
- * 1. IdeaX 創點子：探索問題、發布懸賞、痛點專區、找專家
+ * 1. IdeaX 創點子：探索問題、發布懸賞、創點子/痛點集、找專家
  * 2. 創星季：我要參賽、專家申請、提案總覽、活動辦法
  */
 export interface GoogleSitelinkItem {
@@ -386,14 +386,14 @@ export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
   },
   {
     id: 'painpoints',
-    name: '痛點專區',
+    name: '創點子/痛點集',
     category: 'ideax',
     categoryLabel: 'IdeaX 創點子',
     path: '/painpoints',
     queryParam: '?zone=pain_points',
-    title: '痛點專區 — IdeaX 創點子 挖掘真實大眾與企業痛點，孵化商業點子',
+    title: '創點子/痛點集 — IdeaX 創點子 挖掘真實大眾與企業痛點，孵化商業點子',
     description: '大眾生活日常與企業營運真實痛點募集平台，從真實痛點發掘未被滿足的高潛力創新需求與商業藍海。',
-    keywords: ['痛點專區', '市場痛點', '真實需求', '商業點子', '痛點共創', '新創題目'],
+    keywords: ['創點子/痛點集', '痛點集', '痛點專區', '市場痛點', '真實需求', '商業點子', '痛點共創', '新創題目'],
     icon: 'AlertCircle',
   },
   {
@@ -453,7 +453,7 @@ export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
     path: '/challenge/rules',
     queryParam: '?tab=challenge&view=rules',
     title: '活動辦法 — 創星季 挑戰賽賽程時程、評審規約、獎項與參賽須知',
-    description: '創星季全國大賽完整規章：競賽日程、賽制階段、評分佔比、智慧財產權授權規約與獎項獎勵說明。',
+    description: '創星季競賽完整規章：競賽日程、賽制階段、評分佔比、智慧財產權授權規約與獎項獎勵說明。',
     keywords: ['活動辦法', '賽事規程', '競賽時程', '評審規約', '參賽須知', '獎金規則'],
     icon: 'FileText',
   },

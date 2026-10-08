@@ -444,13 +444,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             subscriptionTier: 'master',
           };
 
-          setCurrentUser(adminUser);
-          setAvailableUsers((prev) => {
-            if (!prev.some((u) => u.id === 'user-admin')) {
-              return [adminUser, ...prev];
-            }
-            return prev.map((u) => (u.id === 'user-admin' ? { ...u, ...adminUser } : u));
-          });
+          switchAccount(adminUser.id);
 
           if (rememberMe) {
             localStorage.setItem(
@@ -511,11 +505,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           }
 
           const effectiveUser = checkRes.restoredUser || matched;
-          setCurrentUser(effectiveUser);
-          setAvailableUsers((prev) => {
-            if (!prev.some((u) => u.id === effectiveUser.id)) return [effectiveUser, ...prev];
-            return prev.map((u) => (u.id === effectiveUser.id ? effectiveUser : u));
-          });
+          switchAccount(effectiveUser.id);
 
           if (rememberMe) {
             localStorage.setItem(
@@ -575,11 +565,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           }
 
           const effectiveUser = checkRes.restoredUser || localMatched;
-          setCurrentUser(effectiveUser);
-
-          if (checkRes.wasInGracePeriod) {
-            setAvailableUsers((prev) => prev.map((u) => (u.id === effectiveUser.id ? effectiveUser : u)));
-          }
+          switchAccount(effectiveUser.id);
 
           if (rememberMe) {
             localStorage.setItem(
@@ -639,11 +625,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
 
         const effectiveUser = checkRes.restoredUser || localMatched;
-        setCurrentUser(effectiveUser);
-
-        if (checkRes.wasInGracePeriod) {
-          setAvailableUsers((prev) => prev.map((u) => (u.id === effectiveUser.id ? effectiveUser : u)));
-        }
+        switchAccount(effectiveUser.id);
 
         if (rememberMe) {
           localStorage.setItem(
@@ -683,7 +665,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
         const effectiveUser = checkRes.restoredUser || existing;
-        setCurrentUser(effectiveUser);
+        switchAccount(effectiveUser.id);
         setSuccessMsg('登入成功。');
         setTimeout(() => onClose(), 400);
       } else {
@@ -731,7 +713,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
         const effectiveUser = checkRes.restoredUser || existing;
-        setCurrentUser(effectiveUser);
+        switchAccount(effectiveUser.id);
         setSuccessMsg('Facebook 登入成功。');
         setTimeout(() => onClose(), 400);
       } else {
@@ -766,7 +748,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             return;
           }
           const effectiveUser = checkRes.restoredUser || existing;
-          setCurrentUser(effectiveUser);
+          switchAccount(effectiveUser.id);
           setSuccessMsg(`Facebook 授權成功！已為您自動登入現有帳號（${effectiveUser.name}）。若欲建立兩個獨立帳號，請參閱下方提示開啟。`);
           setTimeout(() => onClose(), 600);
           return;
@@ -879,7 +861,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
         const effectiveUser = checkRes.restoredUser || existing;
-        setCurrentUser(effectiveUser);
+        switchAccount(effectiveUser.id);
         setSuccessMsg('手機簡訊登入成功。');
         setTimeout(() => onClose(), 400);
       } else {

@@ -39,7 +39,7 @@
 
     <!-- PWA APP 行動與桌面專屬應用程式圖標 (使用 pwa-maskable) -->
     <link rel="apple-touch-icon" sizes="180x180" href="/pwa-maskable-512x512.png?v=pwa-app-17" />
-    <!-- Schema.org JSON-LD: 包含 WebApplication、WebSite (Google Sitelinks 搜尋框) 與 SiteNavigationElement (Google 搜尋多個分頁捷徑) -->
+    <!-- Schema.org JSON-LD: 包含 WebApplication、WebSite (Google Sitelinks 搜尋框) 與 ItemList / SiteNavigationElement (Google 搜尋多個分頁捷徑) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -75,56 +75,66 @@
           }
         },
         {
-          "@type": "SiteNavigationElement",
-          "@id": "https://www.ideax.tw/#sitelinks",
-          "name": "IdeaX 創點子與創星季快捷導航分頁",
-          "hasPart": [
+          "@type": "ItemList",
+          "@id": "https://www.ideax.tw/#sitelinks-list",
+          "name": "IdeaX 創點子核心功能捷徑 (Google Sitelinks)",
+          "description": "搜尋引擎分頁捷徑與 8 大獨立子網址導覽",
+          "numberOfItems": 8,
+          "itemListElement": [
             {
               "@type": "SiteNavigationElement",
+              "position": 1,
               "name": "探索問題",
               "description": "探索各領域高額懸賞問題、市場提案與最新發案討論",
               "url": "https://www.ideax.tw/explore"
             },
             {
               "@type": "SiteNavigationElement",
+              "position": 2,
               "name": "發布懸賞",
               "description": "一鍵發布高價值難題懸賞，設定三階段驗收機制，吸引頂尖專家提案解題",
               "url": "https://www.ideax.tw/create"
             },
             {
               "@type": "SiteNavigationElement",
-              "name": "痛點專區",
+              "position": 3,
+              "name": "創點子/痛點集",
               "description": "大眾與企業真實痛點募集，發掘未被滿足的高潛力創新需求與商業點子",
               "url": "https://www.ideax.tw/painpoints"
             },
             {
               "@type": "SiteNavigationElement",
+              "position": 4,
               "name": "找專家",
               "description": "尋找創新創業、軟硬體研發、法律財稅、AI 等各領域官方認證專家與專業顧問",
               "url": "https://www.ideax.tw/solvers"
             },
             {
               "@type": "SiteNavigationElement",
+              "position": 5,
               "name": "我要參賽",
               "description": "創星季全國創新提案挑戰賽：立即線上報名參賽、提交提案作品與簡報",
               "url": "https://www.ideax.tw/challenge/join"
             },
             {
               "@type": "SiteNavigationElement",
+              "position": 6,
               "name": "專家申請",
               "description": "創星季官方專家顧問與評審認證申請，實名審查入駐",
               "url": "https://www.ideax.tw/challenge/expert"
             },
             {
               "@type": "SiteNavigationElement",
+              "position": 7,
               "name": "提案總覽",
               "description": "創星季參賽提案、商業落地案例精選與各組評審即時動態",
               "url": "https://www.ideax.tw/challenge/proposals"
             },
             {
               "@type": "SiteNavigationElement",
+              "position": 8,
               "name": "活動辦法",
-              "description": "創星季大賽日程、參賽資格、評分規約、智財權保障與獎項說明",
+              "description": "創星季競賽日程、參賽資格、評分規約、智財權保障與獎項說明",
               "url": "https://www.ideax.tw/challenge/rules"
             }
           ]
@@ -132,11 +142,26 @@
       ]
     }
     </script>
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body class="bg-[#FAFAFA] text-[#1F2937] antialiased min-h-screen selection:bg-amber-100 selection:text-amber-900 font-['Plus_Jakarta_Sans','Noto_Sans_TC',sans-serif]">
+    <!-- 搜尋引擎爬蟲語意化導覽捷徑 (Google Sitelinks Crawlable HTML Navigation) -->
+    <nav aria-label="網站核心功能捷徑與子網址導覽" class="sr-only" itemscope itemtype="https://schema.org/SiteNavigationElement">
+      <h2>全站主要功能捷徑與子網址導覽</h2>
+      <ul>
+        <li><a itemprop="url" href="https://www.ideax.tw/explore"><span itemprop="name">探索問題</span> — 探索各領域高額懸賞問題、市場提案與最新發案討論</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/create"><span itemprop="name">發布懸賞</span> — 一鍵發布高價值難題懸賞，設定三階段驗收機制</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/painpoints"><span itemprop="name">創點子/痛點集</span> — 大眾與企業真實痛點募集，發掘未被滿足的高潛力創新需求</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/solvers"><span itemprop="name">找專家</span> — 尋找創新創業、研發、法律財稅、AI 等各領域官方認證專家</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/challenge/join"><span itemprop="name">我要參賽</span> — 創星季全國創新提案挑戰賽：線上報名登記</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/challenge/expert"><span itemprop="name">專家申請</span> — 創星季官方專家顧問與評審認證申請</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/challenge/proposals"><span itemprop="name">提案總覽</span> — 創星季參賽提案、商業落地案例精選與評選榜單</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/challenge/rules"><span itemprop="name">活動辦法</span> — 創星季競賽日程、參賽資格、評分規約與獎項說明</a></li>
+      </ul>
+    </nav>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

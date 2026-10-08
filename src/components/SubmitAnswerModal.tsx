@@ -366,7 +366,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
           </div>
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-stone-900">
-              {answerType === 'solution' ? '提出方案（付費解鎖）' : '公開討論（無賞金留言）'}
+              {answerType === 'solution' ? '提出方案(賺賞金)' : '公開討論'}
             </h2>
             <p className="text-xs text-stone-500 truncate max-w-md">針對「{question.title}」</p>
           </div>
@@ -395,7 +395,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             }`}
           >
             <Award className="w-4 h-4 text-amber-600" />
-            <span>提出方案（可付費、可附件）</span>
+            <span>提出方案(賺賞金)</span>
           </button>
           <button
             type="button"
@@ -407,7 +407,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             }`}
           >
             <MessageSquare className="w-4 h-4 text-stone-600" />
-            <span>公開討論（無賞金留言）</span>
+            <span>公開討論</span>
           </button>
         </div>
 
