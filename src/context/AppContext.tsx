@@ -83,6 +83,7 @@ import {
 } from '../services/firestoreSync';
 import { getStoredTickets } from '../services/customerSupportService';
 import { CenterToastData } from '../components/CenterToast';
+import { PwaNotificationService } from '../services/pwaNotificationService';
 
 interface AppContextType {
   currentUser: User;
@@ -5995,6 +5996,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setNotifications((prev) => [newNotif, ...prev].slice(0, 50));
     }
+
+    // 若使用者啟用了原生推播通知，同步發送系統層級跳通知 (PWA Native Notification)
+    try {
+      PwaNotificationService.sendNativeNotification({
+        title: titleStr || 'IdeaX 創點子',
+        body: msgStr || '您有一則新通知',
+        url: '/',
+      });
+    } catch {}
   };
 
   const deleteNotification = (id: string) => {
@@ -6097,6 +6107,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [systemNotifications]);
 
   const hasUnreadSystemNotifs = unreadSystemCount > 0;
+
+  // 同步更新手機/桌面 PWA 圖示未讀紅點數字 (App Badging API)
+  useEffect(() => {
+    PwaNotificationService.updateAppBadge(unreadPersonalCount + unreadSystemCount);
+  }, [unreadPersonalCount, unreadSystemCount]);
 
   // Demo Mode Switchers (管理員測試與示範模式開關)
   const toggleDemoMode = () => {

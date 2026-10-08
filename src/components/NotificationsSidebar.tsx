@@ -22,7 +22,12 @@ import {
   Crown,
   User,
   Megaphone,
+  Smartphone,
+  BellRing,
+  Send,
 } from 'lucide-react';
+import { PwaNotificationService } from '../services/pwaNotificationService';
+import { PushNotificationGuideModal } from './PushNotificationGuideModal';
 
 interface NotificationsSidebarProps {
   isOpen: boolean;
@@ -93,6 +98,93 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
 
   const [categoryTab, setCategoryTab] = useState<'personal' | 'system'>('personal');
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread'>('all');
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('default');
+  const [isPushEnabled, setIsPushEnabled] = useState<boolean>(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
+  const [isTestSending, setIsTestSending] = useState(false);
+  const [testSentMessage, setTestSentMessage] = useState<string | null>(null);
+
+  const refreshPushStatus = () => {
+    const perm = PwaNotificationService.getPermissionState();
+    setPushPermission(perm);
+    const enabled = PwaNotificationService.isPushEnabled();
+    setIsPushEnabled(enabled);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      refreshPushStatus();
+    }
+  }, [isOpen]);
+
+  const handleTogglePush = async () => {
+    // 1. 若目前已開啟 -> 點擊關閉
+    if (isPushEnabled) {
+      PwaNotificationService.setPushEnabled(false);
+      setIsPushEnabled(false);
+      setTestSentMessage('已關閉手機通知');
+      setTimeout(() => setTestSentMessage(null), 3000);
+      return;
+    }
+
+    // 2. 檢查當前環境
+    const perm = PwaNotificationService.getPermissionState();
+    const isIOS = PwaNotificationService.isIOS();
+    const isStandalone = PwaNotificationService.isStandalone();
+
+    // 環境條件 A：iOS 且未加入主畫面 -> 無法直接註冊推播，自動彈出專屬引導
+    if (isIOS && !isStandalone) {
+      setIsGuideModalOpen(true);
+      return;
+    }
+
+    // 環境條件 B：已被瀏覽器或系統設為封鎖或不支援 -> 自動彈出步驟引導
+    if (perm === 'denied' || perm === 'unsupported') {
+      setIsGuideModalOpen(true);
+      return;
+    }
+
+    // 環境條件 C：已經具有 granted 授權 -> 直接啟用
+    if (perm === 'granted') {
+      PwaNotificationService.setPushEnabled(true);
+      setIsPushEnabled(true);
+      setTestSentMessage('🎉 已成功開啟手機通知！');
+      await PwaNotificationService.sendTestNotification();
+      setTimeout(() => setTestSentMessage(null), 4000);
+      return;
+    }
+
+    // 環境條件 D：尚未詢問過 (default) -> 觸發瀏覽器原生授權視窗
+    try {
+      const res = await PwaNotificationService.requestPermission();
+      setPushPermission(res);
+      if (res === 'granted') {
+        PwaNotificationService.setPushEnabled(true);
+        setIsPushEnabled(true);
+        setTestSentMessage('🎉 已成功開啟手機通知！測試通知已發送至您的系統通知列');
+        await PwaNotificationService.sendTestNotification();
+        setTimeout(() => setTestSentMessage(null), 4000);
+      } else {
+        // 使用者點選封鎖或關閉 -> 自動引導用戶如何至設定開啟
+        setIsGuideModalOpen(true);
+      }
+    } catch {
+      setIsGuideModalOpen(true);
+    }
+  };
+
+  const handleSendTestPush = async () => {
+    setIsTestSending(true);
+    const success = await PwaNotificationService.sendTestNotification();
+    setIsTestSending(false);
+    if (success) {
+      setTestSentMessage('🔔 測試推播已發送！請檢視您的裝置通知中心或鎖定畫面');
+    } else {
+      setTestSentMessage('⚠️ 發送失敗，請確認是否已允許瀏覽器通知權限');
+      setIsGuideModalOpen(true);
+    }
+    setTimeout(() => setTestSentMessage(null), 4500);
+  };
 
   // 高亮突顯訊息中的用戶名（藍色字體）
   const highlightUserNames = (text: string) => {
@@ -253,6 +345,96 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
+          </div>
+
+          {/* 開啟手機通知 開關 (現代滑動開關 Toggle Switch 與自動引導設定) */}
+          <div className="px-4 sm:px-5 py-3 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-amber-500/10 border-b border-amber-200/70">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                    isPushEnabled
+                      ? 'bg-emerald-500/20 text-emerald-800 border border-emerald-300'
+                      : pushPermission === 'denied'
+                      ? 'bg-rose-500/15 text-rose-800 border border-rose-300'
+                      : 'bg-amber-500/20 text-amber-900 border border-amber-300'
+                  }`}
+                >
+                  <Smartphone className="w-4 h-4 text-amber-800" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-black text-stone-900 tracking-tight">
+                      開啟手機通知
+                    </span>
+                    {isPushEnabled ? (
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                        <Check className="w-2.5 h-2.5 text-emerald-700" /> 已開啟
+                      </span>
+                    ) : pushPermission === 'denied' ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsGuideModalOpen(true)}
+                        className="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded-full hover:bg-rose-200 transition-colors cursor-pointer"
+                        title="點擊查看解除封鎖步驟"
+                      >
+                        已封鎖 (點此引導)
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="text-[11px] text-stone-600 mt-0.5 leading-tight truncate">
+                    {isPushEnabled
+                      ? '懸賞入帳、方案採納與私訊皆會跳出鎖定畫面橫幅'
+                      : pushPermission === 'denied'
+                      ? '瀏覽器已封鎖，點擊開關自動為您引導完成設定'
+                      : '比照原生 App，隨時隨地在手機跳通知掌握最新動態'}
+                  </p>
+                </div>
+              </div>
+
+              {/* 右側：測試推播按鍵 + 現代滑動開關 (Toggle Switch) */}
+              <div className="flex items-center gap-2 shrink-0">
+                {isPushEnabled && (
+                  <button
+                    type="button"
+                    onClick={handleSendTestPush}
+                    disabled={isTestSending}
+                    className="px-2 py-1 rounded-lg bg-white hover:bg-amber-100/70 border border-stone-200 hover:border-amber-300 text-stone-800 text-[11px] font-bold transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50 flex items-center gap-1"
+                    title="在您的手機或電腦系統彈出一則測試推播通知"
+                  >
+                    <BellRing className="w-3 h-3 text-amber-600" />
+                    <span className="hidden sm:inline">{isTestSending ? '發送中' : '測試'}</span>
+                  </button>
+                )}
+
+                {/* 滑動開關本體 */}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isPushEnabled}
+                  onClick={handleTogglePush}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none active:scale-95 ${
+                    isPushEnabled ? 'bg-emerald-500' : 'bg-stone-300'
+                  }`}
+                  title={isPushEnabled ? '點擊關閉手機通知' : '點擊開啟手機通知'}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      isPushEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* 提示回饋 */}
+            {testSentMessage && (
+              <div className="mt-2 text-[11px] font-bold text-amber-950 bg-white/95 border border-amber-300/80 rounded-xl px-2.5 py-1 animate-in fade-in slide-in-from-top-1 duration-150 flex items-center gap-1.5 shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>{testSentMessage}</span>
+              </div>
+            )}
           </div>
 
           {/* 1. Category Switcher: 個人通知 vs 系統通知 (各有獨立未讀計數與一鍵已讀) */}
@@ -544,6 +726,23 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 手機通知引導設定彈窗 */}
+      <PushNotificationGuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => {
+          setIsGuideModalOpen(false);
+          refreshPushStatus();
+        }}
+        onPermissionChanged={(newPerm) => {
+          setPushPermission(newPerm);
+          if (newPerm === 'granted') {
+            setIsPushEnabled(true);
+            setTestSentMessage('🎉 已成功開啟手機通知！');
+            setTimeout(() => setTestSentMessage(null), 4000);
+          }
+        }}
+      />
     </div>,
     document.body
   );

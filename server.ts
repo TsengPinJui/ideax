@@ -15,6 +15,15 @@ app.use(express.json());
 app.use('/api/competition', competitionRouter);
 app.use('/api/auth', authVerificationRouter);
 
+app.get('/api/pwa/status', (req: Request, res: Response) => {
+  res.json({
+    status: 'online',
+    supportedFeatures: ['web-push', 'service-worker', 'badging', 'offline-caching'],
+    pwaVersion: 'v6',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Lazy-initialized Gemini client
 let geminiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {

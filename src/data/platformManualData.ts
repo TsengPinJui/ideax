@@ -41,6 +41,37 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#017',
+    version: 'v1.6.6',
+    releaseDate: '2026.10.08',
+    releaseTime: '04:00',
+    author: 'IdeaX PWA 與互動架構核心',
+    summary: '通知中心重構為「開啟手機通知」滑動開關、全環境自動偵測（Android/iOS/桌面）引導解除封鎖與安裝設定、即時權限重新檢測機制。',
+    changes: [
+      '通知中心原推播提示區塊全數重構為現代滑動開關（Toggle Switch）「開啟手機通知」，直觀呈現啟用、關閉與封鎖狀態。',
+      '實作全環境自動偵測引導彈窗（PushNotificationGuideModal）：當用戶環境為瀏覽器封鎖 (denied)、iOS Safari 未加至主畫面或社群內嵌瀏覽器 (WebView) 時，自動觸發圖文步驟引導。',
+      '提供專屬「重新檢測並啟用」與「複製網址」捷徑，引導用戶完成設定後無縫一鍵開啟手機通知。',
+      '保留快捷「測試」通知推播觸發鈕，即時驗證手機鎖定畫面與通知中心彈窗。',
+      '版本號推進至 #017 / v1.6.6，同步更新全站頁尾、版本歷程總表與平台手冊清單文件中心。',
+    ],
+  },
+  {
+    seqNumber: '#016',
+    version: 'v1.6.5',
+    releaseDate: '2026.10.08',
+    releaseTime: '03:15',
+    author: 'IdeaX PWA 與行動架構核心',
+    summary: '新增 PWA 手機原生跳通知 (Web Push)、Service Worker 背景通知監聽與點擊喚醒跳轉、App Badging 未讀數字紅點標記、通知中心原生推播測試卡片。',
+    changes: [
+      'Service Worker (sw.js v6) 全面升級：實作 push 事件監聽伺服器推播、notificationclick 喚醒/聚焦 PWA 視窗並導向目標頁面，以及 message 跨線程通知觸發。',
+      '建立專案專屬 PwaNotificationService 服務模組：支援 Android、iOS 16.4+ (加入主畫面) 及桌面系統原生跳通知授權請求、即時推播發送與離線降級容錯。',
+      '全域整合 AppContext：每當全站生成個人懸賞方案、私聊互動或系統重要通知時，自動調用系統層級通知跳出原生橫幅，並透過 App Badging API 同步手機 App 圖示未讀紅點標記。',
+      '通知側邊欄（NotificationsSidebar）新增「手機原生跳通知」即時設定與「測試跳通知」按鍵，直觀呈現授權狀態並支援一鍵發送模擬推播。',
+      'PWA 安裝指引彈窗（PwaInstallModal）同步新增支援鎖定畫面跳通知與 App 數字紅點之特色標記，伺服器提供 /api/pwa/status 狀態端點。',
+      '版本歷程總表與平台內部清單文件中心全面同步推進至 #016 / v1.6.5。',
+    ],
+  },
+  {
     seqNumber: '#015',
     version: 'v1.6.4',
     releaseDate: '2026.10.08',
@@ -292,6 +323,8 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#017** | **v1.6.6** | 2026.10.08 | 04:00 | IdeaX PWA 互動核心 | 「開啟手機通知」滑動開關、全環境解除封鎖與主畫面引導彈窗、即時重新檢測啟用 |
+| **#016** | **v1.6.5** | 2026.10.08 | 03:15 | IdeaX PWA 行動架構 | PWA 手機原生跳通知 (Web Push)、SW 背景通知監聽、App 圖示未讀紅點、通知中心一鍵測試 |
 | **#015** | **v1.6.4** | 2026.10.08 | 02:45 | IdeaX 體驗與架構 | Sitelinks 移入管理員儀表板、痛點-> 直滑痛點專區、淨化全站特聘等字詞、問卷加題與點數對照表 |
 | **#014** | **v1.6.3** | 2026.10.07 | 10:42 | IdeaX 體驗渲染 | 修復賽道重複 Key 報錯、精簡探索頁頂部導覽列、移除冗餘標籤文字 |
 | **#013** | **v1.6.2** | 2026.10.07 | 10:32 | IdeaX 交互優化 | 懸浮鍵收合邊框無邊框極簡化（僅保留箭頭）、專家額度移入小字、移除多餘返回鍵 |

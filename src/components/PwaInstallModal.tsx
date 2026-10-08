@@ -149,6 +149,14 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
           <p className="text-xs text-stone-300/90 leading-relaxed mt-1">
             享受獨立全螢幕視窗、秒速開啟、無廣告列干擾的原生 App 體驗！
           </p>
+          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+              <Check className="w-3 h-3 text-emerald-400" /> 支援手機鎖定畫面原生跳通知
+            </span>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-amber-400/20 text-amber-300 border border-amber-400/30 flex items-center gap-1">
+              <Check className="w-3 h-3 text-amber-400" /> App 圖示未讀數字紅點
+            </span>
+          </div>
         </div>
 
         {/* Modal Body */}
