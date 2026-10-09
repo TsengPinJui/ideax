@@ -36,10 +36,10 @@ export const FloatingStarSeasonGuide: React.FC<FloatingStarSeasonGuideProps> = (
 
   return (
     <aside
-      aria-label="創星季玩法導覽懸浮入口"
+      aria-label="創星季網站導覽懸浮入口"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="fixed left-3.5 sm:left-6 top-[36%] sm:top-[40%] z-40 flex items-center justify-start select-none group pointer-events-none transition-all duration-300"
+      className="fixed left-3.5 sm:left-6 top-[43%] sm:top-[46%] z-40 flex items-center justify-start select-none group pointer-events-none transition-all duration-300"
     >
       <div className="relative flex flex-col items-center pointer-events-auto">
         {/* 關閉/隱藏教學按鈕 */}
@@ -47,7 +47,7 @@ export const FloatingStarSeasonGuide: React.FC<FloatingStarSeasonGuideProps> = (
           type="button"
           onClick={handleDismiss}
           className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-stone-900/90 hover:bg-stone-800 text-stone-300 hover:text-white flex items-center justify-center shadow border border-stone-600 transition-all z-20 cursor-pointer hover:scale-110 active:scale-90"
-          title="暫時隱藏此按鈕（隨時可由頂部導覽列「🔰 玩法導覽」重新開啟）"
+          title="暫時隱藏此按鈕（隨時可由頂部導覽列「🔰 創星季網站導覽」重新開啟）"
           aria-label="暫時隱藏浮動導覽鍵"
         >
           <X className="w-2.5 h-2.5 stroke-[2.5]" />
@@ -58,8 +58,8 @@ export const FloatingStarSeasonGuide: React.FC<FloatingStarSeasonGuideProps> = (
           type="button"
           onClick={() => onOpenGuide('audience')}
           className="relative w-11 h-11 sm:w-13 sm:h-13 rounded-full p-0.5 bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center shadow-[0_6px_22px_rgba(217,119,6,0.45)] hover:shadow-[0_8px_28px_rgba(217,119,6,0.65)] hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer border-2 border-white/90 ring-2 ring-amber-400/50 shrink-0 touch-manipulation group"
-          aria-label="開啟創星季 30 秒玩法導覽"
-          title="開啟創星季 30 秒玩法導覽"
+          aria-label="開啟創星季網站導覽"
+          title="開啟創星季網站導覽"
         >
           {/* 呼吸光環 (Pulse Ring) */}
           <span className="absolute -inset-1 rounded-full bg-amber-400 opacity-30 animate-ping pointer-events-none" />
@@ -88,7 +88,7 @@ export const FloatingStarSeasonGuide: React.FC<FloatingStarSeasonGuideProps> = (
           {/* 氣泡內容標題：點擊可直接啟動導覽 */}
           <div className="flex items-center gap-1.5 text-amber-300 font-black text-xs tracking-wide">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>創星季 30秒玩法導覽</span>
+            <span>創星季網站導覽</span>
           </div>
 
           <div className="flex flex-col gap-1 pt-1 border-t border-stone-800 text-[11px]">
@@ -128,7 +128,7 @@ export const FloatingStarSeasonGuide: React.FC<FloatingStarSeasonGuideProps> = (
               type="button"
               onClick={handleDismiss}
               className="text-[10px] text-stone-400 hover:text-stone-200 hover:underline flex items-center gap-1 transition-colors cursor-pointer"
-              title="隱藏浮動按鈕，您隨時可在頂部導覽列點選「🔰 玩法導覽」"
+              title="隱藏浮動按鈕，您隨時可在頂部導覽列點選「🔰 創星季網站導覽」"
             >
               <EyeOff className="w-3 h-3 text-stone-400 shrink-0" />
               <span>隱藏此按鈕</span>

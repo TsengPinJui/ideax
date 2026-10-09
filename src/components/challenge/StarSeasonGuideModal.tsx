@@ -465,7 +465,7 @@ export const StarSeasonGuideModal: React.FC<StarSeasonGuideModalProps> = ({
                   </div>
                   <ul className="space-y-1 text-stone-200 leading-relaxed list-disc list-inside text-[11px]">
                     <li><strong className="text-emerald-200">痛點與方案回應</strong> 永久存放庫</li>
-                    <li><strong className="text-emerald-200">日常高額懸賞提問</strong> 與專利解鎖</li>
+                    <li><strong className="text-emerald-200">日常高額懸賞提問</strong> 與商業問題</li>
                     <li><strong className="text-emerald-200">專家 1 對 1 諮詢</strong> 與私聊媒合</li>
                     <li><strong className="text-emerald-200">AI 進階工具</strong> 與賞金安全提領</li>
                   </ul>

@@ -118,7 +118,7 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
                     onClick={onOpenGuide}
                     className="text-left text-amber-300 hover:text-amber-200 font-bold transition-colors cursor-pointer col-span-2 pt-1 flex items-center gap-1"
                   >
-                    <span>• 🔰 創星季玩法導覽 (3大角色 30秒上手)</span>
+                    <span>• 🔰 創星季網站導覽</span>
                   </button>
                 )}
               </div>

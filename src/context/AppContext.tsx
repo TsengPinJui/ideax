@@ -25,7 +25,14 @@ import {
   Assistant24hrConfig,
   DEFAULT_ASSISTANT_24HR_CONFIG,
   AIPreliminaryReport,
+  AdminSite,
 } from '../types';
+import {
+  isInitialAdmin,
+  isSiteAAdmin,
+  isSiteBAdmin,
+  getAdminSiteLabel,
+} from '../utils/adminPermissions';
 import {
   MOCK_QUESTIONS,
   MOCK_SOLVERS,
@@ -326,6 +333,10 @@ interface AppContextType {
     action: 'approve' | 'revoke',
     notes?: string,
     approvedDomains?: string[]
+  ) => { success: boolean; message: string };
+  grantUserAdminRole: (
+    targetUserId: string,
+    sites: AdminSite[]
   ) => { success: boolean; message: string };
   updateSubscriptionPlanFull: (tier: SubscriptionTier, updatedData: Partial<SubscriptionPlan>) => void;
   addSubscriptionPlan: (newPlan: SubscriptionPlan) => { success: boolean; message: string };
@@ -2397,6 +2408,121 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return {
       success: true,
       message: `已成功將用戶「${targetUser.name}」之【${typeText}】狀態更新為【${actionText}】，並已同步發送系統通知至該用戶帳號！`,
+    };
+  };
+
+  // 雙站管理員權限指派系統：僅初始管理員擁有指派權力，兩站分開授權
+  const grantUserAdminRole = (
+    targetUserId: string,
+    sites: AdminSite[]
+  ): { success: boolean; message: string } => {
+    if (!isInitialAdmin(currentUser)) {
+      return {
+        success: false,
+        message: '權限不足！僅平台初始創始管理員（最高主管）具備賦予或調整其他用戶管理員權限之特權。',
+      };
+    }
+
+    const targetUser = availableUsers.find((u) => u.id === targetUserId);
+    if (!targetUser) {
+      return { success: false, message: '找不到目標用戶' };
+    }
+
+    if (isInitialAdmin(targetUser)) {
+      return {
+        success: false,
+        message: '平台初始創始管理員具備永久最高統轄權限，無法變更或降級。',
+      };
+    }
+
+    const nowIso = new Date().toISOString();
+    let updatedUser: User;
+    let notifTitle = '';
+    let notifMsg = '';
+    let auditAction = '';
+
+    if (sites.length === 0) {
+      // 撤銷管理員身分，轉為一般用戶（提問者或維持專家）
+      updatedUser = {
+        ...targetUser,
+        role: targetUser.verifiedExpert ? 'solver' : 'questioner',
+        accountType: 'user',
+        adminSites: [],
+      };
+      notifTitle = '🛡️ 管理員身分已撤銷通知';
+      notifMsg = `您在 IdeaX 平台的管理員權限已由初始管理員【${currentUser.name || '平台總管'}】撤銷，現已調整為一般會員。如有疑問請向初始管理員洽詢。`;
+      auditAction = 'REVOKE_ADMIN_ROLE';
+    } else {
+      // 賦予指定站點之管理員權限
+      const isSiteA = sites.includes('site_a');
+      const isSiteB = sites.includes('site_b');
+      const siteDescription =
+        isSiteA && isSiteB
+          ? '雙站管理員（A 站 IdeaX 主站 ＋ B 站 創星季賽事專區）'
+          : isSiteA
+          ? 'A 站專屬管理員（IdeaX 創點子主站）'
+          : 'B 站專屬管理員（創星季賽事專區）';
+
+      updatedUser = {
+        ...targetUser,
+        role: 'admin',
+        accountType: 'admin',
+        adminSites: sites,
+        title: targetUser.title || (isSiteA && isSiteB ? '雙站管理員' : isSiteA ? '主站管理員' : '賽事管理員'),
+      };
+      notifTitle = '👑 您已被任命為平台管理員！';
+      notifMsg = `恭喜您！您已由初始管理員【${currentUser.name || '平台總管'}】指派為【${siteDescription}】。兩站後台管理權限相互獨立，請恪守平台治理守則！`;
+      auditAction = 'GRANT_ADMIN_ROLE';
+    }
+
+    setAvailableUsers((prev) => {
+      const next = prev.map((u) => (u.id === targetUserId ? updatedUser : u));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+
+    if (currentUser.id === targetUserId) {
+      setCurrentUser(updatedUser);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updatedUser));
+      } catch (e) {}
+    }
+
+    syncUserToFirestore(updatedUser);
+
+    syncAuditLogsToFirestore([
+      {
+        id: `audit-admin-role-${Date.now()}`,
+        adminId: currentUser.id,
+        action: auditAction,
+        targetUserId,
+        details: {
+          targetUserName: targetUser.name,
+          previousRole: targetUser.role,
+          previousSites: targetUser.adminSites || [],
+          newRole: updatedUser.role,
+          newSites: updatedUser.adminSites || [],
+        },
+        createdAt: nowIso,
+      },
+    ]);
+
+    const adminRoleNotification: NotificationItem = {
+      id: `notif-admin-role-${Date.now()}`,
+      title: notifTitle,
+      message: notifMsg,
+      type: 'system',
+      createdAt: nowIso,
+      read: false,
+    };
+    setNotifications((prev) => [adminRoleNotification, ...prev]);
+
+    const actionText = sites.length === 0 ? '已成功撤銷管理員身分' : '已成功更新管理員權限';
+    return {
+      success: true,
+      message: `${actionText}【${targetUser.name}】！已即時生效並同步發送系統通知至該用戶帳號。`,
     };
   };
 
@@ -6781,6 +6907,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         blockUser,
         unblockUser,
         adminUpdateUserVerification,
+        grantUserAdminRole,
         updateSubscriptionPlanFull,
         addSubscriptionPlan,
         deleteSubscriptionPlan,

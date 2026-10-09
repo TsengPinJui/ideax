@@ -230,12 +230,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 onClick={handleSecondClick}
                 className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
                   isSeconded
-                    ? 'bg-emerald-600 text-white border border-emerald-600 shadow-2xs font-black'
-                    : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                    ? 'bg-rose-600 text-white border border-rose-600 shadow-2xs font-black'
+                    : 'bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100'
                 }`}
                 title="附議此痛點 (+1 共鳴支持)"
               >
-                <span className={`font-mono font-black px-1 rounded text-[9px] leading-tight ${isSeconded ? 'bg-white text-emerald-800' : 'bg-white text-emerald-700 border border-emerald-300'}`}>+1</span>
+                <span className={`font-mono font-black px-1 rounded text-[9px] leading-tight ${isSeconded ? 'bg-white text-rose-800' : 'bg-white text-rose-700 border border-rose-300'}`}>+1</span>
                 <span className="font-mono text-[9.5px]">{secondCount || 0}</span>
               </button>
             ) : isL0Discussion ? (
@@ -427,12 +427,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 onClick={handleSecondClick}
                 className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
                   isSeconded
-                    ? 'bg-emerald-600 text-white border border-emerald-600 shadow-2xs font-black'
-                    : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                    ? 'bg-rose-600 text-white border border-rose-600 shadow-2xs font-black'
+                    : 'bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100'
                 }`}
                 title="附議此痛點 (+1 共鳴支持)"
               >
-                <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isSeconded ? 'bg-white text-emerald-800 border-white' : 'bg-white text-emerald-700 border-emerald-300'}`}>+1</span>
+                <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isSeconded ? 'bg-white text-rose-800 border-white' : 'bg-white text-rose-700 border-rose-300'}`}>+1</span>
                 <span className="font-mono font-bold text-xs">{secondCount || 0}</span>
               </button>
             ) : isL0Discussion ? (
@@ -692,12 +692,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               onClick={handleSecondClick}
               className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
                 isSeconded
-                  ? 'bg-emerald-600 text-white border border-emerald-600 shadow-2xs font-black'
-                  : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                  ? 'bg-rose-600 text-white border border-rose-600 shadow-2xs font-black'
+                  : 'bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100'
               }`}
               title="附議此痛點 (+1 共鳴支持)"
             >
-              <span className={`font-mono font-black border px-1.5 py-0.2 rounded text-[11px] leading-tight ${isSeconded ? 'bg-white text-emerald-800 border-white' : 'bg-white text-emerald-700 border-emerald-300'}`}>+1</span>
+              <span className={`font-mono font-black border px-1.5 py-0.2 rounded text-[11px] leading-tight ${isSeconded ? 'bg-white text-rose-800 border-white' : 'bg-white text-rose-700 border-rose-300'}`}>+1</span>
               <span>附議</span>
               <span className="font-mono font-black text-xs">({secondCount || 0})</span>
             </button>

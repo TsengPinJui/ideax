@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { User } from '../types';
+import { User, AdminSite } from '../types';
+import {
+  isInitialAdmin,
+  isSiteAAdmin,
+  isSiteBAdmin,
+  getAdminSiteLabel,
+  getAdminSiteBadgeClass,
+} from '../utils/adminPermissions';
 import {
   UserCheck,
   ShieldAlert,
@@ -21,6 +28,9 @@ import {
   ShieldCheck,
   Image as ImageIcon,
   UserX,
+  Crown,
+  Shield,
+  Check,
 } from 'lucide-react';
 
 interface AdminUserManagementTabProps {
@@ -41,6 +51,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
     cancelAccountDeactivation,
     purgeAccountPermanently,
     pullAllDataFromFirestore,
+    grantUserAdminRole,
   } = useApp();
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'normal' | 'blocked' | 'deactivated'>('all');
@@ -63,6 +74,33 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
   // 解封二次確認彈窗
   const [unblockingTargetUser, setUnblockingTargetUser] = useState<User | null>(null);
+
+  // 初始管理員指派兩站管理員彈窗狀態
+  const [adminAssignTargetUser, setAdminAssignTargetUser] = useState<User | null>(null);
+  const [selectedAdminSites, setSelectedAdminSites] = useState<AdminSite[]>([]);
+
+  const handleOpenAdminAssignModal = (u: User) => {
+    setAdminAssignTargetUser(u);
+    if (u.adminSites && u.adminSites.length > 0) {
+      setSelectedAdminSites([...u.adminSites]);
+    } else if (u.role === 'admin' || u.accountType === 'admin') {
+      setSelectedAdminSites(['site_a']);
+    } else {
+      setSelectedAdminSites([]);
+    }
+  };
+
+  const handleSaveAdminSites = () => {
+    if (!adminAssignTargetUser) return;
+    const res = grantUserAdminRole(adminAssignTargetUser.id, selectedAdminSites);
+    if (res.success) {
+      setFeedbackMsg({ text: res.message, isError: false });
+      setAdminAssignTargetUser(null);
+    } else {
+      setFeedbackMsg({ text: res.message, isError: true });
+    }
+    setTimeout(() => setFeedbackMsg(null), 5000);
+  };
 
   const isUserDeactivated = (u: User) => {
     if (u.isDeactivated === false && u.deactivationStatus !== 'deactivated') {
@@ -370,13 +408,13 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                             u.role === 'admin'
-                              ? 'bg-purple-100 text-purple-900 border border-purple-300'
+                              ? getAdminSiteBadgeClass(u) || 'bg-purple-100 text-purple-900 border border-purple-300'
                               : u.role === 'solver'
                               ? 'bg-blue-100 text-blue-900 border border-blue-200'
                               : 'bg-amber-100 text-amber-900 border border-amber-200'
                           }`}
                         >
-                          {u.role === 'admin' ? '👑 管理員' : u.role === 'solver' ? '💼 解答者' : '🙋 提問者'}
+                          {u.role === 'admin' ? (getAdminSiteLabel(u) || '👑 管理員') : u.role === 'solver' ? '💼 解答者' : '🙋 提問者'}
                         </span>
 
                         {isBlocked ? (
@@ -440,6 +478,19 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
                   {/* 動作按鈕 */}
                   <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+                    {/* 初始管理員指派 A/B 站管理員按鈕：僅初始管理員可看見並操作，且無法降級自己 */}
+                    {isInitialAdmin(currentUser) && !isInitialAdmin(u) && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAdminAssignModal(u)}
+                        className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-purple-300 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        title="由初始創始管理員獨立指派此用戶 A 站/B 站管理員站點管轄權"
+                      >
+                        <Crown className="w-3.5 h-3.5 text-amber-600" />
+                        <span>{u.role === 'admin' ? '管理站點授權' : '賦予管理員'}</span>
+                      </button>
+                    )}
+
                     {/* 直接跳轉至受理認證與證件照 */}
                     <button
                       type="button"
@@ -853,6 +904,187 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
               >
                 確認解除封鎖
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 初始管理員指派兩站管理員權限彈窗 */}
+      {adminAssignTargetUser && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-stone-200 text-stone-900">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2 text-purple-700">
+                <Crown className="w-5 h-5 text-amber-500" />
+                <h4 className="font-black text-base text-stone-900">初始管理員授權中心 · 兩站管理員分開指派</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAdminAssignTargetUser(null)}
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 目標用戶簡要 */}
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-stone-50 border border-stone-200">
+              <img
+                src={adminAssignTargetUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                alt={adminAssignTargetUser.name}
+                className="w-11 h-11 rounded-xl object-cover ring-2 ring-purple-200"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-sm text-stone-900 truncate">{adminAssignTargetUser.name}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900">
+                    {getAdminSiteLabel(adminAssignTargetUser) || (adminAssignTargetUser.role === 'admin' ? '👑 管理員' : '一般會員')}
+                  </span>
+                </div>
+                <span className="text-[11px] text-stone-500 block truncate">
+                  帳號代碼：<span className="font-mono">{adminAssignTargetUser.id}</span>
+                </span>
+              </div>
+            </div>
+
+            {/* 說明權利隔離規範 */}
+            <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
+              <div className="font-black flex items-center gap-1.5 text-amber-900">
+                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>兩站管理員分開授權治理規則</span>
+              </div>
+              <p className="leading-relaxed text-[11px] text-amber-900">
+                平台初始創始管理員具備指派權力。<strong>是 A 站管理員但不一定是 B 站管理員</strong>。兩站後台管理權限嚴格獨立，可單獨指派、兼任或完全撤銷。
+              </p>
+            </div>
+
+            {/* 兩站獨立核取方塊 */}
+            <div className="space-y-2.5">
+              {/* A 站 */}
+              <label
+                onClick={() => {
+                  setSelectedAdminSites((prev) =>
+                    prev.includes('site_a') ? prev.filter((s) => s !== 'site_a') : [...prev, 'site_a']
+                  );
+                }}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
+                  selectedAdminSites.includes('site_a')
+                    ? 'bg-blue-50/70 border-blue-400 ring-2 ring-blue-300/40'
+                    : 'bg-stone-50/70 border-stone-200 hover:border-stone-300'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedAdminSites.includes('site_a')}
+                  onChange={() => {}}
+                  className="mt-1 w-4 h-4 text-blue-600 rounded border-stone-300 focus:ring-blue-500 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-xs text-blue-950">🅰️ A 站管理員（IdeaX 創點子主站）</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-bold">site_a</span>
+                  </div>
+                  <p className="text-[11px] text-stone-600 leading-relaxed">
+                    掌管 IdeaX 主站問題市場審核、認證專家受理審核、懸賞託管款項撥付、會員個資與一般檢舉仲裁。
+                  </p>
+                </div>
+              </label>
+
+              {/* B 站 */}
+              <label
+                onClick={() => {
+                  setSelectedAdminSites((prev) =>
+                    prev.includes('site_b') ? prev.filter((s) => s !== 'site_b') : [...prev, 'site_b']
+                  );
+                }}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
+                  selectedAdminSites.includes('site_b')
+                    ? 'bg-rose-50/70 border-rose-400 ring-2 ring-rose-300/40'
+                    : 'bg-stone-50/70 border-stone-200 hover:border-stone-300'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedAdminSites.includes('site_b')}
+                  onChange={() => {}}
+                  className="mt-1 w-4 h-4 text-rose-600 rounded border-stone-300 focus:ring-rose-500 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-xs text-rose-950">🅱️ B 站管理員（創星季賽事專區）</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 font-bold">site_b</span>
+                  </div>
+                  <p className="text-[11px] text-stone-600 leading-relaxed">
+                    掌管創星季參賽提案審核、專家評審資格管理、決審評分統計、賽事大獎核發與競賽規章條款機密存檔。
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {/* 快捷切換預設按鈕 */}
+            <div className="flex items-center gap-1.5 pt-1 text-[11px]">
+              <span className="text-stone-400 shrink-0">快捷預設：</span>
+              <button
+                type="button"
+                onClick={() => setSelectedAdminSites(['site_a', 'site_b'])}
+                className="px-2 py-0.5 rounded-lg bg-stone-100 hover:bg-purple-100 text-purple-900 font-bold cursor-pointer"
+              >
+                雙站皆掌管
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedAdminSites(['site_a'])}
+                className="px-2 py-0.5 rounded-lg bg-stone-100 hover:bg-blue-100 text-blue-900 font-bold cursor-pointer"
+              >
+                僅 A 站主站
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedAdminSites(['site_b'])}
+                className="px-2 py-0.5 rounded-lg bg-stone-100 hover:bg-rose-100 text-rose-900 font-bold cursor-pointer"
+              >
+                僅 B 站創星季
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedAdminSites([])}
+                className="px-2 py-0.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold cursor-pointer ml-auto"
+              >
+                撤銷管理員
+              </button>
+            </div>
+
+            {/* 預覽結果提示 */}
+            <div className="p-2.5 rounded-xl bg-stone-100 text-xs font-bold flex items-center justify-between text-stone-800">
+              <span>儲存後身分：</span>
+              <span className="font-black text-purple-900">
+                {selectedAdminSites.includes('site_a') && selectedAdminSites.includes('site_b')
+                  ? '👑 雙站全權管理員（A 站主站 ＋ B 站創星季）'
+                  : selectedAdminSites.includes('site_a')
+                  ? '🅰️ A 站專屬管理員（IdeaX 創點子主站）'
+                  : selectedAdminSites.includes('site_b')
+                  ? '🅱️ B 站專屬管理員（創星季賽事專區）'
+                  : '👤 撤銷管理員（轉為一般會員）'}
+              </span>
+            </div>
+
+            {/* 操作按鈕 */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setAdminAssignTargetUser(null)}
+                className="px-4 py-2 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAdminSites}
+                className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <Check className="w-4 h-4" />
+                <span>確認儲存授權</span>
               </button>
             </div>
           </div>

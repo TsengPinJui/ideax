@@ -94,7 +94,7 @@ export function getUserNameColorClass(
     }
   }
 
-  // 1. 管理員 (紫色，明朗高雅)
+  // 1. 管理員 (紫色，暗調沉穩威嚴)
   if (
     targetUser?.role === 'admin' ||
     targetUser?.accountType === 'admin' ||
@@ -105,10 +105,10 @@ export function getUserNameColorClass(
     (typeof userId === 'string' && (userId === 'user-admin' || userId === 'a000000001')) ||
     (targetUser?.name && (targetUser.name.includes('管理團隊') || targetUser.name.includes('管理員') || targetUser.name.includes('系統管理')))
   ) {
-    return 'text-purple-700 font-bold';
+    return 'text-purple-900 font-bold';
   }
 
-  // 2. 企業機構 (藍色，清晰明亮科技海藍)
+  // 2. 企業機構 (藍色，深邃海藍)
   if (
     targetUser?.accountType === 'enterprise' ||
     targetUser?.role === 'enterprise' ||
@@ -120,10 +120,10 @@ export function getUserNameColorClass(
     Boolean(targetUser?.name && (targetUser.name.includes('公司') || targetUser.name.includes('科技') || targetUser.name.includes('事務所') || targetUser.name.includes('企業') || targetUser.name.includes('機構') || targetUser.name.includes('法人') || targetUser.name.includes('團隊'))) ||
     Boolean(targetUser?.title && (targetUser.title.includes('企業') || targetUser.title.includes('機構') || targetUser.title.includes('法人') || targetUser.title.includes('科技')))
   ) {
-    return 'text-blue-700 font-bold';
+    return 'text-blue-900 font-bold';
   }
 
-  // 3. 認證專家 (綠色，明亮翡翠綠)
+  // 3. 認證專家 (綠色，深林翠綠)
   const isExpert =
     targetUser?.verifiedExpert ||
     Boolean(targetUser?.verifiedBadge) ||
@@ -138,11 +138,11 @@ export function getUserNameColorClass(
     targetUser?.subscriptionTier === 'master';
 
   if (isExpert) {
-    return 'text-emerald-700 font-bold';
+    return 'text-emerald-800 font-bold';
   }
 
-  // 4. 一般用戶 (清晰炭灰)
-  return 'text-stone-800 font-bold';
+  // 4. 一般用戶 (深炭黑)
+  return 'text-stone-900 font-bold';
 }
 
 /**

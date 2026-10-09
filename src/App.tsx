@@ -106,14 +106,38 @@ function MainContent() {
         const search = window.location.search.toLowerCase();
         const hash = window.location.hash.toLowerCase();
         const redirectParam = (new URLSearchParams(window.location.search).get('redirect') || '').toLowerCase();
+        const storedRedirect = (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ideax_redirect_path') : '') || '';
+        let targetPath = pathname;
 
-        // 0. 痛點/問題/討論詳情子網址
+        if (storedRedirect) {
+          try {
+            sessionStorage.removeItem('ideax_redirect_path');
+            window.history.replaceState(null, '', storedRedirect);
+            targetPath = window.location.pathname.toLowerCase();
+          } catch {}
+        }
+
+        // 0. 創點子/痛點集子網址（優先判定，避免誤入問題詳情）：/painpoints, /pain-points, /painpoint
+        const normalizedPath = targetPath.replace(/\/+$/, '');
         if (
-          pathname.includes('/question/') ||
-          pathname.includes('/pain-point/') ||
-          pathname.includes('/painpoint/') ||
-          pathname.includes('/painpoints/') ||
-          pathname.includes('/discussion/') ||
+          normalizedPath === '/painpoints' ||
+          normalizedPath === '/pain-points' ||
+          normalizedPath === '/painpoint' ||
+          normalizedPath === '/pain-point'
+        ) {
+          return 'explore';
+        }
+
+        // 0.1 痛點/問題/討論詳情子網址（必須帶有非空白題目 ID）
+        const questionIdFromPath =
+          (targetPath.includes('/question/') && (targetPath.split('/question/')[1]?.split(/[/?#]/)[0] || '').trim()) ||
+          (targetPath.includes('/pain-point/') && (targetPath.split('/pain-point/')[1]?.split(/[/?#]/)[0] || '').trim()) ||
+          (targetPath.includes('/painpoint/') && (targetPath.split('/painpoint/')[1]?.split(/[/?#]/)[0] || '').trim()) ||
+          (targetPath.includes('/painpoints/') && (targetPath.split('/painpoints/')[1]?.split(/[/?#]/)[0] || '').trim()) ||
+          (targetPath.includes('/discussion/') && (targetPath.split('/discussion/')[1]?.split(/[/?#]/)[0] || '').trim());
+
+        if (
+          (questionIdFromPath && questionIdFromPath.length > 0) ||
           search.includes('q=') ||
           search.includes('questionid=')
         ) {
@@ -395,16 +419,20 @@ function MainContent() {
     }
   };
 
-  // 手機app模式，開啟後會自動滾動到探索市場位置
+  // 進入 /painpoints 專區或手機模式時，自動平滑滾動至市場痛點區塊
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      const timer = setTimeout(() => {
-        const el = document.getElementById('market-grid');
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 500);
-      return () => clearTimeout(timer);
+    if (typeof window !== 'undefined') {
+      const cur = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+      const isPainpointsPath = cur === '/painpoints' || cur === '/painpoint' || cur === '/pain-points';
+      if (isPainpointsPath || window.innerWidth < 768) {
+        const timer = setTimeout(() => {
+          const el = document.getElementById('market-grid');
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, isPainpointsPath ? 150 : 500);
+        return () => clearTimeout(timer);
+      }
     }
   }, []);
 
@@ -450,8 +478,8 @@ function MainContent() {
           if (specialZone === 'pain_points') {
             if (curPath !== '/painpoints') {
               window.history.pushState({ zone: 'pain_points' }, '', '/painpoints');
-              updateSEOForSubpage('painpoints');
             }
+            updateSEOForSubpage('painpoints');
           } else if (curPath === '/painpoints' || curPath === '/create' || curPath === '/solvers' || curPath === '/explore' || curPath.startsWith('/challenge')) {
             window.history.pushState({ tab: 'explore' }, '', '/');
             resetSEOToDefault();
@@ -573,18 +601,37 @@ function MainContent() {
     const parseAndOpenQuestion = () => {
       let targetQId: string | null = null;
       
-      // 1. Check pathname: /question/:id, /pain-point/:id, /discussion/:id
       const path = window.location.pathname;
+      const normalizedPath = (path || '').toLowerCase().replace(/\/+$/, '');
+
+      // 若當前子網址為痛點集專區，直接確保選取痛點集並重設題目選取
+      if (
+        normalizedPath === '/painpoints' ||
+        normalizedPath === '/pain-points' ||
+        normalizedPath === '/painpoint' ||
+        normalizedPath === '/pain-point'
+      ) {
+        setSelectedQuestion(null);
+        setActiveTab('explore');
+        setSpecialZone('pain_points');
+        return;
+      }
+
+      // 1. Check pathname: /question/:id, /pain-point/:id, /discussion/:id
       if (path.includes('/question/')) {
-        targetQId = path.split('/question/')[1].split('/')[0].split('?')[0];
+        targetQId = (path.split('/question/')[1]?.split('/')[0]?.split('?')[0] || '').trim();
       } else if (path.includes('/pain-point/')) {
-        targetQId = path.split('/pain-point/')[1].split('/')[0].split('?')[0];
+        targetQId = (path.split('/pain-point/')[1]?.split('/')[0]?.split('?')[0] || '').trim();
       } else if (path.includes('/painpoint/')) {
-        targetQId = path.split('/painpoint/')[1].split('/')[0].split('?')[0];
+        targetQId = (path.split('/painpoint/')[1]?.split('/')[0]?.split('?')[0] || '').trim();
       } else if (path.includes('/painpoints/')) {
-        targetQId = path.split('/painpoints/')[1].split('/')[0].split('?')[0];
+        targetQId = (path.split('/painpoints/')[1]?.split('/')[0]?.split('?')[0] || '').trim();
       } else if (path.includes('/discussion/')) {
-        targetQId = path.split('/discussion/')[1].split('/')[0].split('?')[0];
+        targetQId = (path.split('/discussion/')[1]?.split('/')[0]?.split('?')[0] || '').trim();
+      }
+
+      if (!targetQId || targetQId.length === 0) {
+        targetQId = null;
       }
 
       // 2. Check search params: ?q=xxx or ?questionId=xxx or ?id=xxx

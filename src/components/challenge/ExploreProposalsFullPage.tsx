@@ -33,6 +33,7 @@ import {
   Link as LinkIcon,
   Eye,
   Layers,
+  User as UserIcon,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -62,6 +63,7 @@ import {
 import { auth } from '../../services/firebase';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
+import { StarSeasonGuideModal } from './StarSeasonGuideModal';
 
 interface ExploreProposalsFullPageProps {
   onNavigate: (view: 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador') => void;
@@ -124,6 +126,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const [isSupportModalOpen, setIsSupportModalOpen] = useState<boolean>(false);
   const [supportAmount, setSupportAmount] = useState<number>(1000);
   const [isSubmittingSupport, setIsSubmittingSupport] = useState<boolean>(false);
+
+  // 彈窗狀態：導覽與我的收藏
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
+  const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState<boolean>(false);
 
   // 留言狀態
   const [activeComments, setActiveComments] = useState<ProposalComment[]>([]);
@@ -743,15 +749,89 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             </div>
           </div>
 
-          {/* 右側：簡潔清晰的「回首頁」按鈕 */}
-          <div className="flex items-center gap-2">
+          {/* 右側：登入、痛點、導覽、我的收藏、回首頁按鈕群 */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
+            {/* 1. 痛點專區捷徑 */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSectionTab('pain_point');
+                const el = document.getElementById('section-tabs-container') || document.getElementById('market-grid');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-95 ${
+                activeSectionTab === 'pain_point'
+                  ? 'bg-rose-500 text-white shadow-xs font-black'
+                  : 'bg-white hover:bg-rose-50 text-stone-700 border border-stone-200 hover:border-rose-300'
+              }`}
+              title="切換至切身生活與產業痛點問題清單"
+            >
+              <Flame className="w-3.5 h-3.5 text-rose-500" />
+              <span>痛點</span>
+            </button>
+
+            {/* 2. 創星季網站導覽 */}
+            <button
+              type="button"
+              onClick={() => setIsGuideModalOpen(true)}
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 border border-amber-500/40 text-xs font-black transition-all cursor-pointer shadow-2xs active:scale-98"
+              title="開啟創星季網站導覽（3 大角色 30 秒上手）"
+            >
+              <span className="text-xs">🔰</span>
+              <span className="hidden sm:inline">創星季網站導覽</span>
+              <span className="sm:hidden">導覽</span>
+            </button>
+
+            {/* 3. 我的收藏 */}
+            <button
+              type="button"
+              onClick={() => setIsFavoritesModalOpen(true)}
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-stone-700 hover:text-rose-700 border border-stone-200 hover:border-rose-300 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
+              title="查看我的個人按讚收藏提案清單"
+            >
+              <Heart className={`w-3.5 h-3.5 ${likedProposalIds.length > 0 ? 'text-rose-500 fill-rose-500' : 'text-stone-400'}`} />
+              <span className="hidden sm:inline">我的收藏</span>
+              {likedProposalIds.length > 0 && (
+                <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-black">
+                  {likedProposalIds.length}
+                </span>
+              )}
+            </button>
+
+            {/* 4. 登入 / 註冊 或 已登入狀態 */}
+            {currentUser && currentUser.id !== 'user-guest' && currentUser.id !== 'guest' ? (
+              <div className="flex items-center gap-1.5 bg-white border border-amber-300 px-2 sm:px-2.5 py-1 rounded-2xl text-xs shadow-2xs">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 text-stone-950 flex items-center justify-center font-black text-xs shrink-0 overflow-hidden">
+                  {currentUser.avatar ? (
+                    <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    currentUser.name?.charAt(0).toUpperCase() || 'U'
+                  )}
+                </div>
+                <span className="font-bold text-stone-800 text-xs truncate max-w-[60px] sm:max-w-[90px]">
+                  {currentUser.name}
+                </span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenAuth}
+                className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white hover:bg-amber-50 text-stone-800 border border-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
+                title="登入或註冊 IdeaX 帳號"
+              >
+                <LogIn className="w-3.5 h-3.5 text-amber-600" />
+                <span>登入</span>
+              </button>
+            )}
+
+            {/* 5. 回首頁 */}
             <button
               type="button"
               onClick={() => {
                 onNavigate('home');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs shadow-2xs transition-all cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs shadow-2xs transition-all cursor-pointer active:scale-95 shrink-0"
               title="返回創星季首頁"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -1373,12 +1453,12 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                       }}
                       className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
                         isQuestionSeconded(pp.id)
-                          ? 'bg-emerald-600 text-white border border-emerald-600 shadow-2xs font-black'
-                          : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                          ? 'bg-rose-600 text-white border border-rose-600 shadow-2xs font-black'
+                          : 'bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100'
                       }`}
                       title="附議此痛點 (+1 共鳴支持)"
                     >
-                      <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isQuestionSeconded(pp.id) ? 'bg-white text-emerald-800 border-white' : 'bg-white text-emerald-700 border-emerald-300'}`}>+1</span>
+                      <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isQuestionSeconded(pp.id) ? 'bg-white text-rose-800 border-white' : 'bg-white text-rose-700 border-rose-300'}`}>+1</span>
                       <span>附議</span>
                       {getQuestionSecondCount(pp.id) > 0 && (
                         <span className="font-mono font-black">({getQuestionSecondCount(pp.id)})</span>
@@ -1475,6 +1555,106 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   {isSubmittingSupport ? '處理投點中...' : `確認支持 ${supportAmount.toLocaleString()} 點`}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 創星季 30 秒三大角色極速導覽視窗 Modal */}
+      <StarSeasonGuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
+        initialRole="audience"
+        onNavigateToExplore={() => {
+          setActiveSectionTab('solution');
+          setIsGuideModalOpen(false);
+          const el = document.getElementById('section-tabs-container') || document.getElementById('market-grid');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }}
+        onNavigateToPainPoints={() => {
+          setActiveSectionTab('pain_point');
+          setIsGuideModalOpen(false);
+          const el = document.getElementById('section-tabs-container') || document.getElementById('market-grid');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }}
+      />
+
+      {/* 個人按讚收藏名單 Modal */}
+      {isFavoritesModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white border border-amber-300 rounded-3xl max-w-xl w-full p-6 space-y-4 my-8 max-h-[85vh] overflow-y-auto shadow-2xl text-stone-900 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                  <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-stone-900">我的個人收藏提案清單</h3>
+                  <p className="text-[11px] text-stone-500">按過愛心的參賽作品，隨時掌握募資進度</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFavoritesModalOpen(false)}
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {proposals.filter((p) => likedProposalIds.includes(p.id)).length === 0 ? (
+                <div className="py-12 text-center text-stone-400 space-y-2">
+                  <Heart className="w-10 h-10 mx-auto text-stone-300 stroke-1" />
+                  <p className="text-sm font-bold text-stone-600">目前尚無收藏的提案</p>
+                  <p className="text-[11px] text-stone-400 max-w-xs mx-auto">
+                    在競賽提案列表點擊愛心圖示，即可將優秀的創意作品收錄至此，方便隨時追蹤與投點！
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+                  {proposals
+                    .filter((p) => likedProposalIds.includes(p.id))
+                    .map((prop) => (
+                      <div
+                        key={prop.id}
+                        className="p-3.5 rounded-2xl bg-stone-50 hover:bg-amber-50/40 border border-stone-200 hover:border-amber-300 transition-all space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                              {STAR_SEASON_TRACKS[prop.track]?.tag}
+                            </span>
+                            <span className="text-[10px] font-bold text-stone-500">
+                              {prop.authorName}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleLike(prop.id)}
+                            className="text-rose-500 hover:text-stone-400 p-1 cursor-pointer"
+                            title="取消收藏"
+                          >
+                            <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
+                          </button>
+                        </div>
+
+                        <h4
+                          onClick={() => {
+                            setIsFavoritesModalOpen(false);
+                            handleOpenProposalDetail(prop);
+                          }}
+                          className="font-bold text-stone-900 text-xs line-clamp-1 hover:text-amber-600 cursor-pointer"
+                        >
+                          {prop.title}
+                        </h4>
+                        <p className="text-stone-500 text-[11px] line-clamp-1">
+                          {prop.summary}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

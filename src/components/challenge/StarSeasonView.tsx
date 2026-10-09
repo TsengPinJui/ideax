@@ -611,6 +611,26 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     }, 1000);
   };
 
+  // 特效：點擊「你的」或「我的」黃色彎曲抖動底線，底線旋轉後掉落，2.5秒後彈跳恢復
+  const [underlineDropState, setUnderlineDropState] = useState<{
+    yourLine: 'idle' | 'dropping' | 'restoring';
+    myLine: 'idle' | 'dropping' | 'restoring';
+  }>({
+    yourLine: 'idle',
+    myLine: 'idle',
+  });
+
+  const handleDropUnderline = (target: 'yourLine' | 'myLine') => {
+    if (underlineDropState[target] === 'dropping') return;
+    setUnderlineDropState((prev) => ({ ...prev, [target]: 'dropping' }));
+    setTimeout(() => {
+      setUnderlineDropState((prev) => ({ ...prev, [target]: 'restoring' }));
+      setTimeout(() => {
+        setUnderlineDropState((prev) => ({ ...prev, [target]: 'idle' }));
+      }, 450);
+    }, 2500);
+  };
+
   // 專家名單與評審身分判定 (評審身分為專家，由管理員在後台指派 isJudgeSelected = true)
   const expertsList = useMemo(() => getCompetitionExperts(), [isAdminFinalEvaluationHubOpen, isJudgeEvaluationModalOpen]);
   const isCurrentUserAppointedJudge = useMemo(() => {
@@ -2143,7 +2163,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <ArrowRight className="w-3.5 h-3.5 text-orange-800 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
-            {/* 3. 🔰 玩法導覽 (三大角色 30 秒上手) */}
+            {/* 3. 🔰 創星季網站導覽 (三大角色 30 秒上手) */}
             <button
               type="button"
               id="star-tour-nav-guide"
@@ -2152,10 +2172,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 setIsGuideModalOpen(true);
               }}
               className="px-3 py-1.5 rounded-xl text-stone-900 bg-amber-400 hover:bg-amber-300 border border-amber-500/40 transition-all cursor-pointer font-black flex items-center gap-1.5 shadow-2xs active:scale-98"
-              title="查看創星季 30 秒玩法導覽（觀眾、提案參賽、痛點提問 3 大角色極速引導）"
+              title="查看創星季網站導覽（觀眾、提案參賽、痛點提問 3 大角色極速引導）"
             >
               <span className="text-xs">🔰</span>
-              <span>玩法導覽</span>
+              <span>創星季網站導覽</span>
             </button>
 
             {/* 4. 競賽辦法 (直接前往專門競賽辦法頁) */}
@@ -2518,7 +2538,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                           </div>
                           <div>
                             <div className="font-black text-stone-900 flex items-center gap-1.5">
-                              <span>創星季玩法導覽</span>
+                              <span>創星季網站導覽</span>
                               <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-400 text-stone-950 font-mono">
                                 30秒上手
                               </span>
@@ -2668,7 +2688,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               )}
             </div>
 
-            {/* 手機版專屬：🔰 玩法導覽 */}
+            {/* 手機版專屬：🔰 創星季網站導覽 */}
             <button
               type="button"
               onClick={() => {
@@ -2676,10 +2696,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 setIsGuideModalOpen(true);
               }}
               className="lg:hidden inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-stone-900 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-98 shrink-0"
-              title="創星季 30 秒玩法導覽"
+              title="創星季網站導覽"
             >
               <span className="text-[12px]">🔰</span>
-              <span className="text-[11px]">導覽</span>
+              <span className="text-[11px]">網站導覽</span>
             </button>
 
             {/* 手機版面空間有限：移除競賽辦法按鈕，優先保留痛點（隨著賽程變動，若換至提案階段則自動變換為提案捷徑），並採用向量箭頭圖標 */}
@@ -2727,7 +2747,67 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <div className="inline-block text-left transform -rotate-3 sm:-rotate-4 -skew-x-8 sm:-skew-x-10 italic origin-center select-none max-w-full">
                 {/* 第一行：你的 痛點， (靠左) */}
                 <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-stone-950 tracking-tight leading-tight flex items-center">
-                  <span>你的</span>
+                  <span
+                    className="relative inline-block pb-1 cursor-pointer group/yourline"
+                    onClick={() => handleDropUnderline('yourLine')}
+                    title="點擊底線：旋轉後掉落！"
+                  >
+                    <span>你的</span>
+                    {/* 黃色彎曲抖動底線 (Yellow Curved Jiggle/Wavy Underline) - 點擊底線旋轉後掉落 */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDropUnderline('yourLine');
+                      }}
+                      title="點擊底線：旋轉後掉落！"
+                      aria-label="點擊底線旋轉掉落"
+                      className={`absolute -bottom-1 sm:-bottom-2.5 left-0 w-full h-3.5 sm:h-5 cursor-pointer z-20 focus:outline-none transition-transform group-hover/yourline:scale-105 active:scale-95 ${
+                        underlineDropState.yourLine === 'dropping'
+                          ? 'animate-underline-rotate-drop'
+                          : underlineDropState.yourLine === 'restoring'
+                          ? 'animate-underline-pop-in'
+                          : 'animate-wavy-jiggle'
+                      }`}
+                      style={{ filter: 'drop-shadow(0 2px 5px rgba(234, 179, 8, 0.65))' }}
+                    >
+                      <svg
+                        viewBox="0 0 120 18"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        preserveAspectRatio="none"
+                        className="w-full h-full pointer-events-none overflow-visible select-none"
+                        aria-hidden="true"
+                      >
+                        {/* 金黃陰影疊層 */}
+                        <path
+                          d="M3 11 C 15 3, 27 16, 42 8 C 57 1, 71 15, 86 8 C 98 2, 108 12, 117 7"
+                          stroke="#ca8a04"
+                          strokeWidth="5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          opacity="0.35"
+                        />
+                        {/* 亮黃核心彎曲主筆刷 */}
+                        <path
+                          d="M3 10 C 15 2, 27 15, 42 7 C 57 0.5, 71 14, 86 7 C 98 1, 108 11, 117 6"
+                          stroke="#facc15"
+                          strokeWidth="5.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {/* 高光微反光筆觸 */}
+                        <path
+                          d="M5 8.5 C 16 1.5, 28 13.5, 42 6 C 56 0, 70 12.5, 85 6 C 96 1, 106 9.5, 115 5.5"
+                          stroke="#fef08a"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          opacity="0.9"
+                        />
+                      </svg>
+                    </button>
+                  </span>
                   <button
                     type="button"
                     onClick={(e) => handleTriggerShatterAndJump(e, 'painPoint')}
@@ -2769,7 +2849,71 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
                 {/* 第二行：就是我的 (向右明顯錯開排版) */}
                 <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-950 tracking-tight leading-tight pl-16 sm:pl-28 md:pl-36 lg:pl-44 my-2 sm:my-3">
-                  就是我的
+                  <span>就是</span>
+                  <span
+                    className="relative inline-block ml-1 pb-1 cursor-pointer group/myline"
+                    onClick={() => handleDropUnderline('myLine')}
+                    title="點擊底線：旋轉後掉落！"
+                  >
+                    <span>我的</span>
+                    {/* 黃色彎曲抖動底線 (Yellow Curved Jiggle/Wavy Underline) - 點擊底線旋轉後掉落 */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDropUnderline('myLine');
+                      }}
+                      title="點擊底線：旋轉後掉落！"
+                      aria-label="點擊底線旋轉掉落"
+                      className={`absolute -bottom-1 sm:-bottom-2.5 left-0 w-full h-3.5 sm:h-5 cursor-pointer z-20 focus:outline-none transition-transform group-hover/myline:scale-105 active:scale-95 ${
+                        underlineDropState.myLine === 'dropping'
+                          ? 'animate-underline-rotate-drop'
+                          : underlineDropState.myLine === 'restoring'
+                          ? 'animate-underline-pop-in'
+                          : 'animate-wavy-jiggle'
+                      }`}
+                      style={{
+                        filter: 'drop-shadow(0 2px 5px rgba(234, 179, 8, 0.65))',
+                        animationDelay: underlineDropState.myLine === 'idle' ? '0.22s' : undefined,
+                      }}
+                    >
+                      <svg
+                        viewBox="0 0 120 18"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        preserveAspectRatio="none"
+                        className="w-full h-full pointer-events-none overflow-visible select-none"
+                        aria-hidden="true"
+                      >
+                        {/* 金黃陰影疊層 */}
+                        <path
+                          d="M3 11 C 15 3, 27 16, 42 8 C 57 1, 71 15, 86 8 C 98 2, 108 12, 117 7"
+                          stroke="#ca8a04"
+                          strokeWidth="5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          opacity="0.35"
+                        />
+                        {/* 亮黃核心彎曲主筆刷 */}
+                        <path
+                          d="M3 10 C 15 2, 27 15, 42 7 C 57 0.5, 71 14, 86 7 C 98 1, 108 11, 117 6"
+                          stroke="#facc15"
+                          strokeWidth="5.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {/* 高光微反光筆觸 */}
+                        <path
+                          d="M5 8.5 C 16 1.5, 28 13.5, 42 6 C 56 0, 70 12.5, 85 6 C 96 1, 106 9.5, 115 5.5"
+                          stroke="#fef08a"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          opacity="0.9"
+                        />
+                      </svg>
+                    </button>
+                  </span>
                 </div>
 
                 {/* 第三行：創新起點 (加大醒目大字體 + 鮮亮黃綠油漆筆刷底，回到偏左位置形成鮮明之字交錯) */}
@@ -2812,9 +2956,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     <span className="relative z-10 text-stone-950 inline-flex items-baseline">
                       創新起點
                       <span
-                        className="inline-block text-amber-500 font-black italic tracking-tighter text-[1.15em] sm:text-[1.22em] ml-1 sm:ml-1.5 transform rotate-6 select-none transition-all group-hover:rotate-12 group-hover:scale-110 drop-shadow-xs"
-                        style={{ fontFamily: 'Impact, "Arial Black", ui-sans-serif, system-ui, sans-serif' }}
+                        className="inline-block text-amber-500 font-black italic tracking-tighter text-[1.18em] sm:text-[1.25em] ml-1 sm:ml-1.5 select-none transition-all animate-exclamation-action group-hover:scale-130 group-hover:rotate-18 drop-shadow-md origin-bottom cursor-pointer"
+                        style={{
+                          fontFamily: 'Impact, "Arial Black", ui-sans-serif, system-ui, sans-serif',
+                          filter: 'drop-shadow(0 2px 6px rgba(245, 158, 11, 0.65))',
+                        }}
                         aria-hidden="true"
+                        title="點擊啟動創新起點！"
                       >
                         !
                       </span>
@@ -2964,16 +3112,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <span>提出痛點過審即送 <strong>200 點</strong>（價值 $250，效期 60 日）</span>
                 </span>
                 <span className="text-stone-300">•</span>
-                <span className="flex items-center gap-1 font-medium">
-                  <Heart className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>痛點獲前十名採用享 <strong>等值好禮</strong>（最高 $1,000）</span>
-                </span>
-                <span className="text-stone-300">•</span>
-                <span className="flex items-center gap-1 font-medium">
-                  <TrendingUp className="w-3.5 h-3.5 text-yellow-600" />
-                  <span>模擬募資前 20 名 <strong>取得入圍決選資格</strong></span>
-                </span>
-                <span className="text-stone-300">•</span>
+                {/* 賽程表（移至紅圈：緊鄰痛點過審即送） */}
                 <button
                   type="button"
                   onClick={() => {
@@ -2985,6 +3124,30 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 >
                   <Calendar className="w-3.5 h-3.5 text-emerald-600" />
                   <span>賽程表 →</span>
+                </button>
+                <span className="text-stone-300">•</span>
+                <span className="flex items-center gap-1 font-medium">
+                  <Heart className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>痛點獲前十名採用享 <strong>等值好禮</strong>（最高 $1,000）</span>
+                </span>
+                <span className="text-stone-300">•</span>
+                <span className="flex items-center gap-1 font-medium">
+                  <TrendingUp className="w-3.5 h-3.5 text-yellow-600" />
+                  <span>模擬募資前 20 名 <strong>取得入圍決選資格</strong></span>
+                </span>
+                <span className="text-stone-300">•</span>
+                {/* 原位置改為綠色活動獎項文字連結，連到下方活動獎項 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('homepage-awards-section');
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="flex items-center gap-1 font-bold text-emerald-700 hover:text-emerald-950 hover:underline cursor-pointer transition-colors"
+                  title="點擊前往查看活動獎項專區"
+                >
+                  <Trophy className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>活動獎項 →</span>
                 </button>
               </div>
             </div>
@@ -3457,12 +3620,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                 }}
                                 className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
                                   isQuestionSeconded(pp.id)
-                                    ? 'bg-emerald-600 text-white border border-emerald-600 shadow-2xs font-black'
-                                    : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                                    ? 'bg-rose-600 text-white border border-rose-600 shadow-2xs font-black'
+                                    : 'bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100'
                                 }`}
                                 title="附議此痛點 (+1 共鳴支持)"
                               >
-                                <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isQuestionSeconded(pp.id) ? 'bg-white text-emerald-800 border-white' : 'bg-white text-emerald-700 border-emerald-300'}`}>+1</span>
+                                <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isQuestionSeconded(pp.id) ? 'bg-white text-rose-800 border-white' : 'bg-white text-rose-700 border-rose-300'}`}>+1</span>
                                 <span>附議</span>
                                 {getQuestionSecondCount(pp.id) > 0 && (
                                   <span className="font-mono font-black">({getQuestionSecondCount(pp.id)})</span>
@@ -3687,10 +3850,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             </div>
 
             {/* 點數效期規範提醒 */}
-            <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200 text-xs text-stone-700 flex items-center gap-2">
+            <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-300/80 text-xs text-stone-800 flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-700 shrink-0" />
               <span>
-                <b>點數有效期限特別說明：</b>前三名（冠、亞、季軍）獲獎團隊點數效期為 <b>180 日</b>，其餘所有獎勵點數（痛點獎、採用好禮、大使獎）效期皆為 <b>60 日</b>。
+                <strong className="text-amber-950 font-black">注意點數期限：</strong>前三名獲獎團隊點數效期為 <b>180 日</b>，其餘所有獎勵點數效期皆為 <b>60 日</b>。請把握提問機會，盡快使用完畢 !
               </span>
             </div>
           </section>

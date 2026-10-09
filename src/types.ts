@@ -553,6 +553,8 @@ export interface UserSurveyData {
   updatedAt?: string;
 }
 
+export type AdminSite = 'site_a' | 'site_b'; // 'site_a': IdeaX 主站 | 'site_b': 創星季賽事專區
+
 export interface User {
   id: string;
   memberId?: string; // 規範ID（首字英文字母+亂數編排9碼，共10碼，例如 c123456789, a000000001, b987654321）
@@ -564,6 +566,8 @@ export interface User {
   title: string;
   avatar: string;
   role: UserRole;
+  isInitialAdmin?: boolean; // 是否為系統初始創始管理員（唯一具有指派其他用戶為管理員之權限）
+  adminSites?: AdminSite[]; // 授權管轄站點清單：['site_a'] (IdeaX主站) | ['site_b'] (創星季賽事專區) | ['site_a', 'site_b'] (雙站管理員)
   balance: number; // 相容欄位（預設 0，全面以第三方支付與直接撥款為主）
   points?: number; // 平台點數/提問金（可用於發布問題懸賞、付費服務與專家諮詢）
   breakdown?: any; // 競賽與活動獎勵加總細項快照
