@@ -2548,41 +2548,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                           </div>
                           <div>
                             <div className="font-black text-stone-900">提案參賽</div>
-                            <div className="text-[10px] text-stone-500 font-normal">填寫團隊資料與創星季募資計畫滿版報名</div>
+                            <div className="text-[10px] text-stone-500 font-normal">填寫團隊資料與創星季企劃滿版報名</div>
                           </div>
                         </div>
                         <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
                       </button>
 
-                      {/* 🌟 我的收藏（一般用戶收藏與成為專家對調位置：收藏排在前） */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsProfileMenuOpen(false);
-                          setIsFavoritesModalOpen(true);
-                        }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-rose-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                            <Heart className="w-4 h-4 text-rose-600 fill-rose-600/30" />
-                          </div>
-                          <div>
-                            <div className="font-black text-stone-900 flex items-center gap-1.5">
-                              <span>我的收藏</span>
-                              <span className="text-[9px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded-full border border-rose-200">
-                                已按讚名單
-                              </span>
-                            </div>
-                            <div className="text-[10px] text-stone-500 font-normal">個人已按讚與追蹤的解方提案清單</div>
-                          </div>
-                        </div>
-                        <span className="text-[11px] font-mono font-black text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full shrink-0">
-                          {likedProposalIds.length}
-                        </span>
-                      </button>
-
-                      {/* 🌟 成為專家（一般用戶收藏與成為專家對調位置：成為專家排在收藏之後） */}
+                      {/* 🌟 成為專家 */}
                       {currentUser.role !== 'admin' && (
                         <button
                           type="button"
@@ -4296,7 +4268,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   </span>
                 </div>
                 <span className="text-[11px] text-stone-500 hidden sm:inline">
-                  按讚後將自動收錄於右側個人列表「我的收藏」
+                  按讚後將為此提案累積人氣與鼓勵支持
                 </span>
               </div>
 

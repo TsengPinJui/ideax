@@ -204,7 +204,7 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
       aria-label="網站使用導覽入口"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="fixed right-3.5 sm:right-6 top-20 sm:top-24 z-40 flex items-center justify-end select-none group pointer-events-none transition-all duration-300"
+      className="fixed left-3.5 sm:left-6 top-[30%] sm:top-[33%] z-40 flex items-center justify-start select-none group pointer-events-none transition-all duration-300"
     >
       <div className="relative flex flex-col items-center pointer-events-auto">
         {/* 關閉/隱藏教學按鈕 */}
@@ -218,7 +218,7 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
           <X className="w-2.5 h-2.5 stroke-[2.5]" />
         </button>
 
-        {/* 金黃外框、白錶盤、紅白藍指針的經典羅盤按鈕 (位置上移，徹底避開底部分頁與滑動死區) */}
+        {/* 金黃外框、白錶盤、紅白藍指針的經典羅盤按鈕 (固定於首頁左側中間偏中上位置，徹底避免掉至下方或遭遮擋) */}
         <button
           type="button"
           onClick={onStartOnboarding}
@@ -234,17 +234,17 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
         </button>
       </div>
 
-      {/* 滑鼠懸停對話氣泡 (向左冒出 Speech Bubble，指向右側羅盤按鈕) */}
+      {/* 滑鼠懸停對話氣泡 (向右冒出 Speech Bubble，指向左側羅盤按鈕) */}
       <div
-        className={`absolute right-full mr-2.5 top-1/2 -translate-y-1/2 transition-all duration-200 ease-out pointer-events-none ${
+        className={`absolute left-full ml-2.5 top-1/2 -translate-y-1/2 transition-all duration-200 ease-out pointer-events-none ${
           isHovered
             ? 'opacity-100 translate-x-0 scale-100'
-            : 'opacity-0 translate-x-2 scale-95'
+            : 'opacity-0 -translate-x-2 scale-95'
         }`}
       >
         <div className="relative bg-stone-900/95 text-white px-3 py-2 rounded-2xl shadow-2xl border border-amber-400/80 backdrop-blur-md flex flex-col gap-1.5 whitespace-nowrap min-w-[136px] pointer-events-auto">
-          {/* 對話氣泡向右尖角 (Triangle Arrow pointing right to Compass) */}
-          <div className="absolute -right-1 top-3.5 w-2.5 h-2.5 bg-stone-900 border-r border-t border-amber-400/80 rotate-45" />
+          {/* 對話氣泡向左尖角 (Triangle Arrow pointing left to Compass) */}
+          <div className="absolute -left-1 top-3.5 w-2.5 h-2.5 bg-stone-900 border-l border-b border-amber-400/80 rotate-45" />
 
           {/* 氣泡內容標題：點擊可直接啟動導覽 */}
           <button
