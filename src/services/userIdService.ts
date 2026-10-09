@@ -21,11 +21,16 @@ export interface UserIdentificationLike {
   id?: string;
   memberId?: string;
   accountType?: PlatformIdCategory;
+  name?: string;
+  title?: string;
   role?: string;
   company?: string;
   subscriptionTier?: string;
   industry?: string;
   jobTitle?: string;
+  isOfficial?: boolean;
+  verifiedBadge?: string;
+  verifiedExpert?: boolean;
 }
 
 export const ID_PREFIX_MAP: Record<PlatformIdCategory, 'a' | 'b' | 'c'> = {
@@ -57,17 +62,17 @@ export const ID_TYPE_INFO: Record<
     prefix: 'b',
     label: '企業機構',
     description: '企業法人、新創機構與團隊 (b)',
-    badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300',
-    textClass: 'text-emerald-700',
-    borderClass: 'border-emerald-300',
+    badgeClass: 'bg-blue-100 text-blue-900 border-blue-300',
+    textClass: 'text-blue-600',
+    borderClass: 'border-blue-300',
   },
   user: {
     prefix: 'c',
     label: '一般用戶',
     description: '提問者、解題專家與個人會員 (c)',
-    badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
-    textClass: 'text-amber-800',
-    borderClass: 'border-amber-300',
+    badgeClass: 'bg-stone-100 text-stone-900 border-stone-300',
+    textClass: 'text-stone-900',
+    borderClass: 'border-stone-300',
   },
 };
 
@@ -101,15 +106,22 @@ export const resolveIdCategory = (userOrRole?: UserIdentificationLike | string):
   }
 
   // 3. 管理員判定
-  if (u.role === 'admin' || u.id === 'user-admin') {
+  if (
+    u.role === 'admin' ||
+    u.id === 'user-admin' ||
+    u.isOfficial ||
+    Boolean(u.name && (u.name.includes('管理團隊') || u.name.includes('管理員') || u.name.includes('系統管理')))
+  ) {
     return 'admin';
   }
 
-  // 4. 企業機構判定 (企業會員、企業角色、或登記有機構公司名稱)
+  // 4. 企業機構判定 (企業會員、企業角色、登記有機構公司名稱、名稱或職稱含機構/法人/公司/科技)
   if (
     u.role === 'enterprise' ||
     u.subscriptionTier === 'enterprise' ||
-    Boolean(u.company && u.company.trim() && (u.company.includes('公司') || u.company.includes('科技') || u.company.includes('事務所') || u.company.includes('企業') || u.company.includes('團隊')))
+    Boolean(u.company && u.company.trim() && (u.company.includes('公司') || u.company.includes('科技') || u.company.includes('事務所') || u.company.includes('企業') || u.company.includes('團隊'))) ||
+    Boolean(u.name && (u.name.includes('公司') || u.name.includes('科技') || u.name.includes('事務所') || u.name.includes('企業') || u.name.includes('機構') || u.name.includes('法人') || u.name.includes('團隊'))) ||
+    Boolean(u.title && (u.title.includes('企業') || u.title.includes('機構') || u.title.includes('法人') || u.title.includes('科技')))
   ) {
     return 'enterprise';
   }

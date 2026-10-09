@@ -204,7 +204,7 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
       aria-label="網站使用導覽入口"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="fixed right-3.5 sm:right-6 bottom-28 sm:bottom-32 md:bottom-36 z-40 flex items-center justify-end select-none group pointer-events-none transition-all duration-300"
+      className="fixed right-3.5 sm:right-6 top-20 sm:top-24 z-40 flex items-center justify-end select-none group pointer-events-none transition-all duration-300"
     >
       <div className="relative flex flex-col items-center pointer-events-auto">
         {/* 關閉/隱藏教學按鈕 */}

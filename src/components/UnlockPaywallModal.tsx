@@ -14,8 +14,12 @@ import {
   Flame,
   FileText,
   Video,
+  UploadCloud,
+  Paperclip,
+  Layers,
   Sparkles,
 } from 'lucide-react';
+import { getAnswerSpecifications } from '../utils/answerUtils';
 
 interface UnlockPaywallModalProps {
   answer: Answer;
@@ -45,9 +49,7 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
   const price = answer.price || 0;
   const offsetAmount = useWithheldOffset && availableWithheld > 0 ? Math.min(price, availableWithheld) : 0;
   const balanceToPay = Math.max(0, price - offsetAmount);
-
-  // Real-time automatic split calculation
-  const split = calculateSplitPayout(price, answer.solverId);
+  const spec = getAnswerSpecifications(answer);
 
   const handleUnlock = () => {
     setIsProcessing(true);
@@ -75,16 +77,7 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
       {/* Header */}
       <div className="p-5 border-b border-stone-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {isFullPage && (
-            <button
-              onClick={onClose}
-              className="p-1.5 -ml-1 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer"
-              title="返回問題市場"
-            >
-              <ArrowLeft className="w-4 h-4 text-amber-600" />
-            </button>
-          )}
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-900 flex items-center justify-center font-black">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-900 flex items-center justify-center font-black shrink-0">
             <Lock className="w-5 h-5 text-amber-700" />
           </div>
           <div>
@@ -96,22 +89,13 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
             </p>
           </div>
         </div>
-        {!isFullPage ? (
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        ) : (
-          <button
-            onClick={onClose}
-            className="px-2.5 py-1 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-600 text-xs font-semibold flex items-center gap-1 cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>返回問題市場</span>
-          </button>
-        )}
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer"
+          title="關閉"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Content */}
@@ -129,61 +113,68 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
           </div>
         )}
 
-        {/* Target Answer Brief */}
-        <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-stone-500 font-medium">方案交付形式：</span>
-            <span className="font-extrabold text-stone-900 bg-white px-2 py-0.5 rounded-md border border-stone-200">
-              {answer.deliveryType}
+        {/* 方案規格明細（所含內容類型和數量、交付方式） */}
+        <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-stone-900 border-b border-stone-200/60 pb-1.5">
+            <span className="flex items-center gap-1.5 text-stone-900 font-extrabold">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>方案規格（解鎖後交付內容）</span>
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-[10px] font-bold flex items-center gap-1">
+              <Layers className="w-3 h-3 text-purple-600" />
+              <span>{spec.deliveryMethod}</span>
             </span>
           </div>
-          {answer.deliveryFormat === 'meeting' && (
-            <div className="flex items-center gap-1.5 text-blue-700 text-[11px] font-bold">
-              <Video className="w-3.5 h-3.5" />
-              <span>含 {answer.meetingDetails?.durationMinutes || 30} 分鐘 1 對 1 線上諮詢會談</span>
+
+          <div className="space-y-1.5 text-xs text-stone-700">
+            <div className="flex items-start gap-1.5 flex-wrap">
+              <span className="font-bold text-stone-900 shrink-0">所含內容：</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {spec.items.map((it, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-0.5 rounded-md bg-white text-stone-800 font-semibold text-[11px] border border-stone-200 flex items-center gap-1"
+                  >
+                    {it.iconType === 'text' && <FileText className="w-3 h-3 text-stone-600" />}
+                    {it.iconType === 'file' && <UploadCloud className="w-3 h-3 text-amber-600" />}
+                    {it.iconType === 'link' && <Paperclip className="w-3 h-3 text-sky-600" />}
+                    {it.iconType === 'meeting' && <Video className="w-3 h-3 text-blue-600" />}
+                    <span>{it.label}</span>
+                  </span>
+                ))}
+              </div>
             </div>
-          )}
-          {answer.deliveryFormat === 'file' && (
-            <div className="flex items-center gap-1.5 text-emerald-700 text-[11px] font-bold">
-              <FileText className="w-3.5 h-3.5" />
-              <span>含專屬實戰落地檔案與資料下載（{answer.attachments?.length || 1} 份）</span>
+
+            <div className="flex items-center gap-1.5 text-[11px] text-stone-600 pt-0.5">
+              <span className="font-bold text-stone-800 shrink-0">交付方式：</span>
+              <span className="font-semibold text-stone-800">{spec.deliveryMethod}</span>
+              <span className="text-stone-400">
+                （{spec.isPhased ? `共 ${answer.phases?.length} 個階段，按階段推進並驗收放款` : '一次性交付完整內容與專屬資源'}）
+              </span>
             </div>
-          )}
-          <div className="text-stone-600 line-clamp-2 pt-1 italic text-[11px]">
+          </div>
+
+          <div className="text-stone-600 line-clamp-2 pt-1 border-t border-stone-200/50 italic text-[11px]">
             "{answer.freePreview.slice(0, 110)}..."
           </div>
         </div>
 
-        {/* Pricing Breakdown & Third-Party Split Box */}
+        {/* 解鎖定價方塊 */}
         <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2 text-xs">
           <div className="flex justify-between items-center text-stone-700">
-            <span className="font-bold">解答者所設解鎖定價：</span>
-            <span className="font-black text-stone-900 font-mono text-base">
-              NT$ {price.toLocaleString()} 元
-            </span>
-          </div>
-
-          <div className="pt-2 border-t border-amber-200/80 space-y-1 text-[11px]">
-            <span className="text-stone-500 font-bold block">
-              ⚡ 第三方交易款項自動拆分預覽（平台確認後即時撥款）：
-            </span>
-            <div className="flex items-center justify-between text-stone-700">
-              <span>解答者實收（實收 {split.sellerPayoutText}，{split.feeDiscountText} 由賣家吸收）：</span>
-              <span className="font-mono font-black text-emerald-800">
-                NT$ {split.netPayout.toLocaleString()} 元
+            <span className="font-bold text-sm">解鎖方案定價：</span>
+            <div className="flex items-baseline gap-1 font-mono">
+              <span className="text-xs text-stone-500">NT$</span>
+              <span className="font-black text-stone-900 text-xl">
+                {price.toLocaleString()}
               </span>
-            </div>
-            <div className="flex items-center justify-between text-stone-700">
-              <span>IdeaX 平台服務費：</span>
-              <span className="font-mono font-bold text-stone-600">
-                NT$ {split.platformFee.toLocaleString()} 元
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-stone-400 text-[10px] pt-0.5">
-              <span>自動撥付指定帳戶：</span>
-              <span className="font-mono truncate max-w-[200px] text-stone-600">{split.bankAccountSnapshot}</span>
+              <span className="text-xs text-stone-500 font-sans">元</span>
             </div>
           </div>
+          <p className="text-[11px] text-stone-500 flex items-center gap-1 pt-1 border-t border-amber-200/80">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>第三方價金保管・確認驗收履約保障</span>
+          </p>
         </div>
 
         {/* 提問者原懸賞預扣額折抵選項（若有） */}
@@ -317,12 +308,8 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
     </div>
   );
 
-  if (isFullPage) {
-    return <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{content}</div>;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       {content}
     </div>
   );

@@ -219,6 +219,24 @@ interface AppContextType {
   isQuestionBookmarked: (questionId: string) => boolean;
   promoteQuestion: (questionId: string) => boolean;
   incrementQuestionViews: (questionId: string, amount?: number) => void;
+
+  // 痛點附議 (+1) 與 提問同問 (舉手) 與 討論按讚 (大拇指)
+  secondedQuestionIds: string[];
+  toggleSecondQuestion: (questionId: string) => { isSeconded: boolean; count: number };
+  isQuestionSeconded: (questionId: string) => boolean;
+  getQuestionSecondCount: (questionId: string) => number;
+  sameQuestionIds: string[];
+  toggleSameQuestion: (questionId: string) => { isSameQuestion: boolean; count: number };
+  isSameQuestionActive: (questionId: string) => boolean;
+  getQuestionSameCount: (questionId: string) => number;
+  likedDiscussionAnswerIds: string[];
+  toggleLikeDiscussionAnswer: (answerId: string) => { isLiked: boolean; count: number };
+  isDiscussionAnswerLiked: (answerId: string) => boolean;
+  getDiscussionAnswerLikesCount: (answerId: string) => number;
+  likedQuestionIds: string[];
+  toggleLikeQuestion: (questionId: string) => { isLiked: boolean; count: number };
+  isQuestionLiked: (questionId: string) => boolean;
+  getQuestionLikesCount: (questionId: string) => number;
   resolvedDisputeIds: string[];
   markDisputeResolved: (disputeId: string, questionId?: string) => void;
   pendingDisputesCount: number;
@@ -1218,6 +1236,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return ['q-1', 'q-3'];
   });
 
+  // 痛點附議狀態 (+1)
+  const [secondedQuestionIds, setSecondedQuestionIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}seconded_questions`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
+  // 提問同問狀態 (舉手)
+  const [sameQuestionIds, setSameQuestionIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}same_questions`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
+  // 討論留言按讚狀態 (大拇指)
+  const [likedDiscussionAnswerIds, setLikedDiscussionAnswerIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}liked_discussions`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
+  // L0討論提問按讚狀態 (大拇指)
+  const [likedQuestionIds, setLikedQuestionIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}liked_questions`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}notifications`);
@@ -1942,9 +1996,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (selectedQuestion) {
       const updated = questions.find((q) => q.id === selectedQuestion.id);
-      if (updated) setSelectedQuestion(updated);
+      if (
+        updated &&
+        (updated.title !== selectedQuestion.title ||
+          updated.description !== selectedQuestion.description ||
+          updated.status !== selectedQuestion.status ||
+          updated.answersCount !== selectedQuestion.answersCount ||
+          updated.bounty !== selectedQuestion.bounty ||
+          updated.views !== selectedQuestion.views)
+      ) {
+        setSelectedQuestion(updated);
+      }
     }
-  }, [questions]);
+  }, [questions, selectedQuestion]);
 
   const [subscriptionPlans, setSubscriptionPlans] = useState<Record<SubscriptionTier, SubscriptionPlan>>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}plans`);
@@ -2992,12 +3056,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 關鍵同步：立即寫入 Firebase Firestore 雲端資料庫
     syncQuestionToFirestore(q);
 
+    // 成功提示 Toast (依痛點、懸賞提問/問題、貼文/討論交流顯示相應精準提示文案)
+    const isChatDiscussion = newQ.postType === 'chat_discussion';
+    const toastTitle = isPainPoint
+      ? '痛點發布成功！'
+      : isChatDiscussion
+      ? '貼文發布成功！'
+      : '提問發布成功！';
+    const toastSubtitle = isPainPoint
+      ? `已成功將痛點「${q.title.slice(0, 24)}」上架至痛點專區！`
+      : isChatDiscussion
+      ? `已成功將貼文「${q.title.slice(0, 24)}」發布至社群交流區！`
+      : `已成功發布提問「${q.title.slice(0, 24)}」${q.bounty > 0 ? `（懸賞 NT$ ${q.bounty.toLocaleString()} 元）` : ''}！`;
+    showCenterToast(toastTitle, toastSubtitle, { type: 'success', duration: 2500 });
+
     // Add notification
     setNotifications((prev) => [
       {
         id: `notif-${Date.now()}`,
-        title: '問題發布成功',
-        message: `您的懸賞問題「${q.title}」已成功上架問題市場${q.bounty > 0 ? `（款項 NT$ ${q.bounty.toLocaleString()} 元已安全進入履約託管）` : ''}，AI 正在自動媒合對應領域的認證專家！`,
+        title: isPainPoint ? '痛點發布成功' : isChatDiscussion ? '貼文發布成功' : '提問發布成功',
+        message: `您的${isPainPoint ? '痛點' : isChatDiscussion ? '貼文' : '提問'}「${q.title}」已成功上架！${q.bounty > 0 ? `（懸賞金額 NT$ ${q.bounty.toLocaleString()} 元）` : ''}`,
         type: 'system',
         createdAt: '剛剛',
         read: false,
@@ -3094,6 +3172,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       ...prev,
     ]);
+
+    // 成功提示 Toast（留言討論 或 提案方案）
+    if (isDiscussion) {
+      showCenterToast('留言討論發布成功！', '您的交流見解已成功送出並公開顯示。', {
+        type: 'success',
+        duration: 2200,
+      });
+    } else {
+      showCenterToast('提案方案發布成功！', '您的落地方案已成功提交，提問者與社群皆可查閱！', {
+        type: 'success',
+        duration: 2500,
+      });
+    }
 
     return ans;
   };
@@ -5558,6 +5649,187 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return bookmarkedQuestionIds.includes(questionId);
   };
 
+  // 1. 痛點附議 (+1)
+  const toggleSecondQuestion = (questionId: string): { isSeconded: boolean; count: number } => {
+    let nextState = false;
+    setSecondedQuestionIds((prev) => {
+      let updated: string[];
+      if (prev.includes(questionId)) {
+        updated = prev.filter((id) => id !== questionId);
+        nextState = false;
+      } else {
+        updated = [...prev, questionId];
+        nextState = true;
+      }
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}seconded_questions`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    let newCount = 0;
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id === questionId) {
+          const current = q.secondedCount ?? q.likes ?? 0;
+          newCount = nextState ? current + 1 : Math.max(0, current - 1);
+          return {
+            ...q,
+            secondedCount: newCount,
+            likes: newCount,
+          };
+        }
+        return q;
+      })
+    );
+
+    return { isSeconded: nextState, count: newCount };
+  };
+
+  const isQuestionSeconded = (questionId: string): boolean => {
+    return secondedQuestionIds.includes(questionId);
+  };
+
+  const getQuestionSecondCount = (questionId: string): number => {
+    const q = questions.find((item) => item.id === questionId);
+    return q?.secondedCount ?? q?.likes ?? 0;
+  };
+
+  // 2. 創點子提問同問 (舉手)
+  const toggleSameQuestion = (questionId: string): { isSameQuestion: boolean; count: number } => {
+    let nextState = false;
+    setSameQuestionIds((prev) => {
+      let updated: string[];
+      if (prev.includes(questionId)) {
+        updated = prev.filter((id) => id !== questionId);
+        nextState = false;
+      } else {
+        updated = [...prev, questionId];
+        nextState = true;
+      }
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}same_questions`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    let newCount = 0;
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id === questionId) {
+          const current = q.sameQuestionCount ?? 0;
+          newCount = nextState ? current + 1 : Math.max(0, current - 1);
+          return {
+            ...q,
+            sameQuestionCount: newCount,
+          };
+        }
+        return q;
+      })
+    );
+
+    return { isSameQuestion: nextState, count: newCount };
+  };
+
+  const isSameQuestionActive = (questionId: string): boolean => {
+    return sameQuestionIds.includes(questionId);
+  };
+
+  const getQuestionSameCount = (questionId: string): number => {
+    const q = questions.find((item) => item.id === questionId);
+    return q?.sameQuestionCount ?? 0;
+  };
+
+  // 3. 討論留言按讚 (大拇指)
+  const toggleLikeDiscussionAnswer = (answerId: string): { isLiked: boolean; count: number } => {
+    let nextState = false;
+    setLikedDiscussionAnswerIds((prev) => {
+      let updated: string[];
+      if (prev.includes(answerId)) {
+        updated = prev.filter((id) => id !== answerId);
+        nextState = false;
+      } else {
+        updated = [...prev, answerId];
+        nextState = true;
+      }
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_discussions`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    let newCount = 0;
+    setAnswers((prev) =>
+      prev.map((a) => {
+        if (a.id === answerId) {
+          const current = a.likes ?? 0;
+          newCount = nextState ? current + 1 : Math.max(0, current - 1);
+          return {
+            ...a,
+            likes: newCount,
+          };
+        }
+        return a;
+      })
+    );
+
+    return { isLiked: nextState, count: newCount };
+  };
+
+  const isDiscussionAnswerLiked = (answerId: string): boolean => {
+    return likedDiscussionAnswerIds.includes(answerId);
+  };
+
+  const getDiscussionAnswerLikesCount = (answerId: string): number => {
+    const a = answers.find((item) => item.id === answerId);
+    return a?.likes ?? 0;
+  };
+
+  // 4. L0 討論提問按讚 (大拇指)
+  const toggleLikeQuestion = (questionId: string): { isLiked: boolean; count: number } => {
+    let nextState = false;
+    setLikedQuestionIds((prev) => {
+      let updated: string[];
+      if (prev.includes(questionId)) {
+        updated = prev.filter((id) => id !== questionId);
+        nextState = false;
+      } else {
+        updated = [...prev, questionId];
+        nextState = true;
+      }
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_questions`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    let newCount = 0;
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id === questionId) {
+          const current = q.likes ?? 0;
+          newCount = nextState ? current + 1 : Math.max(0, current - 1);
+          return {
+            ...q,
+            likes: newCount,
+          };
+        }
+        return q;
+      })
+    );
+
+    return { isLiked: nextState, count: newCount };
+  };
+
+  const isQuestionLiked = (questionId: string): boolean => {
+    return likedQuestionIds.includes(questionId);
+  };
+
+  const getQuestionLikesCount = (questionId: string): number => {
+    const q = questions.find((item) => item.id === questionId);
+    return q?.likes ?? 0;
+  };
+
   // Action: Promote question to top of recruiting list ($50)
   const promoteQuestion = (questionId: string): boolean => {
     const q = questions.find((item) => item.id === questionId);
@@ -5777,15 +6049,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [pendingTicketsCount, pendingDisputesCount, pendingReportsCount]);
 
   // Action: Increment real views count (tracks views strictly according to real clicks)
-  const incrementQuestionViews = (questionId: string, amount: number = 1) => {
+  const incrementQuestionViews = useCallback((questionId: string, amount: number = 1) => {
     let nextViews = 1;
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
       const map: Record<string, number> = saved ? JSON.parse(saved) : {};
-      const targetQ = questions.find((item) => item.id === questionId);
-      const current = typeof map[questionId] === 'number'
-        ? map[questionId]
-        : (targetQ?.views || targetQ?.viewsCount || 0);
+      const current = typeof map[questionId] === 'number' ? map[questionId] : 0;
       nextViews = current + amount;
       map[questionId] = nextViews;
       localStorage.setItem(`${STORAGE_KEY_PREFIX}question_real_clicks`, JSON.stringify(map));
@@ -5813,7 +6082,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     setSelectedQuestion((prev) => {
-      if (prev && prev.id === questionId) {
+      if (prev && prev.id === questionId && prev.views !== nextViews) {
         return {
           ...prev,
           views: nextViews,
@@ -5822,7 +6091,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return prev;
     });
-  };
+  }, []);
 
   // Action: AI Auto-Tagging & Categorization for a single question
   const autoTagQuestionWithAI = async (questionId: string): Promise<{ success: boolean; data?: AIAnalysisResult }> => {
@@ -6065,7 +6334,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const addNotification = (
+  const addNotification = useCallback((
     notifOrTitle: Partial<NotificationItem> | string,
     message?: string,
     type: any = 'system',
@@ -6121,7 +6390,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         url: '/',
       });
     } catch {}
-  };
+  }, [currentUser.id]);
 
   const deleteNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -6473,6 +6742,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isQuestionBookmarked,
         promoteQuestion,
         incrementQuestionViews,
+        secondedQuestionIds,
+        toggleSecondQuestion,
+        isQuestionSeconded,
+        getQuestionSecondCount,
+        sameQuestionIds,
+        toggleSameQuestion,
+        isSameQuestionActive,
+        getQuestionSameCount,
+        likedDiscussionAnswerIds,
+        toggleLikeDiscussionAnswer,
+        isDiscussionAnswerLiked,
+        getDiscussionAnswerLikesCount,
+        likedQuestionIds,
+        toggleLikeQuestion,
+        isQuestionLiked,
+        getQuestionLikesCount,
         autoTagQuestionWithAI,
         autoTagAllMyQuestionsWithAI,
         saveQuestionPreliminaryReport,

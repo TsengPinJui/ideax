@@ -38,7 +38,7 @@ import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompas
 import { GoogleSitelinksModal } from './components/GoogleSitelinksModal';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
-import { isPainPointQuestion } from './utils/questionUtils';
+import { isPainPointQuestion, isL0DiscussionQuestion } from './utils/questionUtils';
 import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
 import {
   recordUserSearchKeyword,
@@ -107,6 +107,19 @@ function MainContent() {
         const hash = window.location.hash.toLowerCase();
         const redirectParam = (new URLSearchParams(window.location.search).get('redirect') || '').toLowerCase();
 
+        // 0. 痛點/問題/討論詳情子網址
+        if (
+          pathname.includes('/question/') ||
+          pathname.includes('/pain-point/') ||
+          pathname.includes('/painpoint/') ||
+          pathname.includes('/painpoints/') ||
+          pathname.includes('/discussion/') ||
+          search.includes('q=') ||
+          search.includes('questionid=')
+        ) {
+          return 'question_detail';
+        }
+
         // 1. 發布懸賞子網址: /create
         if (pathname.includes('/create') || search.includes('action=create') || hash.includes('create')) {
           return 'create_question';
@@ -134,6 +147,9 @@ function MainContent() {
           pathname.includes('/participant') ||
           pathname.includes('/judge') ||
           pathname.includes('/ambassador') ||
+          search.includes('proposalid=') ||
+          search.includes('proposal=') ||
+          search.includes('p=') ||
           search.includes('tab=star_season') ||
           search.includes('tab=challenge') ||
           search.includes('tab=proposal') ||
@@ -404,8 +420,10 @@ function MainContent() {
       if (typeof window !== 'undefined') {
         const curPath = window.location.pathname.toLowerCase();
         if (activeTab === 'star_season') {
-          if (!curPath.startsWith('/challenge')) {
-            window.history.pushState({ tab: 'star_season' }, '', '/challenge');
+          if (!curPath.startsWith('/challenge') && !curPath.startsWith('/proposal')) {
+            const searchStr = window.location.search;
+            const target = searchStr ? `/challenge${searchStr}` : '/challenge';
+            window.history.pushState({ tab: 'star_season' }, '', target);
           }
           if (curPath === '/challenge' || curPath === '/challenge/') {
             updateSEOForSubpage('challenge');
@@ -555,18 +573,38 @@ function MainContent() {
     const parseAndOpenQuestion = () => {
       let targetQId: string | null = null;
       
-      // 1. Check search params: ?q=xxx or ?questionId=xxx
-      const params = new URLSearchParams(window.location.search);
-      targetQId = params.get('q') || params.get('questionId');
+      // 1. Check pathname: /question/:id, /pain-point/:id, /discussion/:id
+      const path = window.location.pathname;
+      if (path.includes('/question/')) {
+        targetQId = path.split('/question/')[1].split('/')[0].split('?')[0];
+      } else if (path.includes('/pain-point/')) {
+        targetQId = path.split('/pain-point/')[1].split('/')[0].split('?')[0];
+      } else if (path.includes('/painpoint/')) {
+        targetQId = path.split('/painpoint/')[1].split('/')[0].split('?')[0];
+      } else if (path.includes('/painpoints/')) {
+        targetQId = path.split('/painpoints/')[1].split('/')[0].split('?')[0];
+      } else if (path.includes('/discussion/')) {
+        targetQId = path.split('/discussion/')[1].split('/')[0].split('?')[0];
+      }
 
-      // 2. Check hash: #q=xxx or #/question/xxx
+      // 2. Check search params: ?q=xxx or ?questionId=xxx or ?id=xxx
+      if (!targetQId) {
+        const params = new URLSearchParams(window.location.search);
+        targetQId = params.get('q') || params.get('questionId') || params.get('id');
+      }
+
+      // 3. Check hash: #q=xxx or #/question/xxx or #/pain-point/xxx
       if (!targetQId && window.location.hash) {
         const hashStr = window.location.hash.replace(/^#/, '');
         const hashParams = new URLSearchParams(hashStr.startsWith('?') ? hashStr.slice(1) : hashStr);
-        targetQId = hashParams.get('q') || hashParams.get('questionId');
+        targetQId = hashParams.get('q') || hashParams.get('questionId') || hashParams.get('id');
 
-        if (!targetQId && hashStr.startsWith('/question/')) {
-          targetQId = hashStr.replace('/question/', '').split('?')[0];
+        if (!targetQId && hashStr.includes('/question/')) {
+          targetQId = hashStr.split('/question/')[1].split('/')[0].split('?')[0];
+        } else if (!targetQId && hashStr.includes('/pain-point/')) {
+          targetQId = hashStr.split('/pain-point/')[1].split('/')[0].split('?')[0];
+        } else if (!targetQId && hashStr.includes('/discussion/')) {
+          targetQId = hashStr.split('/discussion/')[1].split('/')[0].split('?')[0];
         }
       }
 
@@ -674,12 +712,8 @@ function MainContent() {
           // 創點子/痛點集：所有透過提出痛點提出的問題和標註痛點/創點子的問題（優先歸屬創點子/痛點集）
           matchesSpecialZone = isPainPointQuestion(q);
         } else if (specialZone === 'l0_discussion') {
-          // L0問題討論區：包含所有純L0的問題和點選閒聊討論提出的問題，明確排除痛點提問（痛點特性 > L0）
-          matchesSpecialZone =
-            (q.level === 'L0' ||
-              q.postType === 'chat_discussion' ||
-              q.tags.some((t) => t.includes('L0') || t.includes('閒聊') || t.includes('討論'))) &&
-            !isPainPointQuestion(q);
+          // L0問題討論區：依規範，從「尋求解答」或「提出痛點」提出的問題，就算設定是L0也不要算入L0討論區或L0閒聊討論分類
+          matchesSpecialZone = isL0DiscussionQuestion(q);
         }
 
         if (!matchesSpecialZone) return false;
@@ -1419,11 +1453,9 @@ function MainContent() {
                           }}
                           onSearchTag={handleSearchTag}
                           onClick={() => {
-                            incrementQuestionViews(q.id, 1);
                             recordUserViewedQuestion(currentUser.id, q);
                             setUserProfileVersion((v) => v + 1);
-                            const nextV = (q.views || 0) + 1;
-                            setSelectedQuestion({ ...q, views: nextV, viewsCount: nextV });
+                            setSelectedQuestion(q);
                             setActiveTab('question_detail');
                           }}
                         />
@@ -1551,9 +1583,7 @@ function MainContent() {
               }
 
               if (foundQ) {
-                incrementQuestionViews(foundQ.id, 1);
-                const nextV = (foundQ.views || 0) + 1;
-                setSelectedQuestion({ ...foundQ, views: nextV, viewsCount: nextV });
+                setSelectedQuestion(foundQ);
                 setSpecialZone('pain_points');
                 setSelectedCategory('全部');
                 setSelectedSubcategory('全部');
@@ -1598,9 +1628,7 @@ function MainContent() {
               onSelectQuestion={(qId: string) => {
                 const found = questions.find((q) => q.id === qId);
                 if (found) {
-                  incrementQuestionViews(found.id, 1);
-                  const nextV = (found.views || 0) + 1;
-                  setSelectedQuestion({ ...found, views: nextV, viewsCount: nextV });
+                  setSelectedQuestion(found);
                   setActiveTab('question_detail');
                 }
               }}
@@ -1636,9 +1664,7 @@ function MainContent() {
               onOpenQuestion={(qId: string) => {
                 const found = questions.find((q) => q.id === qId);
                 if (found) {
-                  incrementQuestionViews(found.id, 1);
-                  const nextV = (found.views || 0) + 1;
-                  setSelectedQuestion({ ...found, views: nextV, viewsCount: nextV });
+                  setSelectedQuestion(found);
                   setActiveTab('question_detail');
                 }
               }}
@@ -1850,10 +1876,10 @@ function MainContent() {
         )}
       </main>
 
-      {/* Paywall Unlock Full Page Overlay / Modal */}
+      {/* Paywall Unlock Modal Overlay */}
       {targetAnswerToUnlock && (
         <UnlockPaywallModal
-          isFullPage={true}
+          isFullPage={false}
           answer={targetAnswerToUnlock}
           onClose={() => setTargetAnswerToUnlock(null)}
           onSuccess={() => setTargetAnswerToUnlock(null)}
@@ -1934,9 +1960,9 @@ function MainContent() {
         </div>
       )}
 
-      {/* 網頁版左側羅盤浮動懸停導覽入口 */}
+      {/* 創點子頁面專屬：右上羅盤浮動懸停導覽入口（只在創點子頁面時出現） */}
       <FloatingOnboardingCompass
-        isVisible={!isOnboardingOpen}
+        isVisible={!isOnboardingOpen && activeTab !== 'star_season'}
         onStartOnboarding={() => {
           setIsOnboardingFromAbout(true);
           setSelectedQuestion(null);

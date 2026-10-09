@@ -1444,7 +1444,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                       </div>
                     </div>
 
-                    {/* 團隊成員、附件與募資目標 */}
+                    {/* 團隊成員與企劃附件 */}
                     <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 space-y-2 text-[11px]">
                       <div>
                         <span className="text-stone-400 block font-bold">隊長與聯絡資訊</span>
@@ -1467,15 +1467,8 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                         </div>
                       )}
 
-                      <div className="pt-1 border-t border-stone-200 flex items-center justify-between">
-                        <span className="text-stone-500 font-bold">模擬募資目標</span>
-                        <span className="font-black text-amber-700 font-mono text-xs">
-                          NT$ {(reg.targetFundingAmount || 100000).toLocaleString()}
-                        </span>
-                      </div>
-
                       {/* BP企劃書或附件 */}
-                      <div className="flex items-center gap-1.5 pt-1">
+                      <div className="flex items-center gap-1.5 pt-1 border-t border-stone-200">
                         {reg.bpDocumentUrl ? (
                           <a
                             href={reg.bpDocumentUrl}

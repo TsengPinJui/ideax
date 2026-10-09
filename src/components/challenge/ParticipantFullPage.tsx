@@ -475,7 +475,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
             <div className="space-y-1">
               <div className="font-black text-amber-900">📋 參賽流程：先報名登錄團隊資料，後續即可自由提案</div>
               <div className="leading-relaxed text-stone-700">
-                本頁面專供登錄參賽團隊之成員、學校與聯絡資料。完成報名後，系統即開放完整的提案頁面（含專案構想、商業計畫書、成果展示圖與募資目標設計），您可以立即前往提案或隨時登入修改！
+                本頁面專供登錄參賽團隊之成員、學校與聯絡資料。完成報名後，系統即開放完整的提案頁面（含專案構想、商業計畫書、成果展示圖與影音Demo），您可以立即前往提案或隨時登入修改！
               </div>
             </div>
           </div>

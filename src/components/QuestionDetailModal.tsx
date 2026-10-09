@@ -49,17 +49,22 @@ import {
   Trash,
   Crown,
   Copy,
+  Link as LinkIcon,
   Compass,
   Lightbulb,
   FileSearch,
+  Hand,
+  ThumbsUp,
 } from 'lucide-react';
 import { SeoPreviewModal } from './SeoPreviewModal';
 import { getQuestionShareUrl } from '../services/seoService';
 import { copyToClipboard } from '../utils/clipboard';
-import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated } from '../utils/userDisplay';
-import { isPainPointQuestion } from '../utils/questionUtils';
+import { shareOrCopyUrl, copyPureUrl } from '../utils/shareUtils';
+import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated, getUserNameColorClass } from '../utils/userDisplay';
+import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
 import { syncQuestionToFirestore } from '../services/firestoreSync';
 import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
+import { getAnswerSpecifications } from '../utils/answerUtils';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -119,7 +124,56 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     promptLogin,
     openRechargePage,
     autoTagQuestionWithAI,
+    toggleSecondQuestion,
+    isQuestionSeconded,
+    getQuestionSecondCount,
+    toggleSameQuestion,
+    isSameQuestionActive,
+    getQuestionSameCount,
+    toggleLikeDiscussionAnswer,
+    isDiscussionAnswerLiked,
+    getDiscussionAnswerLikesCount,
+    toggleLikeQuestion,
+    isQuestionLiked,
+    getQuestionLikesCount,
   } = useApp();
+
+  const isPainPoint = isPainPointQuestion(question);
+  const isSeconded = isQuestionSeconded(question.id);
+  const secondCount = getQuestionSecondCount(question.id);
+  const isSame = isSameQuestionActive(question.id);
+  const sameCount = getQuestionSameCount(question.id);
+  const isL0Discussion = isL0DiscussionQuestion(question);
+  const isLiked = isQuestionLiked(question.id);
+  const likesCount = getQuestionLikesCount(question.id);
+
+  const handleSecondClick = () => {
+    const res = toggleSecondQuestion(question.id);
+    if (res.isSeconded) {
+      addNotification(`已為痛點「${question.title}」附議 +1！`, 'success');
+    }
+  };
+
+  const handleSameQuestionClick = () => {
+    const res = toggleSameQuestion(question.id);
+    if (res.isSameQuestion) {
+      addNotification(`已加入同問！有更多人關注此提問「${question.title}」`, 'success');
+    }
+  };
+
+  const handleLikeQuestionClick = () => {
+    const res = toggleLikeQuestion(question.id);
+    if (res.isLiked) {
+      addNotification(`已為討論「${question.title}」按讚！`, 'success');
+    }
+  };
+
+  const handleLikeDiscussion = (discId: string) => {
+    const res = toggleLikeDiscussionAnswer(discId);
+    if (res.isLiked) {
+      addNotification('已為該討論留言按讚 👍！', 'success');
+    }
+  };
 
   const [isAiAutoTagging, setIsAiAutoTagging] = useState(false);
 
@@ -180,7 +234,6 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   }, [question?.id, incrementQuestionViews]);
 
   const isBookmarked = isQuestionBookmarked(question.id);
-  const isPainPoint = isPainPointQuestion(question);
   const isRegisteredParticipant = Boolean(
     currentUser &&
     currentUser.id !== 'user-guest' &&
@@ -444,16 +497,27 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
   const authorDisplayName = resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
   const authorDisplayAvatar = resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
 
+  const addNotificationRef = useRef(addNotification);
+  useEffect(() => {
+    addNotificationRef.current = addNotification;
+  }, [addNotification]);
+
+  const handshakeRunForQIdRef = useRef<string | null>(null);
+
   // Load Dual-Agent AI Handshake & matches
   useEffect(() => {
+    if (!question?.id) return;
+    if (handshakeRunForQIdRef.current === question.id) return;
+    handshakeRunForQIdRef.current = question.id;
+
     let isMounted = true;
     setIsMatching(true);
     computeBidirectionalHandshake({
       question,
       solvers,
       onSendNotification: (notif) => {
-        if (addNotification) {
-          addNotification({
+        if (addNotificationRef.current) {
+          addNotificationRef.current({
             title: notif.title,
             message: notif.message,
             type: notif.type,
@@ -504,7 +568,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
     return () => {
       isMounted = false;
     };
-  }, [question, solvers, addNotification]);
+  }, [question?.id, solvers]);
 
   // 1. 執行違規下架處置（須填寫理由並通知提問者，可選是否同時移入刪除暫存區，均暫存 7 日）
   const handleConfirmUnifiedViolation = () => {
@@ -633,26 +697,28 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
     }
   };
 
+  const [isUrlCopied, setIsUrlCopied] = useState(false);
+
+  // 分享出去（帶文字說明推薦引言，直通 LINE、FB、IG、Threads 等社群；降級時複製純網址）
   const handleShareQuestion = async () => {
-    const shareUrl = getQuestionShareUrl(question.id);
-    const shareText = `【IdeaX 懸賞問題】${question.title}\n${(question.bounty || 0) > 0 ? `懸賞 NT$ ${(question.bounty || 0).toLocaleString()} 元` : '免費探討交流'}\n${shareUrl}`;
+    const shareUrl = getQuestionShareUrl(question.id, question.postType);
+    const label = question.postType === 'pain_point' ? '痛點洞察' : '懸賞問題';
+    const shareTitle = `【IdeaX 創點子 • ${label}】${question.title}`;
+    const shareText = `【IdeaX 創點子 • ${label}】${question.title}\n${(question.bounty || 0) > 0 ? `💰 懸賞金額：NT$ ${(question.bounty || 0).toLocaleString()} 元\n` : ''}${((question as any).summary || question.description?.slice(0, 120) || '生活切身痛點，徵求落地架構與完整解方！')}\n`;
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: question.title,
-          text: shareText,
-          url: shareUrl,
-        });
-        return;
-      } catch (err) {
-        // Fallback to clipboard if user dismissed native share
-      }
+    const res = await shareOrCopyUrl({
+      title: shareTitle,
+      text: shareText,
+      url: shareUrl,
+    });
+
+    if (res === 'shared') {
+      // 原生分享已開啟，依需求不顯示「已開啟分享」提示文字
+    } else if (res === 'copied') {
+      // 若降級到剪貼簿，亦只複製純網址
+      setIsUrlCopied(true);
+      setTimeout(() => setIsUrlCopied(false), 2500);
     }
-
-    await copyToClipboard(shareUrl);
-    setIsShareCopied(true);
-    setTimeout(() => setIsShareCopied(false), 2500);
   };
 
   const content = (
@@ -726,18 +792,12 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" /> 已採納方案・已結算
               </span>
-            ) : (
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1.5 ${
-                question.isFeatured
-                  ? 'bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-800 text-white border-purple-400/60 shadow-xs'
-                  : 'bg-amber-100 text-amber-900 border-amber-200'
-              }`}>
-                {question.isFeatured && (
-                  <Sparkles className="w-3.5 h-3.5 text-purple-200 fill-purple-300 drop-shadow-xs animate-pulse" />
-                )}
-                <span className={question.isFeatured ? 'font-black text-white' : ''}>招募中</span>
+            ) : question.isFeatured ? (
+              <span className="text-xs font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1.5 bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-800 text-white border-purple-400/60 shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-purple-200 fill-purple-300 drop-shadow-xs animate-pulse" />
+                <span className="font-black text-white">招募中</span>
               </span>
-            )}
+            ) : null}
           </div>
 
           {/* 違規下架官方處置說明 */}
@@ -895,13 +955,13 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             onClick={() => toggleBookmarkQuestion(question.id)}
             className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
               isBookmarked
-                ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-2xs'
+                ? 'bg-amber-500 border-amber-500 text-stone-950 shadow-2xs font-black'
                 : 'bg-white hover:bg-stone-100 border-stone-200 text-stone-600 hover:text-stone-900'
             }`}
-            title={isBookmarked ? '已收藏（點擊取消收藏）' : '收藏此問題'}
+            title="收藏此問題"
           >
-            <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-amber-500 text-amber-600' : 'text-stone-500'}`} />
-            <span className="hidden sm:inline">{isBookmarked ? '已收藏' : '收藏'}</span>
+            <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-stone-500'}`} />
+            <span className="hidden sm:inline">收藏</span>
           </button>
 
           {!isFullPage && (
@@ -927,9 +987,13 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-stone-800 text-sm">
-                  {authorDisplayName}
-                  {authorDisplayName !== '此帳號已註銷' && question.authorTitle ? ` · ${question.authorTitle}` : ''}
+                <span className="text-sm">
+                  <span className={`font-bold ${getUserNameColorClass(question.authorId, availableUsers, { isOfficial: question.isOfficial, name: question.authorName, title: question.authorTitle })}`}>
+                    {authorDisplayName}
+                  </span>
+                  {authorDisplayName !== '此帳號已註銷' && question.authorTitle && (
+                    <span className="text-stone-500 font-normal"> · {question.authorTitle}</span>
+                  )}
                 </span>
                 {isAuthorDeactivated && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200">
@@ -959,59 +1023,100 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs font-medium">
-            <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-stone-400" />
-              <span>截止日：{question.deadline}</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <Eye className="w-3.5 h-3.5 text-stone-400" />
-              <span>{(liveQuestion.views || liveQuestion.viewsCount || question.views || 0).toLocaleString()} 次瀏覽</span>
-            </span>
-            <span className="flex items-center gap-1 text-amber-700 font-bold">
-              <Award className="w-3.5 h-3.5" />
-              <span>{solutionAnswers.length} 個方案</span>
-            </span>
-            <span className="flex items-center gap-1 text-stone-600 font-bold">
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>{discussionAnswers.length} 則討論</span>
-            </span>
+          {/* 數據與互動動作列（上下留一組，俐落緊湊排開，無複製連結） */}
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3.5 font-medium text-stone-500">
+              <span className="flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-stone-400" />
+                <span>截止日：{question.deadline}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <Eye className="w-3.5 h-3.5 text-stone-400" />
+                <span>{(liveQuestion.views || liveQuestion.viewsCount || question.views || 0).toLocaleString()} 次瀏覽</span>
+              </span>
+              <span className="flex items-center gap-1 text-amber-700 font-bold">
+                <Award className="w-3.5 h-3.5" />
+                <span>{solutionAnswers.length} 個方案</span>
+              </span>
+              <span className="flex items-center gap-1 text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 font-bold">
+                <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                <span>{discussionAnswers.length} 則討論</span>
+              </span>
+            </div>
 
-            {/* 依需求：在分享問題左邊，對此痛點提案(創星季)。這個按鍵只有已完成報名的參賽者可看見 */}
-            {isPainPoint && isRegisteredParticipant && (
-              <button
-                type="button"
-                onClick={handleGoToChallengeProposal}
-                className="px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border border-amber-400 bg-amber-400 hover:bg-amber-300 text-stone-950 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
-                title="已完成報名之參賽者專屬：針對此痛點提出創星季提案"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-stone-950 shrink-0" />
-                <span>對此痛點提案(創星季)</span>
-              </button>
-            )}
-
-            {/* 分享該問題按鈕 */}
-            <button
-              onClick={handleShareQuestion}
-              className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 border transition-all cursor-pointer shadow-2xs ${
-                isShareCopied
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-amber-500 hover:bg-amber-400 text-stone-950 border-amber-500 active:scale-95'
-              }`}
-              title="分享此懸賞問題連結"
-            >
-              {isShareCopied ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>已複製分享連結！</span>
-                </>
+            {/* 單一動作按鈕列 */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* 痛點下加「附議」按鍵（綠色+1圖示） / L0討論加「按讚」（大拇指圖示） / 創點子的提問下方加「同問」（舉手圖示） */}
+              {isPainPoint ? (
+                <button
+                  type="button"
+                  onClick={handleSecondClick}
+                  className={`px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
+                    isSeconded
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                  }`}
+                  title="附議此痛點（+1 共鳴支持）"
+                >
+                  <span className={`font-mono font-black border px-1 py-0.2 rounded text-[11px] leading-tight ${isSeconded ? 'bg-white text-emerald-800 border-white' : 'bg-white text-emerald-700 border-emerald-300'}`}>+1</span>
+                  <span>附議</span>
+                  {secondCount > 0 && <span className="font-mono font-black">({secondCount})</span>}
+                </button>
+              ) : isL0Discussion ? (
+                <button
+                  type="button"
+                  onClick={handleLikeQuestionClick}
+                  className={`px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
+                    isLiked
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                  }`}
+                  title="為此討論按讚"
+                >
+                  <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'fill-white text-white' : 'text-blue-600'}`} />
+                  <span>按讚</span>
+                  {likesCount > 0 && <span className="font-mono font-black">({likesCount})</span>}
+                </button>
               ) : (
-                <>
-                  <Share2 className="w-3.5 h-3.5" />
-                  <span>分享問題</span>
-                </>
+                <button
+                  type="button"
+                  onClick={handleSameQuestionClick}
+                  className={`px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
+                    isSame
+                      ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-xs'
+                      : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+                  }`}
+                  title="我也想知道！加入同問"
+                >
+                  <Hand className={`w-3.5 h-3.5 ${isSame ? 'fill-stone-950 text-stone-950' : 'text-amber-700'}`} />
+                  <span>同問</span>
+                  {sameCount > 0 && <span className="font-mono font-black">({sameCount})</span>}
+                </button>
               )}
-            </button>
+
+              {/* 依需求：在分享問題左邊，對此痛點提案(創星季)。這個按鍵只有已完成報名的參賽者可看見 */}
+              {isPainPoint && isRegisteredParticipant && (
+                <button
+                  type="button"
+                  onClick={handleGoToChallengeProposal}
+                  className="px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border border-amber-400 bg-amber-400 hover:bg-amber-300 text-stone-950 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                  title="已完成報名之參賽者專屬：針對此痛點提出創星季提案"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-stone-950 shrink-0" />
+                  <span>對此痛點提案(創星季)</span>
+                </button>
+              )}
+
+              {/* 分享該問題/痛點按鈕 (帶文字說明推薦引言，不顯示「已開啟分享」) */}
+              <button
+                onClick={handleShareQuestion}
+                className="px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 border transition-all cursor-pointer shadow-2xs shrink-0 bg-amber-500 hover:bg-amber-400 text-stone-950 border-amber-500 active:scale-95"
+                title={question.postType === 'pain_point' ? '帶文字說明分享此痛點至社群或好友' : '帶文字說明分享此問題'}
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>{question.postType === 'pain_point' ? '分享痛點' : '分享問題'}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1491,8 +1596,9 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 </span>
               </div>
               <HelpTooltip
-                title="提問者專家推薦說明"
-                content="系統依據題意痛點、專長標籤與歷史履約評價，從認證智庫專家庫中即時精準媒合最佳解答專家，提問者可一鍵私聊或發出邀請。"
+                title="提問專家推薦與雙向握手機制"
+                content="【提問專家推薦】系統依據題意痛點、專長標籤與歷史履約評價，從認證智庫專家庫中即時精準媒合最佳解答專家。
+【雙向握手機制說明】提問端由「市場顧問 AI Agent」深度解析痛點意圖，解答端則由「AICRM 客情巡航 Agent」動態評估專家勝率與承接意願。當雙方條件高度契合時即達成「雙向握手」特選標記，提問者可一鍵直接「邀請解答」或發起一對一私聊諮詢！"
               />
             </div>
 
@@ -1599,7 +1705,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                               : 'bg-stone-900 hover:bg-stone-800 text-white shadow-2xs'
                           }`}
                         >
-                          {isInvited ? '已邀請' : isHandshake ? '🤝 邀請握手解答' : '邀請回答'}
+                          {isInvited ? '已邀請' : isHandshake ? '🤝 邀請解答' : '邀請回答'}
                         </button>
                       </div>
                     </div>
@@ -1631,42 +1737,12 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 onClick={() => setActiveTab('discussions')}
                 className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   activeTab === 'discussions'
-                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-blue-700 hover:text-blue-900'
                 }`}
               >
-                <MessageSquare className="w-4 h-4 text-stone-600" />
+                <MessageSquare className={`w-4 h-4 ${activeTab === 'discussions' ? 'text-white' : 'text-blue-600'}`} />
                 <span>公開討論（{discussionAnswers.length}）</span>
-              </button>
-            </div>
-
-            {/* Submit Action */}
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <button
-                onClick={() => {
-                  if (currentUser.id === 'user-guest') {
-                    promptLogin('訪客模式請先登入帳號以提出方案');
-                    return;
-                  }
-                  onOpenSubmitAnswer('solution');
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Award className="w-3.5 h-3.5" />
-                <span>提出方案(賺賞金)</span>
-              </button>
-              <button
-                onClick={() => {
-                  if (currentUser.id === 'user-guest') {
-                    promptLogin('訪客模式請先登入帳號以參與討論');
-                    return;
-                  }
-                  onOpenSubmitAnswer('discussion');
-                }}
-                className="px-3 py-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-stone-500" />
-                <span>公開討論</span>
               </button>
             </div>
           </div>
@@ -1697,13 +1773,15 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               ) : (
                 solutionAnswers.map((ans) => {
                   const isSolver = currentUser.id === ans.solverId;
-                  const isUnlocked = isNoPaymentMode || isSolver || ans.isAccepted || (ans.unlockedByUserIds && ans.unlockedByUserIds.includes(currentUser.id)) || (!ans.isPaid);
+                  const isUnlocked = isNoPaymentMode || isSolver || ans.isAccepted || (ans.unlockedByUserIds && ans.unlockedByUserIds.includes(currentUser.id)) || (!ans.isPaid) || Boolean(ans.isUnlockedByCurrentUser);
                   const isAccepted = ans.isAccepted;
                   const isExpanded = expandedAnswers[ans.id] ?? false;
 
                   const solverDisplayName = resolveUserDisplayName(ans.solverId, ans.solverName, availableUsers);
                   const solverDisplayAvatar = resolveUserAvatar(ans.solverId, ans.solverAvatar, availableUsers);
-                  const isSolverDeactivated = isUserAccountDeactivated(ans.solverId, availableUsers);
+                  const solverDeactivated = isUserAccountDeactivated(ans.solverId, availableUsers);
+                  const isSolverDeactivated = solverDeactivated;
+                  const ansSpec = getAnswerSpecifications(ans);
 
                   return (
                     <div
@@ -1784,13 +1862,15 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                     });
                                   }
                                 }}
-                                className={`font-bold text-sm ${
-                                  isSolverDeactivated ? 'text-stone-500' : 'text-stone-900 hover:text-amber-600 cursor-pointer transition-colors'
+                                className={`text-sm ${
+                                  isSolverDeactivated ? 'text-stone-500 font-bold' : `${getUserNameColorClass(ans.solverId, availableUsers, { name: ans.solverName, title: ans.solverTitle, verifiedBadge: ans.solverBadge, verifiedExpert: true })} hover:opacity-80 cursor-pointer transition-colors`
                                 }`}
                                 title={isSolverDeactivated ? '此帳號已註銷' : `點擊查看 ${solverDisplayName} 詳細檔案`}
                               >
                                 {solverDisplayName}
-                                {solverDisplayName !== '此帳號已註銷' && ans.solverTitle ? ` · ${ans.solverTitle}` : ''}
+                                {solverDisplayName !== '此帳號已註銷' && ans.solverTitle && (
+                                  <span className="text-stone-500 font-normal"> · {ans.solverTitle}</span>
+                                )}
                               </h4>
                               <CopyableUserId userId={ans.solverId} />
 
@@ -1800,28 +1880,24 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                 </span>
                               )}
                               
-                              {/* Delivery Format Badge */}
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-800 flex items-center gap-1 border border-stone-200">
-                                {ans.deliveryFormat === 'file' ? (
-                                  <>
-                                    <UploadCloud className="w-3 h-3 text-amber-600" />
-                                    <span>檔案交付</span>
-                                  </>
-                                ) : ans.deliveryFormat === 'meeting' ? (
-                                  <>
-                                    <Video className="w-3 h-3 text-blue-600" />
-                                    <span>線上會談</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <FileText className="w-3 h-3 text-stone-600" />
-                                    <span>文字建議</span>
-                                  </>
-                                )}
-                              </span>
+                              {/* 方案規格標籤清單（所含內容類型與數量） */}
+                              {ansSpec.items.map((it, itIdx) => (
+                                <span
+                                  key={itIdx}
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-800 flex items-center gap-1 border border-stone-200 shadow-2xs"
+                                >
+                                  {it.iconType === 'text' && <FileText className="w-3 h-3 text-stone-600" />}
+                                  {it.iconType === 'file' && <UploadCloud className="w-3 h-3 text-amber-600" />}
+                                  {it.iconType === 'link' && <Paperclip className="w-3 h-3 text-sky-600" />}
+                                  {it.iconType === 'meeting' && <Video className="w-3 h-3 text-blue-600" />}
+                                  <span>{it.label}</span>
+                                </span>
+                              ))}
 
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200">
-                                {ans.deliveryType}
+                              {/* 交付方式標籤（一次交付 / 分幾個階段交付） */}
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 flex items-center gap-1 shadow-2xs">
+                                <Layers className="w-3 h-3 text-purple-600" />
+                                <span>{ansSpec.deliveryMethod}</span>
                               </span>
 
                               {isAccepted && (
@@ -1879,10 +1955,26 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
 
                           <div>
                             {ans.isPaid ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold">
-                                {isUnlocked ? <Unlock className="w-3 h-3 text-emerald-600" /> : <Lock className="w-3 h-3 text-amber-700" />}
-                                <span>{isUnlocked ? '已解鎖全文' : `方案 NT$ ${(ans.price || 0).toLocaleString()}`}</span>
-                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isUnlocked) {
+                                    setTargetAnswerToUnlock(ans);
+                                  } else {
+                                    toggleAnswerExpand(ans.id);
+                                  }
+                                }}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  isUnlocked
+                                    ? 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
+                                    : 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 shadow-2xs'
+                                }`}
+                                title={isUnlocked ? '點擊收合/展開全文' : `點擊付費解鎖方案 NT$ ${(ans.price || 0).toLocaleString()}`}
+                              >
+                                {isUnlocked ? <Unlock className="w-3 h-3 text-emerald-600" /> : <Lock className="w-3 h-3 text-stone-950" />}
+                                <span>{isUnlocked ? '已解鎖全文' : `解鎖方案 NT$ ${(ans.price || 0).toLocaleString()}`}</span>
+                              </button>
                             ) : (
                               <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
                                 免費公開交流
@@ -2088,21 +2180,60 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                 </div>
                                 <h5 className="font-extrabold text-sm sm:text-base text-stone-900">
                                   解鎖【{ans.solverName}】的完整交付方案
-                                  {ans.deliveryFormat === 'meeting' && '（含 1 對 1 線上會談）'}
-                                  {ans.deliveryFormat === 'file' && '（含專屬實戰檔案下載）'}
                                 </h5>
+
+                                {/* 方案規格（所含內容類型和數量、交付方式） */}
+                                <div className="my-2 p-3.5 rounded-2xl bg-white/95 border border-amber-200 shadow-2xs text-left text-xs space-y-2">
+                                  <div className="flex items-center justify-between text-xs font-bold text-stone-900 border-b border-stone-100 pb-1.5">
+                                    <span className="flex items-center gap-1.5 text-amber-950 font-black">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>方案規格（解鎖後交付內容）</span>
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-[10px] font-bold flex items-center gap-1">
+                                      <Layers className="w-3 h-3 text-purple-600" />
+                                      <span>{ansSpec.deliveryMethod}</span>
+                                    </span>
+                                  </div>
+
+                                  <div className="space-y-1.5 text-xs text-stone-700">
+                                    <div className="flex items-start gap-1.5 flex-wrap">
+                                      <span className="font-bold text-stone-900 shrink-0">所含內容：</span>
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        {ansSpec.items.map((it, itIdx) => (
+                                          <span
+                                            key={itIdx}
+                                            className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-800 font-semibold text-[11px] border border-stone-200 flex items-center gap-1"
+                                          >
+                                            {it.iconType === 'text' && <FileText className="w-3 h-3 text-stone-600" />}
+                                            {it.iconType === 'file' && <UploadCloud className="w-3 h-3 text-amber-600" />}
+                                            {it.iconType === 'link' && <Paperclip className="w-3 h-3 text-sky-600" />}
+                                            {it.iconType === 'meeting' && <Video className="w-3 h-3 text-blue-600" />}
+                                            <span>{it.label}</span>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 text-[11px] text-stone-600 pt-0.5">
+                                      <span className="font-bold text-stone-800 shrink-0">交付方式：</span>
+                                      <span className="font-semibold text-stone-800">
+                                        {ansSpec.deliveryMethod}
+                                      </span>
+                                      <span className="text-stone-400">
+                                        （{ansSpec.isPhased ? `共 ${ans.phases?.length} 個階段，按階段推進並驗收放款` : '解鎖後一次性提供完整內容與專屬資源'}）
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
                                 <p className="text-xs text-stone-600 leading-relaxed">
-                                  {ans.deliveryFormat === 'meeting'
-                                    ? `解鎖後即可獲取 ${ans.meetingDetails?.durationMinutes || 30} 分鐘線上會談預約權與諮詢大綱。`
-                                    : ans.deliveryFormat === 'file'
-                                    ? `解鎖後即可下載完整落地檔案（${ans.attachments?.length || 1} 個檔案）與實施手冊。`
-                                    : '提問者或其他看見有興趣的人，皆可付 NT$ ' + (ans.price || 0).toLocaleString() + ' 解鎖完整落地執行內容。'}
+                                  提問者或其他看見有興趣的人，皆可付 NT$ {(ans.price || 0).toLocaleString()} 解鎖完整落地執行內容。
                                 </p>
 
                                 <div className="flex items-center justify-center gap-3 pt-1">
                                   <button
+                                    type="button"
                                     onClick={() => {
-                                      toggleAnswerExpand(ans.id);
                                       setTargetAnswerToUnlock(ans);
                                     }}
                                     className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-bold text-xs sm:text-sm shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
@@ -2111,9 +2242,6 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                     <ChevronRight className="w-4 h-4" />
                                   </button>
                                 </div>
-                                <p className="text-[11px] text-stone-500 font-medium">
-                                  平台支援第三方支付・確認後自動拆款入解答者帳戶（標準 10% 服務費由賣家吸收）
-                                </p>
                               </div>
                             </div>
                           )}
@@ -2127,7 +2255,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                   <span>多階段交付計畫（共 {ans.phases.length} 階段）</span>
                                 </div>
                                 <span className="text-[11px] text-amber-900 font-mono font-bold">
-                                  合計 {ans.phases.reduce((acc, p) => acc + (p.points || 0), 0).toLocaleString()} 點
+                                  合計 {ans.phases.reduce((acc, p) => acc + (p.points || p.price || 0), 0).toLocaleString()} 點
                                 </span>
                               </div>
 
@@ -2149,9 +2277,23 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                           第 {ph.phaseNumber} 階段
                                         </span>
                                         <span className="font-bold text-stone-900">{ph.title}</span>
-                                        <span className="font-mono font-bold text-amber-800">（{ph.points} 點）</span>
+                                        <span className="font-mono font-bold text-amber-800">（NT$ {(ph.points || ph.price || 0).toLocaleString()} 點）</span>
                                       </div>
-                                      <p className="text-[11px] text-stone-500 mt-1">{ph.description}</p>
+                                      {ph.target && (
+                                        <div className="text-[11px] text-stone-700 mt-1 flex items-start gap-1">
+                                          <span className="font-bold text-amber-900 shrink-0">🎯 階段目標：</span>
+                                          <span>{ph.target}</span>
+                                        </div>
+                                      )}
+                                      {ph.deliverables && (
+                                        <div className="text-[11px] text-stone-700 mt-0.5 flex items-start gap-1">
+                                          <span className="font-bold text-indigo-900 shrink-0">📦 預計交付：</span>
+                                          <span>{ph.deliverables}</span>
+                                        </div>
+                                      )}
+                                      {ph.description && ph.description !== ph.target && (
+                                        <p className="text-[10px] text-stone-500 mt-0.5">{ph.description}</p>
+                                      )}
                                     </div>
 
                                     <div className="flex items-center gap-2 shrink-0">
@@ -2284,9 +2426,9 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           {activeTab === 'discussions' && (
             <div className="space-y-4">
               {/* Quick Discussion Comment Box */}
-              <form onSubmit={handleQuickCommentSubmit} className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-stone-800">
-                  <MessageSquare className="w-4 h-4 text-stone-500" />
+              <form onSubmit={handleQuickCommentSubmit} className="p-3.5 rounded-2xl bg-blue-50/50 border border-blue-200 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-blue-900">
+                  <MessageSquare className="w-4 h-4 text-blue-600" />
                   <span>公開討論留言（無賞金交流）</span>
                 </div>
                 <textarea
@@ -2294,16 +2436,16 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   value={quickComment}
                   onChange={(e) => setQuickComment(e.target.value)}
                   placeholder="寫下您對此問題的想法、經驗反饋或追問，提問者與所有社群成員皆可共同討論..."
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-200 text-stone-900 text-xs sm:text-sm outline-none leading-relaxed bg-white"
+                  className="w-full px-3 py-2 rounded-xl border border-blue-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-stone-900 text-xs sm:text-sm outline-none leading-relaxed bg-white"
                 />
                 <div className="flex justify-between items-center pt-1">
-                  <span className="text-[11px] text-stone-400">所有人皆可免費閱讀與參與討論</span>
+                  <span className="text-[11px] text-blue-700/80">所有人皆可免費閱讀與參與討論</span>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-bold text-xs shadow-2xs flex items-center gap-1 cursor-pointer"
+                    className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1 cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
-                    <span>發表留言</span>
+                    <span>發表討論留言</span>
                   </button>
                 </div>
               </form>
@@ -2393,13 +2535,15 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                       });
                                     }
                                   }}
-                                  className={`font-bold text-xs ${
-                                    isDiscDeactivated ? 'text-stone-500' : 'text-stone-900 hover:text-amber-600 cursor-pointer transition-colors'
+                                  className={`text-xs ${
+                                    isDiscDeactivated ? 'text-stone-500 font-bold' : `${getUserNameColorClass(disc.solverId, availableUsers, { name: disc.solverName, title: disc.solverTitle, verifiedBadge: disc.solverBadge })} hover:opacity-80 cursor-pointer transition-colors`
                                   }`}
                                   title={isDiscDeactivated ? '此帳號已註銷' : `點擊查看 ${discDisplayName} 詳細檔案`}
                                 >
                                   {discDisplayName}
-                                  {discDisplayName !== '此帳號已註銷' && disc.solverTitle ? ` · ${disc.solverTitle}` : ''}
+                                  {discDisplayName !== '此帳號已註銷' && disc.solverTitle && (
+                                    <span className="text-stone-500 font-normal"> · {disc.solverTitle}</span>
+                                  )}
                                 </span>
                                 {isDiscDeactivated && (
                                   <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600 border border-stone-200">
@@ -2454,6 +2598,36 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                         <div className="text-xs sm:text-sm text-stone-700 leading-relaxed whitespace-pre-line pl-10 font-normal">
                           {disc.freePreview}
                         </div>
+
+                        {/* 討論訊息按讚按鈕（大拇指圖示） */}
+                        <div className="pl-10 pt-1 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleLikeDiscussion(disc.id)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 border ${
+                              isDiscussionAnswerLiked(disc.id)
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs font-black'
+                                : 'bg-stone-50 hover:bg-stone-100 text-stone-600 border-stone-200'
+                            }`}
+                            title="為此討論留言按讚"
+                          >
+                            <ThumbsUp
+                              className={`w-3.5 h-3.5 ${
+                                isDiscussionAnswerLiked(disc.id)
+                                  ? 'fill-white text-white'
+                                  : 'text-stone-400 group-hover:text-blue-500'
+                              }`}
+                            />
+                            <span>讚</span>
+                            {(getDiscussionAnswerLikesCount(disc.id) > 0 || (disc.likes || 0) > 0) && (
+                              <span className={`font-mono text-[11px] font-black ${
+                                isDiscussionAnswerLiked(disc.id) ? 'text-white' : 'text-blue-700'
+                              }`}>
+                                {getDiscussionAnswerLikesCount(disc.id) || disc.likes || 0}
+                              </span>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -2470,12 +2644,12 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           <span>提問者或社群會員皆可付費解鎖方案；亦可直接採納方案發放懸賞。</span>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-nowrap overflow-x-auto">
           <button
             onClick={onClose}
-            className="px-3.5 py-2.5 sm:py-2 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-200 text-xs font-bold transition-colors cursor-pointer shrink-0"
+            className="px-3 sm:px-3.5 py-2 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-200 text-xs font-bold transition-colors cursor-pointer shrink-0 whitespace-nowrap"
           >
-            {isFullPage ? '返回問題市場' : '關閉'}
+            {isFullPage ? '返回市場' : '關閉'}
           </button>
           <button
             onClick={() => {
@@ -2485,7 +2659,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               }
               onOpenSubmitAnswer('solution');
             }}
-            className="flex-1 sm:flex-none px-4 sm:px-5 py-2.5 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            className="px-3.5 sm:px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95"
           >
             <Award className="w-3.5 h-3.5 shrink-0" />
             <span>提出方案(賺賞金)</span>
@@ -2498,9 +2672,9 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               }
               onOpenSubmitAnswer('discussion');
             }}
-            className="px-3.5 py-2.5 sm:py-2 rounded-xl border border-stone-300 hover:bg-stone-100 text-stone-800 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+            className="px-3 sm:px-3.5 py-2 rounded-xl border border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-2xs active:scale-95 whitespace-nowrap"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-stone-600 shrink-0" />
+            <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0" />
             <span>公開討論</span>
           </button>
         </div>

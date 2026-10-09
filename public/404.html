@@ -1,26 +1,177 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-TW">
   <head>
-    <meta charset="utf-8" />
-    <title>IdeaX 創點子 - 重新導向中</title>
-    <script>
-      // Single Page Apps for GitHub Pages / Firebase / Static Hostings
-      // 保留當前子路徑 (例如 /challenge) 並轉向首頁由 React 路由接管
-      (function() {
-        var path = window.location.pathname;
-        var search = window.location.search;
-        var hash = window.location.hash;
-        
-        // 若直接輸入 /challenge 等路徑，以 query 方式轉向 index.html
-        var redirectUrl = '/' + '?redirect=' + encodeURIComponent(path + search + hash);
-        window.location.replace(redirectUrl);
-      })();
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="google-site-verification" content="KdS9nGKik5dOk4_vUHxHo9mbvDEKONdbUtv1cmtX-dA" />
+    <title>IdeaX 創點子 — 讓想法發光 • IDEAS CONNECT POSSIBILITIES</title>
+    <meta name="description" content="IdeaX 創點子 — 讓想法發光！高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，Ideas Connect Possibilities。" />
+    <link rel="canonical" href="https://www.ideax.tw/" />
+    <meta property="og:url" content="https://www.ideax.tw/" />
+    <meta property="og:title" content="IdeaX 創點子 — 讓想法發光 • IDEAS CONNECT POSSIBILITIES" />
+    <meta property="og:description" content="IdeaX 創點子 — 讓想法發光！高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，Ideas Connect Possibilities。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="IdeaX 創點子" />
+    <meta property="og:image" content="/圓角正向黃底燈泡.png" />
+    <meta property="og:image:secure_url" content="/圓角正向黃底燈泡.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="IdeaX 創點子 — 讓想法發光" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="IdeaX 創點子 — 讓想法發光 • IDEAS CONNECT POSSIBILITIES" />
+    <meta name="twitter:description" content="IdeaX 創點子 — 讓想法發光！高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現。" />
+    <meta name="twitter:image" content="/圓角正向黃底燈泡.png" />
+    <meta name="twitter:image:alt" content="IdeaX 創點子 — 讓想法發光" />
+    <link rel="manifest" href="/manifest.json?v=pwa-app-16" />
+    <meta name="theme-color" content="#F59E0B" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="IdeaX創點子" />
+    <!-- 網頁瀏覽器分頁標籤與縮圖 (Webpage Thumbnail & Favicon: 專屬圓角正向黃底燈泡) -->
+    <link rel="icon" type="image/png" href="/圓角正向黃底燈泡.png" />
+    <link rel="shortcut icon" href="/圓角正向黃底燈泡.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png?v=web-bulb-10" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png?v=web-bulb-10" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=web-bulb-10" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=web-bulb-10" />
+
+    <!-- PWA APP 行動與桌面專屬應用程式圖標 (使用 pwa-maskable) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/pwa-maskable-512x512.png?v=pwa-app-17" />
+    <!-- Schema.org JSON-LD: 包含 WebApplication、WebSite (Google Sitelinks 搜尋框) 與 ItemList / SiteNavigationElement (Google 搜尋多個分頁捷徑) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "@id": "https://www.ideax.tw/#webapp",
+          "name": "IdeaX 創點子",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "All",
+          "description": "高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，讓想法發光！",
+          "image": "https://www.ideax.tw/圓角正向黃底燈泡.png",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "TWD"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://www.ideax.tw/#website",
+          "url": "https://www.ideax.tw/",
+          "name": "IdeaX 創點子",
+          "alternateName": ["創點子", "IdeaX", "IdeaX 創點子平台"],
+          "description": "高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，Ideas Connect Possibilities。",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://www.ideax.tw/?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "ItemList",
+          "@id": "https://www.ideax.tw/#sitelinks-list",
+          "name": "IdeaX 創點子核心功能捷徑 (Google Sitelinks)",
+          "description": "搜尋引擎分頁捷徑與 9 大獨立子網址導覽",
+          "numberOfItems": 9,
+          "itemListElement": [
+            {
+              "@type": "SiteNavigationElement",
+              "position": 1,
+              "name": "探索問題",
+              "description": "探索各領域高額懸賞問題、市場提案與最新發案討論",
+              "url": "https://www.ideax.tw/explore"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 2,
+              "name": "發布懸賞",
+              "description": "一鍵發布高價值難題懸賞，設定三階段驗收機制，吸引頂尖專家提案解題",
+              "url": "https://www.ideax.tw/create"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 3,
+              "name": "創點子/痛點集",
+              "description": "大眾與企業真實痛點募集，發掘未被滿足的高潛力創新需求與商業點子",
+              "url": "https://www.ideax.tw/painpoints"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 4,
+              "name": "找專家",
+              "description": "尋找創新創業、軟硬體研發、法律財稅、AI 等各領域官方認證專家與專業顧問",
+              "url": "https://www.ideax.tw/solvers"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 5,
+              "name": "創星季",
+              "description": "創星季全國創新提案挑戰賽官方專區：豐厚競賽大獎、痛點共創與青年創新落地賽事",
+              "url": "https://www.ideax.tw/challenge"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 6,
+              "name": "我要參賽",
+              "description": "創星季全國創新提案挑戰賽：立即線上報名參賽、提交提案作品與簡報",
+              "url": "https://www.ideax.tw/challenge/join"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 7,
+              "name": "專家申請",
+              "description": "創星季官方專家顧問與評審認證申請，實名審查入駐",
+              "url": "https://www.ideax.tw/challenge/expert"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 8,
+              "name": "提案總覽",
+              "description": "創星季參賽提案、商業落地案例精選與各組評審即時動態",
+              "url": "https://www.ideax.tw/challenge/proposals"
+            },
+            {
+              "@type": "SiteNavigationElement",
+              "position": 9,
+              "name": "活動辦法",
+              "description": "創星季競賽日程、參賽資格、評分規約、智財權保障與獎項說明",
+              "url": "https://www.ideax.tw/challenge/rules"
+            }
+          ]
+        }
+      ]
+    }
     </script>
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
-  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0c0a09; color: #f5f5f4;">
-    <div style="text-align: center;">
-      <h2 style="margin-bottom: 8px;">載入「創星季」中...</h2>
-      <p style="color: #a8a29e; font-size: 14px;">正在為您連接頁面，請稍候。</p>
-    </div>
+  <body class="bg-[#FAFAFA] text-[#1F2937] antialiased min-h-screen selection:bg-amber-100 selection:text-amber-900 font-['Plus_Jakarta_Sans','Noto_Sans_TC',sans-serif]">
+    <!-- 搜尋引擎爬蟲語意化導覽捷徑 (Google Sitelinks Crawlable HTML Navigation) -->
+    <nav aria-label="網站核心功能捷徑與子網址導覽" class="sr-only" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;" itemscope itemtype="https://schema.org/SiteNavigationElement">
+      <h2>全站主要功能捷徑與子網址導覽</h2>
+      <ul>
+        <li><a itemprop="url" href="https://www.ideax.tw/explore"><span itemprop="name">探索問題</span> — 探索各領域高額懸賞問題、市場提案與最新發案討論</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/create"><span itemprop="name">發布懸賞</span> — 一鍵發布高價值難題懸賞，設定三階段驗收機制</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/painpoints"><span itemprop="name">創點子/痛點集</span> — 大眾與企業真實痛點募集，發掘未被滿足的高潛力創新需求</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/solvers"><span itemprop="name">找專家</span> — 尋找創新創業、研發、法律財稅、AI 等各領域官方認證專家</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/challenge"><span itemprop="name">創星季賽事官網</span> — 創星季全國創新提案挑戰賽：豐厚競賽大獎、真實痛點徵件與青年創新提案</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/challenge/join"><span itemprop="name">我要參賽</span> — 創星季全國創新提案挑戰賽：線上報名登記</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/challenge/expert"><span itemprop="name">專家申請</span> — 創星季官方專家顧問與評審認證申請</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/challenge/proposals"><span itemprop="name">提案總覽</span> — 創星季參賽提案、商業落地案例精選與評選榜單</a></li>
+        <li><a itemprop="url" href="https://www.ideax.tw/challenge/rules"><span itemprop="name">活動辦法</span> — 創星季競賽日程、參賽資格、評分規約與獎項說明</a></li>
+      </ul>
+    </nav>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+

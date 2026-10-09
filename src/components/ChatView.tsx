@@ -14,6 +14,7 @@ import {
   buildContractFromMediation, 
   downloadContractFile 
 } from '../utils/contractGenerator';
+import { resolveUserDisplayName, getUserNameColorClass } from '../utils/userDisplay';
 import {
   MessageSquare,
   Send,
@@ -1523,8 +1524,10 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
                       <div className={`space-y-1.5 max-w-[85%] sm:max-w-md ${isMe ? 'items-end' : 'items-start'}`}>
                         <div className={`flex items-center gap-2 text-[10px] text-stone-400 ${isMe ? 'justify-end' : ''}`}>
-                          <span className="font-semibold text-stone-600 flex items-center gap-1">
-                            <span>{msg.senderName}</span>
+                          <span className="font-semibold flex items-center gap-1">
+                            <span className={getUserNameColorClass(msg.senderId, availableUsers)}>
+                              {resolveUserDisplayName(msg.senderId, msg.senderName, availableUsers)}
+                            </span>
                             {(msg.isAiAssistant || msg.senderName.includes('AI軍師') || msg.senderName.includes('AI 軍師') || msg.senderName.includes('AI特助') || msg.senderName.includes('AI 特助')) && (
                               <span className="px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[9px] flex items-center gap-0.5 shadow-2xs">
                                 <Bot className="w-2.5 h-2.5 text-amber-700" />
@@ -2236,7 +2239,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                             <div className="flex items-start justify-between gap-2 border-b border-stone-100 pb-2.5">
                               <div>
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-black tracking-wider uppercase inline-block mb-1">
-                                  {msg.offer.deliveryType || '客製專屬方案'}
+                                  {msg.offer.deliveryType && !msg.offer.deliveryType.includes('多維度') ? msg.offer.deliveryType : '客製專屬方案'}
                                 </span>
                                 <h4 className="font-black text-sm text-stone-900">{msg.offer.title}</h4>
                               </div>
@@ -3050,8 +3053,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                   <span className="font-mono font-bold text-stone-900">NT$ {paymentTargetMessage.offer.price.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-stone-600">
-                  <span>平台託管服務費：</span>
-                  <span className="text-amber-900 font-medium">由系統於驗收結案時自專家收益依方案費率自動拆款（買方免額外負擔，避免撥款爭議）</span>
+                  <span>平台履約保障：</span>
+                  <span className="text-emerald-700 font-medium">第三方價金安全保管，確認驗收後撥付（買方免額外負擔）</span>
                 </div>
               </div>
             </div>
@@ -3250,11 +3253,11 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
               sendMessage(
                 activeConversation.id,
-                `💼 我已為您提交完整【${ans.deliveryType || '多維度專屬方案'}】：NT$ ${(ans.price || 1500).toLocaleString()} 元\n\n📝 方案概要：\n${ans.freePreview || '已針對需求規劃具體執行方針與交付成果'}\n\n🔒 完成第三方託管簽約後即可解鎖完整交付內容與附件資源。`,
+                `💼 我已為您提交完整【${ans.deliveryType && !ans.deliveryType.includes('多維度') ? ans.deliveryType : '客製專屬方案'}】：NT$ ${(ans.price || 1500).toLocaleString()} 元\n\n📝 方案概要：\n${ans.freePreview || '已針對需求規劃具體執行方針與交付成果'}\n\n🔒 完成第三方託管簽約後即可解鎖完整交付內容與附件資源。`,
                 {
-                  title: `專屬方案：${ans.deliveryType || '客製解答方案'}`,
+                  title: `專屬方案：${ans.deliveryType && !ans.deliveryType.includes('多維度') ? ans.deliveryType : '客製解答方案'}`,
                   description: ans.freePreview || '提供完整架構規劃、專屬附件與會談交付',
-                  deliveryType: ans.deliveryType || '完整方案提案',
+                  deliveryType: ans.deliveryType && !ans.deliveryType.includes('多維度') ? ans.deliveryType : '完整方案提案',
                   price: ans.price || 1500,
                   deliverables: formatLabels.length > 0 ? formatLabels : ['文字架構剖析', '專屬交付成果'],
                   estimatedDays: 3,

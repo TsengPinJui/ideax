@@ -3396,35 +3396,64 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req: Request, res: Response) => {
-      const indexPath = path.join(distPath, 'index.html');
+      const indexPath = fs.existsSync(path.join(distPath, 'index.html'))
+        ? path.join(distPath, 'index.html')
+        : path.join(process.cwd(), 'index.html');
+
       if (!fs.existsSync(indexPath)) {
         return res.status(404).send('index.html not found');
       }
 
-      const reqPath = req.path.toLowerCase().replace(/\/+$/, '') || '/';
+      const rawPath = req.path.toLowerCase().replace(/\/+$/, '') || '/';
+      let html = fs.readFileSync(indexPath, 'utf-8');
+      const canonicalUrl = `https://www.ideax.tw${rawPath === '/' ? '/' : rawPath}`;
 
-      if (reqPath.startsWith('/challenge')) {
-        let html = fs.readFileSync(indexPath, 'utf-8');
-        const canonicalUrl = `https://www.ideax.tw${reqPath}`;
-        const title = '創星季 — 全國創新提案挑戰賽 讓校園與青年創新想法獲得真實市場驗證 | IdeaX 創點子';
-        const desc = '創星季全國創新提案挑戰賽官方專區：豐厚競賽大獎、真實痛點徵件、跨領域創新提案與校園青年商業落地競賽。';
-        const img = 'https://www.ideax.tw/去背創星季.png';
+      // 各頁面專屬 SEO Metadata 對應表
+      let pageTitle = 'IdeaX 創點子 — 讓想法發光 • IDEAS CONNECT POSSIBILITIES';
+      let pageDesc = 'IdeaX 創點子 — 讓想法發光！高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，Ideas Connect Possibilities。';
+      let pageImg = 'https://www.ideax.tw/圓角正向黃底燈泡.png';
 
-        html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);
-        html = html.replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i, `<meta name="description" content="${desc}" />`);
-        html = html.replace(/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/i, `<link rel="canonical" href="${canonicalUrl}" />`);
-        html = html.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
-        html = html.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:title" content="${title}" />`);
-        html = html.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${desc}" />`);
-        html = html.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:image" content="${img}" />`);
-        html = html.replace(/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:title" content="${title}" />`);
-        html = html.replace(/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:description" content="${desc}" />`);
-        html = html.replace(/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:image" content="${img}" />`);
-
-        return res.type('text/html; charset=utf-8').send(html);
+      if (rawPath.startsWith('/challenge')) {
+        pageTitle = '創星季賽事官網 — 全國創新提案挑戰賽 讓校園與青年創新想法獲得真實市場驗證 | IdeaX 創點子';
+        pageDesc = '創星季全國創新提案挑戰賽官方專區：豐厚競賽大獎、真實痛點徵件、跨領域創新提案與校園青年商業落地競賽。';
+        pageImg = 'https://www.ideax.tw/去背創星季.png';
+      } else if (rawPath.startsWith('/explore')) {
+        pageTitle = '探索問題市場 — 高額懸賞難題、創新需求與市場解方 | IdeaX 創點子';
+        pageDesc = '瀏覽各行業真實痛點、高額懸賞委託與最新問題討論，匯聚跨領域解答與創新靈感。';
+      } else if (rawPath.startsWith('/painpoints') || rawPath.startsWith('/pain-point')) {
+        pageTitle = '創點子/痛點集 — 募集真實痛點與未被滿足的需求 | IdeaX 創點子';
+        pageDesc = '匯聚大眾生活與產業實務痛點，免付懸賞自由提問，發掘高潛力商業新點子。';
+      } else if (rawPath.startsWith('/create')) {
+        pageTitle = '發布懸賞提問 — 三階段驗收託管，吸引頂尖專家提案 | IdeaX 創點子';
+        pageDesc = '一鍵發布高價值痛點或難題懸賞，平台託管金流安全有保障，快速媒合跨領域專家。';
+      } else if (rawPath.startsWith('/solvers')) {
+        pageTitle = '找專家智庫 — 認證顧問與跨領域專業智囊團 | IdeaX 創點子';
+        pageDesc = '探索商業營運、軟硬體研發、法務財稅、人工智慧等各領域認證專家智庫，提供 1 對 1 諮詢。';
+      } else if (rawPath.startsWith('/about')) {
+        pageTitle = '關於我們 — 讓想法發光，連接無限可能 | IdeaX 創點子';
+        pageDesc = '了解 IdeaX 創點子之核心願景、創始團隊與創新問題交易市場運作機制。';
+      } else if (rawPath.startsWith('/question')) {
+        pageTitle = '問題詳情與方案解答 | IdeaX 創點子';
+        pageDesc = '查看此問題的詳細需求背景、懸賞階段以及專家所提出的專業解答方案。';
+      } else if (rawPath.startsWith('/proposal')) {
+        pageTitle = '創星季創新提案詳情 | IdeaX 創點子';
+        pageDesc = '查看此項創新提案之完整商業計劃、市場驗證進度與社群支持。';
+        pageImg = 'https://www.ideax.tw/去背創星季.png';
       }
 
-      res.sendFile(indexPath);
+      // 動態置換 HTML 中的 Meta、Title 與 Canonical
+      html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${pageTitle}</title>`);
+      html = html.replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i, `<meta name="description" content="${pageDesc}" />`);
+      html = html.replace(/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/i, `<link rel="canonical" href="${canonicalUrl}" />`);
+      html = html.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+      html = html.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:title" content="${pageTitle}" />`);
+      html = html.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${pageDesc}" />`);
+      html = html.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:image" content="${pageImg}" />`);
+      html = html.replace(/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:title" content="${pageTitle}" />`);
+      html = html.replace(/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:description" content="${pageDesc}" />`);
+      html = html.replace(/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:image" content="${pageImg}" />`);
+
+      return res.type('text/html; charset=utf-8').send(html);
     });
   }
 

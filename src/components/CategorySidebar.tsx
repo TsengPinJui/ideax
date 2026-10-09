@@ -4,7 +4,7 @@ import { Category, CATEGORY_HIERARCHY, Question, QuestionSortOption, SpecialZone
 import { useApp } from '../context/AppContext';
 import { isMockQuestionId } from '../data/mockData';
 import { isQuestionExpired } from '../services/recommendationService';
-import { isPainPointQuestion } from '../utils/questionUtils';
+import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
 import {
   X,
   Layers,
@@ -120,14 +120,8 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   // 1. 創點子/痛點集：透過提出痛點提出的問題與標註痛點的問題 (痛點優先歸類)
   const painPointsCount = validQuestions.filter(isPainPointQuestion).length;
 
-  // 2. L0問題討論區：所有純 L0 閒聊/討論問題 (排除痛點提問，痛點特性 > L0)
-  const l0DiscussionCount = validQuestions.filter(
-    (q) =>
-      !isPainPointQuestion(q) &&
-      (q.level === 'L0' ||
-        q.postType === 'chat_discussion' ||
-        q.tags.some((t) => t.includes('L0') || t.includes('閒聊') || t.includes('討論')))
-  ).length;
+  // 2. L0問題討論區：依規範，從「尋求解答」或「提出痛點」提出的問題，就算設定是L0也不要算入L0討論區
+  const l0DiscussionCount = validQuestions.filter(isL0DiscussionQuestion).length;
 
   const categoryMeta: Record<
     Category,
@@ -411,7 +405,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                     </span>
                   </div>
                   <p className="text-[10px] text-stone-600 mt-0.5 line-clamp-1">
-                    分享痛點×腦力激盪 黑客松
+                    分享痛點×創新解方  解題黑客松
                   </p>
                 </div>
               </div>

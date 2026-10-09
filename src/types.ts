@@ -197,6 +197,10 @@ export interface DeliveryPhase {
   title: string;
   description: string;
   points: number;
+  price?: number; // 階段價格 NT$ / 點數
+  target?: string; // 階段目標
+  deliverables?: string; // 預計交付成果
+  estimatedDelivery?: string; // 預計交付時程與方式
   status: 'pending_acceptance' | 'in_progress' | 'submitted' | 'accepted' | 'refunded';
   submittedContent?: string;
   submittedAttachments?: SolutionAttachment[];
@@ -845,6 +849,8 @@ export interface Question {
   views: number;
   viewsCount?: number;
   likes?: number; // 痛點/提問按讚數
+  secondedCount?: number; // 痛點附議數（綠色+1）
+  sameQuestionCount?: number; // 提問同問數（舉手）
   answersCount: number;
   authorTitle?: string;
   invitedSolverIds?: string[];
@@ -999,6 +1005,7 @@ export interface Answer {
   solverName: string;
   solverTitle: string;
   solverAvatar: string;
+  solverBadge?: string;
   solverRating: number;
   deliveryFormat?: DeliveryFormat; // 單一形式（相容舊格式）
   deliveryFormats?: DeliveryFormat[]; // 方案交付形式複選：['text', 'file', 'meeting']

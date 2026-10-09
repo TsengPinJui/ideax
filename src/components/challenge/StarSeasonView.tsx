@@ -102,6 +102,8 @@ import {
   resetSEOToDefault,
   getProposalShareUrl,
 } from '../../services/seoService';
+import { shareOrCopyUrl } from '../../utils/shareUtils';
+import { resolveUserDisplayName, getUserNameColorClass } from '../../utils/userDisplay';
 import { useApp } from '../../context/AppContext';
 import { auth } from '../../services/firebase';
 import { RulesFullPage } from './RulesFullPage';
@@ -110,6 +112,7 @@ import { ParticipantFullPage } from './ParticipantFullPage';
 import { JudgeFullPage } from './JudgeFullPage';
 import { AmbassadorFullPage } from './AmbassadorFullPage';
 import { ExploreProposalsFullPage } from './ExploreProposalsFullPage';
+import { ProposalDetailFullPage } from './ProposalDetailFullPage';
 import { ProposalHeroCarousel } from './ProposalHeroCarousel';
 import { CompetitionFooter } from './CompetitionFooter';
 import { AdminCompetitionRulesArchiveFolder } from './AdminCompetitionRulesArchiveFolder';
@@ -153,10 +156,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     setQuestions,
     setAnswers,
     setSolvers,
+    availableUsers,
     setAvailableUsers,
     addNotification,
     logoutAccount,
     openAboutModal,
+    toggleSecondQuestion,
+    isQuestionSeconded,
+    getQuestionSecondCount,
   } = useApp();
   const [competitionTermsDoc, setCompetitionTermsDoc] = useState<CompetitionDocumentKey | null>(null);
   const isLoggedIn = Boolean(auth.currentUser || (currentUser && currentUser.id && currentUser.id !== 'user-guest'));
@@ -170,6 +177,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   // 首頁公開展示數據開關與即時聚合數據
   const [statsConfig, setStatsConfig] = useState<CompetitionHomepageStatsConfig>(() => getCompetitionHomepageStatsConfig());
   const [adminMetrics, setAdminMetrics] = useState<CompetitionAdminMetrics>(() => getCompetitionAggregatedMetrics());
+
+  const currentDisplayName = resolveUserDisplayName(currentUser?.id, currentUser?.name, availableUsers);
+  const currentNameColorClass = getUserNameColorClass(currentUser?.id, availableUsers, currentUser);
 
   useEffect(() => {
     const handleConfigUpdate = (e: any) => {
@@ -188,7 +198,19 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         const search = window.location.search.toLowerCase();
         const hash = window.location.hash.toLowerCase();
 
-        if (path.includes('/proposal') || path.includes('/proposals') || path.includes('/explore') || path.includes('/cases') || search.includes('view=proposal') || search.includes('view=explore') || search.includes('view=cases') || hash === '#proposal' || hash === '#proposals' || hash === '#explore' || hash === '#cases') return 'proposal';
+        if (
+          search.includes('proposalid=') ||
+          search.includes('proposal=') ||
+          search.includes('p=') ||
+          path.includes('/proposal') ||
+          path.includes('/proposals') ||
+          path.includes('/explore') ||
+          path.includes('/cases') ||
+          search.includes('view=proposal') ||
+          search.includes('view=explore') ||
+          search.includes('view=cases') ||
+          hash.includes('proposal')
+        ) return 'proposal';
         if (path.includes('/rules') || search.includes('view=rules') || hash === '#rules') return 'rules';
         if (path.includes('/submit') || search.includes('view=submit') || hash === '#submit') return 'submit';
         if (path.includes('/participant') || search.includes('view=participant') || hash === '#participant') return 'participant';
@@ -442,25 +464,51 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return () => clearInterval(timer);
   }, [homepageProposalBatches.length, isHomepageCarouselPaused, handleCarouselNext]);
 
-  const navigateToSubView = (view: ChallengeSubView) => {
-    const normalizedView = view === 'explore' ? 'proposal' : view;
-    setCurrentSubView(normalizedView);
+  const [selectedProposalIdForExplore, setSelectedProposalIdForExplore] = useState<string | null>(() => {
     try {
       if (typeof window !== 'undefined') {
-        const targetPath = normalizedView === 'home' ? '/challenge' : `/challenge/${normalizedView}`;
-        window.history.pushState({ subView: normalizedView }, '', targetPath);
+        const search = window.location.search;
+        const params = new URLSearchParams(search);
+        const fromParam = params.get('proposalId') || params.get('proposal') || params.get('p');
+        if (fromParam) return fromParam;
+
+        const path = window.location.pathname;
+        if (path.includes('/proposal/')) {
+          const parts = path.split('/proposal/')[1]?.split('/')[0]?.split('?')[0];
+          if (parts) return parts;
+        }
+      }
+    } catch {}
+    return null;
+  });
+
+  const navigateToSubView = (view: ChallengeSubView, proposalId?: string) => {
+    const normalizedView = view === 'explore' ? 'proposal' : view;
+    setCurrentSubView(normalizedView);
+    setSelectedProposalIdForExplore(proposalId || null);
+    try {
+      if (typeof window !== 'undefined') {
+        let targetPath = normalizedView === 'home' ? '/challenge' : `/challenge/${normalizedView}`;
+        if (proposalId) {
+          targetPath += `?proposalId=${proposalId}`;
+        }
+        window.history.pushState({ subView: normalizedView, proposalId }, '', targetPath);
       }
     } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopState = (e: PopStateEvent) => {
       try {
         const path = window.location.pathname.toLowerCase();
-        const search = window.location.search.toLowerCase();
+        const search = window.location.search;
         const hash = window.location.hash.toLowerCase();
-        if (path.includes('/proposal') || path.includes('/proposals') || path.includes('/explore') || path.includes('/cases') || search.includes('view=proposal') || search.includes('view=explore') || search.includes('view=cases') || hash === '#proposal' || hash === '#proposals' || hash === '#explore' || hash === '#cases') {
+        const params = new URLSearchParams(search);
+        const pId = (e.state && e.state.proposalId) || params.get('proposalId') || params.get('proposal') || params.get('p') || null;
+        setSelectedProposalIdForExplore(pId);
+
+        if (path.includes('/proposal') || path.includes('/proposals') || path.includes('/explore') || path.includes('/cases') || search.includes('view=proposal') || search.includes('view=explore') || search.includes('view=cases') || hash === '#proposal' || hash === '#proposals' || hash === '#explore' || hash === '#cases' || pId) {
           setCurrentSubView('proposal');
         } else if (path.includes('/rules') || search.includes('view=rules') || hash === '#rules') {
           setCurrentSubView('rules');
@@ -899,13 +947,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       }
 
       if (targetId) {
-        let found = proposals.find((p) => p.id === targetId);
-        if (!found) {
-          found = (await fetchSingleProposal(targetId)) || undefined;
-        }
-        if (found) {
-          setSelectedProposalForDetail(found);
-        }
+        navigateToSubView('proposal', targetId);
       }
     };
 
@@ -947,15 +989,19 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   const handleCopyProposalLink = async (proposalId: string) => {
     const canonicalUrl = getProposalShareUrl(proposalId);
-    if (navigator.clipboard) {
-      try {
-        await navigator.clipboard.writeText(canonicalUrl);
-        setCopiedProposalId(proposalId);
-        showToast('🔗 提案專屬公開網址已複製！支援各搜尋引擎直接檢索與社群預覽。');
-        setTimeout(() => setCopiedProposalId(null), 2500);
-      } catch {
-        // fallback
-      }
+    const targetProp = proposals.find((p) => p.id === proposalId) || selectedProposalForDetail;
+    const shareTitle = targetProp?.title || '創星季創新提案';
+
+    // 依需求：原生分享與複製必須是單獨網址，不附加文案
+    const res = await shareOrCopyUrl({
+      title: shareTitle,
+      url: canonicalUrl,
+    });
+
+    if (res === 'copied') {
+      setCopiedProposalId(proposalId);
+      showToast('🔗 提案專屬公開網址已複製！');
+      setTimeout(() => setCopiedProposalId(null), 2500);
     }
   };
 
@@ -1345,9 +1391,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     }
   };
 
-  // 開啟提案詳情並載入討論留言
+  // 開啟提案詳情並載入討論留言（點看來看才算一次瀏覽次數）
   const handleOpenProposalDetail = async (proposal: StarSeasonProposal) => {
-    setSelectedProposalForDetail(proposal);
+    const nextViews = (proposal.viewsCount || 0) + 1;
+    setProposals((prev) =>
+      prev.map((p) => (p.id === proposal.id ? { ...p, viewsCount: nextViews } : p))
+    );
+    setSelectedProposalForDetail({ ...proposal, viewsCount: nextViews });
     setIsLoadingComments(true);
     try {
       const comms = await fetchProposalComments(proposal.id);
@@ -1930,6 +1980,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           onOpenAuth={onOpenAuth}
           onOpenPainPointInChuangDianZi={onOpenPainPointInChuangDianZi}
           initialSectionTab={exploreInitialTab}
+          initialProposalId={selectedProposalIdForExplore}
           proposals={proposals}
           onRefreshProposals={loadData}
           account={account}
@@ -2121,7 +2172,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <span>競賽辦法</span>
             </button>
 
-            {/* 4. 報名參賽 */}
+            {/* 5. 報名參賽 */}
             <button
               type="button"
               onClick={() => {
@@ -2137,7 +2188,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <span>報名參賽</span>
             </button>
 
-            {/* 5. 成為專家 */}
+            {/* 6. 成為專家 */}
             <button
               type="button"
               onClick={() => {
@@ -2154,7 +2205,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               <span>成為專家</span>
             </button>
 
-            {/* 6. 推廣大使 */}
+            {/* 8. 推廣大使 */}
             <button
               type="button"
               onClick={() => navigateToSubView('ambassador')}
@@ -2201,8 +2252,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   )}
                 </div>
                 <div className="text-left hidden sm:block">
-                  <div className="font-bold text-stone-900 leading-tight max-w-[105px] truncate">
-                    {isLoggedIn ? currentUser.name || '會員' : '登入 / 註冊'}
+                  <div className={`font-bold leading-tight max-w-[105px] truncate ${currentNameColorClass}`}>
+                    {isLoggedIn ? currentDisplayName || '會員' : '登入 / 註冊'}
                   </div>
                   <div className="text-[10px] font-semibold flex items-center gap-1">
                     {isLoggedIn ? (
@@ -2239,8 +2290,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-black text-stone-900 text-sm truncate">
-                          {isLoggedIn ? currentUser.name || '會員' : '訪客創友'}
+                        <div className={`font-black text-sm truncate ${currentNameColorClass}`}>
+                          {isLoggedIn ? currentDisplayName || '會員' : '訪客創友'}
                         </div>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                           {currentUser.role === 'admin' ? (
@@ -2279,249 +2330,335 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     )}
                   </div>
 
-                  {/* 核心功能選單列表 */}
-                  <div className="space-y-1 text-xs font-bold text-stone-700">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        setGuideRole('audience');
-                        setIsGuideModalOpen(true);
-                      }}
-                      className="w-full px-3 py-2.5 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-amber-50/70 border border-amber-200/80"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-amber-300 text-stone-950 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 font-black shadow-2xs">
-                          🔰
-                        </div>
-                        <div>
-                          <div className="font-black text-stone-900 flex items-center gap-1.5">
-                            <span>創星季玩法導覽</span>
-                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-400 text-stone-950 font-mono">
-                              30秒上手
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-stone-500 font-normal">觀眾、提案者、痛點提問 3 步教學與兩站功能對照</div>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        if (!isLoggedIn) {
-                          onOpenAuth();
-                          return;
-                        }
-                        navigateToSubView('participant');
-                      }}
-                      className="w-full px-3 py-2.5 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                          <GraduationCap className="w-4 h-4 text-amber-700" />
-                        </div>
-                        <div>
-                          <div className="font-black text-stone-900">提案參賽</div>
-                          <div className="text-[10px] text-stone-500 font-normal">填寫團隊資料與創星季募資計畫滿版報名</div>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        if (!isLoggedIn) {
-                          onOpenAuth();
-                          return;
-                        }
-                        navigateToSubView('judge');
-                      }}
-                      className="w-full px-3 py-2.5 rounded-xl hover:bg-purple-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                          <ShieldCheck className="w-4 h-4 text-purple-600" />
-                        </div>
-                        <div>
-                          <div className="font-black text-stone-900">成為專家</div>
-                          <div className="text-[10px] text-stone-500 font-normal">認證專家身分，享有 300 萬創星幣評選額度</div>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        setIsFavoritesModalOpen(true);
-                      }}
-                      className="w-full px-3 py-2.5 rounded-xl hover:bg-rose-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                          <Heart className="w-4 h-4 text-rose-600 fill-rose-600/30" />
-                        </div>
-                        <div>
-                          <div className="font-black text-stone-900">我的收藏</div>
-                          <div className="text-[10px] text-stone-500 font-normal">已按讚的提案名單</div>
-                        </div>
-                      </div>
-                      <span className="text-[11px] font-mono font-black text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full shrink-0">
-                        {likedProposalIds.length}
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        navigateToSubView('ambassador');
-                      }}
-                      className="w-full px-3 py-2.5 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                          <Megaphone className="w-4 h-4 text-amber-700" />
-                        </div>
-                        <div>
-                          <div className="font-black text-stone-900">推廣大使推薦碼</div>
-                          <div className="text-[10px] text-stone-500 font-normal">專屬推薦碼、輸入綁定與推薦名單滿版專區</div>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsProfileMenuOpen(false);
-                        navigateToSubView('rules');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className="w-full px-3 py-2.5 rounded-xl hover:bg-blue-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                          <BookOpen className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-black text-stone-900">競賽辦法與規章</div>
-                          <div className="text-[10px] text-stone-500 font-normal">官方賽制規則、評選權重與獎金辦法</div>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                    </button>
-
-                    {(isCurrentUserAppointedJudge || currentUser.role === 'admin') && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsProfileMenuOpen(false);
-                          setEvaluatingJudgeUser({
-                            id: currentUser?.id || 'user-expert-1',
-                            name: currentUser?.name || '柯育任 院長/客座教授',
-                          });
-                          setIsJudgeEvaluationModalOpen(true);
-                        }}
-                        className="w-full px-3 py-2.5 rounded-xl hover:bg-purple-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-purple-50/50"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-purple-200 text-purple-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                            <Award className="w-4 h-4 text-purple-700" />
-                          </div>
-                          <div>
-                            <div className="font-black text-stone-900 flex items-center gap-1.5">
-                              <span>決選評分區</span>
-                              <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-purple-700 text-white">
-                                評審專屬
-                              </span>
-                            </div>
-                            <div className="text-[10px] text-stone-500 font-normal">邊看提案企劃詳情邊評分，暫存或統一送出</div>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                      </button>
-                    )}
-
+                  {/* 核心功能選單列表 (整理區分管理員專區與一般用戶功能列，對調一般用戶收藏與成為專家位置) */}
+                  <div className="space-y-3 text-xs font-bold text-stone-700">
+                    {/* ===== 1. 創星季管理員專屬功能列 (僅平台管理員可見) ===== */}
                     {currentUser.role === 'admin' && (
-                      <>
+                      <div className="space-y-1.5 p-2 rounded-2xl bg-gradient-to-b from-rose-50/80 to-amber-50/50 border border-rose-200/80">
+                        <div className="px-1.5 py-0.5 text-[11px] font-black text-rose-900 flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <span>👑</span>
+                            <span>創星季管理員功能列</span>
+                          </span>
+                          <span className="text-[9px] font-black font-mono px-1.5 py-0.2 rounded-full bg-rose-600 text-white">
+                            ADMIN
+                          </span>
+                        </div>
+
+                        {/* 決審評分＆獎勵統計 */}
                         <button
                           type="button"
                           onClick={() => {
                             setIsProfileMenuOpen(false);
                             setIsAdminFinalEvaluationHubOpen(true);
                           }}
-                          className="w-full px-3 py-2.5 rounded-xl hover:bg-amber-100/80 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-amber-50/70 border border-amber-300"
+                          className="w-full px-2.5 py-2 rounded-xl hover:bg-amber-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-amber-300 shadow-2xs"
                         >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-2xs font-black">
-                              <Trophy className="w-4 h-4" />
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-2xs font-black">
+                              <Trophy className="w-3.5 h-3.5" />
                             </div>
                             <div>
-                              <div className="font-black text-stone-900 flex items-center gap-1.5">
+                              <div className="font-black text-stone-900 flex items-center gap-1">
                                 <span>決審評分＆獎勵統計</span>
-                                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-rose-600 text-white">
-                                  管理員
+                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-rose-600 text-white">
+                                  後台總覽
                                 </span>
                               </div>
-                              <div className="text-[10px] text-stone-500 font-normal">入選勾選、算術平均名次、前台發布與Excel匯出</div>
+                              <div className="text-[10px] text-stone-500 font-normal">入選名單、評分平均、前台發布與Excel匯出</div>
                             </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
                         </button>
 
+                        {/* 管理審核與頒獎 */}
                         <button
                           type="button"
                           onClick={() => {
                             setIsProfileMenuOpen(false);
                             setIsAdminPanelOpen(true);
                           }}
-                          className="w-full px-3 py-2.5 rounded-xl hover:bg-purple-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                          className="w-full px-2.5 py-2 rounded-xl hover:bg-purple-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-purple-200 shadow-2xs"
                         >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                              <ShieldCheck className="w-4 h-4 text-purple-600" />
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
                             </div>
                             <div>
                               <div className="font-black text-stone-900">管理審核與頒獎</div>
-                              <div className="text-[10px] text-stone-500 font-normal">管理員專屬提案審查與獎項核定</div>
+                              <div className="text-[10px] text-stone-500 font-normal">提案審查核定、發送審核結果與頒獎確認</div>
                             </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
                         </button>
 
+                        {/* 規章條款存檔資料夾 */}
                         <button
                           type="button"
                           onClick={() => {
                             setIsProfileMenuOpen(false);
                             setIsAdminRulesFolderOpen(true);
                           }}
-                          className="w-full px-3 py-2.5 rounded-xl hover:bg-amber-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                          className="w-full px-2.5 py-2 rounded-xl hover:bg-amber-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-stone-200 shadow-2xs"
                         >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                              <Folder className="w-4 h-4 text-amber-700" />
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-stone-900 text-amber-300 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                              <Folder className="w-3.5 h-3.5 text-amber-300" />
                             </div>
                             <div>
-                              <div className="font-black text-stone-900 flex items-center gap-1.5">
+                              <div className="font-black text-stone-900 flex items-center gap-1">
                                 <span>規章條款存檔資料夾</span>
-                                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-stone-950 text-amber-300 font-mono font-black">
+                                <span className="text-[8px] px-1 py-0.2 rounded-full bg-stone-950 text-amber-300 font-mono font-black">
                                   機密
                                 </span>
                               </div>
-                              <div className="text-[10px] text-stone-500 font-normal">官方全套章程與辦法歸檔（管理員限定）</div>
+                              <div className="text-[10px] text-stone-500 font-normal">官方全套章程與管理員版本歸檔條款</div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
+
+                        {/* 決選評分通道 (管理員通道) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            setEvaluatingJudgeUser({
+                              id: currentUser?.id || 'admin-user',
+                              name: currentUser?.name || '平台總管理員',
+                            });
+                            setIsJudgeEvaluationModalOpen(true);
+                          }}
+                          className="w-full px-2.5 py-2 rounded-xl hover:bg-purple-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-purple-200 shadow-2xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-purple-200 text-purple-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                              <Award className="w-3.5 h-3.5 text-purple-700" />
+                            </div>
+                            <div>
+                              <div className="font-black text-stone-900 flex items-center gap-1">
+                                <span>決選評分通道</span>
+                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-purple-700 text-white">
+                                  評審/管理員
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-500 font-normal">檢視決審入選提案詳細評分表與即時評分</div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ===== 2. 評審專屬評分區 (非管理員之指派評審) ===== */}
+                    {currentUser.role !== 'admin' && isCurrentUserAppointedJudge && (
+                      <div className="space-y-1.5 p-2 rounded-2xl bg-purple-50/80 border border-purple-200">
+                        <div className="px-1.5 py-0.5 text-[11px] font-black text-purple-900 flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <span>⚖️</span>
+                            <span>評審委員專屬功能</span>
+                          </span>
+                          <span className="text-[9px] font-black font-mono px-1.5 py-0.2 rounded-full bg-purple-700 text-white">
+                            JUDGE
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            setEvaluatingJudgeUser({
+                              id: currentUser?.id || 'user-expert-1',
+                              name: currentUser?.name || '柯育任 院長/客座教授',
+                            });
+                            setIsJudgeEvaluationModalOpen(true);
+                          }}
+                          className="w-full px-2.5 py-2 rounded-xl hover:bg-purple-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-purple-300 shadow-2xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-purple-200 text-purple-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                              <Award className="w-3.5 h-3.5 text-purple-700" />
+                            </div>
+                            <div>
+                              <div className="font-black text-stone-900 flex items-center gap-1">
+                                <span>決選評分區</span>
+                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-purple-700 text-white">
+                                  評審專屬
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-500 font-normal">邊看提案企劃詳情邊評分，暫存或統一送出</div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ===== 3. 創星季競賽與個人功能列 (一般用戶及全體用戶) ===== */}
+                    <div className="space-y-1">
+                      {currentUser.role === 'admin' && (
+                        <div className="px-2 pt-1 pb-0.5 text-[11px] font-black text-stone-500 flex items-center justify-between">
+                          <span>✨ 創星季一般功能</span>
+                          <span className="text-[9px] text-stone-400 font-normal">用戶與競賽視角</span>
+                        </div>
+                      )}
+
+                      {/* 玩法導覽 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          setGuideRole('audience');
+                          setIsGuideModalOpen(true);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-amber-50/70 border border-amber-200/80"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-amber-300 text-stone-950 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 font-black shadow-2xs text-xs">
+                            🔰
+                          </div>
+                          <div>
+                            <div className="font-black text-stone-900 flex items-center gap-1.5">
+                              <span>創星季玩法導覽</span>
+                              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-400 text-stone-950 font-mono">
+                                30秒上手
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-stone-500 font-normal">觀眾、提案者、痛點提問 3 步教學指南</div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
+
+                      {/* 提案參賽 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          if (!isLoggedIn) {
+                            onOpenAuth();
+                            return;
+                          }
+                          navigateToSubView('participant');
+                        }}
+                        className="w-full px-3 py-2 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                            <GraduationCap className="w-4 h-4 text-amber-700" />
+                          </div>
+                          <div>
+                            <div className="font-black text-stone-900">提案參賽</div>
+                            <div className="text-[10px] text-stone-500 font-normal">填寫團隊資料與創星季募資計畫滿版報名</div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
+
+                      {/* 🌟 我的收藏（一般用戶收藏與成為專家對調位置：收藏排在前） */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          setIsFavoritesModalOpen(true);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl hover:bg-rose-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                            <Heart className="w-4 h-4 text-rose-600 fill-rose-600/30" />
+                          </div>
+                          <div>
+                            <div className="font-black text-stone-900 flex items-center gap-1.5">
+                              <span>我的收藏</span>
+                              <span className="text-[9px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded-full border border-rose-200">
+                                已按讚名單
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-stone-500 font-normal">個人已按讚與追蹤的解方提案清單</div>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-mono font-black text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full shrink-0">
+                          {likedProposalIds.length}
+                        </span>
+                      </button>
+
+                      {/* 🌟 成為專家（一般用戶收藏與成為專家對調位置：成為專家排在收藏之後） */}
+                      {currentUser.role !== 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            if (!isLoggedIn) {
+                              onOpenAuth();
+                              return;
+                            }
+                            navigateToSubView('judge');
+                          }}
+                          className="w-full px-3 py-2 rounded-xl hover:bg-purple-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                              <ShieldCheck className="w-4 h-4 text-purple-600" />
+                            </div>
+                            <div>
+                              <div className="font-black text-stone-900 flex items-center gap-1">
+                                <span>成為專家</span>
+                                {currentUser.verifiedExpert ? (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-800">
+                                    已認證
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="text-[10px] text-stone-500 font-normal">認證專家身分，享有 300 萬創星幣評選額度</div>
                             </div>
                           </div>
                           <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
                         </button>
-                      </>
-                    )}
+                      )}
+
+                      {/* 推廣大使推薦碼 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          navigateToSubView('ambassador');
+                        }}
+                        className="w-full px-3 py-2 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                            <Megaphone className="w-4 h-4 text-amber-700" />
+                          </div>
+                          <div>
+                            <div className="font-black text-stone-900">推廣大使推薦碼</div>
+                            <div className="text-[10px] text-stone-500 font-normal">專屬推薦碼、輸入綁定與推薦名單滿版專區</div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
+
+                      {/* 競賽辦法與規章 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          navigateToSubView('rules');
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="w-full px-3 py-2 rounded-xl hover:bg-blue-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                            <BookOpen className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="font-black text-stone-900">競賽辦法與規章</div>
+                            <div className="text-[10px] text-stone-500 font-normal">官方賽制規則、評選權重與獎金辦法</div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* 底部輔助按鍵 */}
@@ -2608,7 +2745,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           <div className="hidden xl:block absolute right-4 lg:right-6 top-0 z-20">
             <ProposalHeroCarousel
               proposals={proposals}
-              onSelectProposal={(p) => setSelectedProposalForDetail(p)}
+              onSelectProposal={(p) => navigateToSubView('proposal', p.id)}
             />
           </div>
 
@@ -3089,7 +3226,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                           <div
                             key={p.id}
                             id={batchIdx === 0 && pIdx === 0 ? 'star-tour-proposal-card' : undefined}
-                            onClick={() => navigateToSubView('proposal')}
+                            onClick={() => navigateToSubView('proposal', p.id)}
                             className="bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden cursor-pointer"
                           >
                             {/* 卡片封面大圖與標籤 */}
@@ -3189,9 +3326,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    navigateToSubView('proposal');
+                                    navigateToSubView('proposal', p.id);
                                   }}
-                                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-colors cursor-pointer"
+                                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-colors cursor-pointer active:scale-95"
+                                  title="查看提案完整頁面"
                                 >
                                   查看提案
                                 </button>
@@ -3199,9 +3337,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    navigateToSubView('proposal');
+                                    navigateToSubView('proposal', p.id);
                                   }}
-                                  className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-colors cursor-pointer shadow-2xs"
+                                  className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-colors cursor-pointer shadow-2xs active:scale-95"
+                                  title="為此提案注資支持"
                                 >
                                   為他注資
                                 </button>
@@ -3334,6 +3473,30 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             </div>
 
                             <div className="flex items-center gap-2 text-stone-400 text-xs shrink-0 font-mono">
+                              {/* 痛點附議按鍵（綠色+1圖示） */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const res = toggleSecondQuestion(pp.id);
+                                  if (res.isSeconded) {
+                                    addNotification(`已為痛點「${pp.title}」附議 +1！`, 'success');
+                                  }
+                                }}
+                                className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                                  isQuestionSeconded(pp.id)
+                                    ? 'bg-emerald-600 text-white border border-emerald-600 shadow-2xs font-black'
+                                    : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                                }`}
+                                title="附議此痛點 (+1 共鳴支持)"
+                              >
+                                <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isQuestionSeconded(pp.id) ? 'bg-white text-emerald-800 border-white' : 'bg-white text-emerald-700 border-emerald-300'}`}>+1</span>
+                                <span>附議</span>
+                                {getQuestionSecondCount(pp.id) > 0 && (
+                                  <span className="font-mono font-black">({getQuestionSecondCount(pp.id)})</span>
+                                )}
+                              </button>
+
                               <span
                                 id={batchIdx === 0 && ppIdx === 0 ? 'star-tour-solutions-received' : undefined}
                                 className="flex items-center gap-1 font-bold text-stone-600"
@@ -3803,8 +3966,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         }}
       />
 
-      {/* 提案詳情 Modal (教育部大專校院募資實戰模擬學習平台 cases 詳情與回饋風格) */}
-      {selectedProposalForDetail && (
+      {/* 提案詳情 Modal (舊版彈窗，依需求全面由具獨立專屬網址之 ProposalDetailFullPage 取代) */}
+      {(false as boolean) && selectedProposalForDetail && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
           <div className="bg-white border border-amber-300 rounded-3xl max-w-2xl w-full p-6 space-y-5 my-8 max-h-[90vh] overflow-y-auto shadow-2xl text-stone-900">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
@@ -4126,7 +4289,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     }`}
                   >
                     <Heart className={`w-4 h-4 ${likedProposalIds.includes(selectedProposalForDetail.id) ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
-                    <span>{likedProposalIds.includes(selectedProposalForDetail.id) ? '已按讚收藏' : '按讚收藏提案'}</span>
+                    <span>按讚收藏</span>
                   </button>
                   <span className="text-xs text-rose-900 font-bold">
                     累計 {selectedProposalForDetail.likeCount || 0} 個愛心
@@ -5209,34 +5372,22 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   </div>
                 </div>
 
-                {/* 實戰模擬檔案與募資目標 */}
+                {/* 實戰佐證檔案與影音Demo */}
                 <div className="space-y-3 p-4 rounded-2xl bg-stone-50 border border-stone-200">
                   <div className="font-bold text-stone-900 flex items-center gap-1.5">
                     <TrendingUp className="w-4 h-4 text-amber-600" />
-                    <span>實戰募資模擬與佐證檔案</span>
+                    <span>實戰成果展示與佐證檔案</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">模擬目標募資額度 (創星幣)</label>
-                      <input
-                        type="number"
-                        step={10000}
-                        value={targetFundingAmount}
-                        onChange={(e) => setTargetFundingAmount(Number(e.target.value))}
-                        className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900 font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">Demo展示影片連結 (YouTube / Drive)</label>
-                      <input
-                        type="url"
-                        value={videoUrl}
-                        onChange={(e) => setVideoUrl(e.target.value)}
-                        placeholder="https://youtu.be/..."
-                        className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900"
-                      />
-                    </div>
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">Demo展示影片連結 (YouTube / Drive)</label>
+                    <input
+                      type="url"
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      placeholder="https://youtu.be/..."
+                      className="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-stone-900"
+                    />
                   </div>
 
                   <div>
@@ -5825,11 +5976,11 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                               type="button"
                               onClick={() => {
                                 setIsFavoritesModalOpen(false);
-                                handleOpenProposalDetail(prop);
+                                navigateToSubView('proposal', prop.id);
                               }}
                               className="px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-stone-700 font-bold hover:bg-stone-100 cursor-pointer"
                             >
-                              詳情
+                              完整頁面
                             </button>
                             <button
                               type="button"

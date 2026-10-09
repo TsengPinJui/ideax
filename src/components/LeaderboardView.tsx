@@ -764,14 +764,14 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               <div className="p-3 bg-white rounded-xl border border-amber-200">
                 <span className="font-black text-amber-950 block mb-1">2. 第三方支付安全託管</span>
                 <p className="text-[11px] leading-relaxed text-stone-600">
-                  買方付款透過第三方支付（信用卡/LINE Pay/ATM 轉帳）安全獨立託管，平台確認採納後即時自動拆款撥付。
+                  買方付款透過第三方支付（信用卡/LINE Pay/ATM 轉帳）安全獨立託管，保障履約與價金安全。
                 </p>
               </div>
 
               <div className="p-3 bg-white rounded-xl border border-amber-200">
-                <span className="font-black text-amber-950 block mb-1">3. 自動拆款入解答者帳戶</span>
+                <span className="font-black text-amber-950 block mb-1">3. 成果驗收放款與商用實施保障</span>
                 <p className="text-[11px] leading-relaxed text-stone-600">
-                  款項自動拆分入解答者銀行帳戶，標準平台服務費 10%（由賣家吸收）；新版會員享半價 5%、免服務費 0% 及至高 +2% BONUS！
+                  買方確認成果驗收後放款，即時取得商業落地實施授權與合法履約保障，安心無後顧之憂。
                 </p>
               </div>
             </div>

@@ -33,6 +33,7 @@ import {
   Copy,
   Check,
   ChevronDown,
+  Plus,
 } from 'lucide-react';
 
 interface SubmitAnswerModalProps {
@@ -68,6 +69,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
   // 2. 檔案交付 (最多 3 個，單檔 200MB 內)
   const [attachments, setAttachments] = useState<SolutionAttachment[]>([]);
   const [externalStorageLink, setExternalStorageLink] = useState('');
+  const [otherLink, setOtherLink] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -81,14 +83,85 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
   const defaultQuestionBounty = (question.bounty || 0) > 0 ? question.bounty : 300;
   const [price, setPrice] = useState<number>(defaultQuestionBounty);
 
-  // 4. 多階段交付設定
+  // 4. 多階段交付設定（支援自訂階段數量、名稱、目標、預計交付與價格）
   const [isPhasedDelivery, setIsPhasedDelivery] = useState<boolean>(Boolean(question.isPhasedDelivery));
-  const [phase1Points, setPhase1Points] = useState<number>(
-    question.phases && question.phases[0] ? question.phases[0].points : Math.round(defaultQuestionBounty * 0.4)
-  );
-  const [phase2Points, setPhase2Points] = useState<number>(
-    question.phases && question.phases[1] ? question.phases[1].points : Math.round(defaultQuestionBounty * 0.6)
-  );
+  const [customPhases, setCustomPhases] = useState<Array<{
+    id: string;
+    phaseNumber: number;
+    title: string;
+    target: string;
+    deliverables: string;
+    points: number;
+  }>>(() => {
+    if (question.phases && question.phases.length > 0) {
+      return question.phases.map((p, idx) => ({
+        id: p.id || `phase-${Date.now()}-${idx + 1}`,
+        phaseNumber: p.phaseNumber || idx + 1,
+        title: p.title || `第 ${idx + 1} 階段`,
+        target: p.target || p.description || '',
+        deliverables: p.deliverables || '',
+        points: p.points || p.price || Math.round(defaultQuestionBounty / (question.phases?.length || 1)),
+      }));
+    }
+    return [
+      {
+        id: `phase-${Date.now()}-1`,
+        phaseNumber: 1,
+        title: '第 1 階段：診斷調研與可行性評估',
+        target: '剖析核心問題本質、排查痛點並確立整體解決方案技術架構',
+        deliverables: '問題診斷大綱、架構規劃圖與第一階段實務建議報告',
+        points: Math.round(defaultQuestionBounty * 0.4) || 200,
+      },
+      {
+        id: `phase-${Date.now()}-2`,
+        phaseNumber: 2,
+        title: '第 2 階段：核心功能實作與深度落地實施',
+        target: '依照架構產出具體解決方案實施細節與關鍵模組',
+        deliverables: '完整解決方案說明文件、核心代碼/操作範本與實操指引',
+        points: Math.round(defaultQuestionBounty * 0.6) || 300,
+      },
+    ];
+  });
+
+  const totalPhasesPoints = customPhases.reduce((acc, p) => acc + (Number(p.points) || 0), 0);
+
+  const handleAddPhase = () => {
+    const nextNum = customPhases.length + 1;
+    setCustomPhases((prev) => [
+      ...prev,
+      {
+        id: `phase-${Date.now()}-${nextNum}`,
+        phaseNumber: nextNum,
+        title: `第 ${nextNum} 階段：成果優化與交付驗收`,
+        target: '',
+        deliverables: '',
+        points: 200,
+      },
+    ]);
+  };
+
+  const handleRemovePhase = (indexToRemove: number) => {
+    if (customPhases.length <= 1) return;
+    setCustomPhases((prev) =>
+      prev
+        .filter((_, idx) => idx !== indexToRemove)
+        .map((p, idx) => ({
+          ...p,
+          phaseNumber: idx + 1,
+        }))
+    );
+  };
+
+  const handleUpdatePhase = (index: number, field: 'title' | 'target' | 'deliverables' | 'points', value: any) => {
+    setCustomPhases((prev) =>
+      prev.map((p, idx) => {
+        if (idx === index) {
+          return { ...p, [field]: value };
+        }
+        return p;
+      })
+    );
+  };
 
   // Subscription tier access check
   const userTier = currentUser?.subscriptionTier || 'free';
@@ -277,7 +350,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
     // Determine descriptive tag
     const deliveryTypeLabel =
       deliveryFormats.length > 1
-        ? '多維度整合方案'
+        ? '綜合落地解法'
         : deliveryFormats.includes('meeting')
         ? '線上諮詢會談'
         : deliveryFormats.includes('file')
@@ -286,26 +359,20 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
 
     let phases: DeliveryPhase[] | undefined = undefined;
     if (isPhasedDelivery && answerType === 'solution') {
-      phases = [
-        {
-          id: `phase-1-${Date.now()}`,
-          phaseNumber: 1,
-          title: '第 1 階段：架構脈絡與核心大綱診斷',
-          description: freePreview.slice(0, 100) || '提供問題本質剖析與第一階段落地方向',
-          points: phase1Points,
-          status: 'pending_acceptance',
-          submittedContent: freePreview,
-        },
-        {
-          id: `phase-2-${Date.now()}`,
-          phaseNumber: 2,
-          title: '第 2 階段：深度落地實施與專屬交付驗收',
-          description: '包含完整操作手冊、檔案附件交付或線上走查會談',
-          points: phase2Points,
-          status: 'pending_acceptance',
-          submittedContent: fullContent,
-        },
-      ];
+      phases = customPhases.map((cp, idx) => ({
+        id: cp.id || `phase-${Date.now()}-${idx + 1}`,
+        phaseNumber: idx + 1,
+        title: cp.title.trim() || `第 ${idx + 1} 階段`,
+        target: cp.target.trim(),
+        deliverables: cp.deliverables.trim(),
+        description: cp.target.trim()
+          ? `${cp.target.trim()}${cp.deliverables.trim() ? `（預計交付：${cp.deliverables.trim()}）` : ''}`
+          : (cp.deliverables.trim() || `第 ${idx + 1} 階段交付`),
+        points: Number(cp.points) || 0,
+        price: Number(cp.points) || 0,
+        status: 'pending_acceptance',
+        submittedContent: idx === 0 ? freePreview : undefined,
+      }));
     }
 
     const finalAttachments: SolutionAttachment[] = [...attachments];
@@ -317,13 +384,36 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
         url: externalStorageLink.trim(),
       });
     }
+    if (otherLink.trim()) {
+      finalAttachments.push({
+        name: `其他相關連結`,
+        size: '外部連結',
+        type: 'external_link',
+        url: otherLink.trim(),
+      });
+    }
 
-    const finalFullContent =
-      answerType === 'solution'
-        ? externalStorageLink.trim()
-          ? `${fullContent ? `${fullContent}\n\n` : ''}【外部雲端交付共享連結 (Google Drive / Dropbox / Figma)】\n${externalStorageLink.trim()}`
-          : fullContent
-        : undefined;
+    let finalFullContent = answerType === 'solution' ? fullContent : undefined;
+    if (answerType === 'solution') {
+      const linksToAdd: string[] = [];
+      if (externalStorageLink.trim()) {
+        linksToAdd.push(`【外部雲端交付共享連結 (Google Drive / Dropbox / Figma)】\n${externalStorageLink.trim()}`);
+      }
+      if (otherLink.trim()) {
+        linksToAdd.push(`【其他連結】\n${otherLink.trim()}`);
+      }
+      if (linksToAdd.length > 0) {
+        finalFullContent = `${fullContent ? `${fullContent}\n\n` : ''}${linksToAdd.join('\n\n')}`;
+      }
+    }
+
+    const finalPrice = answerType === 'discussion'
+      ? 0
+      : isPaid
+      ? isPhasedDelivery
+        ? totalPhasesPoints
+        : price
+      : 0;
 
     const newAnswer = submitAnswer({
       questionId: question.id,
@@ -336,7 +426,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
       attachments: deliveryFormats.includes('file') ? finalAttachments : undefined,
       meetingDetails: meetingDetails,
       isPaid: answerType === 'discussion' ? false : isPaid,
-      price: answerType === 'discussion' ? 0 : (isPaid ? (isPhasedDelivery ? phase1Points + phase2Points : price) : 0),
+      price: finalPrice,
       isPhasedDelivery: isPhasedDelivery && answerType === 'solution',
       phases,
     });
@@ -344,7 +434,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
     onSuccess(newAnswer);
   };
 
-  const netEarnings = answerType === 'solution' && isPaid ? price : 0;
+  const netEarnings = answerType === 'solution' && isPaid ? (isPhasedDelivery ? totalPhasesPoints : price) : 0;
 
   const content = (
     <div className={`bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-sm w-full ${isFullPage ? 'max-w-3xl mx-auto my-2' : 'max-w-2xl max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150'}`}>
@@ -723,6 +813,23 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                   </span>
                 </div>
 
+                {/* 其他連結 */}
+                <div className="pt-2">
+                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                    其他連結（選填）
+                  </label>
+                  <input
+                    type="url"
+                    value={otherLink}
+                    onChange={(e) => setOtherLink(e.target.value)}
+                    placeholder="例如：作品集展示、GitHub、參考網站或相關專案連結"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-amber-500 text-xs text-stone-800 outline-none bg-white font-mono"
+                  />
+                  <span className="text-[10px] text-stone-400 mt-0.5 block">
+                    提供方案相關的補充網址、作品展示或第三方服務參考連結。
+                  </span>
+                </div>
+
                 {/* Optional Supplementary Text when text mode not chosen */}
                 {!deliveryFormats.includes('text') && (
                   <div className="pt-1">
@@ -858,12 +965,17 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
 
               {/* 多階段交付方案設定 */}
               {isPaid && (
-                <div className="p-3 bg-white rounded-xl border border-amber-200/80 space-y-2">
+                <div className="p-3.5 bg-white rounded-xl border border-amber-200/90 space-y-3">
                   <label className="flex items-center justify-between cursor-pointer">
                     <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-amber-600" />
+                      <Layers className="w-4 h-4 text-amber-600 shrink-0" />
                       <div>
-                        <span className="text-xs font-bold text-stone-900">分多個階段交付方案（Phased Delivery）</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-stone-900">自訂分多個階段交付方案（Phased Delivery）</span>
+                          <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold">
+                            可自訂階段・目標・預計交付・價格
+                          </span>
+                        </div>
                         <p className="text-[11px] text-stone-500">
                           提問者接受此方案後將預扣點數；按階段推進並完成各階段驗收放款
                         </p>
@@ -878,35 +990,112 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                   </label>
 
                   {isPhasedDelivery && (
-                    <div className="pt-2 border-t border-stone-100 space-y-2 text-xs">
+                    <div className="pt-2 border-t border-stone-100 space-y-3 text-xs">
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-stone-700">第 1 階段（核心診斷脈絡）：</span>
-                        <div className="flex items-center gap-1 font-mono">
-                          <input
-                            type="number"
-                            value={phase1Points}
-                            onChange={(e) => setPhase1Points(Math.max(50, Number(e.target.value)))}
-                            className="w-20 px-2 py-0.5 border border-stone-300 rounded text-right font-bold"
-                          />
-                          <span className="text-stone-500">點</span>
-                        </div>
+                        <span className="font-bold text-stone-800 text-[11px] flex items-center gap-1">
+                          <span>階段清單與交付里程碑設定</span>
+                          <span className="text-stone-400 font-normal">（共 {customPhases.length} 個階段）</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleAddPhase}
+                          className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>新增階段</span>
+                        </button>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-stone-700">第 2 階段（實操交付驗收）：</span>
-                        <div className="flex items-center gap-1 font-mono">
-                          <input
-                            type="number"
-                            value={phase2Points}
-                            onChange={(e) => setPhase2Points(Math.max(50, Number(e.target.value)))}
-                            className="w-20 px-2 py-0.5 border border-stone-300 rounded text-right font-bold"
-                          />
-                          <span className="text-stone-500">點</span>
+                      <div className="space-y-3">
+                        {customPhases.map((phase, pIdx) => (
+                          <div
+                            key={phase.id}
+                            className="p-3 rounded-xl bg-stone-50 border border-stone-200 space-y-2.5"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 flex-1">
+                                <span className="px-2 py-0.5 rounded-md bg-stone-800 text-white font-mono font-bold text-[10px] shrink-0">
+                                  第 {phase.phaseNumber} 階段
+                                </span>
+                                <input
+                                  type="text"
+                                  value={phase.title}
+                                  onChange={(e) => handleUpdatePhase(pIdx, 'title', e.target.value)}
+                                  placeholder={`第 ${phase.phaseNumber} 階段名稱與主題...`}
+                                  className="w-full px-2.5 py-1 rounded-lg border border-stone-300 focus:border-amber-500 text-xs font-bold text-stone-900 bg-white outline-none"
+                                />
+                              </div>
+                              {customPhases.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemovePhase(pIdx)}
+                                  className="text-stone-400 hover:text-rose-600 p-1 rounded-md transition-colors cursor-pointer shrink-0"
+                                  title="刪除此階段"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* 目標 Target */}
+                            <div>
+                              <label className="text-[10px] font-bold text-stone-600 block mb-0.5">
+                                🎯 階段目標：
+                              </label>
+                              <input
+                                type="text"
+                                value={phase.target}
+                                onChange={(e) => handleUpdatePhase(pIdx, 'target', e.target.value)}
+                                placeholder="例如：釐清核心痛點、完成訪談調研並擬定可行性路徑..."
+                                className="w-full px-2.5 py-1 rounded-lg border border-stone-300 focus:border-amber-500 text-xs text-stone-800 bg-white outline-none"
+                              />
+                            </div>
+
+                            {/* 預計交付 Deliverables */}
+                            <div>
+                              <label className="text-[10px] font-bold text-stone-600 block mb-0.5">
+                                📦 預計交付成果：
+                              </label>
+                              <input
+                                type="text"
+                                value={phase.deliverables}
+                                onChange={(e) => handleUpdatePhase(pIdx, 'deliverables', e.target.value)}
+                                placeholder="例如：診斷評估報告 PDF、架構圖、原型連結、或 1 對 1 會談諮詢..."
+                                className="w-full px-2.5 py-1 rounded-lg border border-stone-300 focus:border-amber-500 text-xs text-stone-800 bg-white outline-none"
+                              />
+                            </div>
+
+                            {/* 價格 / 點數 Price */}
+                            <div className="flex items-center justify-between pt-1 border-t border-stone-200/60">
+                              <span className="text-[11px] font-bold text-stone-700">
+                                💰 階段價格 / 點數：
+                              </span>
+                              <div className="flex items-center gap-1.5 font-mono">
+                                <span className="text-xs text-stone-400">NT$</span>
+                                <input
+                                  type="number"
+                                  min={50}
+                                  value={phase.points}
+                                  onChange={(e) => handleUpdatePhase(pIdx, 'points', Math.max(50, Number(e.target.value)))}
+                                  className="w-24 px-2 py-0.5 border border-stone-300 rounded-lg text-right font-bold text-xs bg-white outline-none focus:border-amber-500"
+                                />
+                                <span className="text-xs text-stone-500 font-semibold">點</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs">
+                        <span className="text-amber-950 font-bold">
+                          各階段合計總價格（共 {customPhases.length} 個階段）：
+                        </span>
+                        <div className="flex items-center gap-1 font-mono font-black text-amber-900 text-sm">
+                          <span>NT$</span>
+                          <span>{totalPhasesPoints.toLocaleString()}</span>
+                          <span className="text-xs font-sans">點</span>
                         </div>
                       </div>
-                      <p className="text-[11px] text-amber-800 font-medium">
-                        兩階段合計：{phase1Points + phase2Points} 點
-                      </p>
                     </div>
                   )}
                 </div>
@@ -915,18 +1104,20 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
               {isPaid && (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-stone-200">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-stone-700 font-semibold">自訂解鎖價格：</span>
+                    <span className="text-xs text-stone-700 font-semibold">
+                      {isPhasedDelivery ? '各階段合計總解鎖價格：' : '自訂解鎖價格：'}
+                    </span>
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-stone-400 font-mono">NT$</span>
                       <input
                         type="number"
                         min={50}
                         step="any"
-                        value={isPhasedDelivery ? phase1Points + phase2Points : price}
+                        value={isPhasedDelivery ? totalPhasesPoints : price}
                         disabled={isPhasedDelivery}
                         onChange={(e) => setPrice(Number(e.target.value))}
                         className={`w-28 px-2.5 py-1 rounded-lg border border-stone-300 text-sm font-bold text-right font-mono bg-white outline-none focus:border-amber-500 ${
-                          isPhasedDelivery ? 'opacity-70 bg-stone-100 cursor-not-allowed' : ''
+                          isPhasedDelivery ? 'opacity-90 bg-amber-50/60 text-amber-950 border-amber-300 cursor-not-allowed' : ''
                         }`}
                       />
                     </div>
@@ -942,7 +1133,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                   </div>
 
                   {(() => {
-                    const activeAmount = isPhasedDelivery ? (phase1Points + phase2Points) : price;
+                    const activeAmount = isPhasedDelivery ? totalPhasesPoints : price;
                     const split = calculateSplitPayout(activeAmount, currentUser.id);
                     return (
                       <div className="text-xs text-stone-500 text-right space-y-1">

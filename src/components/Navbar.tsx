@@ -7,6 +7,7 @@ import { AuthModal } from './AuthModal';
 import { AppTab, Category, QuestionSortOption, PostType, SpecialZone, User as UserType, SUBSCRIPTION_PLANS, UserDashboardTab } from '../types';
 import { isTestAccountUserId } from '../data/mockData';
 import { resetSEOToDefault } from '../services/seoService';
+import { resolveUserDisplayName, getUserNameColorClass } from '../utils/userDisplay';
 import {
   Lightbulb,
   PlusCircle,
@@ -1198,7 +1199,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="text-left hidden sm:block">
                   <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5 flex-wrap">
                     <span>
-                      {currentUser.name}
+                      <span className={getUserNameColorClass(currentUser.id, undefined, currentUser)}>
+                        {resolveUserDisplayName(currentUser.id, currentUser.name)}
+                      </span>
                       {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title
                         ? ` · ${currentUser.title}`
                         : ''}
@@ -1244,10 +1247,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-xs font-black text-stone-900 truncate group-hover:text-amber-600 transition-colors">
-                            {currentUser.name}
+                          <p className="text-xs truncate transition-colors">
+                            <span className={getUserNameColorClass(currentUser.id, undefined, currentUser)}>
+                              {resolveUserDisplayName(currentUser.id, currentUser.name)}
+                            </span>
                             {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title
-                              ? ` · ${currentUser.title}`
+                              ? <span className="text-stone-500 font-normal"> · {currentUser.title}</span>
                               : ''}
                           </p>
                           <span

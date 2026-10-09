@@ -612,7 +612,7 @@ export const SubscriptionPlanCard: React.FC = () => {
               <span>解答者會員方案對比</span>
             </h4>
             <p className="text-xs text-stone-500 mt-0.5">
-              第三方支付在平台確認採納後自動拆款撥付，服務費由賣家吸收
+              第三方支付在平台確認採納後安全撥付，保障買賣雙方履約與價金安全
             </p>
           </div>
 

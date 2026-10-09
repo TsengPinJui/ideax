@@ -2,9 +2,11 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { Question, MarketViewMode } from '../types';
 import { LEVEL_CONFIGS } from '../data/mockData';
-import { resolveUserDisplayName, resolveUserAvatar } from '../utils/userDisplay';
-import { isPainPointQuestion } from '../utils/questionUtils';
-import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark } from 'lucide-react';
+import { resolveUserDisplayName, resolveUserAvatar, getUserNameColorClass } from '../utils/userDisplay';
+import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
+import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark, Share2, Check, Hand, ThumbsUp } from 'lucide-react';
+import { getQuestionShareUrl } from '../services/seoService';
+import { shareOrCopyUrl } from '../utils/shareUtils';
 
 interface QuestionCardProps {
   question: Question;
@@ -25,17 +27,89 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   onSearchTag,
   viewMode = 'large',
 }) => {
-  const { isQuestionBookmarked, toggleBookmarkQuestion, setSearchQuery, isNoPaymentMode, availableUsers } = useApp();
+  const {
+    isQuestionBookmarked,
+    toggleBookmarkQuestion,
+    setSearchQuery,
+    isNoPaymentMode,
+    availableUsers,
+    toggleSecondQuestion,
+    isQuestionSeconded,
+    getQuestionSecondCount,
+    toggleSameQuestion,
+    isSameQuestionActive,
+    getQuestionSameCount,
+    toggleLikeQuestion,
+    isQuestionLiked,
+    getQuestionLikesCount,
+    addNotification,
+  } = useApp();
   const isBookmarked = isQuestionBookmarked(question.id);
+  const [isShareCopied, setIsShareCopied] = React.useState(false);
+
+  const isSeconded = isQuestionSeconded(question.id);
+  const secondCount = getQuestionSecondCount(question.id);
+  const isSame = isSameQuestionActive(question.id);
+  const sameCount = getQuestionSameCount(question.id);
+  const isLiked = isQuestionLiked(question.id);
+  const likesCount = getQuestionLikesCount(question.id);
+
+  const handleSecondClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const res = toggleSecondQuestion(question.id);
+    if (res.isSeconded) {
+      addNotification(`已為痛點「${question.title}」附議 +1！`, 'success');
+    }
+  };
+
+  const handleSameQuestionClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const res = toggleSameQuestion(question.id);
+    if (res.isSameQuestion) {
+      addNotification(`已加入同問！有更多人關注此提問「${question.title}」`, 'success');
+    }
+  };
+
+  const handleLikeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const res = toggleLikeQuestion(question.id);
+    if (res.isLiked) {
+      addNotification(`已為討論「${question.title}」按讚！`, 'success');
+    }
+  };
+
+  const handleShareClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = getQuestionShareUrl(question.id, question.postType);
+    const label = question.postType === 'pain_point' ? '痛點洞察' : '懸賞問題';
+    const shareText = `【IdeaX 創點子 • ${label}】${question.title}\n${(question.bounty || 0) > 0 ? `懸賞 NT$ ${(question.bounty || 0).toLocaleString()} 元` : '議題探討'}`;
+
+    const res = await shareOrCopyUrl({
+      title: question.title,
+      text: shareText,
+      url: shareUrl,
+    });
+
+    if (res === 'copied') {
+      setIsShareCopied(true);
+      setTimeout(() => setIsShareCopied(false), 2000);
+    }
+  };
 
   const effectiveLevel = isNoPaymentMode ? 'L0' : (question?.level || 'L2');
   const levelConfig = (effectiveLevel && LEVEL_CONFIGS[effectiveLevel]) || LEVEL_CONFIGS.L0;
   const isSolved = question.status === 'solved';
   const isPromoted = question.status === 'open' && question.isFeatured;
   const isPainPoint = isPainPointQuestion(question);
+  const isL0Discussion = isL0DiscussionQuestion(question);
 
   const authorDisplayName = resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
   const authorDisplayAvatar = resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
+  const authorColorClass = getUserNameColorClass(question.authorId, availableUsers, {
+    isOfficial: question.isOfficial,
+    name: question.authorName,
+    title: question.authorTitle,
+  });
 
   const handleCategoryClick = (e: React.MouseEvent) => {
     if (onSelectCategory) {
@@ -144,12 +218,56 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               alt={authorDisplayName}
               className="w-4 h-4 rounded-full object-cover ring-1 ring-stone-200 shrink-0"
             />
-            <span className="font-medium text-stone-600 truncate max-w-[65px] sm:max-w-[90px]">
+            <span className={`font-medium truncate max-w-[65px] sm:max-w-[90px] ${authorColorClass}`}>
               {authorDisplayName}
             </span>
           </div>
 
-          <div className="shrink-0 flex items-center gap-1">
+          <div className="shrink-0 flex items-center gap-1.5">
+            {isPainPoint ? (
+              <button
+                type="button"
+                onClick={handleSecondClick}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  isSeconded
+                    ? 'bg-emerald-600 text-white border border-emerald-600 shadow-2xs font-black'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                }`}
+                title="附議此痛點 (+1 共鳴支持)"
+              >
+                <span className={`font-mono font-black px-1 rounded text-[9px] leading-tight ${isSeconded ? 'bg-white text-emerald-800' : 'bg-white text-emerald-700 border border-emerald-300'}`}>+1</span>
+                <span className="font-mono text-[9.5px]">{secondCount || 0}</span>
+              </button>
+            ) : isL0Discussion ? (
+              <button
+                type="button"
+                onClick={handleLikeClick}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  isLiked
+                    ? 'bg-blue-600 text-white border border-blue-600 shadow-2xs font-black'
+                    : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                }`}
+                title="為此討論按讚"
+              >
+                <ThumbsUp className={`w-3 h-3 ${isLiked ? 'fill-white text-white' : 'text-blue-600'}`} />
+                <span className="font-mono text-[9.5px]">{likesCount || 0}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSameQuestionClick}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  isSame
+                    ? 'bg-amber-500 text-stone-950 border border-amber-500 shadow-2xs font-black'
+                    : 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
+                }`}
+                title="我也想知道！加入同問"
+              >
+                <Hand className={`w-3 h-3 ${isSame ? 'fill-stone-950 text-stone-950' : 'text-amber-700'}`} />
+                <span className="font-mono text-[9.5px]">{sameCount || 0}</span>
+              </button>
+            )}
+
             {isSolved ? (
               <span className="font-bold text-emerald-600 flex items-center gap-0.5">
                 <CheckCircle2 className="w-2.5 h-2.5" />
@@ -214,17 +332,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </button>
               )}
 
-              {/* 綠色創星季標籤與獨立網址 */}
+              {/* 綠色創星季標籤 */}
               {(question.isStarSeason || question.tags?.includes('創星季')) && (
-                <div className="flex items-center gap-1.5">
-                  <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-1 shrink-0">
-                    <Sparkles className="w-2.5 h-2.5" />
-                    <span>創星季</span>
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 hidden sm:inline-block">
-                    🔗 獨立網址
-                  </span>
-                </div>
+                <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-1 shrink-0" title="創星季參賽題目">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  <span>創星季</span>
+                </span>
               )}
 
               {isSolved && (
@@ -301,26 +414,77 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               alt={authorDisplayName}
               className="w-4.5 h-4.5 rounded-full object-cover ring-1 ring-stone-200"
             />
-            <span className="font-medium text-stone-700 truncate max-w-[140px] sm:max-w-[200px]">
+            <span className={`font-medium truncate max-w-[140px] sm:max-w-[200px] ${authorColorClass}`}>
               {authorDisplayName}
             </span>
           </div>
 
-          <div className="flex items-center gap-3 font-medium text-[11px] sm:text-xs">
-            <span className="flex items-center gap-1" title="瀏覽次數">
-              <Eye className="w-3.5 h-3.5 text-stone-400" />
+          <div className="flex items-center gap-2 sm:gap-2.5 font-medium text-[11px] sm:text-xs">
+            {/* 中卡片互動鍵：只顯示圖示與數字 */}
+            {isPainPoint ? (
+              <button
+                type="button"
+                onClick={handleSecondClick}
+                className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  isSeconded
+                    ? 'bg-emerald-600 text-white border border-emerald-600 shadow-2xs font-black'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                }`}
+                title="附議此痛點 (+1 共鳴支持)"
+              >
+                <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isSeconded ? 'bg-white text-emerald-800 border-white' : 'bg-white text-emerald-700 border-emerald-300'}`}>+1</span>
+                <span className="font-mono font-bold text-xs">{secondCount || 0}</span>
+              </button>
+            ) : isL0Discussion ? (
+              <button
+                type="button"
+                onClick={handleLikeClick}
+                className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  isLiked
+                    ? 'bg-blue-600 text-white border border-blue-600 shadow-2xs font-black'
+                    : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                }`}
+                title="為此討論按讚"
+              >
+                <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'fill-white text-white' : 'text-blue-600'}`} />
+                <span className="font-mono font-bold text-xs">{likesCount || 0}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSameQuestionClick}
+                className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  isSame
+                    ? 'bg-amber-500 text-stone-950 border border-amber-500 shadow-2xs font-black'
+                    : 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
+                }`}
+                title="我也想知道！加入同問"
+              >
+                <Hand className={`w-3.5 h-3.5 ${isSame ? 'fill-stone-950 text-stone-950' : 'text-amber-700'}`} />
+                <span className="font-mono font-bold text-xs">{sameCount || 0}</span>
+              </button>
+            )}
+
+            {/* 觀看數 */}
+            <span className="flex items-center gap-1 text-stone-400" title="瀏覽次數">
+              <Eye className="w-3.5 h-3.5" />
               <span>{(question.views || 0).toLocaleString()}</span>
             </span>
 
-            <span className="flex items-center gap-1 font-bold text-amber-600" title="方案解答數">
-              <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
-              <span>{solutionsCount ?? question.answersCount} 方案</span>
+            {/* 討論數量（對話框圖示+數字，淡黃色） */}
+            <span className="flex items-center gap-1 text-amber-500 font-semibold" title="討論數量">
+              <MessageCircle className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-mono text-amber-500">{discussionsCount ?? 0}</span>
             </span>
 
-            {discussionsCount !== undefined && discussionsCount > 0 && (
-              <span className="flex items-center gap-1 text-stone-500 font-medium" title="討論留言數">
-                <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
-                <span>{discussionsCount} 討論</span>
+            {/* 方案數：不用圖示，就顯示「（數字）方案」 */}
+            {isSolved ? (
+              <span className="font-bold text-emerald-600" title="已採納方案">
+                已採納
+              </span>
+            ) : (
+              <span className="font-bold font-mono text-amber-700" title="方案數量">
+                {solutionsCount ?? question.answersCount} 方案
               </span>
             )}
           </div>
@@ -388,17 +552,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 : `${question.level} · ${levelConfig.name}`}
             </span>
 
-            {/* 綠色創星季標籤與獨立網址 */}
+            {/* 綠色創星季標籤 */}
             {(question.isStarSeason || question.tags?.includes('創星季')) && (
-              <div className="flex items-center gap-1.5">
-                <span className="bg-emerald-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-2xs flex items-center gap-1 shrink-0" title="創星季參賽題目（擁有獨立網址）">
-                  <Sparkles className="w-3 h-3" />
-                  <span>創星季</span>
-                </span>
-                <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 hidden md:inline-flex items-center gap-1">
-                  <span>🔗 獨立網址：ideax.tw/challenge?questionId={question.id.slice(-6)}</span>
-                </span>
-              </div>
+              <span className="bg-emerald-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-2xs flex items-center gap-1 shrink-0" title="創星季參賽題目">
+                <Sparkles className="w-3 h-3" />
+                <span>創星季</span>
+              </span>
             )}
 
             {isSolved && (
@@ -512,34 +671,86 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             alt={authorDisplayName}
             className="w-5 h-5 rounded-full object-cover ring-1 ring-stone-200"
           />
-          <span className="font-medium text-stone-700 truncate max-w-[150px] sm:max-w-[200px]" title={`${authorDisplayName}${authorDisplayName !== '此帳號已註銷' && question.authorTitle ? ` · ${question.authorTitle}` : ''}`}>
-            {authorDisplayName}
-            {authorDisplayName !== '此帳號已註銷' && question.authorTitle ? ` · ${question.authorTitle}` : ''}
+          <span className="truncate max-w-[150px] sm:max-w-[200px]" title={`${authorDisplayName}${authorDisplayName !== '此帳號已註銷' && question.authorTitle ? ` · ${question.authorTitle}` : ''}`}>
+            <span className={`font-medium ${authorColorClass}`}>{authorDisplayName}</span>
+            {authorDisplayName !== '此帳號已註銷' && question.authorTitle ? <span className="text-stone-500 font-normal"> · {question.authorTitle}</span> : ''}
           </span>
         </div>
 
-        <div className="flex items-center gap-3 font-medium">
-          <span className="flex items-center gap-1" title="瀏覽次數">
+        {/* 大卡片統計列：依規範「觀看數 + 按讚/同問/+1/愛心 + 討論數 + 方案數」，不顯示期限 */}
+        <div className="flex items-center gap-2 sm:gap-3 font-medium flex-wrap">
+          {/* 1. 觀看數 */}
+          <span className="flex items-center gap-1 text-stone-500 text-xs" title="瀏覽次數">
             <Eye className="w-3.5 h-3.5 text-stone-400" />
             <span>{(question.views || 0).toLocaleString()}</span>
           </span>
 
-          <span className="flex items-center gap-1 font-bold text-amber-600" title="方案解答數">
-            <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
-            <span>{solutionsCount ?? question.answersCount} 方案</span>
-          </span>
-
-          {discussionsCount !== undefined && discussionsCount > 0 && (
-            <span className="flex items-center gap-1 text-stone-500 font-medium" title="討論留言數">
-              <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
-              <span>{discussionsCount} 討論</span>
-            </span>
+          {/* 2. 按讚 / 同問 / +1 / 愛心 */}
+          {isPainPoint ? (
+            <button
+              type="button"
+              onClick={handleSecondClick}
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
+                isSeconded
+                  ? 'bg-emerald-600 text-white border border-emerald-600 shadow-2xs font-black'
+                  : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+              }`}
+              title="附議此痛點 (+1 共鳴支持)"
+            >
+              <span className={`font-mono font-black border px-1.5 py-0.2 rounded text-[11px] leading-tight ${isSeconded ? 'bg-white text-emerald-800 border-white' : 'bg-white text-emerald-700 border-emerald-300'}`}>+1</span>
+              <span>附議</span>
+              <span className="font-mono font-black text-xs">({secondCount || 0})</span>
+            </button>
+          ) : isL0Discussion ? (
+            <button
+              type="button"
+              onClick={handleLikeClick}
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
+                isLiked
+                  ? 'bg-blue-600 text-white border border-blue-600 shadow-2xs font-black'
+                  : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+              }`}
+              title="為此討論按讚"
+            >
+              <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'fill-white text-white' : 'text-blue-600'}`} />
+              <span>按讚</span>
+              <span className="font-mono font-black text-xs">({likesCount || 0})</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSameQuestionClick}
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
+                isSame
+                  ? 'bg-amber-500 text-stone-950 border border-amber-500 shadow-2xs font-black'
+                  : 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
+              }`}
+              title="我也想知道！加入同問"
+            >
+              <Hand className={`w-3.5 h-3.5 ${isSame ? 'fill-stone-950 text-stone-950' : 'text-amber-700'}`} />
+              <span>同問</span>
+              <span className="font-mono font-black text-xs">({sameCount || 0})</span>
+            </button>
           )}
 
-          <span className="hidden sm:flex items-center gap-1 text-stone-400" title="截止日期">
-            <Clock className="w-3.5 h-3.5" />
-            <span>至 {question.deadline}</span>
+          {/* 3. 討論數（淡黃色） */}
+          <span className="flex items-center gap-1 text-amber-600 bg-amber-50/90 px-2.5 py-1 rounded-xl border border-amber-200/80 font-semibold text-xs" title="討論留言數">
+            <MessageCircle className="w-3.5 h-3.5 text-amber-400" />
+            <span className="font-mono text-amber-600">{discussionsCount ?? 0} 討論</span>
           </span>
+
+          {/* 4. 方案數 */}
+          {isSolved ? (
+            <span className="font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 text-xs">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>已採納</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 font-bold text-amber-600 text-xs" title="方案解答數">
+              <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+              <span>{solutionsCount ?? question.answersCount} 方案</span>
+            </span>
+          )}
         </div>
       </div>
     </article>

@@ -80,6 +80,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
     setAnswers,
     setAvailableUsers,
     addNotification,
+    showCenterToast,
     openAboutModal,
   } = useApp();
 
@@ -255,12 +256,20 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
     }
   };
 
-  const showToast = (message: string) => {
+  const showToast = (message: string, isSuccess = false) => {
     addNotification({
       title: '創星季',
       message,
       type: 'system',
     });
+    showCenterToast(
+      isSuccess || message.includes('成功') ? '發布成功！' : '創星季提醒',
+      message,
+      {
+        type: isSuccess || message.includes('成功') ? 'success' : 'info',
+        duration: 2500,
+      }
+    );
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -549,6 +558,13 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           setEditingDraftId(null);
           refreshDrafts();
         }
+
+        showToast(
+          formStage === 'pain_point'
+            ? '痛點發布成功！已成功上架至創星季痛點專區！'
+            : '提案發布成功！您的創新方案已成功送出！',
+          true
+        );
 
         onSuccess();
         onNavigate('home');

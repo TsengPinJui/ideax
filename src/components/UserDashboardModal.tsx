@@ -33,7 +33,7 @@ import {
   buildContractFromProposalItem, 
   downloadContractFile 
 } from '../utils/contractGenerator';
-import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated } from '../utils/userDisplay';
+import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated, getUserNameColorClass } from '../utils/userDisplay';
 import { updateFirebaseUserPassword } from '../services/firebaseAuth';
 import { validatePassword } from '../utils/validators';
 import {
@@ -1904,9 +1904,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 className="text-xs sm:text-base font-black text-stone-900 truncate max-w-[110px] sm:max-w-none hover:text-amber-600 transition-colors cursor-pointer text-left"
                 title="點擊前往帳號設定頁"
               >
-                {currentUser.name}
+                <span className={getUserNameColorClass(currentUser.id, undefined, currentUser)}>
+                  {resolveUserDisplayName(currentUser.id, currentUser.name)}
+                </span>
                 {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title
-                  ? ` · ${currentUser.title}`
+                  ? <span className="text-stone-500 font-normal"> · {currentUser.title}</span>
                   : ''}
               </button>
 
@@ -9109,6 +9111,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                   return accountsToRender.map(({ user: u, isLoggedIn: isLogged }) => {
                     const isCurrent = currentUser.id === u.id;
+                    const uDisplayName = resolveUserDisplayName(u.id, u.name, availableUsers);
+                    const uNameColorClass = getUserNameColorClass(u.id, availableUsers, u);
 
                     return (
                       <div
@@ -9124,12 +9128,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <div className="flex items-start gap-3">
                         <img
                           src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                          alt={u.name}
+                          alt={uDisplayName}
                           className="w-11 h-11 rounded-2xl object-cover ring-1 ring-stone-200 shrink-0"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs font-black text-stone-900 truncate">{u.name}</span>
+                            <span className={`text-xs font-black truncate ${uNameColorClass}`}>{uDisplayName}</span>
                             {isCurrent && (
                               <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
                                 目前使用中
