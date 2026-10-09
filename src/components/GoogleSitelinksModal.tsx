@@ -38,11 +38,28 @@ export const GoogleSitelinksModal: React.FC<GoogleSitelinksModalProps> = ({
   const [deviceMode, setDeviceMode] = useState<'mobile' | 'desktop'>('mobile');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeGroup, setActiveGroup] = useState<'all' | 'ideax' | 'star_season'>('all');
+  const [serpQuery, setSerpQuery] = useState('IdeaX 創點子');
 
   if (!isOpen) return null;
 
-  const ideaxSitelinks = GOOGLE_SITELINKS.filter((s) => s.category === 'ideax');
-  const starSeasonSitelinks = GOOGLE_SITELINKS.filter((s) => s.category === 'star_season');
+  const isDefaultQuery = !serpQuery.trim() || serpQuery.trim() === 'IdeaX 創點子' || serpQuery.trim() === '創點子';
+  const queryLower = serpQuery.trim().toLowerCase();
+  const ideaxSitelinks = GOOGLE_SITELINKS.filter(
+    (s) =>
+      s.category === 'ideax' &&
+      (isDefaultQuery ||
+        s.name.toLowerCase().includes(queryLower) ||
+        s.description.toLowerCase().includes(queryLower) ||
+        s.keywords.some((k) => k.toLowerCase().includes(queryLower)))
+  );
+  const starSeasonSitelinks = GOOGLE_SITELINKS.filter(
+    (s) =>
+      s.category === 'star_season' &&
+      (isDefaultQuery ||
+        s.name.toLowerCase().includes(queryLower) ||
+        s.description.toLowerCase().includes(queryLower) ||
+        s.keywords.some((k) => k.toLowerCase().includes(queryLower)))
+  );
 
   const handleCopyUrl = (e: React.MouseEvent, item: GoogleSitelinkItem) => {
     e.stopPropagation();
@@ -161,8 +178,33 @@ export const GoogleSitelinksModal: React.FC<GoogleSitelinksModalProps> = ({
             <div className="px-4 py-3 bg-[#F8F9FA] border-b border-stone-200/80 flex items-center gap-3">
               <div className="flex-1 bg-white rounded-full px-3.5 py-1.5 border border-stone-200 flex items-center gap-2 text-xs text-stone-700 shadow-2xs">
                 <Search className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                <span className="font-medium text-stone-900">IdeaX 創點子</span>
-                <span className="ml-auto text-stone-400 text-[10px]">✕</span>
+                <input
+                  type="text"
+                  value={serpQuery}
+                  onChange={(e) => setSerpQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const term = serpQuery.trim();
+                      onClose();
+                      const exploreItem = GOOGLE_SITELINKS.find((s) => s.id === 'explore');
+                      if (exploreItem) onNavigateToSitelink(exploreItem);
+                      if (term && term !== 'IdeaX 創點子') {
+                        window.dispatchEvent(new CustomEvent('ideax_global_search', { detail: { query: term } }));
+                      }
+                    }
+                  }}
+                  className="font-medium text-stone-900 bg-transparent outline-none flex-1 w-full"
+                  placeholder="搜尋 IdeaX 或輸入關鍵字..."
+                />
+                {serpQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSerpQuery('')}
+                    className="ml-auto text-stone-400 hover:text-stone-600 text-[10px] cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2 text-[11px] font-bold text-stone-600">
                 <span className="text-blue-600 border-b-2 border-blue-600 pb-0.5">全部</span>

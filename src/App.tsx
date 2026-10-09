@@ -117,9 +117,10 @@ function MainContent() {
           } catch {}
         }
 
-        // 0. 創點子/痛點集子網址（優先判定，避免誤入問題詳情）：/painpoints, /pain-points, /painpoint
+        // 0. 創點子/探索問題/痛點集子網址（/explore, /painpoints, /pain-points, /painpoint）
         const normalizedPath = targetPath.replace(/\/+$/, '');
         if (
+          normalizedPath === '/explore' ||
           normalizedPath === '/painpoints' ||
           normalizedPath === '/pain-points' ||
           normalizedPath === '/painpoint' ||
@@ -136,10 +137,16 @@ function MainContent() {
           (targetPath.includes('/painpoints/') && (targetPath.split('/painpoints/')[1]?.split(/[/?#]/)[0] || '').trim()) ||
           (targetPath.includes('/discussion/') && (targetPath.split('/discussion/')[1]?.split(/[/?#]/)[0] || '').trim());
 
+        const searchParamsForInit = new URLSearchParams(window.location.search);
+        const qParamInit = searchParamsForInit.get('q') || '';
+        const isExplicitQId =
+          (qParamInit.startsWith('q-') || qParamInit.startsWith('mock-') || qParamInit.startsWith('question-')) &&
+          qParamInit.length >= 4;
+
         if (
           (questionIdFromPath && questionIdFromPath.length > 0) ||
-          search.includes('q=') ||
-          search.includes('questionid=')
+          searchParamsForInit.get('questionid') ||
+          isExplicitQId
         ) {
           return 'question_detail';
         }
@@ -195,6 +202,32 @@ function MainContent() {
           hash.includes('challenge')
         ) {
           return 'star_season';
+        }
+
+        // 4. 其他獨立子網址與分頁
+        if (pathname.includes('/about') || search.includes('tab=about') || hash.includes('about')) {
+          return 'about';
+        }
+        if (pathname.includes('/leaderboard') || search.includes('tab=leaderboard') || hash.includes('leaderboard')) {
+          return 'leaderboard';
+        }
+        if (pathname.includes('/mechanism') || search.includes('tab=mechanism') || hash.includes('mechanism')) {
+          return 'mechanism';
+        }
+        if (pathname.includes('/my-projects') || pathname.includes('/my_projects') || search.includes('tab=my_projects')) {
+          return 'my_projects';
+        }
+        if (pathname.includes('/chat') || search.includes('tab=chat')) {
+          return 'chat';
+        }
+        if (pathname.includes('/ai-crm') || pathname.includes('/ai_crm') || search.includes('tab=ai_crm')) {
+          return 'ai_crm';
+        }
+        if (pathname.includes('/dashboard') || pathname.includes('/user_dashboard') || search.includes('tab=user_dashboard')) {
+          return 'user_dashboard';
+        }
+        if (pathname.includes('/admin') || search.includes('tab=admin_dashboard')) {
+          return 'admin_dashboard';
         }
       }
     } catch {}
@@ -302,6 +335,29 @@ function MainContent() {
           }
         } catch {}
       }
+    }
+  }, []);
+
+  // 讀取來自搜尋引擎、Google Sitelinks Searchbox 或外部網址帶入的搜尋詞 (?q=xxx, ?search=xxx)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const queryTerm = params.get('q') || params.get('search') || params.get('keyword');
+        const isQuestionId = queryTerm && (queryTerm.startsWith('q-') || queryTerm.startsWith('mock-') || queryTerm.startsWith('question-'));
+        if (queryTerm && !isQuestionId && queryTerm.trim().length > 0) {
+          const cleanTerm = queryTerm.trim();
+          setSearchQuery(cleanTerm);
+          setActiveTab('explore');
+          setSelectedCategory('全部');
+          setSelectedSubcategory('全部');
+          setSpecialZone('all');
+          setTimeout(() => {
+            const el = document.getElementById('market-grid');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }, 120);
+        }
+      } catch {}
     }
   }, []);
 
@@ -480,7 +536,9 @@ function MainContent() {
               window.history.pushState({ zone: 'pain_points' }, '', '/painpoints');
             }
             updateSEOForSubpage('painpoints');
-          } else if (curPath === '/painpoints' || curPath === '/create' || curPath === '/solvers' || curPath === '/explore' || curPath.startsWith('/challenge')) {
+          } else if (curPath === '/explore') {
+            updateSEOForSubpage('explore');
+          } else if (curPath === '/painpoints' || curPath === '/create' || curPath === '/solvers' || curPath.startsWith('/challenge')) {
             window.history.pushState({ tab: 'explore' }, '', '/');
             resetSEOToDefault();
           }
@@ -535,30 +593,35 @@ function MainContent() {
       setActiveTab('star_season');
       try {
         window.history.pushState({ sitelink: 'challenge', subView: 'home' }, '', '/challenge');
+        window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView: 'home' } }));
       } catch {}
       updateSEOForSubpage('challenge');
     } else if (item.id === 'challenge_join') {
       setActiveTab('star_season');
       try {
         window.history.pushState({ sitelink: 'challenge_join', subView: 'submit' }, '', '/challenge/join');
+        window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView: 'submit' } }));
       } catch {}
       updateSEOForSubpage('challenge_join');
     } else if (item.id === 'challenge_expert') {
       setActiveTab('star_season');
       try {
         window.history.pushState({ sitelink: 'challenge_expert', subView: 'judge' }, '', '/challenge/expert');
+        window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView: 'judge' } }));
       } catch {}
       updateSEOForSubpage('challenge_expert');
     } else if (item.id === 'challenge_proposals') {
       setActiveTab('star_season');
       try {
         window.history.pushState({ sitelink: 'challenge_proposals', subView: 'proposal' }, '', '/challenge/proposals');
+        window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView: 'proposal' } }));
       } catch {}
       updateSEOForSubpage('challenge_proposals');
     } else if (item.id === 'challenge_rules') {
       setActiveTab('star_season');
       try {
         window.history.pushState({ sitelink: 'challenge_rules', subView: 'rules' }, '', '/challenge/rules');
+        window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView: 'rules' } }));
       } catch {}
       updateSEOForSubpage('challenge_rules');
     }
@@ -578,11 +641,28 @@ function MainContent() {
         handleNavigateToSitelink(found);
       }
     };
+    const handleGlobalSearch = (e: Event) => {
+      const q = (e as CustomEvent<{ query: string }>).detail?.query;
+      if (typeof q === 'string') {
+        const cleanTerm = q.trim();
+        setSearchQuery(cleanTerm);
+        setActiveTab('explore');
+        setSelectedCategory('全部');
+        setSelectedSubcategory('全部');
+        setSpecialZone('all');
+        setTimeout(() => {
+          const el = document.getElementById('market-grid');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 80);
+      }
+    };
     window.addEventListener('ideax_open_sitelinks', handleOpenSitelinks);
     window.addEventListener('ideax_navigate_sitelink', handleNavigateSitelink);
+    window.addEventListener('ideax_global_search', handleGlobalSearch);
     return () => {
       window.removeEventListener('ideax_open_sitelinks', handleOpenSitelinks);
       window.removeEventListener('ideax_navigate_sitelink', handleNavigateSitelink);
+      window.removeEventListener('ideax_global_search', handleGlobalSearch);
     };
   }, []);
 
@@ -634,17 +714,33 @@ function MainContent() {
         targetQId = null;
       }
 
-      // 2. Check search params: ?q=xxx or ?questionId=xxx or ?id=xxx
+      // 2. Check search params: ?questionId=xxx or ?id=xxx or ?q=xxx
       if (!targetQId) {
         const params = new URLSearchParams(window.location.search);
-        targetQId = params.get('q') || params.get('questionId') || params.get('id');
+        const candidateId = params.get('questionId') || params.get('qid') || params.get('id');
+        const qParam = params.get('q');
+        if (candidateId) {
+          targetQId = candidateId;
+        } else if (qParam) {
+          const found = questions.find((q) => q.id === qParam);
+          if (found) {
+            targetQId = found.id;
+          } else if (qParam.trim().length > 0) {
+            // 是搜尋關鍵字（來自 Google 搜尋引擎 Sitelinks Searchbox 或網址搜尋參數）
+            setSearchQuery(qParam.trim());
+            setActiveTab('explore');
+            setSelectedCategory('全部');
+            setSelectedSubcategory('全部');
+            setSpecialZone('all');
+          }
+        }
       }
 
-      // 3. Check hash: #q=xxx or #/question/xxx or #/pain-point/xxx
+      // 3. Check hash: #questionId=xxx or #/question/xxx or #/pain-point/xxx
       if (!targetQId && window.location.hash) {
         const hashStr = window.location.hash.replace(/^#/, '');
         const hashParams = new URLSearchParams(hashStr.startsWith('?') ? hashStr.slice(1) : hashStr);
-        targetQId = hashParams.get('q') || hashParams.get('questionId') || hashParams.get('id');
+        targetQId = hashParams.get('questionId') || hashParams.get('id');
 
         if (!targetQId && hashStr.includes('/question/')) {
           targetQId = hashStr.split('/question/')[1].split('/')[0].split('?')[0];
@@ -661,6 +757,68 @@ function MainContent() {
           setSelectedQuestion(found);
           setActiveTab('question_detail');
           setIsSubmittingAnswer(false);
+          return;
+        }
+      }
+
+      // 若非題目詳情頁，同步瀏覽器網址至對應主分頁與子網址
+      if (!targetQId) {
+        setSelectedQuestion(null);
+        if (
+          normalizedPath === '' ||
+          normalizedPath === '/' ||
+          normalizedPath === '/explore'
+        ) {
+          setActiveTab('explore');
+          setSpecialZone('all');
+        } else if (
+          normalizedPath === '/painpoints' ||
+          normalizedPath === '/pain-points' ||
+          normalizedPath === '/painpoint' ||
+          normalizedPath === '/pain-point'
+        ) {
+          setActiveTab('explore');
+          setSpecialZone('pain_points');
+        } else if (normalizedPath === '/create') {
+          setActiveTab('create_question');
+        } else if (normalizedPath === '/solvers') {
+          setActiveTab('solvers');
+        } else if (
+          normalizedPath.startsWith('/challenge') ||
+          normalizedPath.startsWith('/rules') ||
+          normalizedPath.startsWith('/proposal') ||
+          normalizedPath.startsWith('/cases') ||
+          normalizedPath.startsWith('/submit') ||
+          normalizedPath.startsWith('/participant') ||
+          normalizedPath.startsWith('/judge') ||
+          normalizedPath.startsWith('/expert') ||
+          normalizedPath.startsWith('/ambassador')
+        ) {
+          setActiveTab('star_season');
+          let subView = 'home';
+          if (normalizedPath.includes('/rules')) subView = 'rules';
+          else if (normalizedPath.includes('/join') || normalizedPath.includes('/submit')) subView = 'submit';
+          else if (normalizedPath.includes('/expert') || normalizedPath.includes('/judge')) subView = 'judge';
+          else if (normalizedPath.includes('/proposal') || normalizedPath.includes('/cases')) subView = 'proposal';
+          else if (normalizedPath.includes('/participant')) subView = 'participant';
+          else if (normalizedPath.includes('/ambassador')) subView = 'ambassador';
+          window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView } }));
+        } else if (normalizedPath === '/about') {
+          setActiveTab('about');
+        } else if (normalizedPath === '/leaderboard') {
+          setActiveTab('leaderboard');
+        } else if (normalizedPath === '/mechanism') {
+          setActiveTab('mechanism');
+        } else if (normalizedPath === '/my-projects' || normalizedPath === '/my_projects') {
+          setActiveTab('my_projects');
+        } else if (normalizedPath === '/chat') {
+          setActiveTab('chat');
+        } else if (normalizedPath === '/ai-crm' || normalizedPath === '/ai_crm') {
+          setActiveTab('ai_crm');
+        } else if (normalizedPath === '/user_dashboard' || normalizedPath === '/dashboard') {
+          setActiveTab('user_dashboard');
+        } else if (normalizedPath === '/admin_dashboard' || normalizedPath === '/admin') {
+          setActiveTab('admin_dashboard');
         }
       }
     };
@@ -694,7 +852,10 @@ function MainContent() {
       if (selectedQuestion) {
         url.searchParams.set('q', selectedQuestion.id);
       } else {
-        url.searchParams.delete('q');
+        const curQ = url.searchParams.get('q');
+        if (curQ && (curQ.startsWith('q-') || curQ.startsWith('mock-') || curQ.startsWith('question-'))) {
+          url.searchParams.delete('q');
+        }
         url.searchParams.delete('questionId');
       }
       window.history.replaceState({}, '', url.toString());
@@ -715,8 +876,8 @@ function MainContent() {
       // 1. 排除已被管理員下架的問題
       if (q.status === 'delisted') return false;
 
-      // 2. 顯示出來的問題不包含過期的（以截止日當日 23:59:59 為最終截止線，過期不顯示）
-      if (isQuestionExpired(q.deadline)) {
+      // 2. 顯示出來的問題不包含過期的（以截止日當日 23:59:59 為最終截止線，過期不顯示；若處於測試示範模式或為示範題目則常態保留以供搜尋與展示）
+      if (!isDemoMode && !isMockQuestionId(q.id, q.authorId) && isQuestionExpired(q.deadline)) {
         return false;
       }
 
@@ -766,8 +927,9 @@ function MainContent() {
         if (!matchesSpecialZone) return false;
 
         // 核心規則：推播的問題必須在其對應的主題出現，如果某位用戶不關注這個推播問題的主題那就不要把這個問題放在這位用戶的推薦推播名單
+        // 注意：若用戶正在進行搜尋 (!qTerm 為 false)，則不套用此推播興趣過濾，保證關鍵字搜尋結果能完整呈現
         const isPromoted = q.status === 'open' && q.isFeatured;
-        if (sortBy === 'recruiting_promoted' && isPromoted) {
+        if (!qTerm && sortBy === 'recruiting_promoted' && isPromoted) {
           const profile = getUserInterestProfile(currentUser.id);
           const hasInterestHistory =
             profile.categories.length > 0 ||
@@ -884,9 +1046,22 @@ function MainContent() {
           matchAI ||
           matchSolverDomain;
 
-        return matchesCategory && matchesSubcategory && matchesLevel && matchesSearch;
+        // 若是在「全部」分類且無特殊專區篩選時進行搜尋，直接以搜尋比對結果呈現
+        if (selectedCategory === '全部' && selectedSubcategory === '全部' && specialZone === 'all') {
+          return matchesLevel && matchesSearch;
+        }
+
+        // 若在特定看板下搜尋且有匹配，展示該看板結果；若看板無結果但全站有精準匹配，亦完整呈現避免空白
+        const matchesCurrentFilter = matchesCategory && matchesSubcategory && matchesLevel && matchesSpecialZone;
+        return (matchesCurrentFilter && matchesSearch) || matchesSearch;
       })
       .sort((a, b) => {
+        // 搜尋時優先將與當前分類看板相符的題目排在最前
+        if (qTerm && selectedCategory !== '全部') {
+          const filterA = a.category === selectedCategory ? 1 : 0;
+          const filterB = b.category === selectedCategory ? 1 : 0;
+          if (filterB !== filterA) return filterB - filterA;
+        }
         // 1. 推薦（推播問題置頂並注明「招募中」，推播問題與其餘問題一律嚴格按照時間由新到舊排序）
         if (sortBy === 'recruiting_promoted') {
           const isPromotedA = a.status === 'open' && a.isFeatured;

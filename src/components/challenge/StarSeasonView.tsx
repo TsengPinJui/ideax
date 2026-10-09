@@ -204,22 +204,110 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           search.includes('p=') ||
           path.includes('/proposal') ||
           path.includes('/proposals') ||
-          path.includes('/explore') ||
           path.includes('/cases') ||
           search.includes('view=proposal') ||
-          search.includes('view=explore') ||
           search.includes('view=cases') ||
           hash.includes('proposal')
         ) return 'proposal';
         if (path.includes('/rules') || search.includes('view=rules') || hash === '#rules') return 'rules';
-        if (path.includes('/submit') || search.includes('view=submit') || hash === '#submit') return 'submit';
+        if (
+          path.includes('/join') ||
+          path.includes('/submit') ||
+          search.includes('view=submit') ||
+          search.includes('view=join') ||
+          hash === '#submit' ||
+          hash === '#join'
+        ) return 'submit';
         if (path.includes('/participant') || search.includes('view=participant') || hash === '#participant') return 'participant';
-        if (path.includes('/judge') || search.includes('view=judge') || hash === '#judge') return 'judge';
+        if (
+          path.includes('/expert') ||
+          path.includes('/judge') ||
+          search.includes('view=judge') ||
+          search.includes('view=expert') ||
+          hash === '#judge' ||
+          hash === '#expert'
+        ) return 'judge';
         if (path.includes('/ambassador') || search.includes('view=ambassador') || hash === '#ambassador') return 'ambassador';
       }
     } catch {}
     return 'home';
   });
+
+  // 監聽網址路徑變更 (popstate) 與自訂子分頁跳轉事件 (ideax_challenge_navigate)
+  useEffect(() => {
+    const handleSubViewNavigate = (e?: Event) => {
+      let targetSubView: ChallengeSubView | null = null;
+      let targetProposalId: string | null = null;
+
+      if (e && (e as CustomEvent).detail?.subView) {
+        targetSubView = (e as CustomEvent).detail.subView;
+        targetProposalId = (e as CustomEvent).detail.proposalId || null;
+      } else if (typeof window !== 'undefined') {
+        const path = window.location.pathname.toLowerCase();
+        const search = window.location.search.toLowerCase();
+        const hash = window.location.hash.toLowerCase();
+
+        if (
+          search.includes('proposalid=') ||
+          search.includes('proposal=') ||
+          search.includes('p=') ||
+          path.includes('/proposal') ||
+          path.includes('/proposals') ||
+          path.includes('/cases') ||
+          search.includes('view=proposal') ||
+          search.includes('view=cases') ||
+          hash.includes('proposal')
+        ) {
+          targetSubView = 'proposal';
+          const params = new URLSearchParams(window.location.search);
+          targetProposalId = params.get('proposalId') || params.get('proposal') || params.get('p') || null;
+        } else if (path.includes('/rules') || search.includes('view=rules') || hash === '#rules') {
+          targetSubView = 'rules';
+        } else if (
+          path.includes('/join') ||
+          path.includes('/submit') ||
+          search.includes('view=submit') ||
+          search.includes('view=join') ||
+          hash === '#submit' ||
+          hash === '#join'
+        ) {
+          targetSubView = 'submit';
+        } else if (path.includes('/participant') || search.includes('view=participant') || hash === '#participant') {
+          targetSubView = 'participant';
+        } else if (
+          path.includes('/expert') ||
+          path.includes('/judge') ||
+          search.includes('view=judge') ||
+          search.includes('view=expert') ||
+          hash === '#judge' ||
+          hash === '#expert'
+        ) {
+          targetSubView = 'judge';
+        } else if (path.includes('/ambassador') || search.includes('view=ambassador') || hash === '#ambassador') {
+          targetSubView = 'ambassador';
+        } else if (path.includes('/challenge') || path === '/') {
+          targetSubView = 'home';
+        }
+      }
+
+      if (targetSubView) {
+        const normalized = targetSubView === 'explore' ? 'proposal' : targetSubView;
+        setCurrentSubView(normalized);
+        if (targetProposalId !== null) {
+          setSelectedProposalIdForExplore(targetProposalId);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handleSubViewNavigate);
+    window.addEventListener('hashchange', handleSubViewNavigate);
+    window.addEventListener('ideax_challenge_navigate', handleSubViewNavigate);
+    return () => {
+      window.removeEventListener('popstate', handleSubViewNavigate);
+      window.removeEventListener('hashchange', handleSubViewNavigate);
+      window.removeEventListener('ideax_challenge_navigate', handleSubViewNavigate);
+    };
+  }, []);
 
   // 創星季首頁「當前提案」批次輪播 (一次顯示三個提案，一批一批向左輪播，純以募得創星幣為主)
   const defaultHomepageProposals = useMemo(() => [
@@ -3853,7 +3941,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-300/80 text-xs text-stone-800 flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-700 shrink-0" />
               <span>
-                <strong className="text-amber-950 font-black">注意點數期限：</strong>前三名獲獎團隊點數效期為 <b>180 日</b>，其餘所有獎勵點數效期皆為 <b>60 日</b>。請把握提問機會，盡快使用完畢 !
+                <strong className="text-amber-950 font-black">注意點數期限：</strong>前三名獲獎團隊點數效期為 <b>180 日</b>，其餘所有獎勵點數效期皆為 <b>60 日</b>。請把握提問機會，盡快使用完畢 <span className="inline-block animate-exclamation-action text-amber-600 font-black text-sm origin-bottom select-none" title="把握提問機會！">!</span>
               </span>
             </div>
           </section>

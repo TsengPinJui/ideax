@@ -102,7 +102,11 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
     },
     {
       q: '各項競賽獎勵點數的有效期限是多久？',
-      a: '注意點數期限：前三名獲獎團隊點數效期為 180 日，其餘所有獎勵點數效期皆為 60 日。請把握提問機會，盡快使用完畢 ! 點數可用於 IdeaX 創點子平台發布懸賞提問或享受付費功能。',
+      a: (
+        <span>
+          注意點數期限：前三名獲獎團隊點數效期為 <b>180 日</b>，其餘所有獎勵點數效期皆為 <b>60 日</b>。請把握提問機會，盡快使用完畢 <span className="inline-block animate-exclamation-action text-amber-600 font-black text-sm origin-bottom select-none" title="把握提問機會！">!</span> 點數可用於 IdeaX 創點子平台發布懸賞提問或享受付費功能。
+        </span>
+      ),
     },
     {
       q: '創星季的活動時程如何安排？',
@@ -555,7 +559,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   四、推廣大使推薦獎勵：每成功推薦 1 案審核通過，推薦人享 300 點（價值 $400）IdeaX 平台點數（效期 60 日，多推多得無上限）。
                 </p>
                 <p>
-                  五、注意點數期限：前三名獲獎團隊點數效期為 180 日，其餘所有獎勵點數效期皆為 60 日。請把握提問機會，盡快使用完畢 ! 點數皆可用於 IdeaX 創點子平台提問與付費服務。
+                  五、注意點數期限：前三名獲獎團隊點數效期為 180 日，其餘所有獎勵點數效期皆為 60 日。請把握提問機會，盡快使用完畢 <span className="inline-block animate-exclamation-action text-amber-600 font-black text-sm origin-bottom select-none" title="把握提問機會！">!</span> 點數皆可用於 IdeaX 創點子平台提問與付費服務。
                 </p>
               </div>
             </section>
@@ -657,7 +661,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   &emsp;（三）獎金將以電匯方式匯入獲獎團隊隊長指定之帳戶；團隊內部之獎金分配與相關權利義務由團隊成員自行協調處理，主辦單位不涉入團隊內部協議。
                 </p>
                 <p>
-                  八、注意點數期限：前三名獲獎團隊點數效期為 180 日，其餘所有獎勵點數效期皆為 60 日。請把握提問機會，盡快使用完畢 ! 點數皆可用於 IdeaX 創點子平台提問與付費服務，不得轉讓他人、拍賣或要求折換等值現金。
+                  八、注意點數期限：前三名獲獎團隊點數效期為 180 日，其餘所有獎勵點數效期皆為 60 日。請把握提問機會，盡快使用完畢 <span className="inline-block animate-exclamation-action text-amber-600 font-black text-sm origin-bottom select-none" title="把握提問機會！">!</span> 點數皆可用於 IdeaX 創點子平台提問與付費服務，不得轉讓他人、拍賣或要求折換等值現金。
                 </p>
                 <p>
                   九、成果展示、肖像權與影音素材宣傳授權：參賽者同意無償授權主辦單位於非營利、競賽推廣及成果展示之目的下，得公開使用、重製、改作、公開傳輸、公開播送參賽團隊所繳交之提案資料、簡報、影片、照片及隊員肖像，並於相關媒體報導與成果手冊中刊載。

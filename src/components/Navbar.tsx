@@ -594,6 +594,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setActiveTab('solvers');
                   } else {
                     setActiveTab('explore');
+                    setSelectedCategory?.('全部');
+                    setSelectedSubcategory?.('全部');
+                    setSpecialZone?.('all');
+                    setTimeout(() => {
+                      const el = document.getElementById('market-grid');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }, 60);
                   }
                 }
               }}
