@@ -52,6 +52,7 @@ interface AdminFinalEvaluationManagementModalProps {
   proposals: StarSeasonProposal[];
   onProposalsUpdated?: () => void;
   onOpenJudgeEvaluationAsUser?: (judge: { id: string; name: string }) => void;
+  mode?: 'evaluation' | 'rewards';
 }
 
 export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationManagementModalProps> = ({
@@ -60,8 +61,11 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
   proposals,
   onProposalsUpdated,
   onOpenJudgeEvaluationAsUser,
+  mode = 'evaluation',
 }) => {
-  const [activeTab, setActiveTab] = useState<'nomination' | 'judges' | 'scoring' | 'rewards'>('scoring');
+  const [activeTab, setActiveTab] = useState<'nomination' | 'judges' | 'scoring' | 'rewards'>(
+    mode === 'rewards' ? 'rewards' : 'scoring'
+  );
   const [nominatedIds, setNominatedIds] = useState<string[]>(() => getNominatedProposalIds());
   const [experts, setExperts] = useState<CompetitionExpertRecord[]>(() => getCompetitionExperts());
   const [isPublished, setIsPublished] = useState<boolean>(() => getIsFinalResultsPublished());
@@ -82,8 +86,13 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
   useEffect(() => {
     if (isOpen) {
       reloadData();
+      if (mode === 'rewards') {
+        setActiveTab('rewards');
+      } else {
+        setActiveTab('scoring');
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, mode]);
 
   const triggerToast = (msg: string) => {
     setToastMsg(msg);
@@ -233,18 +242,20 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
         {/* 頂部 Header */}
         <div className="p-4 sm:px-6 bg-gradient-to-r from-stone-950 via-stone-900 to-amber-950 text-white flex items-center justify-between shrink-0 border-b border-stone-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-400 text-stone-950 font-black flex items-center justify-center shadow-md">
-              <Trophy className="w-5 h-5" />
+            <div className={`w-10 h-10 rounded-2xl font-black flex items-center justify-center shadow-md ${
+              mode === 'rewards' ? 'bg-emerald-600 text-white' : 'bg-amber-400 text-stone-950'
+            }`}>
+              {mode === 'rewards' ? <DollarSign className="w-5 h-5" /> : <Trophy className="w-5 h-5" />}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
-                  創星季 • 決選評分與全體獎勵統計總控制台
+                  {mode === 'rewards' ? '創星季 • 獎勵統計與派發總控制台' : '創星季 • 決審評分總控制台'}
                 </h3>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-600 text-white">
                   👑 管理員專屬權限
                 </span>
-                {isPublished && (
+                {mode === 'evaluation' && isPublished && (
                   <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-stone-950 flex items-center gap-1 animate-pulse">
                     <CheckCircle2 className="w-3 h-3" />
                     <span>前台盛大公布中</span>
@@ -252,7 +263,9 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
                 )}
               </div>
               <p className="text-xs text-stone-300 mt-0.5">
-                管理員負責指派決選評審、勾選入選提案、結算算術平均名次、發布前台結果與匯出 Excel。
+                {mode === 'rewards'
+                  ? '跨身分自動加總、一鍵自動化發放全體競賽獎勵、流水號存檔與 Excel 匯出。'
+                  : '管理員負責指派決選評審、勾選入選提案、結算算術平均名次與發布前台結果。'}
               </p>
             </div>
           </div>
@@ -277,93 +290,93 @@ export const AdminFinalEvaluationManagementModal: React.FC<AdminFinalEvaluationM
         </div>
 
         {/* 核心治理規則提醒卡片 */}
-        <div className="bg-amber-50/90 border-b border-amber-200 px-4 sm:px-6 py-2.5 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
-          <div className="flex items-center gap-2">
-            <Info className="w-4 h-4 text-amber-700 shrink-0" />
-            <span className="leading-relaxed">
-              <strong>身分定義：</strong>管理員帳號身分為<b>「管理員」</b>（非評審專家）；評審身分為<b>「專家」</b>，由管理員在後台指派。不可兼任參賽者與專家。
-            </span>
-          </div>
+        {mode === 'evaluation' ? (
+          <div className="bg-amber-50/90 border-b border-amber-200 px-4 sm:px-6 py-2.5 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-amber-700 shrink-0" />
+              <span className="leading-relaxed">
+                <strong>身分定義：</strong>管理員帳號身分為<b>「管理員」</b>（非評審專家）；評審身分為<b>「專家」</b>，由管理員在後台指派。不可兼任參賽者與專家。
+              </span>
+            </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleConfirmAndPublishResults}
+                className={`px-4 py-1.5 rounded-xl font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                  isPublished
+                    ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white ring-2 ring-emerald-300'
+                }`}
+              >
+                {isPublished ? (
+                  <>
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>取消前台公布</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>確認結果並送出 (前台公布)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-emerald-50/90 border-b border-emerald-200 px-4 sm:px-6 py-2.5 text-xs text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span className="leading-relaxed">
+                <strong>獎勵派發規則：</strong>全自動整合獲獎隊伍（冠軍/亞軍/季軍）、痛點提供者、評審車馬費與推廣大使，一人多身分自動加總並備註原因。
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* 導覽分頁按鈕 (僅在決審評分模式顯示相關分頁；獎勵統計為獨立頁面) */}
+        {mode === 'evaluation' && (
+          <div className="bg-stone-100/90 border-b border-stone-200 px-4 sm:px-6 flex items-center gap-1 shrink-0 overflow-x-auto">
             <button
               type="button"
-              onClick={handleConfirmAndPublishResults}
-              className={`px-4 py-1.5 rounded-xl font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                isPublished
-                  ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white ring-2 ring-emerald-300'
+              onClick={() => setActiveTab('scoring')}
+              className={`px-4 py-3 text-xs font-black border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                activeTab === 'scoring'
+                  ? 'border-amber-500 text-amber-900 bg-white'
+                  : 'border-transparent text-stone-600 hover:text-stone-900'
               }`}
             >
-              {isPublished ? (
-                <>
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>取消前台公布</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-3.5 h-3.5" />
-                  <span>確認結果並送出 (前台公布)</span>
-                </>
-              )}
+              <Trophy className="w-4 h-4 text-amber-600" />
+              <span>1. 決選評分矩陣與算術平均排名 ({finalRankings.length} 案)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('nomination')}
+              className={`px-4 py-3 text-xs font-black border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                activeTab === 'nomination'
+                  ? 'border-amber-500 text-amber-900 bg-white'
+                  : 'border-transparent text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>2. 入選提案勾選 (自動匯入評分區) ({nominatedIds.length} 入選)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('judges')}
+              className={`px-4 py-3 text-xs font-black border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                activeTab === 'judges'
+                  ? 'border-amber-500 text-amber-900 bg-white'
+                  : 'border-transparent text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-purple-600" />
+              <span>3. 專家指派為評審 ({appointedJudges.length} 位評審)</span>
             </button>
           </div>
-        </div>
-
-        {/* 導覽分頁按鈕 */}
-        <div className="bg-stone-100/90 border-b border-stone-200 px-4 sm:px-6 flex items-center gap-1 shrink-0 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('scoring')}
-            className={`px-4 py-3 text-xs font-black border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${
-              activeTab === 'scoring'
-                ? 'border-amber-500 text-amber-900 bg-white'
-                : 'border-transparent text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Trophy className="w-4 h-4 text-amber-600" />
-            <span>1. 決選評分矩陣與算術平均排名 ({finalRankings.length} 案)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('nomination')}
-            className={`px-4 py-3 text-xs font-black border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${
-              activeTab === 'nomination'
-                ? 'border-amber-500 text-amber-900 bg-white'
-                : 'border-transparent text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>2. 入選提案勾選 (自動匯入評分區) ({nominatedIds.length} 入選)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('judges')}
-            className={`px-4 py-3 text-xs font-black border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${
-              activeTab === 'judges'
-                ? 'border-amber-500 text-amber-900 bg-white'
-                : 'border-transparent text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4 text-purple-600" />
-            <span>3. 專家指派為評審 ({appointedJudges.length} 位評審)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('rewards')}
-            className={`px-4 py-3 text-xs font-black border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${
-              activeTab === 'rewards'
-                ? 'border-amber-500 text-amber-900 bg-white'
-                : 'border-transparent text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <DollarSign className="w-4 h-4 text-emerald-600" />
-            <span>4. 【全體獎勵統計】系統 (跨身分自動加總)</span>
-          </button>
-        </div>
+        )}
 
         {/* 內容區主體 */}
         <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-6 bg-stone-50/40">

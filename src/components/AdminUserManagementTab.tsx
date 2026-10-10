@@ -31,7 +31,12 @@ import {
   Crown,
   Shield,
   Check,
+  User as UserIcon,
+  Eye,
+  ExternalLink,
 } from 'lucide-react';
+import { AdminUserProfileModal } from './AdminUserProfileModal';
+import { AdminUserImpersonationModal } from './AdminUserImpersonationModal';
 
 interface AdminUserManagementTabProps {
   onNavigateToCertifications?: (userId?: string) => void;
@@ -58,6 +63,10 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+
+  // 用戶個人資訊頁與用戶視角檢視彈窗狀態
+  const [viewingProfileUser, setViewingProfileUser] = useState<User | null>(null);
+  const [impersonatingUser, setImpersonatingUser] = useState<User | null>(null);
 
   // 一鍵生成測試帳號彈窗狀態
   const [isTestUserModalOpen, setIsTestUserModalOpen] = useState(false);
@@ -395,16 +404,30 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  {/* 用戶主視覺資訊 */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                      alt={u.name}
-                      className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200 shrink-0"
-                    />
+                  {/* 用戶主視覺資訊（點擊可直接連結開啟個人資訊頁） */}
+                  <div
+                    onClick={() => setViewingProfileUser(u)}
+                    className="flex items-center gap-3 min-w-0 cursor-pointer group/user flex-1"
+                    title={`點擊查看「${u.name}」的完整個人資訊頁`}
+                  >
+                    <div className="relative shrink-0">
+                      <img
+                        src={u.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                        alt={u.name}
+                        className="w-12 h-12 rounded-2xl object-cover ring-2 ring-stone-200 group-hover/user:ring-purple-400 group-hover/user:scale-105 transition-all shrink-0"
+                      />
+                      {u.isInitialAdmin && (
+                        <span className="absolute -top-1 -right-1 bg-amber-400 text-stone-950 p-0.5 rounded-full shadow-xs" title="初始創始管理員">
+                          <Crown className="w-2.5 h-2.5 fill-current" />
+                        </span>
+                      )}
+                    </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-black text-sm text-stone-900 truncate">{u.name}</h4>
+                        <h4 className="font-black text-sm text-stone-900 group-hover/user:text-purple-700 transition-colors truncate flex items-center gap-1">
+                          <span>{u.name}</span>
+                          <ExternalLink className="w-3 h-3 text-purple-500 opacity-0 group-hover/user:opacity-100 transition-opacity shrink-0" />
+                        </h4>
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                             u.role === 'admin'
@@ -467,6 +490,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
                       <p className="text-xs text-stone-500 truncate mt-0.5">
                         {u.title || '一般領域用戶'} · 帳號代碼：<span className="font-mono">{u.id}</span>
+                        {u.memberId && <span className="ml-1.5 font-mono text-purple-700 font-bold">({u.memberId})</span>}
                       </p>
 
                       <div className="flex items-center gap-3 text-[11px] text-stone-400 mt-1">
@@ -478,6 +502,28 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
                   {/* 動作按鈕 */}
                   <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+                    {/* 連結至個人頁：包含所有他的資訊 */}
+                    <button
+                      type="button"
+                      onClick={() => setViewingProfileUser(u)}
+                      className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-purple-300 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      title={`開啟「${u.name}」的完整個人資訊頁（包含所有個人基本資料、提問、解答、財務與認證檔案）`}
+                    >
+                      <UserIcon className="w-3.5 h-3.5 text-purple-700" />
+                      <span>個人資訊頁 ↗</span>
+                    </button>
+
+                    {/* 直接開一個檢視頁面進入該用戶的視角，瀏覽她的帳戶但是不能操作 */}
+                    <button
+                      type="button"
+                      onClick={() => setImpersonatingUser(u)}
+                      className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-950 border border-amber-300 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      title={`直接開一個檢視頁面進入「${u.name}」的視角，瀏覽她的帳戶但是不能操作`}
+                    >
+                      <Eye className="w-3.5 h-3.5 text-amber-600" />
+                      <span>進入用戶視角 (唯讀) ↗</span>
+                    </button>
+
                     {/* 初始管理員指派 A/B 站管理員按鈕：僅初始管理員可看見並操作，且無法降級自己 */}
                     {isInitialAdmin(currentUser) && !isInitialAdmin(u) && (
                       <button
@@ -1089,6 +1135,31 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 用戶完整個人資訊頁彈窗（包含所有個人基本資料、提問、解答、財務與認證檔案） */}
+      {viewingProfileUser && (
+        <AdminUserProfileModal
+          user={viewingProfileUser}
+          onClose={() => setViewingProfileUser(null)}
+          onImpersonate={(targetUser) => {
+            setViewingProfileUser(null);
+            setImpersonatingUser(targetUser);
+          }}
+          onNavigateToCertifications={onNavigateToCertifications}
+        />
+      )}
+
+      {/* 進入該用戶視角（唯讀檢視模式）彈窗（以該用戶視角瀏覽帳戶，但無法操作） */}
+      {impersonatingUser && (
+        <AdminUserImpersonationModal
+          user={impersonatingUser}
+          onClose={() => setImpersonatingUser(null)}
+          onOpenProfile={(targetUser) => {
+            setImpersonatingUser(null);
+            setViewingProfileUser(targetUser);
+          }}
+        />
       )}
     </div>
   );

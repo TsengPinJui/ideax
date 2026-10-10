@@ -120,6 +120,8 @@ import { AdminCompetitionRulesArchiveFolder } from './AdminCompetitionRulesArchi
 import { MyProposalsAndDraftsModal } from './MyProposalsAndDraftsModal';
 import { JudgeEvaluationModal } from './JudgeEvaluationModal';
 import { AdminFinalEvaluationManagementModal } from './AdminFinalEvaluationManagementModal';
+import { AdminUserManagementModal } from './AdminUserManagementModal';
+import { AdminProposalReviewModal } from './AdminProposalReviewModal';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import { ShatterPageTurnTransition } from './ShatterPageTurnTransition';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
@@ -667,8 +669,11 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [isJudgeEvaluationModalOpen, setIsJudgeEvaluationModalOpen] = useState<boolean>(false);
   const [evaluatingJudgeUser, setEvaluatingJudgeUser] = useState<{ id: string; name: string } | null>(null);
 
-  // 管理員專屬：決選評分與全體獎勵統計總控制台
+  // 管理員專屬：決審評分與獎勵統計分頁控制台
   const [isAdminFinalEvaluationHubOpen, setIsAdminFinalEvaluationHubOpen] = useState<boolean>(false);
+  const [isAdminRewardsHubOpen, setIsAdminRewardsHubOpen] = useState<boolean>(false);
+  const [isAdminUserManagementOpen, setIsAdminUserManagementOpen] = useState<boolean>(false);
+  const [isAdminProposalReviewOpen, setIsAdminProposalReviewOpen] = useState<boolean>(false);
 
   // 特效：點擊「痛點」或「創新起點」字體碎片掉落並直接跳轉至對應專區
   const [shatterTransition, setShatterTransition] = useState<{
@@ -1955,7 +1960,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       return;
     }
     if (stageInfo.isProposalClosed) {
-      showToast('⚠️ 創星季提案已於 12/04 23:59 截止收件！目前已進入決選評審階段。');
+      showToast('⚠️ 創星季提案已於 12/04 16:30 截止收件！目前已進入決選評審階段。');
       return;
     }
 
@@ -2513,7 +2518,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   {/* 核心功能選單列表 (整理區分管理員專區與一般用戶功能列，對調一般用戶收藏與成為專家位置) */}
                   <div className="space-y-3 text-xs font-bold text-stone-700">
                     {/* ===== 1. 創星季管理員專屬功能列 (僅平台管理員可見) ===== */}
-                    {currentUser.role === 'admin' && (
+                    {/* ===== 1. 創星季管理員專屬功能列 (僅平台管理員可見) ===== */}
+                    {(currentUser.role === 'admin' || currentUser.accountType === 'admin') && (
                       <div className="space-y-1.5 p-2 rounded-2xl bg-gradient-to-b from-rose-50/80 to-amber-50/50 border border-rose-200/80">
                         <div className="px-1.5 py-0.5 text-[11px] font-black text-rose-900 flex items-center justify-between">
                           <span className="flex items-center gap-1">
@@ -2525,7 +2531,59 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                           </span>
                         </div>
 
-                        {/* 決審評分＆獎勵統計 */}
+                        {/* 1. 帳號身份賦權 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            setIsAdminUserManagementOpen(true);
+                          }}
+                          className="w-full px-2.5 py-2 rounded-xl hover:bg-purple-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-purple-200 shadow-2xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 font-black shadow-2xs">
+                              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                            </div>
+                            <div>
+                              <div className="font-black text-stone-900 flex items-center gap-1">
+                                <span>帳號身份賦權</span>
+                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-purple-700 text-white">
+                                  權限指派
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-500 font-normal">全體會員身分賦權、封鎖註銷與管理員授權</div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
+
+                        {/* 2. 提案審核 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            setIsAdminProposalReviewOpen(true);
+                          }}
+                          className="w-full px-2.5 py-2 rounded-xl hover:bg-emerald-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-emerald-200 shadow-2xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 font-black shadow-2xs">
+                              <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <div className="font-black text-stone-900 flex items-center gap-1">
+                                <span>提案審核</span>
+                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-600 text-white">
+                                  即時審查
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-500 font-normal">徵點子痛點與解方提案審核、刊登退回與發獎</div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
+
+                        {/* 3. 決審評分 */}
                         <button
                           type="button"
                           onClick={() => {
@@ -2540,46 +2598,51 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             </div>
                             <div>
                               <div className="font-black text-stone-900 flex items-center gap-1">
-                                <span>決審評分＆獎勵統計</span>
-                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-rose-600 text-white">
-                                  後台總覽
+                                <span>決審評分</span>
+                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-600 text-white">
+                                  評分排名
                                 </span>
                               </div>
-                              <div className="text-[10px] text-stone-500 font-normal">入選名單、評分平均、前台發布與Excel匯出</div>
+                              <div className="text-[10px] text-stone-500 font-normal">入選提案名單、專家評審指派與算術平均打分</div>
                             </div>
                           </div>
                           <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
                         </button>
 
-                        {/* 管理審核與頒獎 */}
+                        {/* 4. 獎勵統計與派發 */}
                         <button
                           type="button"
                           onClick={() => {
                             setIsProfileMenuOpen(false);
-                            setIsAdminPanelOpen(true);
+                            setIsAdminRewardsHubOpen(true);
                           }}
-                          className="w-full px-2.5 py-2 rounded-xl hover:bg-purple-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-purple-200 shadow-2xs"
+                          className="w-full px-2.5 py-2 rounded-xl hover:bg-emerald-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-emerald-300 shadow-2xs"
                         >
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                            <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-2xs font-black">
+                              <Coins className="w-3.5 h-3.5" />
                             </div>
                             <div>
-                              <div className="font-black text-stone-900">管理審核與頒獎</div>
-                              <div className="text-[10px] text-stone-500 font-normal">提案審查核定、發送審核結果與頒獎確認</div>
+                              <div className="font-black text-stone-900 flex items-center gap-1">
+                                <span>獎勵統計與派發</span>
+                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-600 text-white">
+                                  一鍵派發
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-500 font-normal">跨身分加總總表、一鍵自動發放獎勵與Excel匯出</div>
                             </div>
                           </div>
                           <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
                         </button>
 
-                        {/* 規章條款存檔資料夾 */}
+                        {/* 5. 官方競賽檔案 */}
                         <button
                           type="button"
                           onClick={() => {
                             setIsProfileMenuOpen(false);
                             setIsAdminRulesFolderOpen(true);
                           }}
-                          className="w-full px-2.5 py-2 rounded-xl hover:bg-amber-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-stone-200 shadow-2xs"
+                          className="w-full px-2.5 py-2 rounded-xl hover:bg-stone-200 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-stone-200 shadow-2xs"
                         >
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-lg bg-stone-900 text-amber-300 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
@@ -2587,42 +2650,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             </div>
                             <div>
                               <div className="font-black text-stone-900 flex items-center gap-1">
-                                <span>規章條款存檔資料夾</span>
+                                <span>官方競賽檔案</span>
                                 <span className="text-[8px] px-1 py-0.2 rounded-full bg-stone-950 text-amber-300 font-mono font-black">
-                                  機密
+                                  機密歸檔
                                 </span>
                               </div>
-                              <div className="text-[10px] text-stone-500 font-normal">官方全套章程與管理員版本歸檔條款</div>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                        </button>
-
-                        {/* 決選評分通道 (管理員通道) */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsProfileMenuOpen(false);
-                            setEvaluatingJudgeUser({
-                              id: currentUser?.id || 'admin-user',
-                              name: currentUser?.name || '平台總管理員',
-                            });
-                            setIsJudgeEvaluationModalOpen(true);
-                          }}
-                          className="w-full px-2.5 py-2 rounded-xl hover:bg-purple-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-purple-200 shadow-2xs"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-purple-200 text-purple-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                              <Award className="w-3.5 h-3.5 text-purple-700" />
-                            </div>
-                            <div>
-                              <div className="font-black text-stone-900 flex items-center gap-1">
-                                <span>決選評分通道</span>
-                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-purple-700 text-white">
-                                  評審/管理員
-                                </span>
-                              </div>
-                              <div className="text-[10px] text-stone-500 font-normal">檢視決審入選提案詳細評分表與即時評分</div>
+                              <div className="text-[10px] text-stone-500 font-normal">全套官方章程規章與管理員版本歸檔條款</div>
                             </div>
                           </div>
                           <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
@@ -2631,7 +2664,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     )}
 
                     {/* ===== 2. 評審專屬評分區 (非管理員之指派評審) ===== */}
-                    {currentUser.role !== 'admin' && isCurrentUserAppointedJudge && (
+                    {currentUser.role !== 'admin' && currentUser.accountType !== 'admin' && isCurrentUserAppointedJudge && (
                       <div className="space-y-1.5 p-2 rounded-2xl bg-purple-50/80 border border-purple-200">
                         <div className="px-1.5 py-0.5 text-[11px] font-black text-purple-900 flex items-center justify-between">
                           <span className="flex items-center gap-1">
@@ -2673,69 +2706,62 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       </div>
                     )}
 
-                    {/* ===== 3. 創星季競賽與個人功能列 (一般用戶及全體用戶) ===== */}
-                    <div className="space-y-1">
-                      {currentUser.role === 'admin' && (
-                        <div className="px-2 pt-1 pb-0.5 text-[11px] font-black text-stone-500 flex items-center justify-between">
-                          <span>✨ 創星季一般功能</span>
-                          <span className="text-[9px] text-stone-400 font-normal">用戶與競賽視角</span>
-                        </div>
-                      )}
-
-                      {/* 玩法導覽 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsProfileMenuOpen(false);
-                          setGuideRole('audience');
-                          setIsGuideModalOpen(true);
-                        }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-amber-50/70 border border-amber-200/80"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-amber-300 text-stone-950 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 font-black shadow-2xs text-xs">
-                            🔰
-                          </div>
-                          <div>
-                            <div className="font-black text-stone-900 flex items-center gap-1.5">
-                              <span>創星季網站導覽</span>
-                              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-400 text-stone-950 font-mono">
-                                30秒上手
-                              </span>
+                    {/* ===== 3. 創星季競賽與個人功能列 (僅一般用戶及評審可見，管理員已移除) ===== */}
+                    {currentUser.role !== 'admin' && currentUser.accountType !== 'admin' && (
+                      <div className="space-y-1">
+                        {/* 玩法導覽 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            setGuideRole('audience');
+                            setIsGuideModalOpen(true);
+                          }}
+                          className="w-full px-3 py-2 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-amber-50/70 border border-amber-200/80"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-amber-300 text-stone-950 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 font-black shadow-2xs text-xs">
+                              🔰
                             </div>
-                            <div className="text-[10px] text-stone-500 font-normal">觀眾、提案者、痛點提問 3 步教學指南</div>
+                            <div>
+                              <div className="font-black text-stone-900 flex items-center gap-1.5">
+                                <span>創星季網站導覽</span>
+                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-amber-400 text-stone-950 font-mono">
+                                  30秒上手
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-500 font-normal">觀眾、提案者、痛點提問 3 步教學指南</div>
+                            </div>
                           </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                      </button>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
 
-                      {/* 提案參賽 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsProfileMenuOpen(false);
-                          if (!isLoggedIn) {
-                            onOpenAuth();
-                            return;
-                          }
-                          navigateToSubView('participant');
-                        }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                            <GraduationCap className="w-4 h-4 text-amber-700" />
+                        {/* 提案參賽 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            if (!isLoggedIn) {
+                              onOpenAuth();
+                              return;
+                            }
+                            navigateToSubView('participant');
+                          }}
+                          className="w-full px-3 py-2 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                              <GraduationCap className="w-4 h-4 text-amber-700" />
+                            </div>
+                            <div>
+                              <div className="font-black text-stone-900">提案參賽</div>
+                              <div className="text-[10px] text-stone-500 font-normal">填寫團隊資料與創星季企劃滿版報名</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-black text-stone-900">提案參賽</div>
-                            <div className="text-[10px] text-stone-500 font-normal">填寫團隊資料與創星季企劃滿版報名</div>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                      </button>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
 
-                      {/* 🌟 成為專家 */}
-                      {currentUser.role !== 'admin' && (
+                        {/* 🌟 成為專家 */}
                         <button
                           type="button"
                           onClick={() => {
@@ -2766,51 +2792,51 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                           </div>
                           <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
                         </button>
-                      )}
 
-                      {/* 推廣大使推薦碼 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsProfileMenuOpen(false);
-                          navigateToSubView('ambassador');
-                        }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                            <Megaphone className="w-4 h-4 text-amber-700" />
+                        {/* 推廣大使推薦碼 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            navigateToSubView('ambassador');
+                          }}
+                          className="w-full px-3 py-2 rounded-xl hover:bg-amber-100/70 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                              <Megaphone className="w-4 h-4 text-amber-700" />
+                            </div>
+                            <div>
+                              <div className="font-black text-stone-900">推廣大使推薦碼</div>
+                              <div className="text-[10px] text-stone-500 font-normal">專屬推薦碼、輸入綁定與推薦名單滿版專區</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-black text-stone-900">推廣大使推薦碼</div>
-                            <div className="text-[10px] text-stone-500 font-normal">專屬推薦碼、輸入綁定與推薦名單滿版專區</div>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                      </button>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
 
-                      {/* 競賽辦法與規章 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsProfileMenuOpen(false);
-                          navigateToSubView('rules');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="w-full px-3 py-2 rounded-xl hover:bg-blue-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                            <BookOpen className="w-4 h-4 text-blue-600" />
+                        {/* 競賽辦法與規章 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            navigateToSubView('rules');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="w-full px-3 py-2 rounded-xl hover:bg-blue-50 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-900 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                              <BookOpen className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-black text-stone-900">競賽辦法與規章</div>
+                              <div className="text-[10px] text-stone-500 font-normal">官方賽制規則、評選權重與獎金辦法</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-black text-stone-900">競賽辦法與規章</div>
-                            <div className="text-[10px] text-stone-500 font-normal">官方賽制規則、評選權重與獎金辦法</div>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                      </button>
-                    </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* 底部輔助按鍵 */}
@@ -6494,10 +6520,28 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         />
       )}
 
-      {/* 管理員專用：決選評分與全體獎勵統計總控制台 Modal */}
+      {/* 1. 管理員專用：帳號身份賦權 Modal */}
+      {isAdminUserManagementOpen && (currentUser?.role === 'admin' || currentUser?.accountType === 'admin') && (
+        <AdminUserManagementModal
+          isOpen={isAdminUserManagementOpen}
+          onClose={() => setIsAdminUserManagementOpen(false)}
+        />
+      )}
+
+      {/* 2. 管理員專用：提案審核 Modal */}
+      {isAdminProposalReviewOpen && (currentUser?.role === 'admin' || currentUser?.accountType === 'admin') && (
+        <AdminProposalReviewModal
+          isOpen={isAdminProposalReviewOpen}
+          onClose={() => setIsAdminProposalReviewOpen(false)}
+          onNotify={showToast}
+        />
+      )}
+
+      {/* 3. 管理員專用：決選評分總控制台 Modal */}
       {isAdminFinalEvaluationHubOpen && (currentUser?.role === 'admin' || currentUser?.accountType === 'admin') && (
         <AdminFinalEvaluationManagementModal
           isOpen={isAdminFinalEvaluationHubOpen}
+          mode="evaluation"
           onClose={() => {
             setIsAdminFinalEvaluationHubOpen(false);
             setIsFinalResultsPublishedState(getIsFinalResultsPublished());
@@ -6512,6 +6556,26 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           }}
         />
       )}
+
+      {/* 4. 管理員專用：獎勵統計與派發總控制台 Modal */}
+      {isAdminRewardsHubOpen && (currentUser?.role === 'admin' || currentUser?.accountType === 'admin') && (
+        <AdminFinalEvaluationManagementModal
+          isOpen={isAdminRewardsHubOpen}
+          mode="rewards"
+          onClose={() => {
+            setIsAdminRewardsHubOpen(false);
+          }}
+          proposals={proposals}
+          onProposalsUpdated={() => {
+            setIsFinalResultsPublishedState(getIsFinalResultsPublished());
+          }}
+          onOpenJudgeEvaluationAsUser={(judge) => {
+            setEvaluatingJudgeUser(judge);
+            setIsJudgeEvaluationModalOpen(true);
+          }}
+        />
+      )}
+
       {/* 創星季競賽規章與條款說明彈窗 */}
       {competitionTermsDoc && (
         <CompetitionTermsModal

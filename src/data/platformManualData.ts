@@ -41,6 +41,21 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#025',
+    version: 'v1.80',
+    releaseDate: '2026.10.10',
+    releaseTime: '17:00',
+    author: 'IdeaX 創點子架構與全站體驗核心',
+    summary: '寫入專案強制更新規範（每次更新同步維護平台清單、頁尾版本、版本號與發布日期）、全面落實「IdeaX 創點子團隊」稱謂（去公司/機構化）、兩個網站導覽浮動鍵左側邊垂直拖曳換位機制、賽程時程統一校正與 PWA 快取升級 (v7)。',
+    changes: [
+      '專案強制更新規範（核心規則）：每次專案進行任何功能、條款、樣式或修復更新時，務必同步更新平台清單 (platformManualData.ts)、頁尾版本資訊 (Footer.tsx、CompetitionFooter.tsx)、版本號 (APP_VERSION in versionData.ts & package.json) 與日期 (APP_RELEASE_DATE & APP_RELEASE_TIME)，嚴格確保全站版本資訊與清單日誌完全一致。',
+      '全面落實「IdeaX 創點子團隊」稱謂：服務條款 (termsData.ts)、競賽章程 (competitionTermsData.ts、RulesFullPage.tsx)、勞務委任契約、交易憑證收據 (TransactionCertificateModal.tsx)、綜合對帳單 (ConsolidatedStatementModal.tsx) 及各項扣繳憑單等所有具法律效力之處，一律使用「IdeaX 創點子團隊」，徹底去除公司、機構、法人等組織稱謂。',
+      '兩個網站導覽浮動鍵左側垂直拖曳定位：IdeaX 主站導覽鍵（羅盤 🧭）與創星季競賽站導覽鍵（問號 ❓）橫向均鎖定於螢幕左側（left-3.5 sm:left-6），絕不脫離左側邊，支援滑鼠與手機觸控在左側邊上下拖曳換位，具備防誤觸機制與 localStorage 座標即時記憶。',
+      '競賽時程統一校正與 PWA 快取升級：賽程時間精確校正至 12/04 16:30 截止，PWA Service Worker 快取推進至 ideax-pwa-v7，確保部署環境與瀏覽器即時取得最新時程與資源。',
+      '版本號依指令正式推進至 #025 / v1.80。',
+    ],
+  },
+  {
     seqNumber: '#024',
     version: 'v1.7.7',
     releaseDate: '2026.10.08',
@@ -358,7 +373,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
     color: 'amber',
     moduleCount: 7,
     createdAt: '2026.10.01',
-    updatedAt: '2026.10.07 10:42',
+    updatedAt: '2026.10.10 17:00',
     modules: [
       {
         id: 'm-00-1',
@@ -366,17 +381,17 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         summary: '管理當前系統運作版本號、增量序號與最後更新時間戳記。',
         content: `### 當前運行版本與序號規格
 
-* **版本號碼**：v1.6.0
-* **遞增序號**：#011（從 #001 依序遞增）
-* **最後更新日期**：2026.10.07
-* **最後更新時間**：10:06（依發布時戳靜態留存，不隨時鐘跳動）
+* **版本號碼**：v1.80
+* **遞增序號**：#025（從 #001 依序遞增）
+* **最後更新日期**：2026.10.10
+* **最後更新時間**：17:00（依發布時戳靜態留存，不隨時鐘跳動）
 * **發布狀態**：Production（正式運作中）
 * **運作模式**：單日 0.2.0 增量限制、四選一平台運營模式與完整歷史版本隨時調閱與下載。`,
       },
       {
         id: 'm-00-2',
-        title: '單日版本增量上限 (Daily Cap: 0.2.0)',
-        summary: '嚴格規範單日版本號累計增加上限為 +0.2.0，確保版本號有序推進。',
+        title: '單日版本增量上限 (Daily Cap: 0.2.0) 與每次更新同步規範',
+        summary: '嚴格規範單日版本號累計增加上限為 +0.2.0，並要求每次更新必須同步全站版本號、頁尾與清單。',
         content: `### 版本號推進與治理規則守則
 
 1. **單日版本增量上限 (Daily Cap: 0.2.0)**：
@@ -393,7 +408,14 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 4. **序號記錄 (#001 累加)**：
    - 每次重大功能或檔案變動，序號均自動 +1，終身保留歷史可追溯性。
-   - 每個版本均提供單獨下載或完整歷程打包下載。`,
+   - 每個版本均提供單獨下載或完整歷程打包下載。
+
+5. **每次更新同步規範 (Mandatory Sync Rule - 專案強制守則)**：
+   - **每次更新務必同步更新平台清單、頁尾版本資訊、版本號與日期**：
+     - ① **平台清單**：\`src/data/platformManualData.ts\` 之 \`INITIAL_VERSION_LOGS\` 與 \`m-00-4\` 里程碑歷程表。
+     - ② **全站頁尾**：\`src/components/Footer.tsx\` 與 \`src/components/challenge/CompetitionFooter.tsx\`。
+     - ③ **版本號與時間**：\`src/data/versionData.ts\` (\`APP_VERSION\`, \`APP_RELEASE_DATE\`, \`APP_RELEASE_TIME\`, \`APP_SEQUENCE_NUMBER\`) 及 \`package.json\`。
+   - 嚴格確保全站發布紀錄、首頁及競賽頁尾、文檔手冊與代碼版本號百分之百同步一致，杜絕任何版本資訊殘留或脫節。`,
       },
       {
         id: 'm-00-3',
@@ -402,7 +424,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         content: `### 內部資料夾標準命名規範
 
 * **命名格式**：\`IdeaX平台內部清單_(日期)_(版本)\`
-* **實例範例**：\`IdeaX平台內部清單_2026.10.07_v1.6.0\`
+* **實例範例**：\`IdeaX平台內部清單_2026.10.10_v1.80\`
 * **內含檔案**：
   1. 00_版本資訊 (.md / .docx / .pdf)
   2. 00_歷史版本歷程與各版變更紀錄 (.md)
@@ -421,6 +443,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#025** | **v1.80** | 2026.10.10 | 17:00 | IdeaX 創點子核心 | 寫入專案強制更新規範（每次更新同步維護平台清單/頁尾版本/版號與日期）、全站條款與法律文件全面落實「IdeaX 創點子團隊」去公司化、兩站導覽浮動鍵左側邊垂直拖移換位、賽程校正與 PWA 快取推進 (v7) |
 | **#024** | **v1.7.7** | 2026.10.08 | 07:30 | IdeaX 品牌體驗核心 | 提案卡片團隊名稱固定展示與機構名稱自選顯示、修復首頁入口與恢復 Google 條列式捷徑、專區更名為「創點子/痛點集」與「L0問題討論區」 |
 | **#023** | **v1.7.6** | 2026.10.08 | 07:00 | IdeaX 管理後台核心 | 創點子管理員儀表板公開顯示設定（首頁指標看板）與 Google 搜尋子網址導覽預設收合優化 |
 | **#022** | **v1.7.5** | 2026.10.08 | 06:30 | IdeaX 自動化發放核心 | 痛點過審/推薦碼/痛點採用三軌全自動發放、羅盤教學浮動鍵大幅上移與滑動穿透修復、管理儀表板增設 Sitelinks 可收合導覽 |

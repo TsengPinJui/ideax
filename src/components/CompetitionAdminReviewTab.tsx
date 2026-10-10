@@ -58,6 +58,7 @@ import {
   getCompetitionAggregatedMetrics,
   resetCompetitionDataToZero,
 } from '../services/competitionAdminSync';
+import { notifyExpertReviewEmail } from '../services/expertNotificationService';
 import {
   StarSeasonProposal,
   STAR_SEASON_TRACKS,
@@ -69,9 +70,15 @@ import { getCompetitionStageInfo } from '../utils/competitionSchedule';
 
 interface CompetitionAdminReviewTabProps {
   onNotify?: (title: string, message: string) => void;
+  initialSubTab?: 'metrics' | 'registrations' | 'experts' | 'proposals' | 'awards' | 'rules_archive';
+  onClose?: () => void;
 }
 
-export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps> = ({ onNotify }) => {
+export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps> = ({
+  onNotify,
+  initialSubTab,
+  onClose,
+}) => {
   const {
     availableUsers,
     setAvailableUsers,
@@ -81,7 +88,9 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     addNotification,
   } = useApp();
 
-  const [subTab, setSubTab] = useState<'metrics' | 'registrations' | 'experts' | 'proposals' | 'awards' | 'rules_archive'>('metrics');
+  const [subTab, setSubTab] = useState<'metrics' | 'registrations' | 'experts' | 'proposals' | 'awards' | 'rules_archive'>(
+    initialSubTab || 'metrics'
+  );
   const [registrations, setRegistrations] = useState<CompetitionRegistrationRecord[]>([]);
   const [proposals, setProposals] = useState<StarSeasonProposal[]>([]);
   const [experts, setExperts] = useState<CompetitionExpertRecord[]>([]);
@@ -168,19 +177,40 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     }
   };
 
-  // 2. 審核專家申請
-  const handleReviewExpert = (id: string, status: 'approved' | 'rejected', isJudgeSelected = false, defaultNote?: string) => {
+  // 2. 審核專家申請 (自動寄發審核通過或失敗通知信至其填寫的電子郵件信箱)
+  const handleReviewExpert = async (id: string, status: 'approved' | 'rejected', isJudgeSelected = false, defaultNote?: string) => {
+    const targetExpert = experts.find((e) => e.id === id);
+    const finalNote = defaultNote || (status === 'approved' ? '專家身分審核通過，已配發 3,000,000 創星幣！' : '專家證明資料未通過');
     const success = updateCompetitionExpertStatus(
       id,
       status,
       isJudgeSelected,
-      defaultNote || (status === 'approved' ? '專家身分審核通過，已配發 3,000,000 創星幣！' : '專家證明資料未通過')
+      finalNote
     );
     if (success) {
       loadAll();
-      triggerToast(status === 'approved' ? '✅ 已核准專家資格，已自動配發 3,000,000 創星幣！' : '❌ 已退回該專家申請。');
+      const email = targetExpert?.expertEmail;
+      if (email) {
+        notifyExpertReviewEmail({
+          expertEmail: email,
+          expertName: targetExpert?.expertName || '專家',
+          status,
+          reviewNote: finalNote,
+          isJudgeSelected,
+        });
+      }
+      triggerToast(
+        status === 'approved'
+          ? `✅ 已核准專家身分，已配發 3,000,000 創星幣${email ? `，並已發送審核通過通知信至 ${email}` : ''}！`
+          : `❌ 已退回該專家申請${email ? `，並已發送審核結果通知信至 ${email}` : ''}。`
+      );
       if (onNotify) {
-        onNotify('創星季專家審核', status === 'approved' ? '已核准專家身分並配發 3,000,000 創星幣' : '已退回專家申請');
+        onNotify(
+          '創星季專家審核',
+          status === 'approved'
+            ? `已核准專家身分並通知 ${email || '申請信箱'}`
+            : `已退回專家申請並通知 ${email || '申請信箱'}`
+        );
       }
     }
   };
@@ -368,6 +398,16 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
             <span className="px-3 py-1 rounded-xl bg-emerald-600 text-white text-xs font-bold animate-in fade-in duration-200 shrink-0">
               {toastMsg}
             </span>
+          )}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-xl bg-stone-200/80 hover:bg-stone-300 text-stone-700 hover:text-stone-900 transition-colors cursor-pointer"
+              title="關閉"
+            >
+              <X className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>
@@ -1276,7 +1316,14 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleReviewExpert(exp.id, 'rejected', false, '資格未符合')}
+                            onClick={() =>
+                              setActiveReviewNoteModal({
+                                id: exp.id,
+                                type: 'expert',
+                                title: `${exp.expertName}（${exp.expertEmail}）`,
+                                targetStatus: 'rejected',
+                              })
+                            }
                             className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -1947,6 +1994,8 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                 onClick={() => {
                   if (activeReviewNoteModal.type === 'reg') {
                     handleReviewReg(activeReviewNoteModal.id, 'rejected', noteInput);
+                  } else if (activeReviewNoteModal.type === 'expert') {
+                    handleReviewExpert(activeReviewNoteModal.id, 'rejected', false, noteInput);
                   } else {
                     handleReviewProp(activeReviewNoteModal.id, 'rejected', noteInput);
                   }
