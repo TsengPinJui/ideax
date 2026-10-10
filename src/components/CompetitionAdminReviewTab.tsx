@@ -65,6 +65,7 @@ import {
   CompetitionAdminMetrics,
   DEFAULT_HOMEPAGE_STATS_CONFIG,
 } from '../types/competition';
+import { getCompetitionStageInfo } from '../utils/competitionSchedule';
 
 interface CompetitionAdminReviewTabProps {
   onNotify?: (title: string, message: string) => void;
@@ -116,6 +117,39 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
   const triggerToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
+  };
+
+  const [currentStageOverride, setCurrentStageOverride] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ideax_competition_stage_override') || 'auto';
+    } catch {
+      return 'auto';
+    }
+  });
+  const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
+
+  const handleStageOverrideChange = (val: string) => {
+    setCurrentStageOverride(val);
+    try {
+      if (val === 'auto') {
+        localStorage.removeItem('ideax_competition_stage_override');
+      } else {
+        localStorage.setItem('ideax_competition_stage_override', val);
+      }
+      window.dispatchEvent(new CustomEvent('ideax_competition_stage_changed'));
+      setStageInfo(getCompetitionStageInfo());
+      const labelMap: Record<string, string> = {
+        auto: '自動依當前時間 (10/09 籌備中・10/17 開放報名)',
+        stage0: '籌備預熱中 (10/17 開放線上報名參賽)',
+        stage0_reg: '開放報名參賽 (10/17~10/23 僅報名・尚未開放徵件)',
+        stage1: '第一階段：痛點徵件 (10/24~11/13)',
+        stage2_pre: '第二階段(一)：預先提案 (11/14~11/15)',
+        stage2: '第二階段(二)：模擬募資與提案 (11/16~12/04)',
+        stage3: '第三階段：進入決選評審 (12/05~12/11)',
+        stage4: '第四階段：公布結果 (12/12~12/16)',
+      };
+      triggerToast(`🕒 賽程階段已切換！全站即時套用：${labelMap[val] || val}`);
+    } catch {}
   };
 
   // 1. 審核報名
@@ -621,6 +655,52 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
       {/* ========================================================================= */}
       {subTab === 'metrics' && (
         <div className="space-y-5">
+          {/* 🧭 創星季競賽賽程階段控制（即時階段狀態與預覽切換） */}
+          <div className="p-5 rounded-3xl bg-amber-50/70 border border-amber-300 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
+              <div>
+                <h4 className="text-sm sm:text-base font-black text-amber-950 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-600" />
+                  <span>創星季賽程階段即時控制（測試與階段切換）</span>
+                </h4>
+                <p className="text-xs text-amber-800/80 mt-0.5">
+                  切換創星季各階段（痛點徵件、預先提案、模擬募資、決選評審），全站即時更新按鈕、權限與功能（包含「提出痛點」、「我想提案!」、「為他注資」）。
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-amber-200/80 text-amber-900 border border-amber-300">
+                  當前階段：{stageInfo.stageTitle}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+              {[
+                { id: 'auto', label: '自動 (真實時間)', desc: '10/09 即將報名 (10/17開跑)' },
+                { id: 'stage0_reg', label: '階段零：開放報名', desc: '10/17~10/23 (僅開放報名)' },
+                { id: 'stage1', label: '階段一：痛點徵件', desc: '10/24~11/13 (提痛點)' },
+                { id: 'stage2_pre', label: '階段二(一)：預先提案', desc: '11/14~11/15 (不可注資)' },
+                { id: 'stage2', label: '階段二(二)：模擬募資', desc: '11/16~12/04 (開放提案/注資)' },
+                { id: 'stage3', label: '階段三：決選評審', desc: '12/05~12/11 (提案已截止)' },
+                { id: 'stage4', label: '階段四：公布結果', desc: '12/12~12/16 (榮譽榜)' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleStageOverrideChange(item.id)}
+                  className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    currentStageOverride === item.id
+                      ? 'bg-amber-400 border-amber-500 text-stone-950 shadow-sm font-black'
+                      : 'bg-white hover:bg-amber-100/60 border-amber-200 text-stone-700 font-bold'
+                  }`}
+                >
+                  <div className="text-xs">{item.label}</div>
+                  <div className="text-[10px] opacity-75 mt-1">{item.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* 🎛️ 首頁公開數據開關控制台 */}
           <div className="p-5 rounded-3xl bg-white border border-emerald-300/80 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
@@ -1046,6 +1126,12 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                           指導教授：{reg.advisorName}
                         </div>
                       )}
+                      {reg.referralSource && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/80 w-fit">
+                          <span className="font-bold">📢 得知管道：</span>
+                          <span>{reg.referralSource}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* 審核操作按鍵 */}
@@ -1155,6 +1241,12 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                         <span>Email: {exp.expertEmail}</span>
                         <span>電話: {exp.expertPhone}</span>
                       </div>
+                      {exp.referralSource && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-purple-900 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200/80 w-fit">
+                          <span className="font-bold">📢 得知管道：</span>
+                          <span>{exp.referralSource}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* 審核操作按鍵 */}

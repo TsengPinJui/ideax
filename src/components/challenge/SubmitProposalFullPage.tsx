@@ -27,6 +27,9 @@ import {
   Save,
   FolderOpen,
   GraduationCap,
+  Eye,
+  Undo2,
+  Paperclip,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -35,12 +38,18 @@ import {
   StarSeasonTrack,
   STAR_SEASON_TRACKS,
   OFFICIAL_COMPETITION_TRACKS,
+  ProposalContentSection,
+  ProposalAttachmentItem,
 } from '../../types/competition';
 import {
   submitProposal,
   uploadProposalAttachment,
 } from '../../services/competitionClientService';
-import { getCompetitionProposalsForAdmin, saveAllCompetitionProposals } from '../../services/competitionAdminSync';
+import {
+  getCompetitionProposalsForAdmin,
+  saveAllCompetitionProposals,
+  withdrawCompetitionProposal,
+} from '../../services/competitionAdminSync';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import { PainPointSelector } from './PainPointSelector';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
@@ -52,6 +61,15 @@ import {
   deleteProposalDraft,
   getProposalDrafts,
 } from '../../services/draftService';
+import { ProposalSectionsEditor } from './ProposalSectionsEditor';
+import { ProposalAttachmentsManager } from './ProposalAttachmentsManager';
+import { ProposalPreviewModal } from './ProposalPreviewModal';
+import {
+  DEFAULT_PROPOSAL_SECTION_TEMPLATES,
+  extractProposalSections,
+  serializeProposalSections,
+  extractProposalAttachments,
+} from '../../utils/proposalContentHelper';
 
 interface SubmitProposalFullPageProps {
   onNavigate: (view: 'home' | 'explore' | 'rules' | 'participant' | 'judge' | 'ambassador') => void;
@@ -84,7 +102,15 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
     openAboutModal,
   } = useApp();
 
-  const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
+  const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
+
+  useEffect(() => {
+    const handleStageChange = () => {
+      setStageInfo(getCompetitionStageInfo());
+    };
+    window.addEventListener('ideax_competition_stage_changed', handleStageChange);
+    return () => window.removeEventListener('ideax_competition_stage_changed', handleStageChange);
+  }, []);
 
   const [termsDoc, setTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
@@ -93,12 +119,22 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
   const [isDraftDropdownOpen, setIsDraftDropdownOpen] = useState<boolean>(false);
   const [isDraftSaving, setIsDraftSaving] = useState<boolean>(false);
 
-  const [formStage, setFormStage] = useState<StarSeasonStage>('solution');
+  const [formStage, setFormStage] = useState<StarSeasonStage>(() => {
+    const info = getCompetitionStageInfo();
+    return info.isPainPointStage ? 'pain_point' : 'solution';
+  });
   const [formTrack, setFormTrack] = useState<StarSeasonTrack>('ict');
   const [painPointTrackChoice, setPainPointTrackChoice] = useState<string>('auto'); // 痛點選填，未選由 AI 市場顧問 Agent 自動賦予
   const [formTitle, setFormTitle] = useState<string>('');
   const [formSummary, setFormSummary] = useState<string>('');
   const [formDescription, setFormDescription] = useState<string>('');
+  const [formSections, setFormSections] = useState<ProposalContentSection[]>(() =>
+    JSON.parse(JSON.stringify(DEFAULT_PROPOSAL_SECTION_TEMPLATES))
+  );
+  const [formAttachments, setFormAttachments] = useState<ProposalAttachmentItem[]>([]);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
+  const [editingPublishedProposalId, setEditingPublishedProposalId] = useState<string | null>(null);
+
   const [formSourcePainPointId, setFormSourcePainPointId] = useState<string>('');
   const [formImages, setFormImages] = useState<string[]>([]);
   const [formExternalLink, setFormExternalLink] = useState<string>('');
@@ -140,12 +176,52 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
 
   useEffect(() => {
     refreshDrafts();
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
-  // 讀取教學彈窗、痛點專區預選或指定草稿
+  // 載入已正式發布之提案至編輯表單（支援修改、預覽與撤回）
+  const applyProposalToForm = (prop: StarSeasonProposal) => {
+    setEditingPublishedProposalId(prop.id);
+    setEditingDraftId(null);
+    setFormStage(prop.stage || 'solution');
+    setFormTrack(prop.track || 'ict');
+    setFormTitle(prop.title || '');
+    setFormSummary(prop.summary || '');
+    setFormDescription(prop.description || '');
+    const parsedSections = extractProposalSections(prop);
+    if (parsedSections.length > 0) {
+      setFormSections(parsedSections);
+    }
+    const parsedAtts = extractProposalAttachments(prop);
+    setFormAttachments(parsedAtts);
+    setFormSourcePainPointId(prop.sourcePainPointProposalId || '');
+    setFormImages(prop.images || []);
+    setFormExternalLink(prop.externalLink || '');
+    setFormTechnicalFeasibility(prop.technicalFeasibility || '');
+    setFormMarketAnalysis(prop.marketAnalysis || '');
+    setFormBusinessModelFinancials(prop.businessModelFinancials || '');
+    setFormAmbassadorCode(prop.referredByAmbassadorCode || '');
+    if (prop.teamName) setTeamName(prop.teamName);
+    if (prop.schoolName || prop.organizationName) setSchoolOrOrg(prop.schoolName || prop.organizationName || '');
+    if (prop.showOrganization) setShowOrganizationOnCard(true);
+    showToast(`已載入提案「${prop.title}」，您可以預覽、修改、儲存草稿或進行撤回。`);
+  };
+
+  // 讀取教學彈窗、痛點專區預選、已送出提案或指定草稿
   useEffect(() => {
     try {
-      // 1. 指定草稿 ID
+      // 1. 指定已送出之提案 ID（編輯或撤回）
+      const loadPropId = sessionStorage.getItem('ideax_challenge_load_proposal_id');
+      if (loadPropId) {
+        sessionStorage.removeItem('ideax_challenge_load_proposal_id');
+        const allProps = getCompetitionProposalsForAdmin();
+        const foundProp = allProps.find((p) => p.id === loadPropId);
+        if (foundProp) {
+          applyProposalToForm(foundProp);
+          return;
+        }
+      }
+
+      // 2. 指定草稿 ID
       const targetDraftId = initialDraftId || sessionStorage.getItem('ideax_challenge_load_draft_id');
       if (targetDraftId) {
         sessionStorage.removeItem('ideax_challenge_load_draft_id');
@@ -157,7 +233,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
         }
       }
 
-      // 2. 預選主題
+      // 3. 預選主題
       const stored = sessionStorage.getItem('ideax_challenge_prefill_topic');
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -181,16 +257,40 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
         }
       }
     } catch {}
-  }, [initialDraftId, currentUser]);
+  }, [initialDraftId, currentUser?.id]);
 
   const applyDraftToForm = (draft: ProposalDraft) => {
     setEditingDraftId(draft.id);
+    setEditingPublishedProposalId(null);
     setFormStage(draft.stage || 'solution');
     setFormTrack(draft.track || 'ict');
     setPainPointTrackChoice(draft.painPointTrackChoice || 'auto');
     setFormTitle(draft.title || '');
     setFormSummary(draft.summary || '');
     setFormDescription(draft.description || '');
+
+    // 恢復多段落與附件
+    if (draft.sections && draft.sections.length > 0) {
+      setFormSections(draft.sections);
+    } else if (draft.description) {
+      const parsed = extractProposalSections({ description: draft.description });
+      if (parsed.length > 0) setFormSections(parsed);
+    }
+
+    if (draft.attachments && draft.attachments.length > 0) {
+      setFormAttachments(draft.attachments);
+    } else if (draft.attachment) {
+      setFormAttachments([
+        {
+          id: 'att-draft',
+          name: draft.attachment.name,
+          url: draft.attachment.url,
+          size: draft.attachment.size,
+          mime: draft.attachment.mime,
+        },
+      ]);
+    }
+
     setFormSourcePainPointId(draft.sourcePainPointId || '');
     setFormImages(draft.images || []);
     setFormExternalLink(draft.externalLink || '');
@@ -209,15 +309,19 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
     showToast(`已載入草稿「${draft.title || '未命名草稿'}」`);
   };
 
+  // 儲存草稿 (含多段落與資料附件)
   const handleSaveDraft = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    if (!formTitle.trim() && !formSummary.trim() && !formDescription.trim()) {
+    if (!formTitle.trim() && !formSummary.trim() && !formDescription.trim() && formSections.length === 0) {
       showToast('請至少輸入標題或構想簡述再儲存草稿');
       return;
     }
 
     setIsDraftSaving(true);
     try {
+      const { serializedJson, plainTextSummary } = serializeProposalSections(formSections);
+      const effectiveDesc = formStage === 'solution' ? serializedJson : (formDescription || plainTextSummary);
+
       const saved = saveProposalDraft(
         {
           id: editingDraftId || undefined,
@@ -226,7 +330,9 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           painPointTrackChoice,
           title: formTitle,
           summary: formSummary,
-          description: formDescription,
+          description: effectiveDesc,
+          sections: formSections,
+          attachments: formAttachments,
           sourcePainPointId: formSourcePainPointId,
           images: formImages,
           externalLink: formExternalLink,
@@ -234,7 +340,14 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           marketAnalysis: formMarketAnalysis,
           businessModelFinancials: formBusinessModelFinancials,
           ambassadorCode: formAmbassadorCode,
-          attachment: formAttachment,
+          attachment: formAttachments[0]
+            ? {
+                url: formAttachments[0].url,
+                name: formAttachments[0].name,
+                size: formAttachments[0].size || 0,
+                mime: formAttachments[0].mime || 'application/octet-stream',
+              }
+            : formAttachment,
           contactName,
           contactPhone,
           contactEmail,
@@ -253,6 +366,73 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
       showToast('暫存草稿失敗，請重試');
     } finally {
       setIsDraftSaving(false);
+    }
+  };
+
+  // 撤回提案至草稿
+  const handleWithdrawProposal = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    const targetPropId = editingPublishedProposalId;
+    if (!targetPropId) {
+      // 若非編輯現有已送審提案，檢查是否有已儲存草稿
+      if (editingDraftId) {
+        showToast('目前編輯中的內容本就為草稿狀態，尚未發布。');
+        return;
+      }
+      showToast('目前尚無已送審提案可供撤回');
+      return;
+    }
+
+    if (
+      !window.confirm(
+        '確定要撤回此提案嗎？\n\n撤回後本提案將自官方審核清單與公開展示中移除，並保留完整資料轉為「暫存草稿」，您可以隨時修改後重新發布！'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = withdrawCompetitionProposal(targetPropId, currentUser?.id);
+      if (res.success) {
+        // 同步保存至草稿箱
+        const { serializedJson } = serializeProposalSections(formSections);
+        const draft = saveProposalDraft(
+          {
+            stage: formStage,
+            track: formTrack,
+            painPointTrackChoice,
+            title: formTitle,
+            summary: formSummary,
+            description: formStage === 'solution' ? serializedJson : formDescription,
+            sections: formSections,
+            attachments: formAttachments,
+            sourcePainPointId: formSourcePainPointId,
+            images: formImages,
+            externalLink: formExternalLink,
+            technicalFeasibility: formTechnicalFeasibility,
+            marketAnalysis: formMarketAnalysis,
+            businessModelFinancials: formBusinessModelFinancials,
+            ambassadorCode: formAmbassadorCode,
+            contactName,
+            contactPhone,
+            contactEmail,
+            schoolOrOrg,
+            bankCode,
+            bankAccount,
+            idNumber,
+          },
+          currentUser?.id || 'user-guest'
+        );
+
+        setEditingDraftId(draft.id);
+        setEditingPublishedProposalId(null);
+        refreshDrafts();
+        showToast(res.message, true);
+      } else {
+        showToast(res.message);
+      }
+    } catch (err: any) {
+      showToast(err.message || '撤回出錯');
     }
   };
 
@@ -369,14 +549,27 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
       return;
     }
 
-    const stageInfo = getCompetitionStageInfo();
-    if (!stageInfo.isProposalStage) {
-      if (stageInfo.isBeforeStart || stageInfo.isPainPointStage) {
-        showToast('提案功能將於 11/14 10:00 正式開放！目前為痛點徵件階段。');
-        return;
-      } else {
-        showToast('創星季提案已於 12/04 16:30 截止收件！目前已進入決選評審階段。');
-        return;
+    const currentStageInfo = getCompetitionStageInfo();
+    if (formStage === 'pain_point') {
+      if (!currentStageInfo.isPainPointStage) {
+        if (currentStageInfo.isBeforeStart || currentStageInfo.isRegistrationOnlyStage) {
+          showToast('痛點徵件功能將於 10/24 00:00 正式開放！目前尚未開跑。');
+          return;
+        } else {
+          showToast('第一階段「痛點徵件」已於 11/13 16:30 截止！目前開放「想解方提案」。');
+          return;
+        }
+      }
+    } else {
+      // 提案 (solution)
+      if (!currentStageInfo.isProposalStage) {
+        if (currentStageInfo.isBeforeStart || currentStageInfo.isRegistrationOnlyStage || currentStageInfo.isPainPointStage) {
+          showToast('提案功能將於 11/14 10:00 正式開放！目前為痛點徵件階段。');
+          return;
+        } else {
+          showToast('創星季提案已於 12/04 16:30 截止收件！目前已進入決選評審階段。');
+          return;
+        }
       }
     }
 
@@ -385,13 +578,19 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
       return;
     }
 
+    const { serializedJson, plainTextSummary } = serializeProposalSections(formSections);
+    const effectiveDescription = formStage === 'solution' ? serializedJson : formDescription.trim();
+
     if (formStage === 'solution') {
-      if (!formDescription.trim()) {
-        showToast('提案需填寫方案詳述（詳細闡述技術架構、產品功能、商業模式規劃或社會效益）');
+      const hasContent = formSections.some(
+        (s) => s.title.trim() || s.content.trim() || (s.images && s.images.length > 0)
+      );
+      if (!hasContent && !formDescription.trim()) {
+        showToast('提案需填寫詳細內容或企畫書（至少一個段落）');
         return;
       }
       if (formImages.length === 0) {
-        showToast('提案需包含 1~3 張照片（會顯示於提案區），請上傳照片或點選帶入展示照片');
+        showToast('提案需包含 1~3 張圖片展示照片（會顯示於提案區），請上傳照片或點選帶入展示範例照');
         return;
       }
     }
@@ -407,7 +606,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
       const aiAnalysis = await analyzeCompetitionItemWithAgent({
         title: formTitle.trim(),
         summary: formSummary.trim(),
-        description: formDescription.trim(),
+        description: effectiveDescription,
         stage: formStage,
         userTrack: formStage === 'solution' ? formTrack : (painPointTrackChoice === 'auto' ? undefined : painPointTrackChoice),
       });
@@ -420,12 +619,14 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
         painPointProposals.find((p) => p.id === formSourcePainPointId) ||
         questions.find((q) => q.id === formSourcePainPointId);
 
+      const primaryAtt = formAttachments[0] || formAttachment;
+
       const res = await submitProposal({
         stage: formStage,
         track: effectiveTrack,
         title: formTitle.trim(),
         summary: formSummary.trim(),
-        description: formDescription.trim(),
+        description: effectiveDescription,
         sourcePainPointProposalId: formStage === 'solution' ? formSourcePainPointId : undefined,
         sourcePainPointTitle: formStage === 'solution' ? sourcePainPoint?.title : undefined,
         images: formImages,
@@ -435,10 +636,10 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
         businessModelFinancials: formBusinessModelFinancials.trim() || undefined,
         tags: effectiveTags,
         aiCategorized,
-        attachmentUrl: formAttachment?.url,
-        attachmentName: formAttachment?.name,
-        attachmentSize: formAttachment?.size,
-        attachmentMime: formAttachment?.mime,
+        attachmentUrl: primaryAtt?.url,
+        attachmentName: primaryAtt?.name,
+        attachmentSize: primaryAtt?.size,
+        attachmentMime: primaryAtt?.mime,
         referredByAmbassadorCode: formAmbassadorCode,
         contactName,
         contactPhone,
@@ -454,7 +655,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
 
         // 同步錄入管理員後台審核資料庫
         try {
-          const newPropId = res.proposalId || `prop-sub-${Date.now()}`;
+          const newPropId = res.proposalId || editingPublishedProposalId || `prop-sub-${Date.now()}`;
           const currentProps = getCompetitionProposalsForAdmin();
           const painPointObj =
             painPointProposals.find((p) => p.id === formSourcePainPointId) ||
@@ -466,7 +667,9 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               stage: formStage,
               track: effectiveTrack,
               summary: formSummary.trim(),
-              description: formDescription.trim(),
+              description: effectiveDescription,
+              sections: formSections,
+              attachments: formAttachments,
               authorId: currentUser.id,
               authorName: showOrganizationOnCard && schoolOrOrg.trim()
                 ? `${schoolOrOrg.trim()} ｜ ${(teamName.trim() || currentUser.name || contactName)}`
@@ -492,6 +695,10 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               targetFundingAmount: 100000,
               likeCount: 0,
               commentsCount: 0,
+              attachmentUrl: primaryAtt?.url,
+              attachmentName: primaryAtt?.name,
+              attachmentSize: primaryAtt?.size,
+              attachmentMime: primaryAtt?.mime,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             },
@@ -863,37 +1070,108 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
         )}
 
         <form onSubmit={handleSubmit} id="star-tour-proposal-editor" className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 space-y-6 shadow-xs text-xs">
-          {/* 1. 提案階段選擇 */}
+          {/* 1. 提案階段選擇（嚴格依照競賽時程開放與關閉） */}
           <div className="space-y-2">
-            <label className="block text-stone-800 font-black text-sm">
-              1. 投件參賽階段 *
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-stone-800 font-black text-sm">
+                1. 投件參賽階段 *
+              </label>
+              <span className="text-[11px] font-bold text-stone-500">
+                {stageInfo.isPainPointStage
+                  ? '🔥 目前開放：第一階段「痛點徵件」(10/24~11/13)'
+                  : stageInfo.isProposalStage
+                  ? '💡 目前開放：第二階段「想解方提案」(11/14~12/04)'
+                  : '🔒 非開放投稿時段'}
+              </span>
+            </div>
             <div className="grid grid-cols-2 gap-3">
+              {/* 第一階段：徵點子（痛點）- 僅在 10/24 00:00 ~ 11/13 16:30 開放 */}
               <button
                 type="button"
-                onClick={() => setFormStage('pain_point')}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                  formStage === 'pain_point'
-                    ? 'border-rose-400 bg-rose-50/70 shadow-xs ring-2 ring-rose-300'
-                    : 'border-stone-200 bg-white hover:bg-stone-50'
+                disabled={!stageInfo.isPainPointStage}
+                onClick={() => {
+                  if (!stageInfo.isPainPointStage) {
+                    if (stageInfo.isBeforeStart || stageInfo.isRegistrationOnlyStage) {
+                      showToast('痛點徵件功能將於 10/24 00:00 正式開放！');
+                    } else {
+                      showToast('第一階段「痛點徵件」已於 11/13 16:30 截止！目前開放第二階段「想解方」提案。');
+                    }
+                    return;
+                  }
+                  setFormStage('pain_point');
+                }}
+                className={`p-4 rounded-2xl border text-left transition-all ${
+                  !stageInfo.isPainPointStage
+                    ? 'border-stone-200 bg-stone-100/80 text-stone-400 opacity-60 cursor-not-allowed'
+                    : formStage === 'pain_point'
+                    ? 'border-rose-400 bg-rose-50/70 shadow-xs ring-2 ring-rose-300 cursor-pointer'
+                    : 'border-stone-200 bg-white hover:bg-stone-50 cursor-pointer'
                 }`}
               >
-                <div className="font-black text-rose-800 text-sm">第一階段：徵點子（痛點）</div>
+                <div className="flex items-center justify-between">
+                  <div className={`font-black text-sm ${!stageInfo.isPainPointStage ? 'text-stone-500' : 'text-rose-800'}`}>
+                    第一階段：徵點子（痛點）
+                  </div>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                    stageInfo.isPainPointStage
+                      ? 'bg-rose-100 text-rose-700'
+                      : stageInfo.isBeforeStart || stageInfo.isRegistrationOnlyStage
+                      ? 'bg-stone-200 text-stone-600'
+                      : 'bg-stone-200 text-stone-500'
+                  }`}>
+                    {stageInfo.isPainPointStage
+                      ? '開放徵件中'
+                      : stageInfo.isBeforeStart || stageInfo.isRegistrationOnlyStage
+                      ? '10/24 開放'
+                      : '已截止'}
+                  </span>
+                </div>
                 <div className="text-[11px] text-stone-600 mt-1">
                   提出各領域未被滿足的真實需求或產業痛點（<b>過審即送 200 點</b>，價值 $250，效期 60 日）。
                 </div>
               </button>
 
+              {/* 第二階段：想解方（解法提案）- 僅在 11/14 10:00 ~ 12/04 16:30 開放 */}
               <button
                 type="button"
-                onClick={() => setFormStage('solution')}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                  formStage === 'solution'
-                    ? 'border-emerald-500 bg-emerald-50/70 shadow-xs ring-2 ring-emerald-300'
-                    : 'border-stone-200 bg-white hover:bg-stone-50'
+                disabled={!stageInfo.isProposalStage}
+                onClick={() => {
+                  if (!stageInfo.isProposalStage) {
+                    if (stageInfo.isBeforeStart || stageInfo.isRegistrationOnlyStage || stageInfo.isPainPointStage) {
+                      showToast('提案功能將於 11/14 10:00 正式開放！目前為痛點徵件階段。');
+                    } else {
+                      showToast('創星季提案已於 12/04 16:30 截止收件！目前已進入決選評審階段。');
+                    }
+                    return;
+                  }
+                  setFormStage('solution');
+                }}
+                className={`p-4 rounded-2xl border text-left transition-all ${
+                  !stageInfo.isProposalStage
+                    ? 'border-stone-200 bg-stone-100/80 text-stone-400 opacity-60 cursor-not-allowed'
+                    : formStage === 'solution'
+                    ? 'border-emerald-500 bg-emerald-50/70 shadow-xs ring-2 ring-emerald-300 cursor-pointer'
+                    : 'border-stone-200 bg-white hover:bg-stone-50 cursor-pointer'
                 }`}
               >
-                <div className="font-black text-emerald-900 text-sm">第二階段：想解方（解法提案）</div>
+                <div className="flex items-center justify-between">
+                  <div className={`font-black text-sm ${!stageInfo.isProposalStage ? 'text-stone-500' : 'text-emerald-900'}`}>
+                    第二階段：想解方（解法提案）
+                  </div>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                    stageInfo.isProposalStage
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : stageInfo.isBeforeStart || stageInfo.isRegistrationOnlyStage || stageInfo.isPainPointStage
+                      ? 'bg-stone-200 text-stone-600'
+                      : 'bg-stone-200 text-stone-500'
+                  }`}>
+                    {stageInfo.isProposalStage
+                      ? '開放提案中'
+                      : stageInfo.isProposalClosed
+                      ? '已截止'
+                      : '11/14 開放'}
+                  </span>
+                </div>
                 <div className="text-[11px] text-stone-500 mt-1">
                   針對產業痛點提出完整技術或商業模式解法，進行實戰模擬。
                 </div>
@@ -989,12 +1267,12 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
             />
           )}
 
-          {/* 4. 痛點簡述 / 提案概述 (用於瀏覽多題時的卡片模式) 與詳述 */}
+          {/* 4. 痛點簡述 / 核心摘要與創新價值 */}
           <div className="space-y-4">
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-stone-800 font-bold">
-                  4. {formStage === 'pain_point' ? '痛點簡述 * (300字以內)' : '提案概述 * (300字以內)'}
+                  4. {formStage === 'pain_point' ? '痛點簡述 * (300字以內)' : '核心摘要與創新價值 * (300字以內)'}
                 </label>
                 <span className="text-[10px] text-stone-500">
                   用於瀏覽多題時的卡片模式展示
@@ -1004,41 +1282,57 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
                 rows={3}
                 value={formSummary}
                 onChange={(e) => setFormSummary(e.target.value)}
-                placeholder={formStage === 'pain_point' ? '簡明扼要陳述生活或產業中所面臨之實際困難、尚未被滿足之需求...' : '簡明扼要介紹本提案的核心重點、欲解決之關鍵問題與預期成效...'}
-                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400"
+                placeholder={formStage === 'pain_point' ? '簡明扼要陳述生活或產業中所面臨之實際困難、尚未被滿足之需求...' : '簡明扼要介紹本提案之核心重點、創新價值主張、欲解決之關鍵痛點與預期成效...'}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400 font-medium leading-relaxed"
                 required
               />
             </div>
 
+            {/* 5. 詳細內容或企畫書 (支援自訂多段落、大字粗體標題、文字顏色、插入大圖) */}
             <div>
-              <label className="block text-stone-800 font-bold mb-1">
-                5. {formStage === 'pain_point' ? '痛點詳述 (選填)' : '方案詳述 * (詳細闡述技術架構、產品功能、商業模式或社會效益)'}
+              <label className="block text-stone-800 font-bold mb-2">
+                5. {formStage === 'pain_point' ? '痛點深入說明 (選填)' : '詳細內容或企畫書 *'}
               </label>
-              <textarea
-                rows={4}
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                placeholder={formStage === 'pain_point' ? '詳細說明痛點發生情境、關鍵瓶頸、對大眾或產業造成的具體損失...' : '詳細闡述技術架構、產品功能、商業模式規劃或社會效益...'}
-                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400"
-                required={formStage === 'solution'}
-              />
+
+              {formStage === 'solution' ? (
+                <ProposalSectionsEditor
+                  sections={formSections}
+                  onChange={setFormSections}
+                  showToast={showToast}
+                />
+              ) : (
+                <textarea
+                  rows={4}
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                  placeholder="詳細說明痛點發生情境、關鍵瓶頸、對大眾或產業造成的具體損失與迫切性..."
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-900 focus:outline-none focus:border-amber-400"
+                />
+              )}
             </div>
           </div>
 
-          {/* 5. 圖片/照片上傳區塊 (痛點 0~3張，選填；提案 1~3張，必填；大卡片顯示時才顯示圖片) */}
+          {/* 6. 資料附件區（企劃書完整檔案、簡報、規格書與壓縮包，選填） */}
+          <ProposalAttachmentsManager
+            attachments={formAttachments}
+            onChange={setFormAttachments}
+            showToast={showToast}
+          />
+
+          {/* 7. 圖片展示區塊 (下方圖片區：痛點 0~3張，選填；提案 1~3張，必填) */}
           <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/90 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <div className="font-bold text-stone-900 flex items-center gap-1.5 text-xs sm:text-sm">
                   <ImageIcon className="w-4 h-4 text-amber-600" />
                   <span>
-                    {formStage === 'pain_point' ? '痛點圖片 (0~3張，選填)' : '提案照片 (1~3張，必填)'}
+                    {formStage === 'pain_point' ? '圖片展示 (0~3張，選填)' : '圖片展示 (1~3張，必填)'}
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-600 mt-0.5">
                   {formStage === 'pain_point'
-                    ? '會顯示於痛點區，可增加吸引力獲取曝光機會；大卡片模式瀏覽時顯示。'
-                    : '會顯示於提案區，展示核心產品、原型、團隊或架構圖片；大卡片模式瀏覽時顯示。'}
+                    ? '會顯示於痛點專區圖片展示，可增加吸引力獲取曝光機會；大卡片模式瀏覽時顯示。'
+                    : '會顯示於提案專區圖片展示，展示核心產品、原型、團隊或架構照片；大卡片模式瀏覽時顯示。'}
                 </p>
               </div>
 
@@ -1352,20 +1646,44 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
             </label>
           </div>
 
-          <div className="pt-3 flex flex-col sm:flex-row items-center gap-3">
-            {/* 存為草稿按鈕 */}
+          <div className="pt-3 flex flex-col sm:flex-row items-center gap-2.5 flex-wrap">
+            {/* 1. 即時預覽按鈕 */}
+            <button
+              type="button"
+              onClick={() => setIsPreviewModalOpen(true)}
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-amber-50 border-2 border-stone-200 hover:border-amber-400 text-stone-900 font-bold text-xs shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+              title="在發布前預覽提案之完整呈現效果"
+            >
+              <Eye className="w-4 h-4 text-amber-600" />
+              <span>即時預覽</span>
+            </button>
+
+            {/* 2. 存為草稿按鈕 */}
             <button
               type="button"
               onClick={handleSaveDraft}
               disabled={isDraftSaving || isSubmitting}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white hover:bg-stone-50 border-2 border-stone-200 hover:border-amber-400 text-stone-800 font-bold text-sm shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-stone-50 border-2 border-stone-200 hover:border-amber-400 text-stone-800 font-bold text-xs shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50"
               title="將目前填寫的提案內容保存為草稿，隨時回個人列表繼續編輯"
             >
               <Save className="w-4 h-4 text-amber-600" />
-              <span>{isDraftSaving ? '正在儲存草稿...' : editingDraftId ? '更新暫存草稿' : '先存為草稿'}</span>
+              <span>{isDraftSaving ? '儲存中...' : editingDraftId ? '更新草稿' : '存為草稿'}</span>
             </button>
 
-            {/* 正式送審按鈕 */}
+            {/* 3. 撤回提案按鈕 (當前處於編輯已送審提案或已發布提案時顯示) */}
+            {(editingPublishedProposalId || editingDraftId) && (
+              <button
+                type="button"
+                onClick={handleWithdrawProposal}
+                className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-900 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+                title="將本提案撤回為草稿狀態，暫自公開展示與審查隊列中移除"
+              >
+                <Undo2 className="w-4 h-4 text-rose-700" />
+                <span>撤回為草稿</span>
+              </button>
+            )}
+
+            {/* 4. 正式送審 / 發布按鈕 */}
             <button
               type="submit"
               disabled={isSubmitting}
@@ -1378,7 +1696,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
                 </>
               ) : (
                 <>
-                  <span>確認提交提案（送交主辦單位初審）</span>
+                  <span>確認送出提案（正式發布）</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -1386,6 +1704,36 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           </div>
         </form>
       </main>
+
+      {/* 提案即時預覽彈窗 */}
+      <ProposalPreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        title={formTitle}
+        stage={formStage}
+        track={formTrack}
+        summary={formSummary}
+        sections={formSections}
+        plainDescription={formDescription}
+        images={formImages}
+        attachments={formAttachments}
+        externalLink={formExternalLink}
+        technicalFeasibility={formTechnicalFeasibility}
+        marketAnalysis={formMarketAnalysis}
+        businessModelFinancials={formBusinessModelFinancials}
+        teamName={teamName}
+        authorName={contactName || currentUser?.name}
+        schoolOrOrg={schoolOrOrg}
+        onConfirmPublish={() => {
+          // 透過表單提交
+          const formElement = document.getElementById('star-tour-proposal-editor') as HTMLFormElement;
+          if (formElement) {
+            formElement.requestSubmit();
+          }
+        }}
+        onSaveDraft={handleSaveDraft}
+        isPublishing={isSubmitting}
+      />
 
       {/* 創星季規章與條款說明彈窗 */}
       {termsDoc && (
@@ -1398,3 +1746,4 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
     </div>
   );
 };
+

@@ -41,6 +41,8 @@ export interface CompetitionExpertRecord {
   reviewNote?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  referralSource?: string;
+  referralSourceOther?: string;
   createdAt: string;
 }
 
@@ -155,6 +157,49 @@ export function saveAllCompetitionProposals(proposals: StarSeasonProposal[]): vo
   try {
     localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(proposals));
   } catch {}
+}
+
+/**
+ * 作者撤回提案至草稿
+ */
+export function withdrawCompetitionProposal(
+  proposalId: string,
+  authorId?: string
+): { success: boolean; proposal?: StarSeasonProposal; message: string } {
+  try {
+    const proposals = getCompetitionProposalsForAdmin();
+    const targetIdx = proposals.findIndex((p) => p.id === proposalId);
+    if (targetIdx === -1) {
+      return { success: false, message: '找不到欲撤回之提案' };
+    }
+
+    const targetProp = proposals[targetIdx];
+    // 檢查權限：若提供 authorId 需匹配
+    if (authorId && targetProp.authorId && targetProp.authorId !== authorId && targetProp.authorId !== 'user-guest') {
+      return { success: false, message: '您非本提案之主要作者，無權撤回此提案' };
+    }
+
+    // 將狀態更新為 withdrawn
+    proposals[targetIdx] = {
+      ...targetProp,
+      status: 'withdrawn',
+      updatedAt: new Date().toISOString(),
+    };
+    saveAllCompetitionProposals(proposals);
+
+    // 發送全域撤回事件
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ideax_proposal_withdrawn', { detail: { proposalId } }));
+    }
+
+    return {
+      success: true,
+      proposal: proposals[targetIdx],
+      message: '提案已成功撤回為草稿！目前自公開展示與審核隊列移除，您可隨時修改後再次發布。',
+    };
+  } catch (err: any) {
+    return { success: false, message: err.message || '撤回失敗' };
+  }
 }
 
 /**

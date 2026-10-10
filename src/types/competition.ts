@@ -111,6 +111,38 @@ export const OFFICIAL_COMPETITION_TRACKS: TrackInfo[] = [
 
 export type ProposalReviewStatus = 'pending_review' | 'approved' | 'rejected' | 'withdrawn';
 
+/**
+ * 提案詳細內容或企畫書段落模型
+ * 支援多個段落、自訂各段標題（粗體字、大字）、自訂文字顏色與粗體、以及插入大圖（投影片、海報、照片與說明）
+ */
+export interface ProposalContentSection {
+  id: string;
+  title: string;
+  titleSize?: 'lg' | 'xl' | '2xl'; // 大字級 (預設 'xl')
+  titleBold?: boolean; // 粗體字 (預設 true)
+  content: string;
+  textColor?: string; // 文字顏色 (hex 或顏色代碼)
+  isBold?: boolean; // 內文粗體
+  images?: Array<{
+    id: string;
+    url: string;
+    caption?: string; // 投影片/海報/照片圖片說明
+  }>;
+}
+
+/**
+ * 提案資料附件檔案模型
+ * 支援多個企劃書、投影片簡報、規格書或壓縮包檔案
+ */
+export interface ProposalAttachmentItem {
+  id: string;
+  name: string;
+  url: string;
+  size?: number; // 位元組
+  mime?: string;
+  uploadedAt?: string;
+}
+
 export interface StarSeasonProposal {
   id: string;
   title: string;
@@ -118,6 +150,8 @@ export interface StarSeasonProposal {
   track: StarSeasonTrack;
   summary: string;
   description: string;
+  // 詳細內容或企畫書之多段落結構（相容純文字 description 與富文本段落）
+  sections?: ProposalContentSection[];
   
   // 提案人資訊（公開）
   authorId: string;
@@ -181,6 +215,7 @@ export interface StarSeasonProposal {
   attachmentName?: string;
   attachmentSize?: number;
   attachmentMime?: string;
+  attachments?: ProposalAttachmentItem[]; // 多檔案資料附件清單
   
   // 按讚（愛心）與討論串（社群交流互動）
   likeCount?: number; // 愛心按讚數
@@ -242,7 +277,7 @@ export interface ParticipantRegistrationData {
 
   // 報名意向調查 (主辦單位統計參賽分布與管道)
   expectedItems?: string[]; // 預計參加項目: '痛點' | '解方' (可複選)
-  referralSource?: string; // 您從哪裡得知這個比賽? (獎金獵人/ACCUPASS/學校或創新中心/社群媒體/網路搜尋或瀏覽/網路廣告/朋友/其他)
+  referralSource?: string; // 您從哪裡得知這場比賽? (獎金獵人/ACCUPASS/學校或創新中心/社群媒體/網路搜尋或瀏覽/網路廣告/朋友/其他)
   referralSourceOther?: string; // 其他來源說明
 }
 
@@ -262,7 +297,7 @@ export interface JudgeApplicationData {
   credentialProofName?: string;
   bio: string; // 個人經歷與審查簡歷
   reviewPledgeAgreed: boolean; // 恪守保密與公正評審承諾
-  referralSource?: string; // 您從哪裡得知這個比賽? (獎金獵人/ACCUPASS/學校或創新中心/社群媒體/網路搜尋或瀏覽/網路廣告/朋友/其他)
+  referralSource?: string; // 您從哪裡得知這場比賽? (獎金獵人/ACCUPASS/學校或創新中心/社群媒體/網路搜尋或瀏覽/網路廣告/朋友/其他)
   referralSourceOther?: string; // 其他來源說明
 }
 
@@ -370,10 +405,11 @@ export const COMPETITION_POINTS_CONFIG = {
 
 /**
  * 競賽時程配置
- * 10/31~11/13 痛點徵件
- * 11/14~12/04 募資期間
- * 12/05~12/11 複賽評選
- * 12/16前 公布結果
+ * 10/17 開放報名
+ * 10/24~11/13 痛點徵件
+ * 11/14~12/04 募資與提案期間
+ * 12/05~12/11 決選評選
+ * 12/12~12/16 公布結果 (最終榮譽榜單)
  */
 export interface CompetitionScheduleConfig {
   registrationPeriod?: {
@@ -411,12 +447,12 @@ export interface CompetitionScheduleConfig {
 export const DEFAULT_COMPETITION_SCHEDULE: CompetitionScheduleConfig = {
   registrationPeriod: {
     title: '報名時段',
-    period: '10/24 00:00 – 12/04 16:30',
+    period: '10/17 00:00 – 12/04 16:30',
     note: '提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名',
   },
   stage1Submission: {
     title: '第一階段：痛點徵件',
-    period: '10/31 00:00 – 11/13 16:30',
+    period: '10/24 00:00 – 11/13 16:30',
     isTentative: false,
   },
   stage2Solution: {
@@ -436,7 +472,7 @@ export const DEFAULT_COMPETITION_SCHEDULE: CompetitionScheduleConfig = {
   },
   resultsAnnouncement: {
     title: '第四階段：公布結果（於首頁盛大公告最終榜單，頒發榮譽與獎勵）',
-    period: '12/16 前公布',
+    period: '12/12 – 12/16',
     isTentative: false,
   },
 };

@@ -13,10 +13,13 @@ import {
   CheckCircle2,
   AlertCircle,
   FolderOpen,
+  Undo2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { StarSeasonProposal, STAR_SEASON_TRACKS } from '../../types/competition';
-import { ProposalDraft, getProposalDrafts, deleteProposalDraft } from '../../services/draftService';
+import { ProposalDraft, getProposalDrafts, deleteProposalDraft, saveProposalDraft } from '../../services/draftService';
+import { withdrawCompetitionProposal } from '../../services/competitionAdminSync';
+import { extractProposalSections, extractProposalAttachments } from '../../utils/proposalContentHelper';
 
 interface MyProposalsAndDraftsModalProps {
   isOpen: boolean;
@@ -85,6 +88,56 @@ export const MyProposalsAndDraftsModal: React.FC<MyProposalsAndDraftsModalProps>
         message: '已成功刪除該筆提案草稿',
         type: 'system',
       });
+    }
+  };
+
+  const handleEditPublishedProposal = (p: StarSeasonProposal) => {
+    sessionStorage.setItem('ideax_challenge_load_proposal_id', p.id);
+    onClose();
+    onCreateNewProposal();
+  };
+
+  const handleWithdrawPublishedProposal = (p: StarSeasonProposal) => {
+    if (
+      !window.confirm(
+        `確定要撤回提案「${p.title}」嗎？\n\n撤回後本提案將自官方審核清單與公開展示中移除，並保留完整資料轉為「暫存草稿」，您可以隨時修改後重新發布！`
+      )
+    ) {
+      return;
+    }
+
+    const res = withdrawCompetitionProposal(p.id, currentUser?.id);
+    if (res.success) {
+      const sections = extractProposalSections(p);
+      const attachments = extractProposalAttachments(p);
+      saveProposalDraft(
+        {
+          stage: p.stage,
+          track: p.track,
+          title: p.title,
+          summary: p.summary,
+          description: p.description,
+          sections,
+          attachments,
+          sourcePainPointId: p.sourcePainPointProposalId,
+          images: p.images || [],
+          externalLink: p.externalLink,
+          technicalFeasibility: p.technicalFeasibility,
+          marketAnalysis: p.marketAnalysis,
+          businessModelFinancials: p.businessModelFinancials,
+          ambassadorCode: p.referredByAmbassadorCode,
+        },
+        currentUser?.id || 'user-guest'
+      );
+      loadDrafts();
+      setActiveTab('drafts');
+      addNotification({
+        title: '提案撤回成功',
+        message: '提案已撤回至草稿箱，您可以繼續編輯或重新發布',
+        type: 'system',
+      });
+    } else {
+      window.alert(res.message);
     }
   };
 
@@ -321,16 +374,36 @@ export const MyProposalsAndDraftsModal: React.FC<MyProposalsAndDraftsModalProps>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
+                      <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => handleEditPublishedProposal(p)}
+                          className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1 active:scale-98"
+                          title="進入提解方編輯區修改內容"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>編輯</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleWithdrawPublishedProposal(p)}
+                          className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 active:scale-98"
+                          title="撤回至草稿箱，自公開隊列移除"
+                        >
+                          <Undo2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>撤回</span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => {
                             onClose();
                             onSelectProposalForDetail(p);
                           }}
-                          className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 active:scale-98"
+                          className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1 active:scale-98"
                         >
-                          <span>查看詳情</span>
+                          <span>詳情</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </div>

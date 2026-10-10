@@ -215,19 +215,19 @@ router.post('/proposals', async (req: Request, res: Response) => {
       });
     }
 
-    // 競賽時程階段控制：痛點徵件 (10/31~11/13) 與 提案 (11/14~12/04)
+    // 競賽時程階段控制：痛點徵件 (10/24~11/13) 與 提案 (11/14~12/04)
     const nowTime = Date.now();
     const currentYear = new Date().getFullYear();
-    const tPainPointStart = new Date(currentYear, 9, 31, 0, 0, 0).getTime();
-    const tPainPointEnd = new Date(currentYear, 10, 13, 16, 30, 0).getTime();
-    const tPreProposalStart = new Date(currentYear, 10, 14, 10, 0, 0).getTime();
-    const tCrowdfundEnd = new Date(currentYear, 11, 4, 16, 30, 0).getTime();
+    const tPainPointStart = new Date(currentYear, 9, 24, 0, 0, 0).getTime(); // 10/24 00:00
+    const tPainPointEnd = new Date(currentYear, 10, 13, 16, 30, 0).getTime(); // 11/13 16:30
+    const tPreProposalStart = new Date(currentYear, 10, 14, 10, 0, 0).getTime(); // 11/14 10:00
+    const tCrowdfundEnd = new Date(currentYear, 11, 4, 16, 30, 0).getTime(); // 12/04 16:30
 
     const isStageOverride = Boolean(req.headers['x-stage-override']);
     if (!isStageOverride) {
       if (stage === 'pain_point') {
         if (nowTime < tPainPointStart) {
-          return res.status(400).json({ success: false, error: '痛點徵件功能將於 10/31 00:00 正式開放！目前尚未開跑。' });
+          return res.status(400).json({ success: false, error: '痛點徵件功能將於 10/24 00:00 正式開放！目前尚未開跑。' });
         }
         if (nowTime > tPainPointEnd) {
           return res.status(400).json({ success: false, error: '第一階段痛點徵件已於 11/13 16:30 截止！' });

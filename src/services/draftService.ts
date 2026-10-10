@@ -1,5 +1,10 @@
 import { Category, ProblemLevel, PostType } from '../types';
-import { StarSeasonStage, StarSeasonTrack } from '../types/competition';
+import {
+  StarSeasonStage,
+  StarSeasonTrack,
+  ProposalContentSection,
+  ProposalAttachmentItem,
+} from '../types/competition';
 
 export interface QuestionDraft {
   id: string;
@@ -32,6 +37,7 @@ export interface ProposalDraft {
   title: string;
   summary: string;
   description: string;
+  sections?: ProposalContentSection[];
   sourcePainPointId?: string;
   images: string[];
   externalLink?: string;
@@ -45,6 +51,7 @@ export interface ProposalDraft {
     size: number;
     mime: string;
   } | null;
+  attachments?: ProposalAttachmentItem[];
   contactName?: string;
   contactPhone?: string;
   contactEmail?: string;
@@ -171,6 +178,7 @@ export function saveProposalDraft(
     title: draftData.title || '',
     summary: draftData.summary || '',
     description: draftData.description || '',
+    sections: draftData.sections || undefined,
     sourcePainPointId: draftData.sourcePainPointId || '',
     images: draftData.images || [],
     externalLink: draftData.externalLink || '',
@@ -179,6 +187,7 @@ export function saveProposalDraft(
     businessModelFinancials: draftData.businessModelFinancials || '',
     ambassadorCode: draftData.ambassadorCode || '',
     attachment: draftData.attachment || null,
+    attachments: draftData.attachments || undefined,
     contactName: draftData.contactName || '',
     contactPhone: draftData.contactPhone || '',
     contactEmail: draftData.contactEmail || '',

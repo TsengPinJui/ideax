@@ -58,7 +58,15 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
   onOpenAmbassadorModal,
 }) => {
   const { currentUser } = useApp();
-  const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
+  const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
+
+  React.useEffect(() => {
+    const handleStageChange = () => {
+      setStageInfo(getCompetitionStageInfo());
+    };
+    window.addEventListener('ideax_competition_stage_changed', handleStageChange);
+    return () => window.removeEventListener('ideax_competition_stage_changed', handleStageChange);
+  }, []);
   const [activeMainTab, setActiveMainTab] = useState<'A_rules' | 'E_guide'>('A_rules');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [termsModalKey, setTermsModalKey] = useState<CompetitionDocumentKey | null>(null);
@@ -110,7 +118,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
     },
     {
       q: '創星季的活動時程如何安排？',
-      a: '競賽各階段明確時程如下：\n• 10/24 00:00 ～ 12/04 16:30：報名時段（※ 提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名）\n• 10/31 00:00 ～ 11/13 16:30：第一階段：痛點徵件（全體用戶發布產業/生活切身痛點）\n• 11/14 10:00 ～ 11/15 16:30：第二階段 (一)：預先提案（【關閉募資(投資)功能】，僅可註冊報名、在線提案、主辦單位審核及預覽）\n• 11/16 10:00 ～ 12/04 16:30：第二階段 (二)：模擬募資（【全面開放功能】，可報名、提案、創星幣模擬募資(投資)注資投票、主辦單位審核，募資總額前 20 名取得決選資格）\n• 12/05 ～ 12/11：第三階段：進入決選(評審)（由評審團進行專業審查與評分）\n• 12/16 前公布結果：第四階段：公布結果（於首頁盛大公告最終榜單，頒發榮譽徽章與獎勵）',
+      a: '競賽各階段明確時程如下：\n• 10/17 00:00 ～ 12/04 16:30：報名時段（※ 提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名）\n• 10/24 00:00 ～ 11/13 16:30：第一階段：痛點徵件（全體用戶發布產業/生活切身痛點）\n• 11/14 10:00 ～ 11/15 16:30：第二階段 (一)：預先提案（【關閉募資(投資)功能】，僅可註冊報名、在線提案、主辦單位審核及預覽）\n• 11/16 10:00 ～ 12/04 16:30：第二階段 (二)：模擬募資（【全面開放功能】，可報名、提案、創星幣模擬募資(投資)注資投票、主辦單位審核，募資總額前 20 名取得決選資格）\n• 12/05 ～ 12/11：第三階段：進入決選(評審)（由評審團進行專業審查與評分）\n• 12/12 ～ 12/16：第四階段：公布結果（於首頁盛大公告最終榜單，頒發榮譽徽章與獎勵）',
     },
   ];
 
@@ -162,8 +170,28 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 text-xs font-bold text-stone-700 bg-stone-100/80 p-1 rounded-2xl border border-stone-200/80">
-            {/* 1. 依時程切換：痛點徵件為「提出痛點」；11/14~12/04 轉為「我想提案!」；12/04後截止 */}
-            {stageInfo.isPainPointStage ? (
+            {/* 1. 依時程切換：籌備預熱為「即將開跑」；10/17報名開跑為「即將徵件」；10/24痛點徵件為「提出痛點」；11/14~12/04 轉為「我想提案!」；12/04後截止 */}
+            {stageInfo.isRegistrationOnlyStage ? (
+              <button
+                type="button"
+                onClick={() => onNavigate('participant')}
+                className="px-3.5 py-1.5 rounded-xl text-stone-950 bg-amber-400 hover:bg-amber-300 transition-all cursor-pointer font-black shadow-2xs active:scale-98 flex items-center gap-1.5"
+                title="線上報名已開跑！點擊前往報名參賽（第一階段痛點徵件將於 10/24 00:00 正式開放）"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-stone-950" />
+                <span>即將徵件 (10/24)</span>
+              </button>
+            ) : stageInfo.isBeforeStart ? (
+              <button
+                type="button"
+                onClick={() => onNavigate('home')}
+                className="px-3.5 py-1.5 rounded-xl text-stone-950 bg-amber-400 hover:bg-amber-300 transition-all cursor-pointer font-black shadow-2xs active:scale-98 flex items-center gap-1.5"
+                title="創星季籌備中：10/17 開放報名、10/24 00:00 痛點徵件正式開跑！點擊查看賽程"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-stone-950" />
+                <span>即將開跑 (10/24)</span>
+              </button>
+            ) : stageInfo.isPainPointStage ? (
               <button
                 type="button"
                 onClick={() => {
@@ -200,7 +228,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                 type="button"
                 disabled
                 className="px-3.5 py-1.5 rounded-xl text-stone-400 bg-stone-200 cursor-not-allowed font-bold flex items-center gap-1.5"
-                title="提案已於 12/04 截止收件"
+                title="創星季提案已於 12/04 截止收件"
               >
                 <Clock className="w-3.5 h-3.5 text-stone-400" />
                 <span>提案已截止</span>
@@ -430,14 +458,14 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                 </p>
                 <div className="pl-4 space-y-1.5 py-1 text-stone-700">
                   <p>
-                    • <b>全競賽報名時段：</b><b>10/24 00:00 ～ 12/04 16:30</b>（提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名）。
+                    • <b>全競賽報名時段：</b><b>10/17 00:00 ～ 12/04 16:30</b>（提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名）。
                   </p>
                   <p>
-                    • <b>提案可報名與投件期間：</b><b>10/24 00:00 ～ 12/04 16:30</b>（含 11/14~11/15 預先提案及 11/16~12/04 模擬募資提案，收件至 12/04 16:30 截止）。
+                    • <b>提案可報名與投件期間：</b><b>10/17 00:00 ～ 12/04 16:30</b>（含 11/14~11/15 預先提案及 11/16~12/04 模擬募資提案，收件至 12/04 16:30 截止）。
                   </p>
                 </div>
                 <p className="text-stone-600 text-xs">
-                  ※ 各階段徵件時間一到（第一階段痛點徵件 10/31 00:00~11/13 16:30、第二階段預先提案 11/14 10:00~11/15 16:30 開放提案/審核/預覽、模擬募資 11/16 10:00~12/04 16:30 開放注資投票），登入即可即時於系統線上提交痛點或創新企劃。
+                  ※ 各階段徵件時間一到（第一階段痛點徵件 10/24 00:00~11/13 16:30、第二階段預先提案 11/14 10:00~11/15 16:30 開放提案/審核/預覽、模擬募資 11/16 10:00~12/04 16:30 開放注資投票），登入即可即時於系統線上提交痛點或創新企劃。
                 </p>
               </div>
             </section>
@@ -599,12 +627,12 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                 <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 text-stone-900 font-bold mb-3 flex items-start gap-2.5">
                   <Calendar className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-stone-950 font-black">【報名時段】：10/24 00:00 ～ 12/04 16:30</div>
+                    <div className="text-stone-950 font-black">【報名時段】：10/17 00:00 ～ 12/04 16:30</div>
                     <div className="text-xs text-amber-900 font-medium pt-0.5">※ 提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名。</div>
                   </div>
                 </div>
                 <p>
-                  一、第一階段 • 痛點徵件（10/31 00:00 – 11/13 16:30）：全體會員發布生活不便與產業切身痛點，過審即送 200 點，建立題庫供各隊選題解題。
+                  一、第一階段 • 痛點徵件（10/24 00:00 – 11/13 16:30）：全體會員發布生活不便與產業切身痛點，過審即送 200 點，建立題庫供各隊選題解題。
                 </p>
                 <p>
                   二、第二階段 (一) • 預先提案（11/14 10:00 – 11/15 16:30）：【關閉募資(投資)功能】，開放用戶註冊報名、報名參賽/專家身分、線上投件提案、主辦單位進行審核與提案預覽。
@@ -616,7 +644,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   四、第三階段 • 進入決選(評審)（12/05 – 12/11）：提案與募資收件截止，由評審團依四大維度指標進行專業審查與評分。
                 </p>
                 <p>
-                  五、第四階段 • 公布結果（12/16 前公布）：於創星季競賽網首頁盛大公告最終得獎榜單，發放獎金與點數獎勵並授予榮譽徽章。
+                  五、第四階段 • 公布結果（12/12 ～ 12/16）：於創星季競賽網首頁盛大公告最終得獎榜單，發放獎金與點數獎勵並授予榮譽徽章。
                 </p>
               </div>
             </section>

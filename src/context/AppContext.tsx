@@ -2019,7 +2019,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedQuestion(updated);
       }
     }
-  }, [questions, selectedQuestion]);
+  }, [questions, selectedQuestion?.id]);
 
   const [subscriptionPlans, setSubscriptionPlans] = useState<Record<SubscriptionTier, SubscriptionPlan>>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}plans`);

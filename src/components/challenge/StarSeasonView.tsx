@@ -76,6 +76,7 @@ import {
 import {
   getCompetitionHomepageStatsConfig,
   getCompetitionAggregatedMetrics,
+  recordNewExpertApplication,
 } from '../../services/competitionAdminSync';
 import {
   fetchProposals,
@@ -173,6 +174,17 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
   const [exploreInitialTab, setExploreInitialTab] = useState<'solution' | 'pain_point'>('solution');
   const [homepageSectionTab, setHomepageSectionTab] = useState<'solution' | 'pain_point'>('solution');
+
+  // 創星季當前競賽階段 (報名 10/17、痛點徵件 10/24~11/13、模擬募資與提案 11/14~12/04、決選 12/05~12/11、公布 12/12~12/16)
+  const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
+
+  useEffect(() => {
+    const handleStageChange = () => {
+      setStageInfo(getCompetitionStageInfo());
+    };
+    window.addEventListener('ideax_competition_stage_changed', handleStageChange);
+    return () => window.removeEventListener('ideax_competition_stage_changed', handleStageChange);
+  }, []);
 
   // 首頁公開展示數據開關與即時聚合數據
   const [statsConfig, setStatsConfig] = useState<CompetitionHomepageStatsConfig>(() => getCompetitionHomepageStatsConfig());
@@ -465,7 +477,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [isPainPointCarouselPaused, setIsPainPointCarouselPaused] = useState(false);
   const [isPainPointCarouselTransitionDisabled, setIsPainPointCarouselTransitionDisabled] = useState(false);
 
-  // 提案列表：優先採用真實提案，不將模擬數據加入採計
+  // 提案列表：優先採用真實提案。當進入提案階段 (11/14 起) 後，隱藏預設示範提案；若尚無提案則保留真實清單
   const homepageAllProposals = useMemo(() => {
     const liveFiltered = proposals.filter((p) => !p.id.startsWith('test-') && !p.id.startsWith('demo-'));
     const normalizedLive = liveFiltered.map((p) => ({
@@ -487,8 +499,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     if (normalizedLive.length > 0) {
       return normalizedLive;
     }
+    // 若已正式進入「我想提案！」時程（11/14 10:00 起），隱藏示範提案，完全以真實參賽作品為準
+    if (stageInfo.isProposalStage || stageInfo.isExpertReviewStage || stageInfo.isResultsStage) {
+      return [];
+    }
     return defaultHomepageProposals;
-  }, [proposals, defaultHomepageProposals]);
+  }, [proposals, defaultHomepageProposals, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage]);
 
   // 每批顯示 3 個提案
   const homepageProposalBatches = useMemo(() => {
@@ -617,13 +633,19 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // 未登入點擊提案或成為專家等需登入功能連結到登入頁面
+  // 未登入點擊提案或成為專家等需登入功能提示登入（使用 ref 防止重複觸發循環）
+  const lastAuthPromptedSubViewRef = useRef<string | null>(null);
   useEffect(() => {
     if (
       (currentSubView === 'submit' || currentSubView === 'participant' || currentSubView === 'judge') &&
       !isLoggedIn
     ) {
-      onOpenAuth();
+      if (lastAuthPromptedSubViewRef.current !== currentSubView) {
+        lastAuthPromptedSubViewRef.current = currentSubView;
+        onOpenAuth();
+      }
+    } else {
+      lastAuthPromptedSubViewRef.current = null;
     }
   }, [currentSubView, isLoggedIn]);
 
@@ -774,25 +796,29 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     }
   };
 
-  // 創星季當前競賽階段 (痛點徵件 10/31~11/13、模擬募資與提案 11/14~12/04、決選 12/05~12/11、公布 12/16 前)
-  const stageInfo = useMemo(() => getCompetitionStageInfo(), []);
 
   // 綠色膠囊標籤第二行：日期+XXX(階段名稱)中!
   const stageBadgeSubtitle = useMemo(() => {
-    if (stageInfo.activeStage === 0) return '10/31 痛點徵件即將開跑!';
-    if (stageInfo.isPainPointStage) return '10/31~11/13 痛點徵件中!';
+    if (stageInfo.activeStage === 0) {
+      return stageInfo.isRegistrationOnlyStage ? '10/17 報名開跑・10/24 徵件!' : '10/24 痛點徵件即將開跑!';
+    }
+    if (stageInfo.isPainPointStage) return '10/24~11/13 痛點徵件中!';
     if (stageInfo.isPreProposalStage) return '11/14~11/15 預先提案中!';
     if (stageInfo.isCrowdfundingActiveStage) return '11/16~12/04 模擬募資中!';
     if (stageInfo.isExpertReviewStage) return '12/05~12/11 進入決選(評審)中!';
-    return '12/16前 公布結果中!';
+    return '12/12~12/16 公布結果中!';
   }, [stageInfo]);
 
-  // 痛點徵件階段：點擊提出痛點
+  // 痛點徵件階段：點擊提出痛點（僅在 10/24 00:00 ~ 11/13 16:30 開放）
   const handleOpenPainPointSubmission = () => {
-    if (stageInfo.activeStage === 0 || stageInfo.isBeforeStart) {
-      showToast('⚠️ 尚未開放：創星季第一階段「痛點徵件」將於 10/31 00:00 正式開放！目前尚未開放徵件，敬請期待。');
+    if (stageInfo.activeStage === 0 || stageInfo.isBeforeStart || stageInfo.isRegistrationOnlyStage) {
+      showToast('⚠️ 尚未開放：創星季第一階段「痛點徵件」將於 10/24 00:00 正式開放！目前尚未開放徵件，敬請期待。');
       const el = document.getElementById('homepage-schedule-section') || document.getElementById('homepage-awards-section');
       el?.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+    if (!stageInfo.isPainPointStage) {
+      showToast('ℹ️ 創星季第一階段「痛點徵件」已於 11/13 16:30 截止！目前已開放第二階段「想解方提案」。');
       return;
     }
     if (!isLoggedIn) {
@@ -1055,6 +1081,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       }
 
       if (targetId) {
+        if (currentSubView === 'proposal' && selectedProposalIdForExplore === targetId) {
+          return;
+        }
         navigateToSubView('proposal', targetId);
       }
     };
@@ -1062,7 +1091,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     parseAndOpenProposal();
     window.addEventListener('popstate', parseAndOpenProposal);
     return () => window.removeEventListener('popstate', parseAndOpenProposal);
-  }, [proposals]);
+  }, [currentSubView, selectedProposalIdForExplore]);
 
   // 同步 URL 與提案動態 SEO
   useEffect(() => {
@@ -1071,8 +1100,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     if (selectedProposalForDetail) {
       updateSEOForProposal(selectedProposalForDetail);
       const url = new URL(window.location.href);
-      url.searchParams.set('proposalId', selectedProposalForDetail.id);
-      window.history.replaceState({ proposalId: selectedProposalForDetail.id }, '', url.toString());
+      if (url.searchParams.get('proposalId') !== selectedProposalForDetail.id) {
+        url.searchParams.set('proposalId', selectedProposalForDetail.id);
+        window.history.replaceState({ proposalId: selectedProposalForDetail.id }, '', url.toString());
+      }
     } else {
       if (currentSubView === 'rules') {
         updateSEOForSubpage('challenge_rules');
@@ -1091,7 +1122,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         window.history.replaceState({}, '', url.toString());
       }
     }
-  }, [selectedProposalForDetail, currentSubView]);
+  }, [selectedProposalForDetail?.id, currentSubView]);
 
   const [copiedProposalId, setCopiedProposalId] = useState<string | null>(null);
 
@@ -1252,14 +1283,19 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       },
     ];
 
-    defaultDemoPainPoints.forEach((demo) => {
-      if (!list.some((item) => item.id === demo.id || item.title === demo.title)) {
-        list.push(demo);
-      }
-    });
+    // 3. 精選示範痛點：僅在活動開跑前（籌備/僅報名期）作為預覽示意；
+    // 當 10/24 00:00 第一階段「痛點徵件」正式開跑後，將示範痛點隱藏，完全以真實痛點與問題為準！
+    const isPainPointSubmissionStarted = !stageInfo.isBeforeStart && !stageInfo.isRegistrationOnlyStage;
+    if (!isPainPointSubmissionStarted) {
+      defaultDemoPainPoints.forEach((demo) => {
+        if (!list.some((item) => item.id === demo.id || item.title === demo.title)) {
+          list.push(demo);
+        }
+      });
+    }
 
     return list;
-  }, [proposals, questions]);
+  }, [proposals, questions, stageInfo.isBeforeStart, stageInfo.isRegistrationOnlyStage]);
 
   // 痛點問題每批 3 個（三張一批輪播）
   const homepagePainPointBatches = useMemo(() => {
@@ -1573,6 +1609,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       showToast('請完整填寫團隊名稱、負責人、電話、提案主題與構想摘要');
       return;
     }
+    if (!participantReferralSource) {
+      showToast('請回答「您從哪裡得知這場比賽？」');
+      return;
+    }
+    if (participantReferralSource === '其他' && !participantReferralSourceOther.trim()) {
+      showToast('請填寫其他得知管道說明');
+      return;
+    }
     if (!participantPledgeAgreed) {
       showToast('請先勾選同意 《IdeaX一般條款》 與 《創星季參賽者條款》');
       return;
@@ -1670,6 +1714,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       showToast('請完整填寫姓名、任職單位、職稱與證照或專業證明說明');
       return;
     }
+    if (!judgeReferralSource) {
+      showToast('請回答「您從哪裡得知這場比賽？」');
+      return;
+    }
+    if (judgeReferralSource === '其他' && !judgeReferralSourceOther.trim()) {
+      showToast('請說明其他得知管道');
+      return;
+    }
     if (!judgePledgeAgreed) {
       showToast('請先勾選同意 《IdeaX一般條款》 與 《創星季專家評審條款》');
       return;
@@ -1677,6 +1729,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
     setIsSubmittingJudge(true);
     try {
+      const finalJudgeReferral = judgeReferralSource === '其他' && judgeReferralSourceOther.trim() ? `其他 (${judgeReferralSourceOther.trim()})` : judgeReferralSource;
       const res = await applyJudge({
         name: judgeName,
         phone: judgePhone,
@@ -1689,13 +1742,32 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         credentialProofUrl: judgeProofFile?.url,
         credentialProofName: judgeProofFile?.name,
         bio: judgeBio || `${judgeOrg} ${judgeJobTitle}，創星季專業評審團委員。`,
-        referralSource: judgeReferralSource === '其他' && judgeReferralSourceOther.trim() ? `其他 (${judgeReferralSourceOther.trim()})` : judgeReferralSource,
+        referralSource: finalJudgeReferral,
         referralSourceOther: judgeReferralSourceOther.trim(),
         reviewPledgeAgreed: true,
       });
 
       if (res.success) {
         showToast(res.message);
+
+        try {
+          recordNewExpertApplication({
+            userId: currentUser.id,
+            expertName: judgeName.trim(),
+            expertPhone: judgePhone.trim(),
+            expertEmail: judgeEmail.trim() || currentUser.email || '',
+            organization: judgeOrg.trim(),
+            jobTitle: judgeJobTitle.trim(),
+            expertiseTracks: ['ict'],
+            yearsOfExperience: Number(judgeExperienceYears) || 5,
+            bio: judgeBio.trim() || `${judgeOrg.trim()} ${judgeJobTitle.trim()}，創星季專業評審團委員。`,
+            proofDocumentUrl: judgeProofFile?.url,
+            referralSource: finalJudgeReferral,
+            referralSourceOther: judgeReferralSourceOther.trim(),
+          });
+        } catch (e) {
+          console.warn('Sync expert application error:', e);
+        }
         // 申請評審的用戶會同時錄入舊站的認證專家身份與專家名單
         const updatedUser = {
           ...currentUser,
@@ -2068,7 +2140,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     },
     {
       q: '創星季的活動各階段時程如何安排？',
-      a: '競賽各階段日程如下：\n• 10/24 00:00 ～ 12/04 16:30：報名時段（※ 提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名）\n• 10/31 ～ 11/13：第一階段：痛點徵件（提出痛點過審即送 200 點，價值 $250，效期 60 日）\n• 11/14 ～ 11/15：第二階段 (一)：預先提案（【關閉募資(投資)功能】，僅可註冊報名、在線提案、主辦單位審核及預覽）\n• 11/16 ～ 12/04：第二階段 (二)：模擬募資與提案（【全面開放功能】，可報名、提案、創星幣模擬募資(投資)注資投票、主辦單位審核，募資總額前 20 名取得決選資格）\n• 12/05 ～ 12/11：第三階段：進入決選（由評審團進行專業審查與評分）\n• 12/16 前公布：第四階段：公布結果（於首頁盛大公告最終榜單，頒發榮譽與獎勵）',
+      a: '競賽各階段日程如下：\n• 10/17 00:00 ～ 12/04 16:30：報名時段（※ 提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名）\n• 10/24 00:00 ～ 11/13 16:30：第一階段：痛點徵件（提出痛點過審即送 200 點，價值 $250，效期 60 日）\n• 11/14 ～ 11/15：第二階段 (一)：預先提案（【關閉募資(投資)功能】，僅可註冊報名、在線提案、主辦單位審核及預覽）\n• 11/16 ～ 12/04：第二階段 (二)：模擬募資與提案（【全面開放功能】，可報名、提案、創星幣模擬募資(投資)注資投票、主辦單位審核，募資總額前 20 名取得決選資格）\n• 12/05 ～ 12/11：第三階段：進入決選（由評審團進行專業審查與評分）\n• 12/12 ～ 12/16：第四階段：公布結果（於首頁盛大公告最終榜單，頒發榮譽與獎勵）',
     },
   ];
 
@@ -3070,21 +3142,34 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
             {/* 5. 核心 CTA 按鍵組：風格高度統一，具備一致的圓角、邊框、圖示與視覺層次 */}
             <div id="star-tour-hero-cta" className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3 max-w-lg mx-auto">
-              {/* 主行動：在痛點徵件尚未開始前為「即將開跑 (10/31徵件)」，痛點徵件階段為「提出痛點」，痛點徵件後轉為「我想提案」直到 12/04，12/04後截止 */}
-              {stageInfo.activeStage === 0 ? (
+              {/* 主行動：在痛點徵件尚未開始前為「即將開跑 (10/24徵件)」/「即將徵件 (10/24)」；痛點徵件階段為「提出痛點」；痛點徵件後轉為「我想提案」直到 12/04，12/04後截止 */}
+              {stageInfo.isRegistrationOnlyStage ? (
                 <button
                   type="button"
                   id="star-tour-submit-proposal-btn"
                   onClick={() => {
-                    showToast('⚠️ 尚未開放：創星季第一階段「痛點徵件」將於 10/31 00:00 正式開放！目前尚未開放徵件，敬請期待。');
+                    navigateToSubView('participant');
+                  }}
+                  className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm sm:text-base shadow-sm border border-amber-400 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+                  title="創星季線上報名已開跑！點擊前往報名參賽（第一階段痛點徵件將於 10/24 00:00 正式開放）"
+                >
+                  <Sparkles className="w-4 h-4 text-stone-950" />
+                  <span>即將徵件 (10/24)</span>
+                </button>
+              ) : stageInfo.activeStage === 0 ? (
+                <button
+                  type="button"
+                  id="star-tour-submit-proposal-btn"
+                  onClick={() => {
+                    showToast('⚠️ 尚未開放：創星季將於 10/17 00:00 開放線上報名參賽，10/24 00:00 正式開放第一階段「痛點徵件」！敬請期待。');
                     const el = document.getElementById('homepage-schedule-section') || document.getElementById('homepage-awards-section');
                     el?.scrollIntoView({ behavior: 'smooth' });
                   }}
                   className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm sm:text-base shadow-sm border border-amber-400 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
-                  title="創星季籌備中：第一階段痛點徵件將於 10/31 00:00 正式開放！點擊查看完整賽程時程"
+                  title="創星季籌備中：10/17 開放報名、10/24 00:00 痛點徵件正式開跑！點擊查看完整賽程時程"
                 >
                   <Sparkles className="w-4 h-4 text-stone-950" />
-                  <span>即將開跑 (10/31徵件)</span>
+                  <span>即將開跑 (10/24徵件)</span>
                 </button>
               ) : stageInfo.isPainPointStage ? (
                 <button
@@ -3993,7 +4078,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   📝 報名時段
                 </span>
                 <span className="font-black text-stone-900 font-mono text-sm">
-                  10/24 00:00 ～ 12/04 16:30
+                  10/17 00:00 ～ 12/04 16:30
                 </span>
               </div>
               <div className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
@@ -4030,7 +4115,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       痛點徵件
                     </div>
                     <div className={`text-xs font-mono ${activeStage === 1 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
-                      10/31 00:00 ~ 11/13 16:30
+                      10/24 00:00 ~ 11/13 16:30
                     </div>
                     <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 1 ? 'text-stone-600' : 'text-stone-400'}`}>
                       提出生活與產業切身痛點（過審即送 200 點），開放各隊選題解題。
@@ -4150,7 +4235,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       公布結果
                     </div>
                     <div className={`text-xs font-mono ${activeStage === 5 ? 'font-black text-emerald-700' : 'font-medium text-stone-400'}`}>
-                      12/16 前公布
+                      12/12 ~ 12/16 公布
                     </div>
                     <p className={`text-[11px] leading-relaxed pt-0.5 ${activeStage === 5 ? 'text-stone-600' : 'text-stone-400'}`}>
                       於首頁盛大公告最終榜單，頒發榮譽與獎勵。
@@ -4284,7 +4369,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
               {/* 提案摘要 */}
               <div>
-                <h4 className="font-black text-stone-900 mb-1">提案摘要</h4>
+                <h4 className="font-black text-stone-900 mb-1">
+                  {selectedProposalForDetail.stage === 'pain_point' ? '痛點簡述' : '核心摘要與創新價值'}
+                </h4>
                 <p className="text-stone-700 leading-relaxed bg-stone-50 p-3 rounded-xl border border-stone-200">
                   {selectedProposalForDetail.summary}
                 </p>
@@ -4293,20 +4380,20 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               {/* 詳細說明 */}
               <div>
                 <h4 className="font-black text-stone-900 mb-1">
-                  {selectedProposalForDetail.stage === 'pain_point' ? '痛點詳述說明' : '詳細執行方案與創新價值'}
+                  {selectedProposalForDetail.stage === 'pain_point' ? '痛點深入說明' : '詳細內容或企畫書'}
                 </h4>
                 <div className="text-stone-700 leading-relaxed bg-stone-50 p-3.5 rounded-xl border border-stone-200 whitespace-pre-line">
                   {selectedProposalForDetail.description || selectedProposalForDetail.summary}
                 </div>
               </div>
 
-              {/* 照片 / 圖片展示區 */}
+              {/* 圖片展示區 */}
               {selectedProposalForDetail.images && selectedProposalForDetail.images.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-black text-stone-900 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <ImageIcon className="w-4 h-4 text-amber-600" />
-                      <span>{selectedProposalForDetail.stage === 'pain_point' ? '痛點照片/圖片' : '提案相片展示'}</span>
+                      <span>圖片展示</span>
                     </span>
                     <span className="text-[10px] text-stone-400 font-mono">
                       共 {selectedProposalForDetail.images.length} 張
@@ -5738,10 +5825,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     </p>
                   </div>
 
-                  {/* 問題二: 您從哪裡得知這個比賽? */}
+                  {/* 問題二: 您從哪裡得知這場比賽? */}
                   <div className="space-y-1.5 pt-2 border-t border-stone-200/60">
                     <label className="block font-bold text-stone-800 text-[11px]">
-                      您從哪裡得知這個比賽？ <span className="text-stone-400 font-normal">(單選)</span>
+                      您從哪裡得知這場比賽？ <span className="text-rose-500 font-bold">*</span> <span className="text-stone-400 font-normal">(單選)</span>
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                       {[
@@ -6012,10 +6099,11 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <div className="font-bold text-stone-900 flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <Sparkles className="w-4 h-4 text-purple-600" />
-                      <span>您從哪裡得知這個比賽？</span>
+                      <span>您從哪裡得知這場比賽？</span>
+                      <span className="text-rose-500 font-bold">*</span>
                     </div>
                     <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                      主辦單位統計 (單選)
+                      主辦單位統計 (單選，必選)
                     </span>
                   </div>
 

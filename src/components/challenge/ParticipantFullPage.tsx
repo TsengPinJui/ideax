@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   Send,
@@ -47,7 +47,15 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
     openAboutModal,
   } = useApp();
 
-  const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
+  const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
+
+  useEffect(() => {
+    const handleStageChange = () => {
+      setStageInfo(getCompetitionStageInfo());
+    };
+    window.addEventListener('ideax_competition_stage_changed', handleStageChange);
+    return () => window.removeEventListener('ideax_competition_stage_changed', handleStageChange);
+  }, []);
 
   const [termsDoc, setTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
@@ -132,8 +140,33 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
       return;
     }
 
+    if (!referralSource) {
+      showToast('請回答「您從哪裡得知這場比賽？」');
+      return;
+    }
+
+    if (referralSource === '其他' && !referralSourceOther.trim()) {
+      showToast('請填寫其他得知管道說明');
+      return;
+    }
+
     if (!participantPledgeAgreed) {
       showToast('請先勾選同意 《IdeaX一般條款》 與 《創星季參賽者條款》');
+      return;
+    }
+
+    const stage = getCompetitionStageInfo();
+    const nowTime = Date.now();
+    const currentYear = new Date().getFullYear();
+    const tRegistrationStart = new Date(currentYear, 9, 17, 0, 0, 0).getTime();
+    const tRegistrationEnd = new Date(currentYear, 11, 4, 16, 30, 0).getTime();
+
+    if (stage.activeStage === 0 && nowTime < tRegistrationStart) {
+      showToast('⚠️ 線上報名參賽將於 10/17 00:00 正式開放！敬請期待。');
+      return;
+    }
+    if (stage.isProposalClosed || nowTime > tRegistrationEnd) {
+      showToast('⚠️ 創星季參賽報名已於 12/04 16:30 截止！');
       return;
     }
 
@@ -375,7 +408,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
 
           <div className="inline-flex flex-wrap items-center justify-center gap-2 pt-1 text-xs">
             <span className="px-3 py-1 rounded-full bg-white border border-amber-300 text-stone-800 font-bold font-mono shadow-2xs">
-              📝 報名時段：10/24 00:00 ～ 12/04 16:30
+              📝 報名時段：10/17 00:00 ～ 12/04 16:30
             </span>
             <span className="text-[11px] text-amber-900 font-bold">
               （提痛點之參賽者請於 11/13 16:30 痛點徵件截止前完成報名）
@@ -670,10 +703,10 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                 </p>
               </div>
 
-              {/* 問題二: 您從哪裡得知這個比賽? */}
+              {/* 問題二: 您從哪裡得知這場比賽? */}
               <div className="space-y-2 pt-2 border-t border-stone-200/60">
                 <label className="block font-bold text-stone-800 text-xs">
-                  您從哪裡得知這個比賽？ <span className="text-stone-400 font-normal">(單選)</span>
+                  您從哪裡得知這場比賽？ <span className="text-rose-500 font-bold">*</span> <span className="text-stone-400 font-normal">(單選，必選)</span>
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[

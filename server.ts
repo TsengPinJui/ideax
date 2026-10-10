@@ -3413,7 +3413,11 @@ async function startServer() {
       let pageDesc = 'IdeaX 創點子 — 讓想法發光！高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，Ideas Connect Possibilities。';
       let pageImg = 'https://www.ideax.tw/圓角正向黃底燈泡.png';
 
-      if (rawPath.startsWith('/challenge')) {
+      if (rawPath === '/challenge/rules' || rawPath === '/rules') {
+        pageTitle = '活動辦法與競賽規程 — 創星季 全國創新提案挑戰賽 | IdeaX 創點子';
+        pageDesc = '創星季挑戰賽完整活動辦法：賽程日程、痛點徵件、提案審查標準、評審評分規約、獎金與點數權益說明。';
+        pageImg = 'https://www.ideax.tw/去背創星季.png';
+      } else if (rawPath.startsWith('/challenge')) {
         pageTitle = '創星季賽事官網 — 全國創新提案挑戰賽 讓校園與青年創新想法獲得真實市場驗證 | IdeaX 創點子';
         pageDesc = '創星季全國創新提案挑戰賽官方專區：豐厚競賽大獎、真實痛點徵件、跨領域創新提案與校園青年商業落地競賽。';
         pageImg = 'https://www.ideax.tw/去背創星季.png';

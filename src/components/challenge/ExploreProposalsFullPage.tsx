@@ -99,7 +99,15 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     isQuestionSeconded,
     getQuestionSecondCount,
   } = useApp();
-  const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
+  const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
+
+  useEffect(() => {
+    const handleStageChange = () => {
+      setStageInfo(getCompetitionStageInfo());
+    };
+    window.addEventListener('ideax_competition_stage_changed', handleStageChange);
+    return () => window.removeEventListener('ideax_competition_stage_changed', handleStageChange);
+  }, []);
 
   // 區分「解方提案」與「痛點問題」兩大部分
   const [activeSectionTab, setActiveSectionTab] = useState<'solution' | 'pain_point'>(initialSectionTab || 'solution');
@@ -203,6 +211,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
       }
 
       if (targetId) {
+        // 若已經正在顯示該提案，切勿重複打開觸發循環
+        if (selectedProposalForDetail && selectedProposalForDetail.id === targetId) {
+          return;
+        }
         let found = proposals.find((p) => p.id === targetId);
         if (!found) {
           found = (await fetchSingleProposal(targetId)) || undefined;
@@ -216,7 +228,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     parseAndOpenProposal();
     window.addEventListener('popstate', parseAndOpenProposal);
     return () => window.removeEventListener('popstate', parseAndOpenProposal);
-  }, [proposals]);
+  }, []); // 依賴項為空，僅在掛載與 popstate 時監聽，避免因 proposals 變更造成迴圈
 
   // 同步 URL 與動態 SEO
   useEffect(() => {
@@ -225,8 +237,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     if (selectedProposalForDetail) {
       updateSEOForProposal(selectedProposalForDetail);
       const url = new URL(window.location.href);
-      url.searchParams.set('proposalId', selectedProposalForDetail.id);
-      window.history.replaceState({ proposalId: selectedProposalForDetail.id }, '', url.toString());
+      if (url.searchParams.get('proposalId') !== selectedProposalForDetail.id) {
+        url.searchParams.set('proposalId', selectedProposalForDetail.id);
+        window.history.replaceState({ proposalId: selectedProposalForDetail.id }, '', url.toString());
+      }
     } else {
       resetSEOToDefault();
       const url = new URL(window.location.href);
@@ -235,7 +249,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         window.history.replaceState({}, '', url.toString());
       }
     }
-  }, [selectedProposalForDetail]);
+  }, [selectedProposalForDetail?.id]);
 
   const showToast = (message: string) => {
     addNotification({
@@ -254,9 +268,18 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   };
 
   // 篩選提案（依需求：提案總覽裡只會顯示提案/解方，不要顯示痛點，痛點統一於IdeaX創點子平台的創點子/痛點集展示）
+  // 依需求：開始提案(11/14 起)後，隱藏對應示範提案，完全以真實作品為主
   const filteredProposals = proposals.filter((p) => {
     // 嚴格僅顯示提案解方 (stage === 'solution')，排除痛點
     if (p.stage === 'pain_point') return false;
+
+    // 當提案階段 (11/14 起) 開始時，排除所有示範資料 (demo- 與 test-)
+    if (stageInfo.isProposalStage || stageInfo.isExpertReviewStage || stageInfo.isResultsStage) {
+      if (p.id.startsWith('demo-') || p.id.startsWith('test-')) {
+        return false;
+      }
+    }
+
     if (selectedTrack !== 'all' && p.track !== selectedTrack) return false;
     if (searchKeyword.trim()) {
       const kw = searchKeyword.trim().toLowerCase();
@@ -1315,7 +1338,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                           type="button"
                           onClick={() => {
                             if (stageInfo.activeStage === 0) {
-                              showToast('ℹ️ 創星季籌備中，第一階段痛點徵件將於 10/31 00:00 正式開跑！');
+                              showToast('ℹ️ 創星季籌備中，第一階段痛點徵件將於 10/24 00:00 正式開跑！');
                               return;
                             }
                             if (stageInfo.isPreProposalStage) {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   ArrowLeft,
@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { applyJudge, uploadProposalAttachment } from '../../services/competitionClientService';
+import { recordNewExpertApplication } from '../../services/competitionAdminSync';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
@@ -51,7 +52,15 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
     openAboutModal,
   } = useApp();
 
-  const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
+  const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
+
+  useEffect(() => {
+    const handleStageChange = () => {
+      setStageInfo(getCompetitionStageInfo());
+    };
+    window.addEventListener('ideax_competition_stage_changed', handleStageChange);
+    return () => window.removeEventListener('ideax_competition_stage_changed', handleStageChange);
+  }, []);
 
   const [termsDoc, setTermsDoc] = useState<CompetitionDocumentKey | null>(null);
 
@@ -144,6 +153,16 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
       return;
     }
 
+    if (!referralSource) {
+      showToast('請回答「您從哪裡得知這場比賽？」');
+      return;
+    }
+
+    if (referralSource === '其他' && !referralSourceOther.trim()) {
+      showToast('請填寫其他得知管道說明');
+      return;
+    }
+
     if (!judgePledgeAgreed) {
       showToast('請先勾選同意 《IdeaX一般條款》 與 《創星季專家評審條款》');
       return;
@@ -151,6 +170,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
 
     setIsSubmitting(true);
     try {
+      const finalReferral = referralSource === '其他' && referralSourceOther.trim() ? `其他 (${referralSourceOther.trim()})` : referralSource;
       const res = await applyJudge({
         name: judgeName.trim(),
         phone: judgePhone.trim(),
@@ -163,13 +183,32 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
         credentialProofUrl: proofFile?.url,
         credentialProofName: proofFile?.name,
         bio: judgeBio.trim() || `${judgeInstitution.trim()} ${judgeJobTitle.trim()}，專業領域涵蓋 ${judgeDomain}。`,
-        referralSource: referralSource === '其他' && referralSourceOther.trim() ? `其他 (${referralSourceOther.trim()})` : referralSource,
+        referralSource: finalReferral,
         referralSourceOther: referralSourceOther.trim(),
         reviewPledgeAgreed: true,
       });
 
       if (res.success) {
         showToast('評審申請已提交！已為您同步登錄 IdeaX 創點子平台認證專家身分與評審額度。');
+
+        try {
+          recordNewExpertApplication({
+            userId: currentUser.id,
+            expertName: judgeName.trim(),
+            expertPhone: judgePhone.trim(),
+            expertEmail: judgeEmail.trim(),
+            organization: judgeInstitution.trim(),
+            jobTitle: judgeJobTitle.trim(),
+            expertiseTracks: ['ict'],
+            yearsOfExperience: Number(judgeYearsOfExp) || 3,
+            bio: judgeBio.trim() || `${judgeInstitution.trim()} ${judgeJobTitle.trim()}，專業領域涵蓋 ${judgeDomain}。`,
+            proofDocumentUrl: proofFile?.url,
+            referralSource: finalReferral,
+            referralSourceOther: referralSourceOther.trim(),
+          });
+        } catch (e) {
+          console.warn('Sync expert record error:', e);
+        }
 
         // 同步更新用戶資料庫認證專家身分
         setCurrentUser((prev: any) => {
@@ -626,10 +665,11 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
               <div className="flex items-center justify-between border-b border-stone-200/80 pb-2.5">
                 <div className="font-black text-stone-900 text-sm flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-purple-600" />
-                  <span>您從哪裡得知這個比賽？</span>
+                  <span>您從哪裡得知這場比賽？</span>
+                  <span className="text-rose-500 font-bold">*</span>
                 </div>
                 <span className="text-[11px] text-purple-700 font-bold bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
-                  主辦單位統計 (單選)
+                  主辦單位統計 (單選，必選)
                 </span>
               </div>
 

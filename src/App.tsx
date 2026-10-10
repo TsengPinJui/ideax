@@ -841,7 +841,7 @@ function MainContent() {
       window.removeEventListener('hashchange', parseAndOpenQuestion);
       window.removeEventListener('ideax_open_recharge', handleOpenRecharge);
     };
-  }, [questions]);
+  }, []);
 
   // Synchronize browser URL & dynamic SEO (Title, Description, Schema.org QAPage)
   useEffect(() => {
@@ -850,17 +850,27 @@ function MainContent() {
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       if (selectedQuestion) {
-        url.searchParams.set('q', selectedQuestion.id);
+        if (url.searchParams.get('q') !== selectedQuestion.id) {
+          url.searchParams.set('q', selectedQuestion.id);
+          window.history.replaceState({}, '', url.toString());
+        }
       } else {
         const curQ = url.searchParams.get('q');
+        let changed = false;
         if (curQ && (curQ.startsWith('q-') || curQ.startsWith('mock-') || curQ.startsWith('question-'))) {
           url.searchParams.delete('q');
+          changed = true;
         }
-        url.searchParams.delete('questionId');
+        if (url.searchParams.has('questionId')) {
+          url.searchParams.delete('questionId');
+          changed = true;
+        }
+        if (changed) {
+          window.history.replaceState({}, '', url.toString());
+        }
       }
-      window.history.replaceState({}, '', url.toString());
     }
-  }, [selectedQuestion, answers]);
+  }, [selectedQuestion?.id, answers.length]);
 
   // Filter & Sort questions with comprehensive search covering:
   // - 內文 (Question description, AI analysis, all answer freePreview / fullContent, meeting agendas, phase deliverables)

@@ -39,7 +39,15 @@ export const AmbassadorFullPage: React.FC<AmbassadorFullPageProps> = ({
   onGoToPainPoints,
 }) => {
   const { currentUser, addNotification } = useApp();
-  const stageInfo = React.useMemo(() => getCompetitionStageInfo(), []);
+  const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
+
+  useEffect(() => {
+    const handleStageChange = () => {
+      setStageInfo(getCompetitionStageInfo());
+    };
+    window.addEventListener('ideax_competition_stage_changed', handleStageChange);
+    return () => window.removeEventListener('ideax_competition_stage_changed', handleStageChange);
+  }, []);
 
   const [ambassadorData, setAmbassadorData] = useState<{
     referralCode: string;

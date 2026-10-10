@@ -226,10 +226,7 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
           aria-label="開啟使用導覽（含聊天室教學）"
           title="開啟使用教學導覽"
         >
-          {/* 呼吸光環 (Pulse Ring) */}
-          <span className="absolute -inset-1 rounded-full bg-amber-400 opacity-30 animate-ping pointer-events-none" />
-
-          {/* 擬真 🧭 羅盤圖示 */}
+          {/* 擬真 🧭 羅盤圖示 (常態穩定無閃爍) */}
           <RealisticCompassIcon className="w-full h-full object-contain drop-shadow-xs" />
         </button>
       </div>

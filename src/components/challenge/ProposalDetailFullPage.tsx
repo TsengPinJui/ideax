@@ -15,6 +15,9 @@ import {
   Send,
   Trophy,
   Users,
+  Edit3,
+  Undo2,
+  Paperclip,
 } from 'lucide-react';
 import {
   StarSeasonProposal,
@@ -25,6 +28,13 @@ import {
 import { getProposalShareUrl } from '../../services/seoService';
 import { shareOrCopyUrl, copyPureUrl } from '../../utils/shareUtils';
 import { getUserNameColorClass } from '../../utils/userDisplay';
+import { useApp } from '../../context/AppContext';
+import {
+  extractProposalSections,
+  extractProposalAttachments,
+} from '../../utils/proposalContentHelper';
+import { ProposalRichContentDisplay } from './ProposalRichContentDisplay';
+import { withdrawCompetitionProposal } from '../../services/competitionAdminSync';
 
 interface ProposalDetailFullPageProps {
   proposal: StarSeasonProposal;
@@ -39,6 +49,8 @@ interface ProposalDetailFullPageProps {
   isLoggedIn?: boolean;
   onOpenAuth?: () => void;
   onSolvePainPoint?: (proposal: StarSeasonProposal) => void;
+  onEditProposal?: (proposal: StarSeasonProposal) => void;
+  onWithdrawProposal?: (proposal: StarSeasonProposal) => void;
   showToast?: (msg: string) => void;
 }
 
@@ -55,6 +67,8 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   isLoggedIn = false,
   onOpenAuth,
   onSolvePainPoint,
+  onEditProposal,
+  onWithdrawProposal,
   showToast,
 }) => {
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -105,6 +119,48 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
       setIsSubmittingComment(false);
     }
   };
+
+  const { currentUser } = useApp();
+  const isAuthor = Boolean(
+    currentUser &&
+    currentUser.id !== 'user-guest' &&
+    (currentUser.id === proposal.authorId ||
+      currentUser.name === proposal.authorName ||
+      (currentUser.email && (proposal as any).authorEmail === currentUser.email))
+  );
+
+  const handleEditThisProposal = () => {
+    sessionStorage.setItem('ideax_challenge_load_proposal_id', proposal.id);
+    if (onEditProposal) {
+      onEditProposal(proposal);
+    } else {
+      window.location.href = `/challenge?subView=submit`;
+    }
+  };
+
+  const handleWithdrawThisProposal = () => {
+    if (
+      !window.confirm(
+        '確定要撤回此提案嗎？\n\n撤回後本提案將自官方審核清單與公開展示中移除，並保留完整資料轉為「暫存草稿」，您可以隨時修改後重新發布！'
+      )
+    ) {
+      return;
+    }
+    const res = withdrawCompetitionProposal(proposal.id, currentUser?.id);
+    if (res.success) {
+      showToast?.('提案已成功撤回為草稿！');
+      if (onWithdrawProposal) {
+        onWithdrawProposal(proposal);
+      } else {
+        onBack();
+      }
+    } else {
+      showToast?.(res.message);
+    }
+  };
+
+  const sections = extractProposalSections(proposal);
+  const attachments = extractProposalAttachments(proposal);
 
   const authorInfo = getProposalCardAuthorText(proposal);
 
@@ -313,12 +369,48 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           </section>
         )}
 
-        {/* 5. 提案摘要與執行方案 */}
+        {/* 作者專屬管理列：編輯與撤回 */}
+        {isAuthor && (
+          <div className="p-4 sm:p-5 rounded-3xl bg-amber-50/90 border-2 border-amber-300 flex items-center justify-between gap-3 flex-wrap shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center font-black shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-black text-amber-950 text-sm">您是本提案之提交作者</div>
+                <div className="text-xs text-stone-600">您可以隨時進行修改、預覽編輯成果，或撤回提案至草稿箱</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleEditThisProposal}
+                className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 active:scale-98"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>編輯提案</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleWithdrawThisProposal}
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-98"
+                title="撤回至草稿箱"
+              >
+                <Undo2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>撤回為草稿</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 5. 提案核心摘要與詳細內容或企畫書 */}
         <section className="bg-white rounded-3xl p-5 sm:p-8 border border-stone-200/90 shadow-sm space-y-6">
           <div>
             <h3 className="text-sm font-black text-stone-900 mb-2 flex items-center gap-2">
               <FileText className="w-4 h-4 text-amber-600" />
-              <span>提案核心摘要</span>
+              <span>{proposal.stage === 'pain_point' ? '痛點簡述' : '核心摘要與創新價值'}</span>
             </h3>
             <div className="text-stone-700 text-sm leading-relaxed bg-stone-50 p-4 rounded-2xl border border-stone-200/80 font-medium">
               {proposal.summary}
@@ -328,27 +420,35 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           <div>
             <h3 className="text-sm font-black text-stone-900 mb-2 flex items-center gap-2">
               <FileText className="w-4 h-4 text-amber-600" />
-              <span>{proposal.stage === 'pain_point' ? '痛點深入說明' : '詳細執行方案與創新價值'}</span>
+              <span>{proposal.stage === 'pain_point' ? '痛點深入說明' : '詳細內容或企畫書'}</span>
             </h3>
-            <div className="text-stone-700 text-sm leading-relaxed bg-stone-50 p-4 sm:p-5 rounded-2xl border border-stone-200/80 whitespace-pre-line font-medium">
-              {proposal.description || proposal.summary}
-            </div>
+
+            {sections.length > 0 ? (
+              <ProposalRichContentDisplay
+                sections={sections}
+                attachments={attachments}
+              />
+            ) : (
+              <div className="text-stone-700 text-sm leading-relaxed bg-stone-50 p-4 sm:p-5 rounded-2xl border border-stone-200/80 whitespace-pre-line font-medium">
+                {proposal.description || proposal.summary}
+              </div>
+            )}
           </div>
 
-          {/* 相片/展示圖片 */}
+          {/* 圖片展示 (相片/展示圖片) */}
           {proposal.images && proposal.images.length > 0 && (
             <div className="space-y-3 pt-2">
               <h3 className="text-sm font-black text-stone-900 flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <ImageIcon className="w-4 h-4 text-amber-600" />
-                  <span>專案圖片與雛形照片展示</span>
+                  <span>圖片展示</span>
                 </span>
                 <span className="text-xs text-stone-400 font-mono">共 {proposal.images.length} 張</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {proposal.images.map((img, idx) => (
                   <div key={idx} className="rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 aspect-video shadow-2xs group relative">
-                    <img src={img} alt={`提案圖片-${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={img} alt={`展示圖片-${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   </div>
                 ))}
               </div>

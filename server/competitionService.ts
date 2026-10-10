@@ -1127,6 +1127,7 @@ export async function applyJudge(
       verifiedExpert: true,
       credentialsNote: data.credentialsNote,
       credentialProofUrl: data.credentialProofUrl || null,
+      referralSource: data.referralSource || null,
       featuredCase: {
         title: '創星季創新創業與產學審查',
         description: '受邀擔任創星季與各項青年創新創業競賽專業評審委員。',

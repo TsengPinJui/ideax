@@ -61,10 +61,7 @@ export const FloatingStarSeasonGuide: React.FC<FloatingStarSeasonGuideProps> = (
           aria-label="開啟創星季網站導覽"
           title="開啟創星季網站導覽"
         >
-          {/* 呼吸光環 (Pulse Ring) */}
-          <span className="absolute -inset-1 rounded-full bg-amber-400 opacity-30 animate-ping pointer-events-none" />
-
-          {/* 立體發光圓核 */}
+          {/* 立體發光圓核 (常態穩定無閃爍) */}
           <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-600 flex items-center justify-center text-stone-950 font-black shadow-inner">
             <span className="text-xl sm:text-2xl font-black font-sans leading-none drop-shadow-xs group-hover:scale-110 transition-transform">
               ?
