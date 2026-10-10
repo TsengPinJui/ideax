@@ -170,9 +170,9 @@ export const AnnualWithholdingTaxModal: React.FC<AnnualWithholdingTaxModalProps>
     <tr>
       <th style="width: 15%;">扣繳義務人<br>(給付單位)</th>
       <td style="width: 35%;">
-        <strong>IdeaX 創點子智庫股份有限公司</strong><br>
-        統一編號：90123456<br>
-        負責人：柯育任
+        <strong>IdeaX 創點子團隊</strong><br>
+        負責人：柯育任<br>
+        官方客服：ideax.office@gmail.com
       </td>
       <th style="width: 15%;">納稅義務人<br>(所得受領人)</th>
       <td style="width: 35%;">
@@ -220,7 +220,7 @@ export const AnnualWithholdingTaxModal: React.FC<AnnualWithholdingTaxModalProps>
       isSettled
         ? `<div>1. 本憑單係依據《所得稅法》第 88 條、第 89 條及第 92 條規定依法產出，並於 ${taxYear + 1} 年 1 月依法向財政部臺北國稅局完成扣繳申報核訖。</div>
 <div>2. 納稅義務人於每年 5 月 1 日至 5 月 31 日辦理綜合所得稅結算申報時，系統將自動匯入本筆所得資料，亦得以本憑單作為申報查驗之法定證明文件。</div>
-<div>3. 如對各類所得申報給付總額有疑義，請洽本公司財務部諮詢查核。</div>`
+<div>3. 如對各類所得申報給付總額有疑義，請洽 IdeaX 創點子團隊財務小組諮詢查核。</div>`
         : `<div>1. 依《所得稅法》規定，財稅年度以每年 12 月 31 日為法定結算基準日。目前 ${taxYear} 年度營業尚未結束，本表僅供會員作為年度即時收益與所得扣繳之累計預覽試算。</div>
 <div>2. 【特別提醒】本試算表尚未向財政部國稅局申報核驗，請勿於 5 月報稅時直接作為正式抵稅扣繳憑單憑證使用。</div>
 <div>3. 本年度正式扣繳憑單將於 ${taxYear}/12/31 財稅年度截止後，於 ${taxYear + 1} 年 1 月依法向國稅局完成申報後核發。</div>`
@@ -234,7 +234,7 @@ export const AnnualWithholdingTaxModal: React.FC<AnnualWithholdingTaxModalProps>
   </div>
 
   <div class="footer">
-    扣繳機關代號：90123456 · 營業地址：台北市信義區信義路五段7號 (台北101大樓) · 財務客服專線：0800-888-000
+    申報與給付團隊：IdeaX 創點子團隊 · 官方客服信箱：ideax.office@gmail.com
   </div>
 </body>
 </html>
@@ -468,7 +468,7 @@ export const AnnualWithholdingTaxModal: React.FC<AnnualWithholdingTaxModalProps>
               <span>{isSettled ? '【財政部扣繳憑單核章與申報代碼】' : '【系統即時累計試算備查章】'}</span>
             </div>
             <p className="leading-relaxed text-[11px]">
-              扣繳單位：IdeaX 創點子智庫股份有限公司 · 統一編號：90123456 · 負責人：柯育任
+              申報與給付團隊：IdeaX 創點子團隊 · 負責人：柯育任 · 客服信箱：ideax.office@gmail.com
             </p>
             <p className="leading-relaxed text-[11px]">
               {isSettled

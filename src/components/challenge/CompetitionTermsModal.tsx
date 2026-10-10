@@ -120,7 +120,7 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
                 </h3>
                 <p className="text-xs text-stone-600 mt-1">{COMPETITION_RULES_A.subtitle}</p>
                 <div className="text-[11px] font-mono text-stone-500 mt-2">
-                  最後修訂日：{COMPETITION_RULES_A.lastUpdated} • 主辦單位：IdeaX 團隊
+                  最後修訂日：{COMPETITION_RULES_A.lastUpdated} • 主辦單位：IdeaX 創點子團隊
                 </div>
               </div>
 

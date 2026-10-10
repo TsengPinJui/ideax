@@ -244,7 +244,7 @@ export const ConsolidatedStatementModal: React.FC<ConsolidatedStatementModalProp
   </div>
 
   <div class="footer">
-    IdeaX Inc. 創點子智庫股份有限公司 · 統一編號：90123456 · 台北市信義區信義路五段7號 (台北101大樓) · 客服專線：0800-888-000
+    IdeaX 創點子團隊 · 客服支援：ideax.office@gmail.com
   </div>
 </body>
 </html>
@@ -359,13 +359,13 @@ export const ConsolidatedStatementModal: React.FC<ConsolidatedStatementModalProp
                   type="text"
                   value={recipientName}
                   onChange={(e) => setRecipientName(e.target.value)}
-                  placeholder="例如：柯育任 / 科技創投股份有限公司"
+                  placeholder="例如：柯育任 / 創投研究團隊"
                   className="w-full px-3 py-1.5 bg-stone-50 hover:bg-white focus:bg-white border border-stone-200 focus:border-purple-500 rounded-xl outline-none font-bold text-stone-800 transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 mb-1">統一編號（選填，公司報稅用）</label>
+                <label className="block text-[11px] font-bold text-stone-600 mb-1">統一編號（選填，報稅報帳用）</label>
                 <input
                   type="text"
                   value={taxId}
@@ -548,13 +548,13 @@ export const ConsolidatedStatementModal: React.FC<ConsolidatedStatementModalProp
               <span>【創點子 IdeaX 官方審計與金流憑證效力】</span>
             </div>
             <p className="leading-relaxed text-[11px]">
-              1. 本對帳單係 IdeaX 創點子知識共享平台依據全站資料庫真實交易紀錄彙總產出，具備正式對帳與金流查核效力。
+              1. 本對帳單係 IdeaX 創點子團隊依據全站資料庫真實交易紀錄彙總產出，具備正式對帳與金流查核效力。
             </p>
             <p className="leading-relaxed text-[11px]">
               2. 款項均經第三方金融信託金流與數位帳本嚴格稽核。專家會員若需報稅憑據或工作室核銷，可直接使用本對帳單。
             </p>
             <p className="leading-relaxed text-[11px] font-mono text-stone-500">
-              對帳單查驗代碼：<strong>{statementNo}</strong> · 平台統編：90123456
+              對帳單查驗代碼：<strong>{statementNo}</strong> · 發行單位：IdeaX 創點子團隊
             </p>
 
             {/* 圓形紅色官方審計印章 */}

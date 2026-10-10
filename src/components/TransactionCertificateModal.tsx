@@ -157,7 +157,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
   </div>
 
   <div class="footer">
-    創點子科技股份有限公司 · 統一編號：91028374 · 台北市信義區忠孝東路五段 · 客服支援：support@ideax.tw
+    IdeaX 創點子團隊 · 客服支援：ideax.office@gmail.com
   </div>
 </body>
 </html>
@@ -337,7 +337,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
   </div>
 
   <div class="footer">
-    IdeaX Inc. Financial Services Group · 本憑證受中華民國電子簽章法及服務條款保護
+    IdeaX 創點子團隊 · 本憑證受中華民國電子簽章法及服務條款保護
   </div>
 </body>
 </html>
@@ -506,7 +506,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
               type="text"
               value={buyerTitle}
               onChange={(e) => setBuyerTitle(e.target.value)}
-              placeholder="如：台灣創點子科技有限公司"
+              placeholder="如：創點子團隊或個人抬頭"
               className="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 bg-white text-xs focus:ring-2 focus:ring-amber-400 focus:outline-none"
             />
           </div>
@@ -745,7 +745,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
                 </div>
                 <strong>【統一發票扣抵與營利事業所得稅報帳說明】</strong>
                 <p className="pr-24">
-                  本收據為創點子科技股份有限公司依營業稅法開立之營業收入憑證。公司行號得依記載之統一編號與稅額申報扣抵營業稅進項稅額並列報當年度營業費用。
+                  本收據為 IdeaX 創點子團隊依法開立之營業收入憑證。報帳團隊與企業得依記載之統一編號與稅額申報扣抵營業稅進項稅額並列報當年度營業費用。
                 </p>
               </div>
             </div>
@@ -827,7 +827,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
 
           {/* Modal Footer */}
           <div className="text-center text-[10px] text-stone-400 font-mono pt-2 border-t border-stone-100">
-            IdeaX Inc. Financial Services Group · 依電子簽章法及平台服務條款生成
+            IdeaX 創點子團隊 · 依電子簽章法及平台服務條款生成
           </div>
         </div>
 
@@ -835,7 +835,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
         <div className="p-3.5 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-2 bg-stone-50">
           <div className="text-[11px] text-stone-500 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>具備唯一防偽編號與數位簽章查驗，可直接作為公司會計與稅務憑證。</span>
+            <span>具備唯一防偽編號與數位簽章查驗，可直接作為會計與稅務報帳憑證。</span>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">

@@ -49,7 +49,7 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
             </div>
             <div className="text-stone-300">
               <span className="text-stone-400">主辦單位：</span>
-              <span className="font-bold text-white">IdeaX團隊</span>
+              <span className="font-bold text-white">IdeaX 創點子團隊</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-stone-400">官方 Email：</span>
@@ -147,7 +147,7 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
         {/* 頁尾版權條 */}
         <div className="pt-6 border-t border-stone-800 text-[11px] text-stone-500 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <div>
-            © {new Date().getFullYear()} 創星季 · 主辦單位: IdeaX團隊 · All rights reserved.
+            © {new Date().getFullYear()} 創星季 · 主辦單位: IdeaX 創點子團隊 · All rights reserved.
           </div>
           <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-end">
             <span>官方信箱: ideax.office@gmail.com</span>

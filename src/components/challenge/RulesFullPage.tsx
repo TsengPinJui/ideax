@@ -415,7 +415,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                 IdeaX 創星季 • 官方競賽章程與辦法規章
               </h1>
               <p className="text-xs sm:text-sm text-stone-600">
-                主辦單位：IdeaX 創星季競賽籌備處 • 最後修訂日期：2026 年 10 月 07 日
+                主辦單位：IdeaX 創點子團隊 • 最後修訂日期：2026 年 10 月 07 日
               </p>
               <div className="pt-2 text-xs text-stone-700 bg-stone-50 p-3 rounded-lg border border-stone-200">
                 <b>【前言與約束力說明】</b>

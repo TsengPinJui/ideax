@@ -119,9 +119,9 @@ export const ContractPreviewModal: React.FC<ContractPreviewModalProps> = ({ cont
                 </span>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center">
-                <span className="w-28 font-bold text-stone-500 shrink-0">履約公證（丙方）：</span>
+                <span className="w-28 font-bold text-stone-500 shrink-0">履約見證（丙方）：</span>
                 <span className="font-bold text-stone-900">
-                  創點子 IdeaX 商業技術履約託管公證平台（IdeaX Platform Inc.）
+                  {contract.platformWitness || 'IdeaX 創點子團隊（商業技術履約託管見證方）'}
                 </span>
               </div>
             </div>

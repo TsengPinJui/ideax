@@ -787,6 +787,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       currentUser.bankAccount.bankCode === '822' ||
       currentUser.bankAccount.accountNumber?.includes('123456789012') ||
       currentUser.bankAccount.accountHolder?.includes('創點子股份有限公司') ||
+      currentUser.bankAccount.accountHolder?.includes('IdeaX 創點子團隊') ||
       currentUser.bankAccount.accountHolder?.includes('測試')
     )
   );

@@ -337,8 +337,8 @@ export function generateContractHtml(data: ContractData): string {
         <div class="party-val">${escapeHtml(data.seller.name)} ${data.seller.title ? `（${escapeHtml(data.seller.title)}）` : ''} • 用戶ID: ${escapeHtml(data.seller.id)}</div>
       </div>
       <div class="party-row">
-        <div class="party-label">履約公證（丙方）：</div>
-        <div class="party-val">創點子 IdeaX 商業技術履約託管公證平台（IdeaX Platform Inc.）</div>
+        <div class="party-label">履約見證（丙方）：</div>
+        <div class="party-val">IdeaX 創點子團隊（商業技術履約託管見證方）</div>
       </div>
     </div>
 
@@ -362,7 +362,7 @@ export function generateContractHtml(data: ContractData): string {
       <div class="article-title">第二條：委託報酬總額與第三方金流履約託管</div>
       <div class="article-content">
         <p>1. 本專案委託報酬總額為新臺幣 <span class="price-highlight">NT$ ${amountFormatted} 元整</span>。</p>
-        <p>2. <strong>第三方履約託管機制：</strong>甲方於線上同意採納本方案時，已將全額款項全數交付丙方（IdeaX 平台）指定之第三方履約專戶獨立保管，於乙方交付成果並經甲方依約驗收通過前，任何一方均不得擅自挪用或提取，以確保雙方交易履約安全。</p>
+        <p>2. <strong>第三方履約託管機制：</strong>甲方於線上同意採納本方案時，已將全額款項全數交付丙方（IdeaX 創點子團隊）指定之第三方履約專戶獨立保管，於乙方交付成果並經甲方依約驗收通過前，任何一方均不得擅自挪用或提取，以確保雙方交易履約安全。</p>
         <p>3. 乙方完成履約交付並經甲方驗收合格後，丙方將依平台規範自動將款項結算劃撥至乙方帳戶。</p>
       </div>
     </div>
@@ -556,7 +556,7 @@ export function buildContractFromOffer(
     estimatedDays: offer.estimatedDays || 3,
     paywalledContent: offer.paywalledContent,
     electronicSignatureHash: generateSignatureHash(contractId, buyerUser.id, sellerUser.id, offer.price),
-    platformWitness: '創點子 IdeaX 商業技術履約託管公證平台',
+    platformWitness: 'IdeaX 創點子團隊',
   };
 }
 
@@ -627,7 +627,7 @@ export function buildContractFromMediation(
       agreedOption: mediation.agreedOption,
     },
     electronicSignatureHash: generateSignatureHash(contractId, buyerUser.id, sellerUser.id, amount),
-    platformWitness: '創點子 IdeaX 商業技術履約託管公證平台',
+    platformWitness: 'IdeaX 創點子團隊',
   };
 }
 
@@ -678,7 +678,7 @@ export function buildContractFromProposalItem(
     estimatedDays: item.estimatedDays || 3,
     paywalledContent: item.submittedContent,
     electronicSignatureHash: generateSignatureHash(contractId, buyer.id, seller.id, item.amount || 0),
-    platformWitness: '創點子 IdeaX 商業技術履約託管公證平台',
+    platformWitness: 'IdeaX 創點子團隊',
   };
 }
 
