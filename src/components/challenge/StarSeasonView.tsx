@@ -2867,18 +2867,23 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                               onOpenAuth();
                             }
                           }}
-                          className="w-full py-2 px-3 rounded-xl hover:bg-amber-50 text-stone-800 hover:text-amber-950 font-bold text-xs flex items-center justify-between cursor-pointer transition-colors border border-amber-200/70 bg-amber-50/40 group"
+                          className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-700 hover:bg-stone-100 flex items-center justify-between cursor-pointer group transition-all"
                           title="切換已登入帳號或快速切換身分"
                         >
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-amber-100/80 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
                               <ArrowLeftRight className="w-3.5 h-3.5" />
                             </div>
-                            <span className="font-black text-stone-900">切換帳號</span>
+                            <div>
+                              <span className="block font-black text-stone-900">
+                                切換帳號
+                              </span>
+                              <span className="text-[10px] text-stone-500 font-normal">
+                                快速切換或登入其他身分
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-[10px] text-amber-800 font-bold px-2 py-0.5 rounded-full bg-amber-200/80 group-hover:bg-amber-300 transition-colors">
-                            切換身分 ↗
-                          </span>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
                         </button>
 
                         {/* 登出帳號 */}
@@ -2892,10 +2897,20 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             logoutAccount();
                             showToast('已登出目前帳號');
                           }}
-                          className="w-full py-2 px-3 rounded-xl hover:bg-stone-100 text-stone-600 hover:text-stone-900 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                          className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-700 hover:bg-rose-50 hover:text-rose-700 flex items-center gap-2.5 cursor-pointer group transition-all"
+                          title="登出目前登入帳號"
                         >
-                          <LogOut className="w-3.5 h-3.5 text-stone-500" />
-                          <span>登出目前帳號</span>
+                          <div className="w-7 h-7 rounded-lg bg-stone-100 text-stone-600 group-hover:bg-rose-100 group-hover:text-rose-700 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                            <LogOut className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <span className="block font-black text-stone-900 group-hover:text-rose-700">
+                              登出帳號
+                            </span>
+                            <span className="text-[10px] text-stone-500 group-hover:text-rose-500 font-normal">
+                              安全登出目前身分
+                            </span>
+                          </div>
                         </button>
                       </>
                     )}
