@@ -59,9 +59,11 @@ import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { parseScheduleTimestamp } from '../utils/scheduleUtils';
 import { analyzeQuestionWithAI, AIAnalysisResult, generate24hrAssistantReply } from '../services/aiService';
 import { logoutFromFirebase } from '../services/firebaseAuth';
+import { getFormattedPlatformId, generatePlatformUserId } from '../services/userIdService';
 import {
   testFirestoreConnection,
   syncUserToFirestore,
+  migrateUserInFirestore,
   syncUsersToFirestore,
   syncQuestionToFirestore,
   syncQuestionsToFirestore,
@@ -2415,7 +2417,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const grantUserAdminRole = (
     targetUserId: string,
     sites: AdminSite[]
-  ): { success: boolean; message: string } => {
+  ): { success: boolean; message: string; updatedUser?: User } => {
     if (!isInitialAdmin(currentUser)) {
       return {
         success: false,
@@ -2436,6 +2438,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const nowIso = new Date().toISOString();
+    const oldUserId = targetUser.id;
+    const oldMemberId = targetUser.memberId || targetUser.id;
+    let newUserId = oldUserId;
+    let newMemberId = oldMemberId;
+
     let updatedUser: User;
     let notifTitle = '';
     let notifMsg = '';
@@ -2443,14 +2450,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (sites.length === 0) {
       // 撤銷管理員身分，轉為一般用戶（提問者或維持專家）
+      // 若原 memberId 首字為 a，轉回 c 規範
+      if (oldMemberId.startsWith('a') && oldMemberId.length === 10) {
+        newMemberId = 'c' + oldMemberId.slice(1);
+      } else {
+        newMemberId = getFormattedPlatformId({
+          ...targetUser,
+          role: targetUser.verifiedExpert ? 'solver' : 'questioner',
+          accountType: 'user',
+        });
+      }
+
+      // 若原 id 首字為 a 且為 10 碼標準 ID，同步更新 id 為 c 開頭
+      if (oldUserId.startsWith('a') && oldUserId.length === 10 && oldUserId !== 'a000000001' && oldUserId !== 'user-admin') {
+        newUserId = 'c' + oldUserId.slice(1);
+      }
+
       updatedUser = {
         ...targetUser,
+        id: newUserId,
+        memberId: newMemberId,
         role: targetUser.verifiedExpert ? 'solver' : 'questioner',
         accountType: 'user',
         adminSites: [],
+        title: targetUser.title?.replace(/管理員/g, '創友') || (targetUser.verifiedExpert ? '認證專家' : '一般會員用戶'),
       };
       notifTitle = '🛡️ 管理員身分已撤銷通知';
-      notifMsg = `您在 IdeaX 平台的管理員權限已由初始管理員【${currentUser.name || '平台總管'}】撤銷，現已調整為一般會員。如有疑問請向初始管理員洽詢。`;
+      notifMsg = `您在 IdeaX 平台的管理員權限已由初始管理員【${currentUser.name || '平台總管'}】撤銷，身分已調整為一般會員（會員代碼: ${newMemberId}）。如有疑問請向初始管理員洽詢。`;
       auditAction = 'REVOKE_ADMIN_ROLE';
     } else {
       // 賦予指定站點之管理員權限
@@ -2458,48 +2484,117 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const isSiteB = sites.includes('site_b');
       const siteDescription =
         isSiteA && isSiteB
-          ? '雙站管理員（A 站 IdeaX 主站 ＋ B 站 創星季賽事專區）'
+          ? '雙站全權管理員（A 站 IdeaX 主站 ＋ B 站 創星季賽事專區）'
           : isSiteA
           ? 'A 站專屬管理員（IdeaX 創點子主站）'
           : 'B 站專屬管理員（創星季賽事專區）';
 
+      // 若原 memberId 首字為 c，轉換為 a 規範
+      if (oldMemberId.startsWith('c') && oldMemberId.length === 10) {
+        newMemberId = 'a' + oldMemberId.slice(1);
+      } else {
+        newMemberId = getFormattedPlatformId({
+          ...targetUser,
+          role: 'admin',
+          accountType: 'admin',
+        });
+      }
+
+      // 若原 id 首字為 c 且為 10 碼標準 ID，同步更新 id 為 a 開頭
+      if (oldUserId.startsWith('c') && oldUserId.length === 10) {
+        newUserId = 'a' + oldUserId.slice(1);
+      }
+
       updatedUser = {
         ...targetUser,
+        id: newUserId,
+        memberId: newMemberId,
         role: 'admin',
         accountType: 'admin',
         adminSites: sites,
         title: targetUser.title || (isSiteA && isSiteB ? '雙站管理員' : isSiteA ? '主站管理員' : '賽事管理員'),
       };
       notifTitle = '👑 您已被任命為平台管理員！';
-      notifMsg = `恭喜您！您已由初始管理員【${currentUser.name || '平台總管'}】指派為【${siteDescription}】。兩站後台管理權限相互獨立，請恪守平台治理守則！`;
+      notifMsg = `恭喜您！您已由初始管理員【${currentUser.name || '平台總管'}】指派為【${siteDescription}】（管理員代碼: ${newMemberId}）。兩站後台管理權限相互獨立，請恪守平台治理守則！`;
       auditAction = 'GRANT_ADMIN_ROLE';
     }
 
+    const isIdChanged = oldUserId !== newUserId;
+
+    // 1. 更新 availableUsers 清單
     setAvailableUsers((prev) => {
-      const next = prev.map((u) => (u.id === targetUserId ? updatedUser : u));
+      const next = prev.map((u) => (u.id === oldUserId ? updatedUser : u));
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(next));
       } catch (e) {}
       return next;
     });
 
-    if (currentUser.id === targetUserId) {
+    // 2. 若為目前登入者，更新 currentUser
+    if (currentUser.id === oldUserId) {
       setCurrentUser(updatedUser);
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(updatedUser));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedUser));
       } catch (e) {}
     }
 
-    syncUserToFirestore(updatedUser);
+    // 3. 若 ID 有變更，更新相依關聯（提問、解答、交易流水）之 ID
+    if (isIdChanged) {
+      setQuestions((prev) => {
+        const next = prev.map((q) =>
+          q.authorId === oldUserId ? { ...q, authorId: newUserId, authorName: updatedUser.name } : q
+        );
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
 
+      setAnswers((prev) => {
+        const next = prev.map((a) =>
+          a.solverId === oldUserId ? { ...a, solverId: newUserId, solverName: updatedUser.name } : a
+        );
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      setTransactions((prev) => {
+        const next = prev.map((t) => ({
+          ...t,
+          fromUserId: t.fromUserId === oldUserId ? newUserId : t.fromUserId,
+          toUserId: t.toUserId === oldUserId ? newUserId : t.toUserId,
+          solverId: t.solverId === oldUserId ? newUserId : t.solverId,
+        }));
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}transactions`, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      // 資料庫執行舊 ID 文件刪除與新 ID 文件遷移
+      migrateUserInFirestore(oldUserId, updatedUser);
+    } else {
+      // ID 未變更，直接將身分標記寫入 Firestore
+      syncUserToFirestore(updatedUser);
+    }
+
+    // 4. 寫入管理員授權稽核紀錄
     syncAuditLogsToFirestore([
       {
         id: `audit-admin-role-${Date.now()}`,
         adminId: currentUser.id,
         action: auditAction,
-        targetUserId,
+        targetUserId: newUserId,
         details: {
           targetUserName: targetUser.name,
+          previousId: oldUserId,
+          newId: newUserId,
+          previousMemberId: oldMemberId,
+          newMemberId: newMemberId,
           previousRole: targetUser.role,
           previousSites: targetUser.adminSites || [],
           newRole: updatedUser.role,
@@ -2509,6 +2604,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
     ]);
 
+    // 5. 系統通知派送
     const adminRoleNotification: NotificationItem = {
       id: `notif-admin-role-${Date.now()}`,
       title: notifTitle,
@@ -2520,9 +2616,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications((prev) => [adminRoleNotification, ...prev]);
 
     const actionText = sites.length === 0 ? '已成功撤銷管理員身分' : '已成功更新管理員權限';
+    const idChangeText = isIdChanged ? `（ID 已自動更新：${oldUserId} → ${newUserId}）` : '';
     return {
       success: true,
-      message: `${actionText}【${targetUser.name}】！已即時生效並同步發送系統通知至該用戶帳號。`,
+      message: `${actionText}【${targetUser.name}】！${idChangeText}資料庫身分標記已確實更新並即時生效。`,
+      updatedUser,
     };
   };
 

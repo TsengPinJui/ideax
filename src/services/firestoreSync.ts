@@ -391,7 +391,27 @@ export async function syncUserToFirestore(user: User): Promise<void> {
   try {
     const userRef = doc(db, 'users', user.id);
     const cleanUser = JSON.parse(JSON.stringify(user));
-    const firestoreData: any = { ...cleanUser, id: user.id, updatedAt: new Date().toISOString() };
+    const isSiteAAdmin = Boolean(user.adminSites?.includes('site_a'));
+    const isSiteBAdmin = Boolean(user.adminSites?.includes('site_b'));
+    const firestoreData: any = {
+      ...cleanUser,
+      id: user.id,
+      memberId: user.memberId || user.id,
+      role: user.role,
+      accountType: user.accountType || (user.role === 'admin' ? 'admin' : 'user'),
+      adminSites: user.adminSites || [],
+      isSiteAAdmin,
+      isSiteBAdmin,
+      adminIdentityBadge:
+        user.role === 'admin'
+          ? isSiteAAdmin && isSiteBAdmin
+            ? '雙站全權管理員'
+            : isSiteAAdmin
+            ? 'A站專屬管理員'
+            : 'B站專屬管理員'
+          : deleteField(),
+      updatedAt: new Date().toISOString(),
+    };
 
     // 若使用者非處於註銷或反悔猶豫期，必須顯式透過 deleteField() 清除雲端舊殘留之猶豫期狀態
     const isUserGraceOrDeact = Boolean(
@@ -429,6 +449,68 @@ export async function syncUserToFirestore(user: User): Promise<void> {
     }
   } catch (err) {
     handleFirestoreError(`Failed to sync user ${user.id}`, err);
+  }
+}
+
+/**
+ * 當用戶 ID 變更時（例如賦予或撤銷管理員導致 ID 格式更換），遷移資料庫中的文件與關聯資料
+ */
+export async function migrateUserInFirestore(oldUserId: string, updatedUser: User): Promise<void> {
+  if (!updatedUser || !updatedUser.id || isQuotaExhausted) return;
+  try {
+    const isIdChanged = Boolean(oldUserId && oldUserId !== updatedUser.id);
+    if (isIdChanged) {
+      // 1. 刪除 users 集合中的舊文件
+      try {
+        await deleteDoc(doc(db, 'users', oldUserId));
+      } catch (e) {
+        console.warn('[Firestore] Error deleting old user doc:', e);
+      }
+
+      // 2. 刪除 certifications 舊文件
+      try {
+        await deleteDoc(doc(db, 'certifications', oldUserId));
+      } catch (e) {}
+
+      // 3. 刪除 bookmarks 舊文件
+      try {
+        await deleteDoc(doc(db, 'bookmarks', oldUserId));
+      } catch (e) {}
+
+      // 4. 更新 questions 與 answers 中的作者與解答者關聯 ID
+      try {
+        const qSnap = await getDocs(collection(db, 'questions'));
+        const batch = writeBatch(db);
+        let qUpdated = 0;
+        qSnap.docs.forEach((d) => {
+          const q = d.data();
+          if (q.authorId === oldUserId) {
+            batch.update(d.ref, { authorId: updatedUser.id, authorName: updatedUser.name });
+            qUpdated++;
+          }
+        });
+        if (qUpdated > 0) await batch.commit();
+      } catch (e) {}
+
+      try {
+        const aSnap = await getDocs(collection(db, 'answers'));
+        const batch = writeBatch(db);
+        let aUpdated = 0;
+        aSnap.docs.forEach((d) => {
+          const a = d.data();
+          if (a.solverId === oldUserId) {
+            batch.update(d.ref, { solverId: updatedUser.id, solverName: updatedUser.name });
+            aUpdated++;
+          }
+        });
+        if (aUpdated > 0) await batch.commit();
+      } catch (e) {}
+    }
+
+    // 寫入新文件並更新身分標記
+    await syncUserToFirestore(updatedUser);
+  } catch (err) {
+    handleFirestoreError(`Failed to migrate user from ${oldUserId} to ${updatedUser.id}`, err);
   }
 }
 

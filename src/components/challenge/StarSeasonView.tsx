@@ -56,6 +56,7 @@ import {
   Download,
   Eye,
   Lightbulb,
+  ArrowLeftRight,
 } from 'lucide-react';
 import {
   StarSeasonProposal,
@@ -163,6 +164,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     setAvailableUsers,
     addNotification,
     logoutAccount,
+    openAuthModal,
     openAboutModal,
     toggleSecondQuestion,
     isQuestionSeconded,
@@ -2853,21 +2855,49 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                         登入 / 註冊 IdeaX 帳號
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          setIsProfileMenuOpen(false);
-                          try {
-                            await auth.signOut();
-                          } catch {}
-                          logoutAccount();
-                          showToast('已登出目前帳號');
-                        }}
-                        className="w-full py-2 px-3 rounded-xl hover:bg-stone-100 text-stone-600 hover:text-stone-900 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                      >
-                        <LogOut className="w-3.5 h-3.5 text-stone-500" />
-                        <span>登出目前帳號</span>
-                      </button>
+                      <>
+                        {/* 切換帳號 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            if (openAuthModal) {
+                              openAuthModal('login', 'switch');
+                            } else {
+                              onOpenAuth();
+                            }
+                          }}
+                          className="w-full py-2 px-3 rounded-xl hover:bg-amber-50 text-stone-800 hover:text-amber-950 font-bold text-xs flex items-center justify-between cursor-pointer transition-colors border border-amber-200/70 bg-amber-50/40 group"
+                          title="切換已登入帳號或快速切換身分"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-lg bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+                              <ArrowLeftRight className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="font-black text-stone-900">切換帳號</span>
+                          </div>
+                          <span className="text-[10px] text-amber-800 font-bold px-2 py-0.5 rounded-full bg-amber-200/80 group-hover:bg-amber-300 transition-colors">
+                            切換身分 ↗
+                          </span>
+                        </button>
+
+                        {/* 登出帳號 */}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setIsProfileMenuOpen(false);
+                            try {
+                              await auth.signOut();
+                            } catch {}
+                            logoutAccount();
+                            showToast('已登出目前帳號');
+                          }}
+                          className="w-full py-2 px-3 rounded-xl hover:bg-stone-100 text-stone-600 hover:text-stone-900 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                        >
+                          <LogOut className="w-3.5 h-3.5 text-stone-500" />
+                          <span>登出目前帳號</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
