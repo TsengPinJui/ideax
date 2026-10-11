@@ -2875,7 +2875,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                               <ArrowLeftRight className="w-3.5 h-3.5" />
                             </div>
                             <div>
-                              <span className="block font-black text-stone-900">
+                              <span className="block font-black text-stone-900 group-hover:text-amber-900 transition-colors">
                                 切換帳號
                               </span>
                               <span className="text-[10px] text-stone-500 font-normal">
@@ -2897,20 +2897,23 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             logoutAccount();
                             showToast('已登出目前帳號');
                           }}
-                          className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-700 hover:bg-rose-50 hover:text-rose-700 flex items-center gap-2.5 cursor-pointer group transition-all"
+                          className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-700 hover:bg-rose-50 flex items-center justify-between cursor-pointer group transition-all"
                           title="登出目前登入帳號"
                         >
-                          <div className="w-7 h-7 rounded-lg bg-stone-100 text-stone-600 group-hover:bg-rose-100 group-hover:text-rose-700 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                            <LogOut className="w-3.5 h-3.5" />
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 group-hover:bg-rose-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                              <LogOut className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                              <span className="block font-black text-stone-900 group-hover:text-rose-700 transition-colors">
+                                登出帳號
+                              </span>
+                              <span className="text-[10px] text-stone-500 group-hover:text-rose-500 font-normal transition-colors">
+                                安全登出目前身分
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="block font-black text-stone-900 group-hover:text-rose-700">
-                              登出帳號
-                            </span>
-                            <span className="text-[10px] text-stone-500 group-hover:text-rose-500 font-normal">
-                              安全登出目前身分
-                            </span>
-                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-rose-600 transition-colors" />
                         </button>
                       </>
                     )}

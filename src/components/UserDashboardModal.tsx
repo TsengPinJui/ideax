@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData, Transaction, Question } from '../types';
-import { LEVEL_CONFIGS, isMockTransactionId } from '../data/mockData';
+import { LEVEL_CONFIGS, isMockTransactionId, isRealRegisteredUser } from '../data/mockData';
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { HelpTooltip } from './HelpTooltip';
 import { AdminPointsReceivablesTab } from './AdminPointsReceivablesTab';
@@ -263,6 +263,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     adminMailBadgeCount,
     pendingTicketsCount,
     pendingReportsCount,
+    siteVisitsCount,
+    onlineUsersCount,
   } = useApp();
 
   const displayBadgeCount = currentUser.role === 'admin'
@@ -448,9 +450,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const adminOpenCount = questions.filter((q) => q.status === 'open').length;
   const adminVerifiedSolversCount = solvers.filter((s) => s.verifiedBadge).length;
 
-  // 註冊用戶總數與付費會員分類數據 (註冊用戶 ≠ 付費會員)
+  // 註冊用戶總數與付費會員分類數據 (排扣測試帳號之真實註冊用戶)
   const adminRealUsers = useMemo(() => {
-    return availableUsers.filter((u) => u.id !== 'user-guest');
+    return availableUsers.filter((u) => isRealRegisteredUser(u));
   }, [availableUsers]);
   const adminTotalRegisteredUsersCount = adminRealUsers.length;
   const adminQuestionersCount = adminRealUsers.filter((u) => u.role === 'questioner').length;
@@ -634,16 +636,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     };
   }, [answers, solvers]);
 
-  // 全站總瀏覽量
-  const totalViewsCount = useMemo(() => {
-    return (questions || []).reduce((acc, q) => acc + (q.views || q.viewsCount || 0), 0);
-  }, [questions]);
+  // 全站網站造訪量（進入網站的總造訪次數）
+  const totalViewsCount = siteVisitsCount || 0;
 
-  // 即時線上人數
-  const onlineUsersCount = useMemo(() => {
-    const total = adminTotalRegisteredUsersCount;
-    return Math.max(3, Math.min(total, Math.round(total * 0.35) + 3));
-  }, [adminTotalRegisteredUsersCount]);
+  // 即時線上人數（真實當前在線人數）
+  const liveOnlineUsersCount = Math.max(1, onlineUsersCount || 1);
 
   // 提案數量（所有解答者提交落地方案總數）
   const totalProposalsCount = useMemo(() => {
@@ -2954,12 +2951,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
               {/* 核心營運大盤 KPI - 手機多格雙欄面板，全景一覽無遺 */}
               <div className="space-y-2.5 sm:space-y-3.5">
-                {/* 第一排：總瀏覽量 ＋ 線上人數 (雙欄並排) */}
+                {/* 第一排：網站造訪量 ＋ 線上人數 (雙欄並排) */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  {/* 1. 總瀏覽量 */}
+                  {/* 1. 網站造訪量 */}
                   <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-left flex flex-col justify-between shadow-2xs">
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">總瀏覽量</span>
+                      <span className="text-xs sm:text-sm font-black text-stone-800">網站造訪量</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                         <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </div>
@@ -2969,11 +2966,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         {(totalViewsCount || 0).toLocaleString()} <span className="text-[10px] sm:text-xs font-bold text-stone-500">次</span>
                       </p>
                       <span className="hidden sm:inline text-xs font-bold text-amber-700">
-                        市場曝光
+                        進入網站
                       </span>
                     </div>
                     <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
-                      <span className="truncate">問題、解方與專家主頁瀏覽</span>
+                      <span className="truncate">進入網站的總造訪次數</span>
                     </div>
                   </div>
 
@@ -2990,14 +2987,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                     <div className="flex items-baseline justify-between">
                       <p className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-950 font-mono tracking-tight">
-                        {onlineUsersCount} <span className="text-[10px] sm:text-xs font-bold text-emerald-700">位</span>
+                        {liveOnlineUsersCount} <span className="text-[10px] sm:text-xs font-bold text-emerald-700">位</span>
                       </p>
                       <span className="text-[9px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200">
                         即時在線
                       </span>
                     </div>
                     <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] sm:text-xs text-stone-500">
-                      <span className="truncate">即時連線活躍瀏覽與互動</span>
+                      <span className="truncate">即時連線活躍人數</span>
                     </div>
                   </div>
                 </div>
@@ -3407,16 +3404,16 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                 {isPublicMetricsExpanded && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1 animate-in fade-in duration-200">
-                  {/* Metric 1: 總瀏覽量 */}
+                  {/* Metric 1: 網站造訪量 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                     publicMetricsConfig.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">總瀏覽量</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">曝光次數</span>
+                        <span className="font-extrabold text-xs text-stone-900">網站造訪量</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">造訪次數</span>
                       </div>
-                      <p className="text-[11px] text-stone-500 mt-0.5">全站問題、解方與專家總瀏覽曝光</p>
+                      <p className="text-[11px] text-stone-500 mt-0.5">進入網站的總造訪次數</p>
                     </div>
                     <button
                       type="button"

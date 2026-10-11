@@ -566,6 +566,7 @@ export interface User {
   title: string;
   avatar: string;
   role: UserRole;
+  isTestAccount?: boolean; // 是否為一鍵生成或測試帳號
   isInitialAdmin?: boolean; // 是否為系統初始創始管理員（唯一具有指派其他用戶為管理員之權限）
   adminSites?: AdminSite[]; // 授權管轄站點清單：['site_a'] (IdeaX主站) | ['site_b'] (創星季賽事專區) | ['site_a', 'site_b'] (雙站管理員)
   balance: number; // 相容欄位（預設 0，全面以第三方支付與直接撥款為主）
@@ -1344,7 +1345,7 @@ export interface PublicMetricsConfig {
   showAvgResponseSpeed: boolean;   // 平均回覆速度
   showSatisfactionRate: boolean;   // 方案採納滿意度 / 滿意度
   showHighestBounty: boolean;      // 當前最高賞金
-  showTotalViews?: boolean;        // 總瀏覽量
+  showTotalViews?: boolean;        // 網站造訪量（進入網站的總造訪次數）
   showOnlineUsers?: boolean;       // 即時線上人數
   showTotalMembers?: boolean;      // 總註冊用戶
   showVerifiedSolvers?: boolean;   // 認證專家

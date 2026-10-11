@@ -2275,6 +2275,46 @@ export const isTestAccountUserId = (userId?: string): boolean => {
 };
 
 /**
+ * 嚴格判定是否為真實註冊用戶（排扣訪客、測試帳號、一鍵生成之測試帳號與預設模擬測試資料）
+ */
+export const isRealRegisteredUser = (user?: User | null): boolean => {
+  if (!user || !user.id) return false;
+  if (user.id === 'user-guest') return false;
+  if (user.isTestAccount) return false;
+
+  const testIds = [
+    'user-guest',
+    'c000000000',
+    'user-questioner',
+    'solver-1',
+    'solver-2',
+    'solver-3',
+    'solver-4',
+    'solver-5',
+    'user-author-1',
+    'user-author-2',
+    'user-author-3',
+  ];
+  if (testIds.includes(user.id)) return false;
+
+  if (
+    user.id.startsWith('test-') ||
+    user.id.startsWith('test_') ||
+    user.id.startsWith('mock-') ||
+    user.id.startsWith('solver-') ||
+    user.id.startsWith('user-author-')
+  ) {
+    return false;
+  }
+
+  if (user.bio && (user.bio.includes('【測試環境一鍵生成帳號】') || user.bio.includes('測試帳號'))) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
  * 判定各類資料是否為模擬/測試預留資料
  */
 export const isMockQuestionId = (id: string, _authorId?: string): boolean => {

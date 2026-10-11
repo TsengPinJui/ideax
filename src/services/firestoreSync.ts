@@ -687,6 +687,10 @@ export async function syncPlatformSettingsToFirestore(settings: {
   plans?: SubscriptionPlan[];
   publicMetricsConfig?: any;
   adminDailyGrants?: any;
+  isDemoMode?: boolean;
+  isNoPaymentMode?: boolean;
+  isRaceMode?: boolean;
+  isHideTestAccounts?: boolean;
 }): Promise<void> {
   if (isQuotaExhausted) return;
   try {
@@ -695,6 +699,48 @@ export async function syncPlatformSettingsToFirestore(settings: {
     await setDoc(settingRef, { ...cleanSettings, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (err) {
     handleFirestoreError('Failed to sync platform settings', err);
+  }
+}
+
+/**
+ * 實時監聽全站平台設定與數據展示開關 (Public Metrics Config & Platform Settings)
+ */
+export function subscribePlatformSettingsFromFirestore(
+  callback: (settings: {
+    publicMetricsConfig?: any;
+    commissionRate?: number;
+    plans?: SubscriptionPlan[];
+    isDemoMode?: boolean;
+    isNoPaymentMode?: boolean;
+    isRaceMode?: boolean;
+    isHideTestAccounts?: boolean;
+  }) => void
+): Unsubscribe | null {
+  if (isQuotaExhausted) return null;
+  try {
+    return onSnapshot(
+      doc(db, 'platform_settings', 'global'),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          callback({
+            publicMetricsConfig: data.publicMetricsConfig,
+            commissionRate: data.commissionRate,
+            plans: data.plans,
+            isDemoMode: data.isDemoMode,
+            isNoPaymentMode: data.isNoPaymentMode,
+            isRaceMode: data.isRaceMode,
+            isHideTestAccounts: data.isHideTestAccounts,
+          });
+        }
+      },
+      (err) => {
+        handleFirestoreError('subscribePlatformSettingsFromFirestore', err);
+      }
+    );
+  } catch (err) {
+    handleFirestoreError('subscribePlatformSettingsFromFirestore', err);
+    return null;
   }
 }
 
@@ -989,5 +1035,144 @@ export function subscribeToCustomerSupportConversations(callback: (convs: Custom
     return null;
   }
 }
+
+// =========================================================================
+// 網站造訪量 (Site Visits) & 即時線上人數 (Presence Tracking)
+// =========================================================================
+
+/**
+ * 記錄網站造訪量（當每次全站 Session 首次進入網站時計數增加 1）
+ */
+export async function recordSiteVisitInFirestore(): Promise<number> {
+  const LOCAL_STORAGE_VISITS_KEY = 'ideax_total_site_visits';
+  let currentLocalVisits = parseInt(localStorage.getItem(LOCAL_STORAGE_VISITS_KEY) || '1280', 10);
+
+  const SESSION_VISIT_KEY = 'ideax_session_visit_counted';
+  const alreadyCountedInSession = sessionStorage.getItem(SESSION_VISIT_KEY);
+
+  if (!alreadyCountedInSession) {
+    sessionStorage.setItem(SESSION_VISIT_KEY, 'true');
+    currentLocalVisits += 1;
+    localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(currentLocalVisits));
+
+    if (!isQuotaExhausted) {
+      try {
+        const statsRef = doc(db, 'system_metrics', 'site_stats');
+        const snap = await getDoc(statsRef);
+        let cloudVisits = currentLocalVisits;
+        if (snap.exists() && typeof snap.data().totalVisits === 'number') {
+          cloudVisits = Math.max(snap.data().totalVisits + 1, currentLocalVisits);
+        }
+        await setDoc(statsRef, { totalVisits: cloudVisits, lastVisitedAt: new Date().toISOString() }, { merge: true });
+        localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(cloudVisits));
+        return cloudVisits;
+      } catch (err) {
+        handleFirestoreError('recordSiteVisitInFirestore', err);
+      }
+    }
+  }
+  return currentLocalVisits;
+}
+
+/**
+ * 實時監聽全站「網站造訪量」
+ */
+export function subscribeSiteVisitsFromFirestore(callback: (visits: number) => void): Unsubscribe | null {
+  const LOCAL_STORAGE_VISITS_KEY = 'ideax_total_site_visits';
+  const initialLocal = parseInt(localStorage.getItem(LOCAL_STORAGE_VISITS_KEY) || '1280', 10);
+  callback(initialLocal);
+
+  if (isQuotaExhausted) return null;
+  try {
+    return onSnapshot(
+      doc(db, 'system_metrics', 'site_stats'),
+      (snapshot) => {
+        if (snapshot.exists() && typeof snapshot.data().totalVisits === 'number') {
+          const cloudVisits = snapshot.data().totalVisits;
+          localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(cloudVisits));
+          callback(cloudVisits);
+        }
+      },
+      (err) => {
+        handleFirestoreError('subscribeSiteVisitsFromFirestore', err);
+      }
+    );
+  } catch (err) {
+    handleFirestoreError('subscribeSiteVisitsFromFirestore', err);
+    return null;
+  }
+}
+
+// 獲取或產生當前瀏覽器分頁的專屬 Session ID
+function getPresenceSessionId(): string {
+  let sId = sessionStorage.getItem('ideax_presence_session_id');
+  if (!sId) {
+    sId = 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+    sessionStorage.setItem('ideax_presence_session_id', sId);
+  }
+  return sId;
+}
+
+/**
+ * 發送即時線上活躍 Heartbeat
+ */
+export async function sendPresenceHeartbeat(currentUserId?: string): Promise<void> {
+  if (isQuotaExhausted) return;
+  const sId = getPresenceSessionId();
+  try {
+    const presenceRef = doc(db, 'system_metrics', 'presence');
+    const now = Date.now();
+    await setDoc(
+      presenceRef,
+      {
+        [`sessions.${sId}`]: {
+          userId: currentUserId || 'guest',
+          lastSeen: now,
+        },
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    handleFirestoreError('sendPresenceHeartbeat', err);
+  }
+}
+
+/**
+ * 實時監聽當前「即時線上人數」（根據 90 秒內有 Heartbeat 活躍記錄的 Sessions 總數）
+ */
+export function subscribePresenceFromFirestore(callback: (onlineCount: number) => void): Unsubscribe | null {
+  callback(1);
+
+  if (isQuotaExhausted) return null;
+  try {
+    return onSnapshot(
+      doc(db, 'system_metrics', 'presence'),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const sessions = data.sessions || {};
+          const now = Date.now();
+          const activeThreshold = 90 * 1000;
+          let activeCount = 0;
+          Object.values(sessions).forEach((sess: any) => {
+            if (sess && typeof sess.lastSeen === 'number' && now - sess.lastSeen < activeThreshold) {
+              activeCount++;
+            }
+          });
+          callback(Math.max(1, activeCount));
+        } else {
+          callback(1);
+        }
+      },
+      (err) => {
+        handleFirestoreError('subscribePresenceFromFirestore', err);
+      }
+    );
+  } catch (err) {
+    handleFirestoreError('subscribePresenceFromFirestore', err);
+    return null;
+  }
+}
+
 
 

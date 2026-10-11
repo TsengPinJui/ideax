@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { User, UserSurveyData } from '../types';
+import { isRealRegisteredUser } from '../data/mockData';
 import {
   exportSurveyToExcelCsv,
   exportSurveyToExcelXlsx,
@@ -87,14 +88,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
   const [isAnalyzingCustomer, setIsAnalyzingCustomer] = useState(false);
   const [isAiReportExpanded, setIsAiReportExpanded] = useState(false);
 
-  // Filter out guests and test accounts when in formal mode (營運模式或無金流模式)
+  // 嚴格過濾掉訪客與測試帳號（註冊人數不要算入測試帳號）
   const validUsers = useMemo(() => {
-    const testAccountIds = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
-    if (!isDemoMode) {
-      return availableUsers.filter((u) => (!testAccountIds.includes(u.id) && !u.id.startsWith('solver-')) || u.id === 'user-admin');
-    }
-    return availableUsers.filter((u) => u.id !== 'user-guest');
-  }, [availableUsers, isDemoMode]);
+    return availableUsers.filter((u) => isRealRegisteredUser(u));
+  }, [availableUsers]);
 
   // 手動執行 AI 客群分析 (僅在點擊時發起 AI 請求並儲存快照)
   const runAiCustomerAnalytics = async () => {
@@ -148,16 +145,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
   useEffect(() => {
     loadAllDataFromFirestore().then((cloudData) => {
       if (cloudData && cloudData.users && cloudData.users.length > 0) {
-        if (!isDemoMode) {
-          const testAccountIds = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
-          const cleanUsers = cloudData.users.filter((u) => !testAccountIds.includes(u.id) || u.id === 'user-admin');
-          setAvailableUsers(cleanUsers);
-        } else {
-          setAvailableUsers(cloudData.users);
-        }
+        setAvailableUsers(cloudData.users);
       }
     }).catch((err) => console.error(err));
-  }, [isDemoMode]);
+  }, []);
 
   // 手動按需刷新用戶資料快照
   const handleRefresh = async () => {
@@ -165,13 +156,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     try {
       const cloudData = await loadAllDataFromFirestore();
       if (cloudData && cloudData.users && cloudData.users.length > 0) {
-        if (!isDemoMode) {
-          const testAccountIds = ['user-questioner', 'solver-2', 'user-guest', 'solver-1', 'solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
-          const cleanUsers = cloudData.users.filter((u) => !testAccountIds.includes(u.id) || u.id === 'user-admin');
-          setAvailableUsers(cleanUsers);
-        } else {
-          setAvailableUsers(cloudData.users);
-        }
+        setAvailableUsers(cloudData.users);
       }
       setLastRefreshedAt(
         new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })

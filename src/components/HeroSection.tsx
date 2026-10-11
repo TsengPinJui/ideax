@@ -28,26 +28,35 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onExploreClick,
   onLeaderboardClick,
 }) => {
-  const { questions, answers, solvers, transactions, conversations, availableUsers, publicMetricsConfig, isNoPaymentMode, isDemoMode } = useApp();
+  const {
+    questions,
+    answers,
+    solvers,
+    transactions,
+    conversations,
+    availableUsers,
+    publicMetricsConfig,
+    isNoPaymentMode,
+    isDemoMode,
+    siteVisitsCount,
+    onlineUsersCount,
+    realRegisteredUsersCount,
+  } = useApp();
 
-  // 1. 總瀏覽量
-  const totalViewsFormatted = useMemo(() => {
-    const total = (questions || []).reduce((acc, q) => acc + (q.views || q.viewsCount || 0), 0);
-    return total.toLocaleString();
-  }, [questions]);
+  // 1. 網站造訪量（進入網站的總造訪次數）
+  const siteVisitsFormatted = useMemo(() => {
+    return (siteVisitsCount || 0).toLocaleString();
+  }, [siteVisitsCount]);
 
   // 2. 即時線上人數
   const onlineUsersFormatted = useMemo(() => {
-    const realUsers = (availableUsers || []).filter((u) => u.id !== 'user-guest');
-    const total = realUsers.length;
-    return `${Math.max(3, Math.min(total, Math.round(total * 0.35) + 3))}`;
-  }, [availableUsers]);
+    return `${Math.max(1, onlineUsersCount || 1)}`;
+  }, [onlineUsersCount]);
 
-  // 3. 總註冊用戶
+  // 3. 總註冊用戶（排扣測試帳號之真實註冊用戶）
   const totalMembersFormatted = useMemo(() => {
-    const realUsers = (availableUsers || []).filter((u) => u.id !== 'user-guest');
-    return `${realUsers.length}`;
-  }, [availableUsers]);
+    return `${realRegisteredUsersCount || 0}`;
+  }, [realRegisteredUsersCount]);
 
   // 4. 認證專家
   const verifiedSolversFormatted = useMemo(() => {
@@ -314,13 +323,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 : 'grid-cols-1 max-w-md'
             }`}
           >
-            {/* 總瀏覽量 */}
+            {/* 網站造訪量 */}
             {publicMetricsConfig.showTotalViews && (
               <div className="p-2.5 sm:p-3 rounded-2xl bg-stone-50/50 border border-stone-100 hover:border-amber-200 transition-colors">
                 <div className="text-lg sm:text-2xl font-extrabold text-stone-900 font-mono">
-                  {totalViewsFormatted}
+                  {siteVisitsFormatted}
                 </div>
-                <div className="text-[11px] sm:text-xs text-stone-500 mt-0.5 font-medium">總瀏覽量</div>
+                <div className="text-[11px] sm:text-xs text-stone-500 mt-0.5 font-medium">網站造訪量</div>
               </div>
             )}
 

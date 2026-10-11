@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { SubscriptionTier } from '../types';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
-import { isMockTransactionId, isMockQuestionId } from '../data/mockData';
+import { isMockTransactionId, isMockQuestionId, isRealRegisteredUser } from '../data/mockData';
 import { getTransactionBadge } from './AdminTransactionsTab';
 import { CompetitionAdminReviewTab } from './CompetitionAdminReviewTab';
 import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
@@ -99,6 +99,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
   // Local state for public metrics
   const [localPublicMetrics, setLocalPublicMetrics] = useState({ ...publicMetricsConfig });
+  useEffect(() => {
+    setLocalPublicMetrics({ ...publicMetricsConfig });
+  }, [publicMetricsConfig]);
   const [isPublicMetricsExpanded, setIsPublicMetricsExpanded] = useState<boolean>(false);
   const hasPublicMetricsChanges = JSON.stringify(localPublicMetrics) !== JSON.stringify(publicMetricsConfig);
 
@@ -280,7 +283,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   };
 
   const verifiedSolversCount = solvers.filter((s) => s.verifiedBadge).length;
-  const totalRealUsersCount = availableUsers.filter((u) => u.id !== 'user-guest').length;
+  const totalRealUsersCount = availableUsers.filter((u) => isRealRegisteredUser(u)).length;
   const avgGMVPerUser = totalRealUsersCount > 0 ? Math.round(totalGMV / totalRealUsersCount) : 0;
   const avgPlatformFeePerUser = totalRealUsersCount > 0 ? Math.round(totalPlatformFees / totalRealUsersCount) : 0;
 
@@ -596,16 +599,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
           {isPublicMetricsExpanded && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 animate-in fade-in duration-200 pt-1">
-            {/* Metric 1: 總瀏覽量 */}
+            {/* Metric 1: 網站造訪量 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-xs text-stone-900">總瀏覽量</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">曝光次數</span>
+                  <span className="font-extrabold text-xs text-stone-900">網站造訪量</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">造訪次數</span>
                 </div>
-                <p className="text-[11px] text-stone-500 mt-0.5">全站問題、解方與專家總瀏覽曝光</p>
+                <p className="text-[11px] text-stone-500 mt-0.5">進入網站的總造訪次數</p>
               </div>
               <button
                 type="button"

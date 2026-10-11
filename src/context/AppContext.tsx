@@ -49,6 +49,7 @@ import {
   CORE_TEST_ACCOUNTS,
   CORE_PRESERVED_USER_IDS,
   isTestAccountUserId,
+  isRealRegisteredUser,
   isMockQuestionId,
   isMockAnswerId,
   isMockSolverId,
@@ -84,10 +85,15 @@ import {
   syncSolversToFirestore,
   syncTermsAgreementsToFirestore,
   syncPlatformSettingsToFirestore,
+  subscribePlatformSettingsFromFirestore,
   syncAuditLogsToFirestore,
   pushAllDataToFirestore,
   loadAllDataFromFirestore,
   subscribeToTickets,
+  recordSiteVisitInFirestore,
+  subscribeSiteVisitsFromFirestore,
+  sendPresenceHeartbeat,
+  subscribePresenceFromFirestore,
   CategorizedSyncResult,
 } from '../services/firestoreSync';
 import { getStoredTickets } from '../services/customerSupportService';
@@ -99,6 +105,10 @@ interface AppContextType {
   setCurrentUser: (user: User | ((prev: User) => User)) => void;
   availableUsers: User[];
   setAvailableUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  siteVisitsCount: number;
+  onlineUsersCount: number;
+  realRegisteredUsers: User[];
+  realRegisteredUsersCount: number;
   commissionRate: number; // 預設 0.25 (25%)
   setCommissionRate: (rate: number) => void;
   subscriptionPlans: Record<SubscriptionTier, SubscriptionPlan>;
@@ -573,6 +583,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
+    // 全站實時同步模式至 Firestore
+    syncPlatformSettingsToFirestore({
+      isNoPaymentMode: enabled,
+      isRaceMode: false,
+      isDemoMode: false,
+      isHideTestAccounts: true,
+    });
     // 開啟無金流模式或正式營運模式時，自動退出測試環境，並隱藏測試環境模擬資料與測試帳號
     setIsDemoMode(false);
     setHideTestAccounts(true);
@@ -647,6 +664,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
+    syncPlatformSettingsToFirestore({ isHideTestAccounts: enabled });
     const disposableTestAccountIds = ['solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
     if (enabled) {
       // 1. 隱藏拋棄式模擬帳號，但永久保留 1~3 個核心測試身分
@@ -757,6 +775,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}is_race_mode`, String(enabled));
     } catch {}
+    syncPlatformSettingsToFirestore({
+      isRaceMode: enabled,
+      isDemoMode: enabled ? false : isDemoMode,
+      isNoPaymentMode: enabled ? false : isNoPaymentMode,
+    });
     if (enabled) {
       setIsDemoMode(false);
       setIsNoPaymentMode(false);
@@ -904,6 +927,115 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return isDemo ? MOCK_USERS : [...CORE_TEST_ACCOUNTS];
   });
+
+  // 嚴格過濾真實註冊用戶（排扣訪客、測試帳號）
+  const realRegisteredUsers = useMemo(() => {
+    return availableUsers.filter((u) => isRealRegisteredUser(u));
+  }, [availableUsers]);
+
+  const realRegisteredUsersCount = realRegisteredUsers.length;
+
+  // 全站「網站造訪量」與「即時線上人數」狀態與實時雲端同步
+  const [siteVisitsCount, setSiteVisitsCount] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('ideax_total_site_visits') || '1280', 10);
+    } catch {
+      return 1280;
+    }
+  });
+  const [onlineUsersCount, setOnlineUsersCount] = useState<number>(1);
+
+  // 1. 記錄進入網站之造訪量 & 實時監聽全站造訪次數
+  useEffect(() => {
+    recordSiteVisitInFirestore().then((visits) => {
+      setSiteVisitsCount(visits);
+    });
+    const unsub = subscribeSiteVisitsFromFirestore((visits) => {
+      setSiteVisitsCount(visits);
+    });
+    return () => {
+      if (unsub) unsub();
+    };
+  }, []);
+
+  // 2. 即時線上 Heartbeat & 實時監聽活躍連線數
+  useEffect(() => {
+    sendPresenceHeartbeat(currentUser?.id);
+    const heartbeatTimer = setInterval(() => {
+      sendPresenceHeartbeat(currentUser?.id);
+    }, 25000);
+
+    const unsub = subscribePresenceFromFirestore((count) => {
+      setOnlineUsersCount(count);
+    });
+
+    return () => {
+      clearInterval(heartbeatTimer);
+      if (unsub) unsub();
+    };
+  }, [currentUser?.id]);
+
+  // 3. 實時監聽全站平台「數據顯示設定與營運模式」(Public Metrics Config & Platform Settings)
+  useEffect(() => {
+    const unsub = subscribePlatformSettingsFromFirestore((settings) => {
+      if (settings.publicMetricsConfig) {
+        setPublicMetricsConfig((prev) => {
+          const merged = { ...prev, ...settings.publicMetricsConfig };
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}public_metrics_config`, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+      if (typeof settings.isDemoMode === 'boolean') {
+        const targetVal = settings.isDemoMode;
+        setIsDemoMode((curr) => {
+          if (curr !== targetVal) {
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}demo_mode`, String(targetVal));
+            } catch {}
+          }
+          return targetVal;
+        });
+      }
+      if (typeof settings.isNoPaymentMode === 'boolean') {
+        const targetVal = settings.isNoPaymentMode;
+        setIsNoPaymentMode((curr) => {
+          if (curr !== targetVal) {
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}no_payment_mode`, String(targetVal));
+            } catch {}
+          }
+          return targetVal;
+        });
+      }
+      if (typeof settings.isRaceMode === 'boolean') {
+        const targetVal = settings.isRaceMode;
+        setIsRaceMode((curr) => {
+          if (curr !== targetVal) {
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}is_race_mode`, String(targetVal));
+            } catch {}
+          }
+          return targetVal;
+        });
+      }
+      if (typeof settings.isHideTestAccounts === 'boolean') {
+        const targetVal = settings.isHideTestAccounts;
+        setIsHideTestAccounts((curr) => {
+          if (curr !== targetVal) {
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}hide_test_accounts`, String(targetVal));
+            } catch {}
+          }
+          return targetVal;
+        });
+      }
+    });
+    return () => {
+      if (unsub) unsub();
+    };
+  }, []);
 
   const DEVICE_ACCOUNTS_KEY = `${STORAGE_KEY_PREFIX}device_accounts`;
 
@@ -1391,6 +1523,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (e) {
         console.error(e);
       }
+      // 全站實時同步指標展示設定至 Firestore 雲端，使其他所有使用者與瀏覽器即時生效
+      syncPlatformSettingsToFirestore({ publicMetricsConfig: next });
       return next;
     });
   };
@@ -6740,6 +6874,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setDemoMode = (enabled: boolean) => {
+    syncPlatformSettingsToFirestore({
+      isDemoMode: enabled,
+      isNoPaymentMode: enabled ? false : isNoPaymentMode,
+      isRaceMode: enabled ? false : isRaceMode,
+      isHideTestAccounts: enabled ? false : isHideTestAccounts,
+    });
     if (enabled) {
       setIsDemoMode(true);
       setIsNoPaymentMode(false);
@@ -6852,6 +6992,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentUser,
         availableUsers,
         setAvailableUsers,
+        siteVisitsCount,
+        onlineUsersCount,
+        realRegisteredUsers,
+        realRegisteredUsersCount,
         commissionRate,
         setCommissionRate,
         subscriptionPlans,
