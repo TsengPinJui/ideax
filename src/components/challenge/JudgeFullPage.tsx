@@ -354,7 +354,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
               type="button"
               onClick={onGoToPainPoints || onBackToOldSite}
               className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold group"
-              title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
+              title="前往 IdeaX 痛點許願池並自動滾動至痛點區域"
             >
               <span>痛點</span>
               <ArrowRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />
@@ -405,7 +405,7 @@ export const JudgeFullPage: React.FC<JudgeFullPageProps> = ({
               <button
                 onClick={onGoToPainPoints || onBackToOldSite}
                 className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98 group"
-                title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
+                title="前往 IdeaX 痛點許願池並自動滾動至痛點區域"
               >
                 <Flame className="w-3.5 h-3.5 text-rose-500" />
                 <span>痛點</span>

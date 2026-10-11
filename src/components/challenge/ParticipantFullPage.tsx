@@ -455,7 +455,7 @@ export const ParticipantFullPage: React.FC<ParticipantFullPageProps> = ({
                   className="py-3 px-5 rounded-2xl bg-white hover:bg-stone-50 border border-stone-200 text-stone-800 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-2xs"
                 >
                   <Flame className="w-4 h-4 text-rose-500" />
-                  <span>查看創點子/痛點集 (IdeaX 平台)</span>
+                  <span>查看痛點許願池 (IdeaX 平台)</span>
                 </button>
 
                 <button

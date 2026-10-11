@@ -1041,34 +1041,28 @@ export function subscribeToCustomerSupportConversations(callback: (convs: Custom
 // =========================================================================
 
 /**
- * 記錄網站造訪量（當每次全站 Session 首次進入網站時計數增加 1）
+ * 記錄網站總瀏覽量與造訪次數（每次進入網站、重整或存取頁面時計數持續累加，實時寫入雲端）
  */
 export async function recordSiteVisitInFirestore(): Promise<number> {
   const LOCAL_STORAGE_VISITS_KEY = 'ideax_total_site_visits';
   let currentLocalVisits = parseInt(localStorage.getItem(LOCAL_STORAGE_VISITS_KEY) || '1280', 10);
 
-  const SESSION_VISIT_KEY = 'ideax_session_visit_counted';
-  const alreadyCountedInSession = sessionStorage.getItem(SESSION_VISIT_KEY);
+  currentLocalVisits += 1;
+  localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(currentLocalVisits));
 
-  if (!alreadyCountedInSession) {
-    sessionStorage.setItem(SESSION_VISIT_KEY, 'true');
-    currentLocalVisits += 1;
-    localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(currentLocalVisits));
-
-    if (!isQuotaExhausted) {
-      try {
-        const statsRef = doc(db, 'system_metrics', 'site_stats');
-        const snap = await getDoc(statsRef);
-        let cloudVisits = currentLocalVisits;
-        if (snap.exists() && typeof snap.data().totalVisits === 'number') {
-          cloudVisits = Math.max(snap.data().totalVisits + 1, currentLocalVisits);
-        }
-        await setDoc(statsRef, { totalVisits: cloudVisits, lastVisitedAt: new Date().toISOString() }, { merge: true });
-        localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(cloudVisits));
-        return cloudVisits;
-      } catch (err) {
-        handleFirestoreError('recordSiteVisitInFirestore', err);
+  if (!isQuotaExhausted) {
+    try {
+      const statsRef = doc(db, 'system_metrics', 'site_stats');
+      const snap = await getDoc(statsRef);
+      let cloudVisits = currentLocalVisits;
+      if (snap.exists() && typeof snap.data().totalVisits === 'number') {
+        cloudVisits = Math.max(snap.data().totalVisits + 1, currentLocalVisits);
       }
+      await setDoc(statsRef, { totalVisits: cloudVisits, lastVisitedAt: new Date().toISOString() }, { merge: true });
+      localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(cloudVisits));
+      return cloudVisits;
+    } catch (err) {
+      handleFirestoreError('recordSiteVisitInFirestore', err);
     }
   }
   return currentLocalVisits;

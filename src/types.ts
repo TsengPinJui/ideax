@@ -46,7 +46,9 @@ export type AppTab =
   | 'solver_profile'
   | 'chat'
   | 'my_projects'
-  | 'ai_crm';
+  | 'ai_crm'
+  | 'membership'
+  | 'topup';
 
 export type AboutSection = 
   | 'list'

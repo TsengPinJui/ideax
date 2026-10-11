@@ -855,7 +855,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               type="button"
               onClick={onGoToPainPoints || onBackToOldSite}
               className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-white transition-all cursor-pointer font-bold group"
-              title="前往 IdeaX 創點子平台 創點子/痛點集並自動滾動至痛點區域"
+              title="前往 IdeaX 創點子平台 痛點許願池並自動滾動至痛點區域"
             >
               <span>痛點</span>
               <ArrowRight className="w-3.5 h-3.5 text-stone-500 group-hover:translate-x-0.5 transition-transform" />

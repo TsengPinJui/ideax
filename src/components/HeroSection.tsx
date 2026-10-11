@@ -323,13 +323,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 : 'grid-cols-1 max-w-md'
             }`}
           >
-            {/* 網站造訪量 */}
+            {/* 網站總瀏覽量 */}
             {publicMetricsConfig.showTotalViews && (
               <div className="p-2.5 sm:p-3 rounded-2xl bg-stone-50/50 border border-stone-100 hover:border-amber-200 transition-colors">
                 <div className="text-lg sm:text-2xl font-extrabold text-stone-900 font-mono">
                   {siteVisitsFormatted}
                 </div>
-                <div className="text-[11px] sm:text-xs text-stone-500 mt-0.5 font-medium">網站造訪量</div>
+                <div className="text-[11px] sm:text-xs text-stone-500 mt-0.5 font-medium">網站總瀏覽量</div>
               </div>
             )}
 

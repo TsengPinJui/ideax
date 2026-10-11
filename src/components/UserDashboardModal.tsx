@@ -2953,10 +2953,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <div className="space-y-2.5 sm:space-y-3.5">
                 {/* 第一排：網站造訪量 ＋ 線上人數 (雙欄並排) */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  {/* 1. 網站造訪量 */}
+                  {/* 1. 網站總瀏覽量 */}
                   <div className="p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-left flex flex-col justify-between shadow-2xs">
                     <div className="flex items-center justify-between text-stone-500 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-black text-stone-800">網站造訪量</span>
+                      <span className="text-xs sm:text-sm font-black text-stone-800">網站總瀏覽量</span>
                       <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                         <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </div>
@@ -3404,16 +3404,16 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                 {isPublicMetricsExpanded && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1 animate-in fade-in duration-200">
-                  {/* Metric 1: 網站造訪量 */}
+                  {/* Metric 1: 網站總瀏覽量 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                     publicMetricsConfig.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
                   }`}>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-stone-900">網站造訪量</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">造訪次數</span>
+                        <span className="font-extrabold text-xs text-stone-900">網站總瀏覽量</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">總瀏覽與造訪</span>
                       </div>
-                      <p className="text-[11px] text-stone-500 mt-0.5">進入網站的總造訪次數</p>
+                      <p className="text-[11px] text-stone-500 mt-0.5">進入網站與存取頁面的總瀏覽次數</p>
                     </div>
                     <button
                       type="button"
@@ -4816,15 +4816,23 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div>
                       <div className="flex items-center justify-between flex-wrap gap-1">
                         <span className="text-xs font-bold text-amber-950 block">目前點數餘額</span>
-                        <button
-                          type="button"
-                          onClick={() => setIsRechargeExpanded((prev) => !prev)}
-                          className="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-[11px] sm:text-xs transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
-                          title="展開或收合購買儲值點數方案"
-                        >
-                          <CreditCard className="w-3 h-3" />
-                          <span>{isRechargeExpanded ? '收合 ▲' : '+ 儲值 (暫不開放) ▼'}</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              if (typeof window !== 'undefined') {
+                                window.history.pushState(null, '', '/topup');
+                                window.dispatchEvent(new Event('popstate'));
+                              }
+                            }}
+                            className="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-[11px] sm:text-xs transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                            title="前往獨立儲值頁面自動帶入身份"
+                          >
+                            <CreditCard className="w-3 h-3" />
+                            <span>前往儲值中心 ↗</span>
+                          </button>
+                        </div>
                       </div>
                       <div className="flex items-baseline gap-1.5 mt-1 sm:mt-1.5">
                         <span className="text-xl sm:text-3xl font-black text-amber-950 font-mono">

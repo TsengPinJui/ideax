@@ -382,7 +382,7 @@ export const PainPointSelector: React.FC<PainPointSelectorProps> = ({
                   {previewPainPoint.trackTag}
                 </span>
                 <span className="text-xs font-bold text-stone-500">
-                  來源：{previewPainPoint.sourceType === 'competition' ? '創星季第一階段痛點徵件' : 'IdeaX 創點子/痛點集'}
+                  來源：{previewPainPoint.sourceType === 'competition' ? '創星季第一階段痛點徵件' : 'IdeaX 痛點許願池'}
                 </span>
               </div>
               <button

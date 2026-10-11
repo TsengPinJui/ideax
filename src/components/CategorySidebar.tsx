@@ -360,13 +360,13 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
             <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
           </button>
 
-          {/* 2. 獨立專屬專區（創星季 在最上，創點子/痛點集 次之，L0問題討論區 在下） */}
+          {/* 2. 獨立專屬專區（創星季 在最上，痛點許願池 次之，L0問題討論區 在下） */}
           <div id="onboarding-step-7-special-zones" className="space-y-2 pt-1 pb-1">
             <div className="text-[11px] font-bold text-stone-500 px-1 flex items-center justify-between">
               <span>🔥 主題專區</span>
             </div>
 
-            {/* ［IdeaX創星季］專區（綠框白底或很淡的綠底，後面「競賽挑戰」標籤） */}
+            {/* ［IdeaX創星季］專區 */}
             <button
               onClick={() => {
                 if (onNavigateToStarSeason) {
@@ -382,7 +382,6 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               title="前往 IdeaX創星季 競賽挑戰"
             >
               <div className="flex items-center gap-2 min-w-0 -ml-0.5">
-                {/* 黃色正向去背燈泡 + 創星季去背 (左移貼齊微調) */}
                 <div className="flex items-center gap-1 shrink-0">
                   <img
                     src="/logo-bulb.png"
@@ -405,14 +404,14 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                     </span>
                   </div>
                   <p className="text-[10px] text-stone-600 mt-0.5 line-clamp-1">
-                    分享痛點×創新解方  解題黑客松
+                    分享痛點×創新解方 解題黑客松
                   </p>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform shrink-0 ml-1" />
             </button>
 
-            {/* ① ［創點子/痛點集］（移到 L0 上方） */}
+            {/* ① ［痛點許願池］ */}
             <button
               onClick={() => handleSelectZone('pain_points')}
               className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
@@ -427,7 +426,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-rose-700 transition-colors flex items-center gap-1.5">
-                    <span>創點子 / 痛點集</span>
+                    <span>痛點許願池</span>
                   </div>
                   <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
                     生活與產業痛點，徵集破局點子
@@ -445,7 +444,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               </span>
             </button>
 
-            {/* ② ［L0問題討論區］（在創點子/痛點集下方） */}
+            {/* ② ［L0問題討論區］ */}
             <button
               onClick={() => handleSelectZone('l0_discussion')}
               className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${

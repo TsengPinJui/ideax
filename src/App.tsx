@@ -21,6 +21,7 @@ import { CustomerServiceModal } from './components/CustomerServiceModal';
 import { UserDashboardModal } from './components/UserDashboardModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { AiCrmView } from './components/AiCrmView';
+import { MembershipAndTopupFullPage } from './components/MembershipAndTopupFullPage';
 import { ChatView } from './components/ChatView';
 import { StarSeasonView } from './components/challenge/StarSeasonView';
 import { DraggableStarSeasonFloat } from './components/challenge/DraggableStarSeasonFloat';
@@ -50,10 +51,9 @@ import {
   isUserInterestedInQuestionTopic,
   isQuestionExpired,
 } from './services/recommendationService';
-import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert } from 'lucide-react';
+import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, Lightbulb } from 'lucide-react';
 
 const CATEGORIES: Category[] = [
-  '創新創業',
   '專業問題',
   '學術探討',
   '日常疑難',
@@ -205,6 +205,21 @@ function MainContent() {
         }
 
         // 4. 其他獨立子網址與分頁
+        if (
+          pathname.includes('/membership') ||
+          pathname.includes('/plans') ||
+          search.includes('tab=membership')
+        ) {
+          return 'membership';
+        }
+        if (
+          pathname.includes('/topup') ||
+          pathname.includes('/recharge') ||
+          search.includes('tab=topup') ||
+          search.includes('tab=recharge')
+        ) {
+          return 'topup';
+        }
         if (pathname.includes('/about') || search.includes('tab=about') || hash.includes('about')) {
           return 'about';
         }
@@ -519,6 +534,16 @@ function MainContent() {
             updateSEOForSubpage('challenge_expert');
           } else if (curPath === '/challenge/proposals' || curPath === '/challenge/proposal') {
             updateSEOForSubpage('challenge_proposals');
+          }
+        } else if (activeTab === 'membership') {
+          if (curPath !== '/membership') {
+            window.history.pushState({ tab: 'membership' }, '', '/membership');
+            updateSEOForSubpage('membership');
+          }
+        } else if (activeTab === 'topup') {
+          if (curPath !== '/topup') {
+            window.history.pushState({ tab: 'topup' }, '', '/topup');
+            updateSEOForSubpage('topup');
           }
         } else if (activeTab === 'create_question') {
           if (curPath !== '/create') {
@@ -1350,13 +1375,13 @@ function MainContent() {
                 {/* Special Zone Banners */}
                 {specialZone === 'pain_points' && (
                   <div className="p-4 rounded-3xl bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 border border-rose-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-200">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-xs shrink-0">
                         <Flame className="w-5 h-5" />
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
-                          <span>創點子 / 痛點集</span>
+                          <span>痛點許願池</span>
                           <button
                             onClick={() => handleTogglePin('special_zone', 'pain_points')}
                             className={`p-1 rounded-lg transition-all cursor-pointer ${
@@ -1373,7 +1398,7 @@ function MainContent() {
                           </span>
                         </h3>
                         <HelpTooltip
-                          title="創點子 / 痛點集說明"
+                          title="痛點許願池說明"
                           content={
                             isRaceMode
                               ? "匯集真實生活與產業未解痛點。創星季競賽期間免費，開放給參賽團隊作為解題題目與共創解方。"
@@ -1385,26 +1410,45 @@ function MainContent() {
                             setActiveTab('about');
                           }}
                         />
+
+                        {/* 1. 提出痛點 (移至左側標題區) */}
+                        <button
+                          onClick={() => handleOpenCreateWithType('pain_point')}
+                          className="ml-1 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer active:scale-98"
+                          title="發布產業或生活真實痛點"
+                        >
+                          <Flame className="w-3.5 h-3.5 text-white" />
+                          <span>提出痛點</span>
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {/* 1. 提出痛點 (在左邊，紅底白字) */}
+                    <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                      {/* 0. 創點子(解決痛點) - 右上角小字純文字連結 */}
                       <button
-                        onClick={() => handleOpenCreateWithType('pain_point')}
-                        className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer active:scale-98"
-                        title="發布產業或生活真實痛點"
+                        onClick={() => {
+                          try {
+                            window.history.pushState({ subView: 'proposal' }, '', '/challenge/proposals');
+                          } catch {}
+                          setActiveTab('star_season');
+                          setTimeout(() => {
+                            window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', {
+                              detail: { subView: 'proposal' }
+                            }));
+                          }, 0);
+                        }}
+                        className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline decoration-amber-400 hover:decoration-amber-600 transition-colors cursor-pointer px-1 py-0.5 active:scale-98"
+                        title="前往創星季提案總覽，查看解方提案與點子作品"
                       >
-                        <Flame className="w-3.5 h-3.5 text-white" />
-                        <span>提出痛點</span>
+                        創點子(解決痛點) ↗
                       </button>
 
                       <button
                         onClick={() => setSpecialZone('all')}
-                        className="p-2 rounded-xl bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                        title="離開專區，返回問題市場"
+                        className="p-1.5 rounded-full hover:bg-rose-200/60 text-stone-500 hover:text-stone-900 transition-colors cursor-pointer"
+                        title="關閉專區"
+                        aria-label="關閉專區"
                       >
-                        <X className="w-4 h-4" />
-                        <span className="hidden sm:inline">返回問題市場</span>
+                        <X className="w-4.5 h-4.5" />
                       </button>
                     </div>
                   </div>
@@ -1451,11 +1495,11 @@ function MainContent() {
                       </button>
                       <button
                         onClick={() => setSpecialZone('all')}
-                        className="p-2 rounded-xl bg-white hover:bg-stone-100 text-stone-600 border border-stone-200 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                        title="離開專區，返回問題市場"
+                        className="p-1.5 rounded-full hover:bg-blue-200/60 text-stone-500 hover:text-stone-900 transition-colors cursor-pointer"
+                        title="關閉專區"
+                        aria-label="關閉專區"
                       >
-                        <X className="w-4 h-4" />
-                        <span className="hidden sm:inline">返回問題市場</span>
+                        <X className="w-4.5 h-4.5" />
                       </button>
                     </div>
                   </div>
@@ -1784,7 +1828,7 @@ function MainContent() {
                 const cleanTitle = titleStr.startsWith('【痛點】') ? titleStr : `【痛點】${titleStr}`;
                 const descStr = targetPainPoint.description || targetPainPoint.summary || '此為創星季參賽者所提出之切身真實痛點問題，歡迎提供落地解決方案。';
                 const catStr = targetPainPoint.category || '創新創業';
-                const subStr = targetPainPoint.subcategory || '創點子/痛點集';
+                const subStr = targetPainPoint.subcategory || '痛點許願池';
                 const authName = targetPainPoint.authorName || '創星季參賽者';
                 const authAvatar = targetPainPoint.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
                 const qId = targetPainPoint.id || `star-pain-${Date.now()}`;
@@ -2090,6 +2134,14 @@ function MainContent() {
             onOpenDirectChat={() => {
               setActiveTab('chat');
             }}
+          />
+        )}
+
+        {/* 11. 會員方案與點數儲值獨立頁面 (/membership, /topup) */}
+        {(activeTab === 'membership' || activeTab === 'topup') && (
+          <MembershipAndTopupFullPage
+            initialTab={activeTab === 'topup' ? 'topup' : 'membership'}
+            onBack={() => setActiveTab('explore')}
           />
         )}
 

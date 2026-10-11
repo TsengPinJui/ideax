@@ -210,6 +210,19 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [currentSubView, setCurrentSubView] = useState<ChallengeSubView>(() => {
     try {
       if (typeof window !== 'undefined') {
+        if (window.history.state?.subView) {
+          const stSub = window.history.state.subView;
+          if (stSub === 'proposal' || stSub === 'explore' || stSub === 'proposals' || stSub === 'explore-proposals') {
+            return 'proposal';
+          }
+          if (stSub === 'rules') return 'rules';
+          if (stSub === 'submit') return 'submit';
+          if (stSub === 'participant') return 'participant';
+          if (stSub === 'judge') return 'judge';
+          if (stSub === 'ambassador') return 'ambassador';
+          if (stSub === 'home') return 'home';
+        }
+
         const path = window.location.pathname.toLowerCase();
         const search = window.location.search.toLowerCase();
         const hash = window.location.hash.toLowerCase();
@@ -220,6 +233,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           search.includes('p=') ||
           path.includes('/proposal') ||
           path.includes('/proposals') ||
+          path.includes('/explore-proposals') ||
           path.includes('/cases') ||
           search.includes('view=proposal') ||
           search.includes('view=cases') ||
@@ -256,9 +270,21 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       let targetProposalId: string | null = null;
 
       if (e && (e as CustomEvent).detail?.subView) {
-        targetSubView = (e as CustomEvent).detail.subView;
+        let rawSub = (e as CustomEvent).detail.subView;
+        if (rawSub === 'explore' || rawSub === 'explore-proposals' || rawSub === 'proposals') {
+          rawSub = 'proposal';
+        }
+        targetSubView = rawSub as ChallengeSubView;
         targetProposalId = (e as CustomEvent).detail.proposalId || null;
       } else if (typeof window !== 'undefined') {
+        if (window.history.state?.subView) {
+          let stSub = window.history.state.subView;
+          if (stSub === 'explore' || stSub === 'explore-proposals' || stSub === 'proposals') {
+            stSub = 'proposal';
+          }
+          targetSubView = stSub as ChallengeSubView;
+        }
+
         const path = window.location.pathname.toLowerCase();
         const search = window.location.search.toLowerCase();
         const hash = window.location.hash.toLowerCase();
@@ -269,6 +295,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           search.includes('p=') ||
           path.includes('/proposal') ||
           path.includes('/proposals') ||
+          path.includes('/explore-proposals') ||
           path.includes('/cases') ||
           search.includes('view=proposal') ||
           search.includes('view=cases') ||
@@ -307,7 +334,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       }
 
       if (targetSubView) {
-        const normalized = targetSubView === 'explore' ? 'proposal' : targetSubView;
+        const normalized = (targetSubView === 'explore' || targetSubView === 'explore-proposals' || targetSubView === 'proposals') ? 'proposal' : targetSubView;
         setCurrentSubView(normalized);
         if (targetProposalId !== null) {
           setSelectedProposalIdForExplore(targetProposalId);
@@ -2323,7 +2350,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               type="button"
               onClick={scrollToPainPointsBoard}
               className="px-3 py-1.5 rounded-xl text-orange-950 bg-orange-200/90 hover:bg-orange-300 border border-orange-300/80 transition-all cursor-pointer font-black flex items-center gap-1.5 shadow-2xs active:scale-98 group"
-              title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
+              title="前往 IdeaX 痛點許願池並自動滾動至痛點區域"
             >
               <Layers className="w-3.5 h-3.5 text-orange-700" />
               <span>痛點</span>
@@ -2953,7 +2980,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 type="button"
                 onClick={scrollToPainPointsBoard}
                 className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 hover:border-amber-300 text-stone-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-98 shrink-0 group"
-                title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
+                title="前往 IdeaX 痛點許願池並自動滾動至痛點區域"
               >
                 <Flame className="w-3.5 h-3.5 text-rose-500" />
                 <span>痛點</span>
@@ -3045,8 +3072,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <button
                     type="button"
                     onClick={(e) => handleTriggerShatterAndJump(e, 'painPoint')}
-                    title="點擊擊碎痛點：字體化為碎片掉落，直接跳轉進入創點子/痛點集！"
-                    aria-label="點擊擊碎痛點並跳轉進入創點子/痛點集"
+                    title="點擊擊碎痛點：字體化為碎片掉落，直接跳轉進入痛點許願池！"
+                    aria-label="點擊擊碎痛點並跳轉進入痛點許願池"
                     className={`relative inline-block ml-2 sm:ml-3 cursor-pointer group active:scale-95 transition-all text-left focus:outline-none ${
                       shatterTransition.isActive && shatterTransition.clickedWord === 'painPoint'
                         ? 'opacity-0 scale-90 pointer-events-none'
@@ -3295,7 +3322,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 type="button"
                 onClick={scrollToPainPointsBoard}
                 className="w-full sm:w-auto flex-1 py-3 px-6 rounded-2xl bg-white hover:bg-stone-50 text-stone-800 hover:text-stone-950 font-bold text-sm sm:text-base shadow-2xs border border-stone-200/90 hover:border-amber-300 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 group"
-                title="前往 IdeaX創點子 創點子/痛點集並自動滾動至痛點區域"
+                title="前往 IdeaX 痛點許願池並自動滾動至痛點區域"
               >
                 <Flame className="w-4 h-4 text-rose-500" />
                 <span>痛點</span>
@@ -6438,7 +6465,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       進入痛點區查看痛點，或是直接輸入「問題序號」開始提案
                     </h4>
                     <p className="text-stone-600 text-[11px] mt-1 leading-relaxed">
-                      你可以前往「創點子/痛點集」探索大眾生活與產業目前尚未解決之真實問題；若已知題目序號，可直接在下方輸入快速啟動提案。
+                      你可以前往「痛點許願池」探索大眾生活與產業目前尚未解決之真實問題；若已知題目序號，可直接在下方輸入快速啟動提案。
                     </p>
                   </div>
                 </div>

@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   BadgeCheck,
   ChevronDown,
+  CreditCard,
   UserCheck,
   Briefcase,
   Sliders,
@@ -1661,13 +1662,39 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
 
                     <button
-                      onClick={() => handleOpenDashboard('subscriptions')}
-                      className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-purple-50/80 hover:text-purple-950 flex items-center gap-2.5 cursor-pointer group transition-all"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveTab('membership');
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-purple-50/80 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-purple-100/80 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
-                        <Crown className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-purple-100/80 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                          <Crown className="w-3.5 h-3.5" />
+                        </div>
+                        <span>會員方案</span>
                       </div>
-                      <span>會員方案（訂閱與續約）</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">
+                        獨立頁
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveTab('topup');
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold text-stone-700 hover:bg-amber-50/80 hover:text-amber-950 flex items-center justify-between cursor-pointer group transition-all"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-amber-100/80 text-amber-800 group-hover:bg-amber-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all">
+                          <CreditCard className="w-3.5 h-3.5" />
+                        </div>
+                        <span>點數儲值中心</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                        帶入身份
+                      </span>
                     </button>
 
                     <button
