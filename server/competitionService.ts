@@ -756,6 +756,30 @@ export async function getPublicProposals(
 }
 
 /**
+ * 增加提案瀏覽次數（原子累加，持久化至 Firestore，解決重整歸零問題）
+ */
+export async function incrementProposalView(proposalId: string): Promise<{ success: boolean; viewsCount: number }> {
+  if (!proposalId) return { success: false, viewsCount: 0 };
+  const ref = adminDb.collection('competition_proposals').doc(proposalId);
+  try {
+    const snap = await ref.get();
+    if (!snap.exists) {
+      return { success: false, viewsCount: 0 };
+    }
+    await ref.update({
+      viewsCount: FieldValue.increment(1),
+      views: FieldValue.increment(1),
+    });
+    const updated = await ref.get();
+    const count = updated.data()?.viewsCount || 1;
+    return { success: true, viewsCount: count };
+  } catch (err: any) {
+    console.warn('[ProposalView] increment failed:', err?.message);
+    return { success: false, viewsCount: 0 };
+  }
+}
+
+/**
  * 按讚或取消按讚提案（更新 likeCount，並維護用戶個人的收藏名單）
  */
 export async function toggleLikeProposal(userId: string, proposalId: string): Promise<{

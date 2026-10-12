@@ -4,7 +4,7 @@ import { StarSeasonProposal, STAR_SEASON_TRACKS } from '../types/competition';
 const DEFAULT_TITLE = 'IdeaX 創點子 — 讓想法發光 • IDEAS CONNECT POSSIBILITIES';
 const DEFAULT_DESC =
   'IdeaX 創點子 — 讓想法發光！高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，Ideas Connect Possibilities。';
-const DEFAULT_IMAGE = '/圓角正向黃底燈泡.png';
+const DEFAULT_IMAGE = '/ideax-thumbnail.png';
 
 /**
  * 取得當前網域 Base URL
@@ -14,6 +14,12 @@ export function getBaseUrl(): string {
     return window.location.origin.replace(/\/+$/, '');
   }
   return 'https://www.ideax.tw';
+}
+
+export function toAbsoluteImageUrl(url?: string): string {
+  if (!url) return `${getBaseUrl()}/ideax-thumbnail.png`;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${getBaseUrl()}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
 /**
@@ -108,6 +114,7 @@ export function updateSEOForQuestion(question: Question | null, answers: Answer[
   const canonicalUrl = getQuestionShareUrl(question);
   const qImages = (question as any).images || (question as any).imageUrls || [];
   const imageUrl = qImages && qImages.length > 0 ? qImages[0] : (question.authorAvatar || DEFAULT_IMAGE);
+  const absoluteImageUrl = toAbsoluteImageUrl(imageUrl);
 
   // 2. 更新 DOM 標籤
   if (titleTag) titleTag.innerText = pageTitle;
@@ -116,10 +123,10 @@ export function updateSEOForQuestion(question: Question | null, answers: Answer[
   if (ogDesc) ogDesc.setAttribute('content', metaDescription);
   if (ogUrl) ogUrl.setAttribute('content', canonicalUrl);
   if (ogType) ogType.setAttribute('content', 'article');
-  if (ogImage) ogImage.setAttribute('content', imageUrl);
+  if (ogImage) ogImage.setAttribute('content', absoluteImageUrl);
   if (twitterTitle) twitterTitle.setAttribute('content', pageTitle);
   if (twitterDesc) twitterDesc.setAttribute('content', metaDescription);
-  if (twitterImage) twitterImage.setAttribute('content', imageUrl);
+  if (twitterImage) twitterImage.setAttribute('content', absoluteImageUrl);
 
   if (!canonicalLink) {
     canonicalLink = document.createElement('link');
@@ -167,7 +174,7 @@ export function updateSEOForQuestion(question: Question | null, answers: Answer[
         url: getBaseUrl(),
         logo: {
           '@type': 'ImageObject',
-          url: `${getBaseUrl()}/圓角正向黃底燈泡.png`,
+          url: `${getBaseUrl()}/ideax-thumbnail.png`,
         },
       },
     };
@@ -276,10 +283,10 @@ export function updateSEOForProposal(proposal: StarSeasonProposal | null) {
   if (ogDesc) ogDesc.setAttribute('content', metaDescription);
   if (ogUrl) ogUrl.setAttribute('content', canonicalUrl);
   if (ogType) ogType.setAttribute('content', 'article');
-  if (ogImage) ogImage.setAttribute('content', imageUrl);
+  if (ogImage) ogImage.setAttribute('content', toAbsoluteImageUrl(imageUrl));
   if (twitterTitle) twitterTitle.setAttribute('content', pageTitle);
   if (twitterDesc) twitterDesc.setAttribute('content', metaDescription);
-  if (twitterImage) twitterImage.setAttribute('content', imageUrl);
+  if (twitterImage) twitterImage.setAttribute('content', toAbsoluteImageUrl(imageUrl));
 
   if (!canonicalLink) {
     canonicalLink = document.createElement('link');
@@ -528,7 +535,7 @@ export function updateSEOForSubpage(subpageId: string) {
   let canonicalLink = document.querySelector('link[rel="canonical"]');
 
   const fullUrl = getSitelinkFullUrl(sitelink);
-  const imageUrl = sitelink.category === 'star_season' ? `${getBaseUrl()}/去背創星季.png` : `${getBaseUrl()}/圓角正向黃底燈泡.png`;
+  const imageUrl = sitelink.category === 'star_season' ? `${getBaseUrl()}/去背創星季.png` : `${getBaseUrl()}/ideax-thumbnail.png`;
 
   if (titleTag) titleTag.innerText = sitelink.title;
   if (metaDesc) metaDesc.setAttribute('content', sitelink.description);
@@ -536,10 +543,10 @@ export function updateSEOForSubpage(subpageId: string) {
   if (ogDesc) ogDesc.setAttribute('content', sitelink.description);
   if (ogUrl) ogUrl.setAttribute('content', fullUrl);
   if (ogType) ogType.setAttribute('content', 'website');
-  if (ogImage) ogImage.setAttribute('content', imageUrl);
+  if (ogImage) ogImage.setAttribute('content', toAbsoluteImageUrl(imageUrl));
   if (twitterTitle) twitterTitle.setAttribute('content', sitelink.title);
   if (twitterDesc) twitterDesc.setAttribute('content', sitelink.description);
-  if (twitterImage) twitterImage.setAttribute('content', imageUrl);
+  if (twitterImage) twitterImage.setAttribute('content', toAbsoluteImageUrl(imageUrl));
 
   if (!canonicalLink) {
     canonicalLink = document.createElement('link');
@@ -613,10 +620,10 @@ export function resetSEOToDefault() {
   if (ogDesc) ogDesc.setAttribute('content', DEFAULT_DESC);
   if (ogUrl) ogUrl.setAttribute('content', `${getBaseUrl()}/`);
   if (ogType) ogType.setAttribute('content', 'website');
-  if (ogImage) ogImage.setAttribute('content', `${getBaseUrl()}${DEFAULT_IMAGE}`);
+  if (ogImage) ogImage.setAttribute('content', toAbsoluteImageUrl(DEFAULT_IMAGE));
   if (twitterTitle) twitterTitle.setAttribute('content', DEFAULT_TITLE);
   if (twitterDesc) twitterDesc.setAttribute('content', DEFAULT_DESC);
-  if (twitterImage) twitterImage.setAttribute('content', `${getBaseUrl()}${DEFAULT_IMAGE}`);
+  if (twitterImage) twitterImage.setAttribute('content', toAbsoluteImageUrl(DEFAULT_IMAGE));
   if (canonicalLink) canonicalLink.setAttribute('href', `${getBaseUrl()}/`);
 
   removeElementById('ideax-schema-qapage');

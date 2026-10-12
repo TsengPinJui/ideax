@@ -10,6 +10,7 @@ import {
   UserCompetitionRewardSummary,
   AdminTotalRewardsMetrics,
 } from '../types/competition';
+import { syncPlatformSettingsToFirestore } from './firestoreSync';
 
 export interface CompetitionRegistrationRecord extends ParticipantRegistrationData {
   id: string;
@@ -379,7 +380,11 @@ export function saveCompetitionHomepageStatsConfig(config: CompetitionHomepageSt
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('ideax_competition_stats_config_updated', { detail: config }));
     }
-  } catch {}
+    // 全站實時同步創星季首頁展示設定至 Firestore 雲端，確保全站所有瀏覽器與訪客即時套用管理員設定
+    syncPlatformSettingsToFirestore({ competitionHomepageStatsConfig: config });
+  } catch (err) {
+    console.warn('[CompetitionAdminSync] saveCompetitionHomepageStatsConfig failed:', err);
+  }
 }
 
 /**

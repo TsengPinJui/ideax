@@ -46,6 +46,7 @@ import {
 } from '../../types/competition';
 import { DEFAULT_DEMO_PROPOSALS } from '../../data/competitionProposals';
 import { shareOrCopyUrl } from '../../utils/shareUtils';
+import { applyRealClicksToProposals, recordProposalViewClick } from '../../utils/proposalClicks';
 import { ProposalDetailFullPage } from './ProposalDetailFullPage';
 import {
   likeProposal,
@@ -54,6 +55,7 @@ import {
   postProposalComment,
   fetchUserLikedProposalIds,
   fetchSingleProposal,
+  recordProposalView,
 } from '../../services/competitionClientService';
 import {
   updateSEOForProposal,
@@ -113,7 +115,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const [activeSectionTab, setActiveSectionTab] = useState<'solution' | 'pain_point'>(initialSectionTab || 'solution');
 
   const [proposals, setProposals] = useState<StarSeasonProposal[]>(() => {
-    return (initialProposals && initialProposals.length > 0) ? initialProposals : DEFAULT_DEMO_PROPOSALS;
+    const list = (initialProposals && initialProposals.length > 0) ? initialProposals : DEFAULT_DEMO_PROPOSALS;
+    return applyRealClicksToProposals(list);
   });
   const [selectedTrack, setSelectedTrack] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
@@ -148,9 +151,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
   useEffect(() => {
     if (initialProposals && initialProposals.length > 0) {
-      setProposals(initialProposals);
+      setProposals(applyRealClicksToProposals(initialProposals));
     } else {
-      setProposals(DEFAULT_DEMO_PROPOSALS);
+      setProposals(applyRealClicksToProposals(DEFAULT_DEMO_PROPOSALS));
     }
   }, [initialProposals]);
 
@@ -536,11 +539,24 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
   // 開啟詳情與留言（點看來看才算一次瀏覽次數）
   const handleOpenProposalDetail = async (proposal: StarSeasonProposal) => {
-    const nextViews = (proposal.viewsCount || 0) + 1;
+    const nextViews = recordProposalViewClick(proposal.id, proposal.viewsCount || (proposal as any).views || 36);
     setProposals((prev) =>
       prev.map((p) => (p.id === proposal.id ? { ...p, viewsCount: nextViews } : p))
     );
     setSelectedProposalForDetail({ ...proposal, viewsCount: nextViews });
+
+    // 同步寫入雲端 Firestore 資料庫，解決重新整理或更新歸零問題
+    recordProposalView(proposal.id).then((cloudCount) => {
+      if (typeof cloudCount === 'number' && cloudCount > 0) {
+        setProposals((prev) =>
+          prev.map((p) => (p.id === proposal.id ? { ...p, viewsCount: Math.max(nextViews, cloudCount) } : p))
+        );
+        setSelectedProposalForDetail((prev) =>
+          prev && prev.id === proposal.id ? { ...prev, viewsCount: Math.max(nextViews, cloudCount) } : prev
+        );
+      }
+    });
+
     try {
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);

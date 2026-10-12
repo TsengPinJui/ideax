@@ -89,6 +89,7 @@ import {
   syncAuditLogsToFirestore,
   pushAllDataToFirestore,
   loadAllDataFromFirestore,
+  incrementQuestionViewInFirestore,
   subscribeToTickets,
   recordSiteVisitInFirestore,
   subscribeSiteVisitsFromFirestore,
@@ -987,6 +988,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return merged;
         });
       }
+      if (settings.competitionHomepageStatsConfig) {
+        try {
+          localStorage.setItem('ideax_competition_homepage_stats_config', JSON.stringify(settings.competitionHomepageStatsConfig));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('ideax_competition_stats_config_updated', { detail: settings.competitionHomepageStatsConfig }));
+          }
+        } catch {}
+      }
       if (typeof settings.isDemoMode === 'boolean') {
         const targetVal = settings.isDemoMode;
         setIsDemoMode((curr) => {
@@ -1761,6 +1770,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const now = Date.now();
 
       if (cloudData.questions && cloudData.questions.length > 0) {
+        const getRealClicks = (): Record<string, number> => {
+          try {
+            const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
+            return raw ? JSON.parse(raw) : {};
+          } catch {
+            return {};
+          }
+        };
+        const realClicks = getRealClicks();
         const expiredIds: string[] = [];
         const filteredQ = cloudData.questions
           .filter((q) => !deletedIds.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
@@ -1772,6 +1790,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               }
             }
             return true;
+          })
+          .map((q) => {
+            const highestViews = Math.max(
+              typeof q.views === 'number' ? q.views : 0,
+              typeof q.viewsCount === 'number' ? q.viewsCount : 0,
+              typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0
+            );
+            return {
+              ...q,
+              views: highestViews,
+              viewsCount: highestViews,
+            };
           });
 
         if (expiredIds.length > 0) {
@@ -1926,6 +1956,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const cloudData = await loadAllDataFromFirestore();
         if (!mounted) return;
 
+        if (cloudData && cloudData.settings) {
+          if (cloudData.settings.publicMetricsConfig) {
+            setPublicMetricsConfig((prev) => {
+              const merged = { ...prev, ...cloudData.settings.publicMetricsConfig };
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}public_metrics_config`, JSON.stringify(merged));
+              } catch {}
+              return merged;
+            });
+          }
+          if (cloudData.settings.competitionHomepageStatsConfig) {
+            try {
+              localStorage.setItem('ideax_competition_homepage_stats_config', JSON.stringify(cloudData.settings.competitionHomepageStatsConfig));
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('ideax_competition_stats_config_updated', { detail: cloudData.settings.competitionHomepageStatsConfig }));
+              }
+            } catch {}
+          }
+        }
+
         const isDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
 
         if (cloudData && ((cloudData.questions && cloudData.questions.length > 0) || (cloudData.users && cloudData.users.length > 0))) {
@@ -1977,6 +2027,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           if (cloudData.questions && cloudData.questions.length > 0) {
             const currentDeleted = getDeletedQuestionIds();
+            const getRealClicks = (): Record<string, number> => {
+              try {
+                const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
+                return raw ? JSON.parse(raw) : {};
+              } catch {
+                return {};
+              }
+            };
+            const realClicks = getRealClicks();
             const filteredQ = cloudData.questions
               .filter((q) => !currentDeleted.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
               .filter((q) => {
@@ -1984,6 +2043,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   return now - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
                 }
                 return true;
+              })
+              .map((q) => {
+                const highestViews = Math.max(
+                  typeof q.views === 'number' ? q.views : 0,
+                  typeof q.viewsCount === 'number' ? q.viewsCount : 0,
+                  typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0
+                );
+                return {
+                  ...q,
+                  views: highestViews,
+                  viewsCount: highestViews,
+                };
               });
             setQuestions(filteredQ);
             try {
@@ -6409,18 +6480,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Action: Increment real views count (tracks views strictly according to real clicks)
   const incrementQuestionViews = useCallback((questionId: string, amount: number = 1) => {
     let nextViews = 1;
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
-      const map: Record<string, number> = saved ? JSON.parse(saved) : {};
-      const current = typeof map[questionId] === 'number' ? map[questionId] : 0;
-      nextViews = current + amount;
-      map[questionId] = nextViews;
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}question_real_clicks`, JSON.stringify(map));
-    } catch {
-      // ignore
-    }
 
     setQuestions((prev) => {
+      let map: Record<string, number> = {};
+      try {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
+        if (saved) map = JSON.parse(saved);
+      } catch {
+        // ignore
+      }
+
+      const existingQ = prev.find((item) => item.id === questionId);
+      const baseViews = existingQ ? (existingQ.views || existingQ.viewsCount || 0) : 0;
+      const current = typeof map[questionId] === 'number' ? map[questionId] : baseViews;
+      nextViews = current + amount;
+      map[questionId] = nextViews;
+
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}question_real_clicks`, JSON.stringify(map));
+      } catch {
+        // ignore
+      }
+
       const updated = prev.map((item) => {
         if (item.id === questionId) {
           return {
@@ -6431,6 +6512,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return item;
       });
+
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(updated));
       } catch {
@@ -6440,7 +6522,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     setSelectedQuestion((prev) => {
-      if (prev && prev.id === questionId && prev.views !== nextViews) {
+      if (prev && prev.id === questionId) {
         return {
           ...prev,
           views: nextViews,
@@ -6449,6 +6531,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return prev;
     });
+
+    // 真正寫入雲端 Firestore 資料庫，確保網站重整、換裝置或更新後計數永遠保留
+    incrementQuestionViewInFirestore(questionId, amount);
   }, []);
 
   // Action: AI Auto-Tagging & Categorization for a single question

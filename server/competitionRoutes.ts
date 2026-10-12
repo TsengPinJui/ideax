@@ -33,6 +33,7 @@ import {
   applyJudge,
   getMyAmbassadorData,
   bindAmbassadorReferralCode,
+  incrementProposalView,
   adminDb,
 } from './competitionService';
 import { StarSeasonStage, StarSeasonTrack, COMPETITION_POINTS_CONFIG, DEFAULT_COMPETITION_SCHEDULE } from '../src/types/competition';
@@ -69,6 +70,16 @@ router.get('/proposals/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: '找不到該競賽提案' });
     }
     res.json({ success: true, proposal: doc.data() });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3.1 記錄提案瀏覽數（原子累加，持久化至雲端資料庫，避免更新重置）
+router.post('/proposals/:id/view', async (req: Request, res: Response) => {
+  try {
+    const result = await incrementProposalView(req.params.id);
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

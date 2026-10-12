@@ -97,6 +97,7 @@ import {
   fetchMyAmbassadorData,
   bindAmbassadorReferralCode,
   fetchSingleProposal,
+  recordProposalView,
 } from '../../services/competitionClientService';
 import {
   updateSEOForProposal,
@@ -108,6 +109,7 @@ import { shareOrCopyUrl } from '../../utils/shareUtils';
 import { resolveUserDisplayName, getUserNameColorClass } from '../../utils/userDisplay';
 import { useApp } from '../../context/AppContext';
 import { auth } from '../../services/firebase';
+import { applyRealClicksToProposals, recordProposalViewClick } from '../../utils/proposalClicks';
 import { RulesFullPage } from './RulesFullPage';
 import { SubmitProposalFullPage } from './SubmitProposalFullPage';
 import { ParticipantFullPage } from './ParticipantFullPage';
@@ -334,7 +336,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       }
 
       if (targetSubView) {
-        const normalized = (targetSubView === 'explore' || targetSubView === 'explore-proposals' || targetSubView === 'proposals') ? 'proposal' : targetSubView;
+        const raw = targetSubView as string;
+        const normalized = (raw === 'explore' || raw === 'explore-proposals' || raw === 'proposals') ? 'proposal' : targetSubView;
         setCurrentSubView(normalized);
         if (targetProposalId !== null) {
           setSelectedProposalIdForExplore(targetProposalId);
@@ -1073,7 +1076,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     setLoading(true);
     try {
       const list = await fetchProposals();
-      setProposals(list);
+      setProposals(applyRealClicksToProposals(list));
       if (auth.currentUser) {
         const accRes = await fetchMyCompetitionAccount();
         if (accRes.account) setAccount(accRes.account);
@@ -1571,11 +1574,24 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 開啟提案詳情並載入討論留言（點看來看才算一次瀏覽次數）
   const handleOpenProposalDetail = async (proposal: StarSeasonProposal) => {
-    const nextViews = (proposal.viewsCount || 0) + 1;
+    const nextViews = recordProposalViewClick(proposal.id, proposal.viewsCount || (proposal as any).views || 36);
     setProposals((prev) =>
       prev.map((p) => (p.id === proposal.id ? { ...p, viewsCount: nextViews } : p))
     );
     setSelectedProposalForDetail({ ...proposal, viewsCount: nextViews });
+
+    // 同步寫入雲端 Firestore 資料庫，解決重整歸零問題
+    recordProposalView(proposal.id).then((cloudCount) => {
+      if (typeof cloudCount === 'number' && cloudCount > 0) {
+        setProposals((prev) =>
+          prev.map((p) => (p.id === proposal.id ? { ...p, viewsCount: Math.max(nextViews, cloudCount) } : p))
+        );
+        setSelectedProposalForDetail((prev) =>
+          prev && prev.id === proposal.id ? { ...prev, viewsCount: Math.max(nextViews, cloudCount) } : prev
+        );
+      }
+    });
+
     setIsLoadingComments(true);
     try {
       const comms = await fetchProposalComments(proposal.id);
@@ -3498,6 +3514,100 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* 🎛️ 競賽網首頁公開展示數據（依照管理員後台顯示設定呈現） */}
+        {(statsConfig.showLoggedInUsers ||
+          statsConfig.showParticipants ||
+          statsConfig.showExperts ||
+          statsConfig.showProposals ||
+          statsConfig.showPainPoints ||
+          statsConfig.showAllocatedPoints) && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            {statsConfig.showLoggedInUsers && (
+              <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-stone-600">登入會員</span>
+                  <Users className="w-4 h-4 text-blue-500" />
+                </div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono">
+                    {adminMetrics.loggedInUsersCount}
+                  </span>
+                  <span className="text-xs text-stone-500 font-bold">人</span>
+                </div>
+              </div>
+            )}
+            {statsConfig.showParticipants && (
+              <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-stone-600">參賽團隊</span>
+                  <GraduationCap className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono">
+                    {adminMetrics.participantsCount}
+                  </span>
+                  <span className="text-xs text-stone-500 font-bold">隊</span>
+                </div>
+              </div>
+            )}
+            {statsConfig.showExperts && (
+              <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-stone-600">認證專家</span>
+                  <ShieldCheck className="w-4 h-4 text-purple-600" />
+                </div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-xl sm:text-2xl font-black text-purple-700 font-mono">
+                    {adminMetrics.approvedExpertsCount}
+                  </span>
+                  <span className="text-xs text-stone-500 font-bold">位</span>
+                </div>
+              </div>
+            )}
+            {statsConfig.showProposals && (
+              <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-stone-600">創新提案</span>
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                </div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-xl sm:text-2xl font-black text-stone-900 font-mono">
+                    {adminMetrics.proposalsCount}
+                  </span>
+                  <span className="text-xs text-stone-500 font-bold">件</span>
+                </div>
+              </div>
+            )}
+            {statsConfig.showPainPoints && (
+              <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-stone-600">痛點徵集</span>
+                  <Flame className="w-4 h-4 text-rose-500" />
+                </div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-xl sm:text-2xl font-black text-rose-600 font-mono">
+                    {adminMetrics.painPointsCount}
+                  </span>
+                  <span className="text-xs text-stone-500 font-bold">個</span>
+                </div>
+              </div>
+            )}
+            {statsConfig.showAllocatedPoints && (
+              <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-stone-600">配發點數</span>
+                  <Coins className="w-4 h-4 text-amber-500" />
+                </div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-lg sm:text-xl font-black text-amber-600 font-mono truncate" title={`${adminMetrics.totalAllocatedPoints.toLocaleString()} 點`}>
+                    ${(adminMetrics.totalAllocatedPoints / 10000).toFixed(0)}萬
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -87,6 +87,25 @@ export async function fetchSingleProposal(proposalId: string): Promise<StarSeaso
 }
 
 /**
+ * 記錄提案瀏覽次數（向後端呼叫，永久寫入 Firestore）
+ */
+export async function recordProposalView(proposalId: string): Promise<number | null> {
+  if (!proposalId) return null;
+  try {
+    const res = await fetch(`/api/competition/proposals/${encodeURIComponent(proposalId)}/view`, {
+      method: 'POST',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return typeof data.viewsCount === 'number' ? data.viewsCount : null;
+    }
+  } catch (err) {
+    console.warn('[Competition] recordProposalView failed:', err);
+  }
+  return null;
+}
+
+/**
  * 取得當前用戶之競賽點數錢包
  */
 export async function fetchMyCompetitionAccount(): Promise<{ account: CompetitionAccount | null; error?: string }> {

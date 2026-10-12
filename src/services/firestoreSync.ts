@@ -10,6 +10,8 @@ import {
   onSnapshot,
   Unsubscribe,
   deleteField,
+  updateDoc,
+  increment,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import {
@@ -72,6 +74,28 @@ export async function syncQuestionToFirestore(question: Question): Promise<void>
     await setDoc(qRef, { ...cleanQ, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (err) {
     handleFirestoreError(`Failed to sync question ${question.id}`, err);
+  }
+}
+
+/**
+ * 增加問題/痛點瀏覽次數（原子累加，持久化至 Firestore）
+ */
+export async function incrementQuestionViewInFirestore(questionId: string, amount: number = 1): Promise<void> {
+  if (!questionId || isQuotaExhausted) return;
+  try {
+    const qRef = doc(db, 'questions', questionId);
+    await updateDoc(qRef, {
+      views: increment(amount),
+      viewsCount: increment(amount),
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    try {
+      const qRef = doc(db, 'questions', questionId);
+      await setDoc(qRef, { views: increment(amount), viewsCount: increment(amount), updatedAt: new Date().toISOString() }, { merge: true });
+    } catch (e) {
+      handleFirestoreError(`Failed to increment views for question ${questionId}`, e);
+    }
   }
 }
 
@@ -686,6 +710,7 @@ export async function syncPlatformSettingsToFirestore(settings: {
   commissionRate?: number;
   plans?: SubscriptionPlan[];
   publicMetricsConfig?: any;
+  competitionHomepageStatsConfig?: any;
   adminDailyGrants?: any;
   isDemoMode?: boolean;
   isNoPaymentMode?: boolean;
@@ -708,6 +733,7 @@ export async function syncPlatformSettingsToFirestore(settings: {
 export function subscribePlatformSettingsFromFirestore(
   callback: (settings: {
     publicMetricsConfig?: any;
+    competitionHomepageStatsConfig?: any;
     commissionRate?: number;
     plans?: SubscriptionPlan[];
     isDemoMode?: boolean;
@@ -725,6 +751,7 @@ export function subscribePlatformSettingsFromFirestore(
           const data = snapshot.data();
           callback({
             publicMetricsConfig: data.publicMetricsConfig,
+            competitionHomepageStatsConfig: data.competitionHomepageStatsConfig,
             commissionRate: data.commissionRate,
             plans: data.plans,
             isDemoMode: data.isDemoMode,
