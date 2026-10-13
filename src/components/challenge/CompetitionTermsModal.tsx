@@ -59,7 +59,7 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
       }}
     >
       <div
-        className="bg-white border border-amber-300 rounded-3xl max-w-3xl w-full p-5 sm:p-6 space-y-4 my-8 max-h-[90vh] overflow-y-auto shadow-2xl text-stone-900 flex flex-col justify-between"
+        className="bg-white border border-amber-300 rounded-3xl max-w-3xl w-full p-5 sm:p-6 space-y-4 my-8 max-h-[90vh] overflow-y-auto shadow-2xl text-stone-900 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -84,7 +84,7 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
 
         {/* 5-Tab Header */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 p-1 bg-stone-100 rounded-2xl">
-          {tabs.map((tab) => {
+          {tabs.map((tab, idx) => {
             const Icon = tab.icon;
             const isActive = activeDoc === tab.key;
             return (
@@ -92,17 +92,19 @@ export const CompetitionTermsModal: React.FC<CompetitionTermsModalProps> = ({
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveDoc(tab.key)}
-                className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer select-none ${
+                className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer select-none text-center ${
+                  idx === 4 ? 'col-span-2 sm:col-span-1' : ''
+                } ${
                   isActive
                     ? 'bg-amber-400 text-stone-950 shadow-xs font-black'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
                 }`}
               >
-                <div className="flex items-center gap-1">
+                <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                   <Icon className="w-3.5 h-3.5 shrink-0" />
                   <span>{tab.label}</span>
                 </div>
-                <span className={`text-[10px] hidden sm:block ${isActive ? 'text-stone-900' : 'text-stone-400'}`}>
+                <span className={`text-[10px] hidden sm:block truncate ${isActive ? 'text-stone-900' : 'text-stone-400'}`}>
                   {tab.shortTitle}
                 </span>
               </button>

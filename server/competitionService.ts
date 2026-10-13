@@ -5,7 +5,7 @@
  * 1. 嚴禁依賴前端傳送的 role / balance / admin 標記；
  * 2. 競賽點數必須與舊站真實 balance 徹底分開（使用專屬集合 competition_accounts）；
  * 3. 點數支持、分享獎勵防重、審核狀態、推薦推廣費統計、得獎核定均使用 Firestore 交易或批次原子處理；
- * 4. 防自投（提案人不能支持自己提案）、單案角色支持上限、冪等性防重複提交；
+ * 4. 單案角色支持上限（參賽者與一般用戶 50,000、專家 2,000,000）、可以自我注資、冪等性防重複提交；
  * 5. 敏感資料（銀行/身分/聯絡）隔離存放於 competition_private_submissions，公開集合 competition_proposals 絕對不含敏感個資。
  */
 
@@ -211,8 +211,8 @@ export async function claimShareBonus(userId: string): Promise<{ success: boolea
 /**
  * 支持提案（模擬募資投點）：
  * 規則約束：
- * 1. 防自投（不可投自己的提案）
- * 2. 單案支持上限：一般用戶 50,000、提案者 30,000、專家 2,000,000
+ * 1. 允許自我注資（參賽者與提案人可以投點支持自己的提案）
+ * 2. 單案支持上限：參賽者與一般用戶 50,000、專家 2,000,000
  * 3. 扣除競賽點數（不碰真實 balance）
  * 4. 原子 transaction 累加提案點數與支持人次
  */
@@ -229,12 +229,12 @@ export async function supportProposalWithPoints(params: {
     return { success: false, message: '支持點數必須為正整數' };
   }
 
-  // 單案支持上限約束
-  let maxLimit = COMPETITION_POINTS_CONFIG.SINGLE_SUPPORT_LIMIT.user;
+  // 單案支持上限約束：參賽者與一般用戶 50,000 創星幣，專家 2,000,000 創星幣
+  let maxLimit = COMPETITION_POINTS_CONFIG.SINGLE_SUPPORT_LIMIT.user; // 50,000
   if (userRole === 'solver') {
-    maxLimit = COMPETITION_POINTS_CONFIG.SINGLE_SUPPORT_LIMIT.solver;
+    maxLimit = COMPETITION_POINTS_CONFIG.SINGLE_SUPPORT_LIMIT.solver; // 2,000,000
   } else if (userRole === 'questioner') {
-    maxLimit = COMPETITION_POINTS_CONFIG.SINGLE_SUPPORT_LIMIT.questioner;
+    maxLimit = COMPETITION_POINTS_CONFIG.SINGLE_SUPPORT_LIMIT.questioner; // 50,000
   }
 
   const accountRef = adminDb.collection('competition_accounts').doc(userId);
@@ -257,10 +257,7 @@ export async function supportProposalWithPoints(params: {
     const account = accountSnap.data() as CompetitionAccount;
     const proposal = proposalSnap.data() as StarSeasonProposal;
 
-    // 1. 防自投約束
-    if (proposal.authorId === userId) {
-      throw new Error('規則約束：不可支持自己發起的提案（防自投機制）');
-    }
+    // 1. 自我注資規範：允許自我注資（提案人可以使用創星幣支持自己的專案，恪守單案 50,000 上限）
 
     // 2. 審核狀態確認
     if (proposal.status !== 'approved') {

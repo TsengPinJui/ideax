@@ -1604,6 +1604,10 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
                   className="w-full bg-white border border-stone-300 rounded-xl p-2 text-stone-900 font-mono"
                 />
               </div>
+              <div className="sm:col-span-2 text-[11px] text-amber-800 bg-amber-50/80 border border-amber-200/90 rounded-xl p-2.5 flex items-start gap-1.5 leading-relaxed">
+                <span className="shrink-0 font-bold">⚠️ 撥款特別說明：</span>
+                <span>本競賽活動<strong>不支援跨國跨境支付</strong>。海外參賽團隊或外籍得獎者如獲獎，須提供中華民國（臺灣）境內合法金融機構或郵局之新台幣銀行帳戶以供電匯撥發獎金。</span>
+              </div>
             </div>
           </div>
 

@@ -26,6 +26,7 @@ import {
   EXPERT_JUDGE_TERMS_D,
   PLATFORM_GUIDE_E,
 } from '../../data/competitionTermsData';
+import { AdminCheatSheetFileManagerModal } from './AdminCheatSheetFileManagerModal';
 import { copyToClipboard } from '../../utils/clipboard';
 
 export const AdminCompetitionRulesArchiveFolder: React.FC = () => {
@@ -36,6 +37,7 @@ export const AdminCompetitionRulesArchiveFolder: React.FC = () => {
   const [copiedSuccess, setCopiedSuccess] = useState<boolean>(false);
   const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isCheatSheetManagerOpen, setIsCheatSheetManagerOpen] = useState<boolean>(false);
 
   // 權限嚴格阻擋：若非管理員，其他人絕對不能看到
   if (!isAdmin) {
@@ -252,6 +254,16 @@ export const AdminCompetitionRulesArchiveFolder: React.FC = () => {
               </>
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setIsCheatSheetManagerOpen(true)}
+            className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-98 border border-amber-500/50"
+            title="管理員存入或刪除競賽懶人包內檔案"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-stone-950" />
+            <span>懶人包檔案管理</span>
+          </button>
         </div>
       </div>
 
@@ -407,6 +419,13 @@ export const AdminCompetitionRulesArchiveFolder: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {isCheatSheetManagerOpen && (
+        <AdminCheatSheetFileManagerModal
+          isOpen={isCheatSheetManagerOpen}
+          onClose={() => setIsCheatSheetManagerOpen(false)}
+        />
+      )}
     </div>
   );
 };

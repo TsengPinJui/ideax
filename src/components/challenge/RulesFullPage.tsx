@@ -28,6 +28,8 @@ import {
   Flame,
   UserCheck,
   Clock,
+  FolderOpen,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { STAR_SEASON_TRACKS, OFFICIAL_COMPETITION_TRACKS } from '../../types/competition';
@@ -40,7 +42,12 @@ import {
   PLATFORM_GUIDE_E,
 } from '../../data/competitionTermsData';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './CompetitionTermsModal';
+import { CompetitionCheatSheetModal } from './CompetitionCheatSheetModal';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
+import {
+  downloadCompetitionPackage,
+  downloadCompetitionDocOnly,
+} from '../../services/competitionCheatSheetService';
 
 interface RulesFullPageProps {
   onNavigate: (view: 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador') => void;
@@ -70,6 +77,36 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
   const [activeMainTab, setActiveMainTab] = useState<'A_rules' | 'E_guide'>('A_rules');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [termsModalKey, setTermsModalKey] = useState<CompetitionDocumentKey | null>(null);
+  const [isCheatSheetOpen, setIsCheatSheetOpen] = useState(false);
+  const [isDownloadingPackage, setIsDownloadingPackage] = useState(false);
+  const [downloadToast, setDownloadToast] = useState<{ open: boolean; message: string } | null>(null);
+
+  const handleDirectDownload = async () => {
+    try {
+      setIsDownloadingPackage(true);
+      setDownloadToast({ open: true, message: '正在為您打包下載：包含 PDF 圖文簡報與 Docs 文字說明...' });
+      await downloadCompetitionPackage();
+      setDownloadToast({ open: true, message: '已完成下載「IdeaX_創星季_競賽懶人包打包資料夾.zip」！' });
+      setTimeout(() => {
+        setDownloadToast((prev) => (prev?.message.includes('已完成') ? null : prev));
+      }, 5000);
+    } catch (err) {
+      console.error('Failed to download package:', err);
+      downloadCompetitionDocOnly();
+      setDownloadToast({ open: true, message: '已為您直接下載 Docs 競賽規章文字手冊！' });
+    } finally {
+      setIsDownloadingPackage(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('cheatSheet') === 'open' || params.get('cheatSheet') === '1') {
+        setIsCheatSheetOpen(true);
+      }
+    }
+  }, []);
 
   const toggleFaq = (index: number) => {
     setOpenFaqIndex((prev) => (prev === index ? null : index));
@@ -78,19 +115,19 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
   const faqs = [
     {
       q: '如何獲得創星幣？創星幣能否兌換成現金？',
-      a: '使用 創星幣 支持你認同的創新提案，模擬市場關注度。競賽期間，新用戶登入創星季即配發 100,000 創星幣；點擊「分享推薦碼」可額外領取 100 創星幣獎勵。產學研專家則享有專屬 3,000,000 創星幣評選額度。創星幣純屬市場模擬關注度驗證，不可購買、轉帳或兌換現金，亦不影響舊站真實錢包餘額。',
+      a: '使用 創星幣 支持你認同的創新提案，模擬市場關注度。競賽期間，新用戶登入創星季即配發 100,000 創星幣；點擊「分享推薦碼」可額外領取 100 創星幣獎勵。產學研專家則享有專屬 3,000,000 創星幣評選額度。單案支持上限：參賽者與一般用戶對單一解方提案為 50,000 創星幣，專家為 2,000,000 創星幣；可以自我注資。創星幣純屬市場模擬關注度驗證，不可購買、轉帳或兌換現金，亦不影響舊站真實錢包餘額。',
     },
     {
       q: '為什麼前 20 名進入決選？專家如何參與評選？',
-      a: '第二階段大眾注資模擬（11/16 ~ 12/04）旨在測試市場反應力與社群關注度（11/14 ~ 11/15 預先提案期間暫關閉注資，僅開放提案審核與預覽）。募得創星幣總額排名前 20 名之優秀提案將直接取得「入圍決選資格」。第三階段（12/05 ~ 12/11）由主辦方產學研專家進行專業審查與評分（創新突破性 40%、商業可行性 35%、社會與產業價值 25%），決選出前三名獲獎隊伍（冠軍 NT$30,000、亞軍 NT$10,000、季軍 NT$4,000）。',
+      a: '第二階段大眾注資模擬（11/16 ~ 12/04）旨在測試市場反應力與社群關注度（11/14 ~ 11/15 預先提案期間暫關閉注資，僅開放提案審核與預覽）。募得創星幣總額排名前 20 名之優秀提案將直接取得「入圍決選資格」。第三階段（12/05 ~ 12/11）由產學研專家進行專業審查與評分（創新性 40%、完整度 20%、可行性 20%、商業潛力 20%），決選出前三名獲獎隊伍（冠軍 NT$30,000、亞軍 NT$10,000、季軍 NT$5,000）。',
     },
     {
       q: '「痛點提出者」如何獲得 200 點痛點獎勵與價值 NT$1,500 採用好禮？',
-      a: '只要成功提出痛點（需過審）即送 200 點（價值 $250 的 IdeaX 創點子平台點數，可用於發布懸賞問題、享受付費功能，點數效期 60 日）。此外，若參賽團隊選用並解決該痛點，且該解方提案最終經專家評審評定為前三名（冠、亞、季軍），原痛點之提出者即可另獲價值 NT$1,500 等值好禮（含 1,200 點 IdeaX 平台提問金），共同共享創新成果！',
+      a: '只要成功提出痛點（需過審）即送 200 點（價值 $250 的 IdeaX 創點子平台點數，可用於發布懸賞問題、享受付費功能，點數效期 60 日）。此外，若參賽團隊選用並解決該痛點，且該解方提案最終經專家評審評定為前三名（冠、亞、季軍），原痛點之提出者即可另獲價值 NT$1,500 等值好禮（含 1,200 點 IdeaX 平台提問金）；前 4~10 名採用享價值 $500 好禮（含 400 點提問金，效期 60 日），共同共享創新成果！',
     },
     {
-      q: '推廣大使獎勵 400 點的核發條件是什麼？',
-      a: '推廣大使只要分享專屬推薦代碼或連結，邀請個人創客或新創團隊提交提案。被推薦之專案經主辦單位初審通過，推薦人即可獲得 400 點 IdeaX 平台點數獎勵（用於發布提問、享受付費功能）！獎勵無上限，多推多得。',
+      q: '推廣大使獎勵 300 點的核發條件是什麼？',
+      a: '推廣大使只要分享專屬推薦代碼或連結，邀請個人創客或新創團隊提交提案。每成功推薦 1 案經主辦單位初審通過，推薦人即可獲得 300 點（價值 $400）IdeaX 平台點數獎勵（點數效期 60 日，用於發布提問、享受付費功能）！獎勵無上限，多推多得。',
     },
     {
       q: '參賽者有年齡或身分限制嗎？非學生或個人可以參賽嗎？',
@@ -297,6 +334,8 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               推廣大使
             </button>
 
+
+
             {/* 行動版：優先保留痛點（隨著賽程變動，若換至提案階段則自動變換為提案捷徑），移除競賽辦法 */}
             {stageInfo.isProposalStage ? (
               <button
@@ -326,7 +365,31 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
 
       {/* 滿版 Hero 標題區 (顏色簡單點顯得正式：沉穩白色背景、淺灰線條、清晰階層) */}
       <section className="bg-white border-b border-stone-200 pt-10 pb-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center space-y-4">
+        <div className="max-w-4xl mx-auto relative text-center space-y-4">
+          {/* 圈選處：右上角「去背檔案夾圖示 + 懶人包」直接下載超連結 */}
+          <div className="sm:absolute sm:top-0 sm:right-0 flex items-center justify-center sm:justify-end z-10 mb-2 sm:mb-0">
+            <button
+              type="button"
+              onClick={handleDirectDownload}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-stone-900 hover:text-amber-900 border border-amber-300 transition-all cursor-pointer group shadow-2xs hover:shadow-xs active:scale-95"
+              title="點擊直接下載競賽懶人包打包資料夾（包含 PDF 圖文說明簡報與 Docs 完整文字說明）"
+            >
+              <div className="w-5 h-5 bg-transparent flex items-center justify-center shrink-0">
+                <FolderOpen className="w-4.5 h-4.5 text-amber-600 group-hover:scale-110 transition-transform" />
+              </div>
+              <span className="font-black text-xs sm:text-sm underline underline-offset-4 decoration-amber-500 hover:decoration-amber-700 text-stone-900 group-hover:text-amber-900">
+                懶人包
+              </span>
+              {isDownloadingPackage ? (
+                <span className="text-[10px] text-amber-700 font-bold animate-pulse">
+                  (下載中...)
+                </span>
+              ) : (
+                <Download className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-700 transition-colors" />
+              )}
+            </button>
+          </div>
+
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-xs font-semibold">
             <BookOpen className="w-3.5 h-3.5 text-stone-600" />
             <span>【正式官方規章】IdeaX 創星季 實戰手冊與平台使用方法</span>
@@ -477,7 +540,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
               </h2>
               <div className="text-xs sm:text-sm text-stone-800 leading-relaxed space-y-2">
                 <p>
-                  一、參賽資格完全不限：不限青年或在學學生身分，社會人士、自由創客、新創團隊皆可自由參賽。
+                  一、參賽資格完全不限：不限青年或在學學生身分，社會人士、自由創客、新創團隊皆可自由參賽。本活動開放國內外個人、團隊及法人參與。
                 </p>
                 <p>
                   二、參賽者自選「提出痛點」與「提出解方」，同帳號可以同時提出多個痛點或解方，鼓勵提出多案增加獲獎機率 !
@@ -587,7 +650,10 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   四、推廣大使推薦獎勵：每成功推薦 1 案審核通過，推薦人享 300 點（價值 $400）IdeaX 平台點數（效期 60 日，多推多得無上限）。
                 </p>
                 <p>
-                  五、注意點數期限：前三名獲獎團隊點數效期為 180 日，其餘所有獎勵點數效期皆為 60 日。請把握提問機會，盡快使用完畢 <span className="inline-block animate-exclamation-action text-amber-600 font-black text-sm origin-bottom select-none" title="把握提問機會！">!</span> 點數皆可用於 IdeaX 創點子平台提問與付費服務。
+                  五、海外參賽與境外團隊發放規範：本活動開放國內外個人、團隊及法人參與。本活動不提供跨國跨境支付，中華民國(臺灣)海外參賽者或境外團隊如獲獎，隊長或領獎人須提供中華民國（臺灣）境內合法金融機構或郵局之新台幣銀行帳戶以供獎金電匯撥發；相關所得稅及手續費依中華民國所得稅法規定辦理。
+                </p>
+                <p>
+                  六、注意點數期限：前三名獲獎團隊點數效期為 180 日，其餘所有獎勵點數效期皆為 60 日。請把握提問機會，盡快使用完畢 <span className="inline-block animate-exclamation-action text-amber-600 font-black text-sm origin-bottom select-none" title="把握提問機會！">!</span> 點數皆可用於 IdeaX 創點子平台提問與付費服務。
                 </p>
               </div>
             </section>
@@ -677,16 +743,20 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   五、流通幣別「創星幣」性質與禁止兌現買賣：創星幣純屬競賽市場模擬關注度驗證權益，非真實法幣亦不具實體財產價值，嚴禁私下以現金或任何對價進行買賣、轉讓、質押或兌現；競賽錢包獨立隔離，絕不影響主站真實錢包資產與餘額。
                 </p>
                 <p>
-                  六、誠信原則、防洗票與系統反作弊機制：嚴禁利用多重分身帳號、自動化腳本機器人、代理伺服器或漏洞進行灌票、洗幣、自我注資或干擾正常營運秩序。系統全天候啟動可信後端簽章查核與防刷監控，經查有惡意刷票情事者，主辦單位有權扣除違規票數並直接取消參賽資格。
+                  六、誠信原則、防洗票與系統反作弊機制：本競賽允許自我注資（參賽者與提案人得使用配發之創星幣支持自己發起之提案，單案上限 50,000 創星幣）。惟嚴禁利用多重分身帳號、自動化腳本機器人、代理伺服器或漏洞進行惡意灌票、洗幣或干擾正常營運秩序。系統全天候啟動可信後端簽章查核與防刷監控，經查有惡意刷票情事者，主辦單位有權扣除違規票數並直接取消參賽資格。
                 </p>
                 <p>
-                  七、獲獎獎金發放與依法代扣所得稅規範：
+                  七、獲獎獎金發放、依法代扣所得稅與海外參賽規範：
                   <br />
-                  &emsp;（一）依中華民國稅法相關規定，得獎獎金及等值獎品價值若達法定申報門檻，得獎者須依法配合填具個人領據、提供身分證正反面影本、存摺影本等資料，主辦單位將依法開立所得稅扣繳憑單。
+                  &emsp;（一）主辦單位與獎金提供說明：本競賽活動主辦單位為「IdeaX 創點子團隊」，活動各階段競賽獎金將由活動發起人/創點子團隊代表人 提供，請獲獎團隊留意後續領獎資訊與官方通知。
                   <br />
-                  &emsp;（二）若得獎者為中華民國境內居住之個人，單次獎金價值超過新台幣 20,000 元（含）者，主辦單位依法代扣 10% 機會中獎所得稅；若得獎者非中華民國境內居住之個人（在台居留未滿 183 天之外籍人士），不限中獎金額一律由主辦單位依法代扣 20% 機會中獎所得稅。
+                  &emsp;（二）依中華民國稅法相關規定，得獎獎金及等值獎品價值若達法定申報門檻，得獎者須依法配合填具個人領據、提供身分證正反面影本、存摺影本等資料，主辦單位將依法開立所得稅扣繳憑單。
                   <br />
-                  &emsp;（三）獎金將以電匯方式匯入獲獎團隊隊長指定之帳戶；團隊內部之獎金分配與相關權利義務由團隊成員自行協調處理，主辦單位不涉入團隊內部協議。
+                  &emsp;（三）若得獎者為中華民國境內居住之個人，單次獎金價值超過新台幣 20,000 元（含）者，主辦單位依法代扣 10% 機會中獎所得稅；若得獎者非中華民國境內居住之個人（在台居留未滿 183 天之外籍人士），不限中獎金額一律由主辦單位依法代扣 20% 機會中獎所得稅。
+                  <br />
+                  &emsp;（四）海外參賽條款：本活動開放國內外個人、團隊及法人參與。本活動不提供跨國跨境支付，中華民國(臺灣)海外參賽者或境外團隊如獲獎，隊長或領獎人須提供中華民國（臺灣）境內合法金融機構或郵局之新台幣銀行帳戶以供獎金電匯撥發；相關所得稅及手續費依中華民國所得稅法及金融法規辦理。
+                  <br />
+                  &emsp;（五）獎金將以新台幣電匯方式匯入獲獎團隊隊長或領獎人指定之臺灣銀行帳戶（不支援境外帳戶或跨境支付）；團隊內部之獎金分配與相關權利義務由團隊成員自行協調處理，主辦單位不涉入團隊內部協議。
                 </p>
                 <p>
                   八、注意點數期限：前三名獲獎團隊點數效期為 180 日，其餘所有獎勵點數效期皆為 60 日。請把握提問機會，盡快使用完畢 <span className="inline-block animate-exclamation-action text-amber-600 font-black text-sm origin-bottom select-none" title="把握提問機會！">!</span> 點數皆可用於 IdeaX 創點子平台提問與付費服務，不得轉讓他人、拍賣或要求折換等值現金。
@@ -701,7 +771,7 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                   十一、不可抗力因素與系統免責聲明：因地震、颱風等天災不可抗力因素，或因網際網路骨幹壅塞、電力中斷、重大駭客攻擊等不可歸責於主辦單位之事由，致使參賽者投件傳輸延誤、投票數據中斷或無法如期完成評選時，主辦單位得視情況調整、延後賽程或採取相應補救措施，不對參賽者承擔損害賠償責任。
                 </p>
                 <p>
-                  十二、主辦單位保留修改權與準據法管轄：主辦單位保留隨時調整、修正、暫停或終止本競賽活動辦法、獎項與時程之權利；若有未盡事宜，得隨時於創星季競賽官網補充公告，並享有最終解釋權。本辦法之解釋與適用均依中華民國法律，若因本競賽衍生爭議，雙方同意以台灣台北地方法院為第一審管轄法院。
+                  十二、主辦單位保留修改權與準據法管轄：主辦單位為「IdeaX 創點子團隊」，保留隨時調整、修正、暫停或終止本競賽活動辦法、獎項與時程之權利；若有未盡事宜，得隨時於創星季競賽官網補充公告，並享有最終解釋權。本辦法之解釋與適用均依中華民國法律，若因本競賽衍生爭議，雙方同意以台灣台北地方法院為第一審管轄法院。
                 </p>
               </div>
             </section>
@@ -755,22 +825,22 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleFaq(idx)}
-                  className="w-full p-3.5 text-left font-semibold text-xs sm:text-sm text-stone-800 flex items-center justify-between gap-3 cursor-pointer hover:bg-stone-100/70"
+                  className="w-full p-3.5 text-left font-semibold text-xs sm:text-sm text-stone-800 flex items-start justify-between gap-3 cursor-pointer hover:bg-stone-100/70"
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-stone-200 text-stone-700 text-xs font-bold flex items-center justify-center shrink-0">
+                  <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                    <span className="w-5 h-5 rounded-md bg-stone-200 text-stone-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
                       Q
                     </span>
-                    <span>{faq.q}</span>
-                  </span>
+                    <span className="flex-1 break-words leading-snug">{faq.q}</span>
+                  </div>
                   <ChevronDown
-                    className={`w-4 h-4 text-stone-400 transition-transform shrink-0 ${
+                    className={`w-4 h-4 text-stone-400 transition-transform shrink-0 mt-0.5 ${
                       openFaqIndex === idx ? 'rotate-180 text-stone-700' : ''
                     }`}
                   />
                 </button>
                 {openFaqIndex === idx && (
-                  <div className="px-4 pb-4 pt-1 text-xs text-stone-600 leading-relaxed border-t border-stone-200 bg-white">
+                  <div className="px-4 pb-4 pt-1 text-xs text-stone-600 leading-relaxed border-t border-stone-200 bg-white whitespace-pre-line">
                     {faq.a}
                   </div>
                 )}
@@ -821,6 +891,35 @@ export const RulesFullPage: React.FC<RulesFullPageProps> = ({
           initialDoc={termsModalKey}
           onClose={() => setTermsModalKey(null)}
         />
+      )}
+
+      {/* 競賽懶人包 Modal */}
+      <CompetitionCheatSheetModal
+        isOpen={isCheatSheetOpen}
+        onClose={() => setIsCheatSheetOpen(false)}
+        onNavigate={onNavigate}
+        onOpenAuth={onOpenAuth}
+      />
+
+      {/* 懶人包直接下載提示 (無彈窗選擇檔案類型，一律直接下載整個資料夾) */}
+      {downloadToast && (
+        <div
+          style={{ zIndex: 2147483647 }}
+          className="fixed bottom-6 right-6 max-w-sm bg-stone-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl border border-amber-400/50 flex items-center justify-between gap-3 animate-in slide-in-from-bottom-5 duration-200"
+        >
+          <div className="flex items-center gap-2.5 text-xs font-bold text-amber-300">
+            <FolderOpen className="w-4.5 h-4.5 text-amber-400 shrink-0" />
+            <span>{downloadToast.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDownloadToast(null)}
+            className="text-stone-400 hover:text-white text-xs p-1 cursor-pointer shrink-0"
+            title="關閉提示"
+          >
+            ✕
+          </button>
+        </div>
       )}
     </div>
   );

@@ -1542,7 +1542,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
             <div className="space-y-3 text-xs">
               <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200">
-                <div className="font-bold text-stone-900 line-clamp-1">
+                <div className="font-bold text-stone-900 line-clamp-2 break-words text-xs sm:text-sm">
                   {selectedProposalForSupport.title}
                 </div>
                 <div className="text-stone-500 text-[11px] mt-0.5">
@@ -1550,12 +1550,35 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-stone-500">可用創星幣：</span>
-                  <span className="font-mono font-bold text-amber-700">
+              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2.5 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-500 font-medium shrink-0">可用創星幣：</span>
+                  <span className="font-mono font-black text-amber-700 text-sm whitespace-nowrap">
                     {account?.availablePoints.toLocaleString() || 0} 創星幣
                   </span>
+                </div>
+
+                <div className="bg-white/95 p-3 rounded-xl border border-stone-200/80 space-y-2">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-stone-100">
+                    <span className="font-bold text-stone-900 text-xs">單案最高注資上限</span>
+                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] border border-emerald-200 font-bold whitespace-nowrap">
+                      可以自我注資
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                    <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/70">
+                      <div className="text-[11px] text-stone-500 font-medium">參賽者與一般用戶</div>
+                      <div className="font-mono font-black text-stone-900 text-xs sm:text-sm mt-0.5 whitespace-nowrap">
+                        50,000 <span className="text-[11px] font-sans font-bold text-stone-500">創星幣</span>
+                      </div>
+                    </div>
+                    <div className="bg-purple-50/50 p-2.5 rounded-xl border border-purple-200/70">
+                      <div className="text-[11px] text-purple-700 font-medium">產學研專家</div>
+                      <div className="font-mono font-black text-purple-900 text-xs sm:text-sm mt-0.5 whitespace-nowrap">
+                        2,000,000 <span className="text-[11px] font-sans font-bold text-purple-600">創星幣</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1571,13 +1594,13 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                {[1000, 5000, 10000, 30000].map((amt) => (
+              <div className="grid grid-cols-4 gap-1.5 pt-1">
+                {[1000, 5000, 10000, 50000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => setSupportAmount(amt)}
-                    className="flex-1 py-1.5 rounded-lg bg-stone-100 hover:bg-amber-100 border border-stone-200 text-[11px] font-bold text-stone-700 cursor-pointer"
+                    className="py-1.5 px-1 rounded-lg bg-stone-100 hover:bg-amber-100 border border-stone-200 text-[11px] font-bold text-stone-700 cursor-pointer transition-colors whitespace-nowrap text-center"
                   >
                     +{amt.toLocaleString()}
                   </button>

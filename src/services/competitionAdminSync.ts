@@ -11,6 +11,8 @@ import {
   AdminTotalRewardsMetrics,
 } from '../types/competition';
 import { syncPlatformSettingsToFirestore } from './firestoreSync';
+import { isRealRegisteredUser } from '../data/mockData';
+import { User } from '../types';
 
 export interface CompetitionRegistrationRecord extends ParticipantRegistrationData {
   id: string;

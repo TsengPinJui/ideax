@@ -7,7 +7,7 @@
  * 3. POST /api/competition/proposals - 提交新提案 (驗證 Auth token，敏感資料隔離儲存)
  * 4. GET /api/competition/account - 取得目前用戶競賽點數錢包 (與舊站真實 balance 完全分開)
  * 5. POST /api/competition/claim-share-bonus - 領取分享推薦碼獎勵 100 點 (防重)
- * 6. POST /api/competition/support - 點數支持/募資 (防自投、單案上限、原子 transaction)
+ * 6. POST /api/competition/support - 點數支持/募資 (可自我注資、單案上限、原子 transaction)
  * 7. POST /api/competition/admin/review-proposal - 管理員審核提案
  * 8. POST /api/competition/admin/confirm-award - 管理員核定最終名次與 NT$1,200 痛點採用獎勵
  * 9. GET /api/competition/admin/ambassadors - 管理員檢視校園大使推薦統計 (NT$800 試算)
@@ -122,7 +122,7 @@ router.post('/claim-share-bonus', async (req: Request, res: Response) => {
   }
 });
 
-// 6. 支持提案 (模擬募資投點，原子 transaction，防自投)
+// 6. 支持提案 (模擬募資投點，原子 transaction，可自我注資)
 router.post('/support', async (req: Request, res: Response) => {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);

@@ -1094,16 +1094,16 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 </button>
               )}
 
-              {/* 依需求：在分享問題左邊，對此痛點提案(創星季)。這個按鍵只有已完成報名的參賽者可看見 */}
-              {isPainPoint && isRegisteredParticipant && (
+              {/* 痛點專用快捷鍵：提案參賽(不賺賞金) */}
+              {isPainPoint && (
                 <button
                   type="button"
                   onClick={handleGoToChallengeProposal}
-                  className="px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border border-amber-400 bg-amber-400 hover:bg-amber-300 text-stone-950 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
-                  title="已完成報名之參賽者專屬：針對此痛點提出創星季提案"
+                  className="px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border border-emerald-400 bg-emerald-400 hover:bg-emerald-300 text-stone-950 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                  title="針對此痛點投入創星季競賽，角逐最高獎項與榮譽（不賺賞金）"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-stone-950 shrink-0" />
-                  <span>對此痛點提案(創星季)</span>
+                  <span>提案參賽(不賺賞金)</span>
                 </button>
               )}
 
@@ -1750,25 +1750,67 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           {/* TAB 1: SOLUTIONS (付費/解鎖方案) */}
           {activeTab === 'solutions' && (
             <div className="space-y-4">
+              {isPainPoint && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50/90 to-emerald-50/90 border border-amber-200/80 flex items-center justify-between gap-3 text-xs flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-stone-900">痛點解法雙軌機制：</span>
+                    <span className="text-stone-600">
+                      欲獲取解答賞金或自訂解鎖定價請選擇<strong>「提案懸賞(不參賽)」</strong>；欲投入創星季角逐大獎與榮譽請選擇<strong>「提案參賽(不賺賞金)」</strong>。
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {solutionAnswers.length === 0 ? (
                 <div className="p-8 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-300">
                   <Award className="w-8 h-8 text-amber-600 mx-auto mb-2 opacity-80" />
                   <p className="text-sm font-semibold text-stone-700">目前尚無專家提交深度解決方案</p>
                   <p className="text-xs text-stone-500 mt-1">
-                    方案可設定公開顯示精華與付費解鎖內容；懸賞額 NT$ {(question.bounty || 0).toLocaleString()} 或可由您自訂解鎖價格！
+                    {isPainPoint
+                      ? '針對此痛點，您可選擇「提案懸賞(不參賽)」賺取解答賞金與解鎖收入，或「提案參賽(不賺賞金)」投入創星季競賽！'
+                      : `方案可設定公開顯示精華與付費解鎖內容；懸賞額 NT$ ${(question.bounty || 0).toLocaleString()} 或可由您自訂解鎖價格！`}
                   </p>
-                  <button
-                    onClick={() => {
-                      if (currentUser.id === 'user-guest') {
-                        promptLogin('訪客模式請先登入帳號以提出方案');
-                        return;
-                      }
-                      onOpenSubmitAnswer('solution');
-                    }}
-                    className="mt-3 px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition-colors cursor-pointer"
-                  >
-                    搶先提交方案
-                  </button>
+                  <div className="mt-3.5 flex items-center justify-center gap-2.5 flex-wrap">
+                    {isPainPoint ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (currentUser.id === 'user-guest') {
+                              promptLogin('訪客模式請先登入帳號以提出方案');
+                              return;
+                            }
+                            onOpenSubmitAnswer('solution');
+                          }}
+                          className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                          title="提交付費解鎖或接案方案（不參加創星季競賽）"
+                        >
+                          <Award className="w-3.5 h-3.5" />
+                          <span>提案懸賞(不參賽)</span>
+                        </button>
+                        <button
+                          onClick={handleGoToChallengeProposal}
+                          className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                          title="針對此痛點提交創星季競賽提案，角逐競賽大獎（不賺取提問者賞金）"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>提案參賽(不賺賞金)</span>
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          if (currentUser.id === 'user-guest') {
+                            promptLogin('訪客模式請先登入帳號以提出方案');
+                            return;
+                          }
+                          onOpenSubmitAnswer('solution');
+                        }}
+                        className="px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 transition-colors cursor-pointer"
+                      >
+                        搶先提交方案
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 solutionAnswers.map((ans) => {
@@ -2641,7 +2683,11 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
       {/* Modal Sticky Bottom Action Bar */}
       <div className="p-3.5 sm:p-4 border-t border-stone-200 bg-stone-50/95 backdrop-blur-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sticky bottom-0 z-10 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="text-xs text-stone-500 hidden lg:block">
-          <span>提問者或社群會員皆可付費解鎖方案；亦可直接採納方案發放懸賞。</span>
+          {isPainPoint ? (
+            <span>痛點提案途徑：可選擇「提案懸賞(不參賽)」賺取解鎖定價或懸賞，亦可選擇「提案參賽(不賺賞金)」角逐創星季競賽獎項。</span>
+          ) : (
+            <span>提問者或社群會員皆可付費解鎖方案；亦可直接採納方案發放懸賞。</span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-nowrap overflow-x-auto">
@@ -2651,19 +2697,48 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           >
             {isFullPage ? '返回市場' : '關閉'}
           </button>
-          <button
-            onClick={() => {
-              if (currentUser.id === 'user-guest') {
-                promptLogin('訪客模式請先登入帳號以提出方案');
-                return;
-              }
-              onOpenSubmitAnswer('solution');
-            }}
-            className="px-3.5 sm:px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95"
-          >
-            <Award className="w-3.5 h-3.5 shrink-0" />
-            <span>提出方案(賺賞金)</span>
-          </button>
+          {isPainPoint ? (
+            <>
+              {/* 痛點選項 1: 提案懸賞(不參賽) */}
+              <button
+                onClick={() => {
+                  if (currentUser.id === 'user-guest') {
+                    promptLogin('訪客模式請先登入帳號以提出方案');
+                    return;
+                  }
+                  onOpenSubmitAnswer('solution');
+                }}
+                className="px-3.5 sm:px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95"
+                title="提交方案以賺取解鎖定價或懸賞金（不參與創星季競賽）"
+              >
+                <Award className="w-3.5 h-3.5 shrink-0" />
+                <span>提案懸賞(不參賽)</span>
+              </button>
+              {/* 痛點選項 2: 提案參賽(不賺賞金) */}
+              <button
+                onClick={handleGoToChallengeProposal}
+                className="px-3.5 sm:px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95"
+                title="針對此痛點提交創星季競賽解方提案，角逐競賽大獎（不賺取提問者賞金）"
+              >
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span>提案參賽(不賺賞金)</span>
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => {
+                if (currentUser.id === 'user-guest') {
+                  promptLogin('訪客模式請先登入帳號以提出方案');
+                  return;
+                }
+                onOpenSubmitAnswer('solution');
+              }}
+              className="px-3.5 sm:px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95"
+            >
+              <Award className="w-3.5 h-3.5 shrink-0" />
+              <span>提出方案(賺賞金)</span>
+            </button>
+          )}
           <button
             onClick={() => {
               if (currentUser.id === 'user-guest') {

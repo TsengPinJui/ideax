@@ -53,6 +53,7 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Folder,
+  FolderOpen,
   Download,
   Eye,
   Lightbulb,
@@ -120,6 +121,7 @@ import { ProposalDetailFullPage } from './ProposalDetailFullPage';
 import { ProposalHeroCarousel } from './ProposalHeroCarousel';
 import { CompetitionFooter } from './CompetitionFooter';
 import { AdminCompetitionRulesArchiveFolder } from './AdminCompetitionRulesArchiveFolder';
+import { AdminCheatSheetFileManagerModal } from './AdminCheatSheetFileManagerModal';
 import { MyProposalsAndDraftsModal } from './MyProposalsAndDraftsModal';
 import { JudgeEvaluationModal } from './JudgeEvaluationModal';
 import { AdminFinalEvaluationManagementModal } from './AdminFinalEvaluationManagementModal';
@@ -706,6 +708,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [isAdminRewardsHubOpen, setIsAdminRewardsHubOpen] = useState<boolean>(false);
   const [isAdminUserManagementOpen, setIsAdminUserManagementOpen] = useState<boolean>(false);
   const [isAdminProposalReviewOpen, setIsAdminProposalReviewOpen] = useState<boolean>(false);
+  const [isAdminCheatSheetManagerOpen, setIsAdminCheatSheetManagerOpen] = useState<boolean>(false);
 
   // 特效：點擊「痛點」或「創新起點」字體碎片掉落並直接跳轉至對應專區
   const [shatterTransition, setShatterTransition] = useState<{
@@ -2162,7 +2165,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const faqList = [
     {
       q: '什麼是「IdeaX 創星季」兩階段競賽？痛點獎勵與採用獎勵是如何運作的？',
-      a: 'IdeaX 創星季分為兩階段：第一階段「徵點子」由提案者發布真實痛點，只要成功提出痛點（需過審）即送 200 點（價值 $250 的 IdeaX 創點子平台點數，可用於發布懸賞問題、享受付費功能，點數效期 60 日）。第二階段「想解方」由團隊針對痛點提出具體落地架構；若前十名得獎提案採用了第一階段的痛點，原痛點提出者另享等值好禮（點數效期 60 日）：創新提案排名前 1~3 名採用獲價值 $1,000 好禮（800 點 IdeaX 平台提問金，效期 60 日）；排名前 4~10 名採用獲價值 $500 好禮（400 點 IdeaX 平台提問金，效期 60 日），經官方管理員核准後發放，建立正向良性的創新激勵生態！',
+      a: 'IdeaX 創星季分為兩階段：第一階段「徵點子」由提案者發布真實痛點，只要成功提出痛點（需過審）即送 200 點（價值 $250 的 IdeaX 創點子平台點數，可用於發布懸賞問題、享受付費功能，點數效期 60 日）。第二階段「想解方」由團隊針對痛點提出具體落地架構；若前十名得獎提案採用了第一階段的痛點，原痛點提出者另享等值好禮（點數效期 60 日）：創新提案排名前 1~3 名採用獲價值 NT$1,500 等值好禮（含 1,200 點 IdeaX 平台提問金，效期 60 日）；排名前 4~10 名採用獲價值 $500 好禮（含 400 點 IdeaX 平台提問金，效期 60 日），經官方管理員核准後發放，建立正向良性的創新激勵生態！',
     },
     {
       q: '模擬募資前 20 名與最終得獎名次（冠、亞、季軍）如何評定？獎勵內容為何？',
@@ -2170,7 +2173,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     },
     {
       q: '創星幣是多少？可以兌現或投資自己嗎？',
-      a: '使用 創星幣 支持你認同的創新提案，模擬市場關注度。一般用戶與提案者初始各享有 100,000 創星幣，專家享有 3,000,000 創星幣。1 創星幣 = NT$1 僅作為模擬市場驗證投票權益，非真實現金或法定投資，不可購買、轉帳或兌現。單案支持上限：一般用戶 50,000 創星幣、提案者 30,000 創星幣、專家 2,000,000 創星幣。系統強制「防自投」機制，嚴禁投點支持自己發起的提案！',
+      a: '使用 創星幣 支持你認同的創新提案，模擬市場關注度。一般用戶與提案者初始各享有 100,000 創星幣，專家享有 3,000,000 創星幣。1 創星幣 = NT$1 僅作為模擬市場驗證投票權益，非真實現金或法定投資，不可購買、轉帳或兌現。單案支持上限：參賽者與一般用戶對單一解方提案之最高注資上限為 50,000 創星幣，專家對單一解方提案之最高注資上限為 2,000,000 創星幣。可以自我注資！',
     },
     {
       q: '各項競賽獎勵點數的有效期限是多久？',
@@ -2701,6 +2704,32 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                 </span>
                               </div>
                               <div className="text-[10px] text-stone-500 font-normal">全套官方章程規章與管理員版本歸檔條款</div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                        </button>
+
+                        {/* 6. 懶人包檔案管理 (存入/刪除) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            setIsAdminCheatSheetManagerOpen(true);
+                          }}
+                          className="w-full px-2.5 py-2 rounded-xl hover:bg-amber-100 text-stone-900 flex items-center justify-between transition-colors cursor-pointer text-left group bg-white border border-amber-300 shadow-2xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 font-black shadow-2xs">
+                              <FolderOpen className="w-3.5 h-3.5 text-stone-950" />
+                            </div>
+                            <div>
+                              <div className="font-black text-stone-900 flex items-center gap-1">
+                                <span>懶人包檔案管理</span>
+                                <span className="text-[8px] px-1.5 py-0.2 rounded-full bg-amber-600 text-white font-mono font-black">
+                                  存入/刪除
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-500 font-normal">直接存入自訂檔案或刪除現有檔案，同步打包下載</div>
                             </div>
                           </div>
                           <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
@@ -4680,7 +4709,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               )}
 
-              {/* 若為痛點專頁：直接在此提出方案（直用提案頁） */}
+              {/* 若為痛點專頁：在痛點下方區分兩種提案途徑 */}
               {selectedProposalForDetail.stage === 'pain_point' && (
                 <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-100/90 border-2 border-amber-400 space-y-2.5 shadow-sm">
                   <div className="flex items-center justify-between">
@@ -4691,40 +4720,67 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                       <span className="font-black text-stone-950 text-sm">針對此痛點提出創新方案</span>
                     </div>
                     <span className="text-[11px] font-bold text-amber-900 bg-amber-200 px-2.5 py-0.5 rounded-full border border-amber-300">
-                      直用提案頁
+                      雙軌提案
                     </span>
                   </div>
                   <p className="text-stone-700 text-xs leading-relaxed">
-                    你有解決此痛點的創新產品、商業模式或技術架構嗎？直接點擊下方按鈕提出解方，系統將自動預選帶入此痛點，填寫資料與規格完全比照競賽提案頁！
+                    你有解決此痛點的產品想法、技術解法或商業模式嗎？您可以選擇<strong>「提案參賽(不賺賞金)」</strong>角逐創星季高額競賽獎金與榮譽，或選擇<strong>「提案懸賞(不參賽)」</strong>在市場賺取解鎖定價或提問懸賞！
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      try {
-                        sessionStorage.setItem(
-                          'ideax_challenge_prefill_topic',
-                          JSON.stringify({
-                            id: selectedProposalForDetail.id,
-                            title: selectedProposalForDetail.title,
-                            serial: selectedProposalForDetail.id,
-                            summary: selectedProposalForDetail.summary,
-                            track: selectedProposalForDetail.track,
-                          })
-                        );
-                      } catch {}
-                      setSelectedProposalForDetail(null);
-                      if (!isLoggedIn) {
-                        onOpenAuth();
-                        return;
-                      }
-                      navigateToSubView('submit');
-                    }}
-                    className="w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-98 cursor-pointer"
-                  >
-                    <Sparkles className="w-4 h-4 text-stone-950" />
-                    <span>針對此痛點提出方案（直用提案頁）</span>
-                    <ArrowRight className="w-4 h-4 stroke-[3]" />
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          sessionStorage.setItem(
+                            'ideax_challenge_prefill_topic',
+                            JSON.stringify({
+                              id: selectedProposalForDetail.id,
+                              title: selectedProposalForDetail.title,
+                              serial: selectedProposalForDetail.id,
+                              summary: selectedProposalForDetail.summary,
+                              track: selectedProposalForDetail.track,
+                            })
+                          );
+                        } catch {}
+                        setSelectedProposalForDetail(null);
+                        if (!isLoggedIn) {
+                          onOpenAuth();
+                          return;
+                        }
+                        navigateToSubView('submit');
+                      }}
+                      className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-98 cursor-pointer"
+                      title="以本痛點為題目投入創星季競賽，角逐競賽大獎（不賺取發布者賞金）"
+                    >
+                      <Sparkles className="w-4 h-4 text-stone-950" />
+                      <span>提案參賽(不賺賞金)</span>
+                      <ArrowRight className="w-4 h-4 stroke-[3]" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetId = selectedProposalForDetail.id;
+                        const targetTitle = selectedProposalForDetail.title;
+                        setSelectedProposalForDetail(null);
+                        const matchQ = questions.find((item) => item.id === targetId || item.title === targetTitle || item.title?.includes(targetTitle));
+                        if (matchQ && onOpenPainPointInChuangDianZi) {
+                          onOpenPainPointInChuangDianZi(matchQ);
+                        } else if (onOpenPainPointInChuangDianZi) {
+                          onOpenPainPointInChuangDianZi({
+                            id: targetId,
+                            title: targetTitle,
+                            description: selectedProposalForDetail.summary,
+                            postType: 'pain_point',
+                          });
+                        }
+                      }}
+                      className="w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-98 cursor-pointer"
+                      title="提交市場付費解鎖方案以獲取商業定價或懸賞（不參賽）"
+                    >
+                      <Award className="w-4 h-4 text-stone-950" />
+                      <span>提案懸賞(不參賽)</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -4918,34 +4974,61 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               {/* 底部投點與提案操作按鈕 */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                 {selectedProposalForDetail.stage === 'pain_point' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      try {
-                        sessionStorage.setItem(
-                          'ideax_challenge_prefill_topic',
-                          JSON.stringify({
-                            id: selectedProposalForDetail.id,
-                            title: selectedProposalForDetail.title,
-                            serial: selectedProposalForDetail.id,
-                            summary: selectedProposalForDetail.summary,
-                            track: selectedProposalForDetail.track,
-                          })
-                        );
-                      } catch {}
-                      setSelectedProposalForDetail(null);
-                      if (!isLoggedIn) {
-                        onOpenAuth();
-                        return;
-                      }
-                      navigateToSubView('submit');
-                    }}
-                    className="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
-                  >
-                    <Sparkles className="w-4 h-4 text-stone-950" />
-                    <span>針對此痛點提出方案（直用提案頁）</span>
-                  </button>
-                )}
+                  <div className="flex-1 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try {
+                            sessionStorage.setItem(
+                              'ideax_challenge_prefill_topic',
+                              JSON.stringify({
+                                id: selectedProposalForDetail.id,
+                                title: selectedProposalForDetail.title,
+                                serial: selectedProposalForDetail.id,
+                                summary: selectedProposalForDetail.summary,
+                                track: selectedProposalForDetail.track,
+                              })
+                            );
+                          } catch {}
+                          setSelectedProposalForDetail(null);
+                          if (!isLoggedIn) {
+                            onOpenAuth();
+                            return;
+                          }
+                          navigateToSubView('submit');
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                        title="以本痛點為題目投入創星季競賽，角逐競賽大獎（不賺取發布者賞金）"
+                      >
+                        <Sparkles className="w-4 h-4 text-stone-950" />
+                        <span>提案參賽(不賺賞金)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetId = selectedProposalForDetail.id;
+                          const targetTitle = selectedProposalForDetail.title;
+                          setSelectedProposalForDetail(null);
+                          const matchQ = questions.find((item) => item.id === targetId || item.title === targetTitle || item.title?.includes(targetTitle));
+                          if (matchQ && onOpenPainPointInChuangDianZi) {
+                            onOpenPainPointInChuangDianZi(matchQ);
+                          } else if (onOpenPainPointInChuangDianZi) {
+                            onOpenPainPointInChuangDianZi({
+                              id: targetId,
+                              title: targetTitle,
+                              description: selectedProposalForDetail.summary,
+                              postType: 'pain_point',
+                            });
+                          }
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                        title="提交市場付費解鎖方案以獲取商業定價或懸賞（不參賽）"
+                      >
+                        <Award className="w-4 h-4 text-stone-950" />
+                        <span>提案懸賞(不參賽)</span>
+                      </button>
+                    </div>
+                  )}
                 <button
                   type="button"
                   onClick={() => {
@@ -5285,7 +5368,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
             <div className="space-y-3 text-xs">
               <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200">
-                <div className="font-bold text-stone-900 line-clamp-1">
+                <div className="font-bold text-stone-900 line-clamp-2 break-words text-xs sm:text-sm">
                   {selectedProposalForSupport.title}
                 </div>
                 <div className="text-stone-500 text-[11px] mt-0.5">
@@ -5293,16 +5376,35 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               </div>
 
-              <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-stone-500">可用創星幣：</span>
-                  <span className="font-mono font-bold text-amber-700">
+              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2.5 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-500 font-medium shrink-0">可用創星幣：</span>
+                  <span className="font-mono font-black text-amber-700 text-sm whitespace-nowrap">
                     {account?.availablePoints.toLocaleString() || 0} 創星幣
                   </span>
                 </div>
-                <div className="flex justify-between text-stone-500 text-[11px]">
-                  <span>單案支持上限：</span>
-                  <span className="text-stone-700 font-bold">一般用戶 50,000 / 專家 2,000,000 創星幣</span>
+
+                <div className="bg-white/95 p-3 rounded-xl border border-stone-200/80 space-y-2">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-stone-100">
+                    <span className="font-bold text-stone-900 text-xs">單案最高注資上限</span>
+                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] border border-emerald-200 font-bold whitespace-nowrap">
+                      可以自我注資
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                    <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/70">
+                      <div className="text-[11px] text-stone-500 font-medium">參賽者與一般用戶</div>
+                      <div className="font-mono font-black text-stone-900 text-xs sm:text-sm mt-0.5 whitespace-nowrap">
+                        50,000 <span className="text-[11px] font-sans font-bold text-stone-500">創星幣</span>
+                      </div>
+                    </div>
+                    <div className="bg-purple-50/50 p-2.5 rounded-xl border border-purple-200/70">
+                      <div className="text-[11px] text-purple-700 font-medium">產學研專家</div>
+                      <div className="font-mono font-black text-purple-900 text-xs sm:text-sm mt-0.5 whitespace-nowrap">
+                        2,000,000 <span className="text-[11px] font-sans font-bold text-purple-600">創星幣</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -5318,13 +5420,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                {[1000, 5000, 10000, 30000].map((amt) => (
+              <div className="grid grid-cols-4 gap-1.5 pt-1">
+                {[1000, 5000, 10000, 50000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => setSupportAmount(amt)}
-                    className="flex-1 py-1.5 rounded-lg bg-stone-100 hover:bg-amber-100 border border-stone-200 text-[11px] font-bold text-stone-700 cursor-pointer"
+                    className="py-1.5 px-1 rounded-lg bg-stone-100 hover:bg-amber-100 border border-stone-200 text-[11px] font-bold text-stone-700 cursor-pointer transition-colors whitespace-nowrap text-center"
                   >
                     +{amt.toLocaleString()}
                   </button>
@@ -6690,6 +6792,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             <AdminCompetitionRulesArchiveFolder />
           </div>
         </div>
+      )}
+
+      {/* 管理員專用：懶人包檔案庫管理 Modal (存入與刪除檔案) */}
+      {isAdminCheatSheetManagerOpen && (currentUser?.role === 'admin' || currentUser?.accountType === 'admin') && (
+        <AdminCheatSheetFileManagerModal
+          isOpen={isAdminCheatSheetManagerOpen}
+          onClose={() => setIsAdminCheatSheetManagerOpen(false)}
+        />
       )}
 
       {/* 決選評審專家工作台 Modal (邊看提案企劃詳情邊評分，暫存或統一送出) */}

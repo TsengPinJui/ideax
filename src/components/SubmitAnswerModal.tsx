@@ -3,6 +3,7 @@ import { Question, Answer, AnswerType, DeliveryFormat, SolutionAttachment, Solut
 import { useApp } from '../context/AppContext';
 import { restructureSolutionWithAI } from '../services/aiService';
 import { HelpTooltip } from './HelpTooltip';
+import { isPainPointQuestion } from '../utils/questionUtils';
 import {
   X,
   Send,
@@ -52,6 +53,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
   isFullPage = false,
 }) => {
   const { currentUser, submitAnswer, commissionRate, hasAgreedTerms, recordTermsAgreement, openAboutModal, subscribePlan, calculateSplitPayout } = useApp();
+  const isPainPoint = isPainPointQuestion(question);
 
   const hasAgreedSolver = hasAgreedTerms('solver');
   const [agreeSolverTerms, setAgreeSolverTerms] = useState(hasAgreedSolver);
@@ -456,7 +458,11 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
           </div>
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-stone-900">
-              {answerType === 'solution' ? '提出方案(賺賞金)' : '公開討論'}
+              {answerType === 'solution'
+                ? isPainPoint
+                  ? '提案懸賞(不參賽)'
+                  : '提出方案(賺賞金)'
+                : '公開討論'}
             </h2>
             <p className="text-xs text-stone-500 truncate max-w-md">針對「{question.title}」</p>
           </div>
@@ -485,7 +491,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             }`}
           >
             <Award className="w-4 h-4 text-amber-600" />
-            <span>提出方案(賺賞金)</span>
+            <span>{isPainPoint ? '提案懸賞(不參賽)' : '提出方案(賺賞金)'}</span>
           </button>
           <button
             type="button"
@@ -500,6 +506,19 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             <span>公開討論</span>
           </button>
         </div>
+
+        {/* 痛點提案提示 */}
+        {isPainPoint && answerType === 'solution' && (
+          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 flex items-start gap-2.5">
+            <Award className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="font-bold">當前模式：提案懸賞（不參賽）</span>
+              <p className="text-stone-600 leading-relaxed text-[11px]">
+                您提交的方案將在問題市場中供發布者或社群會員付費解鎖，或由發布者直接採納發放懸賞金。此方案不參加創星季競賽；若您欲角逐競賽大獎與榮譽，請返回痛點選擇「提案參賽(不賺賞金)」。
+              </p>
+            </div>
+          </div>
+        )}
 
         {answerType === 'discussion' ? (
           /* Discussion Mode Form */
@@ -1249,7 +1268,13 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Send className="w-4 h-4" />
-            <span>{answerType === 'solution' ? '確認提出方案' : '發布討論留言'}</span>
+            <span>
+              {answerType === 'solution'
+                ? isPainPoint
+                  ? '確認提案懸賞(不參賽)'
+                  : '確認提出方案'
+                : '發布討論留言'}
+            </span>
           </button>
         </div>
       </form>

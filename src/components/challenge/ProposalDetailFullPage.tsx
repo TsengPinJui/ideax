@@ -18,6 +18,7 @@ import {
   Edit3,
   Undo2,
   Paperclip,
+  Award,
 } from 'lucide-react';
 import {
   StarSeasonProposal,
@@ -341,8 +342,8 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           </section>
         )}
 
-        {/* 4. 痛點專用：針對此痛點立即提案 CTA */}
-        {proposal.stage === 'pain_point' && onSolvePainPoint && (
+        {/* 4. 痛點專用：針對此痛點提案雙軌 CTA */}
+        {proposal.stage === 'pain_point' && (
           <section className="bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-100/90 rounded-3xl p-5 sm:p-6 border-2 border-amber-400 space-y-3 shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -352,20 +353,40 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                 <h3 className="font-black text-stone-950 text-base">針對此痛點提出創新方案</h3>
               </div>
               <span className="text-xs font-bold text-amber-900 bg-amber-200 px-3 py-1 rounded-full border border-amber-300">
-                直用提案頁
+                雙軌提案
               </span>
             </div>
             <p className="text-stone-700 text-xs sm:text-sm leading-relaxed">
-              你有解決此痛點的產品想法、技術解法或商業模式嗎？點擊立即提出解方，系統將自動為你預選並帶入此題目！
+              你有解決此痛點的產品想法、技術解法或商業模式嗎？您可以選擇<strong>「提案參賽(不賺賞金)」</strong>角逐創星季高額獎項與榮譽，或選擇<strong>「提案懸賞(不參賽)」</strong>在市場獲取商業賞金！
             </p>
-            <button
-              type="button"
-              onClick={() => onSolvePainPoint(proposal)}
-              className="w-full py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-98 cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-stone-950" />
-              <span>我有解方，針對此痛點立即提案</span>
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {onSolvePainPoint && (
+                <button
+                  type="button"
+                  onClick={() => onSolvePainPoint(proposal)}
+                  className="py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-98 cursor-pointer"
+                  title="以本痛點為題目投入創星季競賽，角逐競賽大獎（不賺取發布者賞金）"
+                >
+                  <Sparkles className="w-4 h-4 text-stone-950" />
+                  <span>提案參賽(不賺賞金)</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    window.history.pushState({}, '', `/?q=${proposal.id}`);
+                    window.dispatchEvent(new Event('popstate'));
+                  } catch {}
+                  onBack();
+                }}
+                className="py-3.5 px-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-98 cursor-pointer"
+                title="前往市場提交解答以獲取商業定價或懸賞（不參賽）"
+              >
+                <Award className="w-4 h-4 text-stone-950" />
+                <span>提案懸賞(不參賽)</span>
+              </button>
+            </div>
           </section>
         )}
 
