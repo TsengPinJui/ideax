@@ -33,7 +33,8 @@ import {
   buildContractFromProposalItem, 
   downloadContractFile 
 } from '../utils/contractGenerator';
-import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP, saveCustomUserProfile } from '../utils/userDisplay';
+import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP, saveCustomUserProfile, getDefaultAvatarForUser } from '../utils/userDisplay';
+import { syncUserToFirestore } from '../services/firestoreSync';
 import { updateFirebaseUserPassword } from '../services/firebaseAuth';
 import { validatePassword } from '../utils/validators';
 import {
