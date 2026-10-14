@@ -872,14 +872,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setShowRecentSolutions(currentUser.showRecentSolutions ?? true);
   }, [currentUser.id]);
 
-  // 處理用戶頭像上傳：限制 2MB 內，Canvas 壓縮為正方形 (一次只存一張)
+  // 處理用戶頭像上傳：限制 4MB 內，Canvas 壓縮為正方形 (一次只存一張)
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 檢查檔案大小：嚴格限制 2MB
-    if (file.size > 2 * 1024 * 1024) {
-      setAvatarError(`頭像照片檔案過大（${(file.size / (1024 * 1024)).toFixed(1)}MB）。系統限制 2MB 內，請選擇較小圖片或壓縮後再上傳！`);
+    // 檢查檔案大小：嚴格限制 4MB
+    if (file.size > 4 * 1024 * 1024) {
+      setAvatarError(`頭像照片檔案過大（${(file.size / (1024 * 1024)).toFixed(1)}MB）。系統限制 4MB 內，請選擇較小圖片或壓縮後再上傳！`);
       e.target.value = '';
       return;
     }
@@ -7257,7 +7257,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       <div className="space-y-0.5">
                         <h5 className="text-xs font-bold text-stone-900">個人頭像照片</h5>
                         <p className="text-[11px] text-stone-500">
-                          支援常見圖檔（單檔 2MB 內），更換時自動覆蓋原檔案。
+                          支援常見圖檔（單檔 4MB 內），更換時自動覆蓋原檔案。
                         </p>
                       </div>
                     </div>
