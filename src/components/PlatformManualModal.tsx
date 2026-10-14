@@ -44,6 +44,7 @@ import {
   VersionState,
 } from '../services/platformManualService';
 import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
+import { MarketingAssetsModal } from './MarketingAssetsModal';
 
 interface PlatformManualModalProps {
   isOpen: boolean;
@@ -62,6 +63,7 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
   const [isZipping, setIsZipping] = useState<boolean>(false);
   const [copiedDocId, setCopiedDocId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isMarketingOpen, setIsMarketingOpen] = useState<boolean>(false);
   const [newDocTitle, setNewDocTitle] = useState('');
   const [newDocSubtitle, setNewDocSubtitle] = useState('');
   const [newDocContent, setNewDocContent] = useState('');
@@ -317,6 +319,15 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
             >
               <Plus className="w-3.5 h-3.5" />
               <span>新增文件</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsMarketingOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-white font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+              <span>行銷素材庫</span>
             </button>
           </div>
         </div>
@@ -748,6 +759,13 @@ export const PlatformManualModal: React.FC<PlatformManualModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* 行銷素材庫 Modal */}
+      <MarketingAssetsModal
+        isOpen={isMarketingOpen}
+        onClose={() => setIsMarketingOpen(false)}
+        showToast={showToast}
+      />
     </div>
   );
 };

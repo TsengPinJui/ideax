@@ -1,3 +1,4 @@
+import { DEFAULT_VIBECODING_APPS } from './vibeCodingData';
 import { Question, Solver, Answer, Transaction, LevelConfig, User, ProblemLevel, DEFAULT_ASSISTANT_24HR_CONFIG } from '../types';
 
 export const LEVEL_CONFIGS: Record<ProblemLevel, LevelConfig> = {
@@ -506,6 +507,7 @@ export const MOCK_SOLVERS: Solver[] = [
 ];
 
 export const MOCK_QUESTIONS: Question[] = [
+  ...DEFAULT_VIBECODING_APPS,
   {
     id: 'q-1',
     title: '校園共享雨傘如何從租借收入轉向商家合作模式？',

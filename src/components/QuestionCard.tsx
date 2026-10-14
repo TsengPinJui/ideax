@@ -4,7 +4,7 @@ import { Question, MarketViewMode } from '../types';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { resolveUserDisplayName, resolveUserAvatar, getUserNameColorClass } from '../utils/userDisplay';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
-import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark, Share2, Check, Hand, ThumbsUp } from 'lucide-react';
+import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark, Share2, Check, Hand, ThumbsUp, Coins } from 'lucide-react';
 import { getQuestionShareUrl } from '../services/seoService';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 
@@ -630,110 +630,36 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           {question.description}
         </p>
 
-        {/* AI Structured analysis chip */}
-        {question.aiAnalysis && (
-          <div className="mt-3 py-1.5 px-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60 flex items-center gap-2 text-xs text-stone-700">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-            <span className="truncate font-medium text-[11px] sm:text-xs">
-              AI 診斷：{question.aiAnalysis.structuredNeed[0] || question.aiAnalysis.summary}
-            </span>
+        {/* Tags */}
+        {question.tags && question.tags.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {question.tags.map((tag, idx) => (
+              <span
+                key={idx}
+                className="text-[11px] font-medium text-stone-500 bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded-md transition-colors"
+              >
+                #{tag}
+              </span>
+            ))}
           </div>
         )}
-
-        {/* Tags */}
-        <div className="mt-3 flex items-center gap-1.5 flex-wrap">
-          {question.tags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onSearchTag) {
-                  onSearchTag(tag);
-                } else {
-                  setSearchQuery(tag);
-                }
-              }}
-              className="text-[11px] font-medium px-2 py-0.5 rounded-md border transition-all cursor-pointer shadow-2xs text-stone-600 bg-stone-100/90 hover:bg-stone-200 hover:text-stone-900 border-stone-200/90"
-              title={`點擊搜尋「#${tag}」相關問題`}
-            >
-              #{tag}
-            </button>
-          ))}
-        </div>
       </div>
 
-      {/* Footer Info: Author, Stats */}
-      <div className="mt-5 pt-3.5 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-        <div className="flex items-center gap-2">
-          <img
-            src={authorDisplayAvatar}
-            alt={authorDisplayName}
-            className="w-5 h-5 rounded-full object-cover ring-1 ring-stone-200"
-          />
-          <span className="truncate max-w-[150px] sm:max-w-[200px]" title={`${authorDisplayName}${authorDisplayName !== '此帳號已註銷' && question.authorTitle ? ` · ${question.authorTitle}` : ''}`}>
-            <span className={`font-medium ${authorColorClass}`}>{authorDisplayName}</span>
-            {authorDisplayName !== '此帳號已註銷' && question.authorTitle ? <span className="text-stone-500 font-normal"> · {question.authorTitle}</span> : ''}
-          </span>
-        </div>
-
-        {/* 大卡片統計列：依規範「觀看數 + 按讚/同問/+1/愛心 + 討論數 + 方案數」，不顯示期限 */}
-        <div className="flex items-center gap-2 sm:gap-3 font-medium flex-wrap">
-          {/* 1. 觀看數 */}
-          <span className="flex items-center gap-1 text-stone-500 text-xs" title="瀏覽次數">
-            <Eye className="w-3.5 h-3.5 text-stone-400" />
-            <span>{(question.views || 0).toLocaleString()}</span>
-          </span>
-
-          {/* 2. 按讚 / 同問 / +1 / 愛心 */}
-          {isPainPoint ? (
-            <button
-              type="button"
-              onClick={handleSecondClick}
-              className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
-                isSeconded
-                  ? 'bg-rose-600 text-white border border-rose-600 shadow-2xs font-black'
-                  : 'bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100'
-              }`}
-              title="附議此痛點 (+1 共鳴支持)"
+      {/* Card Footer */}
+      <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 痛點打賞總額 (雙幣符號 + 數字) */}
+          {isPainPoint && (
+            <span
+              className="flex items-center gap-1.5 text-amber-950 bg-amber-100/90 hover:bg-amber-200/90 px-2.5 py-1 rounded-xl border border-amber-200/80 font-semibold text-xs shadow-2xs"
+              title="打賞總額 (雙幣：🪙 點數 / NT$ 現金)"
             >
-              <span className={`font-mono font-black border px-1.5 py-0.2 rounded text-[11px] leading-tight ${isSeconded ? 'bg-white text-rose-800 border-white' : 'bg-white text-rose-700 border-rose-300'}`}>+1</span>
-              <span>附議</span>
-              <span className="font-mono font-black text-xs">({secondCount || 0})</span>
-            </button>
-          ) : isL0Discussion ? (
-            <button
-              type="button"
-              onClick={handleLikeClick}
-              className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
-                isLiked
-                  ? 'bg-blue-600 text-white border border-blue-600 shadow-2xs font-black'
-                  : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
-              }`}
-              title="為此討論按讚"
-            >
-              <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'fill-white text-white' : 'text-blue-600'}`} />
-              <span>按讚</span>
-              <span className="font-mono font-black text-xs">({likesCount || 0})</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSameQuestionClick}
-              className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
-                isSame
-                  ? 'bg-amber-500 text-stone-950 border border-amber-500 shadow-2xs font-black'
-                  : 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
-              }`}
-              title="我也想知道！加入同問"
-            >
-              <Hand className={`w-3.5 h-3.5 ${isSame ? 'fill-stone-950 text-stone-950' : 'text-amber-700'}`} />
-              <span>同問</span>
-              <span className="font-mono font-black text-xs">({sameCount || 0})</span>
-            </button>
+              <span className="font-bold text-amber-900">
+                🪙 {((question.supportPoints || 0) * 10).toLocaleString()} 點 (NT$ {(question.supportPoints || 0).toLocaleString()})
+              </span>
+            </span>
           )}
 
-          {/* 3. 討論數（淡黃色） */}
           <span className="flex items-center gap-1 text-amber-600 bg-amber-50/90 px-2.5 py-1 rounded-xl border border-amber-200/80 font-semibold text-xs" title="討論留言數">
             <MessageCircle className="w-3.5 h-3.5 text-amber-400" />
             <span className="font-mono text-amber-600">{discussionsCount ?? 0} 討論</span>
@@ -756,4 +682,3 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     </article>
   );
 };
-

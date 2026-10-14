@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import { isMockQuestionId } from '../data/mockData';
 import { isQuestionExpired } from '../services/recommendationService';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
+import { DEFAULT_DEMO_PROPOSALS } from '../data/competitionProposals';
 import {
   X,
   Layers,
@@ -24,6 +25,7 @@ import {
   Lightbulb,
   ShieldCheck,
   Trophy,
+  Terminal,
 } from 'lucide-react';
 
 interface CategorySidebarProps {
@@ -120,8 +122,12 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   // 1. 創點子/痛點集：透過提出痛點提出的問題與標註痛點的問題 (痛點優先歸類)
   const painPointsCount = validQuestions.filter(isPainPointQuestion).length;
 
+  // 創點子 (創新提案) 專區提案數量
+  const createIdeasCount = DEFAULT_DEMO_PROPOSALS.length;
+
   // 2. L0問題討論區：依規範，從「尋求解答」或「提出痛點」提出的問題，就算設定是L0也不要算入L0討論區
   const l0DiscussionCount = validQuestions.filter(isL0DiscussionQuestion).length;
+  const vibeCodingCount = validQuestions.filter((q) => q.postType === 'vibecoding_app' || q.specialZone === 'vibecoding' || q.tags?.includes('VibeCoding') || q.category === '網站程式').length;
 
   const categoryMeta: Record<
     Category,
@@ -146,6 +152,11 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
       icon: LifeBuoy,
       color: 'text-emerald-700',
       bgColor: 'bg-emerald-100/80 text-emerald-900 border-emerald-200',
+    },
+    網站程式: {
+      icon: Terminal,
+      color: 'text-purple-700',
+      bgColor: 'bg-purple-100/80 text-purple-900 border-purple-200',
     },
   };
 
@@ -311,7 +322,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-amber-700 transition-colors flex items-center gap-1.5">
-                    <span>交易榮譽榜</span>
+                    <span>榮譽榜</span>
                     <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
                       排行
                     </span>
@@ -381,17 +392,12 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               }`}
               title="前往 IdeaX創星季 競賽挑戰"
             >
-              <div className="flex items-center gap-2 min-w-0 -ml-0.5">
-                <div className="flex items-center gap-1 shrink-0">
-                  <img
-                    src="/logo-bulb.png"
-                    alt="黃色正向去背燈泡"
-                    className="w-7 h-7 object-contain group-hover:scale-110 transition-transform shrink-0"
-                  />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex items-center shrink-0">
                   <img
                     src="/logo-chuangxingji-text.png"
                     alt="創星季去背"
-                    className="h-5.5 w-auto object-contain shrink-0"
+                    className="h-6.5 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
                   />
                 </div>
                 <div className="min-w-0">
@@ -411,7 +417,75 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform shrink-0 ml-1" />
             </button>
 
-            {/* ① ［痛點許願池］ */}
+                        {/* ［VibeCoding展場］ */}
+            <button
+              onClick={() => handleSelectZone('vibecoding')}
+              className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
+                specialZone === 'vibecoding'
+                  ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-200 shadow-2xs'
+                  : 'bg-white hover:bg-purple-50/40 border-stone-200 hover:border-purple-300'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold border border-purple-200 shrink-0">
+                  <Terminal className="w-4 h-4 text-purple-600" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-purple-700 transition-colors flex items-center gap-1.5">
+                    <span>VibeCoding展場</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white shrink-0">NEW</span>
+                  </div>
+                  <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
+                    VibeCoding 創新應用展示、網站與程式發表
+                  </p>
+                </div>
+              </div>
+              <span
+                className={`text-xs font-mono font-bold px-2 py-0.5 rounded shrink-0 ${
+                  specialZone === 'vibecoding'
+                    ? 'bg-purple-600 text-white shadow-2xs'
+                    : 'bg-purple-100 text-purple-900 border border-purple-300'
+                }`}
+              >
+                {vibeCodingCount} 則
+              </span>
+            </button>
+
+{/* ① ［創點子(創新提案)］專區入口 */}
+            <button
+              onClick={() => handleSelectZone('create_ideas')}
+              className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
+                specialZone === 'create_ideas'
+                  ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-200 shadow-2xs'
+                  : 'bg-white hover:bg-emerald-50/40 border-stone-200 hover:border-emerald-300'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold border border-emerald-200 shrink-0">
+                  <Lightbulb className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
+                    <span>創點子(創新提案)</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white shrink-0">HOT</span>
+                  </div>
+                  <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
+                    創星季與社群解放提案，點數支持與作品收藏
+                  </p>
+                </div>
+              </div>
+              <span
+                className={`text-xs font-mono font-bold px-2 py-0.5 rounded shrink-0 ${
+                  specialZone === 'create_ideas'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                }`}
+              >
+                {createIdeasCount} 則
+              </span>
+            </button>
+
+            {/* ② ［痛點許願池］ */}
             <button
               onClick={() => handleSelectZone('pain_points')}
               className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${

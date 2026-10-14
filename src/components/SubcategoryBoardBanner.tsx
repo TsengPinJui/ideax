@@ -20,6 +20,7 @@ import {
   HelpCircle,
   Lightbulb,
   Pin,
+  Terminal,
 } from 'lucide-react';
 
 interface SubcategoryBoardBannerProps {
@@ -286,6 +287,13 @@ const CATEGORY_STYLE: Record<
     themeBadge: 'bg-emerald-100 text-emerald-950 border-emerald-300',
     accentText: 'text-emerald-800',
     icon: LifeBuoy,
+  },
+  網站程式: {
+    themeBg: 'bg-gradient-to-br from-purple-500/10 via-indigo-100/40 to-white',
+    themeBorder: 'border-purple-300',
+    themeBadge: 'bg-purple-100 text-purple-950 border-purple-300',
+    accentText: 'text-purple-800',
+    icon: Terminal,
   },
 };
 

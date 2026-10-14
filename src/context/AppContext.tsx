@@ -363,6 +363,10 @@ interface AppContextType {
   adminTransferPoints: (targetUserId: string, points: number, reason: string) => { success: boolean; message: string; remainingQuota?: number };
   adminResetDailyPoints: () => { success: boolean; message: string };
 
+  // Pain Point Tipping & Weekly Payout (痛點打賞支持點數與週結撥款)
+  tipPainPoint: (questionId: string, amount: number, message?: string) => { success: boolean; message: string };
+  requestTipPayout: (amountPoints: number) => { success: boolean; message: string; netCash?: number };
+
   // Cloud Firestore Persistence & Sync
   isFirestoreConnected: boolean;
   lastSyncTime: string | null;
@@ -887,9 +891,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             CORE_TEST_ACCOUNTS.forEach((cta) => {
               const existingIdx = cleanList.findIndex((u: any) => u.id === cta.id);
               if (existingIdx === -1) {
-                cleanList.push(cta);
+                cleanList.push(cta as any);
               } else {
-                cleanList[existingIdx] = restoreCanonicalUserIdentity({ ...cta, ...cleanList[existingIdx] });
+                cleanList[existingIdx] = restoreCanonicalUserIdentity({ ...cta, ...cleanList[existingIdx] }) as any;
               }
             });
             return cleanList;
@@ -1753,7 +1757,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setConversations((prevConvs) => {
       let changed = false;
-      const next = prevConvs.map((c) => {
+      const next = prevConvs.map((c: any) => {
         let convChanged = false;
         let updatedC = { ...c };
         if (isTargetId(c.user1Id) && (c.user1Name !== currentUser.name || c.user1Avatar !== currentUser.avatar)) {
@@ -3174,6 +3178,232 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications((prev) => [notif, ...prev]);
 
     return true;
+  };
+
+  // 提痛點獲得讀者打賞支持（存在點數收支 > 應收帳款，每週結算一次）
+  const tipPainPoint = (questionId: string, amount: number, message?: string): { success: boolean; message: string } => {
+    if (!currentUser || currentUser.id === 'guest') {
+      return { success: false, message: '請先登入帳號後再進行打賞！' };
+    }
+    const cleanAmount = Math.max(0, Math.floor(amount));
+    if (cleanAmount <= 0) {
+      return { success: false, message: '打賞點數必須大於 0！' };
+    }
+    if ((currentUser.balance || 0) < cleanAmount) {
+      return { success: false, message: `點數餘額不足！您目前有 ${(currentUser.balance || 0).toLocaleString()} 點，需 ${cleanAmount.toLocaleString()} 點。` };
+    }
+
+    const q = questions.find((item) => item.id === questionId);
+    if (!q) {
+      return { success: false, message: '找不到目標痛點題目！' };
+    }
+    if (q.authorId === currentUser.id) {
+      return { success: false, message: '無法打賞給自己發布的痛點！' };
+    }
+
+    const tipId = `tip-${Date.now()}`;
+    const tipRecord = {
+      id: tipId,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userAvatar: currentUser.avatar,
+      amount: cleanAmount,
+      message: message?.trim() || '',
+      createdAt: new Date().toISOString(),
+    };
+
+    // 1. 扣除打賞者（讀者）點數餘額
+    const newReaderBalance = Math.max(0, (currentUser.balance || 0) - cleanAmount);
+    const updatedReader = { ...currentUser, balance: newReaderBalance };
+    setCurrentUser(updatedReader);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedReader));
+    } catch (e) {}
+
+    // 2. 更新問題題目上的打賞總額與明細
+    setQuestions((prev) =>
+      prev.map((item) => {
+        if (item.id === questionId) {
+          const prevHistory = item.tipsHistory || [];
+          return {
+            ...item,
+            supportPoints: (item.supportPoints || 0) + cleanAmount,
+            tippersCount: (item.tippersCount || prevHistory.length) + 1,
+            tipsHistory: [tipRecord, ...prevHistory],
+          };
+        }
+        return item;
+      })
+    );
+
+    // 3. 撥入提案者（作者）的【點數收支 > 應收帳款】（而非直接存為錢包可用點數）
+    const author = availableUsers.find((u) => u.id === q.authorId);
+    const authorName = author?.name || q.authorName || '提案者';
+
+    setAvailableUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === currentUser.id) {
+          return { ...u, balance: newReaderBalance };
+        }
+        if (u.id === q.authorId) {
+          const currentTipReceivables = u.tipReceivablesPoints || 0;
+          const currentThisWeekTip = u.thisWeekTipPoints || 0;
+          const newTipReceivables = currentTipReceivables + cleanAmount;
+          const newThisWeekTip = currentThisWeekTip + cleanAmount;
+          return {
+            ...u,
+            tipReceivablesPoints: newTipReceivables,
+            thisWeekTipPoints: newThisWeekTip,
+          };
+        }
+        return u;
+      })
+    );
+
+    // 4. 寫入雙方交易與帳務流水
+    const readerTx: Transaction = {
+      id: `tx-tip-out-${Date.now()}`,
+      type: '痛點讀者打賞',
+      amount: cleanAmount,
+      platformFee: 0,
+      netAmount: cleanAmount,
+      fromUserName: currentUser.name,
+      fromUserId: currentUser.id,
+      toUserName: authorName,
+      toUserId: q.authorId,
+      relatedQuestionTitle: q.title,
+      relatedQuestionId: q.id,
+      status: '已完成',
+      createdAt: new Date().toISOString(),
+      note: `【痛點打賞支持】讀者贊助《${q.title}》${cleanAmount} 點支持金。${message ? `寄語：${message}` : ''}`,
+    };
+
+    const authorPlatformFee = Math.round(cleanAmount * 0.10); // 10% 預扣手續費估計
+    const authorTx: Transaction = {
+      id: `tx-tip-in-${Date.now()}`,
+      type: '提痛點打賞收益',
+      amount: cleanAmount,
+      platformFee: authorPlatformFee,
+      netAmount: cleanAmount - authorPlatformFee,
+      fromUserName: currentUser.name,
+      fromUserId: currentUser.id,
+      toUserName: authorName,
+      toUserId: q.authorId,
+      relatedQuestionTitle: q.title,
+      relatedQuestionId: q.id,
+      status: '處理中',
+      payoutStatus: '安全託管中（應收帳款）',
+      createdAt: new Date().toISOString(),
+      note: `【痛點打賞收益】來自讀者「${currentUser.name}」之支持點數 ${cleanAmount} 點（已存入應收帳款，週結撥款）。`,
+    };
+
+    setTransactions((prev) => [readerTx, authorTx, ...prev]);
+
+    // 5. 發送通知給提痛點作者
+    const authorNotif: NotificationItem = {
+      id: `notif-tip-${Date.now()}`,
+      userId: q.authorId,
+      category: 'personal',
+      title: '🎉 您的痛點獲得讀者打賞支持！',
+      message: `用戶「${currentUser.name}」打賞支持了您的痛點《${q.title}》${cleanAmount} 點！款項已存入您的【點數收支 > 應收帳款】，一週結算一次。${message ? `讀者留言：「${message}」` : ''}`,
+      type: 'payment_unlocked',
+      linkQuestionId: q.id,
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+    setNotifications((prev) => [authorNotif, ...prev]);
+
+    return {
+      success: true,
+      message: `🎉 成功打賞 ${cleanAmount.toLocaleString()} 點支持金！已為您存入提案者的應收帳款中。`,
+    };
+  };
+
+  // 申請撥款（需實名身分核驗與收款帳戶，非直接點數額度，扣除手續費後以法幣電匯撥款）
+  const requestTipPayout = (amountPoints: number): { success: boolean; message: string; netCash?: number } => {
+    if (!currentUser || currentUser.id === 'guest') {
+      return { success: false, message: '請先登入帳號！' };
+    }
+    if (currentUser.realNameAuthStatus !== 'verified') {
+      return { success: false, message: '依合規要求，需先完成實名身分核驗 (KYC) 始能申請撥款！' };
+    }
+    if (!currentUser.bankAccount?.accountNumber || !currentUser.bankAccount?.bankName) {
+      return { success: false, message: '請先設定綁定收款銀行帳戶以利款項撥出！' };
+    }
+
+    const available = currentUser.tipReceivablesPoints || 0;
+    const cleanPoints = Math.max(0, Math.floor(amountPoints));
+    if (cleanPoints < 100) {
+      return { success: false, message: '單次申請撥款最低門檻需滿 100 點！' };
+    }
+    if (cleanPoints > available) {
+      return { success: false, message: `申請點數 (${cleanPoints.toLocaleString()}) 超過目前應收打賞餘額 (${available.toLocaleString()} 點)！` };
+    }
+
+    const userPlan = subscriptionPlans[currentUser.subscriptionTier || 'free'] || SUBSCRIPTION_PLANS.free;
+    const feeRate = userPlan.platformFeeRate ?? 0.10;
+    const grossCash = cleanPoints; // 1 點 = NT$ 1 基準
+    const feeAmount = Math.round(grossCash * feeRate);
+    const netCash = Math.max(0, grossCash - feeAmount);
+
+    const bankSnapshot = `${currentUser.bankAccount.bankName} (•••• ${currentUser.bankAccount.accountNumber.slice(-4)})`;
+
+    // 扣除打賞待提領點數
+    const newTipReceivables = Math.max(0, available - cleanPoints);
+    const updatedUser: User = {
+      ...currentUser,
+      tipReceivablesPoints: newTipReceivables,
+      totalPaidOut: (currentUser.totalPaidOut || 0) + netCash,
+    };
+
+    setCurrentUser(updatedUser);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedUser));
+    } catch (e) {}
+
+    setAvailableUsers((prev) =>
+      prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
+    );
+
+    // 建立提現申請交易紀錄
+    const payoutTx: Transaction = {
+      id: `tx-payout-${Date.now()}`,
+      type: '打賞撥款',
+      amount: grossCash,
+      platformFee: feeAmount,
+      feeRate: feeRate,
+      netAmount: netCash,
+      paymentMethod: 'ATM 虛擬帳號',
+      payoutStatus: '處理中',
+      bankAccountSnapshot: bankSnapshot,
+      fromUserName: 'IdeaX 平台財務結算中心',
+      toUserName: currentUser.name,
+      toUserId: currentUser.id,
+      status: '處理中',
+      createdAt: new Date().toISOString(),
+      note: `【痛點打賞申請撥款】請領打賞 ${cleanPoints.toLocaleString()} 點，換算 NT$ ${grossCash.toLocaleString()}，扣除 ${Math.round(feeRate * 100)}% 平台手續費 NT$ ${feeAmount.toLocaleString()}，預計撥付 NT$ ${netCash.toLocaleString()} 至 ${bankSnapshot}。`,
+    };
+
+    setTransactions((prev) => [payoutTx, ...prev]);
+
+    // 通知用戶
+    const payoutNotif: NotificationItem = {
+      id: `notif-payout-${Date.now()}`,
+      userId: currentUser.id,
+      category: 'personal',
+      title: '💰 打賞收益撥款申請已送出',
+      message: `您已成功申請打賞點數撥款 ${cleanPoints.toLocaleString()} 點！扣除手續費後預計實撥 NT$ ${netCash.toLocaleString()} 元，每週結算後於週五前撥入指定帳戶。`,
+      type: 'system',
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+    setNotifications((prev) => [payoutNotif, ...prev]);
+
+    return {
+      success: true,
+      message: `🎉 撥款申請成功！扣除手續費後預計撥付 NT$ ${netCash.toLocaleString()} 元。`,
+      netCash: netCash,
+    };
   };
 
   const switchRole = (newRole: 'questioner' | 'solver' | 'admin') => {
@@ -7326,6 +7556,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getAdminRemainingDailyQuota,
         adminTransferPoints,
         adminResetDailyPoints,
+        tipPainPoint,
+        requestTipPayout,
         isFirestoreConnected,
         lastSyncTime,
         syncAllToCloud,

@@ -35,7 +35,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 }) => {
   const { solvers, availableUsers, questions, answers, startDirectChat, isDemoMode } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'solvers' | 'questioners' | 'weekly_discussions' | 'weekly_solutions' | 'analytics'>('solvers');
+  const [activeTab, setActiveTab] = useState<'solvers' | 'questioners' | 'weekly_discussions' | 'weekly_solutions' | 'analytics' | 'pain_point_tips'>('solvers');
 
   const handleStartChat = (e: React.MouseEvent, target: { id: string; name: string; avatar: string; title: string }) => {
     e.stopPropagation();
@@ -196,6 +196,104 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
     .slice(0, 10)
     .map((item, index) => ({ ...item, rank: index + 1 }));
 
+  // 5. 痛點打賞榜 (Top Users Earned Pain Point Tips)
+  const topPainPointTipsCreators = React.useMemo(() => {
+    const userTipsMap = new Map<string, {
+      userId: string;
+      name: string;
+      avatar: string;
+      title: string;
+      totalTips: number;
+      painPointCount: number;
+      topPainPointTitle: string;
+    }>();
+
+    const mockTippedCreators = [
+      {
+        userId: 'creator-1',
+        name: '張家豪',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        title: '資深工業設計師 & 洞察創作者',
+        totalTips: 18500,
+        painPointCount: 6,
+        topPainPointTitle: '傳統工廠機台備料排隊與人工抄表高錯率痛點',
+      },
+      {
+        userId: 'creator-2',
+        name: '陳怡君 醫師',
+        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+        title: '臺北聯合醫院門診主治醫師',
+        totalTips: 12800,
+        painPointCount: 4,
+        topPainPointTitle: '診所跨科別紙本病歷同步與藥物交互作用提醒痛點',
+      },
+      {
+        userId: 'creator-3',
+        name: '許哲銘',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        title: '微型餐飲連鎖營運顧問',
+        totalTips: 9600,
+        painPointCount: 5,
+        topPainPointTitle: '早餐店晨間尖峰備料損耗與POS系統離線卡單痛點',
+      },
+      {
+        userId: 'creator-4',
+        name: '廖美玲',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+        title: '社區物流與最後一哩路配送負責人',
+        totalTips: 7200,
+        painPointCount: 3,
+        topPainPointTitle: '高樓層無電梯住宅冷鏈快遞退件率高痛點',
+      },
+    ];
+
+    mockTippedCreators.forEach((mc) => {
+      userTipsMap.set(mc.userId, { ...mc });
+    });
+
+    questions.forEach((q) => {
+      const tips = q.supportPoints || 0;
+      if (tips > 0 || q.postType === 'pain_point') {
+        const uId = q.authorId || 'user-unknown';
+        const existing = userTipsMap.get(uId);
+        const name = q.authorName || '創作者';
+        const avatar = q.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
+        const title = q.authorTitle || '痛點洞察發起人';
+
+        if (existing) {
+          existing.totalTips += tips;
+          existing.painPointCount += 1;
+          if (tips > 0 && !existing.topPainPointTitle) {
+            existing.topPainPointTitle = q.title;
+          }
+        } else if (tips > 0) {
+          userTipsMap.set(uId, {
+            userId: uId,
+            name,
+            avatar,
+            title,
+            totalTips: tips,
+            painPointCount: 1,
+            topPainPointTitle: q.title,
+          });
+        }
+      }
+    });
+
+    return Array.from(userTipsMap.values())
+      .sort((a, b) => b.totalTips - a.totalTips)
+      .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+  }, [questions]);
+
+  // 熱門獲賞痛點作品榜
+  const topTippedPainPoints = React.useMemo(() => {
+    return questions
+      .filter((q) => q.postType === 'pain_point' || (q.supportPoints || 0) > 0)
+      .sort((a, b) => (b.supportPoints || 0) - (a.supportPoints || 0))
+      .slice(0, 10)
+      .map((q, idx) => ({ ...q, rank: idx + 1 }));
+  }, [questions]);
+
   // 全站各等級問題分佈統計
   const levelCountsOverall: Record<ProblemLevel, number> = {
     L0: questions.filter((q) => q.level === 'L0').length + (isDemoMode ? 18 : 0),
@@ -289,6 +387,18 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
           >
             <Flame className="w-3.5 h-3.5 text-amber-500" />
             <span>本週熱門方案榜</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('pain_point_tips')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'pain_point_tips'
+                ? 'bg-amber-500 text-stone-950 shadow-xs font-black'
+                : 'bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100'
+            }`}
+          >
+            <Coins className="w-3.5 h-3.5 text-amber-700 fill-amber-400 shrink-0" />
+            <span>打賞排行榜</span>
           </button>
 
           <button
@@ -774,6 +884,156 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   買方確認成果驗收後放款，即時取得商業落地實施授權與合法履約保障，安心無後顧之憂。
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: 痛點打賞榜 (用戶痛點打賞收益與熱門獲賞痛點) */}
+      {activeTab === 'pain_point_tips' && (
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-amber-100/70 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-amber-950 flex items-center gap-2">
+                <Coins className="w-5 h-5 text-amber-600 fill-amber-400 shrink-0" />
+                <span>全站打賞榮譽榜</span>
+              </h3>
+              <p className="text-xs text-amber-900/80">
+                展示發表提案、詢問、痛點洞察、VibeCoding 應用或討論，獲得廣大讀者打賞支持總額最高之創作者與熱門作品排行榜
+              </p>
+            </div>
+            <span className="text-xs font-mono font-bold text-amber-800 bg-white/80 px-3 py-1 rounded-xl border border-amber-300 shrink-0 self-start sm:self-auto shadow-2xs">
+              每週一 00:00 彙整結算
+            </span>
+          </div>
+
+          {/* Section 1: 用戶痛點打賞收益榜 Top Rankings */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-extrabold text-stone-900 flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span>用戶打賞總收益榜</span>
+                <span className="text-xs font-normal text-stone-500">（跨所有提案、詢問、痛點、程式與討論累計計算）</span>
+              </h4>
+              <span className="text-xs text-stone-400 font-mono">即時數據</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {topPainPointTipsCreators.map((item) => (
+                <div
+                  key={item.userId}
+                  className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 transition-all shadow-2xs hover:shadow-md flex items-center justify-between gap-3 group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative shrink-0">
+                      <img
+                        src={item.avatar}
+                        alt={item.name}
+                        className="w-12 h-12 rounded-full object-cover ring-2 ring-amber-300/80"
+                      />
+                      <span
+                        className={`absolute -top-1 -left-1 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-white shadow-2xs ${
+                          item.rank === 1
+                            ? 'bg-amber-500 ring-2 ring-amber-300'
+                            : item.rank === 2
+                            ? 'bg-slate-400 ring-2 ring-slate-200'
+                            : item.rank === 3
+                            ? 'bg-amber-700 ring-2 ring-amber-600'
+                            : 'bg-stone-700'
+                        }`}
+                      >
+                        {item.rank}
+                      </span>
+                    </div>
+
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-extrabold text-stone-900 text-sm group-hover:text-amber-700 transition-colors truncate">
+                          {item.name}
+                        </span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                          {item.painPointCount} 篇作品獲賞
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-500 truncate">{item.title}</p>
+                      {item.topPainPointTitle && (
+                        <p className="text-[11px] text-stone-400 line-clamp-1 italic">
+                          代表作品：《{item.topPainPointTitle}》
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 雙幣符號 + 數字 */}
+                  <div className="text-right shrink-0 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-300">
+                    <span className="text-[10px] font-bold text-amber-800 block">打賞總額</span>
+                    <span className="text-sm font-black text-amber-700 font-mono flex items-center gap-1">
+                      <Coins className="w-4 h-4 text-amber-600 fill-amber-400 inline shrink-0" />
+                      <span>{item.totalTips.toLocaleString()} 點</span>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Section 2: 熱門獲賞痛點作品 Top 10 */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-extrabold text-stone-900 flex items-center gap-2">
+                <Coins className="w-4 h-4 text-amber-600 fill-amber-400" />
+                <span>熱門獲賞作品與提案 Top 10</span>
+                <span className="text-xs font-normal text-stone-500">（依單篇作品/文章獲得讀者打賞支持總額排序）</span>
+              </h4>
+              <span className="text-xs text-stone-400 font-mono">點擊可查看詳情</span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2.5">
+              {topTippedPainPoints.map((q) => (
+                <div
+                  key={q.id}
+                  onClick={() => onSelectQuestion?.(q.id)}
+                  className="p-3.5 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`w-7 h-7 rounded-xl text-xs font-black flex items-center justify-center shrink-0 ${
+                        q.rank === 1
+                          ? 'bg-amber-500 text-stone-950 font-black shadow-2xs'
+                          : q.rank === 2
+                          ? 'bg-stone-300 text-stone-900'
+                          : q.rank === 3
+                          ? 'bg-amber-700 text-white'
+                          : 'bg-stone-100 text-stone-600'
+                      }`}
+                    >
+                      #{q.rank}
+                    </span>
+
+                    <div className="min-w-0 space-y-0.5">
+                      <h5 className="font-extrabold text-stone-900 text-xs sm:text-sm group-hover:text-amber-600 transition-colors line-clamp-1">
+                        {q.title}
+                      </h5>
+                      <div className="flex items-center gap-2 text-[11px] text-stone-500 flex-wrap">
+                        <span>發布者：{q.authorName || '匿名創作者'}</span>
+                        <span>•</span>
+                        <span className="text-rose-600 font-medium">
+                          {(q.secondedCount || 0)} 人附議共鳴
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 雙幣符號 + 數字 */}
+                  <div className="text-right shrink-0 px-3 py-1 rounded-xl bg-amber-100/90 border border-amber-300 flex items-center gap-1.5">
+                    <Coins className="w-4 h-4 text-amber-600 fill-amber-400 shrink-0" />
+                    <span className="text-sm sm:text-base font-black text-amber-800 font-mono">
+                      {(q.supportPoints || 0).toLocaleString()} 點
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

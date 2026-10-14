@@ -131,7 +131,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   onClick={() => onNavClick('leaderboard')}
                   className="hover:text-amber-400 transition-colors cursor-pointer text-left"
                 >
-                  交易榮譽榜
+                  榮譽榜
                 </button>
               </li>
               <li>

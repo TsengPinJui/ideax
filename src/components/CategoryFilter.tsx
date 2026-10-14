@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Category, ProblemLevel, CATEGORY_HIERARCHY, QuestionSortOption, MarketViewMode } from '../types';
-import { Layers, Award, Clock, Flame, CheckCircle2, Tag, Search, X, Sparkles, MessageCircle, Lightbulb, Users, ChevronDown, Check, Copy, ChevronRight, Square, List, LayoutGrid } from 'lucide-react';
+import { Layers, Award, Clock, Flame, CheckCircle2, Tag, Search, X, Sparkles, MessageCircle, Lightbulb, Users, ChevronDown, Check, Copy, ChevronRight, Square, List, LayoutGrid, Coins } from 'lucide-react';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 
@@ -736,6 +736,20 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
               >
                 <Award className="w-3 h-3 text-amber-500" />
                 <span>最高懸賞</span>
+              </button>
+
+              {/* 5. 最高打賞 */}
+              <button
+                onClick={() => setSortBy('highest_tips')}
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                  sortBy === 'highest_tips'
+                    ? 'bg-white text-stone-900 shadow-2xs font-bold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="依痛點洞察獲得讀者打賞支持總點數排序"
+              >
+                <Coins className="w-3 h-3 text-amber-600 fill-amber-400" />
+                <span>最高打賞</span>
               </button>
             </div>
 

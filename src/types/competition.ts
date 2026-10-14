@@ -175,8 +175,10 @@ export interface StarSeasonProposal {
   // 圖片與相片展示 (痛點 0~3 張圖片；提案 1~3 張照片)
   images?: string[];
   
-  // 補充資料與外部連結
+  // 補充資料、引用相關痛點與希望達成目標 (選填)
   externalLink?: string; // 補充資料連結 / 外部連結 (選填)
+  referencedPainPoint?: string; // 引用相關痛點 (選填)
+  targetGoal?: string; // 希望達成的目標 (選填)
   ambassadorCode?: string; // 校園推廣大使推薦碼 (選填)
   technicalFeasibility?: string; // 技術可行性 (補充資料)
   marketAnalysis?: string; // 市場分析與定位 (補充資料)
@@ -203,6 +205,10 @@ export interface StarSeasonProposal {
   isFinalist?: boolean; // 進入決選
   isFinalistSelected?: boolean;
   sourcePainPointId?: string; // 關聯之來源痛點 ID (別名)
+
+  // 刊登期限與下架機制（默認永久刊登，可由提案者自訂下架/刊登時間）
+  unpublishAt?: string; // 提案者設定之自動下架時間 (ISO 字串或 YYYY-MM-DD)，未填即默認永久刊登
+  isUnpublished?: boolean; // 是否已被手動下架
 
   // 複賽入圍與最終獎項
   rankQualifiedForFinal?: boolean; // 募資前 20 名進入複賽資格（僅為入圍，非最終得獎）

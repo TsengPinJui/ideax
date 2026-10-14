@@ -97,15 +97,17 @@ export type QuestionSortOption =
   | 'recruiting_promoted' // ✨推薦（依用戶最近搜尋關鍵字、主題、看板個性化推薦，付費推播置頂並註明招募中）
   | 'most_solutions'      // 最多解答（方案數最多 / 提案數最高）
   | 'most_discussions'    // 熱烈討論（討論數）
-  | 'highest_bounty'     // 最高懸賞
-  | 'most_likes'         // 按讚數最多
+  | 'highest_bounty'      // 最高懸賞
+  | 'highest_tips'        // 最高打賞
+  | 'most_likes'          // 按讚數最多
   | 'most_views';        // 觀看數最高
 
 export type Category = 
   | '創新創業'
   | '專業問題'
   | '學術探討'
-  | '日常疑難';
+  | '日常疑難'
+  | '網站程式';
 
 export type Subcategory =
   // 創新創業
@@ -142,6 +144,7 @@ export const CATEGORY_HIERARCHY: Record<Category, string[]> = {
   '專業問題': ['水電', '室內裝修', '法律智財', '會計稅務', '企業管理'],
   '學術探討': ['生技醫療', '資訊工程', '電機', '法律政治', '商管', '文學', '社會科學', '藝術設計'],
   '日常疑難': ['職場', '家務', '感情', '時事', '購物', '其他'],
+  '網站程式': ['網站程式', 'Web 應用程式', 'AI 智慧工具', '自動化工作流', '擴充功能插件'],
 };
 
 export type ProblemLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
@@ -209,9 +212,9 @@ export interface DeliveryPhase {
   acceptedAt?: string;
 }
 
-export type PostType = 'seek_solution' | 'pain_point' | 'chat_discussion'; // 尋求解答 | 提出痛點 | 閒聊討論
+export type PostType = 'seek_solution' | 'pain_point' | 'chat_discussion' | 'innovation_proposal' | 'vibecoding_app'; // 尋求解答 | 提出痛點 | 閒聊討論 | 創新提案
 
-export type SpecialZone = 'all' | 'l0_discussion' | 'pain_points'; // 全部 | L0問題討論區 | 創點子/痛點集
+export type SpecialZone = 'all' | 'l0_discussion' | 'pain_points' | 'create_ideas' | 'vibecoding'; // 全部 | L0問題討論區 | 痛點許願池 | 創點子(創新提案)
 
 export interface LevelConfig {
   code: ProblemLevel;
@@ -659,6 +662,21 @@ export interface User {
   totalWithdrawn?: number; // 累積撥款入帳金額 NT$
   withheldPoints?: number; // 託管中懸賞金額 NT$
 
+  // 痛點讀者打賞支持金（應收帳款與每週結算）
+  tipReceivablesPoints?: number; // 累計待提領讀者打賞點數（存於應收帳款）
+  thisWeekTipPoints?: number; // 本週獲得打賞點數（每週一 00:00 統一結算）
+  weeklyTipSettlements?: Array<{
+    id: string;
+    weekLabel: string; // 例如 '2026 第 42 週 (10/12 ~ 10/18)'
+    points: number; // 本週獲得打賞點數
+    grossAmount: number; // 換算法幣金額 NT$
+    feeRate: number; // 手續費率 (如 0.10)
+    feeAmount: number; // 手續費 NT$
+    netAmount: number; // 應撥款淨額 NT$
+    settledAt: string; // 結算時間
+    status: 'pending_withdrawal' | 'withdrawn' | 'processing';
+  }>;
+
   // 交易成就化、榮譽化與各等級問題統計
   honorTitle?: string; // 榮譽稱號，如「傳奇解答國師」、「黃金天使提問家」
   honorLevel?: number; // 榮譽等級 1~5
@@ -863,7 +881,15 @@ export interface Question {
   authorTitle?: string;
   invitedSolverIds?: string[];
   isFeatured?: boolean;
-  postType?: PostType; // 尋求解答 | 提出痛點 | 閒聊討論
+  postType?: PostType; // 尋求解答 | 提出痛點 | 閒聊討論 | 創新提案
+  referencedPainPoint?: string; // 引用相關痛點 (選填)
+  coverImage?: string; // 大圖/封面圖 (VibeCoding展場/創新提案)
+  galleryImages?: string[]; // 上傳 0~6 張截圖/圖片
+  techArchitecture?: string; // 技術架構 (VibeCoding展場)
+  demoUrl?: string; // 網站網址或檔案連結
+  fileLink?: string; // 檔案下載連結
+  fileUrl?: string; // 檔案下載連結 / 成果檔案
+  targetGoal?: string; // 希望達成的目標 (選填)
   specialZone?: SpecialZone; // 專屬專區 (全部 | L0問題討論區 | 創點子/痛點集)
   withheldBounty?: number; // 已保留之懸賞點數（交易履約保障中，採納時發動撥付）
   disputeStatus?: 'none' | 'pending_review' | 'resolved_refunded' | 'rejected'; // 疑義檢舉審查狀態
@@ -882,6 +908,17 @@ export interface Question {
   exclusiveChallengeUrl?: string; // 創星季參賽網站專案連結
   isStarSeason?: boolean;
   starSeasonProposalId?: string;
+  supportPoints?: number; // 獲得讀者支持打賞總點數
+  tippersCount?: number; // 打賞支持人數
+  tipsHistory?: Array<{
+    id: string;
+    userId: string;
+    userName: string;
+    userAvatar?: string;
+    amount: number;
+    message?: string;
+    createdAt: string;
+  }>;
 }
 
 export interface AIPreliminaryReport {
@@ -1207,6 +1244,10 @@ export interface Transaction {
     | '私聊自訂方案交易' 
     | '會員訂閱' 
     | '點數儲值'
+    | '痛點讀者打賞'
+    | '提痛點打賞收益'
+    | '打賞提現申請'
+    | '打賞撥款'
     | '爭議審查退款' 
     | '點數扣抵'
     | '管理員轉入點數'

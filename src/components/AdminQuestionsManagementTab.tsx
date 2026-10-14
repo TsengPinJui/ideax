@@ -34,6 +34,7 @@ const CATEGORY_COLORS: Record<Category, { fill: string; hex: string; bg: string;
   '專業問題': { fill: 'text-blue-500', hex: '#3b82f6', bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200' },
   '學術探討': { fill: 'text-purple-500', hex: '#8b5cf6', bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200' },
   '日常疑難': { fill: 'text-emerald-500', hex: '#10b981', bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200' },
+  '網站程式': { fill: 'text-indigo-500', hex: '#6366f1', bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-200' },
 };
 
 const PRESET_VIOLATIONS = [

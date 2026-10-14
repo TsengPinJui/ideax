@@ -32,6 +32,7 @@ import {
   Paperclip,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { PainPointAutocompleteInput } from '../PainPointAutocompleteInput';
 import {
   StarSeasonProposal,
   StarSeasonStage,
@@ -136,6 +137,8 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
   const [editingPublishedProposalId, setEditingPublishedProposalId] = useState<string | null>(null);
 
   const [formSourcePainPointId, setFormSourcePainPointId] = useState<string>('');
+  const [formReferencedPainPoint, setFormReferencedPainPoint] = useState<string>('');
+  const [formTargetGoal, setFormTargetGoal] = useState<string>('');
   const [formImages, setFormImages] = useState<string[]>([]);
   const [formExternalLink, setFormExternalLink] = useState<string>('');
   const [formTechnicalFeasibility, setFormTechnicalFeasibility] = useState<string>('');
@@ -684,6 +687,8 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               sourcePainPointTitle: painPointObj?.title || undefined,
               images: formImages,
               externalLink: formExternalLink.trim() || undefined,
+              referencedPainPoint: formReferencedPainPoint.trim() || undefined,
+              targetGoal: formTargetGoal.trim() || undefined,
               technicalFeasibility: formTechnicalFeasibility.trim() || undefined,
               marketAnalysis: formMarketAnalysis.trim() || undefined,
               businessModelFinancials: formBusinessModelFinancials.trim() || undefined,
@@ -1080,7 +1085,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
                 {stageInfo.isPainPointStage
                   ? '🔥 目前開放：第一階段「痛點徵件」(10/24~11/13)'
                   : stageInfo.isProposalStage
-                  ? '💡 目前開放：第二階段「想解方提案」(11/14~12/04)'
+                  ? '💡 目前開放：第二階段「創新提案」(11/14~12/04)'
                   : '🔒 非開放投稿時段'}
               </span>
             </div>
@@ -1094,7 +1099,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
                     if (stageInfo.isBeforeStart || stageInfo.isRegistrationOnlyStage) {
                       showToast('痛點徵件功能將於 10/24 00:00 正式開放！');
                     } else {
-                      showToast('第一階段「痛點徵件」已於 11/13 16:30 截止！目前開放第二階段「想解方」提案。');
+                      showToast('第一階段「痛點徵件」已於 11/13 16:30 截止！目前開放第二階段「創新提案」。');
                     }
                     return;
                   }
@@ -1156,7 +1161,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className={`font-black text-sm ${!stageInfo.isProposalStage ? 'text-stone-500' : 'text-emerald-900'}`}>
-                    第二階段：想解方（解法提案）
+                    第二階段：想解方［創新提案］
                   </div>
                   <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                     stageInfo.isProposalStage
@@ -1442,20 +1447,34 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               </div>
             </div>
           )}
+          {/* 7.5 ［創新提案］專屬：引用相關痛點與希望達成的目標 (選填) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-amber-50/50 border border-amber-200">
+            <div>
+              <label className="block text-stone-800 font-bold mb-1 flex items-center gap-1.5 text-xs sm:text-sm">
+                <Flame className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span>引用相關痛點 (選填)</span>
+              </label>
+              <PainPointAutocompleteInput
+                value={formReferencedPainPoint}
+                onChange={(val) => setFormReferencedPainPoint(val)}
+                questions={questions}
+                placeholder="輸入關鍵字自動搜尋公開痛點，或直接填寫提案者自述痛點"
+              />
+            </div>
 
-          {/* 7. 補充資料連結 / 外部連結 (選填) */}
-          <div>
-            <label className="block text-stone-800 font-bold mb-1 flex items-center gap-1.5">
-              <LinkIcon className="w-3.5 h-3.5 text-amber-600" />
-              <span>{formStage === 'pain_point' ? '補充資料連結 (選填)' : '外部連結 (產品Demo、GitHub或補充資料，選填)'}</span>
-            </label>
-            <input
-              type="url"
-              value={formExternalLink}
-              onChange={(e) => setFormExternalLink(e.target.value)}
-              placeholder="https://example.com/demo-or-reference"
-              className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-900 focus:outline-none focus:border-amber-400 font-mono text-xs"
-            />
+            <div>
+              <label className="block text-stone-800 font-bold mb-1 flex items-center gap-1.5 text-xs sm:text-sm">
+                <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>［希望達成的目標］ (選填)</span>
+              </label>
+              <input
+                type="text"
+                value={formTargetGoal}
+                onChange={(e) => setFormTargetGoal(e.target.value)}
+                placeholder="例如: 於 6 個月內完成 POC 實證、獲取首批 100 位企業付費用戶"
+                className="w-full bg-white border border-stone-200 rounded-xl p-2.5 text-stone-900 text-xs font-medium focus:outline-none focus:border-amber-400"
+              />
+            </div>
           </div>
 
           {/* 8. 簡報附件與推廣大使推薦碼 */}

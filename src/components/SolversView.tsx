@@ -157,7 +157,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
                 type="button"
                 onClick={onNavigateToLeaderboard}
                 className="px-3.5 py-2 rounded-xl sm:rounded-2xl bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-850 font-bold text-xs sm:text-sm shadow-2xs hover:shadow-xs transition-all flex items-center gap-1.5 cursor-pointer border border-stone-200/80 group shrink-0 whitespace-nowrap"
-                title="查看全平台交易榮譽榜與專家排名"
+                title="查看全平台榮譽榜與專家排名"
               >
                 <Trophy className="w-4 h-4 text-amber-600 group-hover:scale-110 transition-transform shrink-0" />
                 <span>榮譽榜</span>

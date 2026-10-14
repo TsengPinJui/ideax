@@ -1367,7 +1367,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                          {prop.stage === 'pain_point' ? '徵點子 (痛點)' : '想解方 (提案)'}
+                          {prop.stage === 'pain_point' ? '徵點子 (痛點)' : '創新提案'}
                         </span>
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
                           {trackObj?.name || '賽道'}
@@ -1721,7 +1721,7 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
                             : 'bg-amber-100 text-amber-900 border border-amber-300'
                         }`}
                       >
-                        {prop.stage === 'pain_point' ? '第一階段：徵點子（痛點）' : '第二階段：想解方（提案）'}
+                        {prop.stage === 'pain_point' ? '第一階段：徵點子（痛點）' : '第二階段：創新提案'}
                       </span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
                         {trackMeta?.name || prop.track}

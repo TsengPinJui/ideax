@@ -503,7 +503,7 @@ export function getUserNameColorClass(
 
   // 1. 管理員 -> 紫色
   if (
-    idCategory === 'a' ||
+    (idCategory as string) === 'a' ||
     effectiveId === 'user-admin' ||
     effectiveId === 'a000000001' ||
     targetUser?.role === 'admin' ||
@@ -517,7 +517,7 @@ export function getUserNameColorClass(
 
   // 2. 企業機構 -> 藍色
   if (
-    idCategory === 'b' ||
+    (idCategory as string) === 'b' ||
     targetUser?.accountType === 'enterprise' ||
     targetUser?.role === 'enterprise' ||
     targetUser?.subscriptionTier === 'enterprise' ||

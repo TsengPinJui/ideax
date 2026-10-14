@@ -691,8 +691,27 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         onBack={() => {
           setSelectedProposalForDetail(null);
           const url = new URL(window.location.href);
+          const isFromCreateIdeas =
+            sessionStorage.getItem('ideax_from_create_ideas') === 'true' ||
+            url.searchParams.get('zone') === 'create_ideas';
+
           url.searchParams.delete('proposalId');
+          url.searchParams.delete('zone');
           window.history.replaceState({}, '', url.toString());
+
+          if (isFromCreateIdeas) {
+            sessionStorage.removeItem('ideax_from_create_ideas');
+            if (onBackToOldSite) {
+              onBackToOldSite();
+            }
+            setTimeout(() => {
+              window.dispatchEvent(
+                new CustomEvent('ideax_select_special_zone', {
+                  detail: { zone: 'create_ideas' },
+                })
+              );
+            }, 50);
+          }
         }}
         onToggleLike={handleToggleLike}
         isLiked={likedProposalIds.includes(selectedProposalForDetail.id)}

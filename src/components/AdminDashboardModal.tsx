@@ -271,6 +271,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     ? 0
     : questions.filter((q) => q.status === 'open').reduce((acc, q) => acc + (q.bounty || 0), 0);
   const solvedQuestionsCount = questions.filter((q) => q.status === 'solved').length;
+  const totalTipsSiteWide = questions.reduce((acc, q) => acc + (q.supportPoints || 0), 0);
   const openQuestionsCount = questions.filter((q) => q.status === 'open').length;
 
   // Plan user counts (正式模式僅統計真實用戶，無任何模擬虛報數據)
@@ -509,7 +510,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             <span className="text-[11px] text-stone-400 font-mono">即時統計</span>
           </div>
 
-          <div className={`grid ${isNoPaymentMode ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'} gap-2.5 sm:gap-3 text-center`}>
+          <div className={`grid ${isNoPaymentMode ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'} gap-2.5 sm:gap-3 text-center`}>
             {!isNoPaymentMode && (
               <>
                 <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200">
@@ -529,6 +530,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 </div>
               </>
             )}
+
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50/80 border border-purple-200">
+              <span className="text-[11px] text-purple-800 font-bold block truncate">累積打賞總額</span>
+              <span className="text-xl sm:text-2xl font-black text-purple-700 font-mono mt-1 block">
+                NT$ {(totalTipsSiteWide || 0).toLocaleString()}
+              </span>
+              <span className="text-[10px] text-purple-600 mt-0.5 block truncate" title="全站的所有人歷史打賞金流總和">
+                全站歷史打賞金流總和
+              </span>
+            </div>
 
             <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-50 border border-stone-200">
               <span className="text-[11px] text-stone-500 font-bold block truncate">平均用戶交易額</span>

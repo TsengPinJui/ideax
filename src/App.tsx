@@ -1,3 +1,4 @@
+import { VibeCodingExhibitionView } from './components/VibeCodingExhibitionView';
 import React, { useState, useMemo, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
@@ -24,6 +25,7 @@ import { AiCrmView } from './components/AiCrmView';
 import { MembershipAndTopupFullPage } from './components/MembershipAndTopupFullPage';
 import { ChatView } from './components/ChatView';
 import { StarSeasonView } from './components/challenge/StarSeasonView';
+import { CreateIdeasZoneView } from './components/CreateIdeasZoneView';
 import { DraggableStarSeasonFloat } from './components/challenge/DraggableStarSeasonFloat';
 import { DraggableChuangdianziFloat } from './components/challenge/DraggableChuangdianziFloat';
 import { Footer } from './components/Footer';
@@ -151,8 +153,13 @@ function MainContent() {
           return 'question_detail';
         }
 
-        // 1. 發布懸賞子網址: /create
-        if (pathname.includes('/create') || search.includes('action=create') || hash.includes('create')) {
+        // 1. 發布懸賞與獨立專區發布子網址: /create, /vibecoding/publish, /vibecoding/create, /publish
+        if (
+          pathname.includes('/create') ||
+          pathname.includes('/publish') ||
+          search.includes('action=create') ||
+          hash.includes('create')
+        ) {
           return 'create_question';
         }
 
@@ -260,6 +267,15 @@ function MainContent() {
         const search = window.location.search.toLowerCase();
         const hash = window.location.hash.toLowerCase();
         if (
+          pathname.includes('/createideas') ||
+          pathname.includes('/create-ideas') ||
+          search.includes('zone=create_ideas') ||
+          search.includes('create_ideas') ||
+          hash.includes('create_ideas')
+        ) {
+          return 'create_ideas';
+        }
+        if (
           pathname.includes('/painpoints') ||
           pathname.includes('/pain-points') ||
           pathname.includes('/painpoint') ||
@@ -275,7 +291,35 @@ function MainContent() {
     return 'all';
   });
   const [isSitelinksModalOpen, setIsSitelinksModalOpen] = useState(false);
-  const [initialPostType, setInitialPostType] = useState<PostType>('seek_solution');
+  const [initialPostType, setInitialPostType] = useState<PostType>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const p = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+        if (
+          p === '/vibecoding/publish' ||
+          p === '/vibecoding/create' ||
+          p === '/vibecoding-publish' ||
+          p === '/publish/vibecoding' ||
+          p === '/create/vibecoding'
+        ) {
+          return 'vibecoding_app';
+        }
+        if (p === '/painpoints/create' || p === '/painpoint/publish' || p === '/publish/painpoint') {
+          return 'pain_point';
+        }
+        if (p === '/createideas/publish' || p === '/proposal/publish' || p === '/publish/proposal') {
+          return 'innovation_proposal';
+        }
+        const params = new URLSearchParams(window.location.search);
+        const typeParam = params.get('type') || params.get('postType');
+        if (typeParam === 'vibecoding_app' || typeParam === 'vibecoding') return 'vibecoding_app';
+        if (typeParam === 'pain_point' || typeParam === 'painpoint') return 'pain_point';
+        if (typeParam === 'innovation_proposal' || typeParam === 'proposal') return 'innovation_proposal';
+        if (typeParam === 'chat_discussion' || typeParam === 'discussion') return 'chat_discussion';
+      }
+    } catch {}
+    return 'seek_solution';
+  });
   const [initialPublishIdentity, setInitialPublishIdentity] = useState<'admin' | 'platform'>('admin');
   // 問題市場排序方式：按照用戶前一次使用的作為下次預設（預設為 recruiting_promoted 推薦）
   const [sortBy, setSortBy] = useState<QuestionSortOption>(() => {
@@ -546,7 +590,12 @@ function MainContent() {
             updateSEOForSubpage('topup');
           }
         } else if (activeTab === 'create_question') {
-          if (curPath !== '/create') {
+          if (initialPostType === 'vibecoding_app') {
+            if (curPath !== '/vibecoding/publish' && curPath !== '/vibecoding/create' && curPath !== '/publish/vibecoding') {
+              window.history.pushState({ tab: 'create_question', postType: 'vibecoding_app' }, '', '/vibecoding/publish');
+              updateSEOForSubpage('vibecoding_publish');
+            }
+          } else if (curPath !== '/create') {
             window.history.pushState({ tab: 'create_question' }, '', '/create');
             updateSEOForSubpage('create');
           }
@@ -556,21 +605,26 @@ function MainContent() {
             updateSEOForSubpage('solvers');
           }
         } else if (activeTab === 'explore') {
-          if (specialZone === 'pain_points') {
+          if (specialZone === 'vibecoding') {
+            if (curPath !== '/vibecoding') {
+              window.history.pushState({ zone: 'vibecoding' }, '', '/vibecoding');
+            }
+            updateSEOForSubpage('vibecoding');
+          } else if (specialZone === 'pain_points') {
             if (curPath !== '/painpoints') {
               window.history.pushState({ zone: 'pain_points' }, '', '/painpoints');
             }
             updateSEOForSubpage('painpoints');
           } else if (curPath === '/explore') {
             updateSEOForSubpage('explore');
-          } else if (curPath === '/painpoints' || curPath === '/create' || curPath === '/solvers' || curPath.startsWith('/challenge')) {
+          } else if (curPath === '/painpoints' || curPath === '/vibecoding' || curPath.startsWith('/vibecoding/') || curPath === '/create' || curPath === '/solvers' || curPath.startsWith('/challenge')) {
             window.history.pushState({ tab: 'explore' }, '', '/');
             resetSEOToDefault();
           }
         }
       }
     } catch {}
-  }, [activeTab, specialZone]);
+  }, [activeTab, specialZone, initialPostType]);
 
   const handleNavigateToSitelink = (item: GoogleSitelinkItem) => {
     setSelectedQuestion(null);
@@ -681,13 +735,28 @@ function MainContent() {
         }, 80);
       }
     };
+    const handleSelectSpecialZone = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.zone) {
+        setActiveTab('explore');
+        setSpecialZone(detail.zone);
+        setSelectedCategory('全部');
+        setSelectedSubcategory('全部');
+        setSelectedQuestion(null);
+        setSelectedSolver(null);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
     window.addEventListener('ideax_open_sitelinks', handleOpenSitelinks);
     window.addEventListener('ideax_navigate_sitelink', handleNavigateSitelink);
     window.addEventListener('ideax_global_search', handleGlobalSearch);
+    window.addEventListener('ideax_select_special_zone', handleSelectSpecialZone);
     return () => {
       window.removeEventListener('ideax_open_sitelinks', handleOpenSitelinks);
       window.removeEventListener('ideax_navigate_sitelink', handleNavigateSitelink);
       window.removeEventListener('ideax_global_search', handleGlobalSearch);
+      window.removeEventListener('ideax_select_special_zone', handleSelectSpecialZone);
     };
   }, []);
 
@@ -797,6 +866,11 @@ function MainContent() {
           setActiveTab('explore');
           setSpecialZone('all');
         } else if (
+          normalizedPath === '/vibecoding' || normalizedPath === '/vibe-coding' || normalizedPath === '/vibecoding-exhibition'
+        ) {
+          setActiveTab('explore');
+          setSpecialZone('vibecoding');
+        } else if (
           normalizedPath === '/painpoints' ||
           normalizedPath === '/pain-points' ||
           normalizedPath === '/painpoint' ||
@@ -804,7 +878,25 @@ function MainContent() {
         ) {
           setActiveTab('explore');
           setSpecialZone('pain_points');
-        } else if (normalizedPath === '/create') {
+        } else if (
+          normalizedPath === '/vibecoding/publish' ||
+          normalizedPath === '/vibecoding/create' ||
+          normalizedPath === '/publish/vibecoding' ||
+          normalizedPath === '/create/vibecoding' ||
+          normalizedPath === '/vibecoding-publish'
+        ) {
+          setActiveTab('create_question');
+          setInitialPostType('vibecoding_app');
+          setSpecialZone('vibecoding');
+        } else if (
+          normalizedPath === '/painpoints/create' ||
+          normalizedPath === '/painpoint/publish' ||
+          normalizedPath === '/publish/painpoint'
+        ) {
+          setActiveTab('create_question');
+          setInitialPostType('pain_point');
+          setSpecialZone('pain_points');
+        } else if (normalizedPath === '/create' || normalizedPath === '/publish') {
           setActiveTab('create_question');
         } else if (normalizedPath === '/solvers') {
           setActiveTab('solvers');
@@ -1147,6 +1239,16 @@ function MainContent() {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
 
+        // 5. 最高打賞
+        if (sortBy === 'highest_tips') {
+          const aTips = a.supportPoints || 0;
+          const bTips = b.supportPoints || 0;
+          if (bTips !== aTips) {
+            return bTips - aTips;
+          }
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
   }, [
@@ -1254,6 +1356,22 @@ function MainContent() {
       setInitialPublishIdentity(identity);
     }
     setActiveTab('create_question');
+
+    try {
+      if (typeof window !== 'undefined') {
+        let targetPath = '/create';
+        if (type === 'vibecoding_app') {
+          targetPath = '/vibecoding/publish';
+          updateSEOForSubpage('vibecoding_publish');
+        } else if (type === 'pain_point') {
+          targetPath = '/painpoints/create';
+          updateSEOForSubpage('painpoints');
+        } else {
+          updateSEOForSubpage('create');
+        }
+        window.history.pushState({ tab: 'create_question', postType: type }, '', targetPath);
+      }
+    } catch {}
   };
 
   return (
@@ -1373,6 +1491,61 @@ function MainContent() {
             <div id="market-grid" className="scroll-mt-20 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-4 pb-12 sm:pt-6 sm:pb-16">
               <div className="space-y-3 sm:space-y-6">
                 {/* Special Zone Banners */}
+                                {specialZone === 'vibecoding' && (
+                  <VibeCodingExhibitionView
+                    onSelectApp={(app) => {
+                      setSelectedQuestion(app);
+                      setActiveTab('question_detail');
+                    }}
+                    onOpenCreateApp={() => handleOpenCreateWithType('vibecoding_app')}
+                    onCloseZone={() => {
+                      setSpecialZone('all');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    onTogglePin={() => handleTogglePin('special_zone', 'vibecoding')}
+                    isPinned={pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'vibecoding'}
+                  />
+                )}
+                {specialZone === 'create_ideas' && (
+                  <CreateIdeasZoneView
+                    onSelectProposal={(proposal) => {
+                      try {
+                        sessionStorage.setItem('ideax_from_create_ideas', 'true');
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('proposalId', proposal.id);
+                        url.searchParams.set('zone', 'create_ideas');
+                        window.history.pushState({ proposalId: proposal.id }, '', url.toString());
+                      } catch {}
+                      setActiveTab('star_season');
+                      setTimeout(() => {
+                        window.dispatchEvent(
+                          new CustomEvent('ideax_challenge_navigate', {
+                            detail: { subView: 'proposal', proposalId: proposal.id },
+                          })
+                        );
+                      }, 0);
+                    }}
+                    onOpenCreateProposal={() => {
+                      setActiveTab('star_season');
+                      setTimeout(() => {
+                        window.dispatchEvent(
+                          new CustomEvent('ideax_challenge_navigate', {
+                            detail: { subView: 'submit' },
+                          })
+                        );
+                      }, 0);
+                    }}
+                    onCloseZone={() => {
+                      setActiveTab('star_season');
+                      setSpecialZone('all');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    onTogglePin={() => handleTogglePin('special_zone', 'create_ideas')}
+                    isPinned={pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'create_ideas'}
+                    onOpenAuth={() => openAuthModal('login')}
+                  />
+                )}
+
                 {specialZone === 'pain_points' && (
                   <div className="p-4 rounded-3xl bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 border border-rose-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-200">
                     <div className="flex items-center gap-3 flex-wrap">
@@ -1677,8 +1850,9 @@ function MainContent() {
                   />
                 )}
 
-                {/* Questions Grid */}
-                {filteredQuestions.length === 0 ? (
+                {/* Questions Grid (創點子專區時不重複顯示問題卡片) */}
+                {specialZone !== 'create_ideas' && (
+                  filteredQuestions.length === 0 ? (
                   <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-stone-300 space-y-3">
                     <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 mx-auto flex items-center justify-center">
                       <Filter className="w-6 h-6" />
@@ -1738,7 +1912,7 @@ function MainContent() {
                       );
                     })}
                   </div>
-                )}
+                ))}
               </div>
             </div>
           </div>

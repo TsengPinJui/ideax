@@ -77,6 +77,19 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
+  const isFromCreateIdeas = React.useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const url = new URL(window.location.href);
+      return (
+        sessionStorage.getItem('ideax_from_create_ideas') === 'true' ||
+        url.searchParams.get('zone') === 'create_ideas'
+      );
+    } catch {
+      return false;
+    }
+  }, []);
+
   // 分享出去（帶文字說明推薦引言，直通 LINE、FB、IG、Threads 等社群；降級時複製純網址）
 
   // 2. 分享出去（帶文字說明推薦引言，直通 LINE、FB、IG、Threads 等社群）
@@ -175,14 +188,14 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               type="button"
               onClick={onBack}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-colors cursor-pointer shrink-0 active:scale-95"
-              title="返回提案總覽"
+              title={isFromCreateIdeas ? "返回創點子" : "返回提案總覽"}
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>返回列表</span>
+              <span>{isFromCreateIdeas ? "返回創點子" : "返回列表"}</span>
             </button>
             <div className="hidden sm:flex items-center gap-1.5 text-xs text-stone-400 font-medium truncate">
               <span>/</span>
-              <span className="text-stone-600">創星季提案</span>
+              <span className="text-stone-600">{isFromCreateIdeas ? "創點子專區" : "創星季提案"}</span>
               <span>/</span>
               <span className="text-stone-900 font-bold truncate max-w-[200px]">{proposal.title}</span>
             </div>
@@ -228,7 +241,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                 ? 'bg-rose-100 text-rose-800 border border-rose-200'
                 : 'bg-amber-100 text-amber-900 border border-amber-300'
             }`}>
-              {proposal.stage === 'pain_point' ? '第一階段：徵點子（痛點）' : '第二階段：想解方（解法）'}
+              {proposal.stage === 'pain_point' ? '第一階段：徵點子（痛點）' : '第二階段：創新提案'}
             </span>
 
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
@@ -282,23 +295,23 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           </div>
         </section>
 
-        {/* 2. 創星幣模擬募資注資橫條 */}
+        {/* 2. ［點數支持］橫條 */}
         <section className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 rounded-3xl p-5 sm:p-6 border-2 border-amber-300 shadow-sm space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
               <div className="font-black text-stone-900 text-sm sm:text-base flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>使用 創星幣 支持你認同的創新提案</span>
+                <span>點數支持你認同的創新提案</span>
               </div>
               <div className="text-xs text-stone-500 mt-0.5">
-                模擬市場關注度驗證，推升競賽排名與人氣指數
+                為優質作品表達認同與期待，推升點子排名與人氣指數
               </div>
             </div>
             <div className="text-right">
               <span className="font-mono font-black text-amber-900 text-xl sm:text-2xl">
                 {(proposal.supportPoints || 0).toLocaleString()}
               </span>
-              <span className="text-xs text-amber-950 font-bold ml-1.5">創星幣</span>
+              <span className="text-xs text-amber-950 font-bold ml-1.5">點支持</span>
             </div>
           </div>
 
@@ -307,8 +320,11 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               <Users className="w-3.5 h-3.5 text-stone-500" />
               <span>支持人次：<strong className="text-stone-900 font-mono font-bold">{proposal.supporterCount || 0}</strong> 人</span>
             </span>
-            <span className="text-[11px] text-amber-900 font-medium">
-              全網人氣排名累計中
+            <span className="text-[11px] text-amber-900 font-bold flex items-center gap-1">
+              <span>刊登狀態：</span>
+              <strong className="text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200">
+                {proposal.unpublishAt ? `刊登至 ${proposal.unpublishAt} 止` : '♾️ 預設永久刊登'}
+              </strong>
             </span>
           </div>
 
@@ -320,24 +336,39 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                 className="w-full py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
               >
                 <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
-                <span>使用 創星幣 支持此提案</span>
+                <span>給予點數支持</span>
               </button>
             </div>
           )}
         </section>
 
-        {/* 3. 關聯痛點來源資訊（解方提案才顯示） */}
-        {proposal.sourcePainPointTitle && (
+        {/* 3. 關聯痛點與引用痛點資訊 */}
+        {(proposal.sourcePainPointTitle || proposal.referencedPainPoint) && (
           <section className="bg-emerald-50/80 rounded-3xl p-5 sm:p-6 border border-emerald-200 space-y-2">
             <div className="flex items-center gap-2 text-emerald-900 font-black text-sm">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span>本解方提案採用的來源痛點</span>
+              <span>本解方提案採用的來源/引用痛點</span>
             </div>
             <p className="text-stone-800 font-bold text-sm bg-white/80 p-3 rounded-2xl border border-emerald-100">
-              {proposal.sourcePainPointTitle}
+              {proposal.sourcePainPointTitle || proposal.referencedPainPoint}
             </p>
-            <p className="text-xs text-emerald-700 leading-relaxed">
-              ★ 獲專家評審評定為前三名獲獎解方時，此痛點提出者將一併獲得激勵獎勵！
+            {proposal.sourcePainPointTitle && (
+              <p className="text-xs text-emerald-700 leading-relaxed">
+                ★ 獲專家評審評定為前三名獲獎解方時，此痛點提出者將一併獲得激勵獎勵！
+              </p>
+            )}
+          </section>
+        )}
+
+        {/* 希望達成的目標 (選填展示) */}
+        {proposal.targetGoal && (
+          <section className="bg-amber-50/80 rounded-3xl p-5 sm:p-6 border border-amber-200 space-y-2">
+            <div className="flex items-center gap-2 text-amber-950 font-black text-sm">
+              <Trophy className="w-5 h-5 text-amber-600 shrink-0" />
+              <span>［希望達成的目標］</span>
+            </div>
+            <p className="text-stone-800 font-medium text-sm bg-white/80 p-3.5 rounded-2xl border border-amber-200/80 leading-relaxed">
+              {proposal.targetGoal}
             </p>
           </section>
         )}
@@ -652,7 +683,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             className="px-5 py-2.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>返回提案列表</span>
+            <span>{isFromCreateIdeas ? '返回創點子' : '返回提案列表'}</span>
           </button>
         </div>
       </main>

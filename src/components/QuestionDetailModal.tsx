@@ -32,6 +32,10 @@ import {
   Share2,
   Check,
   FileText,
+  Terminal,
+  Cpu,
+  Globe,
+  Image as ImageIcon,
   UploadCloud,
   FileSpreadsheet,
   Download,
@@ -55,7 +59,10 @@ import {
   FileSearch,
   Hand,
   ThumbsUp,
+  Coins,
+  Heart,
 } from 'lucide-react';
+import { TipPainPointModal } from './TipPainPointModal';
 import { SeoPreviewModal } from './SeoPreviewModal';
 import { getQuestionShareUrl } from '../services/seoService';
 import { copyToClipboard } from '../utils/clipboard';
@@ -269,6 +276,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   // SEO & Share modal
   const [isSeoModalOpen, setIsSeoModalOpen] = useState(false);
   const [isShareCopied, setIsShareCopied] = useState(false);
+  const [isTipModalOpen, setIsTipModalOpen] = useState(false);
 
   // Dispute report state
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
@@ -840,98 +848,27 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
           )}
 
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3 justify-between flex-wrap">
-              <div className="flex-1 min-w-[240px]">
-                <h1 className="text-xl sm:text-2xl font-black text-stone-900 leading-snug">
-                  {question.title}
-                </h1>
-              </div>
-            </div>
-
-            {/* 操作按鈕群：管理員顯示「違規/刪除」，非管理員僅顯示圖式檢舉鍵 */}
-            {isAdmin ? (
-              <div className="flex items-center gap-2 pt-1 flex-wrap">
-                {question.status === 'delisted' ? (
+          {isPainPoint ? (
+            <div className="flex items-center gap-2">
+              <div
+                className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border border-rose-300 bg-rose-50/80 shadow-2xs"
+                title={(question.bounty || 0) > 0 ? '痛點提問懸賞' : '痛點'}
+              >
+                {(question.bounty || 0) > 0 ? (
                   <>
-                    <button
-                      type="button"
-                      onClick={handleRelistQuestion}
-                      className="min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                      title="恢復此問題之公開上架"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>恢復上架</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsConfirmDeleteQuestionOpen(true)}
-                      className="min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-black text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                      title="立即永久徹底抹除資料"
-                    >
-                      <Trash className="w-3.5 h-3.5 text-rose-600" />
-                      <span>永久抹除</span>
-                    </button>
+                    <span className="text-[11px] font-bold text-rose-700 block">
+                      痛點懸賞
+                    </span>
+                    <span className="text-lg sm:text-xl font-black text-rose-600 font-mono">
+                      NT$ {(question.bounty || 0).toLocaleString()}
+                    </span>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUnifiedActionTab('violation');
-                      setIsUnifiedActionModalOpen(true);
-                    }}
-                    className="min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-black text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
-                    title="管理員：問題違規下架或直接刪除暫存處置"
-                  >
-                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-                    <span>違規/刪除</span>
-                  </button>
+                  <span className="text-base sm:text-lg font-black text-rose-600 font-mono py-0.5 block">
+                    痛點
+                  </span>
                 )}
               </div>
-            ) : (
-              /* 非管理員：不出現「違規/刪除」，改為只有圖式的檢舉鍵 */
-              <div className="flex items-center gap-2 pt-1 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setIsDisputeModalOpen(true)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-stone-400 hover:text-purple-600 hover:bg-purple-50 border border-stone-200 hover:border-purple-200 transition-all cursor-pointer shadow-2xs active:scale-95"
-                  title="舉報此問題"
-                  aria-label="舉報此問題"
-                >
-                  <Flag className="w-4 h-4 text-purple-600" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {isNoPaymentMode ? (
-            <div className="text-right shrink-0">
-              <span className="text-[11px] font-semibold text-stone-500 block">無金流交流模式</span>
-              <span className="text-xs sm:text-sm font-black text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300">
-                全站免費提案
-              </span>
-            </div>
-          ) : isPainPoint ? (
-            <div
-              className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border border-rose-300 bg-rose-50/80 shadow-2xs"
-              title={(question.bounty || 0) > 0 ? '痛點提問懸賞' : '痛點'}
-            >
-              {(question.bounty || 0) > 0 ? (
-                <>
-                  <span className="text-[11px] font-bold text-rose-700 block">
-                    痛點懸賞
-                  </span>
-                  <span className="text-lg sm:text-xl font-black text-rose-600 font-mono">
-                    NT$ {(question.bounty || 0).toLocaleString()}
-                  </span>
-                </>
-              ) : (
-                <span className="text-base sm:text-lg font-black text-rose-600 font-mono py-0.5 block">
-                  痛點
-                </span>
-              )}
             </div>
           ) : (question.bounty || 0) > 0 ? (
             <div className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border border-amber-300 bg-amber-50/60">
@@ -1107,6 +1044,22 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 </button>
               )}
 
+              {/* 讀者打賞支持按鈕（點數存在應收帳款，每週結算） */}
+              <button
+                type="button"
+                onClick={() => setIsTipModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border border-amber-300 bg-amber-100 hover:bg-amber-200 text-amber-900 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                title="打賞支持此痛點/問題作者（點數存在作者應收帳款，每週結算）"
+              >
+                <Coins className="w-3.5 h-3.5 text-amber-600 fill-amber-400" />
+                <span>打賞支持</span>
+                {question.supportPoints ? (
+                  <span className="font-mono font-black text-amber-800">
+                    ({question.supportPoints.toLocaleString()}點)
+                  </span>
+                ) : null}
+              </button>
+
               {/* 分享該問題/痛點按鈕 (帶文字說明推薦引言，不顯示「已開啟分享」) */}
               <button
                 onClick={handleShareQuestion}
@@ -1119,6 +1072,84 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
           </div>
         </div>
+
+                {/* VibeCoding / 展場作品專屬多媒體大圖、圖集、技術架構與線上網址 */}
+        {(question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || question.techArchitecture || question.demoUrl) && (
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/90 via-indigo-50/40 to-white border border-purple-200/90 shadow-2xs space-y-4">
+            {/* 封面大圖 */}
+            {question.coverImage && (
+              <div className="relative w-full h-56 sm:h-72 rounded-xl overflow-hidden bg-stone-900 border border-purple-200 shadow-sm">
+                <img
+                  src={question.coverImage}
+                  alt={question.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-3 left-3 bg-purple-900/90 text-white backdrop-blur-md px-3 py-1 rounded-lg text-xs font-black flex items-center gap-1.5 border border-purple-400/50">
+                  <Terminal className="w-3.5 h-3.5 text-purple-300" />
+                  <span>VibeCoding / 提案封面大圖</span>
+                </div>
+              </div>
+            )}
+            {/* Gallery Images (0~6張圖片) */}
+            {question.galleryImages && question.galleryImages.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-purple-600" />
+                  <span>功能介面與展示畫冊 ({question.galleryImages.length} 張截圖)</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {question.galleryImages.map((imgUrl, idx) => (
+                    <a
+                      key={idx}
+                      href={imgUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative h-28 sm:h-36 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 hover:border-purple-400 transition-all cursor-pointer"
+                    >
+                      <img
+                        src={imgUrl}
+                        alt="截圖"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <ExternalLink className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Tech Architecture & Demo Link Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-purple-100">
+              {question.techArchitecture && (
+                <div className="p-3 rounded-xl bg-white border border-purple-200 text-xs space-y-1">
+                  <div className="font-extrabold text-purple-900 flex items-center gap-1.5">
+                    <Cpu className="w-3.5 h-3.5 text-purple-600" />
+                    <span>技術架構</span>
+                  </div>
+                  <p className="font-mono text-stone-700 leading-normal">{question.techArchitecture}</p>
+                </div>
+              )}
+              {question.demoUrl && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs flex flex-col justify-between gap-2">
+                  <div className="font-extrabold text-emerald-900 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>線上成果網站 / 檔案連結</span>
+                  </div>
+                  <a
+                    href={question.demoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>前往體驗成果網址</span>
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Question Full Description & AI Tags Section */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-3.5">
@@ -3232,6 +3263,15 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         answers={answers}
         isOpen={isSeoModalOpen}
         onClose={() => setIsSeoModalOpen(false)}
+      />
+
+      <TipPainPointModal
+        isOpen={isTipModalOpen}
+        onClose={() => setIsTipModalOpen(false)}
+        question={question}
+        onSuccess={() => {
+          // Refresh or toast is handled inside modal
+        }}
       />
     </>
   );

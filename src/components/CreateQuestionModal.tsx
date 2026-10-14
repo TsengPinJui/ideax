@@ -7,6 +7,7 @@ import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 import { resolveUserDisplayName, getUserNameColorClass } from '../utils/userDisplay';
 import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
+import { PainPointAutocompleteInput } from './PainPointAutocompleteInput';
 import {
   X,
   Sparkles,
@@ -28,6 +29,12 @@ import {
   Megaphone,
   Plus,
   Trash2,
+  Trophy,
+  Terminal,
+  Image as ImageIcon,
+  Globe,
+  Cpu,
+  Code2,
 } from 'lucide-react';
 
 interface CreateQuestionModalProps {
@@ -47,6 +54,91 @@ const CATEGORIES: Category[] = [
   '日常疑難',
 ];
 
+const getPostTypeName = (type: PostType): string => {
+  switch (type) {
+    case 'seek_solution':
+      return '尋求解答';
+    case 'innovation_proposal':
+      return '創新提案';
+    case 'pain_point':
+      return '提出痛點';
+    case 'vibecoding_app':
+      return '程式或網站';
+    case 'chat_discussion':
+      return '閒聊討論';
+    default:
+      return '提問發布';
+  }
+};
+
+const getTitleLabel = (type: PostType): string => {
+  switch (type) {
+    case 'pain_point':
+      return '痛點標題 *';
+    case 'seek_solution':
+      return '問題標題 / 核心需求 *';
+    case 'innovation_proposal':
+      return '提案標題 / 創新主題 *';
+    case 'vibecoding_app':
+      return '作品名稱 / 應用標題 *';
+    case 'chat_discussion':
+      return '討論主題 / 標題 *';
+    default:
+      return '標題 *';
+  }
+};
+
+const getTitlePlaceholder = (type: PostType): string => {
+  switch (type) {
+    case 'pain_point':
+      return '例如：傳統實體早餐店上班尖峰排隊流失與備料浪費嚴重';
+    case 'seek_solution':
+      return '例如：傳統實體早餐店如何解決上班尖峰排隊流失與備料浪費？';
+    case 'innovation_proposal':
+      return '例如：基於 AI 的智慧早餐店預訂與動態備料系統提案';
+    case 'vibecoding_app':
+      return '例如：VibeBreakfast - 10分鐘用 AI 生成的早餐店預訂 Line Web App';
+    case 'chat_discussion':
+      return '例如：大家在進行 VibeCoding 時最常遇到的 Prompt 瓶頸是什麼？';
+    default:
+      return '請輸入標題...';
+  }
+};
+
+const getDescriptionLabel = (type: PostType): string => {
+  switch (type) {
+    case 'pain_point':
+      return '痛點背景與情境需求 *';
+    case 'seek_solution':
+      return '問題背景與具體情境需求 *';
+    case 'innovation_proposal':
+      return '提案內容與創新亮點說明 *';
+    case 'vibecoding_app':
+      return '作品簡介與特色說明 *';
+    case 'chat_discussion':
+      return '討論內容與交流背景 *';
+    default:
+      return '內容說明 *';
+  }
+};
+
+const getDescriptionPlaceholder = (type: PostType): string => {
+  switch (type) {
+    case 'pain_point':
+      return '詳細描述您在日常工作、生活或商業運營中發現的真實痛點與困境，讓專業解答者能看清癥結，為您提供專屬落地解法...';
+    case 'seek_solution':
+      return '詳述您的團隊現況、試過的方法、面臨的瓶頸，以及希望解答者提供的方案維度（如財務模型、合作條款、執行步驟等）...';
+    case 'innovation_proposal':
+      return '詳述您的創新提案內容、核心理念、欲解決的目標問題、技術或商業模式亮點，吸引社群與合作夥伴關注...';
+    case 'vibecoding_app':
+      return '介紹您的作品核心功能、開發動機、解決的痛點、使用到的工具（如 Cursor, Claude, Bolt）及成果亮點...';
+    case 'chat_discussion':
+      return '簡述您想與大家交流的生活經驗、職場觀察或看法探討，邀請社群成員一起交流討論（20 ~ 300 字）...';
+    default:
+      return '請輸入詳細說明...';
+  }
+};
+
 export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   onClose,
   onSuccess,
@@ -56,7 +148,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   initialPostType = 'seek_solution',
   initialPublishIdentity = 'admin',
 }) => {
-  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode, isRaceMode } = useApp();
+  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode, isRaceMode, questions } = useApp();
 
   const [publishIdentity, setPublishIdentity] = useState<'admin' | 'platform'>(initialPublishIdentity || 'admin');
 
@@ -82,6 +174,15 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   );
   const [deadlineDays, setDeadlineDays] = useState<number>(14);
   const [paymentMethod, setPaymentMethod] = useState<'帳戶點數付點' | '信用卡' | 'LINE Pay' | 'Apple Pay' | 'ATM 轉帳'>('帳戶點數付點');
+  const [referencedPainPoint, setReferencedPainPoint] = useState('');
+  const [targetGoal, setTargetGoal] = useState('');
+
+  // VibeCoding 專屬欄位狀態
+  const [coverImage, setCoverImage] = useState<string>('');
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [newGalleryInput, setNewGalleryInput] = useState<string>('');
+  const [techArchitecture, setTechArchitecture] = useState<string>('');
+  const [demoUrl, setDemoUrl] = useState<string>('');
 
   // 多階段交付設定（支援自訂階段數量、名稱、目標、預計交付與價格）
   const [enablePhasedDelivery, setEnablePhasedDelivery] = useState(false);
@@ -207,10 +308,31 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       // 痛點免費提出：預設 L0，0 懸賞
       setLevel('L0');
       setBounty(0);
+    } else if (type === 'innovation_proposal') {
+      // 創新提案：預設 L0，0 懸賞
+      setLevel('L0');
+      setBounty(0);
+    } else if (type === 'vibecoding_app') {
+      // VibeCoding 網站程式/應用展示：預設 L0，0 懸賞
+      setLevel('L0');
+      setBounty(0);
+      setCategory('網站程式');
+      setSubcategory('網站程式');
     } else {
       if (bounty === 0) setBounty(500);
       if (level === 'L0') setLevel('L2');
     }
+
+    try {
+      if (isFullPage && typeof window !== 'undefined') {
+        let path = '/create';
+        if (type === 'vibecoding_app') path = '/vibecoding/publish';
+        else if (type === 'pain_point') path = '/painpoint/publish';
+        else if (type === 'innovation_proposal') path = '/proposal/publish';
+        else if (type === 'chat_discussion') path = '/discussion/publish';
+        window.history.pushState({ tab: 'create_question', postType: type }, '', path);
+      }
+    } catch {}
   };
 
   useEffect(() => {
@@ -262,20 +384,22 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
     const titleLen = title.trim().length;
     if (titleLen < titleMin || titleLen > titleMax) {
+      const cleanTitleLabel = getTitleLabel(postType).replace(' *', '');
       setTermsError(
         isL0OrChatType
-          ? `【閒聊討論/L0】問題標題需介於 8 ~ 30 個字（目前已輸入 ${titleLen} 字）`
-          : `問題標題需介於 10 ~ 50 個字（目前已輸入 ${titleLen} 字）`
+          ? `【閒聊討論/L0】${cleanTitleLabel}需介於 8 ~ 30 個字（目前已輸入 ${titleLen} 字）`
+          : `【${getPostTypeName(postType)}】${cleanTitleLabel}需介於 10 ~ 50 個字（目前已輸入 ${titleLen} 字）`
       );
       return;
     }
 
     const descLen = description.trim().length;
     if (descLen < descMin || descLen > descMax) {
+      const cleanDescLabel = getDescriptionLabel(postType).replace(' *', '');
       setTermsError(
         isL0OrChatType
-          ? `【閒聊討論/L0】問題內容需介於 20 ~ 300 個字（目前已輸入 ${descLen} 字）`
-          : `問題內容需介於 30 ~ 3000 個字（目前已輸入 ${descLen} 字）`
+          ? `【閒聊討論/L0】${cleanDescLabel}需介於 20 ~ 300 個字（目前已輸入 ${descLen} 字）`
+          : `【${getPostTypeName(postType)}】${cleanDescLabel}需介於 30 ~ 3000 個字（目前已輸入 ${descLen} 字）`
       );
       return;
     }
@@ -372,13 +496,21 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       const newQuestion = createQuestion({
         title,
         description: finalDescription,
-        category: finalCategory,
-        subcategory: finalSubcategory,
-        tags: finalTags,
+        category: postType === 'vibecoding_app' ? '網站程式' : finalCategory,
+        subcategory: postType === 'vibecoding_app' ? (subcategory || '網站程式') : finalSubcategory,
+        tags: postType === 'vibecoding_app' ? Array.from(new Set(['VibeCoding', '網站程式', ...finalTags])) : finalTags,
         level,
         bounty: currentBounty,
         deadline,
         postType,
+        specialZone: postType === 'vibecoding_app' ? 'vibecoding' : undefined,
+        referencedPainPoint: referencedPainPoint.trim() || undefined,
+        targetGoal: targetGoal.trim() || undefined,
+        coverImage: coverImage.trim() || undefined,
+        galleryImages: galleryImages.length > 0 ? galleryImages : undefined,
+        techArchitecture: techArchitecture.trim() || undefined,
+        demoUrl: demoUrl.trim() || externalLink.trim() || undefined,
+        fileUrl: externalLink.trim() || undefined,
         isFeatured: isPromotedWithMegaphone,
         authorId,
         authorName,
@@ -529,71 +661,123 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             <Target className="w-3.5 h-3.5 text-amber-600" />
             <span>提問類型 *</span>
           </label>
-          <div className="grid grid-cols-3 gap-2.5">
-            {/* 尋求解答 */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {/* 1. 尋求解答 */}
             <button
               type="button"
               onClick={() => handlePostTypeChange('seek_solution')}
-              className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+              className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
                 postType === 'seek_solution'
                   ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-300 shadow-2xs'
                   : 'bg-white hover:bg-stone-50 border-stone-200'
               }`}
             >
-              <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-800 flex items-center justify-center font-black">
-                <Sparkles className="w-4 h-4" />
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-amber-500/20 text-amber-800 flex items-center justify-center font-black">
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
               <div>
-                <h4 className="text-xs sm:text-sm font-extrabold text-stone-900">尋求解答</h4>
-                <p className="text-[11px] text-stone-500 line-clamp-1 mt-0.5">
-                  自訂懸賞尋找破局方案
+                <h4 className="text-xs font-extrabold text-stone-900">尋求解答</h4>
+                <p className="text-[10px] text-stone-500 line-clamp-1 mt-0.5">
+                  懸賞破局方案
                 </p>
               </div>
             </button>
 
-            {/* 提出痛點 */}
+            {/* 2. 創新提案 */}
+            <button
+              type="button"
+              onClick={() => handlePostTypeChange('innovation_proposal')}
+              className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                postType === 'innovation_proposal'
+                  ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-300 shadow-2xs'
+                  : 'bg-white hover:bg-stone-50 border-stone-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-500/20 text-emerald-800 flex items-center justify-center font-black">
+                  <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
+                </div>
+                <span className="text-[9px] font-black bg-emerald-600 text-white px-1 py-0.2 rounded shadow-2xs">
+                  創點子
+                </span>
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-stone-900">創新提案</h4>
+                <p className="text-[10px] text-stone-500 line-clamp-1 mt-0.5">
+                  創新解方發表
+                </p>
+              </div>
+            </button>
+
+            {/* 3. 提出痛點 */}
             <button
               type="button"
               onClick={() => handlePostTypeChange('pain_point')}
-              className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+              className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
                 postType === 'pain_point'
                   ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-300 shadow-2xs'
                   : 'bg-white hover:bg-stone-50 border-stone-200'
               }`}
             >
               <div className="flex items-center justify-between">
-                <div className="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-800 flex items-center justify-center font-black">
-                  <Flame className="w-4 h-4" />
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-rose-500/20 text-rose-800 flex items-center justify-center font-black">
+                  <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <span className="text-[10px] font-black bg-rose-600 text-white px-1.5 py-0.2 rounded-md shadow-2xs">
-                  {isRaceMode ? '競賽期間免費' : '提出痛點'}
+                <span className="text-[9px] font-black bg-rose-600 text-white px-1 py-0.2 rounded shadow-2xs">
+                  {isRaceMode ? '免費' : '痛點'}
                 </span>
               </div>
               <div>
-                <h4 className="text-xs sm:text-sm font-extrabold text-stone-900">提出痛點</h4>
-                <p className="text-[11px] text-stone-500 line-clamp-1 mt-0.5">
-                  {isRaceMode ? '競賽期間免費' : '生活與產業真實痛點'}
+                <h4 className="text-xs font-extrabold text-stone-900">提出痛點</h4>
+                <p className="text-[10px] text-stone-500 line-clamp-1 mt-0.5">
+                  生活產業痛點
                 </p>
               </div>
             </button>
 
-            {/* 閒聊討論 */}
+            {/* 4. 程式或網站 (VibeCoding展場) */}
+            <button
+              type="button"
+              onClick={() => handlePostTypeChange('vibecoding_app')}
+              className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                postType === 'vibecoding_app'
+                  ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-300 shadow-2xs'
+                  : 'bg-white hover:bg-stone-50 border-stone-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-purple-500/20 text-purple-800 flex items-center justify-center font-black">
+                  <Terminal className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600" />
+                </div>
+                <span className="text-[9px] font-black bg-purple-600 text-white px-1 py-0.2 rounded shadow-2xs">
+                  展場
+                </span>
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-stone-900">程式或網站</h4>
+                <p className="text-[10px] text-stone-500 line-clamp-1 mt-0.5">
+                  VibeCoding 應用
+                </p>
+              </div>
+            </button>
+
+            {/* 5. 閒聊討論 */}
             <button
               type="button"
               onClick={() => handlePostTypeChange('chat_discussion')}
-              className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+              className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
                 postType === 'chat_discussion'
                   ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-300 shadow-2xs'
                   : 'bg-white hover:bg-stone-50 border-stone-200'
               }`}
             >
-              <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-800 flex items-center justify-center font-black">
-                <MessageCircle className="w-4 h-4" />
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-blue-500/20 text-blue-800 flex items-center justify-center font-black">
+                <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
               <div>
-                <h4 className="text-xs sm:text-sm font-extrabold text-stone-900">閒聊討論</h4>
-                <p className="text-[11px] text-stone-500 line-clamp-1 mt-0.5">
-                  L0 交流無門檻探討
+                <h4 className="text-xs font-extrabold text-stone-900">閒聊討論</h4>
+                <p className="text-[10px] text-stone-500 line-clamp-1 mt-0.5">
+                  L0 交流無門檻
                 </p>
               </div>
             </button>
@@ -624,7 +808,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-              <span>{postType === 'chat_discussion' ? '討論標題 *' : '問題標題 / 核心痛點 *'}</span>
+              <span>{getTitleLabel(postType)}</span>
               <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border ${
                 postType === 'chat_discussion' 
                   ? 'text-blue-800 bg-blue-100/70 border-blue-300/80' 
@@ -651,13 +835,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               setTitle(e.target.value);
               if (termsError) setTermsError(null);
             }}
-            placeholder={
-              postType === 'chat_discussion'
-                ? '例如：大家對於遠距辦公溝通效率有什麼看法？'
-                : postType === 'pain_point'
-                ? '例如：傳統實體早餐店如何解決上班尖峰排隊流失與備料浪費？'
-                : '例如：校園共享雨傘如何從租借收入轉向商家合作模式？'
-            }
+            placeholder={getTitlePlaceholder(postType)}
             className="w-full px-4 py-2.5 rounded-xl border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 text-stone-900 text-sm font-medium outline-none transition-all"
           />
         </div>
@@ -666,7 +844,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-              <span>{postType === 'chat_discussion' ? '討論內容與交流背景 *' : '問題背景與具體情境需求 *'}</span>
+              <span>{getDescriptionLabel(postType)}</span>
               <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border ${
                 postType === 'chat_discussion' 
                   ? 'text-blue-800 bg-blue-100/70 border-blue-300/80' 
@@ -693,16 +871,166 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               setDescription(e.target.value);
               if (termsError) setTermsError(null);
             }}
-            placeholder={
-              postType === 'chat_discussion'
-                ? '簡述您想與大家交流的生活經驗、職場觀察或看法探討（20 ~ 300 字）...'
-                : postType === 'pain_point'
-                ? '詳述您在日常工作、生活或商業運營中發現的真實痛點與困境，讓專業解題者能看清癥結，為您提供專屬落地解法...'
-                : '詳述您的團隊現況、試過的方法、面臨的瓶頸，以及希望解答者提供的方案維度（如財務模型、合作條款、執行步驟等）...'
-            }
+            placeholder={getDescriptionPlaceholder(postType)}
             className="w-full px-4 py-2.5 rounded-xl border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 text-stone-900 text-sm font-normal outline-none transition-all leading-relaxed"
           />
         </div>
+
+        {/* 創新提案 / 引用相關痛點與希望達成的目標 (選填) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200">
+          <div>
+            <label className="block text-stone-800 font-bold mb-1 flex items-center gap-1.5 text-xs">
+              <Flame className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+              <span>引用相關痛點 (選填)</span>
+            </label>
+            <PainPointAutocompleteInput
+              value={referencedPainPoint}
+              onChange={(val) => setReferencedPainPoint(val)}
+              questions={questions}
+              placeholder="輸入關鍵字自動搜尋公開痛點，或直接填寫提案者自述痛點"
+            />
+          </div>
+
+          <div>
+            <label className="block text-stone-800 font-bold mb-1 flex items-center gap-1.5 text-xs">
+              <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>［希望達成的目標］ (選填)</span>
+            </label>
+            <input
+              type="text"
+              value={targetGoal}
+              onChange={(e) => setTargetGoal(e.target.value)}
+              placeholder="例: 於 6 個月內完成 POC 實證並獲得 100 位企業付費用戶"
+              className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 text-stone-900 text-xs outline-none bg-white font-medium"
+            />
+          </div>
+        </div>
+
+        {/* VibeCoding 展場專屬欄位：封面大圖、0~6張圖片圖集、技術架構、成果網址 */}
+        {postType === 'vibecoding_app' && (
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50 via-indigo-50/50 to-purple-50/30 border border-purple-200/90 space-y-3.5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold">
+                  <Terminal className="w-3.5 h-3.5" />
+                </div>
+                <h4 className="text-xs font-black text-purple-950">VibeCoding 應用多媒體與架構展示</h4>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-200/80 text-purple-900 border border-purple-300">
+                專屬展場內容
+              </span>
+            </div>
+
+            {/* 封面大圖 */}
+            <div>
+              <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-purple-600" />
+                  <span>作品封面大圖 URL (選填/建議)</span>
+                </span>
+                <span className="text-[10px] text-purple-700">支援 Unsplash, Imgur 等圖片網址</span>
+              </label>
+              <input
+                type="url"
+                value={coverImage}
+                onChange={(e) => setCoverImage(e.target.value)}
+                placeholder="https://images.unsplash.com/photo-... (或填寫線上圖片連結)"
+                className="w-full px-3 py-2 rounded-xl border border-purple-200 focus:border-purple-500 text-xs text-stone-900 outline-none bg-white font-mono"
+              />
+              {coverImage.trim() && (
+                <div className="mt-2 relative w-full h-36 rounded-xl overflow-hidden border border-purple-300 bg-stone-900">
+                  <img src={coverImage} alt="封面預覽" className="w-full h-full object-cover" />
+                  <span className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-0.5 rounded text-[10px] font-bold">
+                    封面大圖預覽
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 0~6 張截圖圖集 */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>功能介面與展示截圖 ({galleryImages.length} / 6 張)</span>
+                </label>
+                <span className="text-[10px] text-stone-500">可上傳 0~6 張圖片連結</span>
+              </div>
+
+              {galleryImages.length < 6 && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    value={newGalleryInput}
+                    onChange={(e) => setNewGalleryInput(e.target.value)}
+                    placeholder="貼上截圖圖片網址 (https://...)"
+                    className="flex-1 px-3 py-1.5 rounded-xl border border-stone-300 text-xs font-mono outline-none focus:border-purple-500 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newGalleryInput.trim()) {
+                        setGalleryImages([...galleryImages, newGalleryInput.trim()]);
+                        setNewGalleryInput('');
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer shrink-0"
+                  >
+                    新增圖片
+                  </button>
+                </div>
+              )}
+
+              {galleryImages.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-2">
+                  {galleryImages.map((img, idx) => (
+                    <div key={idx} className="relative group h-16 rounded-lg overflow-hidden border border-purple-200 bg-stone-900">
+                      <img src={img} alt={`截圖 ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setGalleryImages(galleryImages.filter((_, i) => i !== idx))}
+                        className="absolute top-1 right-1 p-0.5 rounded-full bg-rose-600 text-white opacity-90 hover:opacity-100 transition-opacity cursor-pointer"
+                        title="刪除此圖片"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 技術架構 */}
+            <div>
+              <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-purple-600" />
+                <span>技術架構 (Front-end / Back-end / AI 模型套件)</span>
+              </label>
+              <input
+                type="text"
+                value={techArchitecture}
+                onChange={(e) => setTechArchitecture(e.target.value)}
+                placeholder="例如：React + Vite + Tailwind CSS + Node.js + Firebase + Gemini API"
+                className="w-full px-3 py-2 rounded-xl border border-purple-200 focus:border-purple-500 text-xs text-stone-900 outline-none bg-white font-mono"
+              />
+            </div>
+
+            {/* 網站網址或檔案連結 */}
+            <div>
+              <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                <span>網站網址或線上體驗 Demo 連結</span>
+              </label>
+              <input
+                type="url"
+                value={demoUrl}
+                onChange={(e) => setDemoUrl(e.target.value)}
+                placeholder="例如：https://my-vibecoding-app.vercel.app 或 GitHub 專案連結"
+                className="w-full px-3 py-2 rounded-xl border border-emerald-200 focus:border-emerald-500 text-xs text-stone-900 outline-none bg-white font-mono"
+              />
+            </div>
+          </div>
+        )}
 
         {/* 檔案資料儲存規則與外部雲端工具連結（Google Drive、Dropbox、Figma） */}
         <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
@@ -727,7 +1055,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               <span>【檔案儲存與安全規則・請用戶自行備份】</span>
             </div>
             <p className="text-stone-600 font-normal">
-              平台支援情境圖片與輕量參考檔案；<strong>平台不對用戶上傳之資料、檔案負保管責任，請用戶務必自行妥善留存原始備份</strong>。大型檔案（如高解析影音、規格書、設計原始檔）<strong>請善用 Google Drive、Dropbox、Figma 等外部雲端工具之共享連結</strong>。
+              平台支援情境圖片與輕量參考檔案；<strong>平台不對用戶上傳之資料、檔案負保管責任，請用戶務必自行妥善留存原始備份</strong>。第三方外部連結與檔案概由發布當事人自負相關法律責任；若發現其他用戶有涉嫌侵權、惡意軟體或不當行為，可隨時向平台檢舉舉報。
             </p>
           </div>
         </div>

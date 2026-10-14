@@ -26,6 +26,8 @@ import { AboutUsView } from './AboutUsView';
 import { AiAssistantSettingsPanel } from './AiAssistantSettingsPanel';
 import { CopyableUserId } from './CopyableUserId';
 import { PlatformManualModal } from './PlatformManualModal';
+import { TipPayoutModal } from './TipPayoutModal';
+import { MarketingAssetsModal } from './MarketingAssetsModal';
 import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
 import { GOOGLE_SITELINKS, GoogleSitelinkItem, getSitelinkFullUrl } from '../services/seoService';
 import { 
@@ -292,6 +294,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const [adminCategoryFilter, setAdminCategoryFilter] = useState<'all' | 'core' | 'users' | 'operations' | 'advanced' | 'system'>('all');
   const [pendingModeConfirm, setPendingModeConfirm] = useState<{ type: 'liveOperation' | 'demo' | 'noPayment' | 'hideTestAccounts' | 'race'; nextState: boolean } | null>(null);
   const [isPlatformManualModalOpen, setIsPlatformManualModalOpen] = useState(false);
+  const [isTipPayoutModalOpen, setIsTipPayoutModalOpen] = useState(false);
+  const [isMarketingAssetsModalOpen, setIsMarketingAssetsModalOpen] = useState(false);
   const [basicSaveSuccessMsg, setBasicSaveSuccessMsg] = useState<string | null>(null);
   const [bankSaveSuccessMsg, setBankSaveSuccessMsg] = useState<string | null>(null);
   const [surveySaveSuccessMsg, setSurveySaveSuccessMsg] = useState<string | null>(null);
@@ -5253,6 +5257,165 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                           : totalPaidOutAmount
                       ).toLocaleString()}`}
                     </span>
+                  </div>
+                </div>
+
+                {/* 痛點讀者打賞支持金（週結一次 & 申請撥款專區） */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50 via-white to-orange-50/40 border-2 border-amber-300 shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/80 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-xs">
+                        <Coins className="w-5 h-5 fill-stone-950" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h5 className="font-black text-sm sm:text-base text-stone-900">
+                            痛點讀者打賞支持金
+                          </h5>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-200 text-amber-950 border border-amber-300">
+                            週結一次（每週一 00:00 結算）
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500 mt-0.5">
+                          提痛點獲得讀者支持點數，先存於應收帳款；經實名認證與設定收款方式後，依週結扣除手續費申請撥款
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsTipPayoutModalOpen(true)}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 self-start sm:self-auto"
+                    >
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span>申請打賞撥款</span>
+                    </button>
+                  </div>
+
+                  {/* 核心數據四格 */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    {/* 本週獲得打賞 */}
+                    <div className="p-3 rounded-xl bg-white border border-amber-200 shadow-2xs">
+                      <span className="text-stone-500 text-[11px] block font-medium">本週獲得打賞</span>
+                      <span className="text-base sm:text-xl font-mono font-black text-amber-900 block mt-0.5">
+                        {((currentUser.thisWeekTipPoints !== undefined ? currentUser.thisWeekTipPoints : (isDemoMode ? 1250 : 0))).toLocaleString()} <span className="text-xs font-normal">點</span>
+                      </span>
+                      <span className="text-[10px] text-amber-700 font-bold block mt-0.5">
+                        本週累計結算中
+                      </span>
+                    </div>
+
+                    {/* 待提領應收打賞 */}
+                    <div className="p-3 rounded-xl bg-white border border-amber-200 shadow-2xs">
+                      <span className="text-stone-500 text-[11px] block font-medium">應收帳款打賞總額</span>
+                      <span className="text-base sm:text-xl font-mono font-black text-stone-900 block mt-0.5">
+                        {((currentUser.tipReceivablesPoints !== undefined ? currentUser.tipReceivablesPoints : (isDemoMode ? 3650 : 0))).toLocaleString()} <span className="text-xs font-normal">點</span>
+                      </span>
+                      <span className="text-[10px] text-stone-400 block mt-0.5 font-mono">
+                        未申請撥款點數
+                      </span>
+                    </div>
+
+                    {/* 實名認證資格 */}
+                    <div className="p-3 rounded-xl bg-white border border-amber-200 shadow-2xs flex flex-col justify-between">
+                      <span className="text-stone-500 text-[11px] block font-medium">實名核驗 (KYC)</span>
+                      <div className="mt-1">
+                        {currentUser.realNameAuthStatus === 'verified' ? (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[11px] inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>已認證</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('real_name_auth')}
+                            className="px-2 py-0.5 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[11px] transition-colors cursor-pointer"
+                          >
+                            ⚠️ 待認證 ↗
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-stone-400 block mt-0.5">撥款必要條件</span>
+                    </div>
+
+                    {/* 收款方式 */}
+                    <div className="p-3 rounded-xl bg-white border border-amber-200 shadow-2xs flex flex-col justify-between">
+                      <span className="text-stone-500 text-[11px] block font-medium">收款方式</span>
+                      <div className="mt-1 truncate">
+                        {currentUser.bankAccount?.accountNumber ? (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[11px] inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span className="truncate">已綁定帳戶</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingBank(true)}
+                            className="px-2 py-0.5 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[11px] transition-colors cursor-pointer"
+                          >
+                            ⚠️ 待設定 ↗
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-stone-400 block mt-0.5">匯入指定銀行</span>
+                    </div>
+                  </div>
+
+                  {/* 週結歷史批次明細 */}
+                  <div className="p-3.5 rounded-xl bg-white/90 border border-amber-200/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-stone-800">
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>每週打賞結算週期明細</span>
+                      </span>
+                      <span className="text-[10px] text-stone-400 font-normal">
+                        撥款會扣除相關平台手續費（非直接點數額度）
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {[
+                        {
+                          week: '2026 第 42 週 (10/12 ~ 10/18)',
+                          points: currentUser.thisWeekTipPoints || (isDemoMode ? 1250 : 0),
+                          fee: Math.round((currentUser.thisWeekTipPoints || (isDemoMode ? 1250 : 0)) * 0.1),
+                          netCash: Math.round((currentUser.thisWeekTipPoints || (isDemoMode ? 1250 : 0)) * 0.9),
+                          status: '本週累積中',
+                          statusClass: 'bg-amber-100 text-amber-900 border-amber-300',
+                        },
+                        {
+                          week: '2026 第 41 週 (10/05 ~ 10/11)',
+                          points: 800,
+                          fee: 80,
+                          netCash: 720,
+                          status: '已週結 • 待請領',
+                          statusClass: 'bg-stone-100 text-stone-700 border-stone-300',
+                        },
+                        {
+                          week: '2026 第 40 週 (09/28 ~ 10/04)',
+                          points: 1600,
+                          fee: 160,
+                          netCash: 1440,
+                          status: '已撥款入帳',
+                          statusClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                        },
+                      ].map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 rounded-lg bg-stone-50 border border-stone-200/80 flex items-center justify-between text-xs gap-2 flex-wrap"
+                        >
+                          <div>
+                            <span className="font-bold text-stone-900 block">{item.week}</span>
+                            <span className="text-[11px] text-stone-500">
+                              獲得打賞 <strong>{item.points.toLocaleString()} 點</strong> • 平台服務費 10% (-NT$ {item.fee.toLocaleString()}) • 實得預估 <strong>NT$ {item.netCash.toLocaleString()}</strong>
+                            </span>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.statusClass}`}>
+                            {item.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -10668,18 +10831,30 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             創點子 IdeaX • {currentUser.role === 'admin' ? '管理員控制台' : '個人中心'}
           </span>
           {currentUser.role === 'admin' && (
-            <button
-              type="button"
-              onClick={() => setIsPlatformManualModalOpen(true)}
-              className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
-              title="開啟平台內部清單與版本維護中心"
-            >
-              <Folder className="w-3.5 h-3.5 text-amber-700" />
-              <span>平台內部清單</span>
-              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500 text-stone-950 font-black">
-                v{APP_VERSION}
-              </span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsPlatformManualModalOpen(true)}
+                className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
+                title="開啟平台內部清單與版本維護中心"
+              >
+                <Folder className="w-3.5 h-3.5 text-amber-700" />
+                <span>平台內部清單</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500 text-stone-950 font-black">
+                  v{APP_VERSION}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsMarketingAssetsModalOpen(true)}
+                className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 hover:from-purple-600 hover:to-indigo-600 text-white border border-purple-500 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
+                title="開啟行銷素材庫（宣傳文案與圖卡下載）"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                <span>行銷素材庫</span>
+              </button>
+            </div>
           )}
         </div>
         {!isFullPage && (
@@ -10707,6 +10882,33 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             message: msg,
             type: 'system',
           });
+        }}
+      />
+
+      {/* 行銷素材庫 (社群輪播圖卡、社群文案與圖卡下載) Modal */}
+      <MarketingAssetsModal
+        isOpen={isMarketingAssetsModalOpen}
+        onClose={() => setIsMarketingAssetsModalOpen(false)}
+        showToast={(msg) => {
+          addNotification({
+            title: '行銷素材庫',
+            message: msg,
+            type: 'system',
+          });
+        }}
+      />
+
+      {/* 痛點打賞支持金申請撥款 Modal */}
+      <TipPayoutModal
+        isOpen={isTipPayoutModalOpen}
+        onClose={() => setIsTipPayoutModalOpen(false)}
+        onNavigateToRealName={() => setActiveTab('real_name_auth')}
+        onNavigateToBank={() => {
+          setPointsSubView('receivables');
+          setIsEditingBank(true);
+        }}
+        onSuccess={() => {
+          setPointsSubView('receivables');
         }}
       />
 
