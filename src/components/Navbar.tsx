@@ -1207,8 +1207,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="text-left hidden sm:block">
                   <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5 flex-wrap">
                     <span>
-                      <span className={getUserNameColorClass(currentUser.id, undefined, currentUser)}>
-                        {resolveUserDisplayName(currentUser.id, currentUser.name)}
+                      <span className={getUserNameColorClass(currentUser.id, availableUsers, currentUser)}>
+                        {resolveUserDisplayName(currentUser.id, currentUser.name, availableUsers)}
                       </span>
                       {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title
                         ? ` · ${currentUser.title}`
@@ -1256,8 +1256,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="text-xs truncate transition-colors">
-                            <span className={getUserNameColorClass(currentUser.id, undefined, currentUser)}>
-                              {resolveUserDisplayName(currentUser.id, currentUser.name)}
+                            <span className={getUserNameColorClass(currentUser.id, availableUsers, currentUser)}>
+                              {resolveUserDisplayName(currentUser.id, currentUser.name, availableUsers)}
                             </span>
                             {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title
                               ? <span className="text-stone-500 font-normal"> · {currentUser.title}</span>

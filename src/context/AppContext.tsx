@@ -33,6 +33,7 @@ import {
   isSiteBAdmin,
   getAdminSiteLabel,
 } from '../utils/adminPermissions';
+import { restoreCanonicalUserIdentity, USER_ALIAS_MAP } from '../utils/userDisplay';
 import {
   MOCK_QUESTIONS,
   MOCK_SOLVERS,
@@ -828,27 +829,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return GUEST_USER;
           }
 
-          const isAdmin =
-            parsed.id === 'user-admin' ||
-            (typeof parsed.username === 'string' && parsed.username.toLowerCase() === 'admin_001') ||
-            (typeof parsed.name === 'string' && (parsed.name.includes('IdeaX') || parsed.name.includes('管理') || parsed.name.includes('營運')));
+          const restored = restoreCanonicalUserIdentity(parsed);
+          const isAdmin = restored.id === 'user-admin' || restored.id === 'a000000001' || restored.role === 'admin';
           return {
-            ...CLEAN_CORE_USERS[0],
-            ...parsed,
-            username: isAdmin ? 'Admin_001' : parsed.username,
-            password: isAdmin ? 'John930521' : parsed.password,
-            name: isAdmin ? 'IdeaX 管理團隊' : parsed.name,
-            role: isAdmin ? ('admin' as const) : (parsed.role || 'questioner'),
+            ...(isAdmin ? CLEAN_CORE_USERS[0] : {}),
+            ...restored,
             balance: isAdmin
-              ? (typeof parsed.balance === 'number' && parsed.balance > 0 ? parsed.balance : 50000)
-              : (typeof parsed.balance === 'number' ? parsed.balance : 0),
-            withheldPoints: typeof parsed.withheldPoints === 'number' ? parsed.withheldPoints : 0,
-            pendingEarnings: typeof parsed.pendingEarnings === 'number' ? parsed.pendingEarnings : 0,
-            reputation: typeof parsed.reputation === 'number' ? parsed.reputation : 100,
-            totalRevenue: typeof parsed.totalRevenue === 'number' ? parsed.totalRevenue : 0,
-            totalPaidOut: typeof parsed.totalPaidOut === 'number' ? parsed.totalPaidOut : 0,
-            escrowedEarnings: typeof parsed.escrowedEarnings === 'number' ? parsed.escrowedEarnings : 0,
-            reputationPoints: typeof parsed.reputationPoints === 'number' ? parsed.reputationPoints : 0,
+              ? (typeof restored.balance === 'number' && restored.balance > 0 ? restored.balance : 50000)
+              : (typeof restored.balance === 'number' ? restored.balance : 0),
+            withheldPoints: typeof restored.withheldPoints === 'number' ? restored.withheldPoints : 0,
+            pendingEarnings: typeof restored.pendingEarnings === 'number' ? restored.pendingEarnings : 0,
+            reputation: typeof restored.reputation === 'number' ? restored.reputation : 100,
+            totalRevenue: typeof restored.totalRevenue === 'number' ? restored.totalRevenue : 0,
+            totalPaidOut: typeof restored.totalPaidOut === 'number' ? restored.totalPaidOut : 0,
+            escrowedEarnings: typeof restored.escrowedEarnings === 'number' ? restored.escrowedEarnings : 0,
+            reputationPoints: typeof restored.reputationPoints === 'number' ? restored.reputationPoints : 0,
           };
         }
       }
@@ -874,25 +869,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
           const usersList = parsed.map((u: any) => {
-            const isAdmin =
-              u.id === 'user-admin' ||
-              u.id === 'a000000001' ||
-              u.memberId === 'a000000001' ||
-              (typeof u.username === 'string' && u.username.toLowerCase() === 'admin_001') ||
-              (typeof u.name === 'string' && (u.name.includes('IdeaX') || u.name.includes('管理') || u.name.includes('營運')));
+            const restored = restoreCanonicalUserIdentity(u);
+            const isAdmin = restored.id === 'user-admin' || restored.id === 'a000000001' || restored.role === 'admin';
             return {
-              ...u,
-              id: isAdmin ? (u.id === 'user-admin' ? 'a000000001' : u.id) : u.id,
-              memberId: isAdmin ? 'a000000001' : (u.memberId || u.id),
-              accountType: isAdmin ? ('admin' as const) : u.accountType,
-              username: isAdmin ? 'Admin_001' : u.username,
-              password: isAdmin ? 'John930521' : u.password,
-              name: isAdmin ? 'IdeaX 管理團隊' : u.name,
-              role: isAdmin ? ('admin' as const) : u.role,
+              ...restored,
               balance: isAdmin
-                ? (typeof u.balance === 'number' && u.balance > 0 ? u.balance : 50000)
-                : (typeof u.balance === 'number' ? u.balance : 0),
-              withheldPoints: typeof u.withheldPoints === 'number' ? u.withheldPoints : 0,
+                ? (typeof restored.balance === 'number' && restored.balance > 0 ? restored.balance : 50000)
+                : (typeof restored.balance === 'number' ? restored.balance : 0),
+              withheldPoints: typeof restored.withheldPoints === 'number' ? restored.withheldPoints : 0,
             };
           });
 
@@ -905,7 +889,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (existingIdx === -1) {
                 cleanList.push(cta);
               } else {
-                cleanList[existingIdx] = { ...cta, ...cleanList[existingIdx] };
+                cleanList[existingIdx] = restoreCanonicalUserIdentity({ ...cta, ...cleanList[existingIdx] });
               }
             });
             return cleanList;
@@ -918,7 +902,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // 用 usersList 的最新狀態覆蓋預設值（包含 isDeactivated, deactivationStatus 等）
           usersList.forEach((u: any) => {
             const base = userMap.get(u.id) || {};
-            userMap.set(u.id, { ...base, ...u });
+            userMap.set(u.id, restoreCanonicalUserIdentity({ ...base, ...u }));
           });
           return Array.from(userMap.values());
         }
@@ -1059,9 +1043,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // 若目前未登入（如剛進入網站或剛下載之用戶），絕不殘留任何舊版預設之管理員或訪客帳號
+          // 若目前未登入（如剛進入網站或剛下載之用戶），絕不殘留任何舊版預設之管理員或訪客帳號，並去除別名重複
+          const seenIds = new Set<string>();
           const cleaned = parsed.filter((a: any) => {
             if (!a || !a.userId || a.userId === 'user-guest') return false;
+            const aliasId = USER_ALIAS_MAP[a.userId];
+            if (seenIds.has(a.userId) || (aliasId && seenIds.has(aliasId))) return false;
+            seenIds.add(a.userId);
+            if (aliasId) seenIds.add(aliasId);
             return true;
           });
           return cleaned;
@@ -1084,11 +1073,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!currentUser || currentUser.id === 'user-guest') return;
     setDeviceAccounts((prev) => {
-      const idx = prev.findIndex((a) => a.userId === currentUser.id);
+      const aliasId = USER_ALIAS_MAP[currentUser.id];
+      const idx = prev.findIndex((a) => a.userId === currentUser.id || (aliasId && a.userId === aliasId));
       const now = new Date().toISOString();
       if (idx >= 0) {
         const updated = [...prev];
-        updated[idx] = { ...updated[idx], isLoggedIn: true, lastLoginAt: now };
+        updated[idx] = { ...updated[idx], userId: currentUser.id, isLoggedIn: true, lastLoginAt: now };
         return updated;
       }
       return [
@@ -1673,45 +1663,121 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
       localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_explicit_login`);
+      return;
     }
+
+    const aliasId = USER_ALIAS_MAP[currentUser.id];
+    const isTargetId = (id?: string) => Boolean(id && (id === currentUser.id || (aliasId && id === aliasId)));
+
     setAvailableUsers((users) => {
-      const idx = users.findIndex((u) => u.id === currentUser.id);
-      if (idx >= 0) {
-        if (
-          users[idx].avatar !== currentUser.avatar ||
-          users[idx].name !== currentUser.name ||
-          users[idx].title !== currentUser.title ||
-          users[idx].bio !== currentUser.bio ||
-          users[idx].domain !== currentUser.domain ||
-          users[idx].balance !== currentUser.balance ||
-          users[idx].withheldPoints !== currentUser.withheldPoints
-        ) {
-          const next = [...users];
-          next[idx] = { ...next[idx], ...currentUser };
-          return next;
+      let changed = false;
+      const next = users.map((u) => {
+        if (isTargetId(u.id)) {
+          if (
+            u.avatar !== currentUser.avatar ||
+            u.name !== currentUser.name ||
+            u.title !== currentUser.title ||
+            u.bio !== currentUser.bio ||
+            u.domain !== currentUser.domain ||
+            u.balance !== currentUser.balance ||
+            u.withheldPoints !== currentUser.withheldPoints
+          ) {
+            changed = true;
+            return { ...u, ...currentUser, id: u.id };
+          }
         }
-      }
-      return users;
+        return u;
+      });
+      return changed ? next : users;
     });
 
-    // Also sync to solvers directory if currentUser is listed as a solver
+    // Sync to solvers directory if currentUser is listed as a solver
     setSolvers((prevSolvers) => {
-      const idx = prevSolvers.findIndex((s) => s.id === currentUser.id);
-      if (
-        idx >= 0 &&
-        (prevSolvers[idx].avatar !== currentUser.avatar ||
-          prevSolvers[idx].name !== currentUser.name)
-      ) {
-        const next = [...prevSolvers];
-        next[idx] = {
-          ...next[idx],
-          name: currentUser.name,
-          avatar: currentUser.avatar,
-          title: currentUser.title || next[idx].title,
-        };
-        return next;
-      }
-      return prevSolvers;
+      let changed = false;
+      const next = prevSolvers.map((s) => {
+        if (isTargetId(s.id) || isTargetId(s.userId)) {
+          if (s.avatar !== currentUser.avatar || s.name !== currentUser.name || s.title !== currentUser.title) {
+            changed = true;
+            return {
+              ...s,
+              name: currentUser.name,
+              avatar: currentUser.avatar,
+              title: currentUser.title || s.title,
+              bio: currentUser.bio || s.bio,
+            };
+          }
+        }
+        return s;
+      });
+      return changed ? next : prevSolvers;
+    });
+
+    // Propagate updated name & avatar across questions, answers, and conversations site-wide
+    setQuestions((prevQuestions) => {
+      let changed = false;
+      const next = prevQuestions.map((q) => {
+        if (isTargetId(q.authorId)) {
+          if (q.authorName !== currentUser.name || q.authorAvatar !== currentUser.avatar) {
+            changed = true;
+            return {
+              ...q,
+              authorName: currentUser.name,
+              authorAvatar: currentUser.avatar,
+              authorTitle: currentUser.title || q.authorTitle,
+            };
+          }
+        }
+        return q;
+      });
+      return changed ? next : prevQuestions;
+    });
+
+    setAnswers((prevAnswers) => {
+      let changed = false;
+      const next = prevAnswers.map((a) => {
+        if (isTargetId(a.solverId)) {
+          if (a.solverName !== currentUser.name || a.solverAvatar !== currentUser.avatar) {
+            changed = true;
+            return {
+              ...a,
+              solverName: currentUser.name,
+              solverAvatar: currentUser.avatar,
+              solverTitle: currentUser.title || a.solverTitle,
+            };
+          }
+        }
+        return a;
+      });
+      return changed ? next : prevAnswers;
+    });
+
+    setConversations((prevConvs) => {
+      let changed = false;
+      const next = prevConvs.map((c) => {
+        let convChanged = false;
+        let updatedC = { ...c };
+        if (isTargetId(c.user1Id) && (c.user1Name !== currentUser.name || c.user1Avatar !== currentUser.avatar)) {
+          updatedC.user1Name = currentUser.name;
+          updatedC.user1Avatar = currentUser.avatar;
+          convChanged = true;
+        }
+        if (isTargetId(c.user2Id) && (c.user2Name !== currentUser.name || c.user2Avatar !== currentUser.avatar)) {
+          updatedC.user2Name = currentUser.name;
+          updatedC.user2Avatar = currentUser.avatar;
+          convChanged = true;
+        }
+        if (isTargetId(c.participantId) && (c.participantName !== currentUser.name || c.participantAvatar !== currentUser.avatar)) {
+          updatedC.participantName = currentUser.name;
+          updatedC.participantAvatar = currentUser.avatar;
+          convChanged = true;
+        }
+        if (convChanged) {
+          changed = true;
+          return updatedC;
+        }
+        return c;
+      });
+      return changed ? next : prevConvs;
     });
   }, [currentUser]);
 
@@ -1823,34 +1889,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (cloudData.users && cloudData.users.length > 0) {
+        const repairedCloudUsers = cloudData.users.map((cu) => restoreCanonicalUserIdentity(cu));
+
         setAvailableUsers((prevUsers) => {
           const userMap = new Map<string, User>();
-          prevUsers.forEach((u) => userMap.set(u.id, u));
-          cloudData.users!.forEach((cu) => {
+          prevUsers.forEach((u) => userMap.set(u.id, restoreCanonicalUserIdentity(u)));
+          repairedCloudUsers.forEach((cu) => {
             const local = userMap.get(cu.id);
             if (local) {
-              userMap.set(cu.id, {
-                ...local,
-                ...cu,
-                isDeactivated: cu.isDeactivated ?? local.isDeactivated,
-                deactivationStatus: cu.deactivationStatus ?? local.deactivationStatus,
-                deactivationRequestedAt: cu.deactivationRequestedAt ?? local.deactivationRequestedAt,
-                deactivationScheduledPurgeAt: cu.deactivationScheduledPurgeAt ?? local.deactivationScheduledPurgeAt,
-                deactivationReason: cu.deactivationReason ?? local.deactivationReason,
-              });
+              userMap.set(
+                cu.id,
+                restoreCanonicalUserIdentity({
+                  ...local,
+                  ...cu,
+                  isDeactivated: cu.isDeactivated ?? local.isDeactivated,
+                  deactivationStatus: cu.deactivationStatus ?? local.deactivationStatus,
+                  deactivationRequestedAt: cu.deactivationRequestedAt ?? local.deactivationRequestedAt,
+                  deactivationScheduledPurgeAt: cu.deactivationScheduledPurgeAt ?? local.deactivationScheduledPurgeAt,
+                  deactivationReason: cu.deactivationReason ?? local.deactivationReason,
+                })
+              );
             } else {
               userMap.set(cu.id, cu);
             }
           });
           const merged = Array.from(userMap.values());
           const cleanUsers = merged.map((u) => {
-            if (u.id === 'user-admin' || u.role === 'admin') {
+            const restored = restoreCanonicalUserIdentity(u);
+            if (restored.id === 'user-admin' || restored.id === 'a000000001' || restored.role === 'admin') {
               return {
-                ...u,
-                balance: typeof u.balance === 'number' && u.balance > 0 ? u.balance : 50000,
+                ...restored,
+                balance: typeof restored.balance === 'number' && restored.balance > 0 ? restored.balance : 50000,
               };
             }
-            return u;
+            return restored;
           });
           try {
             localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(cleanUsers));
@@ -1859,13 +1931,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return cleanUsers;
         });
         if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
-          const found = cloudData.users.find((u) => u.id === currentUser.id);
-          if (found) {
-            const effectiveUser = (found.id === 'user-admin' || found.role === 'admin')
-              ? { ...found, balance: typeof found.balance === 'number' && found.balance > 0 ? found.balance : 50000 }
-              : found;
-            setCurrentUser(effectiveUser);
-          }
+          setCurrentUser((prev) => {
+            const found = repairedCloudUsers.find((u) => u.id === prev.id || (USER_ALIAS_MAP[prev.id] && u.id === USER_ALIAS_MAP[prev.id]));
+            if (found) {
+              const restoredFound = restoreCanonicalUserIdentity({ ...found, ...prev, id: prev.id });
+              return (restoredFound.id === 'user-admin' || restoredFound.id === 'a000000001' || restoredFound.role === 'admin')
+                ? { ...restoredFound, balance: typeof restoredFound.balance === 'number' && restoredFound.balance > 0 ? restoredFound.balance : 50000 }
+                : restoredFound;
+            }
+            return restoreCanonicalUserIdentity(prev);
+          });
         }
       }
 
@@ -1980,34 +2055,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (cloudData && ((cloudData.questions && cloudData.questions.length > 0) || (cloudData.users && cloudData.users.length > 0))) {
           if (cloudData.users && cloudData.users.length > 0) {
+            const repairedCloudUsers = cloudData.users.map((cu) => restoreCanonicalUserIdentity(cu));
+
             setAvailableUsers((prevUsers) => {
               const userMap = new Map<string, User>();
-              prevUsers.forEach((u) => userMap.set(u.id, u));
-              cloudData.users!.forEach((cu) => {
+              prevUsers.forEach((u) => userMap.set(u.id, restoreCanonicalUserIdentity(u)));
+              repairedCloudUsers.forEach((cu) => {
                 const local = userMap.get(cu.id);
                 if (local) {
-                  userMap.set(cu.id, {
-                    ...local,
-                    ...cu,
-                    isDeactivated: cu.isDeactivated ?? local.isDeactivated,
-                    deactivationStatus: cu.deactivationStatus ?? local.deactivationStatus,
-                    deactivationRequestedAt: cu.deactivationRequestedAt ?? local.deactivationRequestedAt,
-                    deactivationScheduledPurgeAt: cu.deactivationScheduledPurgeAt ?? local.deactivationScheduledPurgeAt,
-                    deactivationReason: cu.deactivationReason ?? local.deactivationReason,
-                  });
+                  userMap.set(
+                    cu.id,
+                    restoreCanonicalUserIdentity({
+                      ...local,
+                      ...cu,
+                      isDeactivated: cu.isDeactivated ?? local.isDeactivated,
+                      deactivationStatus: cu.deactivationStatus ?? local.deactivationStatus,
+                      deactivationRequestedAt: cu.deactivationRequestedAt ?? local.deactivationRequestedAt,
+                      deactivationScheduledPurgeAt: cu.deactivationScheduledPurgeAt ?? local.deactivationScheduledPurgeAt,
+                      deactivationReason: cu.deactivationReason ?? local.deactivationReason,
+                    })
+                  );
                 } else {
                   userMap.set(cu.id, cu);
                 }
               });
               const merged = Array.from(userMap.values());
               const cleanUsers = merged.map((u) => {
-                if (u.id === 'user-admin' || u.role === 'admin') {
+                const restored = restoreCanonicalUserIdentity(u);
+                if (restored.id === 'user-admin' || restored.id === 'a000000001' || restored.role === 'admin') {
                   return {
-                    ...u,
-                    balance: typeof u.balance === 'number' && u.balance > 0 ? u.balance : 50000,
+                    ...restored,
+                    balance: typeof restored.balance === 'number' && restored.balance > 0 ? restored.balance : 50000,
                   };
                 }
-                return u;
+                return restored;
               });
               try {
                 localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(cleanUsers));
@@ -2016,13 +2097,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               return cleanUsers;
             });
             if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
-              const foundUser = cloudData.users.find((u) => u.id === currentUser.id);
-              if (foundUser) {
-                const effectiveUser = (foundUser.id === 'user-admin' || foundUser.role === 'admin')
-                  ? { ...foundUser, balance: typeof foundUser.balance === 'number' && foundUser.balance > 0 ? foundUser.balance : 50000 }
-                  : foundUser;
-                setCurrentUser(effectiveUser);
-              }
+              setCurrentUser((prev) => {
+                const foundUser = repairedCloudUsers.find((u) => u.id === prev.id || (USER_ALIAS_MAP[prev.id] && u.id === USER_ALIAS_MAP[prev.id]));
+                if (foundUser) {
+                  const restoredFound = restoreCanonicalUserIdentity({ ...foundUser, ...prev, id: prev.id });
+                  return (restoredFound.id === 'user-admin' || restoredFound.id === 'a000000001' || restoredFound.role === 'admin')
+                    ? { ...restoredFound, balance: typeof restoredFound.balance === 'number' && restoredFound.balance > 0 ? restoredFound.balance : 50000 }
+                    : restoredFound;
+                }
+                return restoreCanonicalUserIdentity(prev);
+              });
             }
           }
           if (cloudData.questions && cloudData.questions.length > 0) {
@@ -2143,8 +2227,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (!mounted || !updatedCloudUsers || updatedCloudUsers.length === 0) return;
           setAvailableUsers((prevUsers) => {
             const userMap = new Map<string, User>();
-            prevUsers.forEach((u) => userMap.set(u.id, u));
-            updatedCloudUsers.forEach((cu) => {
+            prevUsers.forEach((u) => userMap.set(u.id, restoreCanonicalUserIdentity(u)));
+            updatedCloudUsers.forEach((rawCu) => {
+              const cu = restoreCanonicalUserIdentity(rawCu);
               const local = userMap.get(cu.id);
               if (local) {
                 // 若本地該用戶處於正常使用（非註銷/已取消猶豫期），雲端不得重新蓋回猶豫期
@@ -2156,26 +2241,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 );
                 const finalDeact = isLocalActive ? false : isCloudDeactivated;
 
-                userMap.set(cu.id, {
-                  ...local,
-                  ...cu,
-                  isDeactivated: finalDeact,
-                  deactivationStatus: finalDeact ? (cu.deactivationStatus || (cu.isDeactivated ? 'pending_grace' : undefined)) : undefined,
-                  deactivationRequestedAt: finalDeact ? cu.deactivationRequestedAt : undefined,
-                  deactivationScheduledPurgeAt: finalDeact ? cu.deactivationScheduledPurgeAt : undefined,
-                  deactivationReason: finalDeact ? cu.deactivationReason : undefined,
-                });
+                userMap.set(
+                  cu.id,
+                  restoreCanonicalUserIdentity({
+                    ...cu,
+                    ...local,
+                    isDeactivated: finalDeact,
+                    deactivationStatus: finalDeact ? (cu.deactivationStatus || (cu.isDeactivated ? 'pending_grace' : undefined)) : undefined,
+                    deactivationRequestedAt: finalDeact ? cu.deactivationRequestedAt : undefined,
+                    deactivationScheduledPurgeAt: finalDeact ? cu.deactivationScheduledPurgeAt : undefined,
+                    deactivationReason: finalDeact ? cu.deactivationReason : undefined,
+                  })
+                );
               } else {
                 userMap.set(cu.id, cu);
               }
             });
-            const merged = Array.from(userMap.values());
+            const merged = Array.from(userMap.values()).map((u) => restoreCanonicalUserIdentity(u));
             try {
               localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(merged));
               localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(merged));
             } catch {}
             return merged;
           });
+          setCurrentUser((prev) => (prev && prev.id !== 'user-guest' ? restoreCanonicalUserIdentity(prev) : prev));
           setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
         });
       } catch (err) {
@@ -3170,8 +3259,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    // 徹底清理反悔猶豫期與註銷相關狀態
-    const effectiveUser: User = {
+    // 徹底清理反悔猶豫期與註銷相關狀態，並確保核心角色身分與名稱正確
+    const effectiveUser: User = restoreCanonicalUserIdentity({
       ...target,
       ...restoredUser,
       isDeactivated: false,
@@ -3179,7 +3268,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deactivationRequestedAt: undefined,
       deactivationScheduledPurgeAt: undefined,
       deactivationReason: undefined,
-    };
+    });
 
     setCurrentUser(effectiveUser);
     localStorage.setItem(`${STORAGE_KEY_PREFIX}is_authenticated`, 'true');
@@ -3194,19 +3283,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       target.deactivationRequestedAt
     );
 
-    // 一律同步更新 availableUsers 中該用戶與其別名帳號之正常狀態（比對 id、別名、帳號名稱與姓名）
+    // 僅更新該目標用戶與其別名 ID，絕不以名稱模糊比對覆蓋其他帳號
     setAvailableUsers((prev) => {
       const next = prev.map((u) => {
         const isMatch =
           u.id === effectiveUser.id ||
           u.id === userId ||
-          (aliasId && u.id === aliasId) ||
-          (aliasMap[u.id] && (aliasMap[u.id] === effectiveUser.id || aliasMap[u.id] === userId)) ||
-          (u.username && effectiveUser.username && u.username.toLowerCase() === effectiveUser.username.toLowerCase()) ||
-          (u.name && effectiveUser.name && (u.name.trim() === effectiveUser.name.trim() || u.name.includes(effectiveUser.name) || effectiveUser.name.includes(u.name)));
+          (aliasId && u.id === aliasId);
 
         if (isMatch) {
-          return {
+          return restoreCanonicalUserIdentity({
             ...u,
             ...effectiveUser,
             id: u.id,
@@ -3215,9 +3301,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             deactivationRequestedAt: undefined,
             deactivationScheduledPurgeAt: undefined,
             deactivationReason: undefined,
-          };
+          });
         }
-        return u;
+        return restoreCanonicalUserIdentity(u);
       });
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
@@ -3228,7 +3314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     syncUserToFirestore(effectiveUser);
     if (aliasId) {
-      syncUserToFirestore({ ...effectiveUser, id: aliasId });
+      syncUserToFirestore(restoreCanonicalUserIdentity({ ...effectiveUser, id: aliasId }));
     }
 
     if (isPreviouslyDeactivated) {
@@ -3255,14 +3341,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     setDeviceAccounts((prev) => {
-      const idx = prev.findIndex((a) => a.userId === userId);
+      const idx = prev.findIndex((a) => a.userId === effectiveUser.id || a.userId === userId || (aliasId && a.userId === aliasId));
       const now = new Date().toISOString();
       if (idx >= 0) {
         const updated = [...prev];
-        updated[idx] = { ...updated[idx], isLoggedIn: true, lastLoginAt: now };
+        updated[idx] = { ...updated[idx], userId: effectiveUser.id, isLoggedIn: true, lastLoginAt: now };
         return updated;
       }
-      return [...prev, { userId, isLoggedIn: true, lastLoginAt: now }];
+      return [...prev, { userId: effectiveUser.id, isLoggedIn: true, lastLoginAt: now }];
     });
     return true;
   };
@@ -4652,26 +4738,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const restoredId = userToRestore.id;
     const restoredAliasId = aliasMap[restoredId];
 
-    const updatedUser: User = {
+    const updatedUser: User = restoreCanonicalUserIdentity({
       ...userToRestore,
       isDeactivated: false,
       deactivationStatus: undefined,
       deactivationRequestedAt: undefined,
       deactivationScheduledPurgeAt: undefined,
       deactivationReason: undefined,
-    };
+    });
 
     setAvailableUsers((prev) => {
       const next = prev.map((u) => {
         const isMatch =
           u.id === restoredId ||
-          (restoredAliasId && u.id === restoredAliasId) ||
-          (aliasMap[u.id] && (aliasMap[u.id] === restoredId || aliasMap[u.id] === restoredAliasId)) ||
-          (u.username && userToRestore!.username && u.username.toLowerCase() === userToRestore!.username.toLowerCase()) ||
-          (u.name && userToRestore!.name && (u.name.trim() === userToRestore!.name.trim() || u.name.includes(userToRestore!.name) || userToRestore!.name.includes(u.name)));
+          (restoredAliasId && u.id === restoredAliasId);
 
         if (isMatch) {
-          return {
+          return restoreCanonicalUserIdentity({
             ...u,
             ...updatedUser,
             id: u.id,
@@ -4680,9 +4763,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             deactivationRequestedAt: undefined,
             deactivationScheduledPurgeAt: undefined,
             deactivationReason: undefined,
-          };
+          });
         }
-        return u;
+        return restoreCanonicalUserIdentity(u);
       });
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
@@ -4701,7 +4784,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     await syncUserToFirestore(updatedUser);
     if (restoredAliasId) {
-      await syncUserToFirestore({ ...updatedUser, id: restoredAliasId });
+      await syncUserToFirestore(restoreCanonicalUserIdentity({ ...updatedUser, id: restoredAliasId }));
     }
 
     setNotifications((prev) => [

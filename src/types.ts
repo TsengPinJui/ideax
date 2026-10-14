@@ -577,6 +577,7 @@ export interface User {
   pendingEarnings: number; // 待結算/託管中收益 NT$
   reputation: number; // 信用值 / 聲望
   joinedDate: string;
+  updatedAt?: string;
   bio?: string;
   email: string;
 

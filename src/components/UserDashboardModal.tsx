@@ -33,7 +33,7 @@ import {
   buildContractFromProposalItem, 
   downloadContractFile 
 } from '../utils/contractGenerator';
-import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated, getUserNameColorClass } from '../utils/userDisplay';
+import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP, saveCustomUserProfile } from '../utils/userDisplay';
 import { updateFirebaseUserPassword } from '../services/firebaseAuth';
 import { validatePassword } from '../utils/validators';
 import {
@@ -835,7 +835,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   React.useEffect(() => {
     const hasCompletedSurvey = !!currentUser.surveyData?.completedAt;
     setName(currentUser.name || '');
-    setTitle(hasCompletedSurvey ? (currentUser.title || '') : '');
+    setTitle(currentUser.title || '');
     setBio(currentUser.bio || '');
     setAvatar(currentUser.avatar || '');
     setUserGender(hasCompletedSurvey ? (currentUser.gender || '') : '');
@@ -902,6 +902,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
             const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
             setAvatar(compressedDataUrl);
+            saveCustomUserProfile(currentUser.id, { avatar: compressedDataUrl });
             setCurrentUser((prev) => ({
               ...prev,
               avatar: compressedDataUrl,
@@ -912,6 +913,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         } catch {
           const rawUrl = event.target?.result as string;
           setAvatar(rawUrl);
+          saveCustomUserProfile(currentUser.id, { avatar: rawUrl });
           setCurrentUser((prev) => ({
             ...prev,
             avatar: rawUrl,
@@ -1366,6 +1368,17 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       updatedAt: new Date().toISOString(),
     };
 
+    saveCustomUserProfile(currentUser.id, {
+      name,
+      username: username.trim() || currentUser.username,
+      avatar: newAvatar,
+      title,
+      bio,
+      company: userCompany.trim() || undefined,
+      phone: userPhone.trim(),
+      email: userEmail.trim(),
+    });
+
     setCurrentUser((prev) => ({
       ...prev,
       name,
@@ -1407,9 +1420,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       showRecentSolutions,
     }));
 
+    const aliasId = USER_ALIAS_MAP[currentUser.id];
     setAvailableUsers((users) =>
       users.map((u) =>
-        u.id === currentUser.id
+        u.id === currentUser.id || (aliasId && u.id === aliasId)
           ? {
               ...u,
               name,
@@ -1446,6 +1460,17 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
     const newAvatar = avatar || currentUser.avatar;
 
+    saveCustomUserProfile(currentUser.id, {
+      name,
+      username: username.trim() || currentUser.username,
+      avatar: newAvatar,
+      title,
+      bio,
+      company: userCompany.trim() || undefined,
+      phone: userPhone.trim(),
+      email: userEmail.trim(),
+    });
+
     setCurrentUser((prev) => ({
       ...prev,
       name,
@@ -1478,9 +1503,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       showRecentSolutions,
     }));
 
+    const aliasId = USER_ALIAS_MAP[currentUser.id];
     setAvailableUsers((users) =>
       users.map((u) =>
-        u.id === currentUser.id
+        u.id === currentUser.id || (aliasId && u.id === aliasId)
           ? {
               ...u,
               name,
@@ -1798,6 +1824,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   const handleSaveAdminProfile = (e: React.FormEvent) => {
     e.preventDefault();
     const newAvatar = avatar || currentUser.avatar;
+    saveCustomUserProfile(currentUser.id, {
+      name,
+      avatar: newAvatar,
+      title: title || '平台管理員',
+      phone: userPhone.trim(),
+      email: userEmail.trim(),
+    });
     setCurrentUser((prev) => ({
       ...prev,
       name,
@@ -1807,9 +1840,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       email: userEmail.trim(),
     }));
 
+    const aliasId = USER_ALIAS_MAP[currentUser.id];
     setAvailableUsers((users) =>
       users.map((u) =>
-        u.id === currentUser.id
+        u.id === currentUser.id || (aliasId && u.id === aliasId)
           ? {
               ...u,
               name,
@@ -9097,26 +9131,42 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   const displayedUserIds = new Set<string>();
                   const accountsToRender: { user: User; isLoggedIn: boolean }[] = [];
 
+                  const markDisplayed = (id: string) => {
+                    displayedUserIds.add(id);
+                    if (USER_ALIAS_MAP[id]) {
+                      displayedUserIds.add(USER_ALIAS_MAP[id]);
+                    }
+                  };
+
                   // 1. 本機登入過的裝置帳號
                   deviceAccounts.forEach((da) => {
-                    const u = availableUsers.find((user) => user.id === da.userId);
-                    if (u && !displayedUserIds.has(u.id)) {
-                      displayedUserIds.add(u.id);
+                    const aliasId = USER_ALIAS_MAP[da.userId];
+                    const rawU = availableUsers.find((user) => user.id === da.userId || (aliasId && user.id === aliasId));
+                    if (rawU && !displayedUserIds.has(rawU.id)) {
+                      const u = restoreCanonicalUserIdentity(rawU);
+                      markDisplayed(u.id);
+                      markDisplayed(da.userId);
                       accountsToRender.push({ user: u, isLoggedIn: da.isLoggedIn });
                     }
                   });
 
                   // 2. 固定保留之 1~3 核心測試身分（未列入者自動補齊，供免密碼隨時切換驗證）
                   CORE_TEST_ACCOUNTS.forEach((cta) => {
-                    if (!displayedUserIds.has(cta.id)) {
-                      const u = availableUsers.find((user) => user.id === cta.id) || cta;
-                      displayedUserIds.add(cta.id);
-                      accountsToRender.push({ user: u, isLoggedIn: cta.id === currentUser.id });
+                    const aliasId = USER_ALIAS_MAP[cta.id];
+                    if (!displayedUserIds.has(cta.id) && (!aliasId || !displayedUserIds.has(aliasId))) {
+                      const rawU = availableUsers.find((user) => user.id === cta.id || (aliasId && user.id === aliasId)) || cta;
+                      const u = restoreCanonicalUserIdentity(rawU);
+                      markDisplayed(cta.id);
+                      markDisplayed(u.id);
+                      const isCurrentOrAlias = cta.id === currentUser.id || (aliasId && aliasId === currentUser.id);
+                      accountsToRender.push({ user: u, isLoggedIn: Boolean(isCurrentOrAlias) });
                     }
                   });
 
-                  return accountsToRender.map(({ user: u, isLoggedIn: isLogged }) => {
-                    const isCurrent = currentUser.id === u.id;
+                  return accountsToRender.map(({ user: rawUser, isLoggedIn: isLogged }) => {
+                    const u = restoreCanonicalUserIdentity(rawUser);
+                    const aliasId = USER_ALIAS_MAP[u.id];
+                    const isCurrent = currentUser.id === u.id || (aliasId !== undefined && currentUser.id === aliasId);
                     const uDisplayName = resolveUserDisplayName(u.id, u.name, availableUsers);
                     const uNameColorClass = getUserNameColorClass(u.id, availableUsers, u);
 

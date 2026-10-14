@@ -8,6 +8,7 @@ import {
   getAdminSiteLabel,
   getAdminSiteBadgeClass,
 } from '../utils/adminPermissions';
+import { resolveUserDisplayName, getUserNameColorClass } from '../utils/userDisplay';
 import {
   UserCheck,
   ShieldAlert,
@@ -424,8 +425,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-black text-sm text-stone-900 group-hover/user:text-purple-700 transition-colors truncate flex items-center gap-1">
-                          <span>{u.name}</span>
+                        <h4 className={`font-black text-sm transition-colors truncate flex items-center gap-1 ${getUserNameColorClass(u.id, availableUsers, u)}`}>
+                          <span>{resolveUserDisplayName(u.id, u.name, availableUsers)}</span>
                           <ExternalLink className="w-3 h-3 text-purple-500 opacity-0 group-hover/user:opacity-100 transition-opacity shrink-0" />
                         </h4>
                         <span

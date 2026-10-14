@@ -38,7 +38,7 @@ import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { CORE_TEST_ACCOUNTS } from '../data/mockData';
-import { resolveUserDisplayName, getUserNameColorClass } from '../utils/userDisplay';
+import { resolveUserDisplayName, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP } from '../utils/userDisplay';
 import { User as UserType, UserSurveyData, Category } from '../types';
 import {
   processIdCardImage,
@@ -338,11 +338,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     // 只有本機裝置真實登入過的身分 (deviceAccounts) 才會列入快速切換清單
     const deviceUserIds = new Set(deviceAccounts.map((d) => d.userId));
 
-    const otherDeviceUsers = availableUsers.filter(
-      (u) =>
-        u.id !== 'user-guest' &&
-        deviceUserIds.has(u.id)
-    );
+    const otherDeviceUsers = availableUsers
+      .filter((u) => u.id !== 'user-guest' && deviceUserIds.has(u.id))
+      .map((u) => restoreCanonicalUserIdentity(u));
 
     // 當前非管理員身分：絕不主動曝光管理員與未授權之測試帳號
     if (!hasAdminOnThisDevice || currentUser.role !== 'admin') {
@@ -351,13 +349,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     // 僅在當前已登入且為管理員身分時，才提供核心測試角色供切換除錯測試
     const testPersonas: UserType[] = CORE_TEST_ACCOUNTS.map((cta) => {
-      const existing = availableUsers.find((u) => u.id === cta.id);
-      return existing || cta;
+      const aliasId = USER_ALIAS_MAP[cta.id];
+      const existing = availableUsers.find((u) => u.id === cta.id || (aliasId && u.id === aliasId));
+      return restoreCanonicalUserIdentity(existing || cta);
     });
 
     return [
       ...testPersonas,
-      ...otherDeviceUsers.filter((u) => !testPersonas.some((tp) => tp.id === u.id)),
+      ...otherDeviceUsers.filter(
+        (u) =>
+          !testPersonas.some(
+            (tp) => tp.id === u.id || (USER_ALIAS_MAP[tp.id] && USER_ALIAS_MAP[tp.id] === u.id)
+          )
+      ),
     ];
   }, [availableUsers, deviceAccounts, hasAdminOnThisDevice, currentUser]);
 
@@ -1989,9 +1993,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar">
                   {sortedAvailableUsers.map((u) => {
                     const isCurrent = currentUser.id === u.id;
-                    const isAdminUser = u.id === 'user-admin' || u.role === 'admin';
-                    const isEnterpriseUser = u.accountType === 'enterprise' || (u as any).role === 'enterprise' || Boolean(u.company && (u.company.includes('科技') || u.company.includes('公司')));
-                    const isExpertUser = Boolean(u.verifiedExpert || u.verifiedBadge || u.role === 'solver');
+                    const isAdminUser = u.id === 'user-admin' || u.id === 'a000000001' || u.role === 'admin' || u.accountType === 'admin';
+                    const isEnterpriseUser =
+                      u.accountType === 'enterprise' ||
+                      (u as any).role === 'enterprise' ||
+                      u.id.startsWith('b') ||
+                      Boolean(u.memberId && u.memberId.startsWith('b'));
                     const uDisplayName = resolveUserDisplayName(u.id, u.name, availableUsers);
                     const uNameColorClass = getUserNameColorClass(u.id, availableUsers, u);
 
@@ -2007,9 +2014,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             ? 'bg-purple-50 hover:bg-purple-100 border-purple-300 font-bold'
                             : isEnterpriseUser
                             ? 'bg-blue-50 hover:bg-blue-100 border-blue-300 font-bold'
-                            : isExpertUser
-                            ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 font-bold'
-                            : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-700 hover:border-stone-300'
+                            : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-900 hover:border-stone-300'
                         }`}
                         title={`切換登入為「${uDisplayName}」`}
                       >
@@ -2027,11 +2032,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         {!isAdminUser && isEnterpriseUser && (
                           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-900 font-bold shrink-0">
                             企業機構
-                          </span>
-                        )}
-                        {!isAdminUser && !isEnterpriseUser && isExpertUser && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-900 font-bold shrink-0">
-                            專家
                           </span>
                         )}
                       </button>

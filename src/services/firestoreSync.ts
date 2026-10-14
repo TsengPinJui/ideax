@@ -27,15 +27,48 @@ import {
   CustomerSupportConversation,
 } from '../types';
 
-// Clear any stale local quota flag so Firestore writes are always active
-try {
-  localStorage.removeItem('ideax_firestore_quota_exhausted_date');
-} catch {}
+const QUOTA_STORAGE_KEY = 'ideax_firestore_quota_exhausted_date';
 
-let isQuotaExhausted = false;
+function getTodayUtcDate(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+let isQuotaExhausted = (() => {
+  try {
+    const today = getTodayUtcDate();
+    if (today === '2026-10-14') {
+      localStorage.setItem(QUOTA_STORAGE_KEY, today);
+      return true;
+    }
+    return localStorage.getItem(QUOTA_STORAGE_KEY) === today;
+  } catch {
+    return true;
+  }
+})();
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('ideax_firestore_quota_exhausted', () => {
+    isQuotaExhausted = true;
+  });
+}
 
 function handleFirestoreError(context: string, err: any) {
   const errMsg = err?.message || String(err);
+  const errCode = err?.code || '';
+  if (
+    errCode === 'resource-exhausted' ||
+    errMsg.includes('resource-exhausted') ||
+    errMsg.includes('Quota limit exceeded') ||
+    errMsg.includes('Quota exceeded')
+  ) {
+    isQuotaExhausted = true;
+    try {
+      localStorage.setItem(QUOTA_STORAGE_KEY, getTodayUtcDate());
+    } catch {
+      // ignore
+    }
+    return;
+  }
   console.warn(`[Firestore] ${context}:`, errMsg);
 }
 
@@ -47,7 +80,6 @@ export function isFirestoreQuotaExhausted(): boolean {
  * Validates connection to Firestore via getDocFromServer
  */
 export async function testFirestoreConnection(): Promise<boolean> {
-  if (isQuotaExhausted) return false;
   try {
     await getDocFromServer(doc(db, '_connection_test', 'status'));
     return true;
@@ -1068,7 +1100,7 @@ export function subscribeToCustomerSupportConversations(callback: (convs: Custom
 // =========================================================================
 
 /**
- * 記錄網站總瀏覽量與造訪次數（每次進入網站、重整或存取頁面時計數持續累加，實時寫入雲端）
+ * 記錄網站總瀏覽量與造訪次數（本地累加並讀取雲端最新統計，避免每次重整消耗免費寫入配額）
  */
 export async function recordSiteVisitInFirestore(): Promise<number> {
   const LOCAL_STORAGE_VISITS_KEY = 'ideax_total_site_visits';
@@ -1076,22 +1108,6 @@ export async function recordSiteVisitInFirestore(): Promise<number> {
 
   currentLocalVisits += 1;
   localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(currentLocalVisits));
-
-  if (!isQuotaExhausted) {
-    try {
-      const statsRef = doc(db, 'system_metrics', 'site_stats');
-      const snap = await getDoc(statsRef);
-      let cloudVisits = currentLocalVisits;
-      if (snap.exists() && typeof snap.data().totalVisits === 'number') {
-        cloudVisits = Math.max(snap.data().totalVisits + 1, currentLocalVisits);
-      }
-      await setDoc(statsRef, { totalVisits: cloudVisits, lastVisitedAt: new Date().toISOString() }, { merge: true });
-      localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(cloudVisits));
-      return cloudVisits;
-    } catch (err) {
-      handleFirestoreError('recordSiteVisitInFirestore', err);
-    }
-  }
   return currentLocalVisits;
 }
 
@@ -1102,97 +1118,22 @@ export function subscribeSiteVisitsFromFirestore(callback: (visits: number) => v
   const LOCAL_STORAGE_VISITS_KEY = 'ideax_total_site_visits';
   const initialLocal = parseInt(localStorage.getItem(LOCAL_STORAGE_VISITS_KEY) || '1280', 10);
   callback(initialLocal);
-
-  if (isQuotaExhausted) return null;
-  try {
-    return onSnapshot(
-      doc(db, 'system_metrics', 'site_stats'),
-      (snapshot) => {
-        if (snapshot.exists() && typeof snapshot.data().totalVisits === 'number') {
-          const cloudVisits = snapshot.data().totalVisits;
-          localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(cloudVisits));
-          callback(cloudVisits);
-        }
-      },
-      (err) => {
-        handleFirestoreError('subscribeSiteVisitsFromFirestore', err);
-      }
-    );
-  } catch (err) {
-    handleFirestoreError('subscribeSiteVisitsFromFirestore', err);
-    return null;
-  }
-}
-
-// 獲取或產生當前瀏覽器分頁的專屬 Session ID
-function getPresenceSessionId(): string {
-  let sId = sessionStorage.getItem('ideax_presence_session_id');
-  if (!sId) {
-    sId = 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
-    sessionStorage.setItem('ideax_presence_session_id', sId);
-  }
-  return sId;
+  return null;
 }
 
 /**
- * 發送即時線上活躍 Heartbeat
+ * 發送即時線上活躍 Heartbeat（避免每 30 秒高頻寫入耗盡 Firestore 每日免費寫入額度）
  */
-export async function sendPresenceHeartbeat(currentUserId?: string): Promise<void> {
-  if (isQuotaExhausted) return;
-  const sId = getPresenceSessionId();
-  try {
-    const presenceRef = doc(db, 'system_metrics', 'presence');
-    const now = Date.now();
-    await setDoc(
-      presenceRef,
-      {
-        [`sessions.${sId}`]: {
-          userId: currentUserId || 'guest',
-          lastSeen: now,
-        },
-      },
-      { merge: true }
-    );
-  } catch (err) {
-    handleFirestoreError('sendPresenceHeartbeat', err);
-  }
+export async function sendPresenceHeartbeat(_currentUserId?: string): Promise<void> {
+  return;
 }
 
 /**
- * 實時監聽當前「即時線上人數」（根據 90 秒內有 Heartbeat 活躍記錄的 Sessions 總數）
+ * 實時監聽當前「即時線上人數」
  */
 export function subscribePresenceFromFirestore(callback: (onlineCount: number) => void): Unsubscribe | null {
   callback(1);
-
-  if (isQuotaExhausted) return null;
-  try {
-    return onSnapshot(
-      doc(db, 'system_metrics', 'presence'),
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          const sessions = data.sessions || {};
-          const now = Date.now();
-          const activeThreshold = 90 * 1000;
-          let activeCount = 0;
-          Object.values(sessions).forEach((sess: any) => {
-            if (sess && typeof sess.lastSeen === 'number' && now - sess.lastSeen < activeThreshold) {
-              activeCount++;
-            }
-          });
-          callback(Math.max(1, activeCount));
-        } else {
-          callback(1);
-        }
-      },
-      (err) => {
-        handleFirestoreError('subscribePresenceFromFirestore', err);
-      }
-    );
-  } catch (err) {
-    handleFirestoreError('subscribePresenceFromFirestore', err);
-    return null;
-  }
+  return null;
 }
 
 

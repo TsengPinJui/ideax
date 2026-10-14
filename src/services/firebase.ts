@@ -2,12 +2,59 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getFirestore,
   initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
+  memoryLocalCache,
+  setLogLevel,
   Firestore
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import firebaseConfigJson from '../../firebase-applet-config.json';
+
+// Suppress noisy internal SDK backoff logs when free-tier daily write quota is reached
+try {
+  setLogLevel('silent');
+} catch {
+  // ignore
+}
+
+if (typeof window !== 'undefined') {
+  const markQuotaExhausted = () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.setItem('ideax_firestore_quota_exhausted_date', today);
+      window.dispatchEvent(new CustomEvent('ideax_firestore_quota_exhausted'));
+    } catch {
+      // ignore
+    }
+  };
+
+  const isFirestoreQuotaLog = (args: any[]): boolean => {
+    const text = args.map((a) => (typeof a === 'string' ? a : a?.message || '')).join(' ');
+    return (
+      text.includes('resource-exhausted') ||
+      text.includes('Quota limit exceeded') ||
+      text.includes('Quota exceeded for quota metric') ||
+      text.includes('Using maximum backoff delay')
+    );
+  };
+
+  const origError = console.error.bind(console);
+  console.error = (...args: any[]) => {
+    if (isFirestoreQuotaLog(args)) {
+      markQuotaExhausted();
+      return;
+    }
+    origError(...args);
+  };
+
+  const origWarn = console.warn.bind(console);
+  console.warn = (...args: any[]) => {
+    if (isFirestoreQuotaLog(args)) {
+      markQuotaExhausted();
+      return;
+    }
+    origWarn(...args);
+  };
+}
 
 export const firebaseConfig = {
   apiKey: firebaseConfigJson.apiKey,
@@ -22,7 +69,7 @@ export const firebaseConfig = {
 // Initialize Firebase App instance safely
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Firestore safely with direct long-polling for iframe, web & preview environments
+// Initialize Firestore safely with memoryLocalCache so exhausted write quotas do not get stuck retrying in IndexedDB
 let firestoreDb: Firestore;
 
 try {
@@ -31,27 +78,14 @@ try {
     app,
     {
       experimentalForceLongPolling: true,
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
+      localCache: memoryLocalCache(),
     },
     dbId
   );
 } catch {
-  try {
-    const dbId = firebaseConfigJson.firestoreDatabaseId || undefined;
-    firestoreDb = initializeFirestore(
-      app,
-      {
-        experimentalForceLongPolling: true,
-      },
-      dbId
-    );
-  } catch {
-    firestoreDb = firebaseConfigJson.firestoreDatabaseId
-      ? getFirestore(app, firebaseConfigJson.firestoreDatabaseId)
-      : getFirestore(app);
-  }
+  firestoreDb = firebaseConfigJson.firestoreDatabaseId
+    ? getFirestore(app, firebaseConfigJson.firestoreDatabaseId)
+    : getFirestore(app);
 }
 
 export const db = firestoreDb;
