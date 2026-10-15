@@ -1034,7 +1034,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             <div className="flex flex-wrap items-center gap-2 sm:gap-3.5 font-medium text-stone-500">
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-stone-400" />
-                <span>截止日：{question.deadline}</span>
+                <span>{question.deadline === '永久' ? '刊登時間：永久' : `截止日：${question.deadline}`}</span>
               </span>
               <span className="flex items-center gap-1">
                 <Eye className="w-3.5 h-3.5 text-stone-400" />

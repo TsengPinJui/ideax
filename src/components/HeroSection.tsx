@@ -13,6 +13,7 @@ interface HeroSectionProps {
   setSelectedCategory: (cat: Category | '全部') => void;
   onPostClick: () => void;
   onPostPainPointClick?: () => void;
+  onFindExpertsClick?: () => void;
   onExploreClick: () => void;
   onLeaderboardClick?: () => void;
   highestBountyQuestion?: { id: string; title: string; bounty: number; level: string };
@@ -24,7 +25,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   selectedCategory,
   setSelectedCategory,
   onPostClick,
-  onPostPainPointClick,
+  onFindExpertsClick,
   onExploreClick,
   onLeaderboardClick,
 }) => {
@@ -274,34 +275,37 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             ))}
           </div>
 
-          {/* Primary, Pain Point & Explore Action Buttons (電腦版顯示，手機版已由底部導覽列與快捷按鈕取代) */}
-          <div className="mt-4 sm:mt-5 hidden sm:flex sm:flex-row items-center justify-center gap-3 sm:gap-3.5 w-full sm:w-auto">
-            {/* 1. 主行動：發布懸賞 (金黃品牌核心，象徵重金賞金) */}
+          {/* Primary, Find Experts & Explore Action Buttons (電腦版顯示，手機版已由底部導覽列與快捷按鈕取代) */}
+          <div className="mt-4 sm:mt-5 hidden sm:flex sm:flex-wrap items-center justify-center gap-3 sm:gap-3.5 w-full sm:w-auto">
+            {/* 1. 主行動：統一立即發布 (問題、痛點、提案、刊登、討論) */}
             <button
               onClick={onPostClick}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 active:from-amber-600 active:to-amber-600 text-stone-950 font-black text-sm sm:text-base shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer group border border-amber-300/80 ring-2 ring-amber-400/20"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 active:from-amber-600 active:to-amber-600 text-stone-950 font-black text-sm sm:text-base shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer group border border-amber-300/80 ring-2 ring-amber-400/20"
             >
               <IdeaXLogo variant="bulb" size="sm" />
-              <span>我有難題，發布懸賞！</span>
+              <span className="flex flex-col items-center leading-tight">
+                <span className="text-sm sm:text-base font-black">立即發布!</span>
+                <span className="text-[10px] sm:text-[11px] font-bold text-stone-900/80 mt-0.5">(問題、痛點、提案、刊登、討論)</span>
+              </span>
             </button>
 
-            {/* 2. 次行動：痛點腦洞 (玫瑰粉紫漸層，象徵靈感 Spark) */}
+            {/* 2. 次行動：找專家 / 徵才 */}
             <button
-              onClick={onPostPainPointClick || onPostClick}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 active:from-rose-700 active:to-pink-700 text-white font-black text-sm sm:text-base shadow-md shadow-rose-500/20 hover:shadow-lg hover:shadow-rose-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer border border-rose-400/80"
+              onClick={onFindExpertsClick}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:from-emerald-700 active:to-teal-700 text-white font-black text-sm sm:text-base shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer border border-emerald-400/80"
             >
-              <Zap className="w-4 h-4 fill-white text-white animate-pulse" />
-              <span>提出痛點，徵集創新腦洞</span>
+              <ShieldCheck className="w-4 h-4 text-white" />
+              <span>找專家 / 徵才</span>
             </button>
 
-            {/* 3. 探索行動：熱門市集 (簡約質感珍珠白，高對比不搶焦) */}
+            {/* 3. 探索行動：熱門市集 (紅框與紅色羅盤圖示) */}
             <button
               onClick={onExploreClick}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-stone-50 active:bg-stone-100 text-stone-800 hover:text-amber-950 font-extrabold text-sm sm:text-base shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-stone-200 hover:border-amber-400 group"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-red-50/50 active:bg-red-50 text-stone-800 hover:text-red-950 font-extrabold text-sm sm:text-base shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border-2 border-red-400 hover:border-red-500 group"
             >
-              <Compass className="w-4 h-4 text-amber-500 group-hover:rotate-45 transition-transform" />
-              <span>探索最新熱門問題</span>
-              <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-amber-500 group-hover:translate-x-1 transition-all" />
+              <Compass className="w-4 h-4 text-red-500 group-hover:rotate-45 transition-transform" />
+              <span>探索最新熱門</span>
+              <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-red-500 group-hover:translate-x-1 transition-all" />
             </button>
           </div>
         </div>

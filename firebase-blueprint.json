@@ -47,6 +47,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "appName": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
         "authorId": { "type": "string" },

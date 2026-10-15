@@ -214,6 +214,7 @@ interface AppContextType {
   updateProposalContent: (
     questionId: string,
     params: {
+      appName?: string;
       title?: string;
       description?: string;
       targetGoal?: string;
@@ -1227,13 +1228,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const isPurged = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
     const activeVirtualSeeds = isPurged ? [] : ALL_VIRTUAL_PROPOSALS_SEED;
-    const virtualSeedMap = new Map(ALL_VIRTUAL_PROPOSALS_SEED.map((vq) => [vq.id, vq]));
+    const virtualSeedMap = new Map(
+      [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS].map((vq) => [vq.id, vq])
+    );
     const sanitizeQuestion = (rawQ: any): Question => {
       const seedItem = virtualSeedMap.get(rawQ.id);
       const q = seedItem
         ? {
             ...seedItem,
             ...rawQ,
+            appName: rawQ.appName || seedItem.appName,
+            title: seedItem.postType === 'vibecoding_app' ? seedItem.title : (rawQ.title || seedItem.title),
             isSimulated: true,
             simulatedBatchId: seedItem.simulatedBatchId || SIMULATED_BATCH_ID,
             coverImage: seedItem.coverImage || rawQ.coverImage,
@@ -2326,11 +2331,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return true;
               })
               .map((rawQ) => {
-                const seedItem = ALL_VIRTUAL_PROPOSALS_SEED.find((vq) => vq.id === rawQ.id);
+                const seedItem = ALL_VIRTUAL_PROPOSALS_SEED.find((vq) => vq.id === rawQ.id) || MOCK_QUESTIONS.find((mq) => mq.id === rawQ.id);
                 const q = seedItem
                   ? {
                       ...seedItem,
                       ...rawQ,
+                      appName: rawQ.appName || seedItem.appName,
+                      title: seedItem.postType === 'vibecoding_app' ? seedItem.title : (rawQ.title || seedItem.title),
                       isSimulated: true,
                       simulatedBatchId: seedItem.simulatedBatchId || SIMULATED_BATCH_ID,
                       coverImage: seedItem.coverImage || rawQ.coverImage,
@@ -2371,6 +2378,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   seedItem &&
                   (!rawQ.sameQuestionCount ||
                     rawQ.answersCount !== finalQ.answersCount ||
+                    rawQ.title !== finalQ.title ||
+                    rawQ.appName !== finalQ.appName ||
                     !rawQ.isSimulated ||
                     !rawQ.simulatedBatchId)
                 ) {
@@ -2527,11 +2536,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               return true;
             })
             .map((rawQ) => {
-              const seedItem = ALL_VIRTUAL_PROPOSALS_SEED.find((vq) => vq.id === rawQ.id);
+              const seedItem = ALL_VIRTUAL_PROPOSALS_SEED.find((vq) => vq.id === rawQ.id) || MOCK_QUESTIONS.find((mq) => mq.id === rawQ.id);
               const merged = seedItem
                 ? {
                     ...seedItem,
                     ...rawQ,
+                    appName: rawQ.appName || seedItem.appName,
+                    title: seedItem.postType === 'vibecoding_app' ? seedItem.title : (rawQ.title || seedItem.title),
                     isSimulated: true,
                     simulatedBatchId: seedItem.simulatedBatchId || SIMULATED_BATCH_ID,
                     coverImage: seedItem.coverImage || rawQ.coverImage,
@@ -4142,6 +4153,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const q: Question = {
       id: qId,
+      appName: newQ.appName,
       title: newQ.title || '無標題問題',
       description: newQ.description || '',
       category: finalCategory,
@@ -4150,6 +4162,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       level: finalLevel,
       bounty: finalBounty,
       postType: newQ.postType || 'seek_solution',
+      specialZone: newQ.specialZone,
+      referencedPainPoint: newQ.referencedPainPoint,
+      targetGoal: newQ.targetGoal,
+      currentVersion: newQ.currentVersion,
+      updateLogs: newQ.updateLogs,
+      coverImage: newQ.coverImage,
+      galleryImages: newQ.galleryImages,
+      techArchitecture: newQ.techArchitecture,
+      demoUrl: newQ.demoUrl,
+      fileUrl: newQ.fileUrl,
+      vibeCodingData: newQ.vibeCodingData,
       status: 'open',
       authorId: newQ.authorId || currentUser.id,
       authorName: newQ.authorName || currentUser.name,
@@ -4166,6 +4189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       answersCount: 0,
       likes: newQ.likes ?? (isRaceModeActive ? 16 : 8),
       aiAnalysis: newQ.aiAnalysis,
+      aiPreliminaryReport: newQ.aiPreliminaryReport,
       withheldBounty: finalBounty,
       disputeStatus: 'none',
       phases: newQ.phases,
@@ -4258,6 +4282,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateProposalContent = (
     questionId: string,
     params: {
+      appName?: string;
       title?: string;
       description?: string;
       targetGoal?: string;
@@ -4293,6 +4318,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const formattedTime = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     const changedFields: string[] = [];
+    if (params.appName !== undefined && params.appName !== currentQ.appName) changedFields.push('作品名稱');
     if (params.title && params.title !== currentQ.title) changedFields.push('標題');
     if (params.description && params.description !== currentQ.description) changedFields.push('內容說明');
     if (params.targetGoal !== undefined && params.targetGoal !== currentQ.targetGoal) changedFields.push('目標');
@@ -4315,6 +4341,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updatedQ: Question = {
       ...currentQ,
+      appName: params.appName !== undefined ? params.appName : currentQ.appName,
       title: params.title !== undefined ? params.title : currentQ.title,
       description: params.description !== undefined ? params.description : currentQ.description,
       targetGoal: params.targetGoal !== undefined ? params.targetGoal : currentQ.targetGoal,

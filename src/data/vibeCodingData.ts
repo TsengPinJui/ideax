@@ -3,7 +3,8 @@ import { Question } from '../types';
 export const DEFAULT_VIBECODING_APPS: Question[] = [
   {
     id: 'vibe-app-1',
-    title: 'VibeForm AI - 幾秒內用自然語言寫出滿分動態表單與邏輯問卷',
+    appName: 'VibeForm AI',
+    title: '幾秒內用自然語言寫出滿分動態表單與邏輯問卷',
     description: '專為行銷與營運團隊設計的 Vibe Coding 輕量 Web 應用。使用者無需編寫 HTML 或 JavaScript，只需輸入一句需求「需要一份估價與客戶痛點調查問卷」，AI 即可即時生成帶有條件跳轉邏輯、欄位驗證與響應式 RWD 介面的雙語問卷，並能直接匯出 JSON 或一鍵部署。',
     category: '創新創業',
     subcategory: '資訊科技',
@@ -68,7 +69,8 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'vibe-app-2',
-    title: 'PulseCanvas - 智慧可視化資料流與即時微應用畫布',
+    appName: 'PulseCanvas',
+    title: '智慧可視化資料流與即時微應用畫布',
     description: '運用 Vibe Coding 打造的多功能互動畫布工具。支援將數據 API、Markdown 筆記與微小型計算元件隨手拖拽至無邊界畫布上，自動串接邏輯流並輸出可分享的微網頁，極適合做產品 Prototype 驗證與團隊腦力激盪。',
     category: '專業問題',
     subcategory: '軟體開發',
@@ -121,7 +123,8 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'vibe-app-3',
-    title: 'AutoClip Vibe - 智慧長影片提煉短影音腳本與網頁精華工具',
+    appName: 'AutoClip Vibe',
+    title: '智慧長影片提煉短影音腳本與網頁精華工具',
     description: '結合 WebAssembly 與 AI 音訊辨識的 Vibe Coding 工具。只需輸入 YouTube 或本地錄音網址，即可精確切分精華段落、自動生成字幕文案與 IG/TikTok 格式短影音剪輯建議，全流程可在瀏覽器端高效完成。',
     category: '創新創業',
     subcategory: '數位行銷',

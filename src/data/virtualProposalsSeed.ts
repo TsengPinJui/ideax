@@ -906,7 +906,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
 export const SEED_VIBECODING_APPS: Question[] = [
   {
     id: 'q-vp-vibe-01',
-    title: 'ReceiptSnap AI — 自由工作者發票與統編收據 1 秒拍照自動歸類記帳 Web App',
+    appName: 'ReceiptSnap AI',
+    title: '自由工作者發票與統編收據 1 秒拍照自動歸類記帳 Web App',
     description: '專為一人公司與接案族用 Vibe Coding 打造的零設定記帳工具！手機拍下紙本電子發票、高鐵票或海外 SaaS 刷卡單，自動辨識日期、統編、未稅金額與會計科目（如雲端服務費、差旅費、交際費），一鍵匯出台灣記帳士最愛的兩欄式 Excel 報稅表。',
     category: '網站程式',
     subcategory: 'AI工具',
@@ -952,7 +953,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-02',
-    title: 'SlideCraft Flow — 貼上會議逐字稿，30 秒生成麥肯錫風格結構化簡報大綱與圖表網頁',
+    appName: 'SlideCraft Flow',
+    title: '貼上會議逐字稿，30 秒生成麥肯錫風格結構化簡報大綱與圖表網頁',
     description: '每次開完需求訪談都要花三小時畫投影片？SlideCraft Flow 讓你直接貼上混亂的會議紀錄或語音轉文字稿，自動提煉金字塔原理結論（SCQA 架構）、自動繪製甘特圖與商業漏斗 SVG，並支援一鍵切換深色科技風或極簡顧問風簡報模式。',
     category: '網站程式',
     subcategory: '專案管理',
@@ -997,7 +999,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-03',
-    title: 'HookLab 短影音黃金前 3 秒腳本實驗室 — 自動拆解爆款節奏與多平台分鏡提詞器',
+    appName: 'HookLab',
+    title: '短影音黃金前 3 秒腳本實驗室：自動拆解爆款節奏與多平台分鏡提詞器',
     description: '專為 Reels、Shorts 與 TikTok 創作者設計的腳本工作台。輸入你想分享的專業知識主題，自動生成 5 種高完播率的「反直覺黃金前 3 秒開頭（Hook）」，並內建手機橫向/直向懸浮智慧提詞器，會根據你的講話語速自動滾動字幕！',
     category: '網站程式',
     subcategory: '影音創作',
@@ -1042,7 +1045,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-04',
-    title: 'ShaderVibe 3D — 零程式碼用自然語言調配品牌官網流體漸層與 3D 玻璃擬態背景產生器',
+    appName: 'ShaderVibe 3D',
+    title: '零程式碼用自然語言調配品牌官網流體漸層與 3D 玻璃擬態背景產生器',
     description: '設計師與前端工程師不用再手寫複雜的 GLSL Shader！只要輸入「溫暖晨曦琥珀色液態流動、滑鼠移過產生柔和波紋」，即可即時預覽 60fps 的 WebGL 互動背景，並一鍵複製輕量化 React 元件或純 HTML 嵌入碼。',
     category: '網站程式',
     subcategory: '網頁設計',
@@ -1087,7 +1091,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-05',
-    title: 'EnvShield Local — 開發者貼上程式碼給 AI 前的「API Key 與機密個資本地自動遮罩器」',
+    appName: 'EnvShield Local',
+    title: '開發者貼上程式碼給 AI 前的「API Key 與機密個資本地自動遮罩器」',
     description: '很多工程師常不小心把含有 AWS Secret、Firebase 私鑰或客戶真實 Email 的 Log 直接貼進 ChatGPT 除錯。EnvShield 純在瀏覽器本地端執行正則與語意掃描，1 秒將所有敏感金鑰替換為安全佔位符（如 `[REDACTED_API_KEY_1]`），除錯完還能一鍵還原！',
     category: '網站程式',
     subcategory: '資訊安全',
@@ -1132,7 +1137,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-06',
-    title: 'RubricMate 雙語探究式學習評量與個人化學習歷程回饋產生器',
+    appName: 'RubricMate',
+    title: '雙語探究式學習評量與個人化學習歷程回饋產生器',
     description: '老師每學期末要寫上百位學生的雙語評語與學習歷程建議常寫到半夜。RubricMate 讓教師自訂評分規準（Rubric）後，只要勾選學生的課堂表現亮點，即可生成溫暖具體、符合 108 課綱素養導向的中英雙語回饋與改進建議。',
     category: '網站程式',
     subcategory: '教育學習',
@@ -1177,7 +1183,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-07',
-    title: 'FlowBlueprint — 一人公司自動化工作流 ROI 試算與 Make/n8n 藍圖產生器',
+    appName: 'FlowBlueprint',
+    title: '一人公司自動化工作流 ROI 試算與 Make/n8n 藍圖產生器',
     description: '不知道哪個業務流程最值得自動化？只要輸入你每週重複做的瑣事（例如：收到表單→開立報價單→寄信→建 Notion 專案），系統自動計算每年浪費的工時成本，並直接生成可匯入 Make 或 n8n 的 JSON 自動化節點藍圖！',
     category: '網站程式',
     subcategory: '自動化流程',
@@ -1222,7 +1229,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-08',
-    title: 'ETF Pulse 台灣定期定額股息再投入與通膨購買力蒙地卡羅模擬器',
+    appName: 'ETF Pulse',
+    title: '台灣定期定額股息再投入與通膨購買力蒙地卡羅模擬器',
     description: '市面上的複利計算機都只用固定報酬率算直線，忽略了市場波動與通膨！ETF Pulse 整合台股歷史波動率與台灣 CPI 通膨數據，以一萬次蒙地卡羅隨機模擬，視覺化呈現你退休時資產在樂觀、中位數與悲觀情境下的真實購買力與每月可領現金流。',
     category: '網站程式',
     subcategory: '金融理財',
@@ -1267,7 +1275,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-09',
-    title: 'KubeCost Radar — 貼上 Kubernetes YAML 設定檔，即時抓出雲端記憶體浪費與降本建議',
+    appName: 'KubeCost Radar',
+    title: '貼上 Kubernetes YAML 設定檔，即時抓出雲端記憶體浪費與降本建議',
     description: '新創團隊每個月 AWS / GCP 帳單莫名其妙破表？KubeCost Radar 讓你免授權連入正式叢集，只要拖曳上傳 deployment.yaml，即可靜態分析 CPU/Memory requests 與 limits 超配風險、Spot Instance 替換潛力，直接幫你省下 35% 雲端費用。',
     category: '網站程式',
     subcategory: '開發運維',
@@ -1312,7 +1321,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-10',
-    title: 'PodCut Note — Podcast 音檔自動去氣音贅字、章節時間軸與 IG 金句圖卡產生器',
+    appName: 'PodCut Note',
+    title: 'Podcast 音檔自動去氣音贅字、章節時間軸與 IG 金句圖卡產生器',
     description: '錄完一集 45 分鐘的 Podcast 後製要花半天？PodCut Note 自動偵測「呃、那個、就是說」等語助詞與長空白段落，一鍵產出帶時間戳記的 Show Notes 大綱，並自動挑選 3 句最有共鳴的金句排好 IG 限動正方形圖卡！',
     category: '網站程式',
     subcategory: '影音創作',
@@ -1357,7 +1367,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-11',
-    title: 'MythWeaver 織夢島 — AI 動態 NPC 記憶與多重結局像素風互動解謎網頁遊戲',
+    appName: 'MythWeaver 織夢島',
+    title: 'AI 動態 NPC 記憶與多重結局像素風互動解謎網頁遊戲',
     description: '傳統 RPG 的 NPC 只會重複同一句台詞。在《織夢島》中，島上的鐵匠、酒館老闆與神秘吟遊詩人都擁有獨立性格與長期記憶，你對他們說的每一句話都會改變好感度、商品價格甚至觸發隱藏叛變支線！純瀏覽器免安裝即點即玩。',
     category: '網站程式',
     subcategory: '互動遊戲',
@@ -1402,7 +1413,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-12',
-    title: 'FridgeChef 冰箱清庫存零浪費 15 分鐘下班快手料理與採買清單配對器',
+    appName: 'FridgeChef',
+    title: '冰箱清庫存零浪費 15 分鐘下班快手料理與採買清單配對器',
     description: '打開冰箱只有半顆高麗菜、兩顆雞蛋跟快過期的豆腐？勾選你現有的剩餘食材與家中廚具（如：只有氣炸鍋或單柄鍋），FridgeChef 立即推薦 3 道 15 分鐘內能上桌的零失敗料理，並自動計算熱量與蛋白質！',
     category: '網站程式',
     subcategory: '生活服務',
@@ -1447,7 +1459,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-13',
-    title: 'CiteLens 網頁論文與長文報導「一鍵螢光筆圖譜＋APA/IEEE 引用格式」Chrome 擴充工具',
+    appName: 'CiteLens',
+    title: '網頁論文與長文報導「一鍵螢光筆圖譜＋APA/IEEE 引用格式」Chrome 擴充工具',
     description: '寫論文或產業研究報告時開了 50 個分頁找不到出處？CiteLens 讓你在任何網頁反白畫重點時，自動擷取作者、發布日期、DOI 與原文段落，在側邊欄自動拼成視覺化知識卡片牆，並支援一鍵複製 APA 第七版、MLA 或 BibTeX 引用格式。',
     category: '網站程式',
     subcategory: '效率工具',
@@ -1492,7 +1505,8 @@ export const SEED_VIBECODING_APPS: Question[] = [
   },
   {
     id: 'q-vp-vibe-14',
-    title: 'BreatheWave 4-7-8 視覺聲學減壓呼吸儀 — 結合穿戴心率與白噪音的睡前放鬆 PWA',
+    appName: 'BreatheWave',
+    title: '4-7-8 視覺聲學減壓呼吸儀：結合穿戴心率與白噪音的睡前放鬆 PWA',
     description: '專為失眠與高壓科技人設計的零干擾睡前 Web App。透過溫暖呼吸光球引導 4-7-8 副交感神經放鬆呼吸法，並透過 Web Audio API 即時合成雨聲、頌缽與粉紅噪音，不需連網、無廣告追蹤，幫助大腦在 8 分鐘內平靜入睡。',
     category: '網站程式',
     subcategory: '健康生活',

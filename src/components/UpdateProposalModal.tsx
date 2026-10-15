@@ -42,6 +42,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   const [referencedPainPoint, setReferencedPainPoint] = useState(question.referencedPainPoint || '');
 
   // 軟體程式 (VibeCoding) 專屬欄位
+  const [appName, setAppName] = useState(question.appName || (question as any).vibeCodingData?.appName || '');
   const [demoUrl, setDemoUrl] = useState(question.demoUrl || '');
   const [techArchitecture, setTechArchitecture] = useState(question.techArchitecture || '');
   const [coverImage, setCoverImage] = useState(question.coverImage || '');
@@ -68,6 +69,11 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       return;
     }
 
+    if (isVibeCoding && !appName.trim()) {
+      setFormError('「作品名稱（軟體或網站名稱）」為必填項目！');
+      return;
+    }
+
     if (!title.trim()) {
       setFormError('標題不可為空！');
       return;
@@ -82,6 +88,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     setFormError(null);
 
     const result = updateProposalContent(question.id, {
+      appName: isVibeCoding ? appName.trim() : undefined,
       title: title.trim(),
       description: description.trim(),
       targetGoal: targetGoal.trim() || undefined,
@@ -239,10 +246,31 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
               提案與作品內容修改
             </h4>
 
+            {/* 作品名稱（軟體或網站名稱） */}
+            {isVibeCoding && (
+              <div>
+                <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center justify-between">
+                  <span>作品名稱（軟體或網站名稱） *</span>
+                  <span className="text-[10px] text-blue-700 font-bold bg-blue-100 px-1.5 py-0.2 rounded">
+                    藍色顯示於卡片左下角
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={40}
+                  value={appName}
+                  onChange={(e) => setAppName(e.target.value)}
+                  placeholder="例如：ReceiptSnap AI、VibeForm AI..."
+                  className="w-full px-3.5 py-2 rounded-xl border border-blue-300 focus:border-blue-500 text-stone-900 text-xs font-bold outline-none bg-white"
+                />
+              </div>
+            )}
+
             {/* 標題 */}
             <div>
               <label className="block text-xs font-bold text-stone-800 mb-1">
-                {isVibeCoding ? '作品名稱 / 應用標題 *' : '提案標題 / 創新主題 *'}
+                {isVibeCoding ? '應用標題 / 核心功能亮點 *' : '提案標題 / 創新主題 *'}
               </label>
               <input
                 type="text"

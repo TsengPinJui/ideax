@@ -1571,6 +1571,12 @@ function MainContent() {
                 setSelectedCategory={setSelectedCategory}
                 onPostClick={() => handleOpenCreateWithType('seek_solution')}
                 onPostPainPointClick={() => handleOpenCreateWithType('pain_point')}
+                onFindExpertsClick={() => {
+                  setActiveTab('solvers');
+                  setSelectedQuestion(null);
+                  setSelectedSolver(null);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 onExploreClick={() => {
                   const el = document.getElementById('market-grid');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });

@@ -16,7 +16,7 @@ const STORAGE_PREFIX = 'ideax_user_interest_';
  * 規則：以 deadline 當日 23:59:59 為最終截止線，若當前時間已超過則為過期
  */
 export function isQuestionExpired(deadline?: string): boolean {
-  if (!deadline) return false;
+  if (!deadline || deadline === '永久' || deadline === '永久刊登') return false;
   const deadlineStr = deadline.includes('T') ? deadline : `${deadline}T23:59:59`;
   const time = new Date(deadlineStr).getTime();
   return !isNaN(time) && time < Date.now();

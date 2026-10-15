@@ -319,6 +319,14 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
 
           {/* 2. 作品標題 + 開發者資訊列 */}
           <div className="space-y-3.5">
+            {(question.appName || vibeData?.appName) && (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600 text-white text-xs sm:text-sm font-black shadow-xs border border-blue-400/60">
+                  <Code2 className="w-4 h-4 text-blue-200 shrink-0" />
+                  <span>{question.appName || vibeData?.appName}</span>
+                </span>
+              </div>
+            )}
             <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-stone-900 leading-snug tracking-tight">
               {question.title}
             </h1>
@@ -436,6 +444,15 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
                   </span>
                 )}
               </div>
+
+              {(question.appName || vibeData?.appName) && (
+                <div className="absolute bottom-3 left-3 max-w-[55%]">
+                  <span className="bg-blue-600/95 text-white backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border border-blue-400/60 shadow-md truncate">
+                    <Code2 className="w-3.5 h-3.5 text-blue-200 shrink-0" />
+                    <span className="truncate">{question.appName || vibeData?.appName}</span>
+                  </span>
+                </div>
+              )}
 
               <button
                 type="button"

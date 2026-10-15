@@ -80,7 +80,7 @@ const getTitleLabel = (type: PostType): string => {
     case 'innovation_proposal':
       return '提案標題 / 創新主題 *';
     case 'vibecoding_app':
-      return '作品名稱 / 應用標題 *';
+      return '應用標題 / 核心功能亮點 *';
     case 'chat_discussion':
       return '討論主題 / 標題 *';
     default:
@@ -97,7 +97,7 @@ const getTitlePlaceholder = (type: PostType): string => {
     case 'innovation_proposal':
       return '例如：基於 AI 的智慧早餐店預訂與動態備料系統提案';
     case 'vibecoding_app':
-      return '例如：VibeBreakfast - 10分鐘用 AI 生成的早餐店預訂 Line Web App';
+      return '例如：10分鐘用 AI 生成的早餐店預訂與動態備料 Line Web App';
     case 'chat_discussion':
       return '例如：大家在進行 VibeCoding 時最常遇到的 Prompt 瓶頸是什麼？';
     default:
@@ -178,6 +178,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [targetGoal, setTargetGoal] = useState('');
 
   // VibeCoding 專屬欄位狀態
+  const [appName, setAppName] = useState<string>('');
   const [coverImage, setCoverImage] = useState<string>('');
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [newGalleryInput, setNewGalleryInput] = useState<string>('');
@@ -383,6 +384,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     const descMin = isL0OrChatType ? 20 : 30;
     const descMax = isL0OrChatType ? 300 : 3000;
 
+    if (postType === 'vibecoding_app' && !appName.trim()) {
+      setTermsError('【程式或網站】請輸入「作品名稱（軟體或網站名稱）」（必填）！');
+      return;
+    }
+
     const titleLen = title.trim().length;
     if (titleLen < titleMin || titleLen > titleMax) {
       const cleanTitleLabel = getTitleLabel(postType).replace(' *', '');
@@ -467,7 +473,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         finalTags = finalTags.slice(0, 5);
       }
 
-      const deadline = new Date(Date.now() + deadlineDays * 86400000).toISOString().split('T')[0];
+      const deadline = deadlineDays === 0
+        ? '永久'
+        : new Date(Date.now() + deadlineDays * 86400000).toISOString().split('T')[0];
 
       const phases: DeliveryPhase[] | undefined = enablePhasedDelivery && currentBounty > 0
         ? customPhases.map((cp, idx) => ({
@@ -502,6 +510,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         : description.trim();
 
       const newQuestion = createQuestion({
+        appName: postType === 'vibecoding_app' ? appName.trim() : undefined,
         title,
         description: finalDescription,
         category: postType === 'vibecoding_app' ? '網站程式' : finalCategory,
@@ -823,6 +832,36 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* 軟體或網站名稱（作品名稱） - 程式或網站必填，藍色顯示於卡片左下角 */}
+        {postType === 'vibecoding_app' && (
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+                <Code2 className="w-3.5 h-3.5 text-blue-600" />
+                <span>作品名稱（軟體或網站名稱） *</span>
+                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded border text-blue-800 bg-blue-100/80 border-blue-300/80">
+                  必填 · 以藍色顯示於卡片左下角
+                </span>
+              </label>
+              <span className="text-[11px] font-mono text-stone-400">
+                {appName.trim().length} / 40 字
+              </span>
+            </div>
+            <input
+              type="text"
+              required
+              maxLength={40}
+              value={appName}
+              onChange={(e) => {
+                setAppName(e.target.value);
+                if (termsError) setTermsError(null);
+              }}
+              placeholder="例如：ReceiptSnap AI、VibeForm AI、MythWeaver 織夢島..."
+              className="w-full px-4 py-2.5 rounded-xl border border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-stone-900 text-sm font-bold outline-none transition-all bg-blue-50/20"
+            />
+          </div>
+        )}
 
         {/* Question Title */}
         <div>
@@ -1654,20 +1693,22 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         </div>
       )}
 
-        {/* Deadline */}
+        {/* 刊登時間 (原徵求截止時間) */}
         <div className="flex items-center justify-between text-xs text-stone-600 bg-stone-50 p-3 rounded-xl border border-stone-200">
           <div className="flex items-center gap-2 font-medium">
             <Clock className="w-4 h-4 text-stone-400" />
-            <span>徵求截止時間：</span>
+            <span>刊登時間：</span>
           </div>
           <select
             value={deadlineDays}
             onChange={(e) => setDeadlineDays(Number(e.target.value))}
-            className="px-2 py-1 rounded-lg border border-stone-200 bg-white font-semibold text-stone-800 text-xs"
+            className="px-2.5 py-1 rounded-lg border border-stone-200 bg-white font-semibold text-stone-800 text-xs cursor-pointer"
           >
-            <option value={7}>7 天後截止</option>
-            <option value={14}>14 天後截止（推薦）</option>
-            <option value={30}>30 天後截止</option>
+            <option value={7}>7 天</option>
+            <option value={14}>14 天（推薦）</option>
+            <option value={30}>30 天</option>
+            <option value={60}>60 天</option>
+            <option value={0}>永久</option>
           </select>
         </div>
 

@@ -443,7 +443,7 @@ export const SubcategoryBoardBanner: React.FC<SubcategoryBoardBannerProps> = ({
           <div className="bg-white/70 backdrop-blur-xs rounded-2xl p-3 border border-stone-200/80 space-y-1.5">
             <div className="text-xs font-black text-stone-800 flex items-center gap-1.5">
               <TrendingUp className="w-3.5 h-3.5 text-amber-600" />
-              <span>此版面熱門痛點方向：</span>
+              <span>此版面熱門趨勢：</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {details.trendingTopics.map((topic) => (

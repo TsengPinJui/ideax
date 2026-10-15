@@ -895,7 +895,8 @@ export interface Question {
   authorTitle?: string;
   invitedSolverIds?: string[];
   isFeatured?: boolean;
-  postType?: PostType; // 尋求解答 | 提出痛點 | 閒聊討論 | 創新提案
+  postType?: PostType; // 尋求解答 | 提出痛點 | 閒聊討論 | 創新提案 | 程式或網站
+  appName?: string; // 作品名稱 / 軟體或網站名稱 (VibeCoding展場必填，以藍色顯示於卡片左下角)
   referencedPainPoint?: string; // 引用相關痛點 (選填)
   coverImage?: string; // 大圖/封面圖 (VibeCoding展場/創新提案)
   galleryImages?: string[]; // 上傳 0~6 張截圖/圖片

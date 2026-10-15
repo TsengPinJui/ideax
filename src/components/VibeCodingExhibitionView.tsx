@@ -74,12 +74,13 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
+        const matchAppName = (app.appName || (app as any).vibeCodingData?.appName || '').toLowerCase().includes(q);
         const matchTitle = (app.title || '').toLowerCase().includes(q);
         const matchDesc = (app.description || '').toLowerCase().includes(q);
         const matchTech = app.techArchitecture?.toLowerCase().includes(q) || false;
         const matchPain = app.referencedPainPoint?.toLowerCase().includes(q) || false;
         const matchTags = app.tags?.some((t) => (t || '').toLowerCase().includes(q)) || false;
-        if (!matchTitle && !matchDesc && !matchTech && !matchPain && !matchTags) return false;
+        if (!matchAppName && !matchTitle && !matchDesc && !matchTech && !matchPain && !matchTags) return false;
       }
 
       return true;
@@ -359,16 +360,25 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                     </button>
                   </div>
 
-                  {/* Bottom Gallery Pill & Demo URL Button */}
+                  {/* Bottom Left: 藍色顯示作品名稱（軟體或網站名稱） & Bottom Right: Demo URL Button */}
                   <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 text-white">
-                    {galleryCount > 0 ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md border border-white/20 flex items-center gap-1">
-                        <ImageIcon className="w-3 h-3 text-purple-300" />
-                        <span>{galleryCount} 張圖</span>
-                      </span>
-                    ) : (
-                      <span />
-                    )}
+                    {(() => {
+                      const displayAppName =
+                        app.appName ||
+                        (app as any).vibeCodingData?.appName ||
+                        app.title;
+                      return displayAppName ? (
+                        <span
+                          className="text-[11px] font-black px-2.5 py-1 rounded-lg bg-blue-600/95 text-white backdrop-blur-md border border-blue-400/60 shadow-md flex items-center gap-1 max-w-[65%] truncate"
+                          title={`作品名稱：${displayAppName}`}
+                        >
+                          <Code2 className="w-3 h-3 text-blue-200 shrink-0" />
+                          <span className="truncate">{displayAppName}</span>
+                        </span>
+                      ) : (
+                        <span />
+                      );
+                    })()}
 
                     {app.demoUrl && (
                       <a
