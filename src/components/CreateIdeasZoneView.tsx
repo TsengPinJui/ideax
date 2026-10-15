@@ -627,10 +627,8 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                       );
                     })()}
 
-                    {/* 打賞與留言討論預覽（自資料庫同步讀取） */}
+                    {/* 留言討論預覽（自資料庫同步讀取） */}
                     {(() => {
-                      const matchedQ = (questions || []).find((q) => q.id === proposal.id);
-                      const latestTip = matchedQ?.tipsHistory && matchedQ.tipsHistory.length > 0 ? matchedQ.tipsHistory[0] : null;
                       const qAnswers = (answers || []).filter((a) => a.questionId === proposal.id);
                       const discAnswers = qAnswers.filter((a) => a.type === 'discussion');
                       const targetAns = discAnswers.length > 0 ? discAnswers[0] : qAnswers[0];
@@ -641,27 +639,13 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                         ? `${simComments[0].authorName}：${simComments[0].content}`
                         : null;
 
-                      if (!latestTip && !latestCommentText) return null;
+                      if (!latestCommentText) return null;
                       return (
                         <div className="p-2 rounded-xl bg-stone-50/90 border border-stone-200/70 space-y-1 text-[11px]">
-                          {latestTip && (
-                            <div className="flex items-center gap-1 text-amber-900 min-w-0">
-                              <Coins className="w-3 h-3 text-amber-600 shrink-0" />
-                              <span className="font-bold shrink-0">{latestTip.userName}</span>
-                              <span className="text-amber-700 font-extrabold shrink-0">
-                                打賞 🪙 {(latestTip.amount * 10).toLocaleString()} 點
-                              </span>
-                              {latestTip.message && (
-                                <span className="text-stone-500 truncate">「{latestTip.message}」</span>
-                              )}
-                            </div>
-                          )}
-                          {latestCommentText && (
-                            <div className="flex items-center gap-1 text-stone-600 min-w-0">
-                              <MessageSquare className="w-3 h-3 text-amber-600 shrink-0" />
-                              <span className="truncate font-medium">{latestCommentText}</span>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1 text-stone-600 min-w-0">
+                            <MessageSquare className="w-3 h-3 text-amber-600 shrink-0" />
+                            <span className="truncate font-medium">{latestCommentText}</span>
+                          </div>
                         </div>
                       );
                     })()}

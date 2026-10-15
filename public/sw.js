@@ -1,8 +1,7 @@
 // IdeaX 創點子 - Progressive Web App Service Worker
-const CACHE_NAME = 'ideax-pwa-v8';
+const CACHE_NAME = 'ideax-pwa-v10';
 const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
   '/manifest.json',
   '/favicon-32x32.png',
   '/favicon-16x16.png',
@@ -14,28 +13,60 @@ const PRECACHE_ASSETS = [
   '/favicon.ico',
 ];
 
+/**
+ * 確保回傳給 navigate 請求的 Response 不帶有 redirected=true 旗標，
+ * 避免 Chrome 因 Service Worker 回傳 redirected response 而拋出 ERR_FAILED。
+ */
+async function toCleanNavigationResponse(response) {
+  if (!response) return response;
+  if (!response.redirected && response.status === 200) {
+    return response;
+  }
+  const body = await response.blob();
+  const headers = new Headers(response.headers);
+  if (!headers.has('content-type')) {
+    headers.set('content-type', 'text/html; charset=utf-8');
+  }
+  return new Response(body, {
+    status: 200,
+    statusText: 'OK',
+    headers,
+  });
+}
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-        console.warn('PWA precache notice:', err);
-      });
+    caches.open(CACHE_NAME).then(async (cache) => {
+      for (const assetUrl of PRECACHE_ASSETS) {
+        try {
+          const res = await fetch(assetUrl, { cache: 'no-cache' });
+          if (res && res.status === 200) {
+            const cleanRes = res.redirected ? await toCleanNavigationResponse(res) : res;
+            await cache.put(assetUrl, cleanRes);
+          }
+        } catch (err) {
+          // 忽略單一資源預快取失敗
+        }
+      }
     })
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+          })
+        )
       )
-    ).then(() => self.clients.claim())
+      .then(() => self.clients.claim())
   );
 });
 
@@ -52,23 +83,42 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // SPA Navigation handling: network-first, with 404 and offline fallback to index.html
+  // SPA Navigation handling: network-first, with 404 and offline fallback to root '/'
   if (event.request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
           const networkResponse = await fetch(event.request);
-          // 若靜態伺服器回傳 404（例如直接貼上 /challenge 子路徑），SPA 必須 fallback 回傳 /index.html
+          // 若靜態伺服器對子網址（如 /vibecoding, /painpoints, /challenge）回傳 404，直接回傳乾淨無 redirect 旗標的根目錄 HTML
           if (networkResponse.status === 404) {
-            const cachedShell = (await caches.match('/index.html')) || (await caches.match('/'));
-            if (cachedShell) return cachedShell;
-            return fetch('/index.html');
+            const freshRoot = await fetch('/', { cache: 'no-cache' }).catch(() => null);
+            if (freshRoot && freshRoot.status === 200) {
+              return await toCleanNavigationResponse(freshRoot);
+            }
+            const cachedRoot = await caches.match('/');
+            if (cachedRoot) {
+              return await toCleanNavigationResponse(cachedRoot);
+            }
+          }
+          // 若伺服器對頁面進行了 redirect，亦清除 redirected 旗標防止 Chrome ERR_FAILED
+          if (networkResponse.redirected) {
+            return await toCleanNavigationResponse(networkResponse);
           }
           return networkResponse;
         } catch (err) {
-          const cached = (await caches.match('/index.html')) || (await caches.match('/'));
-          if (cached) return cached;
-          return fetch('/index.html').catch(() => new Response('離線模式', { status: 503 }));
+          const cached = await caches.match('/');
+          if (cached) {
+            return await toCleanNavigationResponse(cached);
+          }
+          return fetch('/')
+            .then((r) => toCleanNavigationResponse(r))
+            .catch(
+              () =>
+                new Response('離線模式', {
+                  status: 503,
+                  headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+                })
+            );
         }
       })()
     );
@@ -83,13 +133,17 @@ self.addEventListener('fetch', (event) => {
           if (
             networkResponse &&
             networkResponse.status === 200 &&
+            !networkResponse.redirected &&
             networkResponse.type === 'basic' &&
             event.request.url.startsWith('http')
           ) {
             const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            }).catch(() => {});
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, responseToCache);
+              })
+              .catch(() => {});
           }
           return networkResponse;
         })

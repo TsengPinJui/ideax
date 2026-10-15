@@ -1273,7 +1273,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                 ? isPainPoint
                   ? '確認提案懸賞(不參賽)'
                   : '確認提出方案'
-                : '發布討論留言'}
+                : '留言'}
             </span>
           </button>
         </div>

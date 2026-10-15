@@ -11,12 +11,22 @@ window.addEventListener('beforeinstallprompt', (e) => {
   window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
 });
 
-// 註冊 PWA Service Worker 以滿足瀏覽器原生安裝條件
+// 註冊 PWA Service Worker 以滿足瀏覽器原生安裝條件，並主動清理舊版帶有 redirected 旗標的快取
 if ('serviceWorker' in navigator) {
+  if ('caches' in window) {
+    caches.keys().then((keys) => {
+      keys.forEach((key) => {
+        if (key !== 'ideax-pwa-v10') {
+          caches.delete(key).catch(() => {});
+        }
+      });
+    }).catch(() => {});
+  }
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/sw.js')
+      .register('/sw.js', { updateViaCache: 'none' })
       .then((reg) => {
+        reg.update().catch(() => {});
         console.log('IdeaX PWA Service Worker registered:', reg.scope);
       })
       .catch((err) => {

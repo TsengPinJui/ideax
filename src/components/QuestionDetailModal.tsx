@@ -2708,7 +2708,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1 cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
-                    <span>發表討論留言</span>
+                    <span>留言</span>
                   </button>
                 </div>
               </form>

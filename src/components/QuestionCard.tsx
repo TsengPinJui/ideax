@@ -112,7 +112,6 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     () => answers.filter((a) => a.questionId === question.id && a.type === 'discussion'),
     [answers, question.id]
   );
-  const latestTip = question.tipsHistory && question.tipsHistory.length > 0 ? question.tipsHistory[0] : null;
 
   const authorDisplayName = resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
   const authorDisplayAvatar = resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
@@ -800,36 +799,19 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           </div>
         )}
 
-        {/* 模擬貼文下方：模擬打賞與模擬留言討論精選預覽 */}
-        {(latestTip || questionDiscussions.length > 0) && (
+        {/* 貼文下方：留言討論精選預覽 */}
+        {questionDiscussions.length > 0 && (
           <div className="mt-3 pt-2.5 border-t border-stone-100 space-y-1.5">
-            {latestTip && (
-              <div className="px-2.5 py-1.5 rounded-lg bg-amber-50/70 border border-amber-200/70 text-[11px] text-amber-950 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0 truncate">
-                  <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span className="font-bold shrink-0">{latestTip.userName.split(' ')[0]}</span>
-                  <span className="text-amber-800 font-black font-mono shrink-0">打賞 +{latestTip.amount} 點</span>
-                  {latestTip.message && (
-                    <span className="text-stone-600 truncate">「{latestTip.message}」</span>
-                  )}
-                </div>
-                <span className="text-[10px] font-bold text-amber-700 shrink-0">
-                  共 {question.tippersCount || question.tipsHistory?.length || 1} 人打賞
-                </span>
+            <div className="px-2.5 py-1.5 rounded-lg bg-stone-50 border border-stone-200/70 text-[11px] text-stone-700 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0 truncate">
+                <MessageCircle className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="font-bold text-stone-900 shrink-0">{questionDiscussions[0].solverName}：</span>
+                <span className="text-stone-600 truncate">{questionDiscussions[0].freePreview.split('\n')[0]}</span>
               </div>
-            )}
-            {questionDiscussions.length > 0 && (
-              <div className="px-2.5 py-1.5 rounded-lg bg-stone-50 border border-stone-200/70 text-[11px] text-stone-700 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0 truncate">
-                  <MessageCircle className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span className="font-bold text-stone-900 shrink-0">{questionDiscussions[0].solverName}：</span>
-                  <span className="text-stone-600 truncate">{questionDiscussions[0].freePreview.split('\n')[0]}</span>
-                </div>
-                <span className="text-[10px] font-bold text-blue-700 shrink-0">
-                  查看 {questionDiscussions.length} 則討論 ➔
-                </span>
-              </div>
-            )}
+              <span className="text-[10px] font-bold text-blue-700 shrink-0">
+                查看 {questionDiscussions.length} 則討論 ➔
+              </span>
+            </div>
           </div>
         )}
       </div>
