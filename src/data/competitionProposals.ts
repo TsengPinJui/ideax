@@ -43,7 +43,7 @@ export const DEFAULT_DEMO_PROPOSALS: StarSeasonProposal[] = [
     organizationName: '國立陽明交通大學',
     showOrganization: false,
     authorRole: 'user',
-    images: ['https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80'],
+    images: ['https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=800&q=80'],
     supportPoints: 86000,
     supporterCount: 43,
     targetFundingAmount: 100000,

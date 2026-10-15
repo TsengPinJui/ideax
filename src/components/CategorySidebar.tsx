@@ -4,7 +4,7 @@ import { Category, CATEGORY_HIERARCHY, Question, QuestionSortOption, SpecialZone
 import { useApp } from '../context/AppContext';
 import { isMockQuestionId } from '../data/mockData';
 import { isQuestionExpired } from '../services/recommendationService';
-import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
+import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } from '../utils/questionUtils';
 import { DEFAULT_DEMO_PROPOSALS } from '../data/competitionProposals';
 import {
   X,
@@ -127,7 +127,8 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
 
   // 2. L0問題討論區：依規範，從「尋求解答」或「提出痛點」提出的問題，就算設定是L0也不要算入L0討論區
   const l0DiscussionCount = validQuestions.filter(isL0DiscussionQuestion).length;
-  const vibeCodingCount = validQuestions.filter((q) => q.postType === 'vibecoding_app' || q.specialZone === 'vibecoding' || q.tags?.includes('VibeCoding') || q.category === '網站程式').length;
+  // 3. VibeCoding 展場：僅統計軟體網站提案，嚴格排除痛點、討論、解方等其他提案
+  const vibeCodingCount = validQuestions.filter(isVibeCodingAppQuestion).length;
 
   const categoryMeta: Record<
     Category,

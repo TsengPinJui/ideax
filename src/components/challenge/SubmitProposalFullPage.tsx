@@ -1463,17 +1463,25 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
             </div>
 
             <div>
-              <label className="block text-stone-800 font-bold mb-1 flex items-center gap-1.5 text-xs sm:text-sm">
-                <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>［希望達成的目標］ (選填)</span>
+              <label className="block text-stone-800 font-bold mb-1 flex items-center justify-between text-xs sm:text-sm">
+                <span className="flex items-center gap-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>［希望達成的目標］ (選填)</span>
+                </span>
+                <span className="text-[10px] text-amber-800 font-bold bg-amber-100 px-1.5 py-0.2 rounded">
+                  里程碑目標
+                </span>
               </label>
               <input
                 type="text"
                 value={formTargetGoal}
                 onChange={(e) => setFormTargetGoal(e.target.value)}
-                placeholder="例如: 於 6 個月內完成 POC 實證、獲取首批 100 位企業付費用戶"
+                placeholder="例如：希望 6 個月內達成 50,000 次下載量與 5,000 位活躍用戶，或完成 POC 企業付費驗證"
                 className="w-full bg-white border border-stone-200 rounded-xl p-2.5 text-stone-900 text-xs font-medium focus:outline-none focus:border-amber-400"
               />
+              <p className="text-[11px] text-stone-500 mt-1">
+                💡 目標說明：例如「希望 6 個月達成 ××× 下載次數」或累積活躍用戶數、產品留存率等具體可衡量成果。
+              </p>
             </div>
           </div>
 

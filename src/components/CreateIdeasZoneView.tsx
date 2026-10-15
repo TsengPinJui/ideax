@@ -22,10 +22,14 @@ import {
   ChevronRight,
   PlusCircle,
   ArrowLeft,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { StarSeasonProposal, STAR_SEASON_TRACKS } from '../types/competition';
 import { DEFAULT_DEMO_PROPOSALS } from '../data/competitionProposals';
 import { useApp } from '../context/AppContext';
+import { mapQuestionsToStarSeasonProposals } from '../utils/questionUtils';
 import { likeProposal, fetchUserLikedProposalIds } from '../services/competitionClientService';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { auth } from '../services/firebase';
@@ -60,18 +64,36 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   onOpenAuth,
   onUpdateProposalPublication,
 }) => {
-  const { currentUser, showCenterToast } = useApp();
+  const { currentUser, showCenterToast, questions } = useApp();
+  const [showZoneHelp, setShowZoneHelp] = useState(false);
 
-  // 1. 載入提案清單 (創星季 + 全站解放提案)
-  const [proposalsList, setProposalsList] = useState<StarSeasonProposal[]>(() => {
-    return initialProposals && initialProposals.length > 0 ? initialProposals : DEFAULT_DEMO_PROPOSALS;
-  });
+  // 1. 載入提案清單 (創星季 + 全站創新提案)
+  const buildMergedProposals = (baseList?: StarSeasonProposal[]) => {
+    const source = baseList && baseList.length > 0 ? baseList : DEFAULT_DEMO_PROPOSALS;
+    const mappedVirtual = mapQuestionsToStarSeasonProposals(questions || []);
+    const map = new Map<string, StarSeasonProposal>();
+    source.forEach((p) => map.set(p.id, p));
+    mappedVirtual.forEach((p) => {
+      if (!map.has(p.id)) {
+        map.set(p.id, p);
+      } else {
+        const existing = map.get(p.id)!;
+        map.set(p.id, {
+          ...existing,
+          images: p.images && p.images.length > 0 ? p.images : existing.images,
+        });
+      }
+    });
+    return Array.from(map.values());
+  };
+
+  const [proposalsList, setProposalsList] = useState<StarSeasonProposal[]>(() =>
+    buildMergedProposals(initialProposals)
+  );
 
   useEffect(() => {
-    if (initialProposals && initialProposals.length > 0) {
-      setProposalsList(initialProposals);
-    }
-  }, [initialProposals]);
+    setProposalsList(buildMergedProposals(initialProposals));
+  }, [initialProposals, questions]);
 
   // 2. 收藏名單 (Liked Proposal IDs)
   const [likedProposalIds, setLikedProposalIds] = useState<string[]>([]);
@@ -279,74 +301,93 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* 專區 Main Banner Block */}
-      <div className="p-5 sm:p-7 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-100/50 to-orange-50 border-2 border-amber-300 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mr-8 -mt-8 w-48 h-48 bg-amber-200/40 rounded-full blur-2xl pointer-events-none" />
+      {/* 專區 Main Banner Block (手機版緊湊設計，敘述與規範改用 ? 按鈕收合展開) */}
+      <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-100/50 to-orange-50 border-2 border-amber-300 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mr-8 -mt-8 w-36 h-36 bg-amber-200/40 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
-          <div className="space-y-2 max-w-3xl">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-sm shrink-0">
-                <Lightbulb className="w-6 h-6" />
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
-                <span>創點子 (創新提案)</span>
-                {onTogglePin && (
-                  <button
-                    onClick={onTogglePin}
-                    className={`p-1.5 rounded-xl transition-all cursor-pointer ${
-                      isPinned
-                        ? 'bg-amber-500 text-white border border-amber-600 shadow-xs'
-                        : 'bg-white hover:bg-stone-50 text-stone-400 hover:text-stone-700 border border-stone-200'
-                    }`}
-                    title={isPinned ? '取消釘選此專區' : '將此專區設為首頁釘選專區'}
-                  >
-                    <Pin className={`w-4 h-4 ${isPinned ? 'fill-white' : ''}`} />
-                  </button>
-                )}
-                <span className="text-xs font-mono font-black text-amber-900 bg-amber-200/90 border border-amber-300 px-2.5 py-0.5 rounded-full">
-                  {activeProposals.length} 件專案
-                </span>
-              </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+          <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-xs shrink-0">
+              <Lightbulb className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
             </div>
-
-            <p className="text-xs sm:text-sm font-medium text-stone-700 leading-relaxed">
-              匯集創星季競賽與全站大眾創新解方與作品！在此自由探索優秀點子、給予<strong>點數支持</strong>，按讚即自動加入您的個人收藏名單。
-            </p>
-
-            <div className="flex items-center gap-2 text-[11px] text-amber-900 font-bold bg-amber-100/70 border border-amber-200 px-3 py-1.5 rounded-xl w-fit">
-              <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
-              <span>刊登規範：所有提案預設為『永久刊登』。提案者可隨時手動下架或自訂刊登期限。</span>
-            </div>
+            <h2 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
+              <span>創點子 (創新提案)</span>
+              {onTogglePin && (
+                <button
+                  type="button"
+                  onClick={onTogglePin}
+                  className={`p-1 rounded-lg transition-all cursor-pointer ${
+                    isPinned
+                      ? 'bg-amber-500 text-white border border-amber-600 shadow-xs'
+                      : 'bg-white hover:bg-stone-50 text-stone-400 hover:text-stone-700 border border-stone-200'
+                  }`}
+                  title={isPinned ? '取消釘選此專區' : '將此專區設為首頁釘選專區'}
+                >
+                  <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
+                </button>
+              )}
+              <span className="text-[11px] font-mono font-black text-amber-900 bg-amber-200/90 border border-amber-300 px-2 py-0.5 rounded-full">
+                {activeProposals.length} 件專案
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowZoneHelp(!showZoneHelp)}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold transition-all cursor-pointer border ${
+                  showZoneHelp
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                    : 'bg-white/90 hover:bg-white text-amber-900 border-amber-300'
+                }`}
+                title="點擊展開/收合專區說明與刊登規範"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>說明</span>
+                {showZoneHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+            </h2>
           </div>
 
           {/* 右上控制鈕 */}
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0">
             {onOpenCreateProposal && (
               <button
+                type="button"
                 onClick={onOpenCreateProposal}
-                className="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-98 text-stone-950 font-black text-xs sm:text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-98 text-stone-950 font-black text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <PlusCircle className="w-4 h-4" />
+                <PlusCircle className="w-3.5 h-3.5" />
                 <span>發布創新提案</span>
               </button>
             )}
 
             {onCloseZone && (
               <button
+                type="button"
                 onClick={onCloseZone}
-                className="px-3.5 py-2.5 rounded-2xl bg-white/90 hover:bg-white text-stone-800 border border-amber-300 font-bold text-xs sm:text-sm shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer hover:border-amber-400 active:scale-98"
+                className="px-3 py-2 rounded-xl bg-white/90 hover:bg-white text-stone-800 border border-amber-300 font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-1 cursor-pointer hover:border-amber-400 active:scale-98 shrink-0"
                 title="返回創星季"
               >
-                <ArrowLeft className="w-4 h-4 text-amber-700" />
+                <ArrowLeft className="w-3.5 h-3.5 text-amber-700" />
                 <span>返回創星季</span>
               </button>
             )}
           </div>
         </div>
 
+        {/* 點擊 ? 展開之專區介紹與刊登規範 */}
+        {showZoneHelp && (
+          <div className="relative z-10 mt-3 pt-3 border-t border-amber-200/80 space-y-2 animate-in fade-in duration-150">
+            <p className="text-xs font-medium text-stone-700 leading-relaxed">
+              匯集創星季競賽與全站大眾創新解方與作品！在此自由探索優秀點子、給予<strong>點數支持</strong>，按讚即自動加入您的個人收藏名單。
+            </p>
+            <div className="flex items-center gap-2 text-[11px] text-amber-900 font-bold bg-amber-100/70 border border-amber-200 px-2.5 py-1.5 rounded-xl w-fit">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <span>刊登規範：所有提案預設為『永久刊登』。提案者可隨時手動下架或自訂刊登期限。</span>
+            </div>
+          </div>
+        )}
+
         {/* Tab 頁籤：［全部提案］ vs ［我的收藏提案］ */}
-        <div className="mt-6 pt-4 border-t border-amber-200/80 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-3 pt-3 border-t border-amber-200/80 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('all')}
@@ -458,7 +499,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
           {finalFilteredProposals.map((proposal) => {
             const isLiked = likedProposalIds.includes(proposal.id);
             const trackInfo = STAR_SEASON_TRACKS[proposal.track] || STAR_SEASON_TRACKS.ict;
@@ -470,10 +511,10 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
               <div
                 key={proposal.id}
                 onClick={() => onSelectProposal(proposal)}
-                className="bg-white rounded-3xl border border-stone-200 hover:border-amber-400 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden cursor-pointer group relative"
+                className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 hover:border-amber-400 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden cursor-pointer group relative"
               >
                 {/* Cover Image / Header Banner */}
-                <div className="h-40 bg-stone-100 relative overflow-hidden">
+                <div className="h-36 sm:h-40 bg-stone-100 relative overflow-hidden">
                   {proposal.images && proposal.images.length > 0 ? (
                     <img
                       src={proposal.images[0]}
@@ -487,13 +528,13 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                   )}
 
                   {/* Top Overlay Badges */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none">
-                    <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none">
+                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                       {trackInfo.name}
                     </span>
 
                     {proposal.unpublishAt && (
-                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-700/80 flex items-center gap-1 shadow-xs">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-700/80 flex items-center gap-1 shadow-xs">
                         <Clock className="w-3 h-3 text-emerald-400" />
                         <span>刊登至 {proposal.unpublishAt}</span>
                       </span>
@@ -503,21 +544,21 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                   {/* ❤️ 愛心收藏按鈕 */}
                   <button
                     onClick={(e) => handleToggleLike(e, proposal)}
-                    className={`absolute bottom-3 right-3 w-9 h-9 rounded-2xl flex items-center justify-center transition-all shadow-md cursor-pointer ${
+                    className={`absolute bottom-2.5 right-2.5 w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all shadow-md cursor-pointer ${
                       isLiked
                         ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105'
                         : 'bg-white/90 backdrop-blur-md text-stone-600 hover:bg-white hover:text-rose-500'
                     }`}
                     title={isLiked ? '已收藏（點擊取消）' : '按讚即收藏提案'}
                   >
-                    <Heart className={`w-4.5 h-4.5 ${isLiked ? 'fill-white' : ''}`} />
+                    <Heart className={`w-4 h-4 ${isLiked ? 'fill-white' : ''}`} />
                   </button>
                 </div>
 
                 {/* Card Content Body */}
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-2">
-                    <h3 className="text-base font-black text-stone-900 line-clamp-2 group-hover:text-amber-600 transition-colors leading-snug">
+                <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1.5">
+                    <h3 className="text-sm sm:text-base font-black text-stone-900 line-clamp-2 group-hover:text-amber-600 transition-colors leading-snug">
                       {proposal.title}
                     </h3>
                     <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">

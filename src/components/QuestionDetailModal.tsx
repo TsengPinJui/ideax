@@ -61,9 +61,16 @@ import {
   ThumbsUp,
   Coins,
   Heart,
+  FileEdit,
+  Flame,
+  Trophy,
+  ArrowRight,
+  Rocket,
 } from 'lucide-react';
 import { TipPainPointModal } from './TipPainPointModal';
 import { SeoPreviewModal } from './SeoPreviewModal';
+import { ProposalChangelogSection } from './ProposalChangelogSection';
+import { UpdateProposalModal } from './UpdateProposalModal';
 import { getQuestionShareUrl } from '../services/seoService';
 import { copyToClipboard } from '../utils/clipboard';
 import { shareOrCopyUrl, copyPureUrl } from '../utils/shareUtils';
@@ -72,6 +79,8 @@ import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUt
 import { syncQuestionToFirestore } from '../services/firestoreSync';
 import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 import { getAnswerSpecifications } from '../utils/answerUtils';
+import { VibeCodingCaseDetailContent } from './VibeCodingCaseDetailContent';
+import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -83,6 +92,7 @@ interface QuestionDetailModalProps {
   isFullPage?: boolean;
   onSearchTag?: (tag: string) => void;
   onNavigateToChallengeSubmit?: (question: Question) => void;
+  onSelectQuestion?: (q: Question) => void;
 }
 
 export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
@@ -95,6 +105,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   isFullPage = false,
   onSearchTag,
   onNavigateToChallengeSubmit,
+  onSelectQuestion,
 }) => {
   const {
     currentUser,
@@ -121,6 +132,8 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     isNoPaymentMode,
     questions,
     selectedQuestion,
+    setSelectedQuestion,
+    setIsCreateQuestionOpen,
     deleteQuestionPermanently,
     deleteAnswerPermanently,
     delistQuestion,
@@ -230,6 +243,34 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   };
 
   const liveQuestion = questions.find((item) => item.id === question.id) || selectedQuestion || question;
+  const isVibeCodingApp = liveQuestion?.postType === 'vibecoding_app' || (liveQuestion as any)?.isVibeCodingApp === true;
+  const referencedPainPointObj = findReferencedPainPoint(liveQuestion, questions);
+  const referencingProposals = isPainPoint ? findProposalsReferencingPainPoint(liveQuestion, questions) : [];
+
+  const handleSelectQuestion = (targetQ: Question) => {
+    if (onSelectQuestion) {
+      onSelectQuestion(targetQ);
+    } else if (setSelectedQuestion) {
+      setSelectedQuestion(targetQ);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCreateProposalForPainPoint = (painPoint: Question) => {
+    try {
+      sessionStorage.setItem(
+        'ideax_prefill_referenced_pain_point',
+        JSON.stringify({ id: painPoint.id, title: painPoint.title })
+      );
+    } catch {}
+    if (currentUser.id === 'user-guest') {
+      promptLogin('請先登入帳號以針對痛點發起提案');
+      return;
+    }
+    if (setIsCreateQuestionOpen) {
+      setIsCreateQuestionOpen(true);
+    }
+  };
 
   const viewCountedIdRef = useRef<string | null>(null);
 
@@ -277,6 +318,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const [isSeoModalOpen, setIsSeoModalOpen] = useState(false);
   const [isShareCopied, setIsShareCopied] = useState(false);
   const [isTipModalOpen, setIsTipModalOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
   // Dispute report state
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
@@ -294,6 +336,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const [dynamicAiAnalysis, setDynamicAiAnalysis] = useState<any>(question.aiAnalysis || null);
 
   useEffect(() => {
+    if (isVibeCodingApp) return;
     if (question.aiAnalysis) {
       setDynamicAiAnalysis(question.aiAnalysis);
     } else if (!dynamicAiAnalysis && question.title) {
@@ -310,7 +353,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
         })
         .catch(() => {});
     }
-  }, [question.id, question.aiAnalysis, question.title, question.description]);
+  }, [isVibeCodingApp, question.id, question.aiAnalysis, question.title, question.description]);
 
   const effectiveAiAnalysis = question.aiAnalysis || dynamicAiAnalysis;
 
@@ -327,6 +370,12 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
 
   // AI Preliminary Report (提問者本人、管理員、達人方案以上免費，一般會員可支付 50 點數解鎖)
   const isAuthorUser = currentUser.id === question.authorId || currentUser.role === 'admin';
+  const canUpdateProposal = (
+    (liveQuestion?.postType === 'innovation_proposal' ||
+      liveQuestion?.postType === 'vibecoding_app' ||
+      liveQuestion?.category === '網站程式' ||
+      (liveQuestion?.tags && liveQuestion?.tags.includes('VibeCoding')))
+  ) && isAuthorUser;
   const userTier = currentUser?.subscriptionTier || 'free';
   const isProOrHigher = ['pro', 'expert', 'authority', 'master'].includes(userTier) || isAuthorUser;
   
@@ -710,9 +759,13 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
   // 分享出去（帶文字說明推薦引言，直通 LINE、FB、IG、Threads 等社群；降級時複製純網址）
   const handleShareQuestion = async () => {
     const shareUrl = getQuestionShareUrl(question.id, question.postType);
-    const label = question.postType === 'pain_point' ? '痛點洞察' : '懸賞問題';
+    const label = isVibeCodingApp
+      ? 'Vibe Coding 實戰案例'
+      : question.postType === 'pain_point'
+      ? '痛點洞察'
+      : '懸賞問題';
     const shareTitle = `【IdeaX 創點子 • ${label}】${question.title}`;
-    const shareText = `【IdeaX 創點子 • ${label}】${question.title}\n${(question.bounty || 0) > 0 ? `💰 懸賞金額：NT$ ${(question.bounty || 0).toLocaleString()} 元\n` : ''}${((question as any).summary || question.description?.slice(0, 120) || '生活切身痛點，徵求落地架構與完整解方！')}\n`;
+    const shareText = `【IdeaX 創點子 • ${label}】${question.title}\n${!isVibeCodingApp && (question.bounty || 0) > 0 ? `💰 懸賞金額：NT$ ${(question.bounty || 0).toLocaleString()} 元\n` : ''}${((question as any).summary || question.description?.slice(0, 120) || 'AI 賦能實戰開發案例與落地架構展示！')}\n`;
 
     const res = await shareOrCopyUrl({
       title: shareTitle,
@@ -955,6 +1008,18 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     <span>私聊提問者</span>
                   </button>
                 )}
+                {/* 提案者更新內容按鈕 */}
+                {canUpdateProposal && (
+                  <button
+                    type="button"
+                    onClick={() => setIsUpdateModalOpen(true)}
+                    className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+                    title="重新編輯提案內容並發布更新日誌"
+                  >
+                    <FileEdit className="w-3 h-3 text-purple-700" />
+                    <span>更新內容</span>
+                  </button>
+                )}
               </div>
               <span className="text-[11px] text-stone-400">發布於 {question.createdAt.split('T')[0]}</span>
             </div>
@@ -1151,6 +1216,82 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           </div>
         )}
 
+        {/* 引用相關痛點與希望達成的目標（支援雙向互聯跳轉） */}
+        {(referencedPainPointObj || liveQuestion.referencedPainPoint || liveQuestion.targetGoal) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white border border-amber-300/80 shadow-2xs">
+            {(referencedPainPointObj || liveQuestion.referencedPainPoint) && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center text-[10px] font-black shadow-2xs">💡</span>
+                    <span>此提案針對之痛點洞察（引用痛點）</span>
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                    痛點許願池
+                  </span>
+                </div>
+
+                {referencedPainPointObj ? (
+                  <div
+                    onClick={() => handleSelectQuestion(referencedPainPointObj)}
+                    className="p-3 rounded-xl bg-white border border-amber-200 hover:border-amber-400 hover:shadow-xs transition-all cursor-pointer group space-y-1.5 active:scale-[0.99]"
+                    title="點擊前往查看此痛點完整需求與討論"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-xs font-bold text-stone-900 group-hover:text-amber-900 transition-colors line-clamp-1">
+                        {referencedPainPointObj.title}
+                      </h4>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 shrink-0">
+                        +{referencedPainPointObj.secondedCount || 0} 附議
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-600 line-clamp-2 leading-relaxed">
+                      {referencedPainPointObj.description}
+                    </p>
+                    <div className="flex items-center justify-between text-[10px] text-stone-400 pt-1 border-t border-amber-50">
+                      <div className="flex items-center gap-1">
+                        <img
+                          src={referencedPainPointObj.authorAvatar}
+                          alt={referencedPainPointObj.authorName}
+                          className="w-3.5 h-3.5 rounded-full object-cover"
+                        />
+                        <span className="text-stone-700 font-medium">{referencedPainPointObj.authorName}</span>
+                      </div>
+                      <span className="text-amber-700 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+                        前往痛點完整頁面 ➔
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-stone-800 font-medium bg-white p-2.5 rounded-xl border border-amber-200/70 leading-relaxed">
+                    {liveQuestion.referencedPainPoint}
+                  </p>
+                )}
+              </div>
+            )}
+            {liveQuestion.targetGoal && (
+              <div className="space-y-1.5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-bold text-stone-700 mb-1">
+                    <span className="flex items-center gap-1.5">
+                      <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>希望達成的目標</span>
+                    </span>
+                    {liveQuestion.currentVersion && (
+                      <span className="text-[10px] text-purple-800 font-mono font-black bg-purple-100 border border-purple-200 px-1.5 py-0.2 rounded">
+                        {liveQuestion.currentVersion}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-stone-800 font-medium bg-white p-2.5 rounded-xl border border-amber-200/70 leading-relaxed">
+                    🎯 {liveQuestion.targetGoal}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Question Full Description & AI Tags Section */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-3.5">
           <div className="flex items-center justify-between">
@@ -1220,6 +1361,101 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               )}
             </div>
         </div>
+
+        {/* 痛點專用：引用此痛點之創新提案與解方（雙向關聯與互聯跳轉） */}
+        {isPainPoint && (
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50/80 via-orange-50/40 to-white border border-amber-300/90 shadow-2xs space-y-3.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-2xs text-sm">
+                  💡
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm sm:text-base text-stone-900">
+                    引用此痛點的創新提案與解答 ({referencingProposals.length})
+                  </h4>
+                  <p className="text-[11px] text-stone-500">
+                    全站已針對此痛點延伸出的提案與專案解法
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                雙向關聯追蹤
+              </span>
+            </div>
+
+            {referencingProposals.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {referencingProposals.map((prop) => (
+                  <div
+                    key={prop.id}
+                    onClick={() => handleSelectQuestion(prop)}
+                    className="p-3.5 rounded-xl bg-white border border-amber-200/90 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between gap-2.5 active:scale-[0.99]"
+                    title="點擊前往查看此提案詳情"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
+                          {prop.postType === 'vibecoding_app' ? 'VibeCoding 應用' : '創新解方提案'}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-amber-700">
+                          🪙 {((prop.supportPoints || 0) * 10).toLocaleString()} 點
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-amber-900 transition-colors line-clamp-2">
+                        {prop.title}
+                      </h4>
+                      <p className="text-[11px] text-stone-600 line-clamp-2 mt-1 leading-relaxed">
+                        {prop.description}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-stone-400 pt-1.5 border-t border-amber-50">
+                      <div className="flex items-center gap-1">
+                        <img
+                          src={prop.authorAvatar}
+                          alt={prop.authorName}
+                          className="w-3.5 h-3.5 rounded-full object-cover"
+                        />
+                        <span className="text-stone-700 font-medium">{prop.authorName}</span>
+                      </div>
+                      <span className="text-amber-700 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                        前往提案 ➔
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-white/80 border border-dashed border-amber-300 text-center space-y-2">
+                <p className="text-xs text-stone-600 font-medium">
+                  目前尚無提案引用此痛點，歡迎成為第一位針對此痛點提出創新方案的人！
+                </p>
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleGoToChallengeProposal}
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-colors cursor-pointer shadow-2xs"
+                  >
+                    提案參賽(不賺賞金)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (currentUser.id === 'user-guest') {
+                        promptLogin('訪客模式請先登入帳號以提出方案');
+                        return;
+                      }
+                      onOpenSubmitAnswer('solution');
+                    }}
+                    className="px-3.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-colors cursor-pointer shadow-2xs"
+                  >
+                    提案懸賞(不參賽)
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {effectiveAiAnalysis && (
           <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/50 border border-amber-200 space-y-4">
@@ -2709,6 +2945,18 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
           )}
         </div>
+
+        {/* 最底部更新日誌 (Changelog) */}
+        {(liveQuestion.postType === 'innovation_proposal' ||
+          liveQuestion.postType === 'vibecoding_app' ||
+          liveQuestion.category === '網站程式' ||
+          (liveQuestion.updateLogs && liveQuestion.updateLogs.length > 0)) && (
+          <ProposalChangelogSection
+            question={liveQuestion}
+            canUpdate={canUpdateProposal}
+            onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+          />
+        )}
       </div>
 
       {/* Modal Sticky Bottom Action Bar */}
@@ -2722,6 +2970,17 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-nowrap overflow-x-auto">
+          {canUpdateProposal && (
+            <button
+              type="button"
+              onClick={() => setIsUpdateModalOpen(true)}
+              className="px-3 sm:px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95 whitespace-nowrap"
+              title="重新編輯提案內容並發布更新日誌"
+            >
+              <FileEdit className="w-3.5 h-3.5 shrink-0" />
+              <span>更新內容</span>
+            </button>
+          )}
           <button
             onClick={onClose}
             className="px-3 sm:px-3.5 py-2 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-200 text-xs font-bold transition-colors cursor-pointer shrink-0 whitespace-nowrap"
@@ -2788,13 +3047,60 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
     </div>
   );
 
+  const displayContent = isVibeCodingApp ? (
+    <VibeCodingCaseDetailContent
+      question={liveQuestion}
+      isFullPage={isFullPage}
+      onClose={onClose}
+      currentUser={currentUser}
+      availableUsers={availableUsers}
+      solvers={solvers}
+      allQuestions={questions}
+      onSelectQuestion={handleSelectQuestion}
+      authorDisplayName={authorDisplayName}
+      authorDisplayAvatar={authorDisplayAvatar}
+      isAuthorDeactivated={isAuthorDeactivated}
+      isAuthor={isAuthor}
+      isAdmin={isAdmin}
+      canUpdateProposal={Boolean(canUpdateProposal)}
+      isBookmarked={Boolean(isBookmarked)}
+      onToggleBookmark={() => toggleBookmarkQuestion(question.id)}
+      isLiked={Boolean(isLiked)}
+      likesCount={likesCount}
+      onToggleLike={handleLikeQuestionClick}
+      onOpenTipModal={() => setIsTipModalOpen(true)}
+      onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+      onOpenUnifiedActionModal={() => {
+        setUnifiedActionTab('violation');
+        setIsUnifiedActionModalOpen(true);
+      }}
+      onOpenConfirmDeleteModal={() => setIsConfirmDeleteQuestionOpen(true)}
+      onOpenDisputeModal={() => setIsDisputeModalOpen(true)}
+      onRelistQuestion={handleRelistQuestion}
+      onShare={handleShareQuestion}
+      onPrivateChat={handlePrivateChat}
+      onSearchTag={onSearchTag}
+      discussionAnswers={discussionAnswers}
+      quickComment={quickComment}
+      setQuickComment={setQuickComment}
+      onQuickCommentSubmit={handleQuickCommentSubmit}
+      onLikeDiscussion={handleLikeDiscussion}
+      isDiscussionLiked={isDiscussionAnswerLiked}
+      getDiscussionLikesCount={getDiscussionAnswerLikesCount}
+      onDeleteDiscussion={(target) => setDeletingAnswerTarget(target)}
+      onSelectSolver={onSelectSolver}
+    />
+  ) : (
+    content
+  );
+
   return (
     <>
       {isFullPage ? (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{content}</div>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">{displayContent}</div>
       ) : (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-1.5 sm:p-4 overflow-y-auto">
-          {content}
+          {displayContent}
         </div>
       )}
 
@@ -3272,6 +3578,12 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         onSuccess={() => {
           // Refresh or toast is handled inside modal
         }}
+      />
+
+      <UpdateProposalModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        question={liveQuestion}
       />
     </>
   );

@@ -626,7 +626,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         </h3>
 
         {/* Description snippet */}
-        <p className="mt-2 text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed font-normal">
+        <p className="mt-2 hidden sm:block text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed font-normal">
           {question.description}
         </p>
 

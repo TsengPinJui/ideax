@@ -34,8 +34,10 @@ import {
   Eye,
   Layers,
   User as UserIcon,
+  HelpCircle,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { getUniqueProposalCoverImage } from '../../utils/proposalImageUtils';
 import {
   StarSeasonProposal,
   CompetitionAccount,
@@ -148,6 +150,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const [isLoadingComments, setIsLoadingComments] = useState<boolean>(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState<boolean>(false);
   const [copiedProposalId, setCopiedProposalId] = useState<string | null>(null);
+  const [expandedMobileSummaryId, setExpandedMobileSummaryId] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialProposals && initialProposals.length > 0) {
@@ -688,6 +691,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     return (
       <ProposalDetailFullPage
         proposal={selectedProposalForDetail}
+        allProposals={proposals}
+        onSelectProposal={(p) => handleOpenProposalDetail(p)}
         onBack={() => {
           setSelectedProposalForDetail(null);
           const url = new URL(window.location.href);
@@ -1164,15 +1169,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               const currentPoints = proposal.supportPoints || 0;
               const trackMeta = STAR_SEASON_TRACKS[proposal.track] || STAR_SEASON_TRACKS.ai_applications;
               const supporterCount = proposal.supporterCount || Math.max(1, Math.round(currentPoints / 2500));
-              const coverImg = (proposal.images && proposal.images.length > 0)
-                ? proposal.images[0]
-                : trackMeta.id === 'ict'
-                ? 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=800&q=80'
-                : trackMeta.id === 'mechanical_transport'
-                ? 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=800&q=80'
-                : trackMeta.id === 'biomedical'
-                ? 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80'
-                : 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80';
+              const coverImg = getUniqueProposalCoverImage(proposal, idx);
 
               return (
                 <div
@@ -1183,7 +1180,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   {cardViewMode === 'large' && (
                     <div
                       onClick={() => handleOpenProposalDetail(proposal)}
-                      className="relative h-44 sm:h-48 overflow-hidden bg-stone-100 border-b border-stone-100 cursor-pointer group/img"
+                      className="relative h-32 sm:h-48 overflow-hidden bg-stone-100 border-b border-stone-100 cursor-pointer group/img"
                     >
                       <img
                         src={coverImg}
@@ -1234,8 +1231,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   )}
 
                   {/* 卡片內容主體 */}
-                  <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
-                    <div className="space-y-2.5">
+                  <div className="p-3.5 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="space-y-2">
                       {/* 簡潔模式時顯示的標籤列 */}
                       {cardViewMode === 'compact' && (
                         <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-stone-100">
@@ -1286,7 +1283,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
                       {/* 若為解方且引用痛點 */}
                       {proposal.sourcePainPointTitle && (
-                        <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 text-[11px] space-y-0.5">
+                        <div className="p-2 rounded-xl bg-amber-50/80 border border-amber-200 text-[11px] space-y-0.5">
                           <span className="text-amber-900 font-bold flex items-center gap-1">
                             <ArrowRight className="w-3 h-3 text-amber-600" />
                             採用痛點提案：
@@ -1297,10 +1294,28 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                         </div>
                       )}
 
-                      {/* 摘要說明 */}
-                      <p className="text-xs text-stone-600 line-clamp-3 leading-relaxed">
+                      {/* 摘要說明：電腦版完整呈現、手機版精簡並以？收合 */}
+                      <p className="hidden sm:block text-xs text-stone-600 line-clamp-3 leading-relaxed">
                         {proposal.summary}
                       </p>
+                      <div className="sm:hidden">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedMobileSummaryId(expandedMobileSummaryId === proposal.id ? null : proposal.id);
+                          }}
+                          className="px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <HelpCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span>？ {expandedMobileSummaryId === proposal.id ? '收合敘述' : '查看完整敘述'}</span>
+                        </button>
+                        {expandedMobileSummaryId === proposal.id && (
+                          <p className="mt-1.5 p-2 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700 leading-relaxed animate-in fade-in duration-150">
+                            {proposal.summary}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     {/* 募得創星幣與支持人數數據展示 */}

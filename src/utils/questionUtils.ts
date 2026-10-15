@@ -1,40 +1,205 @@
 import { Question } from '../types';
 
 /**
- * 判斷該提問是否屬於「痛點」類型的提問（提出痛點 / 創點子痛點）
+ * 1. 判斷該提問是否屬於「提出痛點」(pain_point)
  */
 export const isPainPointQuestion = (question?: Partial<Question> | null): boolean => {
   if (!question) return false;
-  if (question.postType === 'pain_point') return true;
-  if (question.tags && question.tags.some((t) => t.includes('痛點') || t.includes('創點子'))) return true;
-  if (question.title && (question.title.includes('痛點') || question.title.includes('創點子'))) return true;
-  if (question.description && (question.description.includes('痛點') || question.description.includes('創點子'))) return true;
+  if (question.postType) {
+    return question.postType === 'pain_point';
+  }
+  if (question.specialZone === 'pain_points') return true;
+  if (question.tags && question.tags.some((t) => t.includes('痛點'))) return true;
   return false;
 };
 
 /**
- * 判斷該提問是否屬於「L0 討論區 / L0 閒聊討論」
- * 核心規則：如果從「尋求解答」(seek_solution) 或「提出痛點」(pain_point) 提出的問題，
- * 就算設定等級是 L0 也不要算入 L0 討論區或 L0 閒聊討論分類！
+ * 2. 判斷該提問是否屬於「創新解方 / 創新提案」(innovation_proposal)
+ */
+export const isInnovationProposalQuestion = (question?: Partial<Question> | null): boolean => {
+  if (!question) return false;
+  if (question.postType) {
+    return question.postType === 'innovation_proposal';
+  }
+  if (question.specialZone === 'create_ideas') return true;
+  return false;
+};
+
+/**
+ * 3. 判斷該提問是否屬於「軟體網站 / VibeCoding 應用」(vibecoding_app)
+ * 核心規則：在 VibeCoding 展場下，嚴格僅展示軟體網站與程式應用作品；
+ * 嚴格排除痛點、閒聊討論、尋求解答與創新解方提案。
+ */
+export const isVibeCodingAppQuestion = (question?: Partial<Question> | null): boolean => {
+  if (!question) return false;
+  if (question.postType) {
+    return question.postType === 'vibecoding_app';
+  }
+  if (question.specialZone === 'vibecoding') return true;
+  return false;
+};
+
+/**
+ * 4. 判斷該提問是否屬於「L0 討論區 / 閒聊討論」(chat_discussion)
+ * 核心規則：從「尋求解答」或「提出痛點」或「創新提案」或「VibeCoding」提出的問題，
+ * 就算設定等級是 L0 也不要算入 L0 討論區！
  */
 export const isL0DiscussionQuestion = (question?: Partial<Question> | null): boolean => {
   if (!question) return false;
-  // 1. 痛點特性優先排除（提出痛點 / 創點子痛點）
-  if (isPainPointQuestion(question) || question.postType === 'pain_point') return false;
-  // 2. 從「尋求解答」提出的問題，就算設定是 L0 也不要算入 L0 討論區或 L0 閒聊討論分類
-  if (question.postType === 'seek_solution') return false;
-
-  // 3. 專屬「閒聊討論」發布類型或專區
-  if (question.postType === 'chat_discussion') return true;
-  if (question.specialZone === 'l0_discussion') return true;
-
-  // 4. 若未指定 postType（舊有種子資料），僅在明確有閒聊/討論標籤或純L0非懸賞交流時視為L0討論
-  const hasDiscussionTag = question.tags && question.tags.some((t) => t.includes('閒聊') || t.includes('討論') || t.includes('L0討論'));
-  if (hasDiscussionTag) return true;
-
-  if (question.level === 'L0' && (!question.bounty || question.bounty === 0) && !question.postType) {
-    return true;
+  if (question.postType) {
+    return question.postType === 'chat_discussion';
   }
-
+  if (question.specialZone === 'l0_discussion') return true;
+  const hasDiscussionTag = question.tags && question.tags.some((t) => t.includes('閒聊') || t.includes('L0討論'));
+  if (hasDiscussionTag) return true;
   return false;
 };
+
+/**
+ * 5. 判斷該提問是否屬於「提問 / 尋求解答」(seek_solution)
+ */
+export const isSeekSolutionQuestion = (question?: Partial<Question> | null): boolean => {
+  if (!question) return false;
+  if (question.postType) {
+    return question.postType === 'seek_solution';
+  }
+  if (
+    isPainPointQuestion(question) ||
+    isInnovationProposalQuestion(question) ||
+    isVibeCodingAppQuestion(question) ||
+    isL0DiscussionQuestion(question)
+  ) {
+    return false;
+  }
+  return true;
+};
+
+/**
+ * 6. 將平台資料庫之創新提案 Question 轉換為創星季/創點子 StarSeasonProposal 格式（支援後台資料庫同步刪除與更新日誌）
+ */
+export const questionToStarSeasonProposal = (q: Question): import('../types/competition').StarSeasonProposal => {
+  let track: import('../types/competition').StarSeasonTrack = 'ict';
+  const text = `${q.category} ${q.subcategory || ''} ${(q.tags || []).join(' ')} ${q.title}`;
+  if (
+    text.includes('醫療') ||
+    text.includes('生技') ||
+    text.includes('健康') ||
+    text.includes('復健') ||
+    text.includes('照護') ||
+    text.includes('營養') ||
+    text.includes('牙') ||
+    text.includes('診所') ||
+    text.includes('藥')
+  ) {
+    track = 'biomedical';
+  } else if (
+    text.includes('製造') ||
+    text.includes('物流') ||
+    text.includes('農業') ||
+    text.includes('儲能') ||
+    text.includes('電網') ||
+    text.includes('綠能') ||
+    text.includes('機械') ||
+    text.includes('充電') ||
+    text.includes('冷鏈') ||
+    text.includes('工廠')
+  ) {
+    track = 'mechanical_transport';
+  } else if (
+    text.includes('餐飲') ||
+    text.includes('旅宿') ||
+    text.includes('書店') ||
+    text.includes('團購') ||
+    text.includes('租屋') ||
+    text.includes('共生') ||
+    text.includes('寵物') ||
+    text.includes('親子') ||
+    text.includes('文創') ||
+    text.includes('生活') ||
+    q.category === '日常疑難'
+  ) {
+    track = 'cultural_services';
+  } else {
+    track = 'ict';
+  }
+
+  const fallbackImagePool: string[] = [
+    'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80',
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < q.id.length; i++) {
+    hash = (hash * 31 + q.id.charCodeAt(i)) >>> 0;
+  }
+  const resolvedCover = q.coverImage || (q as any).vibeCodingData?.coverImageUrl;
+  const resolvedGallery = q.galleryImages || q.screenshots || (q as any).vibeCodingData?.screenshots || [];
+
+  const imgs = resolvedCover
+    ? [resolvedCover, ...resolvedGallery]
+    : resolvedGallery.length > 0
+    ? resolvedGallery
+    : [fallbackImagePool[hash % fallbackImagePool.length]];
+
+  return {
+    id: q.id,
+    title: q.title,
+    stage: q.postType === 'pain_point' ? 'pain_point' : 'solution',
+    track,
+    summary: q.description.length > 90 ? `${q.description.slice(0, 90)}...` : q.description,
+    description: q.description,
+    authorId: q.authorId,
+    authorName: q.authorName,
+    authorAvatar: q.authorAvatar,
+    authorRole: 'user',
+    teamName: q.authorTitle ? `${q.authorName} ｜ ${q.authorTitle}` : q.authorName,
+    organizationName: q.authorTitle,
+    showOrganization: Boolean(q.authorTitle),
+    sourcePainPointTitle: q.referencedPainPoint,
+    referencedPainPoint: q.referencedPainPoint,
+    targetGoal: q.targetGoal,
+    images: imgs,
+    externalLink: q.demoUrl,
+    technicalFeasibility: q.techArchitecture,
+    tags: q.tags,
+    status: q.status === 'delisted' ? 'rejected' : 'approved',
+    supportPoints:
+      typeof q.supportPoints === 'number' && q.supportPoints > 0
+        ? q.supportPoints < 2000
+          ? q.supportPoints * 100
+          : q.supportPoints
+        : 38000 + (q.likes || 25) * 650,
+    supporterCount: q.supporterCount || Math.max(15, Math.floor((q.likes || 25) * 0.7)),
+    targetFundingAmount: 100000,
+    viewsCount: q.views || 320,
+    likeCount: q.likes || 28,
+    commentsCount: q.answersCount || 4,
+    createdAt: q.createdAt,
+    updatedAt: q.updateLogs && q.updateLogs.length > 0 ? q.updateLogs[0].timestamp : q.createdAt,
+    currentVersion: q.currentVersion,
+    updateLogs: q.updateLogs,
+  };
+};
+
+export const mapQuestionsToStarSeasonProposals = (
+  questions: Question[]
+): import('../types/competition').StarSeasonProposal[] => {
+  return questions
+    .filter((q) => isInnovationProposalQuestion(q) && q.status !== 'delisted')
+    .map(questionToStarSeasonProposal);
+};
+

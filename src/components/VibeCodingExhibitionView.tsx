@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Question } from '../types';
 import { useApp } from '../context/AppContext';
 import { shareOrCopyUrl } from '../utils/shareUtils';
+import { isVibeCodingAppQuestion } from '../utils/questionUtils';
 import {
   Terminal,
   Sparkles,
@@ -22,7 +23,12 @@ import {
   Eye,
   MessageCircle,
   FolderGit2,
-  Cpu
+  Cpu,
+  Trophy,
+  Tag,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface VibeCodingExhibitionViewProps {
@@ -45,17 +51,11 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const [selectedSubCat, setSelectedSubCat] = useState<string>('全部');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'highest_tips' | 'most_liked' | 'most_views'>('newest');
+  const [showZoneHelp, setShowZoneHelp] = useState(false);
 
-  // Filter VibeCoding exhibition items
+  // Filter VibeCoding exhibition items - 僅展示軟體網站與 VibeCoding 應用作品，嚴格排除痛點、討論、解方等其他提案
   const vibeCodingApps = useMemo(() => {
-    return questions.filter((q) => {
-      const isType =
-        q.postType === 'vibecoding_app' ||
-        q.specialZone === 'vibecoding' ||
-        q.tags?.includes('VibeCoding') ||
-        q.category === '網站程式';
-      return isType;
-    });
+    return questions.filter(isVibeCodingAppQuestion);
   }, [questions]);
 
   // Apply subcategory & search query filtering
@@ -109,84 +109,107 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Top Banner Container */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-900 via-indigo-900 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-purple-500/30">
+      {/* Top Banner Container (手機版緊湊設計，敘述改用 ? 按鈕收合展開) */}
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-purple-900 via-indigo-900 to-slate-900 text-white p-3.5 sm:p-5 shadow-lg border border-purple-500/30">
         {/* Background Decorative Glow */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-20 -right-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-3 max-w-2xl">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md flex items-center gap-1.5 border border-purple-300/40">
-                <Terminal className="w-3.5 h-3.5 text-purple-200" />
-                <span>AI VibeCoding 專屬展場</span>
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1.5 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-xs flex items-center gap-1 border border-purple-300/40">
+                <Terminal className="w-3 h-3 text-purple-200" />
+                <span>AI VibeCoding 展場</span>
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/10 text-purple-200 border border-white/10 backdrop-blur-md">
-                獨立分類：網站程式
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-white/10 text-purple-200 border border-white/10">
+                {vibeCodingApps.length} 件作品
               </span>
               <button
+                type="button"
                 onClick={onTogglePin}
-                className={`p-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
+                className={`px-2 py-0.5 rounded-full transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold ${
                   isPinned
                     ? 'bg-purple-500 text-white border border-purple-400'
                     : 'bg-white/10 hover:bg-white/20 text-purple-200 border border-white/10'
                 }`}
                 title={isPinned ? '取消釘選此展場' : '釘選至首頁主畫面'}
               >
-                <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
+                <Pin className={`w-3 h-3 ${isPinned ? 'fill-white' : ''}`} />
                 <span>{isPinned ? '已釘選' : '釘選'}</span>
               </button>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5 flex-wrap">
-              <span>VibeCoding 創新應用展示場</span>
-              <Sparkles className="w-6 h-6 text-purple-300 animate-pulse" />
-            </h2>
-
-            <p className="text-xs sm:text-sm text-purple-100/90 leading-relaxed">
-              專門展示運用 Vibe Coding 理念與 AI 打造的網站程式、Web 應用、自動化工具與原型作品！歡迎上傳作品封面大圖、0~6 張功能畫面截圖、分享欲解決痛點、技術架構與線上試用網址，獲得社群收藏與點數打賞支持！
-            </p>
-
-            <div className="pt-1 flex items-center gap-4 text-xs font-semibold text-purple-200 flex-wrap">
-              <span className="flex items-center gap-1">
-                <ImageIcon className="w-4 h-4 text-purple-300" />
-                <span>封面大圖 + 0~6 張截圖</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <Flame className="w-4 h-4 text-rose-300" />
-                <span>引用/解決痛點</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <Cpu className="w-4 h-4 text-indigo-300" />
-                <span>技術架構展示</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <Coins className="w-4 h-4 text-amber-300" />
-                <span>雙幣點數打賞支持</span>
-              </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center gap-1.5">
+                <span>VibeCoding 創新應用展示場</span>
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-300 shrink-0" />
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowZoneHelp(!showZoneHelp)}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold transition-all cursor-pointer border ${
+                  showZoneHelp
+                    ? 'bg-purple-500 text-white border-purple-300 shadow-xs'
+                    : 'bg-white/15 hover:bg-white/25 text-purple-100 border-white/20'
+                }`}
+                title="點擊展開/收合展場介紹與說明"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>說明</span>
+                {showZoneHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0">
+          {/* Action Buttons (橫向緊湊排列) */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
+              type="button"
               onClick={onOpenCreateApp}
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 hover:from-purple-400 hover:to-indigo-500 text-white font-extrabold text-sm shadow-lg shadow-purple-950/40 hover:shadow-purple-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 border border-purple-300/40"
+              className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 hover:from-purple-400 hover:to-indigo-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 border border-purple-300/40"
             >
-              <Plus className="w-4.5 h-4.5 stroke-[2.5]" />
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>發布 VibeCoding 應用</span>
             </button>
 
             <button
+              type="button"
               onClick={onCloseZone}
-              className="px-4 py-2 rounded-2xl bg-white/10 hover:bg-white/20 text-purple-200 font-bold text-xs backdrop-blur-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-purple-200 font-bold text-xs backdrop-blur-md transition-colors flex items-center justify-center gap-1 cursor-pointer shrink-0"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
               <span>退出展場</span>
             </button>
           </div>
         </div>
+
+        {/* 點擊 ? 展開之展場敘述與特色說明 */}
+        {showZoneHelp && (
+          <div className="relative z-10 mt-3 pt-3 border-t border-white/15 space-y-2 animate-in fade-in duration-150">
+            <p className="text-xs text-purple-100/95 leading-relaxed">
+              專門展示運用 Vibe Coding 理念與 AI 打造的網站程式、Web 應用、自動化工具與原型作品！歡迎上傳作品封面大圖、0~6 張功能畫面截圖、分享欲解決痛點、技術架構與線上試用網址，獲得社群收藏與點數打賞支持！
+            </p>
+            <div className="flex items-center gap-3 text-[11px] font-semibold text-purple-200 flex-wrap">
+              <span className="flex items-center gap-1">
+                <ImageIcon className="w-3.5 h-3.5 text-purple-300" />
+                <span>封面大圖 + 0~6 張截圖</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 text-rose-300" />
+                <span>引用/解決痛點</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <Cpu className="w-3.5 h-3.5 text-indigo-300" />
+                <span>技術架構展示</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <Coins className="w-3.5 h-3.5 text-amber-300" />
+                <span>雙幣點數打賞支持</span>
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter and Search Toolbar */}
@@ -267,22 +290,35 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredApps.map((app) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
+          {filteredApps.map((app, idx) => {
             const isBookmarked = bookmarkedQuestionIds.includes(app.id);
             const totalTips = app.supportPoints || 0;
-            const galleryCount = app.galleryImages?.length || 0;
+            const galleryList = app.galleryImages || app.screenshots || (app as any).vibeCodingData?.screenshots || [];
+            const galleryCount = galleryList.length;
+            const fallbackCovers = [
+              'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80',
+              'https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=800&q=80',
+              'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80',
+              'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&q=80',
+              'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80',
+              'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80',
+            ];
+            const coverImgUrl =
+              app.coverImage ||
+              (app as any).vibeCodingData?.coverImageUrl ||
+              fallbackCovers[idx % fallbackCovers.length];
 
             return (
               <div
                 key={app.id}
                 onClick={() => onSelectApp(app)}
-                className="group bg-white rounded-2xl border border-stone-200 hover:border-purple-400 p-4 transition-all duration-200 hover:shadow-lg cursor-pointer flex flex-col justify-between relative overflow-hidden space-y-3"
+                className="group bg-white rounded-2xl border border-stone-200 hover:border-purple-400 p-3 sm:p-4 transition-all duration-200 hover:shadow-lg cursor-pointer flex flex-col justify-between relative overflow-hidden space-y-2.5"
               >
                 {/* Hero Cover Image Preview */}
-                <div className="relative w-full h-44 rounded-xl overflow-hidden bg-stone-900 border border-stone-100 shrink-0">
+                <div className="relative w-full h-36 sm:h-44 rounded-xl overflow-hidden bg-stone-900 border border-stone-100 shrink-0">
                   <img
-                    src={app.coverImage || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80'}
+                    src={coverImgUrl}
                     alt={app.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
@@ -290,10 +326,17 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
                   {/* Top Badges */}
                   <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2">
-                    <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-black bg-purple-600 text-white shadow-md flex items-center gap-1 border border-purple-400/50">
-                      <Terminal className="w-3 h-3 text-purple-200" />
-                      <span>{app.subcategory || '網站程式'}</span>
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-black bg-purple-600 text-white shadow-md flex items-center gap-1 border border-purple-400/50">
+                        <Terminal className="w-3 h-3 text-purple-200" />
+                        <span>{app.subcategory || '網站程式'}</span>
+                      </span>
+                      {app.currentVersion && (
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-black font-mono bg-black/60 backdrop-blur-md text-purple-200 border border-purple-400/40">
+                          {app.currentVersion}
+                        </span>
+                      )}
+                    </div>
 
                     <button
                       type="button"
@@ -365,6 +408,16 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                       <Cpu className="w-3.5 h-3.5 text-purple-600 shrink-0 mt-0.5" />
                       <span className="line-clamp-1 font-mono font-medium">
                         技術架構：{app.techArchitecture}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Target Goal (希望達成目標) */}
+                  {app.targetGoal && (
+                    <div className="p-2 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-950 flex items-start gap-1.5">
+                      <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <span className="line-clamp-1 font-semibold">
+                        目標：{app.targetGoal}
                       </span>
                     </div>
                   )}

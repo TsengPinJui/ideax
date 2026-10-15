@@ -82,9 +82,11 @@ export const GUEST_USER: User = {
 
 export const MOCK_USERS: User[] = [
   {
-    id: 'user-questioner',
+    id: 'c100000001',
+    memberId: 'c100000001',
+    username: 'user_questioner',
     name: '林書豪',
-    title: '',
+    title: '新創團隊創始人',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     role: 'questioner',
     balance: 0,
@@ -171,7 +173,9 @@ export const MOCK_USERS: User[] = [
     showAvgSolutionBounty: false,
   },
   {
-    id: 'solver-1',
+    id: 'c100000003',
+    memberId: 'c100000003',
+    username: 'solver_koyuren',
     name: '柯育任',
     title: '前知名外送平台產品總監 / 新創商業策略顧問',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
@@ -223,7 +227,8 @@ export const MOCK_USERS: User[] = [
     showAvgSolutionBounty: false,
   },
   {
-    id: 'user-admin',
+    id: 'a000000001',
+    memberId: 'a000000001',
     username: 'Admin_001',
     password: 'John930521',
     name: 'IdeaX 管理團隊',
@@ -272,7 +277,9 @@ export const MOCK_USERS: User[] = [
     showAvgSolutionBounty: false,
   },
   {
-    id: 'solver-2',
+    id: 'c200000002',
+    memberId: 'c200000002',
+    username: 'solver_yichun',
     name: '陳怡君',
     title: '資深全端系統架構師 / AI 應用工程顧問',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
@@ -295,32 +302,6 @@ export const MOCK_USERS: User[] = [
     submittedSolutionsCount: 28,
     acceptanceRate: 93,
     avgSolutionBounty: 2800,
-    showSubmittedCount: false,
-    showAcceptanceRate: false,
-    showAvgSolutionBounty: false,
-  },
-  {
-    id: 'user-guest',
-    name: '未登入訪客',
-    title: '訪客身份 (未登入)',
-    avatar: '',
-    role: 'questioner',
-    balance: 0,
-    pendingEarnings: 0,
-    reputation: 0,
-    joinedDate: '2026-01-01',
-    bio: '未登入訪客，僅限瀏覽內容。',
-    email: '',
-    totalWithdrawn: 0,
-    subscriptionTier: 'free',
-    skills: [],
-    verifiedExpert: false,
-    rating: 0,
-    reviewCount: 0,
-    acceptedSolutionsCount: 0,
-    submittedSolutionsCount: 0,
-    acceptanceRate: 0,
-    avgSolutionBounty: 0,
     showSubmittedCount: false,
     showAcceptanceRate: false,
     showAvgSolutionBounty: false,
@@ -507,7 +488,6 @@ export const MOCK_SOLVERS: Solver[] = [
 ];
 
 export const MOCK_QUESTIONS: Question[] = [
-  ...DEFAULT_VIBECODING_APPS,
   {
     id: 'q-1',
     title: '校園共享雨傘如何從租借收入轉向商家合作模式？',
@@ -2203,22 +2183,6 @@ export const DEMO_CORE_TEST_USERS: User[] = [
     reviewCount: 0,
     surveyData: undefined,
   },
-  {
-    id: 'c000000000',
-    memberId: 'c000000000',
-    accountType: 'user',
-    name: '訪客探索身分',
-    username: 'guest_user',
-    password: 'Ideax123456',
-    title: '一般訪客',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    role: 'questioner',
-    balance: 0,
-    pendingEarnings: 0,
-    reputation: 100,
-    joinedDate: '2026-01-01',
-    email: 'guest@ideax.user',
-  },
 ];
 
 /**
@@ -2322,8 +2286,8 @@ export const isRealRegisteredUser = (user?: User | null): boolean => {
 export const isMockQuestionId = (id: string, _authorId?: string): boolean => {
   if (!id) return false;
   if (id === 'q-test-1') return true;
-  if (id.startsWith('q-test-') || id.startsWith('q-demo-') || id.startsWith('q-mock-')) return true;
-  // 僅命中模擬預置題目 q-1 ~ q-99，絕不誤判以 Date.now() 生成之真實題目 q-174...
+  if (id.startsWith('q-test-') || id.startsWith('q-demo-') || id.startsWith('q-mock-') || id.startsWith('vibe-app-')) return true;
+  // 僅命中模擬預置題目 q-1 ~ q-99，絕不誤判以 Date.now() 生成之真實題目 q-174... 或虛擬提案 q-vp-...
   if (/^q-[1-9]$|^q-[1-9][0-9]$/.test(id)) return true;
   return false;
 };

@@ -278,6 +278,21 @@ export async function deleteUserAndAllRelatedDataFromFirestore(userId: string): 
   }
 }
 
+export async function deleteUsersFromFirestore(userIds: string[]): Promise<void> {
+  if (!userIds || userIds.length === 0 || isQuotaExhausted) return;
+  try {
+    const batch = writeBatch(db);
+    userIds.forEach((uid) => {
+      if (uid) {
+        batch.delete(doc(db, 'users', uid));
+      }
+    });
+    await batch.commit();
+  } catch (err) {
+    handleFirestoreError(`Failed to batch delete duplicate users`, err);
+  }
+}
+
 /**
  * Real-time listener for questions collection
  */

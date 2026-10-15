@@ -183,6 +183,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [newGalleryInput, setNewGalleryInput] = useState<string>('');
   const [techArchitecture, setTechArchitecture] = useState<string>('');
   const [demoUrl, setDemoUrl] = useState<string>('');
+  const [currentVersion, setCurrentVersion] = useState<string>('v1.0.0');
 
   // 多階段交付設定（支援自訂階段數量、名稱、目標、預計交付與價格）
   const [enablePhasedDelivery, setEnablePhasedDelivery] = useState(false);
@@ -450,10 +451,17 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         }
       }
 
-      if (!finalCategory) finalCategory = '創新創業';
-      if (!finalSubcategory) finalSubcategory = CATEGORY_HIERARCHY[finalCategory]?.[0] || '一般專案';
+      if (postType === 'vibecoding_app') {
+        if (!finalCategory) finalCategory = 'vibecoding' as any;
+        if (!finalSubcategory) finalSubcategory = 'AI Agent 助手';
+      } else {
+        if (!finalCategory) finalCategory = '創新創業';
+        if (!finalSubcategory) finalSubcategory = CATEGORY_HIERARCHY[finalCategory]?.[0] || '一般專案';
+      }
       if (finalTags.length === 0) {
-        finalTags = [finalCategory, finalSubcategory].filter(Boolean);
+        finalTags = postType === 'vibecoding_app'
+          ? [finalSubcategory, 'VibeCoding', 'AI 實戰應用'].filter(Boolean)
+          : [finalCategory, finalSubcategory].filter(Boolean);
       }
       if (finalTags.length > 5) {
         finalTags = finalTags.slice(0, 5);
@@ -506,6 +514,18 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         specialZone: postType === 'vibecoding_app' ? 'vibecoding' : undefined,
         referencedPainPoint: referencedPainPoint.trim() || undefined,
         targetGoal: targetGoal.trim() || undefined,
+        currentVersion: postType === 'vibecoding_app' ? (currentVersion.trim() || undefined) : undefined,
+        updateLogs: (postType === 'vibecoding_app' && currentVersion.trim()) ? [{
+          id: `log-init-${Date.now()}`,
+          timestamp: `${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${String(new Date().getDate()).padStart(2, '0')} ${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
+          version: currentVersion.trim(),
+          content: '首次發布軟體程式作品與上架展場',
+          note: '初始版本發布上線',
+          authorId,
+          authorName,
+          authorAvatar,
+          updatedFields: ['初始建立'],
+        }] : undefined,
         coverImage: coverImage.trim() || undefined,
         galleryImages: galleryImages.length > 0 ? galleryImages : undefined,
         techArchitecture: techArchitecture.trim() || undefined,
@@ -876,8 +896,12 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           />
         </div>
 
-        {/* 創新提案 / 引用相關痛點與希望達成的目標 (選填) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200">
+        {/* 創新提案 / 程式或網站：引用相關痛點與希望達成的目標 (選填) */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl ${
+          postType === 'vibecoding_app'
+            ? 'bg-purple-50/60 border border-purple-200'
+            : 'bg-emerald-50/60 border border-emerald-200'
+        }`}>
           <div>
             <label className="block text-stone-800 font-bold mb-1 flex items-center gap-1.5 text-xs">
               <Flame className="w-3.5 h-3.5 text-rose-500 shrink-0" />
@@ -892,17 +916,33 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-stone-800 font-bold mb-1 flex items-center gap-1.5 text-xs">
-              <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span>［希望達成的目標］ (選填)</span>
+            <label className="block text-stone-800 font-bold mb-1 flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5">
+                <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>［希望達成的目標］ (選填)</span>
+              </span>
+              {postType === 'vibecoding_app' && (
+                <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-1.5 py-0.2 rounded">
+                  下載量 / 里程碑
+                </span>
+              )}
             </label>
             <input
               type="text"
               value={targetGoal}
               onChange={(e) => setTargetGoal(e.target.value)}
-              placeholder="例: 於 6 個月內完成 POC 實證並獲得 100 位企業付費用戶"
+              placeholder={
+                postType === 'vibecoding_app'
+                  ? '例如：希望 6 個月內達成 50,000 次下載量，並累積 5,000 位活躍用戶'
+                  : '例: 於 6 個月內完成 POC 實證並獲得 100 位企業付費用戶'
+              }
               className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 text-stone-900 text-xs outline-none bg-white font-medium"
             />
+            <p className="text-[11px] text-stone-500 mt-1">
+              {postType === 'vibecoding_app'
+                ? '💡 目標說明：例如「希望 6 個月達成 ××× 下載次數」或累積活躍用戶數、產品留存率等具體可衡量成果。'
+                : '💡 目標說明：填寫短期至中期預期驗證成果、商業合作或驗證指標。'}
+            </p>
           </div>
         </div>
 
@@ -1029,6 +1069,24 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 className="w-full px-3 py-2 rounded-xl border border-emerald-200 focus:border-emerald-500 text-xs text-stone-900 outline-none bg-white font-mono"
               />
             </div>
+
+            {/* 版本號碼 (選填) */}
+            <div>
+              <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-purple-600" />
+                  <span>版本號碼 (選填)</span>
+                </span>
+                <span className="text-[10px] text-purple-700">例如：v1.0.0、v2.0.0</span>
+              </label>
+              <input
+                type="text"
+                value={currentVersion}
+                onChange={(e) => setCurrentVersion(e.target.value)}
+                placeholder="例如：v1.0.0 (初版發布)"
+                className="w-full px-3 py-2 rounded-xl border border-purple-200 focus:border-purple-500 text-xs text-stone-900 outline-none bg-white font-mono"
+              />
+            </div>
           </div>
         )}
 
@@ -1060,7 +1118,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
         </div>
 
-        {/* AI Agent「市場顧問」一鍵智慧分析與標籤帶入工具列 */}
+        {/* AI Agent「市場顧問」一鍵智慧分析與標籤帶入工具列（VibeCoding 作品展示不套用商業懸賞顧問分析） */}
+        {postType !== 'vibecoding_app' && (
         <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-100/40 to-stone-50 border border-amber-300/80 shadow-2xs space-y-2.5">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
@@ -1133,8 +1192,41 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             </div>
           )}
         </div>
+        )}
 
         {/* Category & Subcategory */}
+        {postType === 'vibecoding_app' ? (
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-stone-700">Vibe Coding 應用分類</label>
+              <span className="text-[10px] text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded font-bold">
+                選擇作品所屬應用領域
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {(['AI Agent 助手', 'SaaS 生產力工具', '資料視覺化與看板', '產業自動化流程', '創新互動與遊戲'] as const).map((sc) => {
+                const isSelected = (subcategory || 'AI Agent 助手') === sc;
+                return (
+                  <button
+                    key={sc}
+                    type="button"
+                    onClick={() => {
+                      setCategory('vibecoding' as any);
+                      setSubcategory(sc);
+                    }}
+                    className={`px-2.5 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
+                      isSelected
+                        ? 'border-amber-500 bg-amber-50 text-amber-950 ring-2 ring-amber-300/50 shadow-2xs'
+                        : 'border-stone-200 hover:border-stone-300 bg-white text-stone-700'
+                    }`}
+                  >
+                    {sc}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <div className="flex items-center justify-between mb-1.5">
@@ -1180,6 +1272,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             </select>
           </div>
         </div>
+        )}
 
         {/* Tags */}
         <div>
@@ -1188,27 +1281,45 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               <Tag className="w-3.5 h-3.5 text-stone-400" />
               <span>關鍵字標籤 (2~5 個)</span>
             </label>
-            <span className="text-[11px] text-stone-400">留空時由 AI 自動適配生成</span>
+            <span className="text-[11px] text-stone-400">
+              {postType === 'vibecoding_app' ? '標記核心技術或應用場景' : '留空時由 AI 自動適配生成'}
+            </span>
           </div>
           <input
             type="text"
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
-            placeholder="例如：#商業模式 #市場驗證 #產品策略（留空將由 AI 自動適配生成）"
+            placeholder={
+              postType === 'vibecoding_app'
+                ? '例如：#AI_Agent #NextJS #自動化工作流 #RAG知識庫'
+                : '例如：#商業模式 #市場驗證 #產品策略（留空將由 AI 自動適配生成）'
+            }
             className="w-full px-3.5 py-2 rounded-xl border border-stone-300 focus:border-amber-500 text-xs font-medium outline-none placeholder:text-stone-400"
           />
           <div className="flex flex-wrap items-center gap-1.5 mt-2">
             <span className="text-[10px] text-stone-400 font-bold">推薦標籤：</span>
-            {[
-              '團隊協作',
-              '解題黑客松',
-              '商業模式',
-              'AI應用',
-              '創業痛點',
-              '行銷增長',
-              '系統架構',
-              '合約法律',
-            ].map((tag) => (
+            {(postType === 'vibecoding_app'
+              ? [
+                  'AI Agent',
+                  'LLM應用',
+                  'Next.js',
+                  '自動化工作流',
+                  'RAG知識庫',
+                  'SaaS工具',
+                  '資料視覺化',
+                  'Prompt工程',
+                ]
+              : [
+                  '團隊協作',
+                  '解題黑客松',
+                  '商業模式',
+                  'AI應用',
+                  '創業痛點',
+                  '行銷增長',
+                  '系統架構',
+                  '合約法律',
+                ]
+            ).map((tag) => (
               <button
                 key={tag}
                 type="button"
@@ -1226,8 +1337,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
         </div>
 
-        {/* Problem Level & Bounty Configuration (痛點無須選擇賞金；無金流模式與正常懸賞處理) */}
-        {postType === 'pain_point' ? null : isNoPaymentMode ? (
+        {/* Problem Level & Bounty Configuration (痛點與 VibeCoding 作品無須選擇賞金；無金流模式與正常懸賞處理) */}
+        {(postType === 'pain_point' || postType === 'vibecoding_app') ? null : isNoPaymentMode ? (
           <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 text-xs font-bold text-amber-950 flex items-center gap-2.5 shadow-2xs">
             <Coins className="w-5 h-5 text-amber-600 shrink-0" />
             <div>

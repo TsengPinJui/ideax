@@ -41,7 +41,7 @@ import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompas
 import { GoogleSitelinksModal } from './components/GoogleSitelinksModal';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
 import { isMockQuestionId } from './data/mockData';
-import { isPainPointQuestion, isL0DiscussionQuestion } from './utils/questionUtils';
+import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } from './utils/questionUtils';
 import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
 import {
   recordUserSearchKeyword,
@@ -1049,6 +1049,9 @@ function MainContent() {
         } else if (specialZone === 'l0_discussion') {
           // L0問題討論區：依規範，從「尋求解答」或「提出痛點」提出的問題，就算設定是L0也不要算入L0討論區或L0閒聊討論分類
           matchesSpecialZone = isL0DiscussionQuestion(q);
+        } else if (specialZone === 'vibecoding') {
+          // VibeCoding展場：僅展示軟體網站提案，嚴格排除痛點、討論、解方提案等其他類型
+          matchesSpecialZone = isVibeCodingAppQuestion(q);
         }
 
         if (!matchesSpecialZone) return false;
@@ -1850,8 +1853,8 @@ function MainContent() {
                   />
                 )}
 
-                {/* Questions Grid (創點子專區時不重複顯示問題卡片) */}
-                {specialZone !== 'create_ideas' && (
+                {/* Questions Grid (創點子專區與 VibeCoding 展場各自擁有專屬獨立展示視圖，不重複顯示一般市場問題卡片) */}
+                {specialZone !== 'create_ideas' && specialZone !== 'vibecoding' && (
                   filteredQuestions.length === 0 ? (
                   <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-stone-300 space-y-3">
                     <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 mx-auto flex items-center justify-center">

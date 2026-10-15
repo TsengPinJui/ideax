@@ -53,6 +53,8 @@ interface ProposalDetailFullPageProps {
   onEditProposal?: (proposal: StarSeasonProposal) => void;
   onWithdrawProposal?: (proposal: StarSeasonProposal) => void;
   showToast?: (msg: string) => void;
+  allProposals?: StarSeasonProposal[];
+  onSelectProposal?: (proposal: StarSeasonProposal) => void;
 }
 
 export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
@@ -71,11 +73,43 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   onEditProposal,
   onWithdrawProposal,
   showToast,
+  allProposals = [],
+  onSelectProposal,
 }) => {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [shared, setShared] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  const referencedPainPointProposal = React.useMemo(() => {
+    if (!proposal.sourcePainPointTitle && !proposal.referencedPainPoint) return null;
+    const targetStr = (proposal.sourcePainPointTitle || proposal.referencedPainPoint || '').trim();
+    if (!targetStr) return null;
+    return (allProposals || []).find((p) => {
+      if (p.id === proposal.id) return false;
+      return (
+        p.id === targetStr ||
+        targetStr.includes(p.id) ||
+        p.title === targetStr ||
+        targetStr.includes(p.title) ||
+        (p.title.length > 5 && targetStr.includes(p.title))
+      );
+    }) || null;
+  }, [proposal, allProposals]);
+
+  const referencingProposalsList = React.useMemo(() => {
+    if (proposal.stage !== 'pain_point') return [];
+    return (allProposals || []).filter((p) => {
+      if (p.id === proposal.id) return false;
+      const refStr = (p.sourcePainPointTitle || p.referencedPainPoint || '').trim();
+      if (!refStr) return false;
+      return (
+        refStr.includes(proposal.id) ||
+        refStr.includes(proposal.title) ||
+        (proposal.title.length > 5 && refStr.includes(proposal.title))
+      );
+    });
+  }, [proposal, allProposals]);
 
   const isFromCreateIdeas = React.useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -342,20 +376,124 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           )}
         </section>
 
-        {/* 3. 關聯痛點與引用痛點資訊 */}
+        {/* 3. 關聯痛點與引用痛點資訊 (支援點擊雙向跳轉) */}
         {(proposal.sourcePainPointTitle || proposal.referencedPainPoint) && (
-          <section className="bg-emerald-50/80 rounded-3xl p-5 sm:p-6 border border-emerald-200 space-y-2">
-            <div className="flex items-center gap-2 text-emerald-900 font-black text-sm">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span>本解方提案採用的來源/引用痛點</span>
+          <section className="bg-emerald-50/80 rounded-3xl p-5 sm:p-6 border border-emerald-200 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-emerald-900 font-black text-sm">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>本解方提案採用的來源/引用痛點</span>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                痛點許願池
+              </span>
             </div>
-            <p className="text-stone-800 font-bold text-sm bg-white/80 p-3 rounded-2xl border border-emerald-100">
-              {proposal.sourcePainPointTitle || proposal.referencedPainPoint}
-            </p>
+
+            {referencedPainPointProposal ? (
+              <div
+                onClick={() => onSelectProposal && onSelectProposal(referencedPainPointProposal)}
+                className="p-3.5 rounded-2xl bg-white border border-emerald-200 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group space-y-1.5 active:scale-[0.99]"
+                title="點擊前往查看此痛點完整需求與討論"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-stone-900 group-hover:text-emerald-800 transition-colors line-clamp-1">
+                    {referencedPainPointProposal.title}
+                  </h4>
+                  <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
+                    +{referencedPainPointProposal.supporterCount || 0} 附議
+                  </span>
+                </div>
+                <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                  {referencedPainPointProposal.summary}
+                </p>
+                <div className="flex items-center justify-between text-xs text-stone-400 pt-1.5 border-t border-emerald-100">
+                  <span className="text-stone-700 font-medium">👤 {referencedPainPointProposal.authorName}</span>
+                  <span className="text-emerald-700 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                    前往痛點詳細頁面 ➔
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-stone-800 font-bold text-sm bg-white/80 p-3 rounded-2xl border border-emerald-100">
+                {proposal.sourcePainPointTitle || proposal.referencedPainPoint}
+              </p>
+            )}
+
             {proposal.sourcePainPointTitle && (
               <p className="text-xs text-emerald-700 leading-relaxed">
                 ★ 獲專家評審評定為前三名獲獎解方時，此痛點提出者將一併獲得激勵獎勵！
               </p>
+            )}
+          </section>
+        )}
+
+        {/* 痛點專用：引用此痛點之創新提案與解答（雙向關聯追蹤與互聯） */}
+        {proposal.stage === 'pain_point' && (
+          <section className="bg-amber-50/70 rounded-3xl p-5 sm:p-6 border border-amber-300 space-y-3.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-stone-950 font-black text-sm sm:text-base">
+                <div className="w-7 h-7 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center font-black text-sm shadow-2xs">
+                  💡
+                </div>
+                <span>引用此痛點之創新提案（{referencingProposalsList.length} 件）</span>
+              </div>
+              <span className="text-xs font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full border border-amber-300">
+                雙向關聯追蹤
+              </span>
+            </div>
+
+            {referencingProposalsList.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {referencingProposalsList.map((refP) => (
+                  <div
+                    key={refP.id}
+                    onClick={() => onSelectProposal && onSelectProposal(refP)}
+                    className="p-3.5 rounded-2xl bg-white border border-amber-200 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between gap-2.5 active:scale-[0.99]"
+                    title="點擊前往查看此提案詳情"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          創新解方
+                        </span>
+                        <span className="text-[11px] font-mono font-bold text-amber-700">
+                          🪙 {(refP.supportPoints || 0).toLocaleString()} 創星幣
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2">
+                        {refP.title}
+                      </h4>
+                      <p className="text-xs text-stone-600 line-clamp-2 mt-1 leading-relaxed">
+                        {refP.summary}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100">
+                      <span className="font-medium text-stone-700 truncate max-w-[150px] sm:max-w-[200px]">
+                        👤 {refP.authorName}
+                      </span>
+                      <span className="text-amber-600 font-bold group-hover:translate-x-0.5 transition-transform text-xs flex items-center gap-1">
+                        前往提案頁面 ➔
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-white/90 border border-dashed border-amber-300 text-center space-y-2">
+                <p className="text-xs text-stone-600 font-medium">
+                  目前尚無競賽提案引用此痛點，歡迎成為第一位針對此痛點提出創新方案的團隊！
+                </p>
+                {onSolvePainPoint && (
+                  <button
+                    type="button"
+                    onClick={() => onSolvePainPoint(proposal)}
+                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>為此痛點提案參賽</span>
+                  </button>
+                )}
+              </div>
             )}
           </section>
         )}

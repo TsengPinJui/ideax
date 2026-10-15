@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Question,
+  ProposalUpdateLog,
   Solver,
   Answer,
   Transaction,
@@ -33,7 +34,7 @@ import {
   isSiteBAdmin,
   getAdminSiteLabel,
 } from '../utils/adminPermissions';
-import { restoreCanonicalUserIdentity, USER_ALIAS_MAP } from '../utils/userDisplay';
+import { restoreCanonicalUserIdentity, USER_ALIAS_MAP, deduplicateUsersList } from '../utils/userDisplay';
 import {
   MOCK_QUESTIONS,
   MOCK_SOLVERS,
@@ -57,6 +58,7 @@ import {
   isMockTransactionId,
   isMockConversationId,
 } from '../data/mockData';
+import { ALL_VIRTUAL_PROPOSALS_SEED, VIRTUAL_PERSONA_USERS } from '../data/virtualProposalsSeed';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { parseScheduleTimestamp } from '../utils/scheduleUtils';
 import { analyzeQuestionWithAI, AIAnalysisResult, generate24hrAssistantReply } from '../services/aiService';
@@ -73,6 +75,7 @@ import {
   deleteQuestionsFromFirestore,
   deleteQuestionAndRelatedDataFromFirestore,
   deleteUserAndAllRelatedDataFromFirestore,
+  deleteUsersFromFirestore,
   subscribeToQuestions,
   subscribeToUsers,
   syncAnswerToFirestore,
@@ -195,8 +198,24 @@ interface AppContextType {
     showAvgSolutionBounty?: boolean;
   }) => void;
 
-  // Actions
   createQuestion: (q: Partial<Question>) => Question;
+  updateProposalContent: (
+    questionId: string,
+    params: {
+      title?: string;
+      description?: string;
+      targetGoal?: string;
+      referencedPainPoint?: string;
+      tags?: string[];
+      demoUrl?: string;
+      techArchitecture?: string;
+      coverImage?: string;
+      galleryImages?: string[];
+      version?: string;
+      updateContent: string;
+      updateNote?: string;
+    }
+  ) => { success: boolean; message: string; updatedQuestion?: Question };
   submitAnswer: (ans: Partial<Answer>) => Answer;
   unlockAnswer: (answerId: string, useWithheldOffset?: boolean, paymentMethod?: string) => boolean;
   acceptAnswer: (answerId: string, rating?: number, review?: string) => void;
@@ -267,6 +286,7 @@ interface AppContextType {
   delistQuestion: (questionId: string, reason: string, feedback?: string) => void;
   relistQuestion: (questionId: string) => void;
   deleteQuestionPermanently: (questionId: string) => Promise<void>;
+  deleteQuestionsBatchPermanently: (questionIds: string[]) => Promise<number>;
   deleteAnswerPermanently: (answerId: string) => Promise<void>;
   purgeExpiredDelistedQuestions: () => Promise<number>;
   requestAccountDeactivation: (reason?: string, targetUserId?: string) => Promise<void>;
@@ -279,6 +299,8 @@ interface AppContextType {
   };
   purgeAccountPermanently: (userId: string) => Promise<void>;
   purgeExpiredDeactivatedAccounts: () => Promise<number>;
+  removeDuplicateAccounts: () => Promise<{ removedCount: number; removedNames: string[]; remainingCount: number }>;
+  deleteUserAccountPermanently: (userId: string) => Promise<{ success: boolean; message: string }>;
   addTestAccount: (options?: {
     name?: string;
     role?: 'questioner' | 'solver' | 'admin';
@@ -619,14 +641,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
 
-      const adminIdx = cleanList.findIndex((u) => u.id === 'user-admin');
+      const adminIdx = cleanList.findIndex((u) => u.id === 'user-admin' || u.id === 'a000000001');
       if (adminIdx === -1) {
         cleanList.unshift(CLEAN_CORE_USERS[0]);
       } else if (!enabled && (!cleanList[adminIdx].balance || cleanList[adminIdx].balance === 0)) {
         // 切換回正式營運模式 (NORM) 時，恢復管理員營運點數
         cleanList[adminIdx] = { ...cleanList[adminIdx], balance: 50000 };
       }
-      return cleanList;
+      return deduplicateUsersList(cleanList, getDeletedUserIds()).uniqueUsers;
     });
 
     setCurrentUser((curr) => {
@@ -681,7 +703,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             filtered.push(cta);
           }
         });
-        return filtered;
+        return deduplicateUsersList(filtered, getDeletedUserIds()).uniqueUsers;
       });
 
       // 2. 當前使用者若為拋棄式測試帳號才自動切換至訪客；核心測試帳號維持登入
@@ -720,7 +742,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               list.push(core);
             }
           });
-          return list;
+          return deduplicateUsersList(list, getDeletedUserIds()).uniqueUsers;
         });
 
         const deletedQIds = getDeletedQuestionIds();
@@ -865,8 +887,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.dispatchEvent(new CustomEvent('ideax_open_recharge'));
   }, [currentUser.id, openAuthModal]);
 
+  // 永久刪除之帳號 ID 黑名單（管理員於後台刪除之重複帳號或虛擬帳號，不再自動種子生成）
+  const getDeletedUserIds = (): Set<string> => {
+    try {
+      const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}permanently_deleted_user_ids`);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) return new Set(arr);
+      }
+    } catch {
+      // ignore
+    }
+    return new Set();
+  };
+
   const [availableUsers, setAvailableUsers] = useState<User[]>(() => {
     const isDemo = getInitialIsDemoMode();
+    const deletedUsers = getDeletedUserIds();
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}users`) || localStorage.getItem(`${STORAGE_KEY_PREFIX}available_users`);
       if (saved) {
@@ -886,9 +923,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           const disposableTestAccountIds = ['solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
           if (!isDemo) {
-            // 正式模式：過濾拋棄式測試帳號，永久保留核心身分，並優先保留既有註銷與審計狀態
+            // 正式模式：過濾拋棄式測試帳號，永久保留核心身分與虛擬創作者帳號，並自動去重
             const cleanList = usersList.filter((u: any) => !disposableTestAccountIds.includes(u.id));
             CORE_TEST_ACCOUNTS.forEach((cta) => {
+              if (deletedUsers.has(cta.id)) return;
               const existingIdx = cleanList.findIndex((u: any) => u.id === cta.id);
               if (existingIdx === -1) {
                 cleanList.push(cta as any);
@@ -896,25 +934,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 cleanList[existingIdx] = restoreCanonicalUserIdentity({ ...cta, ...cleanList[existingIdx] }) as any;
               }
             });
-            return cleanList;
+            VIRTUAL_PERSONA_USERS.forEach((vp) => {
+              if (deletedUsers.has(vp.id)) return;
+              if (!cleanList.some((u: any) => u.id === vp.id)) {
+                cleanList.push(vp as any);
+              }
+            });
+            const { uniqueUsers } = deduplicateUsersList(cleanList, deletedUsers);
+            return uniqueUsers;
           }
 
-          // 測試環境 (TEST)：以 saved users 為主，智慧合併模擬用戶與測試帳號，絕不覆蓋註銷/反悔期等狀態
-          const userMap = new Map<string, any>();
-          MOCK_USERS.forEach((mu) => userMap.set(mu.id, mu));
-          CORE_TEST_ACCOUNTS.forEach((cta) => userMap.set(cta.id, cta));
-          // 用 usersList 的最新狀態覆蓋預設值（包含 isDeactivated, deactivationStatus 等）
-          usersList.forEach((u: any) => {
-            const base = userMap.get(u.id) || {};
-            userMap.set(u.id, restoreCanonicalUserIdentity({ ...base, ...u }));
-          });
-          return Array.from(userMap.values());
+          // 測試環境 (TEST)：以 saved users 為主，智慧合併模擬用戶、虛擬創作者與測試帳號並自動去重
+          const combined = [
+            ...MOCK_USERS,
+            ...CORE_TEST_ACCOUNTS,
+            ...VIRTUAL_PERSONA_USERS,
+            ...usersList,
+          ];
+          const { uniqueUsers } = deduplicateUsersList(combined, deletedUsers);
+          return uniqueUsers;
         }
       }
     } catch {
       // ignore
     }
-    return isDemo ? MOCK_USERS : [...CORE_TEST_ACCOUNTS];
+    const baseUsers = isDemo
+      ? [...MOCK_USERS, ...VIRTUAL_PERSONA_USERS]
+      : [...CORE_TEST_ACCOUNTS, ...VIRTUAL_PERSONA_USERS];
+    return deduplicateUsersList(baseUsers, deletedUsers).uniqueUsers;
   });
 
   // 嚴格過濾真實註冊用戶（排扣訪客、測試帳號）
@@ -1138,7 +1185,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
-    const sanitizeQuestion = (q: any): Question => {
+    const virtualSeedMap = new Map(ALL_VIRTUAL_PROPOSALS_SEED.map((vq) => [vq.id, vq]));
+    const sanitizeQuestion = (rawQ: any): Question => {
+      const seedItem = virtualSeedMap.get(rawQ.id);
+      const q = seedItem
+        ? {
+            ...seedItem,
+            ...rawQ,
+            coverImage: seedItem.coverImage || rawQ.coverImage,
+            galleryImages: (rawQ.galleryImages && rawQ.galleryImages.length > 0) ? rawQ.galleryImages : seedItem.galleryImages,
+            referencedPainPoint: rawQ.referencedPainPoint || seedItem.referencedPainPoint,
+            targetGoal: rawQ.targetGoal || seedItem.targetGoal,
+            techArchitecture: rawQ.techArchitecture || seedItem.techArchitecture,
+            demoUrl: rawQ.demoUrl || seedItem.demoUrl,
+            currentVersion: rawQ.currentVersion || seedItem.currentVersion,
+          }
+        : rawQ;
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (q.views || 0);
       return {
         ...q,
@@ -1157,13 +1219,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     if (!isDemo) {
-      // 非測試環境（營運模式、無金流模式）：絕不添加任何模擬題目，徹底排除永久刪除與過期下架項目
+      // 非測試環境（競賽模式、營運模式、無金流模式）：排除測試帳號模擬題目，載入資料庫與虛擬創作者提案（若未在後台刪除）
       try {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            return parsed
+            const existingIds = new Set(parsed.map((q: any) => q.id));
+            const missingVirtual = ALL_VIRTUAL_PROPOSALS_SEED.filter(
+              (vq) => !existingIds.has(vq.id) && !deletedIds.has(vq.id)
+            );
+            return [...parsed, ...missingVirtual]
               .filter((q: any) => !deletedIds.has(q.id) && !isMockQuestionId(q.id, q.authorId) && !isDelistedExpired(q))
               .map(sanitizeQuestion);
           }
@@ -1171,17 +1237,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch {
         // ignore
       }
-      return [];
+      return ALL_VIRTUAL_PROPOSALS_SEED
+        .filter((q) => !deletedIds.has(q.id) && !isDelistedExpired(q))
+        .map(sanitizeQuestion);
     }
-    // 測試環境 (TEST / DEMO)：加回所有題目，優先採用本地已儲存之完整狀態，嚴格過濾黑名單（永久刪除與逾30日下架）
+    // 測試環境 (TEST / DEMO)：加回所有題目與虛擬創作者提案，嚴格過濾黑名單（永久刪除與過期下架）
+    const combinedSeeds = [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS];
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const parsedIdMap = new Set(parsed.map((q: any) => q.id));
-          const missingMock = MOCK_QUESTIONS.filter((mq) => !parsedIdMap.has(mq.id) && !deletedIds.has(mq.id));
-          return [...parsed, ...missingMock]
+          const missingSeeds = combinedSeeds.filter((mq) => !parsedIdMap.has(mq.id) && !deletedIds.has(mq.id));
+          return [...parsed, ...missingSeeds]
             .filter((q: any) => !deletedIds.has(q.id) && !isDelistedExpired(q))
             .map(sanitizeQuestion);
         }
@@ -1189,7 +1258,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // ignore
     }
-    return MOCK_QUESTIONS
+    return combinedSeeds
       .filter((q) => !deletedIds.has(q.id) && !isDelistedExpired(q))
       .map(sanitizeQuestion);
   });
@@ -1886,53 +1955,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } catch {}
         }
 
-        setQuestions(filteredQ);
+        const existingCloudQIds = new Set(filteredQ.map((q) => q.id));
+        const missingVirtualForCloud = ALL_VIRTUAL_PROPOSALS_SEED.filter(
+          (vq) => !existingCloudQIds.has(vq.id) && !deletedIds.has(vq.id)
+        );
+        if (missingVirtualForCloud.length > 0) {
+          syncQuestionsToFirestore(missingVirtualForCloud);
+        }
+        const finalMergedQ = [...filteredQ, ...missingVirtualForCloud];
+
+        setQuestions(finalMergedQ);
         try {
-          localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(filteredQ));
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalMergedQ));
         } catch {}
       }
 
       if (cloudData.users && cloudData.users.length > 0) {
         const repairedCloudUsers = cloudData.users.map((cu) => restoreCanonicalUserIdentity(cu));
 
+        const deletedUsers = getDeletedUserIds();
         setAvailableUsers((prevUsers) => {
-          const userMap = new Map<string, User>();
-          prevUsers.forEach((u) => userMap.set(u.id, restoreCanonicalUserIdentity(u)));
-          repairedCloudUsers.forEach((cu) => {
-            const local = userMap.get(cu.id);
-            if (local) {
-              userMap.set(
-                cu.id,
-                restoreCanonicalUserIdentity({
-                  ...local,
-                  ...cu,
-                  isDeactivated: cu.isDeactivated ?? local.isDeactivated,
-                  deactivationStatus: cu.deactivationStatus ?? local.deactivationStatus,
-                  deactivationRequestedAt: cu.deactivationRequestedAt ?? local.deactivationRequestedAt,
-                  deactivationScheduledPurgeAt: cu.deactivationScheduledPurgeAt ?? local.deactivationScheduledPurgeAt,
-                  deactivationReason: cu.deactivationReason ?? local.deactivationReason,
-                })
-              );
-            } else {
-              userMap.set(cu.id, cu);
-            }
-          });
-          const merged = Array.from(userMap.values());
-          const cleanUsers = merged.map((u) => {
-            const restored = restoreCanonicalUserIdentity(u);
-            if (restored.id === 'user-admin' || restored.id === 'a000000001' || restored.role === 'admin') {
-              return {
-                ...restored,
-                balance: typeof restored.balance === 'number' && restored.balance > 0 ? restored.balance : 50000,
-              };
-            }
-            return restored;
-          });
+          const combined = [...(prevUsers || []), ...(cloudData.users || [])];
+          const { uniqueUsers, removedIds } = deduplicateUsersList(combined, deletedUsers);
+          if (removedIds.length > 0) {
+            deleteUsersFromFirestore(removedIds);
+          }
           try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(cleanUsers));
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(cleanUsers));
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(uniqueUsers));
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(uniqueUsers));
           } catch {}
-          return cleanUsers;
+          return uniqueUsers;
         });
         if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
           setCurrentUser((prev) => {
@@ -2061,44 +2113,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (cloudData.users && cloudData.users.length > 0) {
             const repairedCloudUsers = cloudData.users.map((cu) => restoreCanonicalUserIdentity(cu));
 
+            const deletedUsers = getDeletedUserIds();
             setAvailableUsers((prevUsers) => {
-              const userMap = new Map<string, User>();
-              prevUsers.forEach((u) => userMap.set(u.id, restoreCanonicalUserIdentity(u)));
-              repairedCloudUsers.forEach((cu) => {
-                const local = userMap.get(cu.id);
-                if (local) {
-                  userMap.set(
-                    cu.id,
-                    restoreCanonicalUserIdentity({
-                      ...local,
-                      ...cu,
-                      isDeactivated: cu.isDeactivated ?? local.isDeactivated,
-                      deactivationStatus: cu.deactivationStatus ?? local.deactivationStatus,
-                      deactivationRequestedAt: cu.deactivationRequestedAt ?? local.deactivationRequestedAt,
-                      deactivationScheduledPurgeAt: cu.deactivationScheduledPurgeAt ?? local.deactivationScheduledPurgeAt,
-                      deactivationReason: cu.deactivationReason ?? local.deactivationReason,
-                    })
-                  );
-                } else {
-                  userMap.set(cu.id, cu);
-                }
-              });
-              const merged = Array.from(userMap.values());
-              const cleanUsers = merged.map((u) => {
-                const restored = restoreCanonicalUserIdentity(u);
-                if (restored.id === 'user-admin' || restored.id === 'a000000001' || restored.role === 'admin') {
-                  return {
-                    ...restored,
-                    balance: typeof restored.balance === 'number' && restored.balance > 0 ? restored.balance : 50000,
-                  };
-                }
-                return restored;
-              });
+              const combined = [...(prevUsers || []), ...(cloudData.users || [])];
+              const { uniqueUsers, removedIds } = deduplicateUsersList(combined, deletedUsers);
+              if (removedIds.length > 0 && connected) {
+                deleteUsersFromFirestore(removedIds);
+              }
               try {
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(cleanUsers));
-                localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(cleanUsers));
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(uniqueUsers));
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(uniqueUsers));
               } catch {}
-              return cleanUsers;
+              return uniqueUsers;
             });
             if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
               setCurrentUser((prev) => {
@@ -2132,7 +2158,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
                 return true;
               })
-              .map((q) => {
+              .map((rawQ) => {
+                const seedItem = ALL_VIRTUAL_PROPOSALS_SEED.find((vq) => vq.id === rawQ.id);
+                const q = seedItem
+                  ? {
+                      ...seedItem,
+                      ...rawQ,
+                      coverImage: seedItem.coverImage || rawQ.coverImage,
+                      galleryImages: (rawQ.galleryImages && rawQ.galleryImages.length > 0) ? rawQ.galleryImages : seedItem.galleryImages,
+                      referencedPainPoint: rawQ.referencedPainPoint || seedItem.referencedPainPoint,
+                      targetGoal: rawQ.targetGoal || seedItem.targetGoal,
+                      techArchitecture: rawQ.techArchitecture || seedItem.techArchitecture,
+                      demoUrl: rawQ.demoUrl || seedItem.demoUrl,
+                      currentVersion: rawQ.currentVersion || seedItem.currentVersion,
+                    }
+                  : rawQ;
                 const highestViews = Math.max(
                   typeof q.views === 'number' ? q.views : 0,
                   typeof q.viewsCount === 'number' ? q.viewsCount : 0,
@@ -2144,9 +2184,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   viewsCount: highestViews,
                 };
               });
-            setQuestions(filteredQ);
+            const existingCloudQIds = new Set(filteredQ.map((q) => q.id));
+            const missingVirtualForCloud = ALL_VIRTUAL_PROPOSALS_SEED.filter(
+              (vq) => !existingCloudQIds.has(vq.id) && !currentDeleted.has(vq.id)
+            );
+            if (missingVirtualForCloud.length > 0 && connected) {
+              syncQuestionsToFirestore(missingVirtualForCloud);
+              syncUsersToFirestore(VIRTUAL_PERSONA_USERS);
+            }
+            const finalMergedQ = [...filteredQ, ...missingVirtualForCloud];
+            setQuestions(finalMergedQ);
             try {
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(filteredQ));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalMergedQ));
             } catch {
               // ignore
             }
@@ -2218,10 +2267,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return Date.now() - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
               }
               return true;
+            })
+            .map((rawQ) => {
+              const seedItem = ALL_VIRTUAL_PROPOSALS_SEED.find((vq) => vq.id === rawQ.id);
+              return seedItem
+                ? {
+                    ...seedItem,
+                    ...rawQ,
+                    coverImage: seedItem.coverImage || rawQ.coverImage,
+                    galleryImages: (rawQ.galleryImages && rawQ.galleryImages.length > 0) ? rawQ.galleryImages : seedItem.galleryImages,
+                    referencedPainPoint: rawQ.referencedPainPoint || seedItem.referencedPainPoint,
+                    targetGoal: rawQ.targetGoal || seedItem.targetGoal,
+                    techArchitecture: rawQ.techArchitecture || seedItem.techArchitecture,
+                    demoUrl: rawQ.demoUrl || seedItem.demoUrl,
+                    currentVersion: rawQ.currentVersion || seedItem.currentVersion,
+                  }
+                : rawQ;
             });
-          setQuestions(valid);
+          const validIdSet = new Set(valid.map((q) => q.id));
+          const missingVirtual = ALL_VIRTUAL_PROPOSALS_SEED.filter(
+            (vq) => !validIdSet.has(vq.id) && !currentDeleted.has(vq.id)
+          );
+          const finalValid = [...valid, ...missingVirtual];
+          setQuestions(finalValid);
           try {
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(valid));
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalValid));
           } catch {}
           setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
         });
@@ -2261,12 +2331,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 userMap.set(cu.id, cu);
               }
             });
-            const merged = Array.from(userMap.values()).map((u) => restoreCanonicalUserIdentity(u));
+            const { uniqueUsers, removedIds } = deduplicateUsersList(
+              Array.from(userMap.values()),
+              getDeletedUserIds()
+            );
+            if (removedIds.length > 0) {
+              deleteUsersFromFirestore(removedIds);
+            }
             try {
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(merged));
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(merged));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(uniqueUsers));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(uniqueUsers));
             } catch {}
-            return merged;
+            return uniqueUsers;
           });
           setCurrentUser((prev) => (prev && prev.id !== 'user-guest' ? restoreCanonicalUserIdentity(prev) : prev));
           setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
@@ -3832,6 +3908,101 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return q;
   };
 
+  // Action: Update proposal content (解方提案與軟體程式重新發布與更新日誌)
+  const updateProposalContent = (
+    questionId: string,
+    params: {
+      title?: string;
+      description?: string;
+      targetGoal?: string;
+      referencedPainPoint?: string;
+      tags?: string[];
+      demoUrl?: string;
+      techArchitecture?: string;
+      coverImage?: string;
+      galleryImages?: string[];
+      version?: string;
+      updateContent: string;
+      updateNote?: string;
+    }
+  ): { success: boolean; message: string; updatedQuestion?: Question } => {
+    if (!params.updateContent || !params.updateContent.trim()) {
+      return { success: false, message: '「更新內容」為每次更新重新發布前之必填項目，未填無法發布！' };
+    }
+
+    const targetIndex = questions.findIndex((q) => q.id === questionId);
+    if (targetIndex === -1) {
+      return { success: false, message: '找不到目標提案項目！' };
+    }
+
+    const currentQ = questions[targetIndex];
+    // 權限檢查：僅提案者本人或管理員可更新
+    const isAuthor = currentQ.authorId === currentUser.id;
+    const isAdmin = currentUser.role === 'admin';
+    if (!isAuthor && !isAdmin) {
+      return { success: false, message: '您並非此提案作者，無權限更新內容！' };
+    }
+
+    const now = new Date();
+    const formattedTime = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const changedFields: string[] = [];
+    if (params.title && params.title !== currentQ.title) changedFields.push('標題');
+    if (params.description && params.description !== currentQ.description) changedFields.push('內容說明');
+    if (params.targetGoal !== undefined && params.targetGoal !== currentQ.targetGoal) changedFields.push('目標');
+    if (params.demoUrl !== undefined && params.demoUrl !== currentQ.demoUrl) changedFields.push('成果網址');
+    if (params.techArchitecture !== undefined && params.techArchitecture !== currentQ.techArchitecture) changedFields.push('技術架構');
+    if (params.version && params.version !== currentQ.currentVersion) changedFields.push('版本號');
+    if (changedFields.length === 0) changedFields.push('提案內容更新');
+
+    const newLog: ProposalUpdateLog = {
+      id: `log-${Date.now()}`,
+      timestamp: formattedTime,
+      version: params.version?.trim() || undefined,
+      content: params.updateContent.trim(),
+      note: params.updateNote?.trim() || undefined,
+      authorId: currentUser.id,
+      authorName: currentUser.name,
+      authorAvatar: currentUser.avatar,
+      updatedFields: changedFields,
+    };
+
+    const updatedQ: Question = {
+      ...currentQ,
+      title: params.title !== undefined ? params.title : currentQ.title,
+      description: params.description !== undefined ? params.description : currentQ.description,
+      targetGoal: params.targetGoal !== undefined ? params.targetGoal : currentQ.targetGoal,
+      referencedPainPoint: params.referencedPainPoint !== undefined ? params.referencedPainPoint : currentQ.referencedPainPoint,
+      tags: params.tags !== undefined ? params.tags : currentQ.tags,
+      demoUrl: params.demoUrl !== undefined ? params.demoUrl : currentQ.demoUrl,
+      techArchitecture: params.techArchitecture !== undefined ? params.techArchitecture : currentQ.techArchitecture,
+      coverImage: params.coverImage !== undefined ? params.coverImage : currentQ.coverImage,
+      galleryImages: params.galleryImages !== undefined ? params.galleryImages : currentQ.galleryImages,
+      currentVersion: params.version?.trim() || currentQ.currentVersion,
+      updateLogs: [newLog, ...(currentQ.updateLogs || [])],
+    };
+
+    setQuestions((prev) => {
+      const next = prev.map((q) => (q.id === questionId ? updatedQ : q));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    syncQuestionToFirestore(updatedQ);
+
+    const isApp = updatedQ.postType === 'vibecoding_app';
+    const typeLabel = isApp ? '軟體程式' : '解方提案';
+    showCenterToast(
+      `${typeLabel}更新發布成功！`,
+      `已發布${params.version ? `【${params.version}】` : ''}更新日誌並同步更新提案內容`,
+      { type: 'success', duration: 3000 }
+    );
+
+    return { success: true, message: '更新發布成功', updatedQuestion: updatedQ };
+  };
+
   // Action: Submit answer (當回答會自動切換至解答者身份，支持 討論留言 vs 專業方案)
   const submitAnswer = (newAns: Partial<Answer>): Answer => {
     if (currentUser.isBlocked) {
@@ -4747,6 +4918,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ]);
   };
 
+  // Action: Batch delete multiple questions permanently from backend
+  const deleteQuestionsBatchPermanently = async (questionIds: string[]): Promise<number> => {
+    if (!questionIds || questionIds.length === 0) return 0;
+    const idSet = new Set(questionIds);
+
+    try {
+      const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}permanently_deleted_question_ids`);
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      questionIds.forEach((id) => {
+        if (!list.includes(id)) list.push(id);
+      });
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}permanently_deleted_question_ids`, JSON.stringify(list));
+    } catch {}
+
+    setQuestions((prev) => {
+      const remaining = prev.filter((q) => !idSet.has(q.id));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(remaining));
+      } catch {}
+      return remaining;
+    });
+
+    setAnswers((prev) => {
+      const remaining = prev.filter((a) => !idSet.has(a.questionId));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(remaining));
+      } catch {}
+      return remaining;
+    });
+
+    setBookmarkedQuestionIds((prev) => prev.filter((id) => !idSet.has(id)));
+
+    await deleteQuestionsFromFirestore(questionIds);
+    return questionIds.length;
+  };
+
   // Action: Purge all delisted questions older than 7 days (下架貼文暫存保留7日自動或手動清理，自動退還未完成預扣款)
   const purgeExpiredDelistedQuestions = async (): Promise<number> => {
     const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -5013,8 +5220,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     await syncUserToFirestore(updatedUser);
-    if (restoredAliasId) {
-      await syncUserToFirestore(restoreCanonicalUserIdentity({ ...updatedUser, id: restoredAliasId }));
+    if (restoredAliasId && restoredAliasId !== updatedUser.id) {
+      await deleteUsersFromFirestore([restoredAliasId]);
     }
 
     setNotifications((prev) => [
@@ -5139,6 +5346,128 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     return expiredUsers.length;
+  };
+
+  // Action: Scan & delete duplicate accounts from state, localStorage, and Firestore
+  const removeDuplicateAccounts = async (): Promise<{
+    removedCount: number;
+    removedNames: string[];
+    remainingCount: number;
+  }> => {
+    const deletedUsers = getDeletedUserIds();
+    let combinedList: User[] = [...availableUsers];
+    try {
+      const cloudData = await loadAllDataFromFirestore();
+      if (cloudData && Array.isArray(cloudData.users) && cloudData.users.length > 0) {
+        combinedList = [...combinedList, ...cloudData.users];
+      }
+    } catch {
+      // ignore offline error
+    }
+
+    const { uniqueUsers, removedIds, removedNames } = deduplicateUsersList(combinedList, deletedUsers);
+
+    // 同步清理本機快速切換帳號清單中之重複項目
+    setDeviceAccounts((prev) => {
+      const seenDeviceIds = new Set<string>();
+      const seenDeviceNames = new Set<string>();
+      const cleaned = prev.filter((da: any) => {
+        const daId = da.userId || da.id;
+        const canonId =
+          daId === 'user-admin'
+            ? 'a000000001'
+            : daId === 'user-questioner'
+            ? 'c100000001'
+            : daId === 'solver-2'
+            ? 'c200000002'
+            : daId === 'solver-1'
+            ? 'c100000003'
+            : daId;
+        if (deletedUsers.has(canonId) || seenDeviceIds.has(canonId)) return false;
+        const normName = ((da as any).name || '').trim().toLowerCase();
+        if (normName && seenDeviceNames.has(normName)) return false;
+        seenDeviceIds.add(canonId);
+        if (normName) seenDeviceNames.add(normName);
+        return true;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}device_accounts`, JSON.stringify(cleaned));
+      } catch {}
+      return cleaned;
+    });
+
+    setAvailableUsers(uniqueUsers);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(uniqueUsers));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(uniqueUsers));
+    } catch {}
+
+    if (removedIds.length > 0) {
+      await deleteUsersFromFirestore(removedIds);
+    }
+    await syncUsersToFirestore(uniqueUsers);
+
+    return {
+      removedCount: Math.max(removedIds.length, removedNames.length),
+      removedNames,
+      remainingCount: uniqueUsers.length,
+    };
+  };
+
+  // Action: Permanently delete a specific user account from backend database & localStorage
+  const deleteUserAccountPermanently = async (
+    userId: string
+  ): Promise<{ success: boolean; message: string }> => {
+    if (!userId || userId === 'a000000001' || userId === 'user-admin') {
+      return { success: false, message: '系統創始管理員帳號受保護，不可刪除。' };
+    }
+    const targetUser = availableUsers.find((u) => u.id === userId);
+    const targetName = targetUser?.name || userId;
+    const aliasId = USER_ALIAS_MAP[userId];
+    const idsToDelete = aliasId ? [userId, aliasId] : [userId];
+
+    try {
+      const deletedSet = getDeletedUserIds();
+      idsToDelete.forEach((id) => deletedSet.add(id));
+      localStorage.setItem(
+        `${STORAGE_KEY_PREFIX}permanently_deleted_user_ids`,
+        JSON.stringify(Array.from(deletedSet))
+      );
+    } catch {}
+
+    setAvailableUsers((prev) => {
+      const next = prev.filter((u) => !idsToDelete.includes(u.id));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(next));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    setDeviceAccounts((prev) => {
+      const next = prev.filter((da: any) => !idsToDelete.includes(da.userId || da.id));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}device_accounts`, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    if (idsToDelete.includes(currentUser.id)) {
+      setCurrentUser(GUEST_USER);
+      try {
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_explicit_login`);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(GUEST_USER));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(GUEST_USER));
+      } catch {}
+    }
+
+    await deleteUsersFromFirestore(idsToDelete);
+
+    return {
+      success: true,
+      message: `已從資料庫永久刪除帳號「${targetName}」（ID: ${userId}）`,
+    };
   };
 
   // Action: Add test account in demo/test mode (測試模式免註冊免登入一鍵添加測試帳號)
@@ -7464,6 +7793,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         openAuthModal,
         closeAuthModal,
         createQuestion,
+        updateProposalContent,
         submitAnswer,
         unlockAnswer,
         acceptAnswer,
@@ -7484,6 +7814,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         delistQuestion,
         relistQuestion,
         deleteQuestionPermanently,
+        deleteQuestionsBatchPermanently,
         deleteAnswerPermanently,
         purgeExpiredDelistedQuestions,
         requestAccountDeactivation,
@@ -7491,6 +7822,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         checkUserDeactivationStatus,
         purgeAccountPermanently,
         purgeExpiredDeactivatedAccounts,
+        removeDuplicateAccounts,
+        deleteUserAccountPermanently,
         addTestAccount,
         pullAllDataFromFirestore,
         acceptPhaseDelivery,

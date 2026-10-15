@@ -24,7 +24,32 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     referencedPainPoint: '傳統表單工具缺乏動態邏輯跳轉，工程師排程開發又需耗費 2 週時間',
-    targetGoal: '達到 10,000 位行銷人員免寫程式即可即時發布互動式表單與產品調查',
+    targetGoal: '希望 6 個月內達成 50,000 次下載量，並累積 10,000 位行銷與營運活躍用戶',
+    currentVersion: 'v2.0.0',
+    updateLogs: [
+      {
+        id: 'log-vibe-1-2',
+        timestamp: '2026/10/14 16:30',
+        version: 'v2.0.0',
+        content: '重大升級發布！全面重構表單動態邏輯引擎，渲染速度提升 60%，並新增 5 種全新可視化題型與 CSV 即時導出功能。下載量已突破首批 12,000 次！',
+        note: '慶祝下載與使用者突破 1 萬人次里程碑版本！',
+        authorId: 'user-vibecoder-alex',
+        authorName: 'VibeCoder Alex',
+        authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        updatedFields: ['內容說明', '目標', '成果網址', '技術架構', '版本號'],
+      },
+      {
+        id: 'log-vibe-1-1',
+        timestamp: '2026/10/10 10:15',
+        version: 'v1.1.0',
+        content: '修復行動端鍵盤彈出遮擋問題，新增多國語系切換支援與 Webhook 整合。',
+        note: '社群反饋快速修正版本',
+        authorId: 'user-vibecoder-alex',
+        authorName: 'VibeCoder Alex',
+        authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        updatedFields: ['技術架構', '版本號'],
+      }
+    ],
     coverImage: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1000&q=80',
     galleryImages: [
       'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80',
@@ -64,7 +89,21 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     referencedPainPoint: '原型驗證工具缺乏即時執行 JavaScript 腳本與 API 數據連動能力',
-    targetGoal: '協助創業者在 10 分鐘內建立高互動性的 MVP 產品測試畫面',
+    targetGoal: '希望 6 個月內達成 20,000 次下載量，並協助 500+ 組創業團隊完成 Prototype 驗證',
+    currentVersion: 'v1.1.0',
+    updateLogs: [
+      {
+        id: 'log-vibe-2-1',
+        timestamp: '2026/10/12 11:20',
+        version: 'v1.1.0',
+        content: '新增 Markdown 即時渲染畫布節點，支援快捷鍵平移與縮放畫布，並優化觸控板手勢支援。',
+        note: '效能優化與手勢支援更新',
+        authorId: 'user-vibecoder-chen',
+        authorName: 'Chen (Vibe Studio)',
+        authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+        updatedFields: ['內容說明', '技術架構', '版本號'],
+      }
+    ],
     coverImage: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=1000&q=80',
     galleryImages: [
       'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=800&q=80',

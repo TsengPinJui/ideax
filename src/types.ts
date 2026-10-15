@@ -577,7 +577,7 @@ export interface User {
   balance: number; // 相容欄位（預設 0，全面以第三方支付與直接撥款為主）
   points?: number; // 平台點數/提問金（可用於發布問題懸賞、付費服務與專家諮詢）
   breakdown?: any; // 競賽與活動獎勵加總細項快照
-  pendingEarnings: number; // 待結算/託管中收益 NT$
+  pendingEarnings?: number; // 待結算/託管中收益 NT$
   reputation: number; // 信用值 / 聲望
   joinedDate: string;
   updatedAt?: string;
@@ -854,6 +854,18 @@ export const isCertifiedExpert = (solver?: {
   return acceptedCount >= 50 && currentRating >= 4.0;
 };
 
+export interface ProposalUpdateLog {
+  id: string;
+  timestamp: string; // 更新時間 (例如: 2026/10/15 14:30)
+  version?: string; // 若為 VibeCoding 應用之版本號碼 (選填，例如: v1.0.0, v2.0.0)
+  content: string; // 更新內容 (每次重新發布前的必填項目)
+  note?: string; // 提案者註記 (選填)
+  authorId: string;
+  authorName: string;
+  authorAvatar?: string;
+  updatedFields?: string[]; // 變更欄位標籤列表
+}
+
 export interface Question {
   id: string;
   title: string;
@@ -890,6 +902,8 @@ export interface Question {
   fileLink?: string; // 檔案下載連結
   fileUrl?: string; // 檔案下載連結 / 成果檔案
   targetGoal?: string; // 希望達成的目標 (選填)
+  currentVersion?: string; // 若為 VibeCoding 應用之版本號碼 (選填，例如: v1.0.0, v2.0.0)
+  updateLogs?: ProposalUpdateLog[]; // 提案更新日誌 (最底部顯示時間與提案者註記內容)
   specialZone?: SpecialZone; // 專屬專區 (全部 | L0問題討論區 | 創點子/痛點集)
   withheldBounty?: number; // 已保留之懸賞點數（交易履約保障中，採納時發動撥付）
   disputeStatus?: 'none' | 'pending_review' | 'resolved_refunded' | 'rejected'; // 疑義檢舉審查狀態
@@ -910,6 +924,10 @@ export interface Question {
   starSeasonProposalId?: string;
   supportPoints?: number; // 獲得讀者支持打賞總點數
   tippersCount?: number; // 打賞支持人數
+  supporterCount?: number; // 痛點附議或支持者計數
+  screenshots?: string[]; // 截圖清單（相容 galleryImages）
+  version?: string; // 相容 currentVersion
+  vibeCodingData?: any; // VibeCoding 專屬規格與作品資料
   tipsHistory?: Array<{
     id: string;
     userId: string;

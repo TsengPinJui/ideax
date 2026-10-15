@@ -56,6 +56,13 @@ export const USER_ALIAS_MAP: Record<string, string> = {
   'c100000003': 'solver-1',
 };
 
+export const LEGACY_TO_CANONICAL_ID_MAP: Record<string, string> = {
+  'user-admin': 'a000000001',
+  'user-questioner': 'c100000001',
+  'solver-2': 'c200000002',
+  'solver-1': 'c100000003',
+};
+
 const CANONICAL_CORE_PROFILES: Record<
   string,
   {
@@ -241,34 +248,23 @@ export function restoreCanonicalUserIdentity(u: User): User {
   const aliasId = USER_ALIAS_MAP[u.id];
   const custom = customProfiles[u.id] || (aliasId ? customProfiles[aliasId] : undefined);
 
-  // 1. 優先根據明確的 ID、Email 或專屬職稱識別核心測試帳號與官方管理員
-  let canonicalKey: string | undefined = CANONICAL_CORE_PROFILES[u.id] ? u.id : undefined;
+  // 1. 僅根據明確的 ID、memberId、專屬 Email 或專屬 Username 識別核心帳號，絕不以職稱模糊匹配避免產生重複帳號
+  let canonicalKey: string | undefined = CANONICAL_CORE_PROFILES[u.id]
+    ? u.id
+    : u.memberId && CANONICAL_CORE_PROFILES[u.memberId]
+    ? u.memberId
+    : undefined;
 
   if (!canonicalKey) {
     if (u.email === 'shuhao.lin@startup.tw' || u.username === 'user_questioner') {
       canonicalKey = 'c100000001';
-    } else if (
-      u.email === 'yichun.chen.tech@gmail.com' ||
-      u.username === 'solver_yichun' ||
-      (u.title && u.title.includes('資深全端系統架構師'))
-    ) {
+    } else if (u.email === 'yichun.chen.tech@gmail.com' || u.username === 'solver_yichun') {
       canonicalKey = 'c200000002';
-    } else if (
-      u.email === 'koyuren.advisor@gmail.com' ||
-      (u.title && u.title.includes('外送平台產品總監'))
-    ) {
+    } else if (u.email === 'koyuren.advisor@gmail.com' || u.username === 'solver_koyuren') {
       canonicalKey = 'c100000003';
-    } else if (
-      u.email === 'contact@sandong.tech' ||
-      u.username === 'enterprise_sandong' ||
-      (u.title && u.title.includes('新創企業法人委託端'))
-    ) {
+    } else if (u.email === 'contact@sandong.tech' || u.username === 'enterprise_sandong') {
       canonicalKey = 'b100000001';
-    } else if (
-      u.email === 'operations@ideax.io' ||
-      (u.title && u.title.includes('平台審核與交易治理總監')) ||
-      u.title === '平台總管'
-    ) {
+    } else if (u.email === 'operations@ideax.io' || u.username === 'Admin_001') {
       canonicalKey = 'a000000001';
     }
   }
@@ -310,6 +306,7 @@ export function restoreCanonicalUserIdentity(u: User): User {
 
     return {
       ...u,
+      id: canon.memberId, // 統一收斂至唯一標準 ID，杜絕舊版別名與新版代碼並存造成重複帳號
       name: resolvedName,
       role: canon.role,
       accountType: canon.accountType,
@@ -387,6 +384,206 @@ export function restoreCanonicalUserIdentity(u: User): User {
   }
 
   return u;
+}
+
+/**
+ * 智慧合併並刪除重複帳號（涵蓋舊版別名 ID、相同 memberId、相同 Email、相同 Username、相同姓名及訪客冗餘帳號）
+ */
+export function deduplicateUsersList(
+  rawUsers: User[],
+  deletedUserIds?: Set<string>
+): {
+  uniqueUsers: User[];
+  duplicateIdsToRemove: string[];
+  removedIds: string[];
+  removedDuplicateNames: string[];
+  removedNames: string[];
+} {
+  const uniqueUsers: User[] = [];
+  const duplicateIdsToRemove = new Set<string>();
+  const removedDuplicateNames: string[] = [];
+
+  const byId = new Map<string, number>();
+  const byMemberId = new Map<string, number>();
+  const byEmail = new Map<string, number>();
+  const byUsername = new Map<string, number>();
+  const byName = new Map<string, number>();
+
+  const isGuestAccount = (u: any): boolean => {
+    if (!u || !u.id) return true;
+    const id = String(u.id).trim();
+    const name = String(u.name || '').trim();
+    const email = String(u.email || '').trim().toLowerCase();
+    return (
+      id === 'user-guest' ||
+      id === 'user_guest' ||
+      id === 'c000000000' ||
+      name === '未登入訪客' ||
+      name === '訪客探索身分' ||
+      name === '訪客用戶' ||
+      email === 'guest@ideax.user' ||
+      email === 'guest@ideax.tw'
+    );
+  };
+
+  const mergeTwoUsers = (primary: User, secondary: User): User => {
+    const isAdmin =
+      primary.id === 'a000000001' ||
+      secondary.id === 'a000000001' ||
+      primary.role === 'admin' ||
+      secondary.role === 'admin';
+    const maxBalance = Math.max(
+      typeof primary.balance === 'number' ? primary.balance : 0,
+      typeof secondary.balance === 'number' ? secondary.balance : 0
+    );
+    const maxWithheld = Math.max(
+      typeof primary.withheldPoints === 'number' ? primary.withheldPoints : 0,
+      typeof secondary.withheldPoints === 'number' ? secondary.withheldPoints : 0
+    );
+
+    return restoreCanonicalUserIdentity({
+      ...secondary,
+      ...primary,
+      id: primary.id,
+      memberId: primary.memberId || secondary.memberId,
+      balance: isAdmin ? (maxBalance > 0 ? maxBalance : 50000) : maxBalance,
+      withheldPoints: maxWithheld,
+      realNameAuthStatus:
+        primary.realNameAuthStatus === 'verified' || secondary.realNameAuthStatus === 'verified'
+          ? 'verified'
+          : primary.realNameAuthStatus || secondary.realNameAuthStatus,
+      realNameAuthData: primary.realNameAuthData || secondary.realNameAuthData,
+      expertApplicationStatus:
+        primary.expertApplicationStatus === 'approved' || secondary.expertApplicationStatus === 'approved'
+          ? 'approved'
+          : primary.expertApplicationStatus || secondary.expertApplicationStatus,
+      expertApplicationData: primary.expertApplicationData || secondary.expertApplicationData,
+      verifiedExpert: Boolean(primary.verifiedExpert || secondary.verifiedExpert),
+      bankAccount: primary.bankAccount || secondary.bankAccount,
+      isBlocked: primary.isBlocked ?? secondary.isBlocked,
+      blockedReason: primary.blockedReason || secondary.blockedReason,
+      blockedUntil: primary.blockedUntil || secondary.blockedUntil,
+      isDeactivated: primary.isDeactivated ?? secondary.isDeactivated,
+      deactivationStatus: primary.deactivationStatus || secondary.deactivationStatus,
+      deactivationRequestedAt: primary.deactivationRequestedAt || secondary.deactivationRequestedAt,
+      deactivationScheduledPurgeAt: primary.deactivationScheduledPurgeAt || secondary.deactivationScheduledPurgeAt,
+      deactivationReason: primary.deactivationReason || secondary.deactivationReason,
+    });
+  };
+
+  for (const raw of rawUsers) {
+    if (!raw || !raw.id) continue;
+    const originalId = String(raw.id).trim();
+
+    if (isGuestAccount(raw)) {
+      if (originalId !== 'user-guest') {
+        duplicateIdsToRemove.add(originalId);
+      }
+      continue;
+    }
+
+    // 檢查是否已被後台管理員永久刪除
+    if (deletedUserIds && deletedUserIds.size > 0) {
+      const aliasId = USER_ALIAS_MAP[originalId];
+      if (
+        originalId !== 'a000000001' &&
+        originalId !== 'user-admin' &&
+        (deletedUserIds.has(originalId) ||
+          (aliasId && deletedUserIds.has(aliasId)) ||
+          (raw.memberId && deletedUserIds.has(raw.memberId)))
+      ) {
+        duplicateIdsToRemove.add(originalId);
+        continue;
+      }
+    }
+
+    // 標準化身分（例如 user-admin -> a000000001, user-questioner -> c100000001 等）
+    const u = restoreCanonicalUserIdentity(raw);
+    if (originalId !== u.id) {
+      duplicateIdsToRemove.add(originalId);
+    }
+
+    const normId = u.id.trim();
+    const normMemberId = (u.memberId || '').trim();
+    const normEmail = (u.email || '').trim().toLowerCase();
+    const normUsername = (u.username || '').trim().toLowerCase();
+    const normName = (u.name || '').trim();
+    const canMatchByName =
+      normName.length > 0 &&
+      normName !== DEACTIVATED_USER_NAME &&
+      normName !== '此帳號已註銷' &&
+      normName !== '平台會員';
+
+    let existingIdx: number | undefined = byId.get(normId);
+    if (existingIdx === undefined && normMemberId) {
+      existingIdx = byMemberId.get(normMemberId);
+    }
+    if (existingIdx === undefined && normEmail) {
+      existingIdx = byEmail.get(normEmail);
+    }
+    if (existingIdx === undefined && normUsername) {
+      existingIdx = byUsername.get(normUsername);
+    }
+    if (existingIdx === undefined && canMatchByName) {
+      existingIdx = byName.get(normName);
+    }
+
+    if (existingIdx !== undefined) {
+      const existing = uniqueUsers[existingIdx];
+      // 優先保留標準核心 ID (a000000001, c100000001, c200000002, c100000003, b100000001) 或較早註冊之主帳號
+      const isCandidateCanonicalCore = Boolean(CANONICAL_CORE_PROFILES[u.id] && !CANONICAL_CORE_PROFILES[existing.id]);
+      const primary = isCandidateCanonicalCore ? u : existing;
+      const secondary = isCandidateCanonicalCore ? existing : u;
+
+      if (secondary.id !== primary.id) {
+        duplicateIdsToRemove.add(secondary.id);
+      }
+      if (originalId !== primary.id) {
+        duplicateIdsToRemove.add(originalId);
+      }
+      removedDuplicateNames.push(secondary.name || secondary.id);
+
+      const merged = mergeTwoUsers(primary, secondary);
+      uniqueUsers[existingIdx] = merged;
+
+      byId.set(merged.id.trim(), existingIdx);
+      if (merged.memberId) byMemberId.set(merged.memberId.trim(), existingIdx);
+      if (merged.email) byEmail.set(merged.email.trim().toLowerCase(), existingIdx);
+      if (merged.username) byUsername.set(merged.username.trim().toLowerCase(), existingIdx);
+      if (merged.name && merged.name !== DEACTIVATED_USER_NAME) {
+        byName.set(merged.name.trim(), existingIdx);
+      }
+    } else {
+      const newIdx = uniqueUsers.length;
+      const isAdmin = u.id === 'a000000001' || u.role === 'admin';
+      const cleanUser: User = {
+        ...u,
+        balance: isAdmin
+          ? typeof u.balance === 'number' && u.balance > 0
+            ? u.balance
+            : 50000
+          : typeof u.balance === 'number'
+          ? u.balance
+          : 0,
+        withheldPoints: typeof u.withheldPoints === 'number' ? u.withheldPoints : 0,
+      };
+      uniqueUsers.push(cleanUser);
+      byId.set(normId, newIdx);
+      if (normMemberId) byMemberId.set(normMemberId, newIdx);
+      if (normEmail) byEmail.set(normEmail, newIdx);
+      if (normUsername) byUsername.set(normUsername, newIdx);
+      if (canMatchByName) byName.set(normName, newIdx);
+    }
+  }
+
+  const duplicateArray = Array.from(duplicateIdsToRemove);
+  return {
+    uniqueUsers,
+    duplicateIdsToRemove: duplicateArray,
+    removedIds: duplicateArray,
+    removedDuplicateNames,
+    removedNames: removedDuplicateNames,
+  };
 }
 
 /**

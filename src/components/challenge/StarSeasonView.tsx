@@ -111,6 +111,7 @@ import { resolveUserDisplayName, getUserNameColorClass } from '../../utils/userD
 import { useApp } from '../../context/AppContext';
 import { auth } from '../../services/firebase';
 import { applyRealClicksToProposals, recordProposalViewClick } from '../../utils/proposalClicks';
+import { getUniqueProposalCoverImage } from '../../utils/proposalImageUtils';
 import { RulesFullPage } from './RulesFullPage';
 import { SubmitProposalFullPage } from './SubmitProposalFullPage';
 import { ParticipantFullPage } from './ParticipantFullPage';
@@ -507,6 +508,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   const [homepageCarouselBatchIndex, setHomepageCarouselBatchIndex] = useState(0);
   const [isHomepageCarouselPaused, setIsHomepageCarouselPaused] = useState(false);
+  const [expandedBatchMobileSummaryId, setExpandedBatchMobileSummaryId] = useState<string | null>(null);
 
   // 痛點問題輪播狀態（三張一批）
   const [homepagePainPointBatchIndex, setHomepagePainPointBatchIndex] = useState(0);
@@ -526,7 +528,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       stage: p.stage,
       cohort: (p as any).cohort || '第一梯次',
       summary: p.summary || p.description || '',
-      imageUrl: (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=800&q=80',
+      imageUrl: getUniqueProposalCoverImage(p),
       supportPoints: p.supportPoints || 0,
       supporterCount: p.supporterCount || 0,
       likeCount: p.likeCount || 0,
@@ -3778,7 +3780,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             className="bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden cursor-pointer"
                           >
                             {/* 卡片封面大圖與標籤 */}
-                            <div className="relative h-44 overflow-hidden bg-stone-100 border-b border-stone-100">
+                            <div className="relative h-32 sm:h-44 overflow-hidden bg-stone-100 border-b border-stone-100">
                               <img
                                 src={p.imageUrl}
                                 alt={p.title}
@@ -3823,14 +3825,32 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             </div>
 
                             {/* 卡片內容主體 */}
-                            <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
+                            <div className="p-3.5 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
                               <div className="space-y-2">
                                 <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2 text-base leading-snug">
                                   {p.title}
                                 </h3>
-                                <p className="text-stone-600 text-xs line-clamp-3 leading-relaxed">
+                                <p className="hidden sm:block text-stone-600 text-xs line-clamp-3 leading-relaxed">
                                   {p.summary}
                                 </p>
+                                <div className="sm:hidden">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setExpandedBatchMobileSummaryId(expandedBatchMobileSummaryId === p.id ? null : p.id);
+                                    }}
+                                    className="px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                                  >
+                                    <HelpCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                                    <span>？ {expandedBatchMobileSummaryId === p.id ? '收合敘述' : '查看完整敘述'}</span>
+                                  </button>
+                                  {expandedBatchMobileSummaryId === p.id && (
+                                    <p className="mt-1.5 p-2 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700 leading-relaxed animate-in fade-in duration-150">
+                                      {p.summary}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
 
                               {/* 募得創星幣與支持人數數據展示 */}

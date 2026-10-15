@@ -230,6 +230,10 @@ export interface StarSeasonProposal {
 
   // 校園大使推廣推薦關聯
   referredByAmbassadorCode?: string;
+
+  // 版本號碼與更新日誌 (與全站 Question 結構互通)
+  currentVersion?: string;
+  updateLogs?: import('../types').ProposalUpdateLog[];
   
   createdAt: string;
   updatedAt: string;

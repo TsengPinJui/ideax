@@ -35,6 +35,7 @@ import {
   User as UserIcon,
   Eye,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { AdminUserProfileModal } from './AdminUserProfileModal';
 import { AdminUserImpersonationModal } from './AdminUserImpersonationModal';
@@ -56,6 +57,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
     requestAccountDeactivation,
     cancelAccountDeactivation,
     purgeAccountPermanently,
+    removeDuplicateAccounts,
+    deleteUserAccountPermanently,
     pullAllDataFromFirestore,
     grantUserAdminRole,
   } = useApp();
@@ -64,6 +67,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [isRemovingDuplicates, setIsRemovingDuplicates] = useState(false);
+  const [deletingTargetUser, setDeletingTargetUser] = useState<User | null>(null);
 
   // 用戶個人資訊頁與用戶視角檢視彈窗狀態
   const [viewingProfileUser, setViewingProfileUser] = useState<User | null>(null);
@@ -258,6 +263,39 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin text-purple-700' : 'text-purple-600'}`} />
             <span>{isSyncingCloud ? '同步中...' : '重新整理雲端'}</span>
+          </button>
+
+          {/* 一鍵掃描並刪除重複帳號 */}
+          <button
+            type="button"
+            disabled={isRemovingDuplicates}
+            onClick={async () => {
+              setIsRemovingDuplicates(true);
+              try {
+                const res = await removeDuplicateAccounts();
+                if (res.removedCount > 0) {
+                  setFeedbackMsg({
+                    text: `已成功清除 ${res.removedCount} 個重複帳號（${res.removedNames.slice(0, 5).join('、')}${res.removedNames.length > 5 ? '...' : ''}），目前共保留 ${res.remainingCount} 個唯一帳號並同步至資料庫！`,
+                    isError: false,
+                  });
+                } else {
+                  setFeedbackMsg({
+                    text: `已完成全庫掃描：目前共 ${res.remainingCount} 個唯一帳號，無任何重複帳號！`,
+                    isError: false,
+                  });
+                }
+              } catch {
+                setFeedbackMsg({ text: '清理重複帳號時發生錯誤，請稍後重試。', isError: true });
+              } finally {
+                setIsRemovingDuplicates(false);
+                setTimeout(() => setFeedbackMsg(null), 5000);
+              }
+            }}
+            className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-900 font-black text-xs border border-rose-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="自動比對帳號 ID、會員編號、Email 與姓名，一鍵清除本地與雲端資料庫中的重複帳號"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+            <span>{isRemovingDuplicates ? '清理重複中...' : '刪除重複帳號'}</span>
           </button>
 
           {/* 清理到期註銷帳號 */}
@@ -625,6 +663,19 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                       >
                         <Lock className="w-3.5 h-3.5" />
                         <span>封鎖帳號</span>
+                      </button>
+                    )}
+
+                    {/* 從資料庫永久刪除此帳號（創始管理員受保護不可刪除） */}
+                    {!isInitialAdmin(u) && u.id !== 'a000000001' && u.id !== 'user-admin' && (
+                      <button
+                        type="button"
+                        onClick={() => setDeletingTargetUser(u)}
+                        className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-rose-600 hover:text-white active:scale-95 text-stone-700 border border-stone-300 hover:border-rose-600 font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
+                        title="從本地與 Cloud Firestore 資料庫永久刪除此帳號"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>刪除帳號</span>
                       </button>
                     )}
                   </div>
@@ -1161,6 +1212,71 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
             setViewingProfileUser(targetUser);
           }}
         />
+      )}
+
+      {/* 永久刪除帳號確認彈窗 */}
+      {deletingTargetUser && (
+        <div
+          className="fixed inset-0 z-[130] bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setDeletingTargetUser(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-md w-full p-6 border border-rose-200 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-black text-stone-900 text-base">永久刪除帳號確認</h4>
+                  <p className="text-xs text-stone-500">將從本地與 Cloud Firestore 資料庫徹底移除</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingTargetUser(null)}
+                className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-200 text-xs text-stone-700 space-y-1.5">
+              <p className="font-bold text-stone-900">
+                您確定要永久刪除帳號「<span className="text-rose-700">{deletingTargetUser.name}</span>」（ID: <span className="font-mono">{deletingTargetUser.id}</span>）嗎？
+              </p>
+              <p className="text-stone-600">
+                刪除後此帳號將自用戶清單與雲端資料庫移除，且不會在重整後自動重生。
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingTargetUser(null)}
+                className="px-4 py-2 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const target = deletingTargetUser;
+                  setDeletingTargetUser(null);
+                  const res = await deleteUserAccountPermanently(target.id);
+                  setFeedbackMsg({ text: res.message, isError: !res.success });
+                  setTimeout(() => setFeedbackMsg(null), 4000);
+                }}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>確認永久刪除</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
