@@ -3392,6 +3392,19 @@ async function startServer() {
       appType: 'spa',
     });
     app.use(vite.middlewares);
+
+    // 開發環境下任何未匹配靜態資源之子網址 (例如 /challenge, /painpoints, /vibecoding, /question/:id) 一律回傳 SPA index.html
+    app.get('*', async (req: Request, res: Response, next) => {
+      if (req.path.startsWith('/api/')) return next();
+      try {
+        const indexPath = path.join(process.cwd(), 'index.html');
+        let html = fs.readFileSync(indexPath, 'utf-8');
+        html = await vite.transformIndexHtml(req.originalUrl, html);
+        res.status(200).set({ 'Content-Type': 'text/html; charset=utf-8' }).end(html);
+      } catch (e) {
+        next(e);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
@@ -3421,6 +3434,9 @@ async function startServer() {
         pageTitle = '創星季賽事官網 — 全國創新提案挑戰賽 讓校園與青年創新想法獲得真實市場驗證 | IdeaX 創點子';
         pageDesc = '創星季全國創新提案挑戰賽官方專區：豐厚競賽大獎、真實痛點徵件、跨領域創新提案與校園青年商業落地競賽。';
         pageImg = 'https://www.ideax.tw/去背創星季.png';
+      } else if (rawPath.startsWith('/vibecoding') || rawPath.startsWith('/vibe-coding') || rawPath.startsWith('/create-ideas') || rawPath.startsWith('/createideas')) {
+        pageTitle = '創點子 Vibe Coding 應用展示區 — 將痛點化為可互動的 AI 產品原型 | IdeaX 創點子';
+        pageDesc = '展示最新 Vibe Coding 應用、AI 工具與創新解方原型，直接對應真實市場痛點並獲得社群回饋與打賞支持。';
       } else if (rawPath.startsWith('/explore')) {
         pageTitle = '探索問題市場 — 高額懸賞難題、創新需求與市場解方 | IdeaX 創點子';
         pageDesc = '瀏覽各行業真實痛點、高額懸賞委託與最新問題討論，匯聚跨領域解答與創新靈感。';

@@ -4,9 +4,10 @@ import { Question, MarketViewMode } from '../types';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { resolveUserDisplayName, resolveUserAvatar, getUserNameColorClass } from '../utils/userDisplay';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
-import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark, Share2, Check, Hand, ThumbsUp, Coins } from 'lucide-react';
+import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark, Share2, Check, Hand, ThumbsUp, Coins, Flame } from 'lucide-react';
 import { getQuestionShareUrl } from '../services/seoService';
 import { shareOrCopyUrl } from '../utils/shareUtils';
+import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
 
 interface QuestionCardProps {
   question: Question;
@@ -43,6 +44,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     isQuestionLiked,
     getQuestionLikesCount,
     addNotification,
+    questions,
+    answers,
+    setSelectedQuestion,
   } = useApp();
   const isBookmarked = isQuestionBookmarked(question.id);
   const [isShareCopied, setIsShareCopied] = React.useState(false);
@@ -102,6 +106,13 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const isPromoted = question.status === 'open' && question.isFeatured;
   const isPainPoint = isPainPointQuestion(question);
   const isL0Discussion = isL0DiscussionQuestion(question);
+  const referencedPainPointObj = findReferencedPainPoint(question, questions);
+  const referencingProposals = isPainPoint ? findProposalsReferencingPainPoint(question, questions) : [];
+  const questionDiscussions = React.useMemo(
+    () => answers.filter((a) => a.questionId === question.id && a.type === 'discussion'),
+    [answers, question.id]
+  );
+  const latestTip = question.tipsHistory && question.tipsHistory.length > 0 ? question.tipsHistory[0] : null;
 
   const authorDisplayName = resolveUserDisplayName(question.authorId, question.authorName, availableUsers);
   const authorDisplayAvatar = resolveUserAvatar(question.authorId, question.authorAvatar, availableUsers);
@@ -391,6 +402,57 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             {question.title}
           </h3>
 
+          {/* 創新提案/軟體提案：連結對應痛點貼文 */}
+          {(referencedPainPointObj || question.referencedPainPoint) && (
+            <div
+              onClick={(e) => {
+                if (referencedPainPointObj) {
+                  e.stopPropagation();
+                  setSelectedQuestion(referencedPainPointObj);
+                }
+              }}
+              className="mt-2 p-2 rounded-lg bg-rose-50/80 hover:bg-rose-100/80 border border-rose-200/90 text-[11px] text-rose-900 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+              title="點擊前往對應的痛點貼文"
+            >
+              <span className="truncate font-semibold flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span>對應痛點：{referencedPainPointObj ? referencedPainPointObj.title : question.referencedPainPoint?.replace(/^\[[^\]]+\]\s*/, '')}</span>
+              </span>
+              {referencedPainPointObj && (
+                <span className="text-[10px] font-black text-rose-700 shrink-0">查看痛點 ➔</span>
+              )}
+            </div>
+          )}
+
+          {/* 痛點貼文：下方顯示解決此痛點的提案 */}
+          {isPainPoint && referencingProposals.length > 0 && (
+            <div className="mt-2 p-2 rounded-lg bg-amber-50/80 border border-amber-200/90 space-y-1">
+              <div className="text-[10.5px] font-extrabold text-amber-900 flex items-center justify-between">
+                <span>💡 解決此痛點的提案 ({referencingProposals.length})</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                {referencingProposals.slice(0, 2).map((prop) => (
+                  <div
+                    key={prop.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedQuestion(prop);
+                    }}
+                    className="px-2 py-1 rounded bg-white hover:bg-amber-100/60 border border-amber-200/80 text-[11px] text-stone-800 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                  >
+                    <span className="truncate font-semibold">
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 mr-1">
+                        {prop.postType === 'vibecoding_app' ? '軟體提案' : '創新提案'}
+                      </span>
+                      {prop.title}
+                    </span>
+                    <span className="text-[10px] font-black text-amber-700 shrink-0">查看提案 ➔</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Tags */}
           {question.tags && question.tags.length > 0 && (
             <div className="mt-2 flex items-center gap-1.5 flex-wrap">
@@ -640,6 +702,80 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           {question.description}
         </p>
 
+        {/* 創新提案或是軟體提案：連結到對應的痛點貼文 */}
+        {(referencedPainPointObj || question.referencedPainPoint) && (
+          <div
+            onClick={(e) => {
+              if (referencedPainPointObj) {
+                e.stopPropagation();
+                setSelectedQuestion(referencedPainPointObj);
+              }
+            }}
+            className="mt-3 p-2.5 rounded-xl bg-gradient-to-r from-rose-50/90 via-orange-50/50 to-white hover:from-rose-100/80 border border-rose-200/90 text-xs text-rose-950 flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs"
+            title="點擊查看對應的痛點貼文"
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-black shrink-0">
+                連結痛點
+              </span>
+              <span className="font-bold text-stone-900 truncate">
+                {referencedPainPointObj
+                  ? referencedPainPointObj.title
+                  : question.referencedPainPoint?.replace(/^\[[^\]]+\]\s*/, '')}
+              </span>
+            </div>
+            {referencedPainPointObj && (
+              <span className="text-[11px] font-black text-rose-700 shrink-0 flex items-center gap-0.5">
+                <span>前往痛點貼文 ➔</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* 痛點貼文下方：出現解決這個痛點的提案 */}
+        {isPainPoint && referencingProposals.length > 0 && (
+          <div className="mt-3 p-3 rounded-xl bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-white border border-amber-300/90 space-y-2 shadow-2xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                <span className="w-4.5 h-4.5 rounded bg-amber-500 text-stone-950 flex items-center justify-center text-[10px] font-black">💡</span>
+                <span>解決此痛點的創新提案與軟體提案 ({referencingProposals.length})</span>
+              </span>
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                點擊跳轉提案
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {referencingProposals.slice(0, 3).map((prop) => (
+                <div
+                  key={prop.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedQuestion(prop);
+                  }}
+                  className="p-2 rounded-lg bg-white hover:bg-amber-50/80 border border-amber-200/90 hover:border-amber-400 flex items-center justify-between gap-2 transition-all cursor-pointer group/prop"
+                  title="點擊查看解決此痛點的提案詳情"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded shrink-0 ${
+                      prop.postType === 'vibecoding_app'
+                        ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                        : 'bg-amber-100 text-amber-900 border border-amber-200'
+                    }`}>
+                      {prop.postType === 'vibecoding_app' ? '軟體提案' : '創新提案'}
+                    </span>
+                    <span className="text-xs font-bold text-stone-800 group-hover/prop:text-amber-900 truncate">
+                      {prop.title}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-black text-amber-700 shrink-0">
+                    查看提案 ➔
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Tags */}
         {question.tags && question.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -663,26 +799,71 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             ))}
           </div>
         )}
+
+        {/* 模擬貼文下方：模擬打賞與模擬留言討論精選預覽 */}
+        {(latestTip || questionDiscussions.length > 0) && (
+          <div className="mt-3 pt-2.5 border-t border-stone-100 space-y-1.5">
+            {latestTip && (
+              <div className="px-2.5 py-1.5 rounded-lg bg-amber-50/70 border border-amber-200/70 text-[11px] text-amber-950 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0 truncate">
+                  <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span className="font-bold shrink-0">{latestTip.userName.split(' ')[0]}</span>
+                  <span className="text-amber-800 font-black font-mono shrink-0">打賞 +{latestTip.amount} 點</span>
+                  {latestTip.message && (
+                    <span className="text-stone-600 truncate">「{latestTip.message}」</span>
+                  )}
+                </div>
+                <span className="text-[10px] font-bold text-amber-700 shrink-0">
+                  共 {question.tippersCount || question.tipsHistory?.length || 1} 人打賞
+                </span>
+              </div>
+            )}
+            {questionDiscussions.length > 0 && (
+              <div className="px-2.5 py-1.5 rounded-lg bg-stone-50 border border-stone-200/70 text-[11px] text-stone-700 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0 truncate">
+                  <MessageCircle className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span className="font-bold text-stone-900 shrink-0">{questionDiscussions[0].solverName}：</span>
+                  <span className="text-stone-600 truncate">{questionDiscussions[0].freePreview.split('\n')[0]}</span>
+                </div>
+                <span className="text-[10px] font-bold text-blue-700 shrink-0">
+                  查看 {questionDiscussions.length} 則討論 ➔
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Card Footer */}
-      <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between gap-2 text-xs">
+      <div className="mt-3.5 pt-3 border-t border-stone-100 flex items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <img
+            src={authorDisplayAvatar}
+            alt={authorDisplayName}
+            className="w-5 h-5 rounded-full object-cover ring-1 ring-stone-200 shrink-0"
+          />
+          <span className={`font-semibold truncate max-w-[140px] sm:max-w-[180px] ${authorColorClass}`}>
+            {authorDisplayName}
+          </span>
+        </div>
+
         <div className="flex items-center gap-2 flex-wrap">
-          {/* 痛點打賞總額 (雙幣符號 + 數字) */}
-          {isPainPoint && (
+          {/* 打賞支持總額 */}
+          {(question.supportPoints || 0) > 0 && (
             <span
-              className="flex items-center gap-1.5 text-amber-950 bg-amber-100/90 hover:bg-amber-200/90 px-2.5 py-1 rounded-xl border border-amber-200/80 font-semibold text-xs shadow-2xs"
-              title="打賞總額 (雙幣：🪙 點數 / NT$ 現金)"
+              className="flex items-center gap-1 text-amber-950 bg-amber-100/90 hover:bg-amber-200/90 px-2.5 py-1 rounded-xl border border-amber-200/80 font-bold text-xs shadow-2xs"
+              title="累積獲得打賞支持點數"
             >
-              <span className="font-bold text-amber-900">
-                🪙 {((question.supportPoints || 0) * 10).toLocaleString()} 點 (NT$ {(question.supportPoints || 0).toLocaleString()})
+              <Coins className="w-3.5 h-3.5 text-amber-600" />
+              <span className="font-mono text-amber-900">
+                🪙 {(question.supportPoints || 0).toLocaleString()} 點
               </span>
             </span>
           )}
 
-          <span className="flex items-center gap-1 text-amber-600 bg-amber-50/90 px-2.5 py-1 rounded-xl border border-amber-200/80 font-semibold text-xs" title="討論留言數">
-            <MessageCircle className="w-3.5 h-3.5 text-amber-400" />
-            <span className="font-mono text-amber-600">{discussionsCount ?? 0} 討論</span>
+          <span className="flex items-center gap-1 text-blue-700 bg-blue-50/90 px-2.5 py-1 rounded-xl border border-blue-200/80 font-semibold text-xs" title="討論留言數">
+            <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
+            <span className="font-mono text-blue-700">{discussionsCount ?? questionDiscussions.length} 討論</span>
           </span>
 
           {/* 4. 方案數 */}
@@ -692,7 +873,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               <span>已採納</span>
             </span>
           ) : (
-            <span className="flex items-center gap-1 font-bold text-amber-600 text-xs" title="方案解答數">
+            <span className="flex items-center gap-1 font-bold text-amber-700 bg-amber-50/80 px-2.5 py-1 rounded-xl border border-amber-200/80 text-xs" title="方案解答數">
               <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
               <span>{solutionsCount ?? question.answersCount} 方案</span>
             </span>

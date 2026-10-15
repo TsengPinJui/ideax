@@ -3,6 +3,7 @@ import { Question } from '../types';
 import { useApp } from '../context/AppContext';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { isVibeCodingAppQuestion } from '../utils/questionUtils';
+import { findReferencedPainPoint } from '../utils/painPointLinking';
 import {
   Terminal,
   Sparkles,
@@ -46,7 +47,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   onTogglePin,
   isPinned,
 }) => {
-  const { questions, toggleBookmarkQuestion, bookmarkedQuestionIds } = useApp();
+  const { questions, answers, toggleBookmarkQuestion, bookmarkedQuestionIds } = useApp();
 
   const [selectedSubCat, setSelectedSubCat] = useState<string>('全部');
   const [searchQuery, setSearchQuery] = useState('');
@@ -396,15 +397,37 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                   </p>
 
                   {/* Pain point solved link */}
-                  {app.referencedPainPoint && (
-                    <div className="p-2 rounded-xl bg-rose-50/80 border border-rose-200/80 text-[11px] text-rose-900 flex items-start gap-1.5">
-                      <Flame className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
-                      <span className="line-clamp-1 font-semibold">
-                        欲解決痛點：{app.referencedPainPoint}
-                      </span>
-                    </div>
-                  )}
-
+                  {(() => {
+                    const refPainObj = findReferencedPainPoint(app, questions);
+                    const rawRef = app.referencedPainPoint || (app as any).sourcePainPointTitle;
+                    if (!refPainObj && !rawRef) return null;
+                    return (
+                      <div
+                        onClick={(e) => {
+                          if (refPainObj) {
+                            e.stopPropagation();
+                            onSelectApp(refPainObj);
+                          }
+                        }}
+                        className={`p-2 rounded-xl bg-rose-50/90 border border-rose-200/80 text-[11px] text-rose-900 flex items-center justify-between gap-1.5 transition-colors ${
+                          refPainObj ? 'hover:bg-rose-100/80 hover:border-rose-300 cursor-pointer' : ''
+                        }`}
+                        title={refPainObj ? '點擊前往查看對應之痛點貼文' : undefined}
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Flame className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                          <span className="truncate font-bold">
+                            解決痛點：{refPainObj ? refPainObj.title : String(rawRef).replace(/^\[[^\]]+\]\s*/, '')}
+                          </span>
+                        </div>
+                        {refPainObj && (
+                          <span className="text-[10px] font-black text-rose-700 shrink-0">
+                            查看痛點 ➔
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Target Goal (希望達成目標) */}
                   {app.targetGoal && (
@@ -415,6 +438,39 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                       </span>
                     </div>
                   )}
+
+                  {/* 模擬留言討論與打賞預覽 */}
+                  {(() => {
+                    const latestTip = app.tipsHistory && app.tipsHistory.length > 0 ? app.tipsHistory[0] : null;
+                    const appAnswers = (answers || []).filter((a) => a.questionId === app.id);
+                    const latestComment = appAnswers.length > 0 ? appAnswers[0] : null;
+                    if (!latestTip && !latestComment) return null;
+                    return (
+                      <div className="p-2 rounded-xl bg-stone-50/90 border border-stone-200/70 space-y-1 text-[11px]">
+                        {latestTip && (
+                          <div className="flex items-center justify-between gap-1.5 text-amber-900">
+                            <div className="flex items-center gap-1 min-w-0">
+                              <Coins className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span className="font-bold shrink-0">{latestTip.userName}</span>
+                              <span className="text-amber-700 font-extrabold shrink-0">
+                                打賞 🪙 {(latestTip.amount * 10).toLocaleString()} 點
+                              </span>
+                              {latestTip.message && (
+                                <span className="text-stone-500 truncate">「{latestTip.message}」</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {latestComment && (
+                          <div className="flex items-center gap-1 text-stone-600 min-w-0">
+                            <MessageCircle className="w-3 h-3 text-purple-500 shrink-0" />
+                            <span className="font-bold text-stone-700 shrink-0">{latestComment.solverName}：</span>
+                            <span className="truncate">{latestComment.content || latestComment.preview}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Footer Bar: Author, Support Points & Share */}

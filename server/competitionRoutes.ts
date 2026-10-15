@@ -390,7 +390,8 @@ router.post('/proposals/:id/like', async (req: Request, res: Response) => {
     }
 
     const proposalId = req.params.id;
-    const result = await toggleLikeProposal(authUser.uid, proposalId);
+    const fallbackBaseLikes = typeof req.body?.currentLikesCount === 'number' ? req.body.currentLikesCount : undefined;
+    const result = await toggleLikeProposal(authUser.uid, proposalId, fallbackBaseLikes);
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });

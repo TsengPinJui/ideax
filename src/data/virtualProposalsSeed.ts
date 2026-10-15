@@ -1,4 +1,6 @@
-import { Question, User, Category } from '../types';
+import { Question, User, Category, Answer } from '../types';
+import { ProposalComment } from '../types/competition';
+import { DEFAULT_VIBECODING_APPS } from './vibeCodingData';
 
 export interface VirtualPersona {
   id: string;
@@ -59,6 +61,8 @@ export const VIRTUAL_PERSONAS: VirtualPersona[] = [
   { id: 'u-vc-42', username: 'vc_cathy_hsiao', name: '蕭雅云 Cathy', title: '牙醫診所數位轉型顧問', avatar: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80', bio: '優化診所約診爽約率、病患衛教追蹤與自費療程溝通。', domain: '專業問題' },
 ];
 
+export const SIMULATED_BATCH_ID = 'ideax_virtual_seed_v1';
+
 export const VIRTUAL_PERSONA_USERS: User[] = VIRTUAL_PERSONAS.map((p, idx) => ({
   id: p.id,
   memberId: `c9000000${String(idx + 1).padStart(2, '0')}`,
@@ -74,7 +78,64 @@ export const VIRTUAL_PERSONA_USERS: User[] = VIRTUAL_PERSONAS.map((p, idx) => ({
   email: `${p.username}@ideax.community`,
   domain: p.domain,
   honorLevel: (1 + (idx % 4)) as 1 | 2 | 3 | 4,
+  isSimulated: true,
+  simulatedBatchId: SIMULATED_BATCH_ID,
 }));
+
+export function isSimulatedUser(userOrId?: Partial<User> | string | null): boolean {
+  if (!userOrId) return false;
+  const id = typeof userOrId === 'string' ? userOrId : userOrId.id || '';
+  const obj = typeof userOrId === 'object' ? userOrId : null;
+  if (obj?.isSimulated || obj?.simulatedBatchId === SIMULATED_BATCH_ID) return true;
+  if (
+    id.startsWith('u-vc-') ||
+    id.startsWith('vp-user-') ||
+    id.startsWith('user-vibecoder-') ||
+    id.startsWith('demo-u-')
+  ) {
+    return true;
+  }
+  if (obj?.email && obj.email.endsWith('@ideax.community')) return true;
+  return false;
+}
+
+export function isSimulatedQuestion(qOrId?: Partial<Question> | string | null): boolean {
+  if (!qOrId) return false;
+  const id = typeof qOrId === 'string' ? qOrId : qOrId.id || '';
+  const obj = typeof qOrId === 'object' ? qOrId : null;
+  if (obj?.isSimulated || obj?.simulatedBatchId === SIMULATED_BATCH_ID) return true;
+  if (
+    id.startsWith('q-vp-') ||
+    id.startsWith('vibe-app-') ||
+    id.startsWith('demo-p-') ||
+    id.startsWith('q-demo-') ||
+    id.startsWith('q-mock-') ||
+    id.startsWith('q-test-') ||
+    /^q-[1-9]$|^q-[1-9][0-9]$/.test(id)
+  ) {
+    return true;
+  }
+  if (obj?.authorId && isSimulatedUser(obj.authorId)) return true;
+  return false;
+}
+
+export function isSimulatedAnswer(aOrId?: Partial<Answer> | string | null): boolean {
+  if (!aOrId) return false;
+  const id = typeof aOrId === 'string' ? aOrId : aOrId.id || '';
+  const obj = typeof aOrId === 'object' ? aOrId : null;
+  if (obj?.isSimulated || obj?.simulatedBatchId === SIMULATED_BATCH_ID) return true;
+  if (
+    id.startsWith('ans-vp-') ||
+    id.startsWith('ans-mock-') ||
+    id.startsWith('ans-demo-') ||
+    id.startsWith('ans-test-') ||
+    /^ans-[1-9]$|^ans-[1-9][0-9]$/.test(id)
+  ) {
+    return true;
+  }
+  if (obj?.solverId && isSimulatedUser(obj.solverId)) return true;
+  return false;
+}
 
 const P = (num: number): VirtualPersona => VIRTUAL_PERSONAS[(num - 1) % VIRTUAL_PERSONAS.length];
 const daysAgo = (d: number, h = 2) => new Date(Date.now() - d * 86400000 - h * 3600000).toISOString();
@@ -683,6 +744,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 4,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
+    referencedPainPoint: '[q-vp-pain-03] 特色民宿夜間無人櫃檯時段，外籍旅客入住身分核對與門鎖授權經常卡關',
     targetGoal: '希望 6 個月內串聯全台 20 間獨立書店共同導入，單店月均增加 4.5 萬元穩定經常性收入',
     coverImage: 'https://images.unsplash.com/photo-1507842229356-51c61504d3ab?w=800&auto=format&fit=crop&q=80',
   },
@@ -707,6 +769,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 5,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
+    referencedPainPoint: '[q-vp-pain-04] 高齡長者出院後返家服藥種類繁多，外籍看護與家屬交接常發生重複餵藥',
     targetGoal: '希望 6 個月內進駐 50 家社區藥局，完成 10,000 名長者免費早期防跌肌力篩檢',
     coverImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&auto=format&fit=crop&q=80',
   },
@@ -731,6 +794,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 5,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
+    referencedPainPoint: '[q-vp-pain-11] 社區團購主每週處理上百筆 LINE 喊單與轉帳末五碼核對，人工對帳耗時且常漏貨',
     targetGoal: '希望 6 個月內於 15 間連鎖生鮮門市完成測試，將每日熟食與烘焙報廢率降至 2% 以下',
     coverImage: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80',
   },
@@ -755,6 +819,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 6,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
+    referencedPainPoint: '[q-vp-pain-13] 共生公寓與分租套房夏季電費分攤不公，公共空間冷氣未關引發室友嚴重爭執',
     targetGoal: '希望 6 個月內協助 30 個既有社區大樓管委會通過充電樁增設案',
     coverImage: 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=800&auto=format&fit=crop&q=80',
   },
@@ -779,6 +844,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 4,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
+    referencedPainPoint: '[q-vp-pain-06] 山區溫室農場網路訊號不穩，感測器斷線重連後歷史溫濕度資料整批遺失',
     targetGoal: '希望 6 個月內去化 20 公噸產地格外品鮮果，並與 40 家企業達成中秋與年節禮盒契作',
     coverImage: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800&auto=format&fit=crop&q=80',
   },
@@ -803,6 +869,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 5,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
+    referencedPainPoint: '[q-vp-pain-12] 雙薪家庭國小低年級學童週三中午放學後，安親班與才藝課接送出現 2 小時安全空窗',
     targetGoal: '希望 6 個月內在全台舉辦 60 場跨世代故事工作坊，為 500 位長者完成個人生命有聲書',
     coverImage: 'https://images.unsplash.com/photo-1516307365426-bea591f05011?w=800&auto=format&fit=crop&q=80',
   },
@@ -827,6 +894,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 5,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
+    referencedPainPoint: '[q-vp-pain-14] 牙醫診所自費植牙與矯正時段臨時爽約，造成醫師椅位空轉與高昂人力浪費',
     targetGoal: '希望 6 個月內協助 20 家中小型社福團體導入，定期定額捐款人留存率提升 35%',
     coverImage: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800&auto=format&fit=crop&q=80',
   },
@@ -1039,7 +1107,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.1.0',
-    referencedPainPoint: '工程師將 Log 或設定檔貼入雲端 AI 除錯時，極易誤將 AWS Secret、API Key 與客戶個資外洩至外部模型訓練集',
+    referencedPainPoint: '[q-vp-pain-06] 山區溫室農場網路訊號不穩，感測器斷線重連後歷史溫濕度資料整批遺失',
     targetGoal: '希望 6 個月內達成 12,000 次下載次數，保護開發團隊零機密金鑰外洩',
     coverImage: 'https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=900&auto=format&fit=crop&q=80',
     galleryImages: [
@@ -1084,7 +1152,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.3.0',
-    referencedPainPoint: '中小學雙語與探究課程教師每學期末需撰寫上百份個人化學生學習歷程評語，行政負擔沉重且難以兼顧中英雙語品質',
+    referencedPainPoint: '[q-vp-pain-12] 雙薪家庭國小低年級學童週三中午放學後，安親班與才藝課接送出現 2 小時安全空窗',
     targetGoal: '希望 6 個月內達成 8,000 次下載與教師註冊使用，為第一線教師每學期省下 40 小時行政工時',
     coverImage: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=900&auto=format&fit=crop&q=80',
     galleryImages: [
@@ -1129,7 +1197,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v2.0.1',
-    referencedPainPoint: '一人公司與小型工作室想導入 No-Code 自動化卻不知如何評估各流程 ROI，也缺乏可直接匯入 Make / n8n 的標準藍圖',
+    referencedPainPoint: '[q-vp-pain-07] 中小型冷鏈物流車隊仰賴紙本溫度簽收單，生鮮退貨時無法釐清失溫責任歸屬',
     targetGoal: '希望 6 個月內達成 20,000 次下載與工作流範本匯出次數',
     coverImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=900&auto=format&fit=crop&q=80',
     galleryImages: [
@@ -1174,7 +1242,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.5.2',
-    referencedPainPoint: '傳統存股試算工具僅以固定年化報酬率計算直線複利，忽略歷史股災回撤與長期 CPI 通膨對退休實質購買力的侵蝕',
+    referencedPainPoint: '[q-vp-pain-11] 社區團購主每週處理上百筆 LINE 喊單與轉帳末五碼核對，人工對帳耗時且常漏貨',
     targetGoal: '希望 6 個月內達成 35,000 次下載與試算使用，成為小資族最信賴的理財規劃工具',
     coverImage: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=900&auto=format&fit=crop&q=80',
     galleryImages: [
@@ -1219,7 +1287,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.1.4',
-    referencedPainPoint: '新創研發團隊在部署 Kubernetes 時常過度配置 CPU/Memory Requests，導致每月雲端帳單浪費逾 30% 卻苦無免連叢集之輕量檢測工具',
+    referencedPainPoint: '[q-vp-pain-08] 傳統金屬加工廠上游要求提交 ISO 14064 碳盤查數據，但廠內電表與製程全無分攤紀錄',
     targetGoal: '希望 6 個月內達成 10,000 次下載與檢測次數，幫新創工程團隊平均節省 30% 雲端帳單',
     coverImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&auto=format&fit=crop&q=80',
     galleryImages: [
@@ -1264,7 +1332,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.3.2',
-    referencedPainPoint: '獨立 Podcast 創作者錄完節目後，需耗費數小時反覆聽打時間軸 Show Notes、剪除語助詞並手動排版社群金句宣傳圖卡',
+    referencedPainPoint: '[q-vp-pain-14] 牙醫診所自費植牙與矯正時段臨時爽約，造成醫師椅位空轉與高昂人力浪費',
     targetGoal: '希望 6 個月內達成 16,000 次下載次數，讓獨立 Podcaster 後製時間縮短至 10 分鐘',
     coverImage: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=900&auto=format&fit=crop&q=80',
     galleryImages: [
@@ -1309,7 +1377,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v0.9.8-beta',
-    referencedPainPoint: '傳統文字冒險與 RPG 遊戲之 NPC 對話皆為固定腳本樹，玩家二周目即喪失新鮮感，缺乏能記住玩家言行並動態演化劇情的輕量網頁遊戲',
+    referencedPainPoint: '[q-vp-pain-13] 共生公寓與分租套房夏季電費分攤不公，公共空間冷氣未關引發室友嚴重爭執',
     targetGoal: '希望 6 個月內達成 50,000 次遊玩與下載安裝次數，打造華文圈最受歡迎的 AI 原生互動小說遊戲',
     coverImage: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=900&auto=format&fit=crop&q=80',
     galleryImages: [
@@ -1354,7 +1422,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.6.0',
-    referencedPainPoint: '雙薪家庭與租屋族下班後面對冰箱零散剩餘食材不知如何搭配料理，常導致生鮮食材過期丟棄與外食開銷居高不下',
+    referencedPainPoint: '[q-vp-pain-09] 寵物鮮食與保健品訂閱制客戶在第 3 個月容易因「冰箱塞爆」而一鍵取消訂閱',
     targetGoal: '希望 6 個月內達成 40,000 次下載次數，陪伴外食與自煮族每月省下 3,000 元買菜錢',
     coverImage: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=900&auto=format&fit=crop&q=80',
     galleryImages: [
@@ -1399,7 +1467,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.2.0',
-    referencedPainPoint: '研究生與產業分析師在瀏覽數十個跨國文獻與報導分頁時，整理重點段落與轉換 APA / IEEE 標準引用格式極度繁瑣易錯',
+    referencedPainPoint: '[q-vp-pain-10] 老屋翻新裝修過程追加工程款爭議不斷，屋主與統包師傅缺乏具法律效力的變更留痕',
     targetGoal: '希望 6 個月內於 Chrome 線上應用程式商店達成 22,000 次下載安裝次數',
     coverImage: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=900&auto=format&fit=crop&q=80',
     galleryImages: [
@@ -1444,7 +1512,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.0.8',
-    referencedPainPoint: '高壓工作者睡前滑手機易受藍光與演算法推播刺激導致失眠，市面助眠 App 又充斥訂閱付費牆與廣告干擾',
+    referencedPainPoint: '[q-vp-pain-04] 高齡長者出院後返家服藥種類繁多，外籍看護與家屬交接常發生重複餵藥',
     targetGoal: '希望 6 個月內達成 28,000 次下載與離線安裝次數，陪伴高壓族群找回深度睡眠',
     coverImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80',
     galleryImages: [
@@ -2405,11 +2473,426 @@ export const SEED_L0_DISCUSSIONS: Question[] = [
   },
 ];
 
-// 合計 14 + 17 + 14 + 19 + 25 = 89 筆真實感虛擬提案
-export const ALL_VIRTUAL_PROPOSALS_SEED: Question[] = [
+// ============================================================================
+// 6. 為所有模擬貼文自動補齊「模擬打賞紀錄 (tipsHistory & supportPoints)」與「模擬留言討論與解方 (ALL_VIRTUAL_ANSWERS_SEED)」
+// ============================================================================
+
+function hashSeedStr(str: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+const TIP_MESSAGES_BY_TYPE: Record<string, string[]> = {
+  pain_point: [
+    '這個痛點寫得太真實了！我們現場也每天遇到一模一樣的狀況，小額打賞支持，希望能催生出好用的落地解方！',
+    '非常有共鳴的第一線產業觀察，附議 +1 並打賞支持！期待看到跨領域團隊針對這題提出創新產品。',
+    '感謝把問題結構拆解得這麼清楚，已轉發給我們工程與產品團隊評估，打賞支持好議題！',
+    '這題如果能解決，市場潛力非常龐大！贊助一點心意，拋磚引玉吸引更多高手來提案。',
+    '身邊至少五個同業朋友都在抱怨這件事，支持版主把真實痛點整理出來！',
+  ],
+  innovation_proposal: [
+    '商業模式與切入角度非常有亮點！不用大改既有硬體就能無痛導入，打賞支持團隊繼續推進 MVP 實證！',
+    '很喜歡這個解方兼顧成本與第一線操作直覺的設計，已收藏並贊助點數支持！',
+    '從痛點拆解到落地目標都很具體，期待看到你們後續與場域合作的第一階段測試數據！',
+    '這個創新點子很有社會價值與商業可行性，打賞支持！有機會也希望能交流通路合作。',
+    '切中要害的解方！比傳統高價系統靈活太多了，支持獨立創新團隊！',
+  ],
+  vibecoding_app: [
+    '剛點進 Demo 試玩了一下，介面互動跟流暢度超乎想像！打賞支持獨立開發者持續迭代新版本！',
+    '用 Vibe Coding 把這麼實用的垂直小工具做出來太強了，已經加入書籤每週使用，贊助一杯咖啡！',
+    '完美解決我平常工作最花時間的痛點，技術架構也很乾淨，打賞支持開源與產品化！',
+    'AI 工作流串接得非常自然，完全沒有多餘複雜的設定，敲碗未來推出團隊協作版！',
+    '這種輕量、直覺又精準解決單一痛點的 Web App 才是大家真正需要的，打賞支持！',
+  ],
+  seek_solution: [
+    '這題問到核心關鍵了！我們團隊近期也在評估相同架構，先打賞支持並卡位學習前輩們的實戰解答。',
+    '非常高品質的專業提問，背景條件與限制都交代得很清楚，贊助點數幫推！',
+    '同問 +1！這塊在業界確實很少公開的踩坑指南，小額打賞支持好問題！',
+    '感謝提出這麼實務的議題，下面的討論串與專家方案含金量超高，打賞支持！',
+  ],
+  chat_discussion: [
+    '這個話題太有共鳴了哈哈哈！看完底下大家的留言學到超多實用技巧，打賞一杯咖啡支持版主！',
+    '很喜歡這種輕鬆又能交流跨領域經驗的討論串，贊助支持優質社群氛圍！',
+    '週末配咖啡看完這串討論超療癒，感謝發起這麼棒的話題！',
+    '推一個！大家推薦的方法跟工具都超接地氣，打賞支持好文！',
+  ],
+};
+
+export function generateSimulatedTipsForQuestion(q: Question): {
+  supportPoints: number;
+  tippersCount: number;
+  supporterCount: number;
+  tipsHistory: NonNullable<Question['tipsHistory']>;
+} {
+  if (Array.isArray(q.tipsHistory) && q.tipsHistory.length > 0 && (q.supportPoints || 0) > 0) {
+    return {
+      supportPoints: q.supportPoints!,
+      tippersCount: q.tippersCount || q.tipsHistory.length,
+      supporterCount: q.supporterCount || q.tipsHistory.length,
+      tipsHistory: q.tipsHistory,
+    };
+  }
+
+  const seed = hashSeedStr(q.id);
+  const count = 1 + (seed % 5); // 1 ~ 5 筆不同數量的打賞紀錄
+  const postTypeKey = q.postType || 'pain_point';
+  const msgPool = TIP_MESSAGES_BY_TYPE[postTypeKey] || TIP_MESSAGES_BY_TYPE.pain_point;
+  const tipAmountsPoints = [50, 100, 150, 200, 300, 500, 800];
+
+  const tipsHistory: NonNullable<Question['tipsHistory']> = [];
+  let totalPoints = 0;
+
+  for (let i = 0; i < count; i++) {
+    const personaIdx = ((seed + i * 7) % VIRTUAL_PERSONAS.length) + 1;
+    let tipper = P(personaIdx);
+    if (tipper.id === q.authorId) {
+      tipper = P((personaIdx % VIRTUAL_PERSONAS.length) + 1);
+    }
+    const ptsAmount = tipAmountsPoints[(seed + i * 3) % tipAmountsPoints.length];
+    const msg = msgPool[(seed + i * 2) % msgPool.length];
+    totalPoints += ptsAmount;
+
+    tipsHistory.push({
+      id: `tip-sim-${q.id}-${i + 1}`,
+      userId: tipper.id,
+      userName: `${tipper.name} · ${tipper.title}`,
+      userAvatar: tipper.avatar,
+      amount: ptsAmount,
+      message: msg,
+      createdAt: daysAgo(i + 1, 2 + i),
+      isSimulated: true,
+    });
+  }
+
+  return {
+    supportPoints: totalPoints,
+    tippersCount: tipsHistory.length,
+    supporterCount: tipsHistory.length,
+    tipsHistory,
+  };
+}
+
+export function enrichQuestionWithSimulatedData(q: Question): Question {
+  // 若為真實用戶發布之真實貼文，絕不混入任何模擬數據，嚴格保持真實資料純淨
+  if (!isSimulatedQuestion(q)) {
+    return {
+      ...q,
+      isSimulated: false,
+    };
+  }
+  const simTips = generateSimulatedTipsForQuestion(q);
+  const seed = hashSeedStr(q.id);
+  const simSameCount = 3 + ((seed * 7) % 36); // 3 ~ 38 人同問，每篇貼文數量皆不同且不為 0
+  const simLikes = 8 + ((seed * 13) % 65);
+  return {
+    ...q,
+    isSimulated: true,
+    simulatedBatchId: q.simulatedBatchId || SIMULATED_BATCH_ID,
+    likes: typeof q.likes === 'number' && q.likes > 0 ? q.likes : simLikes,
+    secondedCount:
+      typeof q.secondedCount === 'number' && q.secondedCount > 0
+        ? q.secondedCount
+        : typeof q.likes === 'number' && q.likes > 0
+        ? q.likes
+        : simLikes,
+    sameQuestionCount:
+      typeof q.sameQuestionCount === 'number' && q.sameQuestionCount > 0
+        ? q.sameQuestionCount
+        : simSameCount,
+    supportPoints: q.supportPoints && q.supportPoints > 0 ? q.supportPoints : simTips.supportPoints,
+    tippersCount: q.tippersCount && q.tippersCount > 0 ? q.tippersCount : simTips.tippersCount,
+    supporterCount: q.supporterCount && q.supporterCount > 0 ? q.supporterCount : simTips.supporterCount,
+    tipsHistory: q.tipsHistory && q.tipsHistory.length > 0 ? q.tipsHistory : simTips.tipsHistory,
+  };
+}
+
+const RAW_VIRTUAL_PROPOSALS_SEED: Question[] = [
   ...SEED_VIBECODING_APPS,
   ...SEED_INNOVATION_PROPOSALS,
   ...SEED_PAIN_POINTS,
   ...SEED_SEEK_SOLUTIONS,
   ...SEED_L0_DISCUSSIONS,
 ];
+
+function buildSimulatedAnswersForQuestion(q: Question): Answer[] {
+  const seed = hashSeedStr(`ans-v2-${q.id}`);
+  const results: Answer[] = [];
+  const pType = q.postType || 'seek_solution';
+
+  const pickPersona = (offset: number): VirtualPersona => {
+    let idx = ((seed + offset * 11) % VIRTUAL_PERSONAS.length) + 1;
+    let cand = P(idx);
+    if (cand.id === q.authorId) {
+      cand = P((idx % VIRTUAL_PERSONAS.length) + 1);
+    }
+    return cand;
+  };
+
+  // 依據不同貼文 ID 決定差異化的方案數 (0~4) 與討論數 (1~7)，避免每篇看起來都一樣
+  let solCount = 1;
+  let discCount = 2;
+
+  if (pType === 'pain_point') {
+    const solOptions = [0, 1, 2, 1, 3, 0, 2];
+    const discOptions = [1, 3, 2, 5, 4, 6, 2, 3];
+    solCount = solOptions[seed % solOptions.length];
+    discCount = discOptions[(seed >> 3) % discOptions.length];
+  } else if (pType === 'innovation_proposal' || pType === 'vibecoding_app') {
+    const solOptions = [0, 1, 2, 0, 1, 3];
+    const discOptions = [1, 2, 4, 3, 5, 2, 6];
+    solCount = solOptions[(seed + 2) % solOptions.length];
+    discCount = discOptions[(seed >> 2) % discOptions.length];
+  } else if (pType === 'seek_solution') {
+    const solOptions = [1, 2, 3, 1, 4, 2, 0];
+    const discOptions = [1, 2, 3, 0, 4, 5, 2];
+    solCount = solOptions[(seed + 1) % solOptions.length];
+    discCount = discOptions[(seed >> 3) % discOptions.length];
+    if (solCount === 0 && discCount === 0) discCount = 2;
+  } else {
+    // chat_discussion (L0)
+    solCount = 0;
+    const discOptions = [1, 2, 4, 3, 6, 5, 2, 7];
+    discCount = discOptions[(seed + 4) % discOptions.length];
+  }
+
+  // 專家方案模板池（多樣化切角與實務建議）
+  const solutionTemplates = [
+    {
+      deliveryType: '落地實踐路徑',
+      preview: (title: string) =>
+        `【精華摘要】針對「${title.slice(0, 18)}...」，建議先別急著開發重型系統，改用「兩週最小可行防呆（Micro-SOP）」先壓低 70% 人為失誤，確認第一線人員真的願意配合後再做自動化。`,
+      full: (title: string) =>
+        `【分階段實測與低成本落地建議】\n\n針對「${title}」，很多團隊一開始就砸預算寫新系統，結果現場人員嫌麻煩不愛用。建議分三步走：\n1. 第 1~2 週：先砍掉一半非必要填報欄位，改用單一視覺化勾選或語音留痕。\n2. 第 3~4 週：利用現成 LINE OA 或輕量網頁做異常通知，不強迫安裝新 App。\n3. 第 2 個月：盤點哪個環節還是最常漏接，只針對該瓶頸寫自動化腳本。`,
+    },
+    {
+      deliveryType: '商業策略架構',
+      preview: (title: string) =>
+        `【逆向思考方案】這題的核心其實不是技術問題，而是「利害關係人誘因不對稱」。如果不重新設計分潤或免責機制，單靠工具很難長期維持。`,
+      full: (title: string) =>
+        `【誘因重構與商業驗證模型】\n\n1. 先釐清誰為錯誤買單、誰承擔多出來的操作時間：把省下來的隱性損耗提撥 15%~20% 作為第一線人員的即時獎勵。\n2. 建議先找 5~10 家熟識場域做「零月費、按實際省下成本抽成」的對照測試，有真實前後對比數據後才好規模化推廣。`,
+    },
+    {
+      deliveryType: '技術架構評估',
+      preview: (title: string) =>
+        `【輕量化技術解方】評估過類似場景，建議採用本地離線快取（Local-first）加上非同步佇列同步，就算現場網路斷斷續續也不會掉單或卡畫面。`,
+      full: (title: string) =>
+        `【架構取捨與邊界條件防護】\n\n1. 前端採用 PWA 搭配 IndexedDB 本地暫存，操作當下 0 延遲回饋。\n2. 後端設定冪等性（Idempotency Key）防重複寫入，並保留 30 天雙軌並行期，萬一新流程出狀況隨時可退回原作業模式。`,
+    },
+    {
+      deliveryType: '成本效益拆解',
+      preview: (title: string) =>
+        `【損益平衡試算】我們幫同類型團隊算過帳，初期直接串接現成 API 與標準化表單即可解決 80% 痛點，建置成本不到自建系統的五分之一。`,
+      full: (title: string) =>
+        `【ROI 試算與替代方案比較】\n\n1. 方案 A（全自建）：開發週期 3 個月以上，隱性維護成本高，適合日單量破千後再考慮。\n2. 方案 B（模組化組裝）：前兩週即可上線驗證，把 20% 極端例外狀況留給人工處理，回本週期可縮短至 45 天內。`,
+    },
+  ];
+
+  for (let s = 0; s < solCount; s++) {
+    const solver = pickPersona(s + 1);
+    const tpl = solutionTemplates[(seed + s * 3) % solutionTemplates.length];
+    results.push({
+      id: `ans-vp-${q.id}-sol-${s + 1}`,
+      questionId: q.id,
+      type: 'solution',
+      solverId: solver.id,
+      solverName: solver.name,
+      solverTitle: solver.title,
+      solverAvatar: solver.avatar,
+      solverRating: Number((4.7 + ((seed + s) % 3) * 0.1).toFixed(1)),
+      deliveryFormat: 'text',
+      deliveryType: tpl.deliveryType,
+      freePreview: tpl.preview(q.title),
+      fullContent: tpl.full(q.title),
+      isPaid: false,
+      price: 0,
+      likes: 4 + ((seed + s * 7) % 28),
+      isAccepted: false,
+      createdAt: daysAgo(solCount - s + 1, 2 + s * 3),
+      isSimulated: true,
+      simulatedBatchId: SIMULATED_BATCH_ID,
+    });
+  }
+
+  // 口語化、討論式、提問式、逆風質疑與真實交流留言池（不制式、不全正面）
+  const painPointDiscussions: Array<(authorName: string) => string> = [
+    (author) =>
+      `老實說這個問題我們店裡也遇過，但之前試過導入平板跟 LINE 機器人，結果第一線人員根本不想多按一步，不到兩週又打回原形😅 你們覺得問題是出在工具太複雜，還是根本沒有獎懲誘因？\n\n💬 ${author} 回覆：這點超中肯！我們也在想是不是要做成完全不用打字、逼一下就好的方式，不然現場忙起來真的沒人要填。`,
+    () =>
+      `好奇問一下，這種情況如果發生在尖峰時段，現場連看手機螢幕的時間都沒有，有什麼辦法是不看螢幕也能確認的嗎？`,
+    () =>
+      `痛點是真痛點，但講句比較現實的，中小型老闆連一個月幾百塊的訂閱工具都會猶豫半天... 如果不能直接幫他們「多賺錢」而是純省時間，大家覺得真的有人願意買單嗎？`,
+    (author) =>
+      `我們上個月才因為一模一樣的狀況賠了一筆客訴金... 想問原 PO 目前你們內部是怎麼先用人工頂著的？有用 Excel 還是紙本簽名？\n\n💬 ${author} 回覆：目前只能先在群組規定拍照回傳，但照片洗版超快，月底對帳還是會漏，才想上來問問看有沒有更好的解法。`,
+    () =>
+      `其實不一定需要搞新系統吧？我們後來發現把交接表砍掉 70% 非必要欄位、只留三個勾選格，錯誤率就降很多了。有時候是管理規定太囉嗦而不是缺工具，大家覺得呢？`,
+    () =>
+      `卡一個，這題超實際！想看有沒有做硬體或軟硬整合的朋友分享一下，如果環境很吵或手很髒的時候這類方案到底行不行得通？`,
+    () =>
+      `之前看過別家做類似的，最後死在硬體耗材跟後續誰要負責維護。如果故障時叫修要等三天，現場一定直接放棄不用了，這塊有人想過怎麼解嗎？`,
+  ];
+
+  const proposalDiscussions: Array<(authorName: string, isVibe: boolean) => string> = [
+    (author, isVibe) =>
+      `概念是不錯，但想問個比較現實的問題：如果遇到現場網路不穩或是使用者根本懶得看說明，這套${isVibe ? '工具' : '方案'}有防呆或離線備案嗎？不然卡住一次大概就被冰起來了🤔\n\n💬 ${author} 回覆：問到重點了！我們目前正在補離線暫存跟一鍵略過進階設定的模式，感謝提醒！`,
+    (_, isVibe) =>
+      `剛看了一下介紹，好奇為什麼不直接做成 LINE LIFF 或 Chrome 外掛就好？如果要讓使用者另外記一個網址或帳號，初期的留存率會不會掉很快？${isVibe ? '雖然 Demo 跑起來算順，但切換視窗還是有點小門檻。' : ''}`,
+    () =>
+      `想請教團隊，這塊目前市面上好像已經有幾個類似的免費替代方案（或是用 Notion + 自動化就能湊出來），你們覺得最大的差異化是什麼？未來如果收費預計怎麼定價？`,
+    (author) =>
+      `老實講第一步的流程對新手還是有點小複雜，我剛看說明的時候卡了一下不太確定資料要怎麼餵進去，建議有沒有辦法直接放幾個現成範本讓人一鍵套用？\n\n💬 ${author} 回覆：收到！我們這週末就會把 3 個常用情境範本直接放到首頁，不用從零設定！`,
+    () =>
+      `請問這個如果實際導入到公司內部，資料會經過第三方雲端嗎？我們公司法務跟資安對這塊超感冒，如果不能匯出本地或私有化部署通常直接被打槍...`,
+    () =>
+      `從對應的痛點貼文點過來的～方向滿有趣的，但比較擔心初期冷啟動的時候如果數據量不夠，準確度會不會差很多？現在有小規模實測的數字可以分享嗎？`,
+    () =>
+      `我自己是覺得功能不用包山包海，把最核心的那個轉換步驟做到極致快就贏了！現在介面上的次要按鈕稍微有點多，反而分散注意力，給團隊參考看看～`,
+  ];
+
+  const seekSolutionDiscussions: Array<(authorName: string) => string> = [
+    (author) =>
+      `先問個前提：你們目前的月流量跟預算規模大概在哪個區間？不同量級的解法差非常多，如果還在早期階段，其實不太建議一次上這麼重的架構。\n\n💬 ${author} 回覆：目前還在早期驗證階段，預算確實有限，那看來應該先走輕量路線測試水溫！`,
+    () =>
+      `看樓上幾位都推自動化工具，但我逆風提一個觀點：在內部 SOP 還沒跑順之前太早導入系統，只會把混亂的流程固化而已，建議先用人工跑兩週抓出例外狀況再說。`,
+    () =>
+      `同問 +1！我們上禮拜開會也在吵一模一樣的事，業務派跟工程派看法完全相反，一邊想快點上線衝業績、一邊怕後面維護火葬場，想問版主後來比較傾向哪邊？`,
+    () =>
+      `好奇如果照這個方向改，舊用戶的轉換陣痛期大概要抓多久？有沒有人有實際改版後掉留存的比例可以參考？很怕一改版原本的熟客全跑光...`,
+    () =>
+      `這題水滿深的，先別急著找外包或買軟體，你們內部有先算過單一客戶的獲客成本（CAC）跟回本週期嗎？算完說不定會發現問題根本不在這一塊。`,
+    () =>
+      `推討論！想順便請教樓上幾位前輩，如果團隊裡面只有一個人兼著管這塊，沒有專職 PM 的話，有沒有最偷懶但不會出大包的折衷做法？`,
+  ];
+
+  const chatDiscussions: Array<(authorName: string) => string> = [
+    (author) =>
+      `笑死，第一眼看到標題還以為是我同事偷發文🤣 我們部門每次開會說要「簡化流程」，結果最後都會多出一張新的表單要填...\n\n💬 ${author} 回覆：真的！！永遠都在為了管理表單而新增另一張表單😂`,
+    () =>
+      `我反而跟版主相反欸！我是那種不先把工具跟資料夾分類好就渾身不對勁的人，雖然常被朋友吐槽是在做精神時光屋的準備工作哈哈，有人也是這樣嗎？`,
+    () =>
+      `好奇大家遇到這種卡關的時候，都是硬撐把它做完，還是直接關電腦去睡覺明天再說？我自己實測超過晚上 11 點做的決定通常隔天早上看都會想掐死自己😂`,
+    () =>
+      `老實說試過番茄鐘、Notion 模板跟各種時間管理法，最後發現唯一真正有用的生產力工具叫做「明天早上十點要交」的死線壓力...`,
+    () =>
+      `有同感，但有時候不是自己想拖延，是需求方一直改來改去，做太快反而變白工，後來都學乖先做到 60 分確認方向對了再往下細修。`,
+    () =>
+      `有沒有人試過把這類重複性高又無聊的瑣事全部丟給自動化腳本處理的？求推薦真正好上手的懶人做法，太複雜的設完我都忘了怎麼維護～`,
+    () =>
+      `看到大家也都有一樣的困擾突然覺得被安慰到了哈哈哈，原來不是只有我一個人在糾結這種小事！`,
+  ];
+
+  const isVibe = pType === 'vibecoding_app';
+
+  for (let d = 0; d < discCount; d++) {
+    const commenter = pickPersona(solCount + d + 2);
+    let text = '';
+    if (pType === 'pain_point') {
+      const fn = painPointDiscussions[(seed + d * 3) % painPointDiscussions.length];
+      text = fn(q.authorName);
+    } else if (pType === 'innovation_proposal' || pType === 'vibecoding_app') {
+      const fn = proposalDiscussions[(seed + d * 3) % proposalDiscussions.length];
+      text = fn(q.authorName, isVibe);
+    } else if (pType === 'seek_solution') {
+      const fn = seekSolutionDiscussions[(seed + d * 3) % seekSolutionDiscussions.length];
+      text = fn(q.authorName);
+    } else {
+      const fn = chatDiscussions[(seed + d * 3) % chatDiscussions.length];
+      text = fn(q.authorName);
+    }
+
+    results.push({
+      id: `ans-vp-${q.id}-disc-${d + 1}`,
+      questionId: q.id,
+      type: 'discussion',
+      solverId: commenter.id,
+      solverName: commenter.name,
+      solverTitle: commenter.title,
+      solverAvatar: commenter.avatar,
+      solverRating: Number((4.6 + ((seed + d) % 4) * 0.1).toFixed(1)),
+      deliveryType: '交流探討',
+      freePreview: text,
+      isPaid: false,
+      price: 0,
+      likes: 1 + ((seed + d * 5) % 24),
+      isAccepted: false,
+      createdAt: daysAgo(Math.max(0, discCount - d - 1), 1 + d * 2),
+      isSimulated: true,
+      simulatedBatchId: SIMULATED_BATCH_ID,
+    });
+  }
+
+  return results;
+}
+
+export const ALL_VIRTUAL_ANSWERS_SEED: Answer[] = [
+  ...RAW_VIRTUAL_PROPOSALS_SEED,
+  ...DEFAULT_VIBECODING_APPS,
+].flatMap((q) => buildSimulatedAnswersForQuestion(q));
+
+// 合計 89 筆真實感虛擬提案（每篇皆具差異化的方案數、討論數、同問數、打賞紀錄與痛點雙向關聯）
+export const ALL_VIRTUAL_PROPOSALS_SEED: Question[] = RAW_VIRTUAL_PROPOSALS_SEED.map((q) => {
+  const enriched = enrichQuestionWithSimulatedData(q);
+  const simAnswers = ALL_VIRTUAL_ANSWERS_SEED.filter((a) => a.questionId === q.id);
+  return {
+    ...enriched,
+    answersCount: simAnswers.length,
+  };
+});
+
+/**
+ * 供創星季 / 創點子提案詳情彈窗取得模擬留言討論（當後端尚無真實留言時自動補齊差異化討論串）
+ */
+export function getSimulatedProposalComments(proposalId: string, proposalTitle?: string): ProposalComment[] {
+  const matchedAns = ALL_VIRTUAL_ANSWERS_SEED.filter((a) => a.questionId === proposalId && a.type === 'discussion');
+  if (matchedAns.length > 0) {
+    return matchedAns.map((a, idx) => ({
+      id: a.id,
+      proposalId,
+      authorId: a.solverId,
+      authorName: a.solverTitle ? `${a.solverName} ｜ ${a.solverTitle}` : a.solverName,
+      authorAvatar: a.solverAvatar,
+      authorRole: 'user',
+      content: a.freePreview,
+      createdAt: a.createdAt || new Date(Date.now() - (matchedAns.length - idx) * 43200000).toISOString(),
+    }));
+  }
+
+  const seed = hashSeedStr(proposalId || proposalTitle || 'default-prop');
+  const shortTitle = proposalTitle ? `「${proposalTitle.slice(0, 14)}」` : '這個提案';
+  const commentPool = [
+    `剛看完${shortTitle}的說明，切入點滿有意思的！不過好奇問一下，如果初期沒有補貼或點數回饋，第一線使用者自發持續用的動機夠強嗎？`,
+    `想請教團隊，這套架構如果遇到尖峰時段或現場網路不穩，有沒有離線緩存或簡化步驟的備案？很怕現場人員卡住一次就不想用了🤔`,
+    `從對應痛點一路點過來的～比起傳統動輒幾十萬的系統，這種輕量做法確實接地氣很多！想問目前有開放小規模場域報名測試嗎？`,
+    `逆風討論一下：這塊市場目前好像已經有幾個國外免費小工具可以做到 7 成功能，你們覺得最大的差異化護城河會在哪裡？在地化整合還是硬體搭配？`,
+    `介面跟流程看起來滿直覺的，但建議可以把初次設定再縮短一點，最好打開就能直接套用預設範本，對非技術背景的人會友善很多！`,
+    `卡位關注！我們團隊最近也在研究類似議題，想問後續會考慮開放簡單的 API 或匯出 CSV 報表跟既有 ERP/Notion 串接嗎？`,
+  ];
+
+  const countOptions = [1, 2, 3, 4, 2, 5, 3];
+  const count = countOptions[seed % countOptions.length];
+  const out: ProposalComment[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const p = P(((seed + i * 7 + 3) % VIRTUAL_PERSONAS.length) + 1);
+    out.push({
+      id: `sim-pcomm-${proposalId}-${i + 1}`,
+      proposalId,
+      authorId: p.id,
+      authorName: `${p.name} ｜ ${p.title}`,
+      authorAvatar: p.avatar,
+      authorRole: 'user',
+      content: commentPool[(seed + i * 2) % commentPool.length],
+      createdAt: new Date(Date.now() - (count - i) * 64800000).toISOString(),
+    });
+  }
+
+  return out;
+}
+
+export const getSimulatedCommentsForProposalId = getSimulatedProposalComments;
+
+
+

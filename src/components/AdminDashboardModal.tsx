@@ -86,6 +86,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     isRaceMode,
     setRaceMode,
     toggleRaceMode,
+    isSimulatedDataPurged,
+    purgeAllSimulatedData,
+    restoreAllSimulatedData,
+    simulatedStats,
   } = useApp();
 
   const [pendingConfirm, setPendingConfirm] = useState<{
@@ -241,9 +245,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         setHideTestAccounts(false);
       }
     } else if (pendingConfirm.type === 'clearMockData') {
-      clearMockData();
-      setSaveMsg('✨ 已成功重置並清除瀏覽器中的模擬資料！');
-      setTimeout(() => setSaveMsg(null), 4000);
+      purgeAllSimulatedData().then((res) => {
+        setSaveMsg(`✨ 已自本機與雲端 Firestore 資料庫徹底刪除全部模擬資料（含 ${res.purgedQuestions} 篇模擬貼文、${res.purgedAnswers} 則模擬討論、${res.purgedUsers} 位模擬帳號），真實資料完整保留！`);
+        setTimeout(() => setSaveMsg(null), 5000);
+      });
     } else if (pendingConfirm.type === 'saveBaseCommission') {
       executeSaveCommissionOnly();
       return;
@@ -413,15 +418,32 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 <span>{isDemoMode ? '關閉【測試環境】' : '開啟【測試環境】'}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setPendingConfirm({ type: 'clearMockData' })}
-                className="px-3.5 py-2.5 rounded-xl bg-rose-600/80 hover:bg-rose-600 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-rose-500/50"
-                title="一鍵清除瀏覽器暫存之模擬資料，強制回到純淨狀態"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-white" />
-                <span>清除假資料</span>
-              </button>
+              {!isSimulatedDataPurged ? (
+                <button
+                  type="button"
+                  onClick={() => setPendingConfirm({ type: 'clearMockData' })}
+                  className="px-3.5 py-2.5 rounded-xl bg-rose-600/80 hover:bg-rose-600 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-rose-500/50"
+                  title="一鍵自資料庫與瀏覽器徹底清除所有標記為 isSimulated 之模擬帳號、模擬貼文與模擬數據，僅保留真實資料"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-white" />
+                  <span>一鍵刪除全部模擬資料 ({simulatedStats.simulatedQuestionsCount}篇/{simulatedStats.simulatedUsersCount}帳)</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    restoreAllSimulatedData().then(() => {
+                      setSaveMsg('✨ 已成功還原預設模擬帳號、模擬貼文與討論數據並同步至雲端資料庫！');
+                      setTimeout(() => setSaveMsg(null), 4000);
+                    });
+                  }}
+                  className="px-3.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="還原預設模擬資料"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-stone-950" />
+                  <span>還原模擬資料</span>
+                </button>
+              )}
 
             </div>
           </div>
@@ -1933,7 +1955,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               )}
               {pendingConfirm.type === 'clearMockData' && (
                 <p>
-                  即將清除目前瀏覽器快取的所有模擬示範題目、模擬對話與暫存測試數據，並重新載入系統乾淨初始狀態。此操作不可逆。
+                  即將自本機與 Firebase Cloud Firestore 雲端資料庫一鍵刪除所有標記為 <code className="font-mono">isSimulated: true</code> 之模擬帳號（{simulatedStats.simulatedUsersCount} 位）、模擬貼文/方案（{simulatedStats.simulatedQuestionsCount} 篇）、模擬討論留言（{simulatedStats.simulatedAnswersCount} 則）與模擬打賞數據。所有真實註冊帳號與真實發布內容均完整保留不受影響。
                 </p>
               )}
               {pendingConfirm.type === 'liveOperation' && (

@@ -104,29 +104,32 @@ function MainContent() {
   const [activeTab, setActiveTab] = useState<AppTab>(() => {
     try {
       if (typeof window !== 'undefined') {
-        const pathname = window.location.pathname.toLowerCase();
-        const search = window.location.search.toLowerCase();
-        const hash = window.location.hash.toLowerCase();
-        const redirectParam = (new URLSearchParams(window.location.search).get('redirect') || '').toLowerCase();
         const storedRedirect = (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ideax_redirect_path') : '') || '';
-        let targetPath = pathname;
-
         if (storedRedirect) {
           try {
             sessionStorage.removeItem('ideax_redirect_path');
             window.history.replaceState(null, '', storedRedirect);
-            targetPath = window.location.pathname.toLowerCase();
           } catch {}
         }
 
-        // 0. 創點子/探索問題/痛點集子網址（/explore, /painpoints, /pain-points, /painpoint）
+        const targetPath = window.location.pathname.toLowerCase();
+        const search = window.location.search.toLowerCase();
+        const hash = window.location.hash.toLowerCase();
+        const redirectParam = (new URLSearchParams(window.location.search).get('redirect') || '').toLowerCase();
+
+        // 0. 創點子/探索問題/痛點集/VibeCoding 子網址
         const normalizedPath = targetPath.replace(/\/+$/, '');
         if (
           normalizedPath === '/explore' ||
           normalizedPath === '/painpoints' ||
           normalizedPath === '/pain-points' ||
           normalizedPath === '/painpoint' ||
-          normalizedPath === '/pain-point'
+          normalizedPath === '/pain-point' ||
+          normalizedPath === '/vibecoding' ||
+          normalizedPath === '/vibe-coding' ||
+          normalizedPath === '/vibecoding-exhibition' ||
+          normalizedPath === '/createideas' ||
+          normalizedPath === '/create-ideas'
         ) {
           return 'explore';
         }
@@ -140,14 +143,21 @@ function MainContent() {
           (targetPath.includes('/discussion/') && (targetPath.split('/discussion/')[1]?.split(/[/?#]/)[0] || '').trim());
 
         const searchParamsForInit = new URLSearchParams(window.location.search);
-        const qParamInit = searchParamsForInit.get('q') || '';
+        const qParamInit = searchParamsForInit.get('q') || searchParamsForInit.get('question') || '';
         const isExplicitQId =
-          (qParamInit.startsWith('q-') || qParamInit.startsWith('mock-') || qParamInit.startsWith('question-')) &&
+          (qParamInit.startsWith('q-') ||
+            qParamInit.startsWith('mock-') ||
+            qParamInit.startsWith('question-') ||
+            qParamInit.startsWith('vp-') ||
+            qParamInit.startsWith('vibe-') ||
+            qParamInit.startsWith('star-')) &&
           qParamInit.length >= 4;
 
         if (
           (questionIdFromPath && questionIdFromPath.length > 0) ||
+          searchParamsForInit.get('questionId') ||
           searchParamsForInit.get('questionid') ||
+          searchParamsForInit.get('question') ||
           isExplicitQId
         ) {
           return 'question_detail';
@@ -155,8 +165,8 @@ function MainContent() {
 
         // 1. 發布懸賞與獨立專區發布子網址: /create, /vibecoding/publish, /vibecoding/create, /publish
         if (
-          pathname.includes('/create') ||
-          pathname.includes('/publish') ||
+          targetPath.includes('/create') ||
+          targetPath.includes('/publish') ||
           search.includes('action=create') ||
           hash.includes('create')
         ) {
@@ -164,27 +174,27 @@ function MainContent() {
         }
 
         // 2. 找專家子網址: /solvers
-        if (pathname.includes('/solvers') || search.includes('tab=solvers') || hash.includes('solvers')) {
+        if (targetPath.includes('/solvers') || search.includes('tab=solvers') || hash.includes('solvers')) {
           return 'solvers';
         }
 
         // 3. 創星季子網址與捷徑: /challenge, /challenge/join, /challenge/expert, /challenge/proposals, /challenge/rules
         if (
-          pathname.includes('/challenge') ||
+          targetPath.includes('/challenge') ||
           redirectParam.includes('/challenge') ||
-          pathname.includes('/proposal') ||
+          targetPath.includes('/proposal') ||
           redirectParam.includes('/proposal') ||
-          pathname.includes('/cases') ||
+          targetPath.includes('/cases') ||
           redirectParam.includes('/cases') ||
-          pathname.includes('/star-season') ||
+          targetPath.includes('/star-season') ||
           redirectParam.includes('/star-season') ||
-          pathname.includes('/competition') ||
+          targetPath.includes('/competition') ||
           redirectParam.includes('/competition') ||
-          pathname.includes('/rules') ||
-          pathname.includes('/submit') ||
-          pathname.includes('/participant') ||
-          pathname.includes('/judge') ||
-          pathname.includes('/ambassador') ||
+          targetPath.includes('/rules') ||
+          targetPath.includes('/submit') ||
+          targetPath.includes('/participant') ||
+          targetPath.includes('/judge') ||
+          targetPath.includes('/ambassador') ||
           search.includes('proposalid=') ||
           search.includes('proposal=') ||
           search.includes('p=') ||
@@ -213,42 +223,42 @@ function MainContent() {
 
         // 4. 其他獨立子網址與分頁
         if (
-          pathname.includes('/membership') ||
-          pathname.includes('/plans') ||
+          targetPath.includes('/membership') ||
+          targetPath.includes('/plans') ||
           search.includes('tab=membership')
         ) {
           return 'membership';
         }
         if (
-          pathname.includes('/topup') ||
-          pathname.includes('/recharge') ||
+          targetPath.includes('/topup') ||
+          targetPath.includes('/recharge') ||
           search.includes('tab=topup') ||
           search.includes('tab=recharge')
         ) {
           return 'topup';
         }
-        if (pathname.includes('/about') || search.includes('tab=about') || hash.includes('about')) {
+        if (targetPath.includes('/about') || search.includes('tab=about') || hash.includes('about')) {
           return 'about';
         }
-        if (pathname.includes('/leaderboard') || search.includes('tab=leaderboard') || hash.includes('leaderboard')) {
+        if (targetPath.includes('/leaderboard') || search.includes('tab=leaderboard') || hash.includes('leaderboard')) {
           return 'leaderboard';
         }
-        if (pathname.includes('/mechanism') || search.includes('tab=mechanism') || hash.includes('mechanism')) {
+        if (targetPath.includes('/mechanism') || search.includes('tab=mechanism') || hash.includes('mechanism')) {
           return 'mechanism';
         }
-        if (pathname.includes('/my-projects') || pathname.includes('/my_projects') || search.includes('tab=my_projects')) {
+        if (targetPath.includes('/my-projects') || targetPath.includes('/my_projects') || search.includes('tab=my_projects')) {
           return 'my_projects';
         }
-        if (pathname.includes('/chat') || search.includes('tab=chat')) {
+        if (targetPath.includes('/chat') || search.includes('tab=chat')) {
           return 'chat';
         }
-        if (pathname.includes('/ai-crm') || pathname.includes('/ai_crm') || search.includes('tab=ai_crm')) {
+        if (targetPath.includes('/ai-crm') || targetPath.includes('/ai_crm') || search.includes('tab=ai_crm')) {
           return 'ai_crm';
         }
-        if (pathname.includes('/dashboard') || pathname.includes('/user_dashboard') || search.includes('tab=user_dashboard')) {
+        if (targetPath.includes('/dashboard') || targetPath.includes('/user_dashboard') || search.includes('tab=user_dashboard')) {
           return 'user_dashboard';
         }
-        if (pathname.includes('/admin') || search.includes('tab=admin_dashboard')) {
+        if (targetPath.includes('/admin') || search.includes('tab=admin_dashboard')) {
           return 'admin_dashboard';
         }
       }
@@ -266,6 +276,14 @@ function MainContent() {
         const pathname = window.location.pathname.toLowerCase();
         const search = window.location.search.toLowerCase();
         const hash = window.location.hash.toLowerCase();
+        if (
+          pathname.includes('/vibecoding') ||
+          pathname.includes('/vibe-coding') ||
+          search.includes('zone=vibecoding') ||
+          hash.includes('vibecoding')
+        ) {
+          return 'vibecoding';
+        }
         if (
           pathname.includes('/createideas') ||
           pathname.includes('/create-ideas') ||
@@ -459,17 +477,21 @@ function MainContent() {
       if (saved && saved !== 'unpinned') {
         const board = JSON.parse(saved);
         setPinnedBoard(board);
-        if (board.type === 'special_zone') {
-          setSpecialZone(board.id as SpecialZone);
-          setSelectedCategory('全部');
-          setSelectedSubcategory('全部');
-        } else if (board.type === 'subcategory') {
-          setSelectedCategory((board.categoryName as Category) || '全部');
-          setSelectedSubcategory(board.id);
-          setSpecialZone('all');
+        // 僅在首頁根路徑且無特定子網址或查詢參數時套用釘選看板，避免重整子網址時被釘選看板覆蓋
+        const curPath = typeof window !== 'undefined' ? window.location.pathname.toLowerCase().replace(/\/+$/, '') : '';
+        const curSearch = typeof window !== 'undefined' ? window.location.search : '';
+        if ((curPath === '' || curPath === '/') && !curSearch) {
+          if (board.type === 'special_zone') {
+            setSpecialZone(board.id as SpecialZone);
+            setSelectedCategory('全部');
+            setSelectedSubcategory('全部');
+          } else if (board.type === 'subcategory') {
+            setSelectedCategory((board.categoryName as Category) || '全部');
+            setSelectedSubcategory(board.id);
+            setSpecialZone('all');
+          }
         }
       }
-      // 注意：不可在首頁未儲存時預設強制置頂痛點專區，確保首頁永遠保留完整的「探索問題/全部問題」大盤入口與 Google 條列式捷徑
     } catch (e) {
       console.error(e);
     }
@@ -557,6 +579,15 @@ function MainContent() {
   const [submitInitialType, setSubmitInitialType] = useState<'discussion' | 'solution'>('solution');
   const [aboutPageSection, setAboutPageSection] = useState<string>('others');
 
+  // 當任何卡片、痛點或提案關聯點擊設定 selectedQuestion 時，自動進入貼文詳情全頁
+  useEffect(() => {
+    if (selectedQuestion && activeTab !== 'question_detail' && activeTab !== 'create_question') {
+      setActiveTab('question_detail');
+      setIsSubmittingAnswer(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [selectedQuestion]);
+
   // Scroll to top and sync URL pathname when switching activeTab / specialZone
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -616,9 +647,16 @@ function MainContent() {
               window.history.pushState({ zone: 'pain_points' }, '', '/painpoints');
             }
             updateSEOForSubpage('painpoints');
+          } else if (specialZone === 'create_ideas') {
+            if (curPath !== '/create-ideas' && curPath !== '/createideas' && !window.location.search.includes('zone=create_ideas')) {
+              window.history.pushState({ zone: 'create_ideas' }, '', '/?zone=create_ideas');
+            }
           } else if (curPath === '/explore') {
             updateSEOForSubpage('explore');
-          } else if (curPath === '/painpoints' || curPath === '/vibecoding' || curPath.startsWith('/vibecoding/') || curPath === '/create' || curPath === '/solvers' || curPath.startsWith('/challenge')) {
+          } else if (
+            specialZone === 'all' &&
+            (curPath === '/painpoints' || curPath === '/vibecoding' || curPath === '/create-ideas' || curPath === '/createideas' || curPath.startsWith('/vibecoding/') || curPath === '/create' || curPath === '/solvers' || curPath.startsWith('/challenge'))
+          ) {
             window.history.pushState({ tab: 'explore' }, '', '/');
             resetSEOToDefault();
           }
@@ -769,7 +807,9 @@ function MainContent() {
     }
   }, [currentUser.id, activeTab, promptLogin]);
 
-  // Read URL query parameter ?q= or ?questionId= or #q= on load/change to support direct links
+  const prevSelectedQuestionIdRef = React.useRef<string | null>(null);
+
+  // Read URL query parameter ?q= or ?questionId= or ?question= or /question/:id on load/change to support direct links & refresh
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -778,6 +818,9 @@ function MainContent() {
       
       const path = window.location.pathname;
       const normalizedPath = (path || '').toLowerCase().replace(/\/+$/, '');
+      const searchParams = new URLSearchParams(window.location.search);
+      const zoneParam = (searchParams.get('zone') || '').toLowerCase();
+      const tabParam = (searchParams.get('tab') || '').toLowerCase();
 
       // 若當前子網址為痛點集專區，直接確保選取痛點集並重設題目選取
       if (
@@ -809,17 +852,30 @@ function MainContent() {
         targetQId = null;
       }
 
-      // 2. Check search params: ?questionId=xxx or ?id=xxx or ?q=xxx
+      // 2. Check search params: ?questionId=xxx or ?question=xxx or ?id=xxx or ?q=xxx
       if (!targetQId) {
-        const params = new URLSearchParams(window.location.search);
-        const candidateId = params.get('questionId') || params.get('qid') || params.get('id');
-        const qParam = params.get('q');
+        const candidateId =
+          searchParams.get('questionId') ||
+          searchParams.get('questionid') ||
+          searchParams.get('question') ||
+          searchParams.get('qid') ||
+          searchParams.get('id');
+        const qParam = searchParams.get('q');
         if (candidateId) {
           targetQId = candidateId;
         } else if (qParam) {
           const found = questions.find((q) => q.id === qParam);
+          const looksLikeId =
+            qParam.startsWith('q-') ||
+            qParam.startsWith('mock-') ||
+            qParam.startsWith('question-') ||
+            qParam.startsWith('vp-') ||
+            qParam.startsWith('vibe-') ||
+            qParam.startsWith('star-');
           if (found) {
             targetQId = found.id;
+          } else if (looksLikeId) {
+            targetQId = qParam;
           } else if (qParam.trim().length > 0) {
             // 是搜尋關鍵字（來自 Google 搜尋引擎 Sitelinks Searchbox 或網址搜尋參數）
             setSearchQuery(qParam.trim());
@@ -835,7 +891,7 @@ function MainContent() {
       if (!targetQId && window.location.hash) {
         const hashStr = window.location.hash.replace(/^#/, '');
         const hashParams = new URLSearchParams(hashStr.startsWith('?') ? hashStr.slice(1) : hashStr);
-        targetQId = hashParams.get('questionId') || hashParams.get('id');
+        targetQId = hashParams.get('questionId') || hashParams.get('question') || hashParams.get('id');
 
         if (!targetQId && hashStr.includes('/question/')) {
           targetQId = hashStr.split('/question/')[1].split('/')[0].split('?')[0];
@@ -846,36 +902,40 @@ function MainContent() {
         }
       }
 
-      if (targetQId && questions.length > 0) {
+      if (targetQId) {
         const found = questions.find((q) => q.id === targetQId);
         if (found) {
           setSelectedQuestion(found);
           setActiveTab('question_detail');
           setIsSubmittingAnswer(false);
-          return;
         }
+        return;
       }
 
       // 若非題目詳情頁，同步瀏覽器網址至對應主分頁與子網址
       if (!targetQId) {
         setSelectedQuestion(null);
         if (
-          normalizedPath === '' ||
-          normalizedPath === '/' ||
-          normalizedPath === '/explore'
-        ) {
-          setActiveTab('explore');
-          setSpecialZone('all');
-        } else if (
-          normalizedPath === '/vibecoding' || normalizedPath === '/vibe-coding' || normalizedPath === '/vibecoding-exhibition'
+          normalizedPath === '/vibecoding' ||
+          normalizedPath === '/vibe-coding' ||
+          normalizedPath === '/vibecoding-exhibition' ||
+          zoneParam === 'vibecoding'
         ) {
           setActiveTab('explore');
           setSpecialZone('vibecoding');
         } else if (
+          normalizedPath === '/createideas' ||
+          normalizedPath === '/create-ideas' ||
+          zoneParam === 'create_ideas'
+        ) {
+          setActiveTab('explore');
+          setSpecialZone('create_ideas');
+        } else if (
           normalizedPath === '/painpoints' ||
           normalizedPath === '/pain-points' ||
           normalizedPath === '/painpoint' ||
-          normalizedPath === '/pain-point'
+          normalizedPath === '/pain-point' ||
+          zoneParam === 'pain_points'
         ) {
           setActiveTab('explore');
           setSpecialZone('pain_points');
@@ -899,7 +959,7 @@ function MainContent() {
           setSpecialZone('pain_points');
         } else if (normalizedPath === '/create' || normalizedPath === '/publish') {
           setActiveTab('create_question');
-        } else if (normalizedPath === '/solvers') {
+        } else if (normalizedPath === '/solvers' || tabParam === 'solvers') {
           setActiveTab('solvers');
         } else if (
           normalizedPath.startsWith('/challenge') ||
@@ -910,7 +970,9 @@ function MainContent() {
           normalizedPath.startsWith('/participant') ||
           normalizedPath.startsWith('/judge') ||
           normalizedPath.startsWith('/expert') ||
-          normalizedPath.startsWith('/ambassador')
+          normalizedPath.startsWith('/ambassador') ||
+          tabParam === 'star_season' ||
+          tabParam === 'challenge'
         ) {
           setActiveTab('star_season');
           let subView = 'home';
@@ -921,22 +983,32 @@ function MainContent() {
           else if (normalizedPath.includes('/participant')) subView = 'participant';
           else if (normalizedPath.includes('/ambassador')) subView = 'ambassador';
           window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView } }));
-        } else if (normalizedPath === '/about') {
+        } else if (normalizedPath === '/about' || tabParam === 'about') {
           setActiveTab('about');
-        } else if (normalizedPath === '/leaderboard') {
+        } else if (normalizedPath === '/leaderboard' || tabParam === 'leaderboard') {
           setActiveTab('leaderboard');
-        } else if (normalizedPath === '/mechanism') {
+        } else if (normalizedPath === '/mechanism' || tabParam === 'mechanism') {
           setActiveTab('mechanism');
-        } else if (normalizedPath === '/my-projects' || normalizedPath === '/my_projects') {
+        } else if (normalizedPath === '/my-projects' || normalizedPath === '/my_projects' || tabParam === 'my_projects') {
           setActiveTab('my_projects');
-        } else if (normalizedPath === '/chat') {
+        } else if (normalizedPath === '/chat' || tabParam === 'chat') {
           setActiveTab('chat');
-        } else if (normalizedPath === '/ai-crm' || normalizedPath === '/ai_crm') {
+        } else if (normalizedPath === '/ai-crm' || normalizedPath === '/ai_crm' || tabParam === 'ai_crm') {
           setActiveTab('ai_crm');
-        } else if (normalizedPath === '/user_dashboard' || normalizedPath === '/dashboard') {
+        } else if (normalizedPath === '/user_dashboard' || normalizedPath === '/dashboard' || tabParam === 'user_dashboard') {
           setActiveTab('user_dashboard');
-        } else if (normalizedPath === '/admin_dashboard' || normalizedPath === '/admin') {
+        } else if (normalizedPath === '/admin_dashboard' || normalizedPath === '/admin' || tabParam === 'admin_dashboard') {
           setActiveTab('admin_dashboard');
+        } else if (normalizedPath === '/membership' || normalizedPath === '/plans' || tabParam === 'membership') {
+          setActiveTab('membership');
+        } else if (normalizedPath === '/topup' || normalizedPath === '/recharge' || tabParam === 'topup' || tabParam === 'recharge') {
+          setActiveTab('topup');
+        } else if (
+          normalizedPath === '' ||
+          normalizedPath === '/' ||
+          normalizedPath === '/explore'
+        ) {
+          setActiveTab('explore');
         }
       }
     };
@@ -959,7 +1031,7 @@ function MainContent() {
       window.removeEventListener('hashchange', parseAndOpenQuestion);
       window.removeEventListener('ideax_open_recharge', handleOpenRecharge);
     };
-  }, []);
+  }, [questions.length]);
 
   // Synchronize browser URL & dynamic SEO (Title, Description, Schema.org QAPage)
   useEffect(() => {
@@ -968,19 +1040,30 @@ function MainContent() {
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       if (selectedQuestion) {
+        prevSelectedQuestionIdRef.current = selectedQuestion.id;
         if (url.searchParams.get('q') !== selectedQuestion.id) {
           url.searchParams.set('q', selectedQuestion.id);
           window.history.replaceState({}, '', url.toString());
         }
-      } else {
+      } else if (prevSelectedQuestionIdRef.current) {
+        // 僅當使用者從已開啟的題目關閉返回時，才清除網址上的題目參數（避免重整瞬間在讀取中把網址參數刪掉）
+        prevSelectedQuestionIdRef.current = null;
         const curQ = url.searchParams.get('q');
         let changed = false;
-        if (curQ && (curQ.startsWith('q-') || curQ.startsWith('mock-') || curQ.startsWith('question-'))) {
+        if (curQ) {
           url.searchParams.delete('q');
           changed = true;
         }
         if (url.searchParams.has('questionId')) {
           url.searchParams.delete('questionId');
+          changed = true;
+        }
+        if (url.searchParams.has('question')) {
+          url.searchParams.delete('question');
+          changed = true;
+        }
+        if (url.pathname.startsWith('/question/') || url.pathname.startsWith('/pain-point/') || url.pathname.startsWith('/painpoint/') || url.pathname.startsWith('/discussion/')) {
+          url.pathname = '/';
           changed = true;
         }
         if (changed) {

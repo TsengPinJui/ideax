@@ -142,6 +142,7 @@ import {
 import { getCompetitionExperts } from '../../services/competitionAdminSync';
 import { getProposalDrafts } from '../../services/draftService';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
+import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
 
 export type ChallengeSubView = 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador';
 
@@ -163,6 +164,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     setCurrentUser,
     questions,
     setQuestions,
+    setSelectedQuestion,
     setAnswers,
     setSolvers,
     availableUsers,
@@ -172,8 +174,10 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     openAuthModal,
     openAboutModal,
     toggleSecondQuestion,
+    setQuestionLikeState,
     isQuestionSeconded,
     getQuestionSecondCount,
+    isSimulatedDataPurged,
   } = useApp();
   const [competitionTermsDoc, setCompetitionTermsDoc] = useState<CompetitionDocumentKey | null>(null);
   const isLoggedIn = Boolean(auth.currentUser || (currentUser && currentUser.id && currentUser.id !== 'user-guest'));
@@ -533,6 +537,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       supporterCount: p.supporterCount || 0,
       likeCount: p.likeCount || 0,
       commentsCount: p.commentsCount || 0,
+      sourcePainPointTitle: p.sourcePainPointTitle,
+      referencedPainPoint: p.referencedPainPoint,
     }));
     if (normalizedLive.length > 0) {
       return normalizedLive;
@@ -1135,11 +1141,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return () => window.removeEventListener('popstate', parseAndOpenProposal);
   }, [currentSubView, selectedProposalIdForExplore]);
 
+  const prevSelectedProposalIdRef = useRef<string | null>(null);
+
   // 同步 URL 與提案動態 SEO
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     if (selectedProposalForDetail) {
+      prevSelectedProposalIdRef.current = selectedProposalForDetail.id;
       updateSEOForProposal(selectedProposalForDetail);
       const url = new URL(window.location.href);
       if (url.searchParams.get('proposalId') !== selectedProposalForDetail.id) {
@@ -1158,10 +1167,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       } else {
         updateSEOForSubpage('challenge');
       }
-      const url = new URL(window.location.href);
-      if (url.searchParams.has('proposalId')) {
-        url.searchParams.delete('proposalId');
-        window.history.replaceState({}, '', url.toString());
+      if (prevSelectedProposalIdRef.current) {
+        prevSelectedProposalIdRef.current = null;
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('proposalId')) {
+          url.searchParams.delete('proposalId');
+          window.history.replaceState({}, '', url.toString());
+        }
       }
     }
   }, [selectedProposalForDetail?.id, currentSubView]);
@@ -1550,14 +1562,16 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return list;
   }, [filteredProposals, sortBy]);
 
-  // 愛心按讚 / 取消按讚
+  // 愛心按讚 / 取消按讚（同步寫入 Firestore 資料庫）
   const handleToggleLike = async (proposalId: string) => {
     if (!isLoggedIn) {
       onOpenAuth();
       return;
     }
+    const targetProp = proposals.find((p) => p.id === proposalId);
+    const currentLikes = targetProp?.likeCount ?? getQuestionSecondCount(proposalId) ?? 0;
     try {
-      const res = await toggleLikeProposal(proposalId);
+      const res = await toggleLikeProposal(proposalId, currentLikes);
       if (res.success) {
         setLikedProposalIds(res.likedProposalIds);
         setProposals((prev) =>
@@ -1570,10 +1584,25 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             prev ? { ...prev, likeCount: res.likeCount } : null
           );
         }
+        setQuestionLikeState(proposalId, res.liked, res.likeCount);
         showToast(res.liked ? '❤️ 已按讚並加入您的個人收藏名單！' : '已取消按讚與收藏');
       }
-    } catch (err: any) {
-      showToast(err.message || '操作失敗');
+    } catch {
+      const fallback = toggleSecondQuestion(proposalId);
+      setLikedProposalIds((prev) =>
+        fallback.isSeconded ? Array.from(new Set([...prev, proposalId])) : prev.filter((id) => id !== proposalId)
+      );
+      setProposals((prev) =>
+        prev.map((p) =>
+          p.id === proposalId ? { ...p, likeCount: fallback.count } : p
+        )
+      );
+      if (selectedProposalForDetail?.id === proposalId) {
+        setSelectedProposalForDetail((prev) =>
+          prev ? { ...prev, likeCount: fallback.count } : null
+        );
+      }
+      showToast(fallback.isSeconded ? '❤️ 已按讚並加入您的個人收藏名單！' : '已取消按讚與收藏');
     }
   };
 
@@ -3830,6 +3859,42 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                 <h3 className="font-black text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2 text-base leading-snug">
                                   {p.title}
                                 </h3>
+
+                                {/* 關聯痛點連結 */}
+                                {(() => {
+                                  const fullProp = proposals.find((item) => item.id === p.id) || (p as any);
+                                  const refPainObj = findReferencedPainPoint(fullProp, questions || []);
+                                  const rawRef = fullProp?.sourcePainPointTitle || fullProp?.referencedPainPoint;
+                                  if (!refPainObj && !rawRef) return null;
+                                  return (
+                                    <div
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (refPainObj) {
+                                          if (onOpenPainPointInChuangDianZi) {
+                                            onOpenPainPointInChuangDianZi(refPainObj);
+                                          } else {
+                                            setSelectedQuestion(refPainObj);
+                                          }
+                                        }
+                                      }}
+                                      className={`p-2 rounded-xl bg-rose-50/90 border border-rose-200/80 text-[11px] flex items-center justify-between gap-1.5 transition-colors ${
+                                        refPainObj ? 'hover:bg-rose-100/80 hover:border-rose-300 cursor-pointer' : ''
+                                      }`}
+                                      title={refPainObj ? '點擊前往查看對應之痛點貼文' : undefined}
+                                    >
+                                      <span className="text-rose-900 font-bold truncate">
+                                        🎯 解決痛點：{refPainObj ? refPainObj.title : String(rawRef).replace(/^\[[^\]]+\]\s*/, '')}
+                                      </span>
+                                      {refPainObj && (
+                                        <span className="text-[10px] font-black text-rose-700 shrink-0">
+                                          查看痛點 ➔
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+
                                 <p className="hidden sm:block text-stone-600 text-xs line-clamp-3 leading-relaxed">
                                   {p.summary}
                                 </p>
@@ -4025,6 +4090,44 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             <p className="text-stone-600 text-xs line-clamp-3 leading-relaxed bg-stone-50/70 p-3 rounded-2xl border border-stone-100">
                               {pp.description || (pp as any).summary || '生活切身痛點，徵求落地架構與完整解方！點擊卡片直接連至創點子查看完整提問與回覆方案。'}
                             </p>
+
+                            {/* 解決此痛點的提案連結 */}
+                            {(() => {
+                              const solvingList = findProposalsReferencingPainPoint((pp as any).rawQuestion || (pp as any), questions || []);
+                              if (solvingList.length === 0) return null;
+                              return (
+                                <div className="p-2 rounded-2xl bg-emerald-50/90 border border-emerald-200/80 space-y-1 text-[11px]">
+                                  <div className="text-emerald-900 font-black">
+                                    💡 解決此痛點的提案（{solvingList.length} 件）
+                                  </div>
+                                  {solvingList.slice(0, 2).map((sp) => (
+                                    <div
+                                      key={sp.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const matchedInProposals = proposals.find((item) => item.id === sp.id);
+                                        if (matchedInProposals) {
+                                          navigateToSubView('proposal', sp.id);
+                                        } else {
+                                          const matchedQ = (questions || []).find((q) => q.id === sp.id) || sp;
+                                          setSelectedQuestion(matchedQ);
+                                        }
+                                      }}
+                                      className="p-1.5 rounded-xl bg-white hover:bg-emerald-50 border border-emerald-200/70 hover:border-emerald-400 flex items-center justify-between gap-1.5 transition-colors cursor-pointer"
+                                      title="點擊查看解決此痛點的提案貼文"
+                                    >
+                                      <span className="font-bold text-stone-800 truncate">
+                                        {sp.postType === 'vibecoding_app' ? '💻 ' : '💡 '}
+                                        {sp.title}
+                                      </span>
+                                      <span className="text-[10px] font-black text-emerald-700 shrink-0">
+                                        查看提案 ➔
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           {/* 底部作者與互動 */}

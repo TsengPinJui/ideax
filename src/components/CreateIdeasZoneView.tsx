@@ -33,6 +33,8 @@ import { mapQuestionsToStarSeasonProposals } from '../utils/questionUtils';
 import { likeProposal, fetchUserLikedProposalIds } from '../services/competitionClientService';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { auth } from '../services/firebase';
+import { findReferencedPainPoint } from '../utils/painPointLinking';
+import { getSimulatedCommentsForProposalId } from '../data/virtualProposalsSeed';
 
 export function getRemainingDaysText(unpublishAt?: string): string {
   if (!unpublishAt) return '永久刊登';
@@ -64,15 +66,29 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   onOpenAuth,
   onUpdateProposalPublication,
 }) => {
-  const { currentUser, showCenterToast, questions } = useApp();
+  const {
+    currentUser,
+    showCenterToast,
+    questions,
+    answers,
+    setSelectedQuestion,
+    isQuestionSeconded,
+    toggleSecondQuestion,
+    setQuestionLikeState,
+    isSimulatedDataPurged,
+  } = useApp();
   const [showZoneHelp, setShowZoneHelp] = useState(false);
 
   // 1. 載入提案清單 (創星季 + 全站創新提案)
   const buildMergedProposals = (baseList?: StarSeasonProposal[]) => {
-    const source = baseList && baseList.length > 0 ? baseList : DEFAULT_DEMO_PROPOSALS;
+    const defaultSeeds = isSimulatedDataPurged ? [] : DEFAULT_DEMO_PROPOSALS;
+    const source = baseList && baseList.length > 0 ? baseList : defaultSeeds;
     const mappedVirtual = mapQuestionsToStarSeasonProposals(questions || []);
     const map = new Map<string, StarSeasonProposal>();
-    source.forEach((p) => map.set(p.id, p));
+    source.forEach((p) => {
+      if (isSimulatedDataPurged && p.id.startsWith('demo-')) return;
+      map.set(p.id, p);
+    });
     mappedVirtual.forEach((p) => {
       if (!map.has(p.id)) {
         map.set(p.id, p);
@@ -80,6 +96,9 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         const existing = map.get(p.id)!;
         map.set(p.id, {
           ...existing,
+          likeCount: typeof p.likeCount === 'number' && p.likeCount > 0 ? p.likeCount : existing.likeCount,
+          supportPoints: typeof p.supportPoints === 'number' && p.supportPoints > 0 ? p.supportPoints : existing.supportPoints,
+          supporterCount: typeof p.supporterCount === 'number' && p.supporterCount > 0 ? p.supporterCount : existing.supporterCount,
           images: p.images && p.images.length > 0 ? p.images : existing.images,
         });
       }
@@ -93,7 +112,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
 
   useEffect(() => {
     setProposalsList(buildMergedProposals(initialProposals));
-  }, [initialProposals, questions]);
+  }, [initialProposals, questions, isSimulatedDataPurged]);
 
   // 2. 收藏名單 (Liked Proposal IDs)
   const [likedProposalIds, setLikedProposalIds] = useState<string[]>([]);
@@ -118,35 +137,45 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   const [selectedTrack, setSelectedTrack] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'support' | 'likes' | 'latest'>('support');
 
-
-
-  // 按讚/收藏切換 (按讚等同收藏)
+  // 按讚/收藏切換 (按讚等同收藏，同步紀錄至 Firestore 資料庫)
   const handleToggleLike = async (e: React.MouseEvent, proposal: StarSeasonProposal) => {
     e.stopPropagation();
-    if (!auth.currentUser || currentUser.id === 'user-guest') {
+    if (!currentUser || currentUser.id === 'user-guest') {
       if (onOpenAuth) onOpenAuth();
       else showCenterToast('請先登入帳號以收藏提案');
       return;
     }
 
     try {
-      const res = await likeProposal(proposal.id);
+      const res = await likeProposal(proposal.id, proposal.likeCount || 0);
       if (res.success) {
         const isNowLiked = res.liked;
         setLikedProposalIds((prev) =>
-          isNowLiked ? [...prev, proposal.id] : prev.filter((id) => id !== proposal.id)
+          isNowLiked ? Array.from(new Set([...prev, proposal.id])) : prev.filter((id) => id !== proposal.id)
         );
         setProposalsList((prev) =>
           prev.map((p) => (p.id === proposal.id ? { ...p, likeCount: res.likeCount } : p))
         );
+        setQuestionLikeState(proposal.id, isNowLiked, res.likeCount);
         showCenterToast(
           isNowLiked
             ? '❤️ 已按讚並加入［創點子］個人收藏提案！'
             : '已取消按讚與收藏'
         );
       }
-    } catch (err: any) {
-      showCenterToast(err.message || '操作失敗');
+    } catch {
+      const fallback = toggleSecondQuestion(proposal.id);
+      setLikedProposalIds((prev) =>
+        fallback.isSeconded ? Array.from(new Set([...prev, proposal.id])) : prev.filter((id) => id !== proposal.id)
+      );
+      setProposalsList((prev) =>
+        prev.map((p) => (p.id === proposal.id ? { ...p, likeCount: fallback.count } : p))
+      );
+      showCenterToast(
+        fallback.isSeconded
+          ? '❤️ 已按讚並加入［創點子］個人收藏提案！'
+          : '已取消按讚與收藏'
+      );
     }
   };
 
@@ -501,7 +530,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
           {finalFilteredProposals.map((proposal) => {
-            const isLiked = likedProposalIds.includes(proposal.id);
+            const isLiked = likedProposalIds.includes(proposal.id) || isQuestionSeconded(proposal.id);
             const trackInfo = STAR_SEASON_TRACKS[proposal.track] || STAR_SEASON_TRACKS.ict;
             const isAuthorOrAdmin =
               currentUser.role === 'admin' ||
@@ -557,13 +586,85 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
 
                 {/* Card Content Body */}
                 <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <h3 className="text-sm sm:text-base font-black text-stone-900 line-clamp-2 group-hover:text-amber-600 transition-colors leading-snug">
                       {proposal.title}
                     </h3>
                     <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
                       {proposal.summary}
                     </p>
+
+                    {/* 關聯痛點貼文連結 */}
+                    {(() => {
+                      const refPainObj = findReferencedPainPoint(proposal as any, questions);
+                      const rawRef = proposal.referencedPainPoint || proposal.sourcePainPointTitle;
+                      if (!refPainObj && !rawRef) return null;
+                      return (
+                        <div
+                          onClick={(e) => {
+                            if (refPainObj) {
+                              e.stopPropagation();
+                              setSelectedQuestion(refPainObj);
+                            }
+                          }}
+                          className={`p-2 rounded-xl bg-rose-50/90 border border-rose-200/80 text-[11px] text-rose-900 flex items-center justify-between gap-1.5 transition-colors ${
+                            refPainObj ? 'hover:bg-rose-100/80 hover:border-rose-300 cursor-pointer' : ''
+                          }`}
+                          title={refPainObj ? '點擊前往查看對應之痛點貼文' : undefined}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-rose-600 shrink-0">🎯</span>
+                            <span className="truncate font-bold">
+                              解決痛點：{refPainObj ? refPainObj.title : String(rawRef).replace(/^\[[^\]]+\]\s*/, '')}
+                            </span>
+                          </div>
+                          {refPainObj && (
+                            <span className="text-[10px] font-black text-rose-700 shrink-0">
+                              查看痛點 ➔
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* 打賞與留言討論預覽（自資料庫同步讀取） */}
+                    {(() => {
+                      const matchedQ = (questions || []).find((q) => q.id === proposal.id);
+                      const latestTip = matchedQ?.tipsHistory && matchedQ.tipsHistory.length > 0 ? matchedQ.tipsHistory[0] : null;
+                      const qAnswers = (answers || []).filter((a) => a.questionId === proposal.id);
+                      const discAnswers = qAnswers.filter((a) => a.type === 'discussion');
+                      const targetAns = discAnswers.length > 0 ? discAnswers[0] : qAnswers[0];
+                      const simComments = !targetAns && !isSimulatedDataPurged ? getSimulatedCommentsForProposalId(proposal.id) : [];
+                      const latestCommentText = targetAns
+                        ? `${targetAns.solverName}：${targetAns.content || targetAns.preview}`
+                        : simComments.length > 0
+                        ? `${simComments[0].authorName}：${simComments[0].content}`
+                        : null;
+
+                      if (!latestTip && !latestCommentText) return null;
+                      return (
+                        <div className="p-2 rounded-xl bg-stone-50/90 border border-stone-200/70 space-y-1 text-[11px]">
+                          {latestTip && (
+                            <div className="flex items-center gap-1 text-amber-900 min-w-0">
+                              <Coins className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span className="font-bold shrink-0">{latestTip.userName}</span>
+                              <span className="text-amber-700 font-extrabold shrink-0">
+                                打賞 🪙 {(latestTip.amount * 10).toLocaleString()} 點
+                              </span>
+                              {latestTip.message && (
+                                <span className="text-stone-500 truncate">「{latestTip.message}」</span>
+                              )}
+                            </div>
+                          )}
+                          {latestCommentText && (
+                            <div className="flex items-center gap-1 text-stone-600 min-w-0">
+                              <MessageSquare className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span className="truncate font-medium">{latestCommentText}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* 提案人與團隊 */}

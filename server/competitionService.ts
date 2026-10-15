@@ -779,29 +779,43 @@ export async function incrementProposalView(proposalId: string): Promise<{ succe
 /**
  * 按讚或取消按讚提案（更新 likeCount，並維護用戶個人的收藏名單）
  */
-export async function toggleLikeProposal(userId: string, proposalId: string): Promise<{
+export async function toggleLikeProposal(
+  userId: string,
+  proposalId: string,
+  fallbackBaseLikes?: number
+): Promise<{
   success: boolean;
   liked: boolean;
   likeCount: number;
   likedProposalIds: string[];
 }> {
   const propRef = adminDb.collection('competition_proposals').doc(proposalId);
+  const questionRef = adminDb.collection('questions').doc(proposalId);
   const userLikesRef = adminDb.collection('competition_user_likes').doc(userId);
 
   return await adminDb.runTransaction(async (transaction) => {
-    const propSnap = await transaction.get(propRef);
-    if (!propSnap.exists) {
-      throw new Error('找不到該競賽提案');
-    }
-    const userLikesSnap = await transaction.get(userLikesRef);
-    const likedList: string[] = userLikesSnap.exists ? (userLikesSnap.data()?.proposalIds || []) : [];
+    const [propSnap, questionSnap, userLikesSnap] = await Promise.all([
+      transaction.get(propRef),
+      transaction.get(questionRef),
+      transaction.get(userLikesRef),
+    ]);
 
+    const likedList: string[] = userLikesSnap.exists ? (userLikesSnap.data()?.proposalIds || []) : [];
     const isCurrentlyLiked = likedList.includes(proposalId);
     let updatedLikes: string[];
-    const currentProp = propSnap.data() as StarSeasonProposal;
-    const baseCount = currentProp.likeCount || 0;
-    let newLikeCount: number;
 
+    const propCount = propSnap.exists ? Number(propSnap.data()?.likeCount ?? propSnap.data()?.likesCount ?? 0) : 0;
+    const qData = questionSnap.exists ? questionSnap.data() : null;
+    const qCount = qData ? Number(qData.likes ?? qData.secondedCount ?? qData.likesCount ?? 0) : 0;
+    const storedCount = Math.max(propCount, qCount);
+    const baseCount =
+      storedCount > 0
+        ? storedCount
+        : typeof fallbackBaseLikes === 'number' && fallbackBaseLikes > 0
+        ? fallbackBaseLikes
+        : 0;
+
+    let newLikeCount: number;
     if (isCurrentlyLiked) {
       updatedLikes = likedList.filter((id) => id !== proposalId);
       newLikeCount = Math.max(0, baseCount - 1);
@@ -810,17 +824,41 @@ export async function toggleLikeProposal(userId: string, proposalId: string): Pr
       newLikeCount = baseCount + 1;
     }
 
-    transaction.update(propRef, {
-      likeCount: newLikeCount,
-      updatedAt: new Date().toISOString(),
-    });
+    const nowIso = new Date().toISOString();
+
+    if (propSnap.exists) {
+      transaction.update(propRef, {
+        likeCount: newLikeCount,
+        likesCount: newLikeCount,
+        updatedAt: nowIso,
+      });
+    } else {
+      transaction.set(
+        propRef,
+        {
+          id: proposalId,
+          likeCount: newLikeCount,
+          likesCount: newLikeCount,
+          updatedAt: nowIso,
+        },
+        { merge: true }
+      );
+    }
+
+    if (questionSnap.exists) {
+      transaction.update(questionRef, {
+        likes: newLikeCount,
+        secondedCount: newLikeCount,
+        updatedAt: nowIso,
+      });
+    }
 
     transaction.set(
       userLikesRef,
       {
         userId,
         proposalIds: updatedLikes,
-        updatedAt: new Date().toISOString(),
+        updatedAt: nowIso,
       },
       { merge: true }
     );

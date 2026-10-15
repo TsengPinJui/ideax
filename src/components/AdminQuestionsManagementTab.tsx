@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Category, Question } from '../types';
+import { isSimulatedQuestion, SIMULATED_BATCH_ID } from '../data/virtualProposalsSeed';
 import {
   HelpCircle,
   Search,
@@ -60,11 +61,17 @@ export const AdminQuestionsManagementTab: React.FC = () => {
     syncAllToCloud,
     isFirestoreConnected,
     lastSyncTime,
+    isSimulatedDataPurged,
+    purgeAllSimulatedData,
+    restoreAllSimulatedData,
+    simulatedStats,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedSource, setSelectedSource] = useState<'all' | 'real' | 'simulated'>('all');
+  const [confirmPurgeSimulatedModal, setConfirmPurgeSimulatedModal] = useState(false);
 
   // Delist Modal State
   const [delistingQuestion, setDelistingQuestion] = useState<Question | null>(null);
@@ -114,9 +121,13 @@ export const AdminQuestionsManagementTab: React.FC = () => {
       if (selectedStatus !== 'all' && q.status !== selectedStatus) {
         return false;
       }
+      // 資料來源區隔條件（真實 vs 模擬）
+      const isSim = isSimulatedQuestion(q);
+      if (selectedSource === 'real' && isSim) return false;
+      if (selectedSource === 'simulated' && !isSim) return false;
       return true;
     });
-  }, [questions, searchQuery, selectedCategory, selectedStatus]);
+  }, [questions, searchQuery, selectedCategory, selectedStatus, selectedSource]);
 
   // Statistics & Pie Chart Calculation
   const categoryStats = useMemo(() => {
@@ -333,6 +344,68 @@ export const AdminQuestionsManagementTab: React.FC = () => {
         </div>
       </div>
 
+      {/* 模擬帳號 / 模擬貼文 / 模擬數據 標籤區隔與一鍵清除控制列 */}
+      <div className="p-4 rounded-3xl bg-amber-50/70 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300">
+              🧪 模擬數據批次標籤：{SIMULATED_BATCH_ID}
+            </span>
+            <span className="text-xs font-extrabold text-stone-900">
+              模擬資料與真實資料嚴格區隔治理
+            </span>
+            {isSimulatedDataPurged ? (
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+                ✓ 已全數清除模擬資料（純真實數據狀態）
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-amber-900 border border-amber-300">
+                目前含模擬帳號 {simulatedStats.simulatedUsersCount} 位 • 模擬貼文 {simulatedStats.simulatedQuestionsCount} 篇 • 模擬討論 {simulatedStats.simulatedAnswersCount} 則
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-stone-600">
+            所有模擬帳號、模擬痛點/方案、模擬討論留言與模擬打賞均帶有 <code className="font-mono bg-white px-1 py-0.5 rounded border border-amber-200">isSimulated: true</code> 與批次標記，可隨時一鍵自本機與雲端 Firestore 資料庫徹底刪除，絕不影響真實註冊會員與真實貼文。
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {!isSimulatedDataPurged ? (
+            <button
+              type="button"
+              disabled={isSyncing}
+              onClick={() => setConfirmPurgeSimulatedModal(true)}
+              className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>一鍵刪除全部模擬資料</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={isSyncing}
+              onClick={async () => {
+                setIsSyncing(true);
+                try {
+                  await restoreAllSimulatedData();
+                  setFeedbackToast({
+                    text: '已成功還原所有模擬帳號、模擬貼文與討論留言並同步至雲端資料庫！',
+                    isError: false,
+                  });
+                } finally {
+                  setIsSyncing(false);
+                  setTimeout(() => setFeedbackToast(null), 4000);
+                }
+              }}
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>還原預設模擬資料</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* 核心看板：各類問題數量圓餅圖與 KPI */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 1. 各類問題數量圓餅圖 */}
@@ -503,6 +576,17 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             <option value="日常疑難">日常疑難</option>
           </select>
 
+          {/* 資料來源篩選（真實 vs 模擬） */}
+          <select
+            value={selectedSource}
+            onChange={(e) => setSelectedSource(e.target.value as 'all' | 'real' | 'simulated')}
+            className="px-3 py-2 bg-white border border-stone-200 rounded-2xl text-xs text-stone-700 font-bold focus:outline-none focus:border-purple-600 shadow-2xs cursor-pointer"
+          >
+            <option value="all">全部來源 (真實 + 模擬)</option>
+            <option value="real">🟢 僅真實貼文</option>
+            <option value="simulated">🧪 僅模擬資料 ({simulatedStats.simulatedQuestionsCount})</option>
+          </select>
+
           {/* 狀態下拉 */}
           <select
             value={selectedStatus}
@@ -512,16 +596,17 @@ export const AdminQuestionsManagementTab: React.FC = () => {
             <option value="all">全部狀態</option>
             <option value="open">招募中</option>
             <option value="solved">已結案</option>
-            <option value="delisted">違規下架 (保留30日)</option>
+            <option value="delisted">違規下架 (保留7日)</option>
           </select>
 
-          {(searchQuery || selectedCategory !== 'all' || selectedStatus !== 'all') && (
+          {(searchQuery || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedSource !== 'all') && (
             <button
               type="button"
               onClick={() => {
                 setSearchQuery('');
                 setSelectedCategory('all');
                 setSelectedStatus('all');
+                setSelectedSource('all');
               }}
               className="px-2.5 py-1.5 rounded-xl border border-stone-200 text-stone-500 hover:bg-stone-200 text-xs font-bold whitespace-nowrap cursor-pointer"
             >
@@ -595,6 +680,17 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                           </span>
                         )}
 
+                        {/* 真實 / 模擬來源區隔標籤 */}
+                        {isSimulatedQuestion(q) ? (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                            🧪 模擬資料
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+                            🟢 真實貼文
+                          </span>
+                        )}
+
                         <span className="text-[10px] text-stone-400 font-mono">ID: {q.id}</span>
                       </div>
 
@@ -616,7 +712,11 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                         <span>•</span>
                         <span>{q.createdAt}</span>
                         <span>•</span>
-                        <span>{q.answersCount || 0} 則解答</span>
+                        <span>{q.answersCount || 0} 則討論/方案</span>
+                        <span>•</span>
+                        <span>同問 {q.sameQuestionCount ?? 0}</span>
+                        <span>•</span>
+                        <span>按讚 {q.likes ?? q.secondedCount ?? 0}</span>
                         <span>•</span>
                         <span>{q.views || 0} 次瀏覽</span>
                       </div>
@@ -858,6 +958,88 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                   <>
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>確認永久刪除</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 一鍵刪除全部模擬資料確認 Modal */}
+      {confirmPurgeSimulatedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-rose-200">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600">
+                <Trash2 className="w-5 h-5" />
+                <h4 className="font-black text-base text-stone-900">一鍵刪除全部模擬資料確認</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmPurgeSimulatedModal(false)}
+                className="p-1 rounded-lg text-stone-400 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1.5">
+              <p className="font-extrabold">即將清除批次：{SIMULATED_BATCH_ID}</p>
+              <ul className="list-disc list-inside space-y-1 text-[11px] text-amber-900">
+                <li>模擬帳號：{simulatedStats.simulatedUsersCount} 位虛擬角色帳號</li>
+                <li>模擬貼文/方案：{simulatedStats.simulatedQuestionsCount} 篇模擬痛點與提案</li>
+                <li>模擬討論留言：{simulatedStats.simulatedAnswersCount} 則模擬留言與詢問</li>
+                <li>模擬交易紀錄：{simulatedStats.simulatedTransactionsCount} 筆模擬帳務</li>
+              </ul>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed">
+              此操作會將所有標記為 <code className="font-mono bg-stone-100 px-1 py-0.5 rounded">isSimulated: true</code> 之模擬帳號、模擬貼文、模擬討論與模擬打賞自本機與 <strong>Firebase Cloud Firestore 資料庫</strong> 同步刪除，<strong>所有真實註冊會員與真實發布內容均完整保留不受影響</strong>。
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+              <button
+                type="button"
+                disabled={isSyncing}
+                onClick={() => setConfirmPurgeSimulatedModal(false)}
+                className="px-4 py-2 rounded-xl border border-stone-200 text-stone-700 text-xs font-bold hover:bg-stone-100 cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                disabled={isSyncing}
+                onClick={async () => {
+                  setIsSyncing(true);
+                  try {
+                    const res = await purgeAllSimulatedData();
+                    setConfirmPurgeSimulatedModal(false);
+                    setFeedbackToast({
+                      text: `已成功自本機與雲端資料庫刪除全部模擬資料（貼文 ${res.purgedQuestions} 篇、討論 ${res.purgedAnswers} 則、模擬帳號 ${res.purgedUsers} 位）！`,
+                      isError: false,
+                    });
+                  } catch (e: any) {
+                    setFeedbackToast({
+                      text: `清除失敗: ${e?.message || '未知錯誤'}`,
+                      isError: true,
+                    });
+                  } finally {
+                    setIsSyncing(false);
+                    setTimeout(() => setFeedbackToast(null), 5000);
+                  }
+                }}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition-all cursor-pointer shadow-md flex items-center gap-1.5 disabled:opacity-60"
+              >
+                {isSyncing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>雲端同步刪除中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>確認一鍵刪除全部模擬資料</span>
                   </>
                 )}
               </button>

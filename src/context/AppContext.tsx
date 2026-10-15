@@ -58,7 +58,16 @@ import {
   isMockTransactionId,
   isMockConversationId,
 } from '../data/mockData';
-import { ALL_VIRTUAL_PROPOSALS_SEED, VIRTUAL_PERSONA_USERS } from '../data/virtualProposalsSeed';
+import {
+  ALL_VIRTUAL_PROPOSALS_SEED,
+  ALL_VIRTUAL_ANSWERS_SEED,
+  VIRTUAL_PERSONA_USERS,
+  SIMULATED_BATCH_ID,
+  enrichQuestionWithSimulatedData,
+  isSimulatedUser,
+  isSimulatedQuestion,
+  isSimulatedAnswer,
+} from '../data/virtualProposalsSeed';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { parseScheduleTimestamp } from '../utils/scheduleUtils';
 import { analyzeQuestionWithAI, AIAnalysisResult, generate24hrAssistantReply } from '../services/aiService';
@@ -81,11 +90,14 @@ import {
   syncAnswerToFirestore,
   syncAnswersToFirestore,
   deleteAnswerFromFirestore,
+  deleteAnswersFromFirestore,
   syncTransactionToFirestore,
   syncTransactionsToFirestore,
   syncConversationToFirestore,
   syncNotificationsToFirestore,
   syncBookmarksToFirestore,
+  syncUserInteractionsToFirestore,
+  loadUserInteractionsFromFirestore,
   syncSolversToFirestore,
   syncTermsAgreementsToFirestore,
   syncPlatformSettingsToFirestore,
@@ -263,6 +275,7 @@ interface AppContextType {
   // 痛點附議 (+1) 與 提問同問 (舉手) 與 討論按讚 (大拇指)
   secondedQuestionIds: string[];
   toggleSecondQuestion: (questionId: string) => { isSeconded: boolean; count: number };
+  setQuestionLikeState: (questionId: string, liked: boolean, likeCount: number) => void;
   isQuestionSeconded: (questionId: string) => boolean;
   getQuestionSecondCount: (questionId: string) => number;
   sameQuestionIds: string[];
@@ -400,6 +413,9 @@ interface AppContextType {
   toggleDemoMode: () => void;
   clearMockData: () => void;
   resetDemoData: () => void;
+  isSimulatedDataPurged: boolean;
+  purgeAllSimulatedData: () => Promise<{ deletedQuestions: number; deletedAnswers: number; deletedUsers: number }>;
+  restoreAllSimulatedData: () => Promise<void>;
 
   // No Payment Mode (無金流環境開關：全站免付費，僅開放免費提問、無償解答與諮詢提案)
   isNoPaymentMode: boolean;
@@ -685,6 +701,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   });
 
+  // 是否已執行「一鍵清除全部模擬數據（模擬帳號、模擬貼文、模擬留言與模擬打賞）」
+  const [isSimulatedDataPurged, setIsSimulatedDataPurged] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const setHideTestAccounts = (enabled: boolean) => {
     setIsHideTestAccounts(enabled);
     try {
@@ -903,27 +928,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [availableUsers, setAvailableUsers] = useState<User[]>(() => {
     const isDemo = getInitialIsDemoMode();
+    const isPurged = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
     const deletedUsers = getDeletedUserIds();
+    const activeVirtualPersonas = isPurged ? [] : VIRTUAL_PERSONA_USERS;
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}users`) || localStorage.getItem(`${STORAGE_KEY_PREFIX}available_users`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
-          const usersList = parsed.map((u: any) => {
-            const restored = restoreCanonicalUserIdentity(u);
-            const isAdmin = restored.id === 'user-admin' || restored.id === 'a000000001' || restored.role === 'admin';
-            return {
-              ...restored,
-              balance: isAdmin
-                ? (typeof restored.balance === 'number' && restored.balance > 0 ? restored.balance : 50000)
-                : (typeof restored.balance === 'number' ? restored.balance : 0),
-              withheldPoints: typeof restored.withheldPoints === 'number' ? restored.withheldPoints : 0,
-            };
-          });
+          const usersList = parsed
+            .filter((u: any) => !isPurged || !isSimulatedUser(u))
+            .map((u: any) => {
+              const restored = restoreCanonicalUserIdentity(u);
+              const isAdmin = restored.id === 'user-admin' || restored.id === 'a000000001' || restored.role === 'admin';
+              return {
+                ...restored,
+                balance: isAdmin
+                  ? (typeof restored.balance === 'number' && restored.balance > 0 ? restored.balance : 50000)
+                  : (typeof restored.balance === 'number' ? restored.balance : 0),
+                withheldPoints: typeof restored.withheldPoints === 'number' ? restored.withheldPoints : 0,
+              };
+            });
 
           const disposableTestAccountIds = ['solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
           if (!isDemo) {
-            // 正式模式：過濾拋棄式測試帳號，永久保留核心身分與虛擬創作者帳號，並自動去重
+            // 正式模式：過濾拋棄式測試帳號，永久保留核心身分與虛擬創作者帳號（若未清除模擬資料），並自動去重
             const cleanList = usersList.filter((u: any) => !disposableTestAccountIds.includes(u.id));
             CORE_TEST_ACCOUNTS.forEach((cta) => {
               if (deletedUsers.has(cta.id)) return;
@@ -934,7 +963,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 cleanList[existingIdx] = restoreCanonicalUserIdentity({ ...cta, ...cleanList[existingIdx] }) as any;
               }
             });
-            VIRTUAL_PERSONA_USERS.forEach((vp) => {
+            activeVirtualPersonas.forEach((vp) => {
               if (deletedUsers.has(vp.id)) return;
               if (!cleanList.some((u: any) => u.id === vp.id)) {
                 cleanList.push(vp as any);
@@ -946,9 +975,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           // 測試環境 (TEST)：以 saved users 為主，智慧合併模擬用戶、虛擬創作者與測試帳號並自動去重
           const combined = [
-            ...MOCK_USERS,
+            ...(isPurged ? [] : MOCK_USERS),
             ...CORE_TEST_ACCOUNTS,
-            ...VIRTUAL_PERSONA_USERS,
+            ...activeVirtualPersonas,
             ...usersList,
           ];
           const { uniqueUsers } = deduplicateUsersList(combined, deletedUsers);
@@ -959,8 +988,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
     const baseUsers = isDemo
-      ? [...MOCK_USERS, ...VIRTUAL_PERSONA_USERS]
-      : [...CORE_TEST_ACCOUNTS, ...VIRTUAL_PERSONA_USERS];
+      ? [...(isPurged ? [] : MOCK_USERS), ...activeVirtualPersonas]
+      : [...CORE_TEST_ACCOUNTS, ...activeVirtualPersonas];
     return deduplicateUsersList(baseUsers, deletedUsers).uniqueUsers;
   });
 
@@ -1070,6 +1099,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (curr !== targetVal) {
             try {
               localStorage.setItem(`${STORAGE_KEY_PREFIX}hide_test_accounts`, String(targetVal));
+            } catch {}
+          }
+          return targetVal;
+        });
+      }
+      if (typeof settings.isSimulatedDataPurged === 'boolean') {
+        const targetVal = settings.isSimulatedDataPurged;
+        setIsSimulatedDataPurged((curr) => {
+          if (curr !== targetVal) {
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`, String(targetVal));
             } catch {}
           }
           return targetVal;
@@ -1185,6 +1225,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
+    const isPurged = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
+    const activeVirtualSeeds = isPurged ? [] : ALL_VIRTUAL_PROPOSALS_SEED;
     const virtualSeedMap = new Map(ALL_VIRTUAL_PROPOSALS_SEED.map((vq) => [vq.id, vq]));
     const sanitizeQuestion = (rawQ: any): Question => {
       const seedItem = virtualSeedMap.get(rawQ.id);
@@ -1192,15 +1234,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ? {
             ...seedItem,
             ...rawQ,
+            isSimulated: true,
+            simulatedBatchId: seedItem.simulatedBatchId || SIMULATED_BATCH_ID,
             coverImage: seedItem.coverImage || rawQ.coverImage,
             galleryImages: (rawQ.galleryImages && rawQ.galleryImages.length > 0) ? rawQ.galleryImages : seedItem.galleryImages,
-            referencedPainPoint: rawQ.referencedPainPoint || seedItem.referencedPainPoint,
+            referencedPainPoint:
+              seedItem.referencedPainPoint && (!rawQ.referencedPainPoint || !rawQ.referencedPainPoint.includes('['))
+                ? seedItem.referencedPainPoint
+                : (rawQ.referencedPainPoint || seedItem.referencedPainPoint),
             targetGoal: rawQ.targetGoal || seedItem.targetGoal,
             techArchitecture: rawQ.techArchitecture || seedItem.techArchitecture,
             demoUrl: rawQ.demoUrl || seedItem.demoUrl,
             currentVersion: rawQ.currentVersion || seedItem.currentVersion,
+            likes: (typeof rawQ.likes === 'number' && rawQ.likes > 0) ? rawQ.likes : (seedItem.likes || 12),
+            secondedCount: (typeof rawQ.secondedCount === 'number' && rawQ.secondedCount > 0) ? rawQ.secondedCount : (seedItem.secondedCount || seedItem.likes || 12),
+            sameQuestionCount: (typeof rawQ.sameQuestionCount === 'number' && rawQ.sameQuestionCount > 0) ? rawQ.sameQuestionCount : (seedItem.sameQuestionCount || 8),
+            supportPoints: (typeof rawQ.supportPoints === 'number' && rawQ.supportPoints > 0) ? rawQ.supportPoints : seedItem.supportPoints,
+            tippersCount: (typeof rawQ.tippersCount === 'number' && rawQ.tippersCount > 0) ? rawQ.tippersCount : seedItem.tippersCount,
+            supporterCount: (typeof rawQ.supporterCount === 'number' && rawQ.supporterCount > 0) ? rawQ.supporterCount : seedItem.supporterCount,
+            tipsHistory: (Array.isArray(rawQ.tipsHistory) && rawQ.tipsHistory.length > 0) ? rawQ.tipsHistory : seedItem.tipsHistory,
+            answersCount:
+              typeof rawQ.answersCount === 'number' && rawQ.answersCount !== 4 && rawQ.answersCount > (seedItem.answersCount || 0)
+                ? rawQ.answersCount
+                : (seedItem.answersCount ?? 0),
           }
-        : rawQ;
+        : enrichQuestionWithSimulatedData(rawQ);
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (q.views || 0);
       return {
         ...q,
@@ -1237,15 +1295,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     if (!isDemo) {
-      // 非測試環境（競賽模式、營運模式、無金流模式）：排除測試帳號模擬題目，載入資料庫與虛擬創作者提案（若未在後台刪除）
+      // 非測試環境（競賽模式、營運模式、無金流模式）：排除測試帳號模擬題目，載入資料庫與虛擬創作者提案（若未在後台刪除或一鍵清除模擬資料）
       try {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            const validParsed = parsed.filter(isValidQ);
+            const validParsed = parsed.filter((q: any) => isValidQ(q) && (!isPurged || !isSimulatedQuestion(q)));
             const existingIds = new Set(validParsed.map((q: any) => q.id));
-            const missingVirtual = ALL_VIRTUAL_PROPOSALS_SEED.filter(
+            const missingVirtual = activeVirtualSeeds.filter(
               (vq) => !existingIds.has(vq.id) && !deletedIds.has(vq.id)
             );
             return dedupeQuestions(
@@ -1259,19 +1317,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // ignore
       }
       return dedupeQuestions(
-        ALL_VIRTUAL_PROPOSALS_SEED
+        activeVirtualSeeds
           .filter((q) => !deletedIds.has(q.id) && !isDelistedExpired(q))
           .map(sanitizeQuestion)
       );
     }
     // 測試環境 (TEST / DEMO)：加回所有題目與虛擬創作者提案，嚴格過濾黑名單（永久刪除與過期下架）
-    const combinedSeeds = [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS];
+    const combinedSeeds = isPurged ? [] : [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS];
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}questions`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const validParsed = parsed.filter(isValidQ);
+          const validParsed = parsed.filter((q: any) => isValidQ(q) && (!isPurged || (!isSimulatedQuestion(q) && !isMockQuestionId(q.id, q.authorId))));
           const parsedIdMap = new Set(validParsed.map((q: any) => q.id));
           const missingSeeds = combinedSeeds.filter((mq) => !parsedIdMap.has(mq.id) && !deletedIds.has(mq.id));
           return dedupeQuestions(
@@ -1326,54 +1384,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [answers, setAnswers] = useState<Answer[]>(() => {
     const isDemo = getInitialIsDemoMode();
+    const isPurged = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
     const deletedAnsIds = getDeletedAnswerIds();
     const deletedQIds = getDeletedQuestionIds();
+    const virtualAnsMap = new Map(ALL_VIRTUAL_ANSWERS_SEED.map((va) => [va.id, va]));
 
     const isAnswerValid = (a: any) => {
       if (!a || !a.id) return false;
       if (deletedAnsIds.has(a.id)) return false;
       if (a.questionId && deletedQIds.has(a.questionId)) return false;
+      if (isPurged && (isSimulatedAnswer(a) || isMockAnswerId(a.id))) return false;
+      // 淘汰舊版固定數量之殘留模擬解答/討論（若不在最新 ALL_VIRTUAL_ANSWERS_SEED 中）
+      if (typeof a.id === 'string' && a.id.startsWith('ans-sim-') && !virtualAnsMap.has(a.id)) return false;
       return true;
     };
 
+    const mergeWithVirtualAnswers = (baseList: Answer[]): Answer[] => {
+      const seen = new Set<string>();
+      const out: Answer[] = [];
+      const activeVirtualAns = isPurged ? [] : ALL_VIRTUAL_ANSWERS_SEED;
+      for (const rawA of [...baseList, ...activeVirtualAns]) {
+        if (isAnswerValid(rawA) && !seen.has(rawA.id)) {
+          seen.add(rawA.id);
+          const seedAns = virtualAnsMap.get(rawA.id);
+          const a = seedAns
+            ? {
+                ...rawA,
+                ...seedAns,
+                likes: Math.max(rawA.likes || 0, seedAns.likes || 0),
+                isSimulated: true,
+                simulatedBatchId: SIMULATED_BATCH_ID,
+              }
+            : rawA;
+          out.push({
+            ...a,
+            price: typeof a.price === 'number' ? a.price : 0,
+          });
+        }
+      }
+      return out;
+    };
+
     if (!isDemo) {
-      // 非測試環境：不保留任何模擬解答方案
+      // 非測試環境：排除舊式測試帳號解答，但保留真實解答與虛擬創作者模擬留言討論
       try {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}answers`);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            return parsed
-              .filter((a: any) => !isMockAnswerId(a.id) && isAnswerValid(a))
-              .map((a: any) => ({
-                ...a,
-                price: typeof a.price === 'number' ? a.price : 0,
-              }));
+            const cleanParsed = parsed.filter((a: any) => !isMockAnswerId(a.id) && isAnswerValid(a));
+            return mergeWithVirtualAnswers(cleanParsed);
           }
         }
       } catch {
         // ignore
       }
-      return [];
+      return mergeWithVirtualAnswers([]);
     }
-    // 測試環境 (TEST / DEMO)：加回模擬解答方案（需過濾已刪除黑名單）
+    // 測試環境 (TEST / DEMO)：加回模擬解答方案與虛擬創作者模擬留言討論（需過濾已刪除黑名單）
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}answers`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           const customAnswers = parsed.filter((a: any) => !isMockAnswerId(a.id) && isAnswerValid(a));
-          const validMocks = MOCK_ANSWERS.filter(isAnswerValid);
-          return [...validMocks, ...customAnswers].map((a: any) => ({
-            ...a,
-            price: typeof a.price === 'number' ? a.price : 0,
-          }));
+          const validMocks = isPurged ? [] : MOCK_ANSWERS.filter(isAnswerValid);
+          return mergeWithVirtualAnswers([...validMocks, ...customAnswers]);
         }
       }
     } catch {
       // ignore
     }
-    return MOCK_ANSWERS.filter(isAnswerValid);
+    return mergeWithVirtualAnswers(isPurged ? [] : MOCK_ANSWERS.filter(isAnswerValid));
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -1984,16 +2066,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } catch {}
         }
 
+        const isPurgedPull = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
         const existingCloudQIds = new Set(filteredQ.map((q) => q.id));
-        const missingVirtualForCloud = ALL_VIRTUAL_PROPOSALS_SEED.filter(
-          (vq) => !existingCloudQIds.has(vq.id) && !deletedIds.has(vq.id)
-        );
+        const missingVirtualForCloud = isPurgedPull
+          ? []
+          : ALL_VIRTUAL_PROPOSALS_SEED.filter((vq) => !existingCloudQIds.has(vq.id) && !deletedIds.has(vq.id));
         if (missingVirtualForCloud.length > 0) {
           syncQuestionsToFirestore(missingVirtualForCloud);
         }
         const seenPull = new Set<string>();
         const finalMergedQ = [...filteredQ, ...missingVirtualForCloud].filter((q) => {
           if (!q || !q.id || seenPull.has(q.id)) return false;
+          if (isPurgedPull && (isSimulatedQuestion(q) || isMockQuestionId(q.id, q.authorId))) return false;
           seenPull.add(q.id);
           return true;
         });
@@ -2005,11 +2089,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (cloudData.users && cloudData.users.length > 0) {
-        const repairedCloudUsers = cloudData.users.map((cu) => restoreCanonicalUserIdentity(cu));
+        const isPurgedPull = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
+        const repairedCloudUsers = cloudData.users
+          .filter((cu) => !isPurgedPull || !isSimulatedUser(cu))
+          .map((cu) => restoreCanonicalUserIdentity(cu));
 
         const deletedUsers = getDeletedUserIds();
         setAvailableUsers((prevUsers) => {
-          const combined = [...(prevUsers || []), ...(cloudData.users || [])];
+          const combined = [...(prevUsers || []), ...repairedCloudUsers];
           const { uniqueUsers, removedIds } = deduplicateUsersList(combined, deletedUsers);
           if (removedIds.length > 0) {
             deleteUsersFromFirestore(removedIds);
@@ -2035,10 +2122,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (cloudData.answers && cloudData.answers.length > 0) {
-        const cleanAns = !isDemo ? cloudData.answers.filter((a) => !isMockAnswerId(a.id)) : cloudData.answers;
-        setAnswers(cleanAns);
+        const isPurgedPull = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
+        const deletedAnsIds = getDeletedAnswerIds();
+        const virtualAnsMap = new Map(ALL_VIRTUAL_ANSWERS_SEED.map((va) => [va.id, va]));
+        const obsoleteSimIds: string[] = [];
+        const rawCleanAns = (!isDemo ? cloudData.answers.filter((a) => !isMockAnswerId(a.id)) : cloudData.answers).filter((a) => {
+          if (typeof a?.id === 'string' && a.id.startsWith('ans-sim-') && !virtualAnsMap.has(a.id)) {
+            obsoleteSimIds.push(a.id);
+            return false;
+          }
+          if (isPurgedPull && (isSimulatedAnswer(a) || isMockAnswerId(a.id))) return false;
+          return true;
+        });
+        if (obsoleteSimIds.length > 0) {
+          deleteAnswersFromFirestore(obsoleteSimIds);
+        }
+        const ansSeen = new Set<string>();
+        const mergedAns: Answer[] = [];
+        const activeVirtualAns = isPurgedPull ? [] : ALL_VIRTUAL_ANSWERS_SEED;
+        for (const rawA of [...rawCleanAns, ...activeVirtualAns]) {
+          if (rawA && rawA.id && !deletedAnsIds.has(rawA.id) && !deletedIds.has(rawA.questionId) && !ansSeen.has(rawA.id)) {
+            ansSeen.add(rawA.id);
+            const seedAns = virtualAnsMap.get(rawA.id);
+            mergedAns.push(
+              seedAns
+                ? {
+                    ...rawA,
+                    ...seedAns,
+                    likes: Math.max(rawA.likes || 0, seedAns.likes || 0),
+                    isSimulated: true,
+                    simulatedBatchId: SIMULATED_BATCH_ID,
+                  }
+                : rawA
+            );
+          }
+        }
+        setAnswers(mergedAns);
         try {
-          localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(cleanAns));
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(mergedAns));
         } catch {}
       }
 
@@ -2179,6 +2300,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           if (cloudData.questions && cloudData.questions.length > 0) {
             const currentDeleted = getDeletedQuestionIds();
+            const isPurgedBoot = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
             const getRealClicks = (): Record<string, number> => {
               try {
                 const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}question_real_clicks`);
@@ -2188,8 +2310,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               }
             };
             const realClicks = getRealClicks();
+            const questionsNeedingCloudUpdate: Question[] = [];
             const filteredQ = cloudData.questions
-              .filter((q) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()) && !currentDeleted.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
+              .filter(
+                (q) =>
+                  Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()) &&
+                  !currentDeleted.has(q.id) &&
+                  (isDemo || !isMockQuestionId(q.id, q.authorId)) &&
+                  (!isPurgedBoot || (!isSimulatedQuestion(q) && !isMockQuestionId(q.id, q.authorId)))
+              )
               .filter((q) => {
                 if (q.status === 'delisted' && q.delistedAt) {
                   return now - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
@@ -2202,34 +2331,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   ? {
                       ...seedItem,
                       ...rawQ,
+                      isSimulated: true,
+                      simulatedBatchId: seedItem.simulatedBatchId || SIMULATED_BATCH_ID,
                       coverImage: seedItem.coverImage || rawQ.coverImage,
                       galleryImages: (rawQ.galleryImages && rawQ.galleryImages.length > 0) ? rawQ.galleryImages : seedItem.galleryImages,
-                      referencedPainPoint: rawQ.referencedPainPoint || seedItem.referencedPainPoint,
+                      referencedPainPoint:
+                        seedItem.referencedPainPoint && (!rawQ.referencedPainPoint || !rawQ.referencedPainPoint.includes('['))
+                          ? seedItem.referencedPainPoint
+                          : (rawQ.referencedPainPoint || seedItem.referencedPainPoint),
                       targetGoal: rawQ.targetGoal || seedItem.targetGoal,
                       techArchitecture: rawQ.techArchitecture || seedItem.techArchitecture,
                       demoUrl: rawQ.demoUrl || seedItem.demoUrl,
                       currentVersion: rawQ.currentVersion || seedItem.currentVersion,
+                      likes: (typeof rawQ.likes === 'number' && rawQ.likes > 0) ? rawQ.likes : (seedItem.likes || 12),
+                      secondedCount: (typeof rawQ.secondedCount === 'number' && rawQ.secondedCount > 0) ? rawQ.secondedCount : (seedItem.secondedCount || seedItem.likes || 12),
+                      sameQuestionCount: (typeof rawQ.sameQuestionCount === 'number' && rawQ.sameQuestionCount > 0) ? rawQ.sameQuestionCount : (seedItem.sameQuestionCount || 8),
+                      supportPoints: (typeof rawQ.supportPoints === 'number' && rawQ.supportPoints > 0) ? rawQ.supportPoints : seedItem.supportPoints,
+                      tippersCount: (typeof rawQ.tippersCount === 'number' && rawQ.tippersCount > 0) ? rawQ.tippersCount : seedItem.tippersCount,
+                      supporterCount: (typeof rawQ.supporterCount === 'number' && rawQ.supporterCount > 0) ? rawQ.supporterCount : seedItem.supporterCount,
+                      tipsHistory: (Array.isArray(rawQ.tipsHistory) && rawQ.tipsHistory.length > 0) ? rawQ.tipsHistory : seedItem.tipsHistory,
+                      answersCount:
+                        typeof rawQ.answersCount === 'number' && rawQ.answersCount !== 4 && rawQ.answersCount > (seedItem.answersCount || 0)
+                          ? rawQ.answersCount
+                          : (seedItem.answersCount ?? 0),
                     }
-                  : rawQ;
+                  : enrichQuestionWithSimulatedData(rawQ);
                 const highestViews = Math.max(
                   typeof q.views === 'number' ? q.views : 0,
                   typeof q.viewsCount === 'number' ? q.viewsCount : 0,
                   typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0
                 );
-                return {
+                const finalQ: Question = {
                   ...q,
                   tags: Array.isArray(q.tags) ? q.tags : [],
                   views: highestViews,
                   viewsCount: highestViews,
                 };
+                if (
+                  seedItem &&
+                  (!rawQ.sameQuestionCount ||
+                    rawQ.answersCount !== finalQ.answersCount ||
+                    !rawQ.isSimulated ||
+                    !rawQ.simulatedBatchId)
+                ) {
+                  questionsNeedingCloudUpdate.push(finalQ);
+                }
+                return finalQ;
               });
             const existingCloudQIds = new Set(filteredQ.map((q) => q.id));
-            const missingVirtualForCloud = ALL_VIRTUAL_PROPOSALS_SEED.filter(
-              (vq) => !existingCloudQIds.has(vq.id) && !currentDeleted.has(vq.id)
-            );
-            if (missingVirtualForCloud.length > 0 && connected) {
-              syncQuestionsToFirestore(missingVirtualForCloud);
-              syncUsersToFirestore(VIRTUAL_PERSONA_USERS);
+            const missingVirtualForCloud = isPurgedBoot
+              ? []
+              : ALL_VIRTUAL_PROPOSALS_SEED.filter(
+                  (vq) => !existingCloudQIds.has(vq.id) && !currentDeleted.has(vq.id)
+                );
+            if (connected) {
+              const toSyncQ = [...missingVirtualForCloud, ...questionsNeedingCloudUpdate];
+              if (toSyncQ.length > 0) {
+                syncQuestionsToFirestore(toSyncQ);
+              }
+              if (!isPurgedBoot && missingVirtualForCloud.length > 0) {
+                syncUsersToFirestore(VIRTUAL_PERSONA_USERS);
+              }
             }
             const seenMerged = new Set<string>();
             const finalMergedQ = [...filteredQ, ...missingVirtualForCloud].filter((q) => {
@@ -2245,11 +2407,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           }
           if (cloudData.answers && cloudData.answers.length > 0) {
-            if (!isDemo) {
-              setAnswers(cloudData.answers.filter((a) => !isMockAnswerId(a.id)));
-            } else {
-              setAnswers(cloudData.answers);
+            const isPurgedBoot = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
+            const deletedAnsIds = getDeletedAnswerIds();
+            const currentDeletedQ = getDeletedQuestionIds();
+            const virtualAnsMap = new Map(ALL_VIRTUAL_ANSWERS_SEED.map((va) => [va.id, va]));
+            const obsoleteSimIds: string[] = [];
+            const rawCloudAns = (!isDemo ? cloudData.answers.filter((a) => !isMockAnswerId(a.id)) : cloudData.answers).filter((a) => {
+              if (typeof a?.id === 'string' && a.id.startsWith('ans-sim-') && !virtualAnsMap.has(a.id)) {
+                obsoleteSimIds.push(a.id);
+                return false;
+              }
+              if (isPurgedBoot && (isSimulatedAnswer(a) || isMockAnswerId(a.id))) return false;
+              return true;
+            });
+            if (obsoleteSimIds.length > 0 && connected) {
+              deleteAnswersFromFirestore(obsoleteSimIds);
             }
+            const seenAns = new Set<string>();
+            const finalAns: Answer[] = [];
+            const answersToSync: Answer[] = [];
+            const activeVirtualAns = isPurgedBoot ? [] : ALL_VIRTUAL_ANSWERS_SEED;
+            const cloudAnsMap = new Map(rawCloudAns.map((ca) => [ca.id, ca]));
+            for (const rawA of [...rawCloudAns, ...activeVirtualAns]) {
+              if (rawA && rawA.id && !deletedAnsIds.has(rawA.id) && !currentDeletedQ.has(rawA.questionId) && !seenAns.has(rawA.id)) {
+                seenAns.add(rawA.id);
+                const seedAns = virtualAnsMap.get(rawA.id);
+                if (seedAns) {
+                  const mergedSimAns: Answer = {
+                    ...rawA,
+                    ...seedAns,
+                    likes: Math.max(rawA.likes || 0, seedAns.likes || 0),
+                    isSimulated: true,
+                    simulatedBatchId: SIMULATED_BATCH_ID,
+                  };
+                  finalAns.push(mergedSimAns);
+                  const existingCloudA = cloudAnsMap.get(rawA.id);
+                  if (!existingCloudA || existingCloudA.content !== mergedSimAns.content || !existingCloudA.isSimulated) {
+                    answersToSync.push(mergedSimAns);
+                  }
+                } else {
+                  finalAns.push(rawA);
+                }
+              }
+            }
+            if (answersToSync.length > 0 && connected) {
+              syncAnswersToFirestore(answersToSync);
+            }
+            setAnswers(finalAns);
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(finalAns));
+            } catch {}
           }
           if (cloudData.transactions && cloudData.transactions.length > 0) {
             if (!isDemo) {
@@ -2304,8 +2511,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (!mounted || !updatedCloudQuestions) return;
           const currentDeleted = getDeletedQuestionIds();
           const isCurrentDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+          const isPurgedSnap = localStorage.getItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`) === 'true';
           const valid = updatedCloudQuestions
-            .filter((q) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()) && !currentDeleted.has(q.id) && (isCurrentDemo || !isMockQuestionId(q.id, q.authorId)))
+            .filter(
+              (q) =>
+                Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()) &&
+                !currentDeleted.has(q.id) &&
+                (isCurrentDemo || !isMockQuestionId(q.id, q.authorId)) &&
+                (!isPurgedSnap || (!isSimulatedQuestion(q) && !isMockQuestionId(q.id, q.authorId)))
+            )
             .filter((q) => {
               if (q.status === 'delisted' && q.delistedAt) {
                 return Date.now() - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
@@ -2318,24 +2532,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 ? {
                     ...seedItem,
                     ...rawQ,
+                    isSimulated: true,
+                    simulatedBatchId: seedItem.simulatedBatchId || SIMULATED_BATCH_ID,
                     coverImage: seedItem.coverImage || rawQ.coverImage,
                     galleryImages: (rawQ.galleryImages && rawQ.galleryImages.length > 0) ? rawQ.galleryImages : seedItem.galleryImages,
-                    referencedPainPoint: rawQ.referencedPainPoint || seedItem.referencedPainPoint,
+                    referencedPainPoint:
+                      seedItem.referencedPainPoint && (!rawQ.referencedPainPoint || !rawQ.referencedPainPoint.includes('['))
+                        ? seedItem.referencedPainPoint
+                        : (rawQ.referencedPainPoint || seedItem.referencedPainPoint),
                     targetGoal: rawQ.targetGoal || seedItem.targetGoal,
                     techArchitecture: rawQ.techArchitecture || seedItem.techArchitecture,
                     demoUrl: rawQ.demoUrl || seedItem.demoUrl,
                     currentVersion: rawQ.currentVersion || seedItem.currentVersion,
+                    likes: (typeof rawQ.likes === 'number' && rawQ.likes > 0) ? rawQ.likes : (seedItem.likes || 12),
+                    secondedCount: (typeof rawQ.secondedCount === 'number' && rawQ.secondedCount > 0) ? rawQ.secondedCount : (seedItem.secondedCount || seedItem.likes || 12),
+                    sameQuestionCount: (typeof rawQ.sameQuestionCount === 'number' && rawQ.sameQuestionCount > 0) ? rawQ.sameQuestionCount : (seedItem.sameQuestionCount || 8),
+                    supportPoints: (typeof rawQ.supportPoints === 'number' && rawQ.supportPoints > 0) ? rawQ.supportPoints : seedItem.supportPoints,
+                    tippersCount: (typeof rawQ.tippersCount === 'number' && rawQ.tippersCount > 0) ? rawQ.tippersCount : seedItem.tippersCount,
+                    supporterCount: (typeof rawQ.supporterCount === 'number' && rawQ.supporterCount > 0) ? rawQ.supporterCount : seedItem.supporterCount,
+                    tipsHistory: (Array.isArray(rawQ.tipsHistory) && rawQ.tipsHistory.length > 0) ? rawQ.tipsHistory : seedItem.tipsHistory,
+                    answersCount:
+                      typeof rawQ.answersCount === 'number' && rawQ.answersCount !== 4 && rawQ.answersCount > (seedItem.answersCount || 0)
+                        ? rawQ.answersCount
+                        : (seedItem.answersCount ?? 0),
                   }
-                : rawQ;
+                : enrichQuestionWithSimulatedData(rawQ);
               return {
                 ...merged,
                 tags: Array.isArray(merged.tags) ? merged.tags : [],
               };
             });
           const validIdSet = new Set(valid.map((q) => q.id));
-          const missingVirtual = ALL_VIRTUAL_PROPOSALS_SEED.filter(
-            (vq) => !validIdSet.has(vq.id) && !currentDeleted.has(vq.id)
-          );
+          const missingVirtual = isPurgedSnap
+            ? []
+            : ALL_VIRTUAL_PROPOSALS_SEED.filter(
+                (vq) => !validIdSet.has(vq.id) && !currentDeleted.has(vq.id)
+              );
           const seenValid = new Set<string>();
           const finalValid = [...valid, ...missingVirtual].filter((q) => {
             if (!q || !q.id || seenValid.has(q.id)) return false;
@@ -2443,12 +2675,73 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           updated.status !== selectedQuestion.status ||
           updated.answersCount !== selectedQuestion.answersCount ||
           updated.bounty !== selectedQuestion.bounty ||
-          updated.views !== selectedQuestion.views)
+          updated.views !== selectedQuestion.views ||
+          updated.likes !== selectedQuestion.likes ||
+          updated.secondedCount !== selectedQuestion.secondedCount ||
+          updated.sameQuestionCount !== selectedQuestion.sameQuestionCount ||
+          updated.supportPoints !== selectedQuestion.supportPoints)
       ) {
         setSelectedQuestion(updated);
       }
     }
   }, [questions, selectedQuestion?.id]);
+
+  // 登入帳號切換時，自 Firestore 載入該用戶之個人互動清單（收藏、附議、同問、按讚）
+  useEffect(() => {
+    if (!currentUser?.id || currentUser.id === 'user-guest') return;
+    let active = true;
+    loadUserInteractionsFromFirestore(currentUser.id).then((cloudInteractions) => {
+      if (!active || !cloudInteractions) return;
+      if (Array.isArray(cloudInteractions.questionIds)) {
+        setBookmarkedQuestionIds((prev) => {
+          const merged = Array.from(new Set([...prev, ...cloudInteractions.questionIds!]));
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+      if (Array.isArray(cloudInteractions.secondedQuestionIds)) {
+        setSecondedQuestionIds((prev) => {
+          const merged = Array.from(new Set([...prev, ...cloudInteractions.secondedQuestionIds!]));
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}seconded_questions`, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+      if (Array.isArray(cloudInteractions.sameQuestionIds)) {
+        setSameQuestionIds((prev) => {
+          const merged = Array.from(new Set([...prev, ...cloudInteractions.sameQuestionIds!]));
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}same_questions`, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+      if (Array.isArray(cloudInteractions.likedDiscussionAnswerIds)) {
+        setLikedDiscussionAnswerIds((prev) => {
+          const merged = Array.from(new Set([...prev, ...cloudInteractions.likedDiscussionAnswerIds!]));
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_discussions`, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+      if (Array.isArray(cloudInteractions.likedQuestionIds)) {
+        setLikedQuestionIds((prev) => {
+          const merged = Array.from(new Set([...prev, ...cloudInteractions.likedQuestionIds!]));
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_questions`, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.id]);
 
   const [subscriptionPlans, setSubscriptionPlans] = useState<Record<SubscriptionTier, SubscriptionPlan>>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}plans`);
@@ -6739,16 +7032,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Action: Toggle question bookmark
   const toggleBookmarkQuestion = (questionId: string): boolean => {
-    let isAdded = false;
-    setBookmarkedQuestionIds((prev) => {
-      if (prev.includes(questionId)) {
-        isAdded = false;
-        return prev.filter((id) => id !== questionId);
-      } else {
-        isAdded = true;
-        return [...prev, questionId];
-      }
-    });
+    const isCurrentlyBookmarked = bookmarkedQuestionIds.includes(questionId);
+    const isAdded = !isCurrentlyBookmarked;
+    const updatedBookmarks = isAdded
+      ? [...bookmarkedQuestionIds, questionId]
+      : bookmarkedQuestionIds.filter((id) => id !== questionId);
+
+    setBookmarkedQuestionIds(updatedBookmarks);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(updatedBookmarks));
+    } catch {}
+    if (currentUser?.id && currentUser.id !== 'user-guest') {
+      syncBookmarksToFirestore(currentUser.id, updatedBookmarks);
+    }
 
     const targetQ = questions.find((q) => q.id === questionId);
     if (isAdded && targetQ) {
@@ -6773,41 +7069,91 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return bookmarkedQuestionIds.includes(questionId);
   };
 
-  // 1. 痛點附議 (+1)
+  // 1. 痛點附議 (+1) / 提案愛心按讚（同步寫入 Firestore 資料庫）
   const toggleSecondQuestion = (questionId: string): { isSeconded: boolean; count: number } => {
-    let nextState = false;
-    setSecondedQuestionIds((prev) => {
-      let updated: string[];
-      if (prev.includes(questionId)) {
-        updated = prev.filter((id) => id !== questionId);
-        nextState = false;
-      } else {
-        updated = [...prev, questionId];
-        nextState = true;
+    const isCurrentlySeconded = secondedQuestionIds.includes(questionId);
+    const nextState = !isCurrentlySeconded;
+    const updatedIds = nextState
+      ? Array.from(new Set([...secondedQuestionIds, questionId]))
+      : secondedQuestionIds.filter((id) => id !== questionId);
+
+    setSecondedQuestionIds(updatedIds);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}seconded_questions`, JSON.stringify(updatedIds));
+    } catch {}
+    if (currentUser?.id && currentUser.id !== 'user-guest') {
+      syncUserInteractionsToFirestore(currentUser.id, { secondedQuestionIds: updatedIds });
+    }
+
+    const targetQ = questions.find((q) => q.id === questionId);
+    const currentCount = targetQ ? (targetQ.secondedCount ?? targetQ.likes ?? 0) : 0;
+    const newCount = nextState ? currentCount + 1 : Math.max(0, currentCount - 1);
+
+    setQuestions((prev) => {
+      let syncedQ: Question | null = null;
+      const nextList = prev.map((q) => {
+        if (q.id === questionId) {
+          const base = q.secondedCount ?? q.likes ?? 0;
+          const computed = nextState ? base + 1 : Math.max(0, base - 1);
+          const updatedQ: Question = {
+            ...q,
+            secondedCount: computed,
+            likes: computed,
+          };
+          syncedQ = updatedQ;
+          return updatedQ;
+        }
+        return q;
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(nextList));
+      } catch {}
+      if (syncedQ) {
+        syncQuestionToFirestore(syncedQ);
       }
+      return nextList;
+    });
+
+    return { isSeconded: nextState, count: newCount };
+  };
+
+  // 供後端 API `/api/competition/proposals/:id/like` 成功回傳後，直接同步最新按讚狀態與數量至全域 questions 與 Firestore
+  const setQuestionLikeState = (questionId: string, liked: boolean, likeCount: number) => {
+    setSecondedQuestionIds((prev) => {
+      const updated = liked
+        ? Array.from(new Set([...prev, questionId]))
+        : prev.filter((id) => id !== questionId);
       try {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}seconded_questions`, JSON.stringify(updated));
       } catch {}
+      if (currentUser?.id && currentUser.id !== 'user-guest') {
+        syncUserInteractionsToFirestore(currentUser.id, { secondedQuestionIds: updated });
+      }
       return updated;
     });
 
-    let newCount = 0;
-    setQuestions((prev) =>
-      prev.map((q) => {
+    setQuestions((prev) => {
+      let syncedQ: Question | null = null;
+      const nextList = prev.map((q) => {
         if (q.id === questionId) {
-          const current = q.secondedCount ?? q.likes ?? 0;
-          newCount = nextState ? current + 1 : Math.max(0, current - 1);
-          return {
+          const updatedQ: Question = {
             ...q,
-            secondedCount: newCount,
-            likes: newCount,
+            likes: likeCount,
+            secondedCount: likeCount,
           };
+          syncedQ = updatedQ;
+          return updatedQ;
         }
         return q;
-      })
-    );
-
-    return { isSeconded: nextState, count: newCount };
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(nextList));
+      } catch {}
+      if (syncedQ) {
+        syncQuestionToFirestore(syncedQ);
+      }
+      return nextList;
+    });
   };
 
   const isQuestionSeconded = (questionId: string): boolean => {
@@ -6819,38 +7165,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return q?.secondedCount ?? q?.likes ?? 0;
   };
 
-  // 2. 創點子提問同問 (舉手)
+  // 2. 創點子提問同問 (舉手)（同步寫入 Firestore 資料庫）
   const toggleSameQuestion = (questionId: string): { isSameQuestion: boolean; count: number } => {
-    let nextState = false;
-    setSameQuestionIds((prev) => {
-      let updated: string[];
-      if (prev.includes(questionId)) {
-        updated = prev.filter((id) => id !== questionId);
-        nextState = false;
-      } else {
-        updated = [...prev, questionId];
-        nextState = true;
-      }
-      try {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}same_questions`, JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
+    const isCurrentlySame = sameQuestionIds.includes(questionId);
+    const nextState = !isCurrentlySame;
+    const updatedIds = nextState
+      ? Array.from(new Set([...sameQuestionIds, questionId]))
+      : sameQuestionIds.filter((id) => id !== questionId);
 
-    let newCount = 0;
-    setQuestions((prev) =>
-      prev.map((q) => {
+    setSameQuestionIds(updatedIds);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}same_questions`, JSON.stringify(updatedIds));
+    } catch {}
+    if (currentUser?.id && currentUser.id !== 'user-guest') {
+      syncUserInteractionsToFirestore(currentUser.id, { sameQuestionIds: updatedIds });
+    }
+
+    const targetQ = questions.find((q) => q.id === questionId);
+    const currentCount = targetQ ? (targetQ.sameQuestionCount ?? 0) : 0;
+    const newCount = nextState ? currentCount + 1 : Math.max(0, currentCount - 1);
+
+    setQuestions((prev) => {
+      let syncedQ: Question | null = null;
+      const nextList = prev.map((q) => {
         if (q.id === questionId) {
-          const current = q.sameQuestionCount ?? 0;
-          newCount = nextState ? current + 1 : Math.max(0, current - 1);
-          return {
+          const base = q.sameQuestionCount ?? 0;
+          const computed = nextState ? base + 1 : Math.max(0, base - 1);
+          const updatedQ: Question = {
             ...q,
-            sameQuestionCount: newCount,
+            sameQuestionCount: computed,
           };
+          syncedQ = updatedQ;
+          return updatedQ;
         }
         return q;
-      })
-    );
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(nextList));
+      } catch {}
+      if (syncedQ) {
+        syncQuestionToFirestore(syncedQ);
+      }
+      return nextList;
+    });
 
     return { isSameQuestion: nextState, count: newCount };
   };
@@ -6864,38 +7221,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return q?.sameQuestionCount ?? 0;
   };
 
-  // 3. 討論留言按讚 (大拇指)
+  // 3. 討論留言按讚 (大拇指)（同步寫入 Firestore 資料庫）
   const toggleLikeDiscussionAnswer = (answerId: string): { isLiked: boolean; count: number } => {
-    let nextState = false;
-    setLikedDiscussionAnswerIds((prev) => {
-      let updated: string[];
-      if (prev.includes(answerId)) {
-        updated = prev.filter((id) => id !== answerId);
-        nextState = false;
-      } else {
-        updated = [...prev, answerId];
-        nextState = true;
-      }
-      try {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_discussions`, JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
+    const isCurrentlyLiked = likedDiscussionAnswerIds.includes(answerId);
+    const nextState = !isCurrentlyLiked;
+    const updatedIds = nextState
+      ? Array.from(new Set([...likedDiscussionAnswerIds, answerId]))
+      : likedDiscussionAnswerIds.filter((id) => id !== answerId);
 
-    let newCount = 0;
-    setAnswers((prev) =>
-      prev.map((a) => {
+    setLikedDiscussionAnswerIds(updatedIds);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_discussions`, JSON.stringify(updatedIds));
+    } catch {}
+    if (currentUser?.id && currentUser.id !== 'user-guest') {
+      syncUserInteractionsToFirestore(currentUser.id, { likedDiscussionAnswerIds: updatedIds });
+    }
+
+    const targetA = answers.find((a) => a.id === answerId);
+    const currentCount = targetA ? (targetA.likes ?? 0) : 0;
+    const newCount = nextState ? currentCount + 1 : Math.max(0, currentCount - 1);
+
+    setAnswers((prev) => {
+      let syncedA: Answer | null = null;
+      const nextList = prev.map((a) => {
         if (a.id === answerId) {
-          const current = a.likes ?? 0;
-          newCount = nextState ? current + 1 : Math.max(0, current - 1);
-          return {
+          const base = a.likes ?? 0;
+          const computed = nextState ? base + 1 : Math.max(0, base - 1);
+          const updatedA: Answer = {
             ...a,
-            likes: newCount,
+            likes: computed,
           };
+          syncedA = updatedA;
+          return updatedA;
         }
         return a;
-      })
-    );
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(nextList));
+      } catch {}
+      if (syncedA) {
+        syncAnswerToFirestore(syncedA);
+      }
+      return nextList;
+    });
 
     return { isLiked: nextState, count: newCount };
   };
@@ -6909,38 +7277,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return a?.likes ?? 0;
   };
 
-  // 4. L0 討論提問按讚 (大拇指)
+  // 4. L0 討論提問按讚 (大拇指)（同步寫入 Firestore 資料庫）
   const toggleLikeQuestion = (questionId: string): { isLiked: boolean; count: number } => {
-    let nextState = false;
-    setLikedQuestionIds((prev) => {
-      let updated: string[];
-      if (prev.includes(questionId)) {
-        updated = prev.filter((id) => id !== questionId);
-        nextState = false;
-      } else {
-        updated = [...prev, questionId];
-        nextState = true;
-      }
-      try {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_questions`, JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
+    const isCurrentlyLiked = likedQuestionIds.includes(questionId);
+    const nextState = !isCurrentlyLiked;
+    const updatedIds = nextState
+      ? Array.from(new Set([...likedQuestionIds, questionId]))
+      : likedQuestionIds.filter((id) => id !== questionId);
 
-    let newCount = 0;
-    setQuestions((prev) =>
-      prev.map((q) => {
+    setLikedQuestionIds(updatedIds);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_questions`, JSON.stringify(updatedIds));
+    } catch {}
+    if (currentUser?.id && currentUser.id !== 'user-guest') {
+      syncUserInteractionsToFirestore(currentUser.id, { likedQuestionIds: updatedIds });
+    }
+
+    const targetQ = questions.find((q) => q.id === questionId);
+    const currentCount = targetQ ? (targetQ.likes ?? 0) : 0;
+    const newCount = nextState ? currentCount + 1 : Math.max(0, currentCount - 1);
+
+    setQuestions((prev) => {
+      let syncedQ: Question | null = null;
+      const nextList = prev.map((q) => {
         if (q.id === questionId) {
-          const current = q.likes ?? 0;
-          newCount = nextState ? current + 1 : Math.max(0, current - 1);
-          return {
+          const base = q.likes ?? 0;
+          const computed = nextState ? base + 1 : Math.max(0, base - 1);
+          const updatedQ: Question = {
             ...q,
-            likes: newCount,
+            likes: computed,
+            secondedCount: computed,
           };
+          syncedQ = updatedQ;
+          return updatedQ;
         }
         return q;
-      })
-    );
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(nextList));
+      } catch {}
+      if (syncedQ) {
+        syncQuestionToFirestore(syncedQ);
+      }
+      return nextList;
+    });
 
     return { isLiked: nextState, count: newCount };
   };
@@ -7719,35 +8099,177 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const clearMockData = () => {
+  // 一鍵永久清除全站所有模擬資料（模擬帳號、模擬貼文、模擬留言與模擬打賞，並同步自 Firestore 刪除）
+  const purgeAllSimulatedData = async (): Promise<{
+    deletedQuestions: number;
+    deletedAnswers: number;
+    deletedUsers: number;
+  }> => {
+    setIsSimulatedDataPurged(true);
     setIsDemoMode(false);
-    try {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}demo_mode`, 'false');
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}questions`);
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}solvers`);
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}answers`);
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}transactions`);
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}conversations`);
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}bookmarks`);
-    } catch {}
     setHideTestAccounts(true);
-    setQuestions([]);
-    setSolvers([]);
-    setAnswers([]);
-    setTransactions([]);
-    setConversations([]);
-    setBookmarkedQuestionIds([]);
-    setAvailableUsers((prev) => {
-      const realUsers = prev.filter((u) => !u.id.startsWith('solver-') && u.id !== 'user-questioner' && u.id !== 'user-guest' && u.id !== 'user-admin');
-      return [CLEAN_CORE_USERS[0], ...realUsers];
-    });
-    setCurrentUser(GUEST_USER);
     try {
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`, 'true');
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}demo_mode`, 'false');
     } catch {}
+    syncPlatformSettingsToFirestore({
+      isSimulatedDataPurged: true,
+      isDemoMode: false,
+      isHideTestAccounts: true,
+    });
+
+    // 1. 找出所有模擬貼文 ID（包含虛擬創作者貼文、VibeCoding 預設作品、測試題目）
+    const simQIds = Array.from(
+      new Set([
+        ...ALL_VIRTUAL_PROPOSALS_SEED.map((vq) => vq.id),
+        ...MOCK_QUESTIONS.map((mq) => mq.id),
+        ...questions.filter((q) => isSimulatedQuestion(q) || isMockQuestionId(q.id, q.authorId)).map((q) => q.id),
+      ])
+    );
+
+    // 2. 找出所有模擬留言與模擬方案 ID
+    const simAIds = Array.from(
+      new Set([
+        ...ALL_VIRTUAL_ANSWERS_SEED.map((va) => va.id),
+        ...MOCK_ANSWERS.map((ma) => ma.id),
+        ...answers
+          .filter((a) => isSimulatedAnswer(a) || isMockAnswerId(a.id) || simQIds.includes(a.questionId))
+          .map((a) => a.id),
+      ])
+    );
+
+    // 3. 找出所有模擬創作者帳號與拋棄式測試帳號 ID（保留管理員與真實註冊用戶）
+    const disposableIds = ['solver-3', 'solver-4', 'solver-5', 'user-author-2', 'user-author-3'];
+    const simUIds = Array.from(
+      new Set([
+        ...VIRTUAL_PERSONA_USERS.map((vu) => vu.id),
+        ...availableUsers
+          .filter((u) => isSimulatedUser(u) || disposableIds.includes(u.id))
+          .map((u) => u.id),
+      ])
+    );
+
+    // 更新本地狀態，並清理殘留於真實貼文上之模擬打賞紀錄
+    setQuestions((prev) => {
+      const remaining = prev
+        .filter((q) => !simQIds.includes(q.id) && !isSimulatedQuestion(q) && !isMockQuestionId(q.id, q.authorId))
+        .map((q) => {
+          if (Array.isArray(q.tipsHistory) && q.tipsHistory.some((t) => t.isSimulated || t.id.startsWith('tip-sim-'))) {
+            const realTips = q.tipsHistory.filter((t) => !t.isSimulated && !t.id.startsWith('tip-sim-'));
+            const realPts = realTips.reduce((sum, t) => sum + (t.amount || 0), 0);
+            const realSupporters = new Set(realTips.map((t) => t.tipperId)).size;
+            return {
+              ...q,
+              tipsHistory: realTips,
+              supportPoints: realPts,
+              tippersCount: realSupporters,
+              supporterCount: realSupporters,
+            };
+          }
+          return q;
+        });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(remaining));
+      } catch {}
+      return remaining;
+    });
+
+    setAnswers((prev) => {
+      const remaining = prev.filter(
+        (a) => !simAIds.includes(a.id) && !isSimulatedAnswer(a) && !isMockAnswerId(a.id) && !simQIds.includes(a.questionId)
+      );
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(remaining));
+      } catch {}
+      return remaining;
+    });
+
+    setAvailableUsers((prev) => {
+      const remaining = prev.filter((u) => !simUIds.includes(u.id) && !isSimulatedUser(u));
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(remaining));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(remaining));
+      } catch {}
+      return remaining;
+    });
+
+    setSolvers((prev) => prev.filter((s) => !isMockSolverId(s.id) && !isTestAccountUserId(s.id)));
+    setTransactions((prev) => prev.filter((t) => !isMockTransactionId(t.id)));
+    setConversations((prev) => prev.filter((c) => !isMockConversationId(c.id)));
+
+    // 同步自 Firebase Cloud Firestore 批次刪除所有模擬資料
+    await Promise.all([
+      simQIds.length > 0 ? deleteQuestionsFromFirestore(simQIds) : Promise.resolve(),
+      simAIds.length > 0 ? deleteAnswersFromFirestore(simAIds) : Promise.resolve(),
+      simUIds.length > 0 ? deleteUsersFromFirestore(simUIds) : Promise.resolve(),
+    ]);
+
+    setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
+    return {
+      deletedQuestions: simQIds.length,
+      deletedAnswers: simAIds.length,
+      deletedUsers: simUIds.length,
+    };
+  };
+
+  // 一鍵恢復模擬創作者與模擬貼文數據（並重新同步寫入 Firestore）
+  const restoreAllSimulatedData = async (): Promise<void> => {
+    setIsSimulatedDataPurged(false);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}simulated_data_purged`, 'false');
+    } catch {}
+    syncPlatformSettingsToFirestore({ isSimulatedDataPurged: false });
+
+    const deletedQIds = getDeletedQuestionIds();
+    const deletedAIds = getDeletedAnswerIds();
+    const deletedUIds = getDeletedUserIds();
+
+    const activeVirtualQ = ALL_VIRTUAL_PROPOSALS_SEED.filter((vq) => !deletedQIds.has(vq.id));
+    const activeVirtualA = ALL_VIRTUAL_ANSWERS_SEED.filter((va) => !deletedAIds.has(va.id) && !deletedQIds.has(va.questionId));
+    const activeVirtualU = VIRTUAL_PERSONA_USERS.filter((vu) => !deletedUIds.has(vu.id));
+
+    setQuestions((prev) => {
+      const existingIds = new Set(prev.map((q) => q.id));
+      const merged = [...prev, ...activeVirtualQ.filter((vq) => !existingIds.has(vq.id))];
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(merged));
+      } catch {}
+      return merged;
+    });
+
+    setAnswers((prev) => {
+      const existingIds = new Set(prev.map((a) => a.id));
+      const merged = [...prev, ...activeVirtualA.filter((va) => !existingIds.has(va.id))];
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(merged));
+      } catch {}
+      return merged;
+    });
+
+    setAvailableUsers((prev) => {
+      const existingIds = new Set(prev.map((u) => u.id));
+      const merged = [...prev, ...activeVirtualU.filter((vu) => !existingIds.has(vu.id))];
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}users`, JSON.stringify(merged));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}available_users`, JSON.stringify(merged));
+      } catch {}
+      return merged;
+    });
+
+    await Promise.all([
+      syncQuestionsToFirestore(activeVirtualQ),
+      syncAnswersToFirestore(activeVirtualA),
+      syncUsersToFirestore(activeVirtualU),
+    ]);
+    setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
+  };
+
+  const clearMockData = () => {
+    purgeAllSimulatedData();
   };
 
   const resetDemoData = () => {
+    restoreAllSimulatedData();
     setDemoMode(true);
   };
 
@@ -7759,6 +8281,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleDemoMode,
         clearMockData,
         resetDemoData,
+        isSimulatedDataPurged,
+        purgeAllSimulatedData,
+        restoreAllSimulatedData,
         isNoPaymentMode: isRaceMode ? false : isNoPaymentMode,
         setNoPaymentMode,
         toggleNoPaymentMode,
@@ -7896,6 +8421,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         incrementQuestionViews,
         secondedQuestionIds,
         toggleSecondQuestion,
+        setQuestionLikeState,
         isQuestionSeconded,
         getQuestionSecondCount,
         sameQuestionIds,

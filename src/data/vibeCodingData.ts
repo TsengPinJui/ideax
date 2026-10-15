@@ -18,12 +18,12 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     deadline: new Date(Date.now() + 86400000 * 30).toISOString(),
     views: 890,
     likes: 124,
-    secondedCount: 0,
-    sameQuestionCount: 0,
-    answersCount: 18,
+    secondedCount: 38,
+    sameQuestionCount: 19,
+    answersCount: 6,
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
-    referencedPainPoint: '傳統表單工具缺乏動態邏輯跳轉，工程師排程開發又需耗費 2 週時間',
+    referencedPainPoint: '[q-vp-pain-18] 獨立軟體接案團隊與業主反覆確認需求變更，LINE 對話紀錄散落導致驗收糾紛與尾款難收',
     targetGoal: '希望 6 個月內達成 50,000 次下載量，並累積 10,000 位行銷與營運活躍用戶',
     currentVersion: 'v2.0.0',
     updateLogs: [
@@ -83,12 +83,12 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     deadline: new Date(Date.now() + 86400000 * 30).toISOString(),
     views: 650,
     likes: 88,
-    secondedCount: 0,
-    sameQuestionCount: 0,
-    answersCount: 12,
+    secondedCount: 27,
+    sameQuestionCount: 14,
+    answersCount: 4,
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
-    referencedPainPoint: '原型驗證工具缺乏即時執行 JavaScript 腳本與 API 數據連動能力',
+    referencedPainPoint: '[q-vp-pain-15] 遠端跨時區工程與設計團隊進行非同步 Code Review 與 UI 走查時，文字描述難以還原動態破版情境',
     targetGoal: '希望 6 個月內達成 20,000 次下載量，並協助 500+ 組創業團隊完成 Prototype 驗證',
     currentVersion: 'v1.1.0',
     updateLogs: [
@@ -114,7 +114,10 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     fileLink: 'https://github.com/vibe-studio/pulsecanvas',
     supportPoints: 1200,
     tippersCount: 15,
-    tipsHistory: []
+    tipsHistory: [
+      { id: 'tip-vibe2-1', userId: 'vp-user-06', userName: '許家豪 總監', amount: 400, message: '無邊界畫布直接串 API 太強了，幫我們省下超多 PoC 時間！', createdAt: new Date(Date.now() - 3600000 * 6).toISOString() },
+      { id: 'tip-vibe2-2', userId: 'vp-user-02', userName: '張雅婷 執行長', amount: 300, message: '團隊腦力激盪跟驗證痛點必備神器，支持持續迭代！', createdAt: new Date(Date.now() - 3600000 * 3).toISOString() }
+    ]
   },
   {
     id: 'vibe-app-3',
@@ -133,12 +136,12 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     deadline: new Date(Date.now() + 86400000 * 30).toISOString(),
     views: 1120,
     likes: 195,
-    secondedCount: 0,
-    sameQuestionCount: 0,
-    answersCount: 25,
+    secondedCount: 52,
+    sameQuestionCount: 27,
+    answersCount: 7,
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
-    referencedPainPoint: '創作者手動剪輯 1 小時 Podcast 或演講影片平均需耗費 4 小時以上整理精華',
+    referencedPainPoint: '[q-vp-pain-09] 獨立創作者與微型電商自製短影音時，多平台尺寸裁切、字幕對軸與無版權配樂耗費大量重複工時',
     targetGoal: '縮短 80% 的自媒體短影音預審與腳本整理時間',
     coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1000&q=80',
     galleryImages: [
@@ -151,6 +154,9 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     fileLink: 'https://github.com/linda-creators/autoclip-vibe',
     supportPoints: 2450,
     tippersCount: 30,
-    tipsHistory: []
+    tipsHistory: [
+      { id: 'tip-vibe3-1', userId: 'vp-user-08', userName: '蘇郁婷 品牌主理人', amount: 500, message: '自媒體救星！以前剪一支 Reels 要兩小時，現在 10 分鐘搞定！', createdAt: new Date(Date.now() - 3600000 * 8).toISOString() },
+      { id: 'tip-vibe3-2', userId: 'vp-user-03', userName: '王建民 廠長', amount: 350, message: '瀏覽器端直接跑 WebAssembly 切片不卡頓，非常驚豔！', createdAt: new Date(Date.now() - 3600000 * 4).toISOString() }
+    ]
   }
 ];

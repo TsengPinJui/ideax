@@ -68,6 +68,7 @@ import { auth } from '../../services/firebase';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import { StarSeasonGuideModal } from './StarSeasonGuideModal';
+import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
 
 interface ExploreProposalsFullPageProps {
   onNavigate: (view: 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador') => void;
@@ -99,9 +100,12 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     addNotification,
     showCenterToast,
     questions,
+    setSelectedQuestion,
     toggleSecondQuestion,
+    setQuestionLikeState,
     isQuestionSeconded,
     getQuestionSecondCount,
+    isSimulatedDataPurged,
   } = useApp();
   const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
 
@@ -153,12 +157,20 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const [expandedMobileSummaryId, setExpandedMobileSummaryId] = useState<string | null>(null);
 
   useEffect(() => {
+    const defaultList = isSimulatedDataPurged ? [] : DEFAULT_DEMO_PROPOSALS;
     if (initialProposals && initialProposals.length > 0) {
-      setProposals(applyRealClicksToProposals(initialProposals));
+      const merged = initialProposals.map((p) => {
+        const matchedQ = (questions || []).find((q) => q.id === p.id);
+        if (matchedQ && typeof matchedQ.likes === 'number' && matchedQ.likes > 0) {
+          return { ...p, likeCount: matchedQ.likes };
+        }
+        return p;
+      });
+      setProposals(applyRealClicksToProposals(merged));
     } else {
-      setProposals(applyRealClicksToProposals(DEFAULT_DEMO_PROPOSALS));
+      setProposals(applyRealClicksToProposals(defaultList));
     }
-  }, [initialProposals]);
+  }, [initialProposals, questions, isSimulatedDataPurged]);
 
   useEffect(() => {
     if (initialProposalId) {
@@ -234,20 +246,24 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     parseAndOpenProposal();
     window.addEventListener('popstate', parseAndOpenProposal);
     return () => window.removeEventListener('popstate', parseAndOpenProposal);
-  }, []); // 依賴項為空，僅在掛載與 popstate 時監聽，避免因 proposals 變更造成迴圈
+  }, [proposals.length, initialProposalId]);
+
+  const prevExploreProposalIdRef = React.useRef<string | null>(null);
 
   // 同步 URL 與動態 SEO
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     if (selectedProposalForDetail) {
+      prevExploreProposalIdRef.current = selectedProposalForDetail.id;
       updateSEOForProposal(selectedProposalForDetail);
       const url = new URL(window.location.href);
       if (url.searchParams.get('proposalId') !== selectedProposalForDetail.id) {
         url.searchParams.set('proposalId', selectedProposalForDetail.id);
         window.history.replaceState({ proposalId: selectedProposalForDetail.id }, '', url.toString());
       }
-    } else {
+    } else if (prevExploreProposalIdRef.current) {
+      prevExploreProposalIdRef.current = null;
       resetSEOToDefault();
       const url = new URL(window.location.href);
       if (url.searchParams.has('proposalId')) {
@@ -520,17 +536,19 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     return null;
   };
 
-  // 愛心按讚/收藏切換
+  // 愛心按讚/收藏切換（同步寫入 Firestore 資料庫）
   const handleToggleLike = async (proposalId: string) => {
-    if (!auth.currentUser || currentUser.id === 'user-guest') {
+    if (!currentUser || currentUser.id === 'user-guest') {
       onOpenAuth();
       return;
     }
+    const targetProp = proposals.find((p) => p.id === proposalId);
+    const currentLikes = targetProp?.likeCount ?? getQuestionSecondCount(proposalId) ?? 0;
     try {
-      const res = await likeProposal(proposalId);
+      const res = await likeProposal(proposalId, currentLikes);
       if (res.success) {
         setLikedProposalIds((prev) =>
-          res.liked ? [...prev, proposalId] : prev.filter((id) => id !== proposalId)
+          res.liked ? Array.from(new Set([...prev, proposalId])) : prev.filter((id) => id !== proposalId)
         );
         setProposals((prev) =>
           prev.map((p) => (p.id === proposalId ? { ...p, likeCount: res.likeCount } : p))
@@ -540,10 +558,23 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             prev ? { ...prev, likeCount: res.likeCount } : null
           );
         }
+        setQuestionLikeState(proposalId, res.liked, res.likeCount);
         showToast(res.liked ? '❤️ 已按讚並加入您的個人收藏名單！' : '已取消按讚與收藏');
       }
-    } catch (err: any) {
-      showToast(err.message || '操作失敗');
+    } catch {
+      const fallback = toggleSecondQuestion(proposalId);
+      setLikedProposalIds((prev) =>
+        fallback.isSeconded ? Array.from(new Set([...prev, proposalId])) : prev.filter((id) => id !== proposalId)
+      );
+      setProposals((prev) =>
+        prev.map((p) => (p.id === proposalId ? { ...p, likeCount: fallback.count } : p))
+      );
+      if (selectedProposalForDetail?.id === proposalId) {
+        setSelectedProposalForDetail((prev) =>
+          prev ? { ...prev, likeCount: fallback.count } : null
+        );
+      }
+      showToast(fallback.isSeconded ? '❤️ 已按讚並加入您的個人收藏名單！' : '已取消按讚與收藏');
     }
   };
 
@@ -1289,17 +1320,44 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                       </h3>
 
                       {/* 若為解方且引用痛點 */}
-                      {proposal.sourcePainPointTitle && (
-                        <div className="p-2 rounded-xl bg-amber-50/80 border border-amber-200 text-[11px] space-y-0.5">
-                          <span className="text-amber-900 font-bold flex items-center gap-1">
-                            <ArrowRight className="w-3 h-3 text-amber-600" />
-                            採用痛點提案：
-                          </span>
-                          <p className="text-stone-700 line-clamp-1 italic font-medium">
-                            {proposal.sourcePainPointTitle}
-                          </p>
-                        </div>
-                      )}
+                      {(() => {
+                        const refPainObj = findReferencedPainPoint(proposal as any, questions || []);
+                        const rawRef = proposal.sourcePainPointTitle || proposal.referencedPainPoint;
+                        if (!refPainObj && !rawRef) return null;
+                        return (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (refPainObj) {
+                                if (onOpenPainPointInChuangDianZi) {
+                                  onOpenPainPointInChuangDianZi(refPainObj);
+                                } else {
+                                  setSelectedQuestion(refPainObj);
+                                }
+                              }
+                            }}
+                            className={`p-2 rounded-xl bg-rose-50/90 border border-rose-200/80 text-[11px] space-y-0.5 transition-colors ${
+                              refPainObj ? 'hover:bg-rose-100/80 hover:border-rose-300 cursor-pointer' : ''
+                            }`}
+                            title={refPainObj ? '點擊前往查看對應之痛點貼文' : undefined}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-rose-900 font-bold flex items-center gap-1">
+                                <Flame className="w-3 h-3 text-rose-600" />
+                                解決痛點：
+                              </span>
+                              {refPainObj && (
+                                <span className="text-[10px] font-black text-rose-700">
+                                  查看痛點貼文 ➔
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-stone-800 line-clamp-1 font-bold">
+                              {refPainObj ? refPainObj.title : String(rawRef).replace(/^\[[^\]]+\]\s*/, '')}
+                            </p>
+                          </div>
+                        );
+                      })()}
 
                       {/* 摘要說明：電腦版完整呈現、手機版精簡並以？收合 */}
                       <p className="hidden sm:block text-xs text-stone-600 line-clamp-3 leading-relaxed">
@@ -1500,6 +1558,46 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                       ))}
                     </div>
                   )}
+
+                  {/* 解決此痛點的提案列表預覽 */}
+                  {(() => {
+                    const solvingList = findProposalsReferencingPainPoint(pp.rawQuestion || (pp as any), questions || []);
+                    if (solvingList.length === 0) return null;
+                    return (
+                      <div className="p-2.5 rounded-2xl bg-emerald-50/90 border border-emerald-200/80 space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between text-emerald-900 font-black">
+                          <span>💡 解決此痛點的提案（{solvingList.length} 件）</span>
+                        </div>
+                        <div className="space-y-1">
+                          {solvingList.slice(0, 2).map((sp) => (
+                            <div
+                              key={sp.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const matchedInProposals = proposals.find((p) => p.id === sp.id);
+                                if (matchedInProposals) {
+                                  handleOpenProposalDetail(matchedInProposals);
+                                } else {
+                                  const matchedQ = (questions || []).find((q) => q.id === sp.id) || sp;
+                                  setSelectedQuestion(matchedQ);
+                                }
+                              }}
+                              className="p-1.5 rounded-xl bg-white hover:bg-emerald-50 border border-emerald-200/70 hover:border-emerald-400 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                              title="點擊查看解決此痛點的提案貼文"
+                            >
+                              <span className="font-bold text-stone-800 truncate">
+                                {sp.postType === 'vibecoding_app' ? '💻 ' : '💡 '}
+                                {sp.title}
+                              </span>
+                              <span className="text-[10px] font-black text-emerald-700 shrink-0">
+                                查看提案 ➔
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 底部作者與互動 */}

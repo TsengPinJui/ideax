@@ -1,4 +1,6 @@
 import { Question } from '../types';
+import { DEFAULT_DEMO_PROPOSALS } from '../data/competitionProposals';
+import { DEFAULT_VIBECODING_APPS } from '../data/vibeCodingData';
 
 /**
  * 從引用文字中萃取痛點 ID（例如 "[q-vp-pain-01] 獨立餐飲..." -> "q-vp-pain-01"）
@@ -19,17 +21,18 @@ export function extractPainPointId(referencedStr?: string): string | null {
 }
 
 /**
- * 依據提案之 referencedPainPoint 欄位，在全站問題清單中找出對應之痛點物件
+ * 依據提案之 referencedPainPoint 或 sourcePainPointTitle 欄位，在全站問題清單中找出對應之痛點物件
  */
 export function findReferencedPainPoint(
-  proposal: Question,
+  proposal: Partial<Question> & { sourcePainPointTitle?: string; sourcePainPointProposalId?: string },
   allQuestions: Question[]
 ): Question | undefined {
-  if (!proposal || !proposal.referencedPainPoint || !Array.isArray(allQuestions)) {
+  if (!proposal || !Array.isArray(allQuestions)) {
     return undefined;
   }
 
-  const refStr = proposal.referencedPainPoint.trim();
+  const rawRef = proposal.referencedPainPoint || proposal.sourcePainPointTitle || proposal.sourcePainPointProposalId || '';
+  const refStr = rawRef.trim();
   if (!refStr) return undefined;
 
   // 1. 優先從文字中提取標準 ID (如 [q-vp-pain-01] 或 q-xxx)
@@ -78,7 +81,7 @@ export function findReferencedPainPoint(
 }
 
 /**
- * 找出所有引用此痛點之提案（包含創新提案 innovation_proposal 與 VibeCoding 應用 vibecoding_app 等）
+ * 找出所有引用此痛點之提案（包含創新提案 innovation_proposal、創星季提案與 VibeCoding 軟體提案 vibecoding_app 等）
  */
 export function findProposalsReferencingPainPoint(
   painPoint: Question,
@@ -89,9 +92,40 @@ export function findProposalsReferencingPainPoint(
   const painId = painPoint.id;
   const painTitle = (painPoint.title || '').trim();
 
-  const results = allQuestions.filter((q) => {
+  // 將 DEFAULT_DEMO_PROPOSALS 轉換為相容 Question 結構一併納入關聯檢索
+  const demoAsQuestions: Question[] = DEFAULT_DEMO_PROPOSALS.filter((dp) => dp.stage !== 'pain_point').map((dp) => ({
+    id: dp.id,
+    title: dp.title,
+    description: dp.description || dp.summary,
+    category: '創新創業',
+    subcategory: '新創孵化',
+    tags: dp.tags || ['創星季', '創新提案'],
+    level: 'L0',
+    bounty: 0,
+    status: 'open',
+    authorId: dp.authorId,
+    authorName: dp.authorName,
+    authorAvatar: dp.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    authorTitle: dp.teamName || dp.organizationName,
+    createdAt: dp.createdAt,
+    deadline: '2026-12-31',
+    views: dp.viewsCount || 320,
+    likes: dp.likeCount || 35,
+    answersCount: dp.commentsCount || 5,
+    postType: 'innovation_proposal',
+    specialZone: 'create_ideas',
+    referencedPainPoint: dp.referencedPainPoint || dp.sourcePainPointTitle,
+    coverImage: dp.images && dp.images.length > 0 ? dp.images[0] : undefined,
+    supportPoints: dp.supportPoints ? Math.round(dp.supportPoints / 100) : 500,
+    supporterCount: dp.supporterCount || 30,
+  }));
+
+  const combinedPool = [...allQuestions, ...DEFAULT_VIBECODING_APPS, ...demoAsQuestions];
+
+  const results = combinedPool.filter((q) => {
     if (!q || q.id === painId || q.status === 'delisted') return false;
-    if (!q.referencedPainPoint) return false;
+    const rawRef = q.referencedPainPoint || (q as any).sourcePainPointTitle || '';
+    if (!rawRef) return false;
 
     // 必須為提案類型或作品展示
     const isProposalType =
@@ -104,7 +138,7 @@ export function findProposalsReferencingPainPoint(
 
     if (!isProposalType) return false;
 
-    const refStr = q.referencedPainPoint.trim();
+    const refStr = rawRef.trim();
 
     // 1. 包含痛點 ID (如 [q-vp-pain-01] 或 q-vp-pain-01)
     if (refStr.includes(painId)) return true;
@@ -122,7 +156,7 @@ export function findProposalsReferencingPainPoint(
     return false;
   });
 
-  // 去除重複 ID
+  // 去除重複 ID，並優先排列創新提案與軟體提案
   const seenIds = new Set<string>();
   return results.filter((item) => {
     if (seenIds.has(item.id)) return false;
@@ -144,3 +178,4 @@ export function getAllPainPoints(allQuestions: Question[]): Question[] {
       return scoreB - scoreA;
     });
 }
+

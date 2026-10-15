@@ -2246,7 +2246,7 @@ export const isTestAccountUserId = (userId?: string): boolean => {
 export const isRealRegisteredUser = (user?: User | null): boolean => {
   if (!user || !user.id) return false;
   if (user.id === 'user-guest') return false;
-  if (user.isTestAccount) return false;
+  if (user.isTestAccount || user.isSimulated) return false;
 
   const testIds = [
     'user-guest',
@@ -2268,8 +2268,16 @@ export const isRealRegisteredUser = (user?: User | null): boolean => {
     user.id.startsWith('test_') ||
     user.id.startsWith('mock-') ||
     user.id.startsWith('solver-') ||
-    user.id.startsWith('user-author-')
+    user.id.startsWith('user-author-') ||
+    user.id.startsWith('u-vc-') ||
+    user.id.startsWith('vp-user-') ||
+    user.id.startsWith('user-vibecoder-') ||
+    user.id.startsWith('demo-u-')
   ) {
+    return false;
+  }
+
+  if (user.email && user.email.endsWith('@ideax.community')) {
     return false;
   }
 

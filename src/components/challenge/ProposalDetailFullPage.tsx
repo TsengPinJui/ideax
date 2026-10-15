@@ -19,6 +19,7 @@ import {
   Undo2,
   Paperclip,
   Award,
+  Coins,
 } from 'lucide-react';
 import {
   StarSeasonProposal,
@@ -36,6 +37,7 @@ import {
 } from '../../utils/proposalContentHelper';
 import { ProposalRichContentDisplay } from './ProposalRichContentDisplay';
 import { withdrawCompetitionProposal } from '../../services/competitionAdminSync';
+import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
 
 interface ProposalDetailFullPageProps {
   proposal: StarSeasonProposal;
@@ -81,6 +83,8 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
+  const { currentUser, questions, answers, setSelectedQuestion, isSimulatedDataPurged } = useApp();
+
   const referencedPainPointProposal = React.useMemo(() => {
     if (!proposal.sourcePainPointTitle && !proposal.referencedPainPoint) return null;
     const targetStr = (proposal.sourcePainPointTitle || proposal.referencedPainPoint || '').trim();
@@ -97,9 +101,13 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
     }) || null;
   }, [proposal, allProposals]);
 
+  const referencedPainPointQuestion = React.useMemo(() => {
+    return findReferencedPainPoint(proposal as any, questions || []);
+  }, [proposal, questions]);
+
   const referencingProposalsList = React.useMemo(() => {
     if (proposal.stage !== 'pain_point') return [];
-    return (allProposals || []).filter((p) => {
+    const fromProposals = (allProposals || []).filter((p) => {
       if (p.id === proposal.id) return false;
       const refStr = (p.sourcePainPointTitle || p.referencedPainPoint || '').trim();
       if (!refStr) return false;
@@ -109,7 +117,30 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
         (proposal.title.length > 5 && refStr.includes(proposal.title))
       );
     });
-  }, [proposal, allProposals]);
+    const fromQuestions = findProposalsReferencingPainPoint(proposal as any, questions || []);
+    const merged: any[] = [...fromProposals];
+    fromQuestions.forEach((q) => {
+      if (!merged.some((m) => m.id === q.id)) {
+        merged.push({
+          ...q,
+          summary: q.description,
+          isMarketQuestion: true,
+        });
+      }
+    });
+    return merged;
+  }, [proposal, allProposals, questions]);
+
+  // 自資料庫已同步之 questions.tipsHistory 讀取打賞紀錄（不硬編碼）
+  const simulatedTipsList = React.useMemo(() => {
+    const matchedQ = (questions || []).find((q) => q.id === proposal.id);
+    if (matchedQ?.tipsHistory && matchedQ.tipsHistory.length > 0) {
+      return isSimulatedDataPurged
+        ? matchedQ.tipsHistory.filter((t) => !t.isSimulated && !t.id.startsWith('tip-sim-'))
+        : matchedQ.tipsHistory;
+    }
+    return [];
+  }, [proposal.id, questions, isSimulatedDataPurged]);
 
   const isFromCreateIdeas = React.useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -168,7 +199,6 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
     }
   };
 
-  const { currentUser } = useApp();
   const isAuthor = Boolean(
     currentUser &&
     currentUser.id !== 'user-guest' &&
@@ -389,27 +419,35 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               </span>
             </div>
 
-            {referencedPainPointProposal ? (
+            {(referencedPainPointProposal || referencedPainPointQuestion) ? (
               <div
-                onClick={() => onSelectProposal && onSelectProposal(referencedPainPointProposal)}
+                onClick={() => {
+                  if (referencedPainPointQuestion) {
+                    setSelectedQuestion(referencedPainPointQuestion);
+                  } else if (referencedPainPointProposal && onSelectProposal) {
+                    onSelectProposal(referencedPainPointProposal);
+                  }
+                }}
                 className="p-3.5 rounded-2xl bg-white border border-emerald-200 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group space-y-1.5 active:scale-[0.99]"
                 title="點擊前往查看此痛點完整需求與討論"
               >
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="text-xs sm:text-sm font-bold text-stone-900 group-hover:text-emerald-800 transition-colors line-clamp-1">
-                    {referencedPainPointProposal.title}
+                    {referencedPainPointProposal?.title || referencedPainPointQuestion?.title}
                   </h4>
                   <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
-                    +{referencedPainPointProposal.supporterCount || 0} 附議
+                    +{referencedPainPointProposal?.supporterCount || referencedPainPointQuestion?.secondedCount || 18} 附議
                   </span>
                 </div>
                 <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
-                  {referencedPainPointProposal.summary}
+                  {referencedPainPointProposal?.summary || referencedPainPointQuestion?.description}
                 </p>
                 <div className="flex items-center justify-between text-xs text-stone-400 pt-1.5 border-t border-emerald-100">
-                  <span className="text-stone-700 font-medium">👤 {referencedPainPointProposal.authorName}</span>
+                  <span className="text-stone-700 font-medium">
+                    👤 {referencedPainPointProposal?.authorName || referencedPainPointQuestion?.authorName}
+                  </span>
                   <span className="text-emerald-700 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
-                    前往痛點詳細頁面 ➔
+                    前往痛點貼文 ➔
                   </span>
                 </div>
               </div>
@@ -435,7 +473,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                 <div className="w-7 h-7 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center font-black text-sm shadow-2xs">
                   💡
                 </div>
-                <span>引用此痛點之創新提案（{referencingProposalsList.length} 件）</span>
+                <span>解決此痛點的提案（{referencingProposalsList.length} 件）</span>
               </div>
               <span className="text-xs font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full border border-amber-300">
                 雙向關聯追蹤
@@ -447,24 +485,32 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                 {referencingProposalsList.map((refP) => (
                   <div
                     key={refP.id}
-                    onClick={() => onSelectProposal && onSelectProposal(refP)}
+                    onClick={() => {
+                      const matchedInAll = (allProposals || []).find((p) => p.id === refP.id);
+                      if (matchedInAll && onSelectProposal) {
+                        onSelectProposal(matchedInAll);
+                      } else {
+                        const matchedQ = (questions || []).find((q) => q.id === refP.id) || refP;
+                        setSelectedQuestion(matchedQ);
+                      }
+                    }}
                     className="p-3.5 rounded-2xl bg-white border border-amber-200 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between gap-2.5 active:scale-[0.99]"
                     title="點擊前往查看此提案詳情"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          創新解方
+                          {refP.postType === 'vibecoding_app' ? '💻 軟體提案' : '💡 創新提案'}
                         </span>
                         <span className="text-[11px] font-mono font-bold text-amber-700">
-                          🪙 {(refP.supportPoints || 0).toLocaleString()} 創星幣
+                          🪙 {(refP.supportPoints || 500).toLocaleString()} 點支持
                         </span>
                       </div>
                       <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2">
                         {refP.title}
                       </h4>
                       <p className="text-xs text-stone-600 line-clamp-2 mt-1 leading-relaxed">
-                        {refP.summary}
+                        {refP.summary || refP.description}
                       </p>
                     </div>
                     <div className="flex items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100">
@@ -472,7 +518,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                         👤 {refP.authorName}
                       </span>
                       <span className="text-amber-600 font-bold group-hover:translate-x-0.5 transition-transform text-xs flex items-center gap-1">
-                        前往提案頁面 ➔
+                        前往提案貼文 ➔
                       </span>
                     </div>
                   </div>
@@ -725,6 +771,70 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               </a>
             </div>
           )}
+        </section>
+
+        {/* 5.5 模擬打賞與點數支持紀錄 */}
+        <section className="bg-gradient-to-br from-amber-50/90 via-orange-50/60 to-yellow-50/80 rounded-3xl p-5 sm:p-6 border border-amber-200/90 shadow-xs space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-amber-200/70 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center shadow-2xs">
+                <Coins className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-black text-stone-900 text-sm sm:text-base">
+                  近期打賞與點數支持紀錄 ({simulatedTipsList.length})
+                </h3>
+                <p className="text-[11px] text-stone-600">
+                  來自社群專家、投資人與會員的點數打賞與鼓勵留言
+                </p>
+              </div>
+            </div>
+            {onSupport && (
+              <button
+                type="button"
+                onClick={() => onSupport(proposal)}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              >
+                <Coins className="w-3.5 h-3.5" />
+                <span>立即打賞支持</span>
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {simulatedTipsList.map((tip: any) => (
+              <div
+                key={tip.id}
+                className="p-3.5 rounded-2xl bg-white/95 border border-amber-200/80 shadow-2xs flex flex-col justify-between gap-2"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <img
+                        src={tip.userAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
+                        alt={tip.userName}
+                        className="w-6 h-6 rounded-full object-cover border border-amber-200 shrink-0"
+                      />
+                      <span className="font-bold text-xs text-stone-900 truncate">
+                        {tip.userName}
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-mono font-black text-[11px] shrink-0">
+                      +🪙 {(tip.amount * 10).toLocaleString()} 點
+                    </span>
+                  </div>
+                  {tip.message && (
+                    <p className="text-xs text-stone-600 leading-relaxed line-clamp-2">
+                      「{tip.message}」
+                    </p>
+                  )}
+                </div>
+                <div className="text-[10px] text-stone-400 font-mono text-right">
+                  {tip.createdAt}
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* 6. 社群留言與回饋討論串 */}

@@ -416,6 +416,21 @@ export async function deleteAnswerFromFirestore(answerId: string): Promise<void>
   }
 }
 
+export async function deleteAnswersFromFirestore(answerIds: string[]): Promise<void> {
+  if (!answerIds || answerIds.length === 0 || isQuotaExhausted) return;
+  try {
+    const batch = writeBatch(db);
+    answerIds.forEach((id) => {
+      if (id) {
+        batch.delete(doc(db, 'answers', id));
+      }
+    });
+    await batch.commit();
+  } catch (err) {
+    handleFirestoreError('Failed to batch delete answers', err);
+  }
+}
+
 export async function syncTransactionToFirestore(tx: Transaction): Promise<void> {
   if (!tx || !tx.id || isQuotaExhausted) return;
   try {
@@ -711,6 +726,55 @@ export async function syncBookmarksToFirestore(userId: string, bookmarkedIds: st
   }
 }
 
+export async function syncUserInteractionsToFirestore(
+  userId: string,
+  interactions: {
+    bookmarkedQuestionIds?: string[];
+    secondedQuestionIds?: string[];
+    sameQuestionIds?: string[];
+    likedDiscussionAnswerIds?: string[];
+    likedQuestionIds?: string[];
+  }
+): Promise<void> {
+  if (!userId || userId === 'user-guest' || isQuotaExhausted) return;
+  try {
+    const bookmarkRef = doc(db, 'bookmarks', userId);
+    const cleanPayload = JSON.parse(JSON.stringify(interactions));
+    await setDoc(
+      bookmarkRef,
+      {
+        userId,
+        ...cleanPayload,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    handleFirestoreError(`Failed to sync user interactions for ${userId}`, err);
+  }
+}
+
+export async function loadUserInteractionsFromFirestore(userId: string): Promise<{
+  bookmarkedQuestionIds?: string[];
+  secondedQuestionIds?: string[];
+  sameQuestionIds?: string[];
+  likedDiscussionAnswerIds?: string[];
+  likedQuestionIds?: string[];
+} | null> {
+  if (!userId || userId === 'user-guest') return null;
+  try {
+    const bookmarkRef = doc(db, 'bookmarks', userId);
+    const snap = await getDoc(bookmarkRef);
+    if (snap.exists()) {
+      return snap.data() as any;
+    }
+    return null;
+  } catch (err) {
+    handleFirestoreError(`Failed to load user interactions for ${userId}`, err);
+    return null;
+  }
+}
+
 export async function syncSolversToFirestore(solvers: Solver[]): Promise<void> {
   if (!solvers || solvers.length === 0 || isQuotaExhausted) return;
   try {
@@ -764,6 +828,7 @@ export async function syncPlatformSettingsToFirestore(settings: {
   isNoPaymentMode?: boolean;
   isRaceMode?: boolean;
   isHideTestAccounts?: boolean;
+  isSimulatedDataPurged?: boolean;
 }): Promise<void> {
   if (isQuotaExhausted) return;
   try {
@@ -788,6 +853,7 @@ export function subscribePlatformSettingsFromFirestore(
     isNoPaymentMode?: boolean;
     isRaceMode?: boolean;
     isHideTestAccounts?: boolean;
+    isSimulatedDataPurged?: boolean;
   }) => void
 ): Unsubscribe | null {
   if (isQuotaExhausted) return null;
@@ -806,6 +872,7 @@ export function subscribePlatformSettingsFromFirestore(
             isNoPaymentMode: data.isNoPaymentMode,
             isRaceMode: data.isRaceMode,
             isHideTestAccounts: data.isHideTestAccounts,
+            isSimulatedDataPurged: data.isSimulatedDataPurged,
           });
         }
       },

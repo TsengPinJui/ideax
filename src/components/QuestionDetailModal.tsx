@@ -311,8 +311,12 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const [isMatching, setIsMatching] = useState(false);
   const [invitedSolvers, setInvitedSolvers] = useState<Record<string, boolean>>({});
 
-  // Active Tab: 'solutions' (專業方案) vs 'discussions' (討論留言)
-  const [activeTab, setActiveTab] = useState<'solutions' | 'discussions'>('solutions');
+  // Active Tab: 預設優先顯示 'discussions' (公開討論留言)，再切換至 'solutions' (解決方案)
+  const [activeTab, setActiveTab] = useState<'solutions' | 'discussions'>('discussions');
+
+  useEffect(() => {
+    setActiveTab('discussions');
+  }, [question.id]);
 
   // SEO & Share modal
   const [isSeoModalOpen, setIsSeoModalOpen] = useState(false);
@@ -1362,100 +1366,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
         </div>
 
-        {/* 痛點專用：引用此痛點之創新提案與解方（雙向關聯與互聯跳轉） */}
-        {isPainPoint && (
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50/80 via-orange-50/40 to-white border border-amber-300/90 shadow-2xs space-y-3.5">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-2xs text-sm">
-                  💡
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-sm sm:text-base text-stone-900">
-                    引用此痛點的創新提案與解答 ({referencingProposals.length})
-                  </h4>
-                  <p className="text-[11px] text-stone-500">
-                    全站已針對此痛點延伸出的提案與專案解法
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
-                雙向關聯追蹤
-              </span>
-            </div>
 
-            {referencingProposals.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {referencingProposals.map((prop) => (
-                  <div
-                    key={prop.id}
-                    onClick={() => handleSelectQuestion(prop)}
-                    className="p-3.5 rounded-xl bg-white border border-amber-200/90 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between gap-2.5 active:scale-[0.99]"
-                    title="點擊前往查看此提案詳情"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
-                          {prop.postType === 'vibecoding_app' ? 'VibeCoding 應用' : '創新解方提案'}
-                        </span>
-                        <span className="text-[10px] font-mono font-bold text-amber-700">
-                          🪙 {((prop.supportPoints || 0) * 10).toLocaleString()} 點
-                        </span>
-                      </div>
-                      <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-amber-900 transition-colors line-clamp-2">
-                        {prop.title}
-                      </h4>
-                      <p className="text-[11px] text-stone-600 line-clamp-2 mt-1 leading-relaxed">
-                        {prop.description}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-stone-400 pt-1.5 border-t border-amber-50">
-                      <div className="flex items-center gap-1">
-                        <img
-                          src={prop.authorAvatar}
-                          alt={prop.authorName}
-                          className="w-3.5 h-3.5 rounded-full object-cover"
-                        />
-                        <span className="text-stone-700 font-medium">{prop.authorName}</span>
-                      </div>
-                      <span className="text-amber-700 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
-                        前往提案 ➔
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-4 rounded-xl bg-white/80 border border-dashed border-amber-300 text-center space-y-2">
-                <p className="text-xs text-stone-600 font-medium">
-                  目前尚無提案引用此痛點，歡迎成為第一位針對此痛點提出創新方案的人！
-                </p>
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={handleGoToChallengeProposal}
-                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-colors cursor-pointer shadow-2xs"
-                  >
-                    提案參賽(不賺賞金)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (currentUser.id === 'user-guest') {
-                        promptLogin('訪客模式請先登入帳號以提出方案');
-                        return;
-                      }
-                      onOpenSubmitAnswer('solution');
-                    }}
-                    className="px-3.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black transition-colors cursor-pointer shadow-2xs"
-                  >
-                    提案懸賞(不參賽)
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {effectiveAiAnalysis && (
           <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/50 border border-amber-200 space-y-4">
@@ -1983,23 +1894,11 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           </div>
         )}
 
-        {/* Dual-Track Tabs: 討論 (留言式無賞金) vs 方案 (付費解鎖) */}
+        {/* Dual-Track Tabs: 公開討論 (留言式無賞金，優先顯示) vs 解決方案 (付費解鎖/延伸提案) */}
         <div className="space-y-4 pt-4 border-t border-stone-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Tab Navigation */}
+            {/* Tab Navigation：討論在前、方案在後 */}
             <div className="inline-flex p-1 rounded-2xl bg-stone-100 border border-stone-200">
-              <button
-                onClick={() => setActiveTab('solutions')}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'solutions'
-                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <Award className="w-4 h-4 text-amber-600" />
-                <span>解決方案（{solutionAnswers.length}）</span>
-              </button>
-
               <button
                 onClick={() => setActiveTab('discussions')}
                 className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -2011,10 +1910,22 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 <MessageSquare className={`w-4 h-4 ${activeTab === 'discussions' ? 'text-white' : 'text-blue-600'}`} />
                 <span>公開討論（{discussionAnswers.length}）</span>
               </button>
+
+              <button
+                onClick={() => setActiveTab('solutions')}
+                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'solutions'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <Award className="w-4 h-4 text-amber-600" />
+                <span>解決方案（{solutionAnswers.length + referencingProposals.length}）</span>
+              </button>
             </div>
           </div>
 
-          {/* TAB 1: SOLUTIONS (付費/解鎖方案) */}
+          {/* TAB: SOLUTIONS (付費/解鎖方案 與 引用此痛點之提案) */}
           {activeTab === 'solutions' && (
             <div className="space-y-4">
               {isPainPoint && (
@@ -2028,7 +1939,50 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 </div>
               )}
 
-              {solutionAnswers.length === 0 ? (
+              {referencingProposals.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {referencingProposals.map((prop) => (
+                    <div
+                      key={prop.id}
+                      onClick={() => handleSelectQuestion(prop)}
+                      className="p-3.5 rounded-xl bg-white border border-amber-200/90 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between gap-2.5 active:scale-[0.99]"
+                      title="點擊前往查看此提案詳情"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
+                            {prop.postType === 'vibecoding_app' ? 'VibeCoding 應用' : '創新解方提案'}
+                          </span>
+                          <span className="text-[10px] font-mono font-bold text-amber-700">
+                            🪙 {((prop.supportPoints || 0) * 10).toLocaleString()} 點
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-amber-900 transition-colors line-clamp-2">
+                          {prop.title}
+                        </h4>
+                        <p className="text-[11px] text-stone-600 line-clamp-2 mt-1 leading-relaxed">
+                          {prop.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-stone-400 pt-1.5 border-t border-amber-50">
+                        <div className="flex items-center gap-1">
+                          <img
+                            src={prop.authorAvatar}
+                            alt={prop.authorName}
+                            className="w-3.5 h-3.5 rounded-full object-cover"
+                          />
+                          <span className="text-stone-700 font-medium">{prop.authorName}</span>
+                        </div>
+                        <span className="text-amber-700 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                          前往提案 ➔
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {solutionAnswers.length === 0 && referencingProposals.length === 0 ? (
                 <div className="p-8 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-300">
                   <Award className="w-8 h-8 text-amber-600 mx-auto mb-2 opacity-80" />
                   <p className="text-sm font-semibold text-stone-700">目前尚無專家提交深度解決方案</p>

@@ -572,6 +572,8 @@ export interface User {
   avatar: string;
   role: UserRole;
   isTestAccount?: boolean; // 是否為一鍵生成或測試帳號
+  isSimulated?: boolean; // 是否為系統模擬創作者帳號（可於未來一鍵刪除）
+  simulatedBatchId?: string; // 模擬資料批次標記 (例如 ideax_virtual_seed_v1)
   isInitialAdmin?: boolean; // 是否為系統初始創始管理員（唯一具有指派其他用戶為管理員之權限）
   adminSites?: AdminSite[]; // 授權管轄站點清單：['site_a'] (IdeaX主站) | ['site_b'] (創星季賽事專區) | ['site_a', 'site_b'] (雙站管理員)
   balance: number; // 相容欄位（預設 0，全面以第三方支付與直接撥款為主）
@@ -928,6 +930,8 @@ export interface Question {
   screenshots?: string[]; // 截圖清單（相容 galleryImages）
   version?: string; // 相容 currentVersion
   vibeCodingData?: any; // VibeCoding 專屬規格與作品資料
+  isSimulated?: boolean; // 是否為系統模擬貼文（可於未來一鍵刪除）
+  simulatedBatchId?: string; // 模擬資料批次標記 (例如 ideax_virtual_seed_v1)
   tipsHistory?: Array<{
     id: string;
     userId: string;
@@ -936,6 +940,7 @@ export interface Question {
     amount: number;
     message?: string;
     createdAt: string;
+    isSimulated?: boolean;
   }>;
 }
 
@@ -1095,6 +1100,8 @@ export interface Answer {
   supportPoints?: number; // 創星季模擬募資點數
   coverImageUrl?: string; // 提案卡片封面圖片
   commentsCount?: number; // 討論數
+  isSimulated?: boolean; // 是否為系統模擬解答/討論留言（可於未來一鍵刪除）
+  simulatedBatchId?: string; // 模擬資料批次標記 (例如 ideax_virtual_seed_v1)
 }
 
 export interface ChatCustomOffer {

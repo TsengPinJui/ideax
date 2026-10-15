@@ -21,6 +21,7 @@ import {
   JudgeApplicationData,
   ProposalComment,
 } from '../types/competition';
+import { getSimulatedCommentsForProposalId } from '../data/virtualProposalsSeed';
 
 async function getAuthHeader(): Promise<HeadersInit> {
   const user = auth.currentUser;
@@ -310,7 +311,10 @@ export async function adminConfirmAward(params: {
 /**
  * 愛心按讚 / 取消按讚提案（社群互動，更新收藏名單）
  */
-export async function toggleLikeProposal(proposalId: string): Promise<{
+export async function toggleLikeProposal(
+  proposalId: string,
+  currentLikesCount?: number
+): Promise<{
   success: boolean;
   liked: boolean;
   likeCount: number;
@@ -324,8 +328,13 @@ export async function toggleLikeProposal(proposalId: string): Promise<{
   const res = await fetch(`/api/competition/proposals/${proposalId}/like`, {
     method: 'POST',
     headers,
+    body: JSON.stringify({ currentLikesCount }),
   });
-  return await res.json();
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || '按讚失敗');
+  }
+  return data;
 }
 
 export const likeProposal = toggleLikeProposal;
@@ -351,13 +360,16 @@ export async function fetchUserLikedProposalIds(): Promise<string[]> {
  * 取得提案討論留言列表
  */
 export async function fetchProposalComments(proposalId: string): Promise<ProposalComment[]> {
+  const simulated = getSimulatedCommentsForProposalId(proposalId);
   try {
     const res = await fetch(`/api/competition/proposals/${proposalId}/comments`);
-    if (!res.ok) return [];
+    if (!res.ok) return simulated;
     const data = await res.json();
-    return data.comments || [];
+    const serverComments: ProposalComment[] = data.comments || [];
+    const serverIds = new Set(serverComments.map((c) => c.id));
+    return [...serverComments, ...simulated.filter((c) => !serverIds.has(c.id))];
   } catch {
-    return [];
+    return simulated;
   }
 }
 
