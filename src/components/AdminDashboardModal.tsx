@@ -1943,7 +1943,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               )}
               {pendingConfirm.type === 'race' && (
                 pendingConfirm.nextState
-                  ? '即將開啟【競賽模式 (RACE)】：（全站平台同步生效）舊站問題市場將提供「創點子/痛點集」與「L0問題討論區」主題捷徑，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽圖文卡片展示並含獨立網址；頁尾同步顯示 RACE 簡稱。本模式與正式營運、無金流、測試環境為四選一互斥。'
+                  ? '即將開啟【競賽模式 (RACE)】：（全站平台同步生效）舊站問題市場將提供「創點子/痛點集」與「L0討論區」主題捷徑，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽圖文卡片展示並含獨立網址；頁尾同步顯示 RACE 簡稱。本模式與正式營運、無金流、測試環境為四選一互斥。'
                   : '即將關閉【競賽模式】：系統將自動切換為【正式營運模式 (NORM)】。'
               )}
               {pendingConfirm.type === 'demo' && (

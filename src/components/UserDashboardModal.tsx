@@ -10747,7 +10747,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 pendingModeConfirm.nextState ? (
                   <p>
                     <strong>即將開啟【競賽模式 (RACE)】：（全站平台同步生效）</strong><br />
-                    舊站問題市場將提供<strong>「創點子/痛點集」與「L0問題討論區」主題捷徑</strong>，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽圖文卡片展示並含獨立網址；全站頁尾同步顯示英文簡稱 <strong>RACE</strong>。本模式與正式營運、無金流、測試環境為四選一互斥。
+                    舊站問題市場將提供<strong>「創點子/痛點集」與「L0討論區」主題捷徑</strong>，痛點限定 L0 且標注綠色「創星季」標籤與獨立網址，方案以競賽圖文卡片展示並含獨立網址；全站頁尾同步顯示英文簡稱 <strong>RACE</strong>。本模式與正式營運、無金流、測試環境為四選一互斥。
                   </p>
                 ) : (
                   <p>

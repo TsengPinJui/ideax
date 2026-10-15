@@ -1648,7 +1648,7 @@ function MainContent() {
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
-                          <span>L0問題討論區</span>
+                          <span>L0討論區</span>
                           <button
                             onClick={() => handleTogglePin('special_zone', 'l0_discussion')}
                             className={`p-1 rounded-lg transition-all cursor-pointer ${
@@ -1665,7 +1665,7 @@ function MainContent() {
                           </span>
                         </h3>
                         <HelpTooltip
-                          title="L0問題討論區說明"
+                          title="L0討論區說明"
                           content="無門檻日常交流、閒聊討論、觀點碰撞與輕量求助。完全免費公開，適合社群激盪與早期方向探索。"
                           onLearnMore={() => setActiveTab('about')}
                         />

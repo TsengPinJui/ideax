@@ -1,5 +1,5 @@
 // IdeaX 創點子 - Progressive Web App Service Worker
-const CACHE_NAME = 'ideax-pwa-v7';
+const CACHE_NAME = 'ideax-pwa-v8';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',

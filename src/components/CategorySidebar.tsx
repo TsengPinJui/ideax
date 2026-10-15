@@ -519,7 +519,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               </span>
             </button>
 
-            {/* ② ［L0問題討論區］ */}
+            {/* ② ［L0討論區］ */}
             <button
               onClick={() => handleSelectZone('l0_discussion')}
               className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
@@ -534,7 +534,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-blue-700 transition-colors flex items-center gap-1.5">
-                    <span>L0問題討論區</span>
+                    <span>L0討論區</span>
                   </div>
                   <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
                     無賞金交流、閒聊討論與觀點碰撞

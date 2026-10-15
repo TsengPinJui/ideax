@@ -89,7 +89,7 @@ const ONBOARDING_STEPS: OnboardingStepConfig[] = [
   },
   {
     id: 7,
-    title: '7. 痛點許願池 & L0問題討論區',
+    title: '7. 痛點許願池 & L0討論區',
     targetId: 'onboarding-step-7-special-zones',
     icon: Lightbulb,
     targetTab: 'explore',
