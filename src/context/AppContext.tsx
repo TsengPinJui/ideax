@@ -1204,11 +1204,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (q.views || 0);
       return {
         ...q,
+        title: typeof q.title === 'string' ? q.title : '',
+        description: typeof q.description === 'string' ? q.description : '',
+        tags: Array.isArray(q.tags) ? q.tags : [],
         bounty: typeof q.bounty === 'number' ? q.bounty : 0,
         withheldBounty: typeof q.withheldBounty === 'number' ? q.withheldBounty : (q.bounty || 0),
         views: count,
         viewsCount: count,
       };
+    };
+
+    const isValidQ = (q: any): boolean =>
+      Boolean(q && typeof q.id === 'string' && q.id.trim().length > 0 && typeof q.title === 'string' && q.title.trim().length > 0);
+
+    const dedupeQuestions = (list: Question[]): Question[] => {
+      const seen = new Set<string>();
+      const out: Question[] = [];
+      for (const item of list) {
+        if (item && item.id && !seen.has(item.id)) {
+          seen.add(item.id);
+          out.push(item);
+        }
+      }
+      return out;
     };
 
     const isDelistedExpired = (q: any): boolean => {
@@ -1225,21 +1243,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            const existingIds = new Set(parsed.map((q: any) => q.id));
+            const validParsed = parsed.filter(isValidQ);
+            const existingIds = new Set(validParsed.map((q: any) => q.id));
             const missingVirtual = ALL_VIRTUAL_PROPOSALS_SEED.filter(
               (vq) => !existingIds.has(vq.id) && !deletedIds.has(vq.id)
             );
-            return [...parsed, ...missingVirtual]
-              .filter((q: any) => !deletedIds.has(q.id) && !isMockQuestionId(q.id, q.authorId) && !isDelistedExpired(q))
-              .map(sanitizeQuestion);
+            return dedupeQuestions(
+              [...validParsed, ...missingVirtual]
+                .filter((q: any) => isValidQ(q) && !deletedIds.has(q.id) && !isMockQuestionId(q.id, q.authorId) && !isDelistedExpired(q))
+                .map(sanitizeQuestion)
+            );
           }
         }
       } catch {
         // ignore
       }
-      return ALL_VIRTUAL_PROPOSALS_SEED
-        .filter((q) => !deletedIds.has(q.id) && !isDelistedExpired(q))
-        .map(sanitizeQuestion);
+      return dedupeQuestions(
+        ALL_VIRTUAL_PROPOSALS_SEED
+          .filter((q) => !deletedIds.has(q.id) && !isDelistedExpired(q))
+          .map(sanitizeQuestion)
+      );
     }
     // 測試環境 (TEST / DEMO)：加回所有題目與虛擬創作者提案，嚴格過濾黑名單（永久刪除與過期下架）
     const combinedSeeds = [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS];
@@ -1248,19 +1271,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const parsedIdMap = new Set(parsed.map((q: any) => q.id));
+          const validParsed = parsed.filter(isValidQ);
+          const parsedIdMap = new Set(validParsed.map((q: any) => q.id));
           const missingSeeds = combinedSeeds.filter((mq) => !parsedIdMap.has(mq.id) && !deletedIds.has(mq.id));
-          return [...parsed, ...missingSeeds]
-            .filter((q: any) => !deletedIds.has(q.id) && !isDelistedExpired(q))
-            .map(sanitizeQuestion);
+          return dedupeQuestions(
+            [...validParsed, ...missingSeeds]
+              .filter((q: any) => isValidQ(q) && !deletedIds.has(q.id) && !isDelistedExpired(q))
+              .map(sanitizeQuestion)
+          );
         }
       }
     } catch {
       // ignore
     }
-    return combinedSeeds
-      .filter((q) => !deletedIds.has(q.id) && !isDelistedExpired(q))
-      .map(sanitizeQuestion);
+    return dedupeQuestions(
+      combinedSeeds
+        .filter((q) => !deletedIds.has(q.id) && !isDelistedExpired(q))
+        .map(sanitizeQuestion)
+    );
   });
 
   const [solvers, setSolvers] = useState<Solver[]>(() => {
@@ -1920,7 +1948,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const realClicks = getRealClicks();
         const expiredIds: string[] = [];
         const filteredQ = cloudData.questions
-          .filter((q) => !deletedIds.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
+          .filter((q) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()) && !deletedIds.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
           .filter((q) => {
             if (q.status === 'delisted' && q.delistedAt) {
               if (now - new Date(q.delistedAt).getTime() >= SEVEN_DAYS_MS) {
@@ -1938,6 +1966,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             );
             return {
               ...q,
+              tags: Array.isArray(q.tags) ? q.tags : [],
               views: highestViews,
               viewsCount: highestViews,
             };
@@ -1962,7 +1991,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (missingVirtualForCloud.length > 0) {
           syncQuestionsToFirestore(missingVirtualForCloud);
         }
-        const finalMergedQ = [...filteredQ, ...missingVirtualForCloud];
+        const seenPull = new Set<string>();
+        const finalMergedQ = [...filteredQ, ...missingVirtualForCloud].filter((q) => {
+          if (!q || !q.id || seenPull.has(q.id)) return false;
+          seenPull.add(q.id);
+          return true;
+        });
 
         setQuestions(finalMergedQ);
         try {
@@ -2060,7 +2094,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const expiredIdsOnBoot: string[] = [];
 
         setQuestions((prev) => {
+          const seen = new Set<string>();
           const remaining = prev.filter((q) => {
+            if (!q || typeof q.id !== 'string' || !q.id.trim() || typeof q.title !== 'string' || !q.title.trim()) return false;
+            if (seen.has(q.id)) return false;
+            seen.add(q.id);
             if (deletedIds.has(q.id)) return false;
             if (q.status === 'delisted' && q.delistedAt) {
               if (now - new Date(q.delistedAt).getTime() >= SEVEN_DAYS_MS) {
@@ -2151,7 +2189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             };
             const realClicks = getRealClicks();
             const filteredQ = cloudData.questions
-              .filter((q) => !currentDeleted.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
+              .filter((q) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()) && !currentDeleted.has(q.id) && (isDemo || !isMockQuestionId(q.id, q.authorId)))
               .filter((q) => {
                 if (q.status === 'delisted' && q.delistedAt) {
                   return now - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
@@ -2180,6 +2218,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 );
                 return {
                   ...q,
+                  tags: Array.isArray(q.tags) ? q.tags : [],
                   views: highestViews,
                   viewsCount: highestViews,
                 };
@@ -2192,7 +2231,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               syncQuestionsToFirestore(missingVirtualForCloud);
               syncUsersToFirestore(VIRTUAL_PERSONA_USERS);
             }
-            const finalMergedQ = [...filteredQ, ...missingVirtualForCloud];
+            const seenMerged = new Set<string>();
+            const finalMergedQ = [...filteredQ, ...missingVirtualForCloud].filter((q) => {
+              if (!q || !q.id || seenMerged.has(q.id)) return false;
+              seenMerged.add(q.id);
+              return true;
+            });
             setQuestions(finalMergedQ);
             try {
               localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalMergedQ));
@@ -2261,7 +2305,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const currentDeleted = getDeletedQuestionIds();
           const isCurrentDemo = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
           const valid = updatedCloudQuestions
-            .filter((q) => !currentDeleted.has(q.id) && (isCurrentDemo || !isMockQuestionId(q.id, q.authorId)))
+            .filter((q) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()) && !currentDeleted.has(q.id) && (isCurrentDemo || !isMockQuestionId(q.id, q.authorId)))
             .filter((q) => {
               if (q.status === 'delisted' && q.delistedAt) {
                 return Date.now() - new Date(q.delistedAt).getTime() < SEVEN_DAYS_MS;
@@ -2270,7 +2314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             })
             .map((rawQ) => {
               const seedItem = ALL_VIRTUAL_PROPOSALS_SEED.find((vq) => vq.id === rawQ.id);
-              return seedItem
+              const merged = seedItem
                 ? {
                     ...seedItem,
                     ...rawQ,
@@ -2283,12 +2327,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     currentVersion: rawQ.currentVersion || seedItem.currentVersion,
                   }
                 : rawQ;
+              return {
+                ...merged,
+                tags: Array.isArray(merged.tags) ? merged.tags : [],
+              };
             });
           const validIdSet = new Set(valid.map((q) => q.id));
           const missingVirtual = ALL_VIRTUAL_PROPOSALS_SEED.filter(
             (vq) => !validIdSet.has(vq.id) && !currentDeleted.has(vq.id)
           );
-          const finalValid = [...valid, ...missingVirtual];
+          const seenValid = new Set<string>();
+          const finalValid = [...valid, ...missingVirtual].filter((q) => {
+            if (!q || !q.id || seenValid.has(q.id)) return false;
+            seenValid.add(q.id);
+            return true;
+          });
           setQuestions(finalValid);
           try {
             localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalValid));

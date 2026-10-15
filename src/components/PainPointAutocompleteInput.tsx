@@ -31,22 +31,26 @@ export const PainPointAutocompleteInput: React.FC<PainPointAutocompleteInputProp
   const containerRef = useRef<HTMLDivElement>(null);
 
   const activeQuestions = useMemo(() => {
-    if (questions && questions.length > 0) return questions;
-    return appCtx?.questions || [];
+    const raw = questions && questions.length > 0 ? questions : (appCtx?.questions || []);
+    return raw.filter((q) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()));
   }, [questions, appCtx?.questions]);
 
   // 整理可供搜尋的公開痛點與全站問題清單
   const allPainPoints = useMemo(() => {
-    const listFromQuestions = activeQuestions.map((q) => ({
-      id: q.id,
-      title: q.title,
-      category: q.category || '痛點洞察',
-      isPainPoint:
-        q.postType === 'pain_point' ||
-        q.specialZone === 'pain_points' ||
-        q.title.includes('痛點') ||
-        q.tags?.some((t) => t.includes('痛點')),
-    }));
+    const listFromQuestions = activeQuestions.map((q) => {
+      const safeTitle = q.title || '';
+      const safeId = q.id || '';
+      return {
+        id: safeId,
+        title: safeTitle,
+        category: q.category || '痛點洞察',
+        isPainPoint:
+          q.postType === 'pain_point' ||
+          q.specialZone === 'pain_points' ||
+          safeTitle.includes('痛點') ||
+          (Array.isArray(q.tags) && q.tags.some((t) => typeof t === 'string' && t.includes('痛點'))),
+      };
+    });
 
     // 優先排列痛點標記對象
     const sortedQuestions = listFromQuestions.sort((a, b) => {
@@ -55,11 +59,19 @@ export const PainPointAutocompleteInput: React.FC<PainPointAutocompleteInputProp
       return 0;
     });
 
-    const combined = [...sortedQuestions];
+    const seenIds = new Set<string>();
+    const combined: typeof sortedQuestions = [];
+    sortedQuestions.forEach((item) => {
+      if (item.id && !seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        combined.push(item);
+      }
+    });
 
     // 補齊 demo 痛點若無重複
     DEFAULT_DEMO_PAIN_POINTS.forEach((demo) => {
-      if (!combined.some((item) => item.id === demo.id || item.title === demo.title)) {
+      if (!seenIds.has(demo.id) && !combined.some((item) => item.title === demo.title)) {
+        seenIds.add(demo.id);
         combined.push({ ...demo, category: demo.category as any, isPainPoint: true });
       }
     });
@@ -74,9 +86,9 @@ export const PainPointAutocompleteInput: React.FC<PainPointAutocompleteInputProp
 
     return allPainPoints.filter(
       (p) =>
-        p.title.toLowerCase().includes(term) ||
-        p.id.toLowerCase().includes(term) ||
-        p.category.toLowerCase().includes(term)
+        (p.title || '').toLowerCase().includes(term) ||
+        (p.id || '').toLowerCase().includes(term) ||
+        String(p.category || '').toLowerCase().includes(term)
     );
   }, [value, allPainPoints]);
 

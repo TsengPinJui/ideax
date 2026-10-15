@@ -198,9 +198,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           {/* 1~3 個標籤 (方格模式不綁定點擊搜尋，避免手機滑動誤觸) */}
           {question.tags && question.tags.length > 0 && (
             <div className="flex items-center gap-1 flex-wrap pt-0.5">
-              {question.tags.slice(0, 3).map((tag) => (
+              {question.tags.slice(0, 3).map((tag, idx) => (
                 <span
-                  key={tag}
+                  key={`${tag}-${idx}`}
                   className="text-[9.5px] font-medium px-1.5 py-0.2 rounded border truncate max-w-[80px] select-none pointer-events-none text-stone-600 bg-stone-100 border-stone-200/70"
                 >
                   #{tag}
@@ -391,16 +391,26 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             {question.title}
           </h3>
 
-          {/* Tags (條列式模式不綁定點擊搜尋，避免手機滑動誤觸) */}
+          {/* Tags */}
           {question.tags && question.tags.length > 0 && (
             <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-              {question.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10.5px] font-medium px-2 py-0.2 rounded border select-none pointer-events-none text-stone-600 bg-stone-100 border-stone-200"
+              {question.tags.map((tag, idx) => (
+                <button
+                  key={`${tag}-${idx}`}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onSearchTag) {
+                      onSearchTag(tag);
+                    } else {
+                      setSearchQuery(tag.replace(/^#/, ''));
+                    }
+                  }}
+                  className="text-[10.5px] font-medium px-2 py-0.2 rounded border select-none text-stone-600 bg-stone-100 hover:bg-amber-100 hover:text-amber-950 hover:border-amber-300 border-stone-200 transition-colors cursor-pointer"
+                  title={`點擊搜尋「#${tag}」`}
                 >
                   #{tag}
-                </span>
+                </button>
               ))}
             </div>
           )}
@@ -634,12 +644,22 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         {question.tags && question.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {question.tags.map((tag, idx) => (
-              <span
+              <button
                 key={idx}
-                className="text-[11px] font-medium text-stone-500 bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded-md transition-colors"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onSearchTag) {
+                    onSearchTag(tag);
+                  } else {
+                    setSearchQuery(tag.replace(/^#/, ''));
+                  }
+                }}
+                className="text-[11px] font-medium text-stone-600 bg-stone-100 hover:bg-amber-100 hover:text-amber-900 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-transparent hover:border-amber-300"
+                title={`點擊搜尋「#${tag}」`}
               >
                 #{tag}
-              </span>
+              </button>
             ))}
           </div>
         )}

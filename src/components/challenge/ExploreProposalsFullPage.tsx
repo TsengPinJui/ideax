@@ -288,12 +288,16 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
     if (selectedTrack !== 'all' && p.track !== selectedTrack) return false;
     if (searchKeyword.trim()) {
-      const kw = searchKeyword.trim().toLowerCase();
-      const matchTitle = p.title.toLowerCase().includes(kw);
-      const matchSummary = p.summary.toLowerCase().includes(kw);
-      const matchAuthor = p.authorName.toLowerCase().includes(kw);
-      const matchPain = p.sourcePainPointTitle?.toLowerCase().includes(kw) || false;
-      if (!matchTitle && !matchSummary && !matchAuthor && !matchPain) return false;
+      const rawKw = searchKeyword.trim().toLowerCase();
+      const kw = rawKw.replace(/^#/, '').trim();
+      if (kw) {
+        const matchTitle = p.title.toLowerCase().includes(kw);
+        const matchSummary = p.summary.toLowerCase().includes(kw);
+        const matchAuthor = p.authorName.toLowerCase().includes(kw);
+        const matchPain = p.sourcePainPointTitle?.toLowerCase().includes(kw) || false;
+        const matchTag = p.tags?.some((t: string) => t.toLowerCase().includes(kw)) || false;
+        if (!matchTitle && !matchSummary && !matchAuthor && !matchPain && !matchTag) return false;
+      }
     }
     return true;
   });
@@ -441,12 +445,15 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         }
       }
       if (searchKeyword.trim()) {
-        const kw = searchKeyword.trim().toLowerCase();
-        const matchTitle = item.title.toLowerCase().includes(kw);
-        const matchDesc = item.description?.toLowerCase().includes(kw);
-        const matchAuthor = item.authorName.toLowerCase().includes(kw);
-        const matchTag = item.tags.some((t: string) => t.toLowerCase().includes(kw));
-        if (!matchTitle && !matchDesc && !matchAuthor && !matchTag) return false;
+        const rawKw = searchKeyword.trim().toLowerCase();
+        const kw = rawKw.replace(/^#/, '').trim();
+        if (kw) {
+          const matchTitle = item.title.toLowerCase().includes(kw);
+          const matchDesc = item.description?.toLowerCase().includes(kw);
+          const matchAuthor = item.authorName.toLowerCase().includes(kw);
+          const matchTag = item.tags.some((t: string) => t.toLowerCase().includes(kw));
+          if (!matchTitle && !matchDesc && !matchAuthor && !matchTag) return false;
+        }
       }
       return true;
     });

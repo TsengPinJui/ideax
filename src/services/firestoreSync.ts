@@ -122,12 +122,8 @@ export async function incrementQuestionViewInFirestore(questionId: string, amoun
       updatedAt: new Date().toISOString(),
     });
   } catch (err) {
-    try {
-      const qRef = doc(db, 'questions', questionId);
-      await setDoc(qRef, { views: increment(amount), viewsCount: increment(amount), updatedAt: new Date().toISOString() }, { merge: true });
-    } catch (e) {
-      handleFirestoreError(`Failed to increment views for question ${questionId}`, e);
-    }
+    // Ignore if document does not exist in Firestore yet; do not create a partial skeleton document without title/id
+    handleFirestoreError(`Failed to increment views for question ${questionId}`, err);
   }
 }
 
@@ -302,7 +298,12 @@ export function subscribeToQuestions(onUpdate: (questions: Question[]) => void):
       collection(db, 'questions'),
       (snapshot) => {
         if (!snapshot.empty) {
-          const list = snapshot.docs.map((d) => d.data() as Question);
+          const list = snapshot.docs
+            .map((d) => {
+              const data = d.data();
+              return { id: d.id, ...data } as Question;
+            })
+            .filter((q) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()));
           onUpdate(list);
         }
       },
@@ -987,7 +988,12 @@ export async function loadAllDataFromFirestore(): Promise<{
       result.users = usersSnap.docs.map((d) => d.data() as User);
     }
     if (!qSnap.empty) {
-      result.questions = qSnap.docs.map((d) => d.data() as Question);
+      result.questions = qSnap.docs
+        .map((d) => {
+          const data = d.data();
+          return { id: d.id, ...data } as Question;
+        })
+        .filter((q) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()));
     }
     if (!aSnap.empty) {
       result.answers = aSnap.docs.map((d) => d.data() as Answer);

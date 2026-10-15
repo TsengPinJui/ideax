@@ -435,14 +435,15 @@ function MainContent() {
   const [unpinConfirmOpen, setUnpinConfirmOpen] = useState(false);
 
   const handleSearchTag = (tag: string) => {
-    setSearchQuery(tag);
+    const rawTag = tag.replace(/^#/, '').trim();
+    setSearchQuery(rawTag);
     setActiveTab('explore');
     setSelectedQuestion(null);
     setSelectedSolver(null);
     setSelectedCategory('全部');
     setSelectedSubcategory('全部');
     setSpecialZone('all');
-    recordUserSearchKeyword(currentUser.id, tag);
+    recordUserSearchKeyword(currentUser.id, rawTag);
     setUserProfileVersion((v) => v + 1);
     setTimeout(() => {
       const el = document.getElementById('market-grid');
@@ -996,10 +997,17 @@ function MainContent() {
   // - 人物帳號 (Author name, author ID/account, author title, answer solver name, solver ID, solver title, solvers directory)
   // 基礎有效問題池：已排除管理員下架、已過期之案件；若非測試環境（正式營運模式）則排除模擬數據
   const baseQuestions = useMemo(() => {
+    const seenIds = new Set<string>();
     return (isDemoMode
       ? questions
-      : questions.filter((q) => !isMockQuestionId(q.id, q.authorId))
+      : questions.filter((q) => Boolean(q && q.id) && !isMockQuestionId(q.id, q.authorId))
     ).filter((q) => {
+      if (!q || typeof q.id !== 'string' || !q.id.trim() || typeof q.title !== 'string' || !q.title.trim()) {
+        return false;
+      }
+      if (seenIds.has(q.id)) return false;
+      seenIds.add(q.id);
+
       // 1. 排除已被管理員下架的問題
       if (q.status === 'delisted') return false;
 
@@ -1030,7 +1038,8 @@ function MainContent() {
   }, [baseQuestions]);
 
   const filteredQuestions = useMemo(() => {
-    const qTerm = searchQuery.trim().toLowerCase();
+    const rawTerm = searchQuery.trim().toLowerCase();
+    const qTerm = rawTerm.replace(/^#/, '').trim();
 
     return baseQuestions
       .filter((q) => {
@@ -1255,6 +1264,7 @@ function MainContent() {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
   }, [
+    baseQuestions,
     questions,
     answers,
     solvers,
@@ -1756,9 +1766,9 @@ function MainContent() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {matchingSolvers.slice(0, 4).map((solver) => (
+                      {matchingSolvers.slice(0, 4).map((solver, idx) => (
                         <div
-                          key={solver.id}
+                          key={`${solver.id || 'solver'}-${idx}`}
                           className="p-3 bg-white rounded-xl border border-amber-200/90 hover:border-amber-400 hover:shadow-sm transition-all flex flex-col justify-between gap-2 group"
                         >
                           <div
@@ -1888,14 +1898,14 @@ function MainContent() {
                         : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
                     }
                   >
-                    {filteredQuestions.map((q) => {
+                    {filteredQuestions.map((q, idx) => {
                       const questionAnswers = answers.filter((a) => a.questionId === q.id);
                       const solutionsCount = questionAnswers.filter((a) => a.type === 'solution' || !a.type).length;
                       const discussionsCount = questionAnswers.filter((a) => a.type === 'discussion').length;
 
                       return (
                         <QuestionCard
-                          key={q.id}
+                          key={`${q.id || 'question'}-${idx}`}
                           question={q}
                           solutionsCount={solutionsCount}
                           discussionsCount={discussionsCount}

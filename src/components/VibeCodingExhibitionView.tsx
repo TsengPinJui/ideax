@@ -73,11 +73,11 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
-        const matchTitle = app.title.toLowerCase().includes(q);
-        const matchDesc = app.description.toLowerCase().includes(q);
+        const matchTitle = (app.title || '').toLowerCase().includes(q);
+        const matchDesc = (app.description || '').toLowerCase().includes(q);
         const matchTech = app.techArchitecture?.toLowerCase().includes(q) || false;
         const matchPain = app.referencedPainPoint?.toLowerCase().includes(q) || false;
-        const matchTags = app.tags?.some((t) => t.toLowerCase().includes(q)) || false;
+        const matchTags = app.tags?.some((t) => (t || '').toLowerCase().includes(q)) || false;
         if (!matchTitle && !matchDesc && !matchTech && !matchPain && !matchTags) return false;
       }
 
@@ -142,7 +142,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center gap-1.5">
-                <span>VibeCoding 創新應用展示場</span>
+                <span>VibeCoding 創新應用</span>
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-300 shrink-0" />
               </h2>
               <button
@@ -170,7 +170,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 hover:from-purple-400 hover:to-indigo-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 border border-purple-300/40"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>發布 VibeCoding 應用</span>
+              <span>刊登創新應用</span>
             </button>
 
             <button
@@ -184,13 +184,16 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           </div>
         </div>
 
-        {/* 點擊 ? 展開之展場敘述與特色說明 */}
+        {/* 點擊 ? 說明展開之展場簡介與特色說明 */}
         {showZoneHelp && (
-          <div className="relative z-10 mt-3 pt-3 border-t border-white/15 space-y-2 animate-in fade-in duration-150">
-            <p className="text-xs text-purple-100/95 leading-relaxed">
-              專門展示運用 Vibe Coding 理念與 AI 打造的網站程式、Web 應用、自動化工具與原型作品！歡迎上傳作品封面大圖、0~6 張功能畫面截圖、分享欲解決痛點、技術架構與線上試用網址，獲得社群收藏與點數打賞支持！
+          <div className="relative z-10 mt-3 space-y-2.5 animate-in fade-in duration-150">
+            {/* 展場主要說明與簡介 */}
+            <p className="text-xs sm:text-sm text-purple-100/95 leading-relaxed font-medium bg-white/10 p-3 rounded-2xl border border-white/10">
+              妳嘔心瀝血開發的的應用還只能放在 Github 只有工程師鑑賞卻無法真正走向大眾嗎？ 或是等待平台上架的繁瑣程序嗎？IdeaX提供給所有創意展示與測試市場的空間，歡迎多加利用！
             </p>
-            <div className="flex items-center gap-3 text-[11px] font-semibold text-purple-200 flex-wrap">
+
+            {/* 展場特色標籤 */}
+            <div className="pt-2 border-t border-white/15 flex items-center gap-3 text-[11px] font-semibold text-purple-200 flex-wrap">
               <span className="flex items-center gap-1">
                 <ImageIcon className="w-3.5 h-3.5 text-purple-300" />
                 <span>封面大圖 + 0~6 張截圖</span>
@@ -278,7 +281,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           <div>
             <h3 className="text-base font-bold text-stone-900">尚無符合條件的 VibeCoding 應用作品</h3>
             <p className="text-xs text-stone-500 mt-1 max-w-md mx-auto">
-              快來發布第一個基於 Vibe Coding 開發的創新應用吧！上傳作品大圖與網站連結，獲得讀者點數支持！
+              快來刊登第一個基於 Vibe Coding 開發的創新應用吧！上傳作品大圖與網站連結，獲得讀者點數支持！
             </p>
           </div>
           <button
@@ -286,7 +289,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             className="px-4 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs shadow-md hover:bg-purple-700 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>立即發表 VibeCoding 應用</span>
+            <span>刊登創新應用</span>
           </button>
         </div>
       ) : (
@@ -402,15 +405,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                     </div>
                   )}
 
-                  {/* Tech Architecture badge */}
-                  {app.techArchitecture && (
-                    <div className="p-2 rounded-xl bg-purple-50/80 border border-purple-200/80 text-[11px] text-purple-950 flex items-start gap-1.5">
-                      <Cpu className="w-3.5 h-3.5 text-purple-600 shrink-0 mt-0.5" />
-                      <span className="line-clamp-1 font-mono font-medium">
-                        技術架構：{app.techArchitecture}
-                      </span>
-                    </div>
-                  )}
 
                   {/* Target Goal (希望達成目標) */}
                   {app.targetGoal && (

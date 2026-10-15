@@ -265,12 +265,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     if (!term) return list.slice(0, 6);
 
     return list.filter((u) => {
-      const matchId = u.id.toLowerCase().includes(term);
-      const matchName = u.name.toLowerCase().includes(term);
-      const matchTitle = u.title.toLowerCase().includes(term);
+      const matchId = (u.id || '').toLowerCase().includes(term);
+      const matchName = (u.name || '').toLowerCase().includes(term);
+      const matchTitle = (u.title || '').toLowerCase().includes(term);
       const matchDomain = u.domain && u.domain.toLowerCase().includes(term);
       const matchBio = u.bio && u.bio.toLowerCase().includes(term);
-      const matchSkills = u.skills && u.skills.some((sk) => sk.toLowerCase().includes(term));
+      const matchSkills = Array.isArray(u.skills) && u.skills.some((sk) => (sk || '').toLowerCase().includes(term));
       return matchId || matchName || matchTitle || matchDomain || matchBio || matchSkills;
     }).slice(0, 10);
   }, [availableUsers, solvers, searchQuery]);
@@ -280,7 +280,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     const term = (searchQuery || '').trim().toLowerCase();
     if (!term) return [];
     return questions.filter((q) => {
-      return q.title.toLowerCase().includes(term) || q.description.toLowerCase().includes(term);
+      if (!q || !q.id || !q.title) return false;
+      return (q.title || '').toLowerCase().includes(term) || (q.description || '').toLowerCase().includes(term);
     }).slice(0, 4);
   }, [questions, searchQuery]);
 
@@ -718,9 +719,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                     {matchingUsersAndSolvers.length > 0 ? (
                       <div className="space-y-1.5">
-                        {matchingUsersAndSolvers.map((user) => (
+                        {matchingUsersAndSolvers.map((user, idx) => (
                           <div
-                            key={user.id}
+                            key={`${user.id || 'user'}-${idx}`}
                             className="p-2.5 rounded-xl hover:bg-stone-50 border border-stone-100 hover:border-stone-200 transition-all flex items-center justify-between gap-3 group"
                           >
                             <div
@@ -848,9 +849,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <span>相關問題與方案 ({matchingQuestionsPreview.length})</span>
                           <span className="text-[10px] text-stone-400">點擊直接查看</span>
                         </div>
-                        {matchingQuestionsPreview.map((q) => (
+                        {matchingQuestionsPreview.map((q, idx) => (
                           <div
-                            key={q.id}
+                            key={`${q.id || 'q'}-${idx}`}
                             onClick={() => {
                               setSelectedQuestion(q);
                               setActiveTab('question_detail');

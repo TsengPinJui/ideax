@@ -362,7 +362,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (currentUser.id === 'user-guest') {
+    if (!currentUser || currentUser.id === 'user-guest') {
       setTermsError('登錄帳號及個人資料為提問之必要條件，請先登入會員帳號（登入即代表同意全站一般服務條款）');
       return;
     }
@@ -485,17 +485,17 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           }))
         : undefined;
 
-      const isPlatformOfficial = currentUser.role === 'admin' && publishIdentity === 'platform';
-      const authorId = isPlatformOfficial ? 'platform-ideax-official' : currentUser.id;
-      const authorName = isPlatformOfficial ? '💡IdeaX 官方帳號💡' : resolveUserDisplayName(currentUser.id, currentUser.name);
+      const isPlatformOfficial = currentUser?.role === 'admin' && publishIdentity === 'platform';
+      const authorId = isPlatformOfficial ? 'platform-ideax-official' : (currentUser?.id || 'guest');
+      const authorName = isPlatformOfficial ? '💡IdeaX 官方帳號💡' : resolveUserDisplayName(currentUser?.id || 'guest', currentUser?.name || '訪客');
       const authorAvatar = isPlatformOfficial
         ? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150'
-        : currentUser.avatar;
+        : (currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150');
       const authorTitle = isPlatformOfficial
         ? 'IdeaX 官方營運團隊'
-        : (currentUser.role === 'questioner' && !currentUser.showQuestionerTitle)
+        : (currentUser?.role === 'questioner' && !currentUser?.showQuestionerTitle)
         ? undefined
-        : (currentUser.title || (currentUser.role === 'admin' ? '平台管理員' : undefined));
+        : (currentUser?.title || (currentUser?.role === 'admin' ? '平台管理員' : undefined));
 
       const finalDescription = externalLink.trim()
         ? `${description.trim()}\n\n【外部雲端參考資料 (Google Drive / Dropbox / Figma)】\n${externalLink.trim()}`
@@ -601,7 +601,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       {/* Form */}
       <form onSubmit={handleSubmit} className={`p-2.5 sm:p-6 space-y-4 sm:space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
         {/* 管理員專用：發布身分切換（管理員身分 vs 平台身分） */}
-        {currentUser.role === 'admin' && (
+        {currentUser?.role === 'admin' && (
           <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-amber-50/60 to-purple-50 border border-purple-200 shadow-2xs space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black text-purple-950 flex items-center gap-1.5">
@@ -625,14 +625,14 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 }`}
               >
                 <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
+                  src={currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                  alt={currentUser?.name || ''}
                   className="w-10 h-10 rounded-full object-cover border border-stone-200 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className={`text-xs truncate ${getUserNameColorClass(currentUser.id, undefined, currentUser)}`}>
-                      {resolveUserDisplayName(currentUser.id, currentUser.name)}
+                    <span className={`text-xs truncate ${getUserNameColorClass(currentUser?.id, undefined, currentUser)}`}>
+                      {resolveUserDisplayName(currentUser?.id, currentUser?.name)}
                     </span>
                     <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300 shrink-0">
                       管理員身分
@@ -776,7 +776,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               <div>
                 <h4 className="text-xs font-extrabold text-stone-900">程式或網站</h4>
                 <p className="text-[10px] text-stone-500 line-clamp-1 mt-0.5">
-                  VibeCoding 應用
+                  網站、APP、遊戲、小程序 軟體皆可刊登
                 </p>
               </div>
             </button>

@@ -80,8 +80,8 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   const validQuestions = useMemo(() => {
     return (isDemoMode
       ? questions
-      : questions.filter((q) => !isMockQuestionId(q.id, q.authorId))
-    ).filter((q) => q.status !== 'delisted' && !isQuestionExpired(q.deadline));
+      : questions.filter((q) => Boolean(q && q.id) && !isMockQuestionId(q.id, q.authorId))
+    ).filter((q) => Boolean(q && q.id && q.title) && q.status !== 'delisted' && !isQuestionExpired(q.deadline));
   }, [questions, isDemoMode]);
 
   // Close on Escape key press
@@ -115,7 +115,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   };
 
   const getSubcategoryCount = (cat: Category, sub: string) => {
-    return validQuestions.filter((q) => q.category === cat && (q.subcategory === sub || q.tags.includes(sub))).length;
+    return validQuestions.filter((q) => q.category === cat && (q.subcategory === sub || (Array.isArray(q.tags) && q.tags.includes(sub)))).length;
   };
 
   // 專區數量統計
@@ -437,7 +437,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                     <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-600 text-white shrink-0">NEW</span>
                   </div>
                   <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
-                    VibeCoding 創新應用展示、網站與程式發表
+                    網站、APP、遊戲、小程序 軟體皆可刊登
                   </p>
                 </div>
               </div>
