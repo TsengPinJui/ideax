@@ -125,7 +125,7 @@ function MainContent() {
         const hash = window.location.hash.toLowerCase();
         const redirectParam = (new URLSearchParams(window.location.search).get('redirect') || '').toLowerCase();
 
-        // 0. 創點子/探索問題/痛點集/VibeCoding 子網址
+        // 0. 創點子/探索問題/痛點集/VibeCoding/L0討論區 子網址
         const normalizedPath = targetPath.replace(/\/+$/, '');
         if (
           normalizedPath === '/explore' ||
@@ -133,6 +133,11 @@ function MainContent() {
           normalizedPath === '/pain-points' ||
           normalizedPath === '/painpoint' ||
           normalizedPath === '/pain-point' ||
+          normalizedPath === '/l0-discussion' ||
+          normalizedPath === '/l0_discussion' ||
+          normalizedPath === '/l0' ||
+          normalizedPath === '/discussions' ||
+          normalizedPath === '/discussion' ||
           normalizedPath === '/vibecoding' ||
           normalizedPath === '/vibe-coding' ||
           normalizedPath === '/vibecoding-exhibition' ||
@@ -332,6 +337,22 @@ function MainContent() {
         ) {
           return 'pain_points';
         }
+        const normalizedPathname = pathname.replace(/\/+$/, '');
+        if (
+          normalizedPathname === '/l0-discussion' ||
+          normalizedPathname === '/l0_discussion' ||
+          normalizedPathname === '/l0' ||
+          normalizedPathname === '/discussions' ||
+          normalizedPathname === '/discussion' ||
+          pathname.startsWith('/l0-discussion/') ||
+          pathname.startsWith('/l0_discussion/') ||
+          search.includes('zone=l0_discussion') ||
+          search.includes('zone=l0') ||
+          hash.includes('l0_discussion') ||
+          hash.includes('l0-discussion')
+        ) {
+          return 'l0_discussion';
+        }
       }
     } catch {}
     return 'all';
@@ -352,6 +373,15 @@ function MainContent() {
         }
         if (p === '/painpoints/create' || p === '/painpoint/publish' || p === '/publish/painpoint') {
           return 'pain_point';
+        }
+        if (
+          p === '/l0-discussion/create' ||
+          p === '/l0-discussion/publish' ||
+          p === '/l0_discussion/create' ||
+          p === '/discussion/create' ||
+          p === '/publish/discussion'
+        ) {
+          return 'chat_discussion';
         }
         if (p === '/createideas/publish' || p === '/proposal/publish' || p === '/publish/proposal') {
           return 'innovation_proposal';
@@ -579,24 +609,37 @@ function MainContent() {
 
   const handleSelectSpecialZone = (zone: SpecialZone) => {
     setSpecialZone(zone);
+    if (activeTab !== 'explore') {
+      setActiveTab('explore');
+    }
+    setSelectedQuestion(null);
+    setSelectedSolver(null);
     if (zone !== 'all') {
       recordUserSpecialZone(currentUser.id, zone);
       setUserProfileVersion((v) => v + 1);
     }
   };
 
-  // 進入 /painpoints 專區或手機模式時，自動平滑滾動至市場痛點區塊
+  // 進入 /painpoints、/l0-discussion 專區或手機模式時，自動平滑滾動至市場區塊
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const cur = window.location.pathname.toLowerCase().replace(/\/+$/, '');
-      const isPainpointsPath = cur === '/painpoints' || cur === '/painpoint' || cur === '/pain-points';
-      if (isPainpointsPath || window.innerWidth < 768) {
+      const isSpecialZonePath =
+        cur === '/painpoints' ||
+        cur === '/painpoint' ||
+        cur === '/pain-points' ||
+        cur === '/l0-discussion' ||
+        cur === '/l0_discussion' ||
+        cur === '/l0' ||
+        cur === '/discussions' ||
+        cur === '/discussion';
+      if (isSpecialZonePath || window.innerWidth < 768) {
         const timer = setTimeout(() => {
           const el = document.getElementById('market-grid');
           if (el) {
             el.scrollIntoView({ behavior: 'smooth' });
           }
-        }, isPainpointsPath ? 150 : 500);
+        }, isSpecialZonePath ? 150 : 500);
         return () => clearTimeout(timer);
       }
     }
@@ -655,6 +698,16 @@ function MainContent() {
               window.history.pushState({ tab: 'create_question', postType: 'vibecoding_app' }, '', '/vibecoding/publish');
               updateSEOForSubpage('vibecoding_publish');
             }
+          } else if (initialPostType === 'pain_point') {
+            if (curPath !== '/painpoints/create' && curPath !== '/painpoint/publish' && curPath !== '/publish/painpoint') {
+              window.history.pushState({ tab: 'create_question', postType: 'pain_point' }, '', '/painpoints/create');
+              updateSEOForSubpage('painpoints');
+            }
+          } else if (initialPostType === 'chat_discussion') {
+            if (curPath !== '/l0-discussion/create' && curPath !== '/l0_discussion/create' && curPath !== '/discussion/create') {
+              window.history.pushState({ tab: 'create_question', postType: 'chat_discussion' }, '', '/l0-discussion/create');
+              updateSEOForSubpage('l0_discussion');
+            }
           } else if (curPath !== '/create') {
             window.history.pushState({ tab: 'create_question' }, '', '/create');
             updateSEOForSubpage('create');
@@ -680,6 +733,16 @@ function MainContent() {
               window.history.pushState({ zone: 'pain_points' }, '', '/painpoints');
             }
             updateSEOForSubpage('painpoints');
+          } else if (specialZone === 'l0_discussion') {
+            if (
+              curPath !== '/l0-discussion' &&
+              curPath !== '/l0_discussion' &&
+              curPath !== '/l0' &&
+              curPath !== '/discussions'
+            ) {
+              window.history.pushState({ zone: 'l0_discussion' }, '', '/l0-discussion');
+            }
+            updateSEOForSubpage('l0_discussion');
           } else if (specialZone === 'create_ideas') {
             if (curPath !== '/create-ideas' && curPath !== '/createideas' && !window.location.search.includes('zone=create_ideas')) {
               window.history.pushState({ zone: 'create_ideas' }, '', '/?zone=create_ideas');
@@ -688,7 +751,24 @@ function MainContent() {
             updateSEOForSubpage('explore');
           } else if (
             specialZone === 'all' &&
-            (curPath === '/painpoints' || curPath === '/vibecoding' || curPath === '/create-ideas' || curPath === '/createideas' || curPath.startsWith('/vibecoding/') || curPath === '/create' || curPath === '/solvers' || curPath === '/my-projects' || curPath === '/my-cases' || curPath === '/my_projects' || curPath === '/my_cases' || curPath.startsWith('/challenge'))
+            (curPath === '/painpoints' ||
+              curPath === '/l0-discussion' ||
+              curPath === '/l0_discussion' ||
+              curPath === '/l0' ||
+              curPath === '/discussions' ||
+              curPath === '/discussion' ||
+              curPath === '/vibecoding' ||
+              curPath === '/create-ideas' ||
+              curPath === '/createideas' ||
+              curPath.startsWith('/vibecoding/') ||
+              curPath.startsWith('/l0-discussion/') ||
+              curPath === '/create' ||
+              curPath === '/solvers' ||
+              curPath === '/my-projects' ||
+              curPath === '/my-cases' ||
+              curPath === '/my_projects' ||
+              curPath === '/my_cases' ||
+              curPath.startsWith('/challenge'))
           ) {
             window.history.pushState({ tab: 'explore' }, '', '/');
             resetSEOToDefault();
@@ -730,6 +810,19 @@ function MainContent() {
         window.history.pushState({ sitelink: 'painpoints' }, '', '/painpoints');
       } catch {}
       updateSEOForSubpage('painpoints');
+      setTimeout(() => {
+        const el = document.getElementById('market-grid');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 60);
+    } else if (item.id === 'l0_discussion') {
+      setActiveTab('explore');
+      setSpecialZone('l0_discussion');
+      setSelectedCategory('全部');
+      setSelectedSubcategory('全部');
+      try {
+        window.history.pushState({ sitelink: 'l0_discussion' }, '', '/l0-discussion');
+      } catch {}
+      updateSEOForSubpage('l0_discussion');
       setTimeout(() => {
         const el = document.getElementById('market-grid');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -861,7 +954,7 @@ function MainContent() {
       const zoneParam = (searchParams.get('zone') || '').toLowerCase();
       const tabParam = (searchParams.get('tab') || '').toLowerCase();
 
-      // 若當前子網址為痛點集專區，直接確保選取痛點集並重設題目選取
+      // 若當前子網址為痛點集或 L0 討論區專區，直接確保選取對應專區並重設題目選取
       if (
         normalizedPath === '/painpoints' ||
         normalizedPath === '/pain-points' ||
@@ -871,6 +964,18 @@ function MainContent() {
         setSelectedQuestion(null);
         setActiveTab('explore');
         setSpecialZone('pain_points');
+        return;
+      }
+      if (
+        normalizedPath === '/l0-discussion' ||
+        normalizedPath === '/l0_discussion' ||
+        normalizedPath === '/l0' ||
+        normalizedPath === '/discussions' ||
+        normalizedPath === '/discussion'
+      ) {
+        setSelectedQuestion(null);
+        setActiveTab('explore');
+        setSpecialZone('l0_discussion');
         return;
       }
 
@@ -979,6 +1084,17 @@ function MainContent() {
           setActiveTab('explore');
           setSpecialZone('pain_points');
         } else if (
+          normalizedPath === '/l0-discussion' ||
+          normalizedPath === '/l0_discussion' ||
+          normalizedPath === '/l0' ||
+          normalizedPath === '/discussions' ||
+          normalizedPath === '/discussion' ||
+          zoneParam === 'l0_discussion' ||
+          zoneParam === 'l0'
+        ) {
+          setActiveTab('explore');
+          setSpecialZone('l0_discussion');
+        } else if (
           normalizedPath === '/vibecoding/publish' ||
           normalizedPath === '/vibecoding/create' ||
           normalizedPath === '/publish/vibecoding' ||
@@ -996,6 +1112,16 @@ function MainContent() {
           setActiveTab('create_question');
           setInitialPostType('pain_point');
           setSpecialZone('pain_points');
+        } else if (
+          normalizedPath === '/l0-discussion/create' ||
+          normalizedPath === '/l0-discussion/publish' ||
+          normalizedPath === '/l0_discussion/create' ||
+          normalizedPath === '/discussion/create' ||
+          normalizedPath === '/publish/discussion'
+        ) {
+          setActiveTab('create_question');
+          setInitialPostType('chat_discussion');
+          setSpecialZone('l0_discussion');
         } else if (normalizedPath === '/create' || normalizedPath === '/publish') {
           setActiveTab('create_question');
         } else if (normalizedPath === '/solvers' || tabParam === 'solvers') {
@@ -1566,6 +1692,9 @@ function MainContent() {
         } else if (type === 'pain_point') {
           targetPath = '/painpoints/create';
           updateSEOForSubpage('painpoints');
+        } else if (type === 'chat_discussion') {
+          targetPath = '/l0-discussion/create';
+          updateSEOForSubpage('l0_discussion');
         } else {
           updateSEOForSubpage('create');
         }

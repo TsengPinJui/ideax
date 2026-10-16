@@ -37,10 +37,23 @@ if (typeof window !== 'undefined') {
     );
   };
 
+  const isFirestoreIdleStreamLog = (args: any[]): boolean => {
+    const text = args.map((a) => (typeof a === 'string' ? a : a?.message || '')).join(' ');
+    return (
+      text.includes('Disconnecting idle stream') ||
+      text.includes('Timed out waiting for new targets') ||
+      text.includes("GrpcConnection RPC 'Listen' stream") ||
+      text.includes("GrpcConnection RPC 'Write' stream")
+    );
+  };
+
   const origError = console.error.bind(console);
   console.error = (...args: any[]) => {
     if (isFirestoreQuotaLog(args)) {
       markQuotaExhausted();
+      return;
+    }
+    if (isFirestoreIdleStreamLog(args)) {
       return;
     }
     origError(...args);
@@ -50,6 +63,9 @@ if (typeof window !== 'undefined') {
   console.warn = (...args: any[]) => {
     if (isFirestoreQuotaLog(args)) {
       markQuotaExhausted();
+      return;
+    }
+    if (isFirestoreIdleStreamLog(args)) {
       return;
     }
     origWarn(...args);

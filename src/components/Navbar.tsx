@@ -517,11 +517,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full transition-all cursor-pointer text-xs sm:text-sm lg:text-[15px] flex items-center gap-1.5 ${
                 activeTab === 'explore'
-                  ? 'bg-stone-900 text-white font-bold shadow-2xs'
+                  ? 'bg-amber-50 text-amber-900 font-bold ring-1 ring-amber-300/80 shadow-2xs'
                   : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950 font-semibold'
               }`}
             >
-              <Compass className={`w-4 h-4 lg:w-4.5 lg:h-4.5 shrink-0 ${activeTab === 'explore' ? 'text-amber-400' : 'text-stone-500'}`} />
+              <Compass className={`w-4 h-4 lg:w-4.5 lg:h-4.5 shrink-0 ${activeTab === 'explore' ? 'text-amber-600' : 'text-stone-500'}`} />
               <span>探索</span>
             </button>
             {!isRaceMode && (
@@ -534,11 +534,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
                 className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full transition-all cursor-pointer text-xs sm:text-sm lg:text-[15px] flex items-center gap-1.5 ${
                   activeTab === 'solvers'
-                    ? 'bg-stone-900 text-white font-bold shadow-2xs'
+                    ? 'bg-emerald-50 text-emerald-900 font-bold ring-1 ring-emerald-300/80 shadow-2xs'
                     : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950 font-semibold'
                 }`}
               >
-                <ShieldCheck className={`w-4 h-4 lg:w-4.5 lg:h-4.5 shrink-0 ${activeTab === 'solvers' ? 'text-emerald-400' : 'text-stone-500'}`} />
+                <ShieldCheck className={`w-4 h-4 lg:w-4.5 lg:h-4.5 shrink-0 ${activeTab === 'solvers' ? 'text-emerald-600' : 'text-stone-500'}`} />
                 <span>找專家</span>
               </button>
             )}
@@ -907,7 +907,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               className={`w-9 h-9 rounded-full font-black flex items-center justify-center shadow-2xs transition-all hover:shadow-sm cursor-pointer ${
                 activeTab === 'create_question' || isCreateMenuOpen
-                  ? 'bg-stone-900 text-amber-400 ring-2 ring-amber-300'
+                  ? 'bg-amber-600 text-white ring-2 ring-amber-300'
                   : 'bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95'
               }`}
               title="發布"
@@ -990,12 +990,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             }}
             className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all cursor-pointer text-xs sm:text-sm ${
               activeTab === 'my_projects'
-                ? 'bg-stone-900 text-white font-bold shadow-2xs'
+                ? 'bg-amber-50 text-amber-900 font-bold ring-1 ring-amber-300/80 shadow-2xs'
                 : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950 font-semibold'
             }`}
             title="我的案件"
           >
-            <Briefcase className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'my_projects' ? 'text-amber-400' : 'text-stone-500'}`} />
+            <Briefcase className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'my_projects' ? 'text-amber-600' : 'text-stone-500'}`} />
             <span>案件</span>
           </button>
 
@@ -1013,7 +1013,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }}
             className={`relative p-2 rounded-full transition-colors cursor-pointer ${
               activeTab === 'chat'
-                ? 'bg-stone-900 text-white'
+                ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-300/80'
                 : 'text-stone-600 hover:text-stone-950 hover:bg-stone-100'
             }`}
             title={`訊息${!isGuest && unreadChatCount > 0 ? `（${unreadChatCount} 則未讀）` : ''}`}
@@ -1087,7 +1087,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <>
                   <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                   <span className="font-mono text-[11px] sm:text-xs font-extrabold">
-                    {isNoPaymentMode ? '應收' : `NT$${(currentUser.withheldPoints || 0).toLocaleString()}`}
+                    {isNoPaymentMode ? '應收' : `${(currentUser.withheldPoints || 0).toLocaleString()} 點`}
                   </span>
                 </>
               ) : currentUser.role === 'admin' ? (

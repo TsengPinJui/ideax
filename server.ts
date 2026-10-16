@@ -3443,6 +3443,14 @@ async function startServer() {
       } else if (rawPath.startsWith('/painpoints') || rawPath.startsWith('/pain-point')) {
         pageTitle = '創點子/痛點集 — 募集真實痛點與未被滿足的需求 | IdeaX 創點子';
         pageDesc = '匯聚大眾生活與產業實務痛點，免付懸賞自由提問，發掘高潛力商業新點子。';
+      } else if (
+        rawPath.startsWith('/l0-discussion') ||
+        rawPath.startsWith('/l0_discussion') ||
+        rawPath === '/l0' ||
+        rawPath === '/discussions'
+      ) {
+        pageTitle = 'L0 討論區 — 免懸賞自由交流、日常觀點碰撞與社群討論 | IdeaX 創點子';
+        pageDesc = '無門檻日常交流、閒聊討論、觀點碰撞與輕量求助專區。完全免費公開，適合社群激盪與早期方向探索。';
       } else if (rawPath.startsWith('/create')) {
         pageTitle = '發布懸賞提問 — 三階段驗收託管，吸引頂尖專家提案 | IdeaX 創點子';
         pageDesc = '一鍵發布高價值痛點或難題懸賞，平台託管金流安全有保障，快速媒合跨領域專家。';

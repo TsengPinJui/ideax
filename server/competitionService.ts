@@ -16,6 +16,9 @@ import { getAuth } from 'firebase-admin/auth';
 import { initializeApp as initClientApp, getApps as getClientApps, getApp as getClientApp } from 'firebase/app';
 import {
   getFirestore as getClientFirestore,
+  initializeFirestore as initClientFirestore,
+  memoryLocalCache,
+  setLogLevel,
   collection as clientCollection,
   doc as clientDoc,
   getDoc as clientGetDoc,
@@ -31,6 +34,7 @@ import {
   runTransaction as clientRunTransaction,
   increment as clientIncrement,
   arrayUnion as clientArrayUnion,
+  Firestore,
 } from 'firebase/firestore';
 import firebaseConfigJson from '../firebase-applet-config.json';
 import {
@@ -55,6 +59,39 @@ import { DEFAULT_VIBECODING_APPS } from '../src/data/vibeCodingData';
 import { MOCK_QUESTIONS } from '../src/data/mockData';
 import { questionToStarSeasonProposal } from '../src/utils/questionUtils';
 
+// Suppress noisy internal SDK logs (such as idle GrpcConnection stream disconnects and quota backoff)
+try {
+  setLogLevel('silent');
+} catch {
+  // ignore
+}
+
+const isIgnorableFirestoreSdkLog = (args: any[]): boolean => {
+  const text = args.map((a) => (typeof a === 'string' ? a : a?.message || '')).join(' ');
+  return (
+    text.includes('Disconnecting idle stream') ||
+    text.includes('Timed out waiting for new targets') ||
+    text.includes("GrpcConnection RPC 'Listen' stream") ||
+    text.includes("GrpcConnection RPC 'Write' stream") ||
+    text.includes('resource-exhausted') ||
+    text.includes('Quota limit exceeded') ||
+    text.includes('Quota exceeded for quota metric') ||
+    text.includes('Using maximum backoff delay')
+  );
+};
+
+const origServerError = console.error.bind(console);
+console.error = (...args: any[]) => {
+  if (isIgnorableFirestoreSdkLog(args)) return;
+  origServerError(...args);
+};
+
+const origServerWarn = console.warn.bind(console);
+console.warn = (...args: any[]) => {
+  if (isIgnorableFirestoreSdkLog(args)) return;
+  origServerWarn(...args);
+};
+
 // 初始化 Firebase Admin Auth
 if (!getAdminApps().length) {
   initAdminApp({
@@ -64,7 +101,16 @@ if (!getAdminApps().length) {
 
 // 初始化 Firebase Firestore (連接 ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c 資料庫)
 const clientApp = getClientApps().length > 0 ? getClientApp() : initClientApp(firebaseConfigJson);
-const rawFirestoreDb = getClientFirestore(clientApp, firebaseConfigJson.firestoreDatabaseId);
+let rawFirestoreDb: Firestore;
+try {
+  rawFirestoreDb = initClientFirestore(
+    clientApp,
+    { localCache: memoryLocalCache() },
+    firebaseConfigJson.firestoreDatabaseId
+  );
+} catch {
+  rawFirestoreDb = getClientFirestore(clientApp, firebaseConfigJson.firestoreDatabaseId);
+}
 
 const LOCAL_DB_FILE = path.resolve(process.cwd(), 'server/data/firestore_db.json');
 let localDbStore: Record<string, Record<string, any>> = {};
