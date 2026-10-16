@@ -149,11 +149,14 @@ export const questionToStarSeasonProposal = (q: Question): import('../types/comp
   const resolvedCover = q.coverImage || (q as any).vibeCodingData?.coverImageUrl;
   const resolvedGallery = q.galleryImages || q.screenshots || (q as any).vibeCodingData?.screenshots || [];
 
-  const imgs = resolvedCover
-    ? [resolvedCover, ...resolvedGallery]
-    : resolvedGallery.length > 0
-    ? resolvedGallery
-    : [fallbackImagePool[hash % fallbackImagePool.length]];
+  const combinedImgs = Array.from(
+    new Set([resolvedCover, ...resolvedGallery].filter((u): u is string => Boolean(u && typeof u === 'string')))
+  );
+
+  const imgs =
+    combinedImgs.length > 0
+      ? combinedImgs
+      : [fallbackImagePool[hash % fallbackImagePool.length]];
 
   return {
     id: q.id,

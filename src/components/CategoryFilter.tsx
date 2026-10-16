@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Category, ProblemLevel, CATEGORY_HIERARCHY, QuestionSortOption, MarketViewMode } from '../types';
-import { Layers, Award, Clock, Flame, CheckCircle2, Tag, Search, X, Sparkles, MessageCircle, Lightbulb, Users, ChevronDown, Check, Copy, ChevronRight, Square, List, LayoutGrid, Coins } from 'lucide-react';
+import { Award, Flame, Sparkles, Lightbulb, Square, List, LayoutGrid, Coins, SlidersHorizontal, X } from 'lucide-react';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
+import { HelpTooltip } from './HelpTooltip';
 
 interface CategoryFilterProps {
   categories: Category[];
@@ -39,128 +40,12 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   viewMode = 'large',
   setViewMode,
 }) => {
-  const {
-    searchMode,
-    setSearchMode,
-    solvers,
-    availableUsers,
-    currentUser,
-    startDirectChat,
-    setSelectedSolver,
-    setSelectedQuestion,
-    questions,
-    addNotification,
-  } = useApp();
-
-  const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
-  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
-  const searchDropdownRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Close on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (searchDropdownRef.current && !searchDropdownRef.current.contains(e.target as Node)) {
-        setIsSearchDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // 匹配用戶與專家
-  const matchingUsersAndSolvers = useMemo(() => {
-    const term = (searchQuery || '').trim().toLowerCase();
-    
-    const userMap = new Map<string, {
-      id: string;
-      name: string;
-      avatar: string;
-      title: string;
-      role: string;
-      isExpert?: boolean;
-      isVerified?: boolean;
-      domain?: string;
-      skills?: string[];
-      bio?: string;
-      isSolver?: boolean;
-      solverObj?: any;
-    }>();
-
-    availableUsers.forEach((u) => {
-      userMap.set(u.id, {
-        id: u.id,
-        name: u.name,
-        avatar: u.avatar,
-        title: u.title || (u.role === 'admin' ? '平台管理員' : u.role === 'solver' ? '解答專家' : '提問者'),
-        role: u.role,
-        isExpert: u.verifiedExpert || !!u.verifiedBadge,
-        isVerified: u.realNameAuthStatus === 'verified',
-        skills: u.skills || [],
-        bio: u.bio,
-      });
-    });
-
-    solvers.forEach((s) => {
-      const existing = userMap.get(s.id);
-      if (existing) {
-        existing.isExpert = true;
-        existing.isSolver = true;
-        existing.solverObj = s;
-        if (s.title) existing.title = s.title;
-        if (s.domain) existing.domain = s.domain;
-        if (s.skills && s.skills.length > 0) existing.skills = s.skills;
-      } else {
-        userMap.set(s.id, {
-          id: s.id,
-          name: s.name,
-          avatar: s.avatar,
-          title: s.title || '智庫專家',
-          role: 'solver',
-          isExpert: true,
-          domain: s.domain,
-          skills: s.skills || [],
-          bio: s.bio,
-          isSolver: true,
-          solverObj: s,
-        });
-      }
-    });
-
-    const list = Array.from(userMap.values());
-    if (!term) return list.slice(0, 6);
-
-    return list.filter((u) => {
-      const matchId = u.id.toLowerCase().includes(term);
-      const matchName = u.name.toLowerCase().includes(term);
-      const matchTitle = u.title.toLowerCase().includes(term);
-      const matchDomain = u.domain && u.domain.toLowerCase().includes(term);
-      const matchBio = u.bio && u.bio.toLowerCase().includes(term);
-      const matchSkills = u.skills && u.skills.some((sk) => sk.toLowerCase().includes(term));
-      return matchId || matchName || matchTitle || matchDomain || matchBio || matchSkills;
-    }).slice(0, 8);
-  }, [availableUsers, solvers, searchQuery]);
-
-  const handleCopyId = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(id);
-    setCopiedUserId(id);
-    setTimeout(() => setCopiedUserId(null), 2000);
-  };
-
-  const handleStartChatWithUser = (target: { id: string; name: string; avatar: string; title: string }) => {
-    if (currentUser.id === target.id) {
-      addNotification({ title: '提醒', message: '這是您自己的帳號！', type: 'system' });
-      return;
-    }
-    startDirectChat(target);
-    setIsSearchDropdownOpen(false);
-  };
+  const { questions } = useApp();
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
 
   const currentSubcategories = selectedCategory !== '全部' ? CATEGORY_HIERARCHY[selectedCategory] || [] : [];
 
-  // 動態跟進當前熱門話題標籤：
-  // 統計進行中題目的標籤出現頻率與賞金熱度，依權重動態取出最熱門的標籤
+  // 動態熱門話題標籤
   const dynamicHotTags = useMemo(() => {
     const tagCountMap: Record<string, { count: number; totalBounty: number }> = {};
     const activeQuestions = questions.filter((q) => q.status !== 'delisted' && q.status !== 'closed');
@@ -199,33 +84,31 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
       '股權募資',
       '合約法律',
       '產品設計',
-      '職場顧問',
     ];
     const combined = Array.from(new Set([...sortedTags, ...fallbackTags]));
-    return combined.slice(0, 10);
+    return combined.slice(0, 8);
   }, [questions, selectedCategory]);
 
+  const hasActiveSubFilter = selectedLevel !== '全部' || Boolean(searchQuery.trim());
+
   return (
-    <div className="space-y-2 sm:space-y-3.5">
-      {/* 1. Main Category Horizontal Bar (問題分類) */}
-      <div id="onboarding-step-1-categories">
-        <div className="hidden sm:flex text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-1.5 items-center gap-1.5">
-          <Layers className="w-3.5 h-3.5 text-amber-600" />
-          <span>問題分類</span>
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 sm:pb-1 scrollbar-none">
+    <div className="space-y-2.5">
+      {/* Primary Bar: Categories (Left) + Sort, Filter Toggle & View Mode (Right) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pb-2 border-b border-stone-200/80">
+        {/* 1. Main Category Horizontal Bar (無多餘外框，Apple/ZecZec 膠囊切換風格) */}
+        <div id="onboarding-step-1-categories" className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1">
           <button
             onClick={() => {
               setSelectedCategory('全部');
               setSelectedSubcategory('全部');
             }}
-            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
               selectedCategory === '全部'
-                ? 'bg-stone-900 text-white shadow-xs'
-                : 'bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200'
+                ? 'bg-stone-900 text-white shadow-2xs'
+                : 'text-stone-600 hover:text-stone-950 hover:bg-stone-100'
             }`}
           >
-            全部分類
+            全部 <span className="text-[11px] opacity-70 font-mono ml-0.5">{totalCount}</span>
           </button>
 
           {categories.map((cat) => (
@@ -235,16 +118,16 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                 setSelectedCategory(cat);
                 setSelectedSubcategory('全部');
               }}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${
                 selectedCategory === cat
-                  ? 'bg-amber-500 text-stone-950 shadow-xs font-black'
-                  : 'bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200'
+                  ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                  : 'text-stone-600 hover:text-stone-950 hover:bg-stone-100'
               }`}
             >
               <span>{cat}</span>
               <span
-                className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                  selectedCategory === cat ? 'bg-amber-600/30 text-stone-950 font-black' : 'bg-stone-100 text-stone-500 font-semibold'
+                className={`text-[10px] font-mono ${
+                  selectedCategory === cat ? 'text-stone-900 font-black' : 'text-stone-400'
                 }`}
               >
                 {categoryCounts ? (categoryCounts[cat] ?? 0) : 0}
@@ -252,559 +135,265 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             </button>
           ))}
         </div>
-      </div>
 
-      {/* 2. Subcategory Horizontal Pills */}
-      {selectedCategory !== '全部' && currentSubcategories.length > 0 && (
-        <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200/80 animate-in fade-in slide-in-from-top-1 duration-200">
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none text-xs">
-            <span className="text-[11px] font-bold text-amber-900 shrink-0 flex items-center gap-1 mr-1">
-              <Tag className="w-3.5 h-3.5 text-amber-700" />
-              <span>「{selectedCategory}」子領域：</span>
-            </span>
-
+        {/* 2. Right Controls: Sort + Advanced Filter Toggle + View Mode */}
+        <div id="onboarding-step-2-search" className="flex items-center justify-between lg:justify-end gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none">
+          {/* Sort selector */}
+          <div className="inline-flex items-center rounded-full bg-stone-100/90 p-0.5 shrink-0">
             <button
-              onClick={() => setSelectedSubcategory('全部')}
-              className={`px-3 py-1 rounded-lg font-bold whitespace-nowrap transition-all cursor-pointer ${
-                selectedSubcategory === '全部'
-                  ? 'bg-stone-900 text-white shadow-2xs'
-                  : 'bg-white text-stone-600 hover:text-stone-900 border border-amber-200'
+              onClick={() => setSortBy('recruiting_promoted')}
+              className={`px-2.5 py-1 rounded-full text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                sortBy === 'recruiting_promoted'
+                  ? 'bg-white text-stone-950 shadow-2xs font-bold'
+                  : 'text-stone-600 hover:text-stone-900 font-medium'
               }`}
+              title="智能推薦排序"
             >
-              全部子領域
+              <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+              <span>推薦</span>
             </button>
 
-            {currentSubcategories.map((sub) => (
-              <button
-                key={sub}
-                onClick={() => setSelectedSubcategory(sub)}
-                className={`px-3 py-1 rounded-lg font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${
-                  selectedSubcategory === sub
-                    ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
-                    : 'bg-white text-stone-700 hover:text-stone-950 hover:bg-white/90 border border-amber-200/60'
-                }`}
-                title={`篩選「${sub}」子領域`}
-              >
-                <span>{sub}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Search Input Bar (支援關鍵字與用戶/專家雙模式搜尋與下拉選單) */}
-      <div id="onboarding-step-2-search" className="space-y-1.5 sm:space-y-2">
-        <div className="relative" ref={searchDropdownRef}>
-          <div className="relative flex items-center">
-          {/* 模式切換按鈕 */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsSearchDropdownOpen(!isSearchDropdownOpen);
-            }}
-            className="absolute left-2.5 flex items-center gap-1 px-2 py-1 rounded-lg bg-stone-100 hover:bg-amber-100 hover:text-amber-950 text-xs font-black text-stone-700 transition-all cursor-pointer z-10 shrink-0 border border-stone-200"
-            title="點擊切換搜尋模式（關鍵字 / 用戶或專家）"
-          >
-            {searchMode === 'keywords' ? (
-              <>
-                <Search className="w-3.5 h-3.5 text-amber-600" />
-                <span>關鍵字</span>
-              </>
-            ) : (
-              <>
-                <Users className="w-3.5 h-3.5 text-purple-600" />
-                <span>用戶/專家</span>
-              </>
-            )}
-            <ChevronDown className="w-3 h-3 text-stone-400" />
-          </button>
-
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            onFocus={() => setIsSearchDropdownOpen(true)}
-            onClick={() => setIsSearchDropdownOpen(true)}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              searchMode === 'keywords'
-                ? selectedCategory !== '全部'
-                  ? `在「${selectedCategory}${selectedSubcategory !== '全部' ? ' · ' + selectedSubcategory : ''}」搜尋關鍵字（問題、方案、討論、內文）...`
-                  : '搜尋關鍵字（問題、方案、討論、內文）...'
-                : '搜尋用戶或專家（輸入 ID 如 user-chen 或姓名）...'
-            }
-            className="w-full pl-28 sm:pl-32 pr-24 py-2 sm:py-2.5 rounded-xl bg-white border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 text-stone-900 text-xs sm:text-sm shadow-2xs outline-none transition-all placeholder:text-stone-400 font-medium"
-          />
-          {searchQuery && (
             <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 px-2 py-0.5 text-xs text-stone-400 hover:text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <X className="w-3 h-3" />
-              <span>清除</span>
-            </button>
-          )}
-        </div>
-
-        {/* 搜尋下拉選單 (Search Dropdown Popover) */}
-        {isSearchDropdownOpen && (
-          <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 max-h-[460px] flex flex-col">
-            {/* 頂部雙模式選擇標籤 */}
-            <div className="p-2.5 bg-stone-50/90 border-b border-stone-100">
-              <div className="text-[10px] font-black text-stone-400 uppercase tracking-wider px-1 pb-1.5 flex items-center justify-between">
-                <span>選擇搜尋目標</span>
-                <span className="text-[10px] text-amber-600 font-bold">點選切換模式</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {/* Mode 1: 關鍵字搜尋 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchMode('keywords');
-                    searchInputRef.current?.focus();
-                  }}
-                  className={`p-2 rounded-xl text-left transition-all flex items-start gap-2 cursor-pointer border ${
-                    searchMode === 'keywords'
-                      ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-2xs ring-1 ring-amber-400'
-                      : 'bg-white text-stone-700 hover:bg-stone-100 border-stone-200'
-                  }`}
-                >
-                  <div
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                      searchMode === 'keywords'
-                        ? 'bg-stone-950 text-amber-400'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black truncate">關鍵字搜尋</span>
-                      {searchMode === 'keywords' && (
-                        <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-stone-950 text-amber-300">
-                          已選擇
-                        </span>
-                      )}
-                    </div>
-                    <p
-                      className={`text-[10px] leading-tight truncate mt-0.5 ${
-                        searchMode === 'keywords' ? 'text-stone-900 font-medium' : 'text-stone-500'
-                      }`}
-                    >
-                      問題、方案、討論、內文
-                    </p>
-                  </div>
-                </button>
-
-                {/* Mode 2: 搜尋用戶或專家 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchMode('users');
-                    searchInputRef.current?.focus();
-                  }}
-                  className={`p-2 rounded-xl text-left transition-all flex items-start gap-2 cursor-pointer border ${
-                    searchMode === 'users'
-                      ? 'bg-purple-600 text-white border-purple-700 shadow-2xs ring-1 ring-purple-400'
-                      : 'bg-white text-stone-700 hover:bg-stone-100 border-stone-200'
-                  }`}
-                >
-                  <div
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                      searchMode === 'users'
-                        ? 'bg-purple-950 text-purple-200'
-                        : 'bg-purple-100 text-purple-800'
-                    }`}
-                  >
-                    <Users className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black truncate">搜尋用戶或專家</span>
-                      {searchMode === 'users' && (
-                        <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-purple-950 text-purple-200">
-                          已選擇
-                        </span>
-                      )}
-                    </div>
-                    <p
-                      className={`text-[10px] leading-tight truncate mt-0.5 ${
-                        searchMode === 'users' ? 'text-purple-100 font-medium' : 'text-stone-500'
-                      }`}
-                    >
-                      輸入 ID 或名稱
-                    </p>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* 下拉內容 */}
-            <div className="overflow-y-auto p-3 space-y-3">
-              {searchMode === 'users' ? (
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between px-1">
-                    <div className="flex items-center gap-1.5 text-xs font-black text-purple-950">
-                      <Users className="w-3.5 h-3.5 text-purple-600" />
-                      <span>
-                        {searchQuery?.trim()
-                          ? `相符用戶與智庫專家 (${matchingUsersAndSolvers.length})`
-                          : '推薦專家與平台用戶'}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-stone-400 font-normal">
-                      輸入用戶 ID (如 user-chen) 或姓名
-                    </span>
-                  </div>
-
-                  {matchingUsersAndSolvers.length > 0 ? (
-                    <div className="space-y-1.5">
-                      {matchingUsersAndSolvers.map((user) => (
-                        <div
-                          key={user.id}
-                          className="p-2.5 rounded-xl hover:bg-purple-50/70 border border-stone-100 hover:border-purple-200 transition-all flex items-center justify-between gap-3 group"
-                        >
-                          <div
-                            onClick={() => {
-                              setIsSearchDropdownOpen(false);
-                              if (user.solverObj) {
-                                setSelectedSolver(user.solverObj);
-                              } else {
-                                setSearchQuery(user.id);
-                              }
-                            }}
-                            className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
-                          >
-                            <img
-                              src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                              alt={user.name}
-                              className="w-9 h-9 rounded-full object-cover border border-stone-200 group-hover:scale-105 transition-transform shrink-0"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-black text-xs text-stone-900 group-hover:text-purple-950 truncate">
-                                  {user.name}
-                                </span>
-                                {user.isExpert && (
-                                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                                    ★ 智庫專家
-                                  </span>
-                                )}
-                                {user.role === 'admin' && (
-                                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">
-                                    平台管理員
-                                  </span>
-                                )}
-                                {user.role === 'questioner' && !user.isExpert && (
-                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
-                                    提問者
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 text-[10px] text-stone-500 mt-0.5">
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleCopyId(e, user.id)}
-                                  className="font-mono text-purple-700 hover:text-purple-900 hover:underline flex items-center gap-0.5"
-                                  title="點擊複製用戶 ID"
-                                >
-                                  <span>@{user.id}</span>
-                                  <Copy className="w-2.5 h-2.5 text-stone-400" />
-                                  {copiedUserId === user.id && (
-                                    <span className="text-[9px] text-emerald-600 font-bold">已複製!</span>
-                                  )}
-                                </button>
-                                {user.title && (
-                                  <span className="truncate max-w-[140px] text-stone-600">
-                                    · {user.title}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleStartChatWithUser(user)}
-                              className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-all cursor-pointer active:scale-95"
-                              title="與此用戶發起私聊"
-                            >
-                              <MessageCircle className="w-3 h-3" />
-                              <span>私聊</span>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-xl bg-stone-50 text-center text-xs text-stone-500 space-y-1">
-                      <p className="font-bold text-stone-700">找不到相符的用戶或專家</p>
-                      <p className="text-[11px] text-stone-400">
-                        請確認 ID 是否正確（例如 <code className="text-purple-700 font-mono">user-chen</code>、<code className="text-purple-700 font-mono">user-1</code>）或輸入用戶姓名。
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="text-[11px] font-bold text-stone-500 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-600" />
-                    <span>熱門推薦關鍵字（點擊立即搜尋）</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {dynamicHotTags.map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => {
-                          setSearchQuery(tag);
-                          setIsSearchDropdownOpen(false);
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-amber-100 hover:text-amber-950 text-stone-700 text-xs font-semibold transition-colors cursor-pointer border border-stone-200/60"
-                      >
-                        #{tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 2.5 Quick Topic Tags: 動態跟進當前熱門話題標籤 */}
-      <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 sm:pb-1 scrollbar-none text-xs -mx-1 px-1 sm:mx-0 sm:px-0">
-        <span className="text-[11px] font-bold text-stone-500 shrink-0 flex items-center gap-1 mr-0.5">
-          <Sparkles className="w-3 h-3 text-amber-600" />
-          <span className="hidden sm:inline">熱門話題：</span>
-          <span className="sm:hidden">話題：</span>
-        </span>
-        {dynamicHotTags.map((tag) => {
-          const isActive = searchQuery.trim().toLowerCase() === tag.toLowerCase();
-          return (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => {
-                if (isActive) {
-                  setSearchQuery('');
-                } else {
-                  setSearchQuery(tag);
-                }
-              }}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                isActive
-                  ? 'bg-amber-500 text-stone-950 font-black shadow-2xs ring-1 ring-amber-400'
-                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+              onClick={() => setSortBy('most_solutions')}
+              className={`px-2.5 py-1 rounded-full text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                sortBy === 'most_solutions'
+                  ? 'bg-white text-stone-950 shadow-2xs font-bold'
+                  : 'text-stone-600 hover:text-stone-900 font-medium'
               }`}
-              title={`點擊${isActive ? '取消' : '快速搜尋'}「${tag}」話題`}
+              title="依方案數排序"
             >
-              <span className={isActive ? 'text-stone-950 font-black' : 'text-amber-600 font-bold'}>#</span>
-              <span>{tag}</span>
+              <Lightbulb className="w-3 h-3 text-amber-500 shrink-0 hidden sm:inline" />
+              <span>解答</span>
             </button>
-          );
-        })}
-        </div>
-      </div>
 
-      {/* 3. Third row: Levels & Sorting */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pt-1.5 sm:pt-2 border-t border-stone-200/80">
-        {/* Level pills (L0 ~ L4) */}
-        <div id="onboarding-step-3-levels" className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 sm:pb-0 flex-wrap">
-          <span className="text-[11px] sm:text-xs font-bold text-stone-400 mr-0.5 flex items-center gap-1">
-            <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> 等級:
-          </span>
+            <button
+              onClick={() => setSortBy('most_discussions')}
+              className={`px-2.5 py-1 rounded-full text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                sortBy === 'most_discussions'
+                  ? 'bg-white text-stone-950 shadow-2xs font-bold'
+                  : 'text-stone-600 hover:text-stone-900 font-medium'
+              }`}
+              title="依討論熱度排序"
+            >
+              <Flame className="w-3 h-3 text-orange-500 shrink-0 hidden sm:inline" />
+              <span>討論</span>
+            </button>
 
-          <button
-            onClick={() => setSelectedLevel('全部')}
-            className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-              selectedLevel === '全部'
-                ? 'bg-stone-800 text-white'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            全部
-          </button>
+            <button
+              onClick={() => setSortBy('highest_bounty')}
+              className={`px-2.5 py-1 rounded-full text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                sortBy === 'highest_bounty'
+                  ? 'bg-white text-stone-950 shadow-2xs font-bold'
+                  : 'text-stone-600 hover:text-stone-900 font-medium'
+              }`}
+              title="依懸賞金額排序"
+            >
+              <Award className="w-3 h-3 text-amber-500 shrink-0 hidden sm:inline" />
+              <span>懸賞</span>
+            </button>
 
-          {(['L0', 'L1', 'L2', 'L3', 'L4'] as ProblemLevel[]).map((lvl) => {
-            const cfg = LEVEL_CONFIGS[lvl];
-            if (!cfg) return null;
-            const isSelected = selectedLevel === lvl;
-            const priceLabel = lvl === 'L0' 
-              ? '免費' 
-              : lvl === 'L1' 
-              ? '$100~300' 
-              : lvl === 'L2' 
-              ? '$301~899' 
-              : lvl === 'L3' 
-              ? '$900~2,999' 
-              : '$3,000+';
+            <button
+              onClick={() => setSortBy('highest_tips')}
+              className={`px-2.5 py-1 rounded-full text-[11px] sm:text-xs transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                sortBy === 'highest_tips'
+                  ? 'bg-white text-stone-950 shadow-2xs font-bold'
+                  : 'text-stone-600 hover:text-stone-900 font-medium'
+              }`}
+              title="依打賞點數排序"
+            >
+              <Coins className="w-3 h-3 text-amber-600 shrink-0 hidden sm:inline" />
+              <span>打賞</span>
+            </button>
+          </div>
 
-            return (
-              <button
-                key={lvl}
-                onClick={() => setSelectedLevel(lvl)}
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isSelected
-                    ? 'bg-amber-500 text-stone-950 font-black shadow-2xs'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
-                title={`${cfg.name}: ${cfg.rangeText} (${cfg.example})`}
-              >
-                <span>{lvl}</span>
-                <span className={`text-[10px] font-mono ${isSelected ? 'text-stone-950 font-bold' : 'text-stone-500'}`}>
-                  {priceLabel}
-                </span>
-              </button>
-            );
-          })}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* 篩選與話題收合鍵 */}
+            <button
+              id="onboarding-step-3-levels"
+              type="button"
+              onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+              className={`px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                isFilterExpanded || hasActiveSubFilter
+                  ? 'bg-amber-100 text-amber-950 ring-1 ring-amber-300'
+                  : 'bg-stone-100 hover:bg-stone-200/80 text-stone-600'
+              }`}
+              title="展開等級篩選與熱門話題標籤"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>{selectedLevel !== '全部' ? selectedLevel : '篩選'}</span>
+            </button>
 
-          {selectedLevel !== '全部' && LEVEL_CONFIGS[selectedLevel] && (
-            <span className="text-[11px] sm:text-xs font-bold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-lg border border-amber-300 font-mono whitespace-nowrap ml-0.5 shadow-2xs flex items-center gap-1">
-              <span>{LEVEL_CONFIGS[selectedLevel].name}</span>
-              <span>·</span>
-              <strong className="text-stone-950">{LEVEL_CONFIGS[selectedLevel].rangeText}</strong>
-            </span>
-          )}
-        </div>
-
-        {/* Sort & View Mode selector */}
-        <div className="flex items-center gap-2 text-xs self-start sm:self-auto flex-wrap justify-between sm:justify-end w-full sm:w-auto sm:mr-2 md:mr-4">
-          <span className="text-stone-400 font-mono hidden lg:inline">
-            共 {totalCount} 則難題
-          </span>
-
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Sort selector */}
-            <div className="inline-flex rounded-xl bg-stone-100 p-0.5 border border-stone-200 overflow-x-auto max-w-full">
-              {/* 1. 推薦 */}
-              <button
-                onClick={() => setSortBy('recruiting_promoted')}
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  sortBy === 'recruiting_promoted'
-                    ? 'bg-amber-500 text-stone-950 shadow-2xs font-bold'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-                title="依您最近搜尋的關鍵字、看板與瀏覽主題為您智能推薦"
-              >
-                <Sparkles className={`w-3.5 h-3.5 shrink-0 ${sortBy === 'recruiting_promoted' ? 'text-yellow-200 fill-yellow-300' : 'text-amber-500 fill-amber-400'}`} />
-                <span>推薦</span>
-              </button>
-
-              {/* 2. 最多解答 */}
-              <button
-                onClick={() => setSortBy('most_solutions')}
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                  sortBy === 'most_solutions'
-                    ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-                title="依收到方案解答總數排序"
-              >
-                <Lightbulb className="w-3 h-3 text-amber-500" />
-                <span>最多解答</span>
-              </button>
-
-              {/* 3. 熱烈討論 */}
-              <button
-                onClick={() => setSortBy('most_discussions')}
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                  sortBy === 'most_discussions'
-                    ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-                title="依留言討論熱度排序"
-              >
-                <Flame className="w-3 h-3 text-orange-500" />
-                <span>熱烈討論</span>
-              </button>
-
-              {/* 4. 最高懸賞 */}
-              <button
-                onClick={() => setSortBy('highest_bounty')}
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                  sortBy === 'highest_bounty'
-                    ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-                title="依懸賞金額高低排序"
-              >
-                <Award className="w-3 h-3 text-amber-500" />
-                <span>最高懸賞</span>
-              </button>
-
-              {/* 5. 最高打賞 */}
-              <button
-                onClick={() => setSortBy('highest_tips')}
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                  sortBy === 'highest_tips'
-                    ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-                title="依痛點洞察獲得讀者打賞支持總點數排序"
-              >
-                <Coins className="w-3 h-3 text-amber-600 fill-amber-400" />
-                <span>最高打賞</span>
-              </button>
-            </div>
-
-            {/* View Mode Switcher: 大視窗 / 條列式 / 方格 */}
+            {/* View Mode Switcher */}
             {setViewMode && (
-              <div id="onboarding-step-4-viewmode" className="inline-flex rounded-xl bg-stone-100 p-0.5 border border-stone-200 shrink-0">
-                {/* 大視窗 */}
+              <div id="onboarding-step-4-viewmode" className="inline-flex rounded-full bg-stone-100/90 p-0.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => setViewMode('large')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  className={`p-1.5 rounded-full transition-all cursor-pointer ${
                     viewMode === 'large'
-                      ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                      ? 'bg-white text-indigo-700 shadow-2xs font-bold'
                       : 'text-stone-500 hover:text-stone-800'
                   }`}
-                  title="大視窗模式（完整詳細卡片）"
+                  title="標準卡片"
                 >
-                  <Square className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline text-[11px]">大視窗</span>
+                  <Square className={`w-3.5 h-3.5 ${viewMode === 'large' ? 'text-indigo-600' : 'text-stone-400'}`} />
                 </button>
-
-                {/* 條列式 */}
                 <button
                   type="button"
                   onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  className={`p-1.5 rounded-full transition-all cursor-pointer ${
                     viewMode === 'list'
-                      ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                      ? 'bg-white text-amber-700 shadow-2xs font-bold'
                       : 'text-stone-500 hover:text-stone-800'
                   }`}
-                  title="條列式模式（簡約清單）"
+                  title="緊湊清單"
                 >
-                  <List className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline text-[11px]">條列式</span>
+                  <List className={`w-3.5 h-3.5 ${viewMode === 'list' ? 'text-amber-600' : 'text-stone-400'}`} />
                 </button>
-
-                {/* 方格 */}
                 <button
                   type="button"
                   onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  className={`p-1.5 rounded-full transition-all cursor-pointer ${
                     viewMode === 'grid'
-                      ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
+                      ? 'bg-white text-emerald-700 shadow-2xs font-bold'
                       : 'text-stone-500 hover:text-stone-800'
                   }`}
-                  title="方格模式（雙欄緊湊）"
+                  title="雙欄方格"
                 >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline text-[11px]">方格</span>
+                  <LayoutGrid className={`w-3.5 h-3.5 ${viewMode === 'grid' ? 'text-emerald-600' : 'text-stone-400'}`} />
                 </button>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Subcategory Horizontal Strip (僅在選中特定主分類時顯示，極簡無框線設計) */}
+      {selectedCategory !== '全部' && currentSubcategories.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 text-xs animate-in fade-in duration-150">
+          <button
+            onClick={() => setSelectedSubcategory('全部')}
+            className={`px-3 py-1 rounded-full font-bold whitespace-nowrap transition-all cursor-pointer ${
+              selectedSubcategory === '全部'
+                ? 'bg-amber-500 text-stone-950 font-black shadow-xs'
+                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            全部子領域
+          </button>
+
+          {currentSubcategories.map((sub) => (
+            <button
+              key={sub}
+              onClick={() => setSelectedSubcategory(sub)}
+              className={`px-3 py-1 rounded-full font-bold whitespace-nowrap transition-all cursor-pointer ${
+                selectedSubcategory === sub
+                  ? 'bg-amber-500 text-stone-950 font-black'
+                  : 'bg-stone-100/80 text-stone-600 hover:bg-stone-200/80 hover:text-stone-900'
+              }`}
+            >
+              {sub}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Collapsible Drawer: 難度等級 (L0~L4) & 熱門話題標籤 */}
+      {(isFilterExpanded || hasActiveSubFilter) && (
+        <div className="p-3 rounded-2xl bg-stone-50/90 border border-stone-200/70 space-y-2.5 animate-in fade-in duration-150">
+          {/* Level pills (L0 ~ L4) */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none flex-wrap">
+              <span className="text-[11px] font-bold text-stone-400 mr-1 flex items-center gap-1">
+                <span>懸賞分級</span>
+                <HelpTooltip
+                  title="L0 ~ L4 懸賞分級說明"
+                  content="L0 免費交流與痛點共鳴；L1 ($100~300) 輕量諮詢；L2 ($301~899) 實務解方；L3 ($900~2,999) 深度專案架構；L4 ($3,000+) 企業級破局懸賞。"
+                />
+              </span>
+
+              <button
+                onClick={() => setSelectedLevel('全部')}
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                  selectedLevel === '全部'
+                    ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
+                    : 'bg-white text-stone-600 hover:bg-stone-200/70 border border-stone-200/70'
+                }`}
+              >
+                全部等級
+              </button>
+
+              {(['L0', 'L1', 'L2', 'L3', 'L4'] as ProblemLevel[]).map((lvl) => {
+                const cfg = LEVEL_CONFIGS[lvl];
+                if (!cfg) return null;
+                const isSelected = selectedLevel === lvl;
+                const priceLabel =
+                  lvl === 'L0'
+                    ? '免費'
+                    : lvl === 'L1'
+                    ? '$100+'
+                    : lvl === 'L2'
+                    ? '$301+'
+                    : lvl === 'L3'
+                    ? '$900+'
+                    : '$3,000+';
+
+                return (
+                  <button
+                    key={lvl}
+                    onClick={() => setSelectedLevel(isSelected ? '全部' : lvl)}
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+                      isSelected
+                        ? 'bg-amber-500 text-stone-950 font-black'
+                        : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200/70'
+                    }`}
+                    title={`${cfg.name}: ${cfg.rangeText}`}
+                  >
+                    <span>{lvl}</span>
+                    <span className="text-[10px] opacity-75 font-mono">{priceLabel}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {hasActiveSubFilter && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedLevel('全部');
+                  setSearchQuery('');
+                }}
+                className="text-[11px] font-bold text-stone-500 hover:text-stone-900 flex items-center gap-0.5 shrink-0 cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+                <span>重置</span>
+              </button>
+            )}
+          </div>
+
+          {/* Hot Topic Tags */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-1 border-t border-stone-200/50">
+            <span className="text-[11px] font-bold text-stone-400 shrink-0 mr-1">熱門話題</span>
+            {dynamicHotTags.map((tag) => {
+              const isActive = searchQuery.trim().toLowerCase() === tag.toLowerCase();
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => setSearchQuery(isActive ? '' : tag)}
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? 'bg-stone-900 text-amber-400 font-bold'
+                      : 'bg-white text-stone-600 hover:text-stone-950 border border-stone-200/60'
+                  }`}
+                >
+                  #{tag}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -98,125 +98,108 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({ onOpenQuestion }
   }, [effectiveRole, activeSubTab]);
 
   return (
-    <div className="max-w-4xl mx-auto px-2 sm:px-6 pt-1 sm:pt-2 pb-6 space-y-2 sm:space-y-4">
+    <div className="max-w-4xl mx-auto px-2 sm:px-6 pt-1 sm:pt-2 pb-6 space-y-4">
       {/* Header with Integrated Perspective Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 border-b border-stone-100/80 pb-3 sm:pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200/70 pb-3.5">
         <div>
           <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
             我的案件
           </h2>
-          <p className="text-xs sm:text-sm text-stone-500 mt-1">
-            追蹤、管理您參與的所有提案與委託進度
+          <p className="text-xs text-stone-500 mt-0.5">
+            管理您的提問委託與解答提案進度
           </p>
         </div>
 
-        {/* 整合當前身分與切換鍵 (我是：提問者 / 解答者) */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="text-xs sm:text-sm font-bold text-stone-700 select-none">
-            我是
-          </span>
-          <div className="inline-flex items-center p-1 bg-stone-100/90 rounded-2xl border border-stone-200 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => {
-                if (currentUser.role === 'admin') {
-                  setAdminPerspective('questioner');
-                } else if (currentUser.role !== 'questioner') {
-                  switchRole('questioner');
-                }
-              }}
-              className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                effectiveRole === 'questioner'
-                  ? 'bg-amber-500 text-stone-950 shadow-xs ring-1 ring-amber-400/50'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
-              }`}
-              title="點擊切換為提問者"
-            >
-              <HelpCircle className="w-4 h-4 text-stone-950" />
-              <span>提問者</span>
-              {effectiveRole === 'questioner' && (
-                <span className="w-1.5 h-1.5 rounded-full bg-stone-950 ml-0.5" />
-              )}
-            </button>
+        {/* 身分切換器 (提問者 / 解答者) */}
+        <div className="inline-flex items-center p-1 bg-stone-100 rounded-full self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => {
+              if (currentUser.role === 'admin') {
+                setAdminPerspective('questioner');
+              } else if (currentUser.role !== 'questioner') {
+                switchRole('questioner');
+              }
+            }}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              effectiveRole === 'questioner'
+                ? 'bg-white text-stone-950 shadow-2xs font-black'
+                : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>提問者視角</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                if (currentUser.role === 'admin') {
-                  setAdminPerspective('solver');
-                } else if (currentUser.role !== 'solver') {
-                  switchRole('solver');
-                }
-              }}
-              className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                effectiveRole === 'solver'
-                  ? 'bg-blue-600 text-white shadow-xs ring-1 ring-blue-500/50'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
-              }`}
-              title="點擊切換為解答者"
-            >
-              <Briefcase className="w-4 h-4 text-current" />
-              <span>解答者</span>
-              {effectiveRole === 'solver' && (
-                <span className="w-1.5 h-1.5 rounded-full bg-white ml-0.5" />
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (currentUser.role === 'admin') {
+                setAdminPerspective('solver');
+              } else if (currentUser.role !== 'solver') {
+                switchRole('solver');
+              }
+            }}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              effectiveRole === 'solver'
+                ? 'bg-white text-blue-700 shadow-2xs font-black'
+                : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <Briefcase className="w-3.5 h-3.5" />
+            <span>解答者視角</span>
+          </button>
         </div>
       </div>
 
-      {/* Categories Pills */}
-      <div className={`grid gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-stone-100 rounded-2xl border border-stone-200/80 ${
+      {/* Status Segmented Control */}
+      <div className={`grid gap-1 p-1 bg-stone-100/90 rounded-2xl ${
         effectiveRole === 'solver' ? 'grid-cols-2' : 'grid-cols-3'
       }`}>
         <button
           onClick={() => setActiveSubTab('pending')}
-          className={`py-2 px-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'pending'
-              ? 'bg-white text-stone-950 shadow-2xs border border-stone-200'
-              : 'text-stone-500 hover:text-stone-850'
+              ? 'bg-white text-stone-950 shadow-2xs font-black'
+              : 'text-stone-500 hover:text-stone-800'
           }`}
         >
-          <span>
-            {currentUser.role === 'solver' ? '已提案' : '提問中'}
-          </span>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-            activeSubTab === 'pending' ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 text-stone-600'
+          <span>{effectiveRole === 'solver' ? '已提案' : '提問中'}</span>
+          <span className={`text-[11px] font-mono px-1.5 py-0.2 rounded-full ${
+            activeSubTab === 'pending' ? 'bg-amber-100 text-amber-900 font-black' : 'text-stone-400'
           }`}>
-            {currentUser.role === 'solver' ? solverPending.length : questionerPending.length}
+            {effectiveRole === 'solver' ? solverPending.length : questionerPending.length}
           </span>
         </button>
 
         <button
           onClick={() => setActiveSubTab('active')}
-          className={`py-2 px-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'active'
-              ? 'bg-white text-stone-950 shadow-2xs border border-stone-200'
-              : 'text-stone-500 hover:text-stone-850'
+              ? 'bg-white text-stone-950 shadow-2xs font-black'
+              : 'text-stone-500 hover:text-stone-800'
           }`}
         >
-          <span>
-            {currentUser.role === 'solver' ? '進行中' : '諮詢中'}
-          </span>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-            activeSubTab === 'active' ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 text-stone-600'
+          <span>{effectiveRole === 'solver' ? '進行中' : '諮詢中'}</span>
+          <span className={`text-[11px] font-mono px-1.5 py-0.2 rounded-full ${
+            activeSubTab === 'active' ? 'bg-amber-100 text-amber-900 font-black' : 'text-stone-400'
           }`}>
-            {currentUser.role === 'solver' ? solverActive.length : questionerActive.length}
+            {effectiveRole === 'solver' ? solverActive.length : questionerActive.length}
           </span>
         </button>
 
-        {currentUser.role !== 'solver' && (
+        {effectiveRole !== 'solver' && (
           <button
             onClick={() => setActiveSubTab('completed')}
-            className={`py-2 px-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeSubTab === 'completed'
-                ? 'bg-white text-stone-950 shadow-2xs border border-stone-200'
-                : 'text-stone-500 hover:text-stone-850'
+                ? 'bg-white text-stone-950 shadow-2xs font-black'
+                : 'text-stone-500 hover:text-stone-800'
             }`}
           >
             <span>已完成</span>
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-              activeSubTab === 'completed' ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 text-stone-600'
+            <span className={`text-[11px] font-mono px-1.5 py-0.2 rounded-full ${
+              activeSubTab === 'completed' ? 'bg-amber-100 text-amber-900 font-black' : 'text-stone-400'
             }`}>
               {questionerCompleted.length}
             </span>
@@ -225,88 +208,77 @@ export const MyProjectsView: React.FC<MyProjectsViewProps> = ({ onOpenQuestion }
       </div>
 
       {/* Listings */}
-      <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-3">
         {currentListings.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-stone-300 space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-stone-50 text-stone-400 mx-auto flex items-center justify-center border border-stone-200">
-              <HelpCircle className="w-7 h-7" />
+          <div className="p-10 sm:p-12 text-center bg-white rounded-2xl border border-stone-200/80 space-y-2.5">
+            <div className="w-11 h-11 rounded-full bg-stone-100 text-stone-400 mx-auto flex items-center justify-center">
+              <HelpCircle className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-base sm:text-lg text-stone-800">
-              暫無相符的案件項目
+            <h3 className="font-bold text-sm sm:text-base text-stone-800">
+              暫無相符的案件
             </h3>
-            <p className="text-xs sm:text-sm text-stone-500 max-w-sm mx-auto leading-relaxed">
-              您在此狀態下尚未有任何提問委託或解答方案。您可以前往問題市場瀏覽或提出痛點。
+            <p className="text-xs text-stone-500 max-w-xs mx-auto leading-relaxed">
+              目前尚無此狀態的提問或提案，歡迎前往問題市場探索或發布需求。
             </p>
           </div>
         ) : (
-          currentListings.map((q) => (
-            <div
-              key={q.id}
-              onClick={() => onOpenQuestion(q.id)}
-              className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 shadow-2xs transition-all cursor-pointer group flex flex-col justify-between gap-3.5"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700">
-                      {q.category} · {q.subcategory}
-                    </span>
-                    {isPainPointQuestion(q) && (
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 font-extrabold shadow-2xs">
-                        痛點/創點子
+          currentListings.map((q) => {
+            const isPain = isPainPointQuestion(q);
+            return (
+              <div
+                key={q.id}
+                onClick={() => onOpenQuestion(q.id)}
+                className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200/80 hover:border-stone-300 hover:shadow-sm transition-all cursor-pointer group flex flex-col justify-between gap-3"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-xs text-stone-500">
+                      <span className="font-semibold text-stone-600">
+                        {q.category}{q.subcategory ? ` · ${q.subcategory}` : ''}
                       </span>
-                    )}
-                    {isPainPointQuestion(q) ? (
-                      <span className="text-xs font-black px-2.5 py-1 rounded-lg font-mono border border-rose-300 bg-rose-50/80 text-rose-700 shadow-2xs">
-                        {(q.bounty || 0) > 0 ? `痛點懸賞 NT$ ${(q.bounty || 0).toLocaleString()}` : '痛點'}
+                      <span>·</span>
+                      <span>{q.createdAt}</span>
+                    </div>
+
+                    {isPain ? (
+                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 font-mono">
+                        {(q.bounty || 0) > 0 ? `痛點 $${(q.bounty || 0).toLocaleString()}` : '痛點徵集'}
                       </span>
                     ) : (q.bounty || 0) > 0 ? (
-                      <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 font-mono">
-                        懸賞金 NT$ {(q.bounty || 0).toLocaleString()}
+                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 font-mono">
+                        NT$ {(q.bounty || 0).toLocaleString()}
                       </span>
                     ) : (
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-stone-200 text-stone-700">
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
                         免費交流
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-stone-400 font-medium">
-                    發布於 {q.createdAt}
-                  </span>
+
+                  <h4 className="font-extrabold text-sm sm:text-base text-stone-900 group-hover:text-amber-700 transition-colors leading-snug">
+                    {q.title}
+                  </h4>
+                  <p className="text-xs text-stone-500 line-clamp-2 leading-relaxed">
+                    {q.description}
+                  </p>
                 </div>
 
-                <h4 className="font-black text-base sm:text-lg text-stone-900 group-hover:text-amber-700 transition-colors leading-snug">
-                  {q.title}
-                </h4>
-                <p className="text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed">
-                  {q.description}
-                </p>
-                {q.tags && q.tags.length > 0 && (
-                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                    {q.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-[10.5px] font-medium px-2 py-0.2 rounded border text-stone-600 bg-stone-100 border-stone-200"
-                      >
+                <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2 text-xs text-stone-500">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    {q.tags && q.tags.slice(0, 3).map((tag) => (
+                      <span key={tag} className="text-[11px] text-stone-400 truncate">
                         #{tag}
                       </span>
                     ))}
                   </div>
-                )}
+                  <span className="font-bold text-stone-700 group-hover:text-amber-700 flex items-center gap-0.5 shrink-0">
+                    <span>查看詳情</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
               </div>
-
-              <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2 text-xs sm:text-sm text-stone-600">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Clock className="w-4 h-4 text-stone-400" />
-                  <span>期限 14 天</span>
-                </span>
-                <span className="font-bold text-amber-700 group-hover:underline flex items-center gap-1">
-                  <span>查看詳情</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

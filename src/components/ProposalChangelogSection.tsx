@@ -1,174 +1,141 @@
-import React from 'react';
-import { Question, ProposalUpdateLog } from '../types';
-import { History, Tag, Clock, Sparkles, FileEdit, CheckCircle2, MessageSquare, Terminal } from 'lucide-react';
+import React, { useState } from 'react';
+import { Question } from '../types';
+import { GitBranch, Clock, ChevronDown, ChevronUp, FileEdit } from 'lucide-react';
 
 interface ProposalChangelogSectionProps {
   question: Question;
+  canEdit?: boolean;
   canUpdate?: boolean;
   onOpenUpdateModal?: () => void;
 }
 
 export const ProposalChangelogSection: React.FC<ProposalChangelogSectionProps> = ({
   question,
+  canEdit = false,
   canUpdate = false,
   onOpenUpdateModal,
 }) => {
-  const isVibeCoding = question.postType === 'vibecoding_app' || question.category === '網站程式';
-  const logs = question.updateLogs || [];
+  const rawLogs = question.updateLogs || [];
+  const [expanded, setExpanded] = useState(true);
+  const allowEdit = Boolean(canEdit || canUpdate);
+
+  const displayLogs =
+    rawLogs.length > 0
+      ? rawLogs
+      : [
+          {
+            id: `init-${question.id}`,
+            version: question.currentVersion || (question.postType === 'vibecoding_app' ? 'v1.0.0' : 'v1.0'),
+            timestamp: (question.createdAt || '').split('T')[0] || '初版發布',
+            content: question.postType === 'vibecoding_app' ? '初版作品發布上架' : '初版提案內容發布',
+            updatedFields: ['初版發布'],
+            note: undefined,
+          },
+        ];
 
   return (
-    <div className="mt-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-stone-50 via-white to-stone-50 border border-stone-200/90 shadow-2xs space-y-4">
-      {/* 區塊標題列 */}
-      <div className="flex items-center justify-between gap-3 flex-wrap border-b border-stone-100 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white shadow-xs ${
-            isVibeCoding ? 'bg-purple-600' : 'bg-emerald-600'
-          }`}>
-            <History className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-extrabold text-sm sm:text-base text-stone-900 tracking-tight">
-                📜 提案更新日誌 (Changelog)
-              </h4>
-              {question.currentVersion && (
-                <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                  目前版本 {question.currentVersion}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-stone-500 mt-0.5">
-              記載各版本時間、更新內容與提案者註記歷程，公開透明展示提案迭代演進
-            </p>
+    <div className="mt-5 rounded-xl border border-stone-200 bg-white overflow-hidden">
+      {/* Header Bar */}
+      <div className="px-4 py-3 bg-stone-50 border-b border-stone-200 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <GitBranch className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="text-xs sm:text-sm font-bold text-stone-900">
+              版本更新紀錄
+            </h4>
+            <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono text-[11px] font-bold">
+              {question.currentVersion || displayLogs[0]?.version || 'v1.0.0'}
+            </span>
+            <span className="text-xs text-stone-500">
+              ({displayLogs.length} 筆)
+            </span>
           </div>
         </div>
 
-        {canUpdate && onOpenUpdateModal && (
-          <button
-            type="button"
-            onClick={onOpenUpdateModal}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-black shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-              isVibeCoding
-                ? 'bg-purple-600 hover:bg-purple-500 text-white'
-                : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-            }`}
-          >
-            <FileEdit className="w-3.5 h-3.5" />
-            <span>更新內容與註記</span>
-          </button>
-        )}
-      </div>
-
-      {/* 日誌內容列表 */}
-      {logs.length > 0 ? (
-        <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-stone-200 before:pointer-events-none pl-1">
-          {logs.map((log: ProposalUpdateLog, idx: number) => (
-            <div
-              key={log.id || `log-${idx}`}
-              className="relative pl-7 group"
-            >
-              {/* 時間軸節點圖示 */}
-              <div className={`absolute left-2 top-3 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow-xs z-10 ${
-                idx === 0
-                  ? isVibeCoding ? 'bg-purple-600 ring-2 ring-purple-200' : 'bg-emerald-600 ring-2 ring-emerald-200'
-                  : 'bg-stone-400'
-              }`} />
-
-              <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-stone-200/80 shadow-2xs space-y-2.5 transition-all hover:border-stone-300">
-                {/* 日誌頂部時間、版本與作者欄 */}
-                <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="flex items-center gap-1 text-stone-500 font-mono font-medium text-[11px]">
-                      <Clock className="w-3.5 h-3.5 text-stone-400" />
-                      <span>{log.timestamp}</span>
-                    </span>
-
-                    {/* 版本號碼 (若是 vibecoding) */}
-                    {log.version && (
-                      <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-200 font-mono font-black text-[11px] flex items-center gap-1">
-                        <Tag className="w-3 h-3 text-purple-600" />
-                        <span>{log.version}</span>
-                      </span>
-                    )}
-
-                    {idx === 0 && (
-                      <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold">
-                        最新版本
-                      </span>
-                    )}
-                  </div>
-
-                  {/* 提案者名稱 */}
-                  <div className="flex items-center gap-1.5 text-[11px] text-stone-500">
-                    {log.authorAvatar && (
-                      <img src={log.authorAvatar} alt={log.authorName} className="w-4 h-4 rounded-full object-cover" />
-                    )}
-                    <span>提案者：<strong className="text-stone-800">{log.authorName}</strong></span>
-                  </div>
-                </div>
-
-                {/* 更新內容 (必填核心) */}
-                <div className="space-y-1">
-                  <span className="text-[11px] font-extrabold text-stone-500 block">
-                    【更新內容】
-                  </span>
-                  <p className="text-xs sm:text-sm text-stone-800 leading-relaxed whitespace-pre-line font-medium">
-                    {log.content}
-                  </p>
-                </div>
-
-                {/* 提案者註記 (選填項目，若有填寫則特別醒目標示) */}
-                {log.note && (
-                  <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200/80 text-xs text-amber-950 flex items-start gap-2">
-                    <MessageSquare className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      <span className="font-bold text-[11px] text-amber-900 block">
-                        提案者註記：
-                      </span>
-                      <p className="text-xs text-amber-900/90 leading-relaxed font-medium">
-                        {log.note}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 變更欄位標記 */}
-                {log.updatedFields && log.updatedFields.length > 0 && (
-                  <div className="pt-1 flex items-center gap-1.5 flex-wrap text-[10px] text-stone-400">
-                    <span>異動欄位：</span>
-                    {log.updatedFields.map((field, fIdx) => (
-                      <span key={fIdx} className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-medium">
-                        {field}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        /* 無日誌空狀態提示 */
-        <div className="p-6 rounded-xl bg-white border border-dashed border-stone-200 text-center space-y-2">
-          <div className="w-9 h-9 rounded-full bg-stone-100 text-stone-400 mx-auto flex items-center justify-center">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <p className="text-xs font-bold text-stone-700">目前尚無後續更新日誌</p>
-          <p className="text-[11px] text-stone-400 max-w-sm mx-auto leading-relaxed">
-            {canUpdate
-              ? '身為提案者，您可以隨時點擊上方【更新內容與註記】記錄新功能上線、修復成果或達成階段里程碑！'
-              : '提案者後續發布新功能、下載量突破或內容調整時，最新更新歷程將即時紀錄於此。'}
-          </p>
-          {canUpdate && onOpenUpdateModal && (
+        <div className="flex items-center gap-2">
+          {allowEdit && onOpenUpdateModal && (
             <button
               type="button"
               onClick={onOpenUpdateModal}
-              className="mt-2 px-3.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+              className="px-3 py-1.5 rounded-lg border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <FileEdit className="w-3.5 h-3.5" />
-              <span>撰寫第一筆更新日誌</span>
+              <span>發布新版本</span>
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="p-1 rounded-md text-stone-500 hover:text-stone-800 hover:bg-stone-200/60 transition-colors cursor-pointer"
+            title={expanded ? '收合紀錄' : '展開紀錄'}
+          >
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Body Timeline */}
+      {expanded && (
+        <div className="p-4">
+          <div className="relative pl-4 border-l border-stone-200 space-y-4">
+            {displayLogs.map((log, index) => {
+              const isLatest = index === 0;
+              return (
+                <div key={log.id || index} className="relative">
+                  <div
+                    className={`absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full border-2 ${
+                      isLatest
+                        ? 'bg-emerald-600 border-emerald-200'
+                        : 'bg-stone-300 border-white'
+                    }`}
+                  />
+
+                  <div className="p-3 rounded-lg border border-stone-200 bg-stone-50/60">
+                    <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {log.version && (
+                          <span
+                            className={`px-1.5 py-0.5 rounded font-mono text-[11px] font-bold ${
+                              isLatest
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                            }`}
+                          >
+                            {log.version}
+                          </span>
+                        )}
+                        {isLatest && (
+                          <span className="text-[11px] font-bold text-emerald-700">
+                            最新
+                          </span>
+                        )}
+                        {log.updatedFields && log.updatedFields.length > 0 && (
+                          <span className="text-[11px] text-stone-500">
+                            更新項目：{log.updatedFields.join('、')}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1 text-[11px] text-stone-400 font-mono">
+                        <Clock className="w-3 h-3" />
+                        <span>{log.timestamp}</span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-stone-800 leading-relaxed whitespace-pre-line">
+                      {log.content}
+                    </p>
+
+                    {log.note && (
+                      <div className="mt-1.5 text-xs text-stone-500">
+                        備註：{log.note}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

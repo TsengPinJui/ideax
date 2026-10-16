@@ -170,21 +170,21 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const handleSecondClick = () => {
     const res = toggleSecondQuestion(question.id);
     if (res.isSeconded) {
-      addNotification(`已為痛點「${question.title}」附議 +1！`, 'success');
+      addNotification(`已為痛點「${question.title}」附議 +1，並同步收錄至「我的按讚收藏」！`, 'success');
     }
   };
 
   const handleSameQuestionClick = () => {
     const res = toggleSameQuestion(question.id);
     if (res.isSameQuestion) {
-      addNotification(`已加入同問！有更多人關注此提問「${question.title}」`, 'success');
+      addNotification(`已為此問題「🔥 +1 附議」，並同步收錄至「我的按讚收藏」！`, 'success');
     }
   };
 
   const handleLikeQuestionClick = () => {
     const res = toggleLikeQuestion(question.id);
     if (res.isLiked) {
-      addNotification(`已為討論「${question.title}」按讚！`, 'success');
+      addNotification(`已按讚「${question.title}」，並同步收錄至「我的按讚收藏」！`, 'success');
     }
   };
 
@@ -247,13 +247,33 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const referencedPainPointObj = findReferencedPainPoint(liveQuestion, questions);
   const referencingProposals = isPainPoint ? findProposalsReferencingPainPoint(liveQuestion, questions) : [];
 
+  const [questionHistory, setQuestionHistory] = useState<Question[]>([]);
+
   const handleSelectQuestion = (targetQ: Question) => {
+    if (liveQuestion && liveQuestion.id !== targetQ.id) {
+      setQuestionHistory((prev) => [...prev, liveQuestion]);
+    }
     if (onSelectQuestion) {
       onSelectQuestion(targetQ);
     } else if (setSelectedQuestion) {
       setSelectedQuestion(targetQ);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackOrClose = () => {
+    if (questionHistory.length > 0) {
+      const prevQ = questionHistory[questionHistory.length - 1];
+      setQuestionHistory((prev) => prev.slice(0, -1));
+      if (onSelectQuestion) {
+        onSelectQuestion(prevQ);
+      } else if (setSelectedQuestion) {
+        setSelectedQuestion(prevQ);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    onClose();
   };
 
   const handleCreateProposalForPainPoint = (painPoint: Question) => {
@@ -374,12 +394,18 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
 
   // AI Preliminary Report (提問者本人、管理員、達人方案以上免費，一般會員可支付 50 點數解鎖)
   const isAuthorUser = currentUser.id === question.authorId || currentUser.role === 'admin';
+  const isProposalPublisher = Boolean(
+    currentUser?.id &&
+    currentUser.id !== 'user-guest' &&
+    liveQuestion?.authorId &&
+    currentUser.id === liveQuestion.authorId
+  );
   const canUpdateProposal = (
     (liveQuestion?.postType === 'innovation_proposal' ||
       liveQuestion?.postType === 'vibecoding_app' ||
       liveQuestion?.category === '網站程式' ||
       (liveQuestion?.tags && liveQuestion?.tags.includes('VibeCoding')))
-  ) && isAuthorUser;
+  ) && isProposalPublisher;
   const userTier = currentUser?.subscriptionTier || 'free';
   const isProOrHigher = ['pro', 'expert', 'authority', 'master'].includes(userTier) || isAuthorUser;
   
@@ -791,13 +817,13 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
       {/* Header */}
       <div className="p-3 sm:p-6 border-b border-stone-200 flex items-start justify-between gap-4 bg-white/95 sticky top-0 z-20">
         <div className="space-y-2">
-          {isFullPage && (
+          {(isFullPage || questionHistory.length > 0) && (
             <button
-              onClick={onClose}
+              onClick={handleBackOrClose}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-100 text-stone-700 text-xs font-bold transition-colors cursor-pointer mb-1"
             >
               <ArrowLeft className="w-4 h-4 text-amber-600" />
-              <span>返回問題市場</span>
+              <span>返回上一頁</span>
             </button>
           )}
           <div className="flex items-center gap-2 flex-wrap">
@@ -943,19 +969,19 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
           )}
 
-          {/* Bookmark Button */}
+          {/* ⭐ 收藏按鈕 */}
           <button
             type="button"
             onClick={() => toggleBookmarkQuestion(question.id)}
-            className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
+            className={`px-2.5 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
               isBookmarked
-                ? 'bg-amber-500 border-amber-500 text-stone-950 shadow-2xs font-black'
-                : 'bg-white hover:bg-stone-100 border-stone-200 text-stone-600 hover:text-stone-900'
+                ? 'bg-amber-50 border-amber-300 text-amber-800 shadow-2xs font-black'
+                : 'bg-white hover:bg-amber-50/60 border-stone-200 text-stone-600 hover:text-amber-700'
             }`}
-            title="收藏此問題"
+            title="⭐ 收藏"
           >
-            <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-stone-500'}`} />
-            <span className="hidden sm:inline">收藏</span>
+            <Star className={`w-4 h-4 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
+            <span className="hidden sm:inline">{isBookmarked ? '已收藏' : '收藏'}</span>
           </button>
 
           {!isFullPage && (
@@ -1012,15 +1038,15 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     <span>私聊提問者</span>
                   </button>
                 )}
-                {/* 提案者更新內容按鈕 */}
+                {/* 提案發布者本人專屬：更新內容按鈕（其餘人隱藏） */}
                 {canUpdateProposal && (
                   <button
                     type="button"
                     onClick={() => setIsUpdateModalOpen(true)}
-                    className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
                     title="重新編輯提案內容並發布更新日誌"
                   >
-                    <FileEdit className="w-3 h-3 text-purple-700" />
+                    <FileEdit className="w-3 h-3" />
                     <span>更新內容</span>
                   </button>
                 )}
@@ -1034,7 +1060,19 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             <div className="flex flex-wrap items-center gap-2 sm:gap-3.5 font-medium text-stone-500">
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-stone-400" />
-                <span>{question.deadline === '永久' ? '刊登時間：永久' : `截止日：${question.deadline}`}</span>
+                <span>
+                  {(() => {
+                    if (!question.deadline || question.deadline === '永久' || question.deadline === '永久刊登') {
+                      return '永久';
+                    }
+                    const target = new Date(question.deadline).getTime();
+                    if (!isNaN(target)) {
+                      const diffDays = Math.ceil((target - Date.now()) / (1000 * 60 * 60 * 24));
+                      return diffDays > 0 ? `${diffDays}天` : '已到期';
+                    }
+                    return question.deadline;
+                  })()}
+                </span>
               </span>
               <span className="flex items-center gap-1">
                 <Eye className="w-3.5 h-3.5 text-stone-400" />
@@ -1052,21 +1090,23 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
 
             {/* 單一動作按鈕列 */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* 痛點下加「附議」按鍵（綠色+1圖示） / L0討論加「按讚」（大拇指圖示） / 創點子的提問下方加「同問」（舉手圖示） */}
-              {isPainPoint ? (
+              {/* 創新提案/軟體刊登：❤️ Like ｜ L0討論：👍 按讚 ｜ 問題類型/痛點：🔥 +1 附議 */}
+              {question.postType === 'innovation_proposal' || isVibeCodingApp ? (
                 <button
                   type="button"
-                  onClick={handleSecondClick}
+                  onClick={handleLikeQuestionClick}
                   className={`px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
-                    isSeconded
-                      ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                      : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300'
+                    isLiked || isSeconded
+                      ? 'bg-rose-500 text-white border-rose-500 shadow-xs'
+                      : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
                   }`}
-                  title="附議此痛點（+1 共鳴支持）"
+                  title="❤️ Like（創新提案 / 軟體刊登）"
                 >
-                  <span className={`font-mono font-black border px-1 py-0.2 rounded text-[11px] leading-tight ${isSeconded ? 'bg-white text-rose-800 border-white' : 'bg-white text-rose-700 border-rose-300'}`}>+1</span>
-                  <span>附議</span>
-                  {secondCount > 0 && <span className="font-mono font-black">({secondCount})</span>}
+                  <Heart className={`w-3.5 h-3.5 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                  <span>Like</span>
+                  {Math.max(likesCount, secondCount) > 0 && (
+                    <span className="font-mono font-black">({Math.max(likesCount, secondCount)})</span>
+                  )}
                 </button>
               ) : isL0Discussion ? (
                 <button
@@ -1077,7 +1117,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                       ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                       : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
                   }`}
-                  title="為此討論按讚"
+                  title="👍 按讚（L0 討論）"
                 >
                   <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'fill-white text-white' : 'text-blue-600'}`} />
                   <span>按讚</span>
@@ -1086,17 +1126,16 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               ) : (
                 <button
                   type="button"
-                  onClick={handleSameQuestionClick}
+                  onClick={handleSecondClick}
                   className={`px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
-                    isSame
-                      ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-xs'
-                      : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+                    isSeconded
+                      ? 'bg-orange-600 text-white border-orange-600 shadow-xs'
+                      : 'bg-orange-50 hover:bg-orange-100 text-orange-800 border-orange-300'
                   }`}
-                  title="我也想知道！加入同問"
+                  title="🔥 +1 附議（問題類型 / 痛點）"
                 >
-                  <Hand className={`w-3.5 h-3.5 ${isSame ? 'fill-stone-950 text-stone-950' : 'text-amber-700'}`} />
-                  <span>同問</span>
-                  {sameCount > 0 && <span className="font-mono font-black">({sameCount})</span>}
+                  <span>🔥 +1 附議</span>
+                  {secondCount > 0 && <span className="font-mono font-black">({secondCount})</span>}
                 </button>
               )}
 
@@ -2928,7 +2967,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             <button
               type="button"
               onClick={() => setIsUpdateModalOpen(true)}
-              className="px-3 sm:px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95 whitespace-nowrap"
+              className="px-3 sm:px-3.5 py-2 rounded-xl border-2 border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
               title="重新編輯提案內容並發布更新日誌"
             >
               <FileEdit className="w-3.5 h-3.5 shrink-0" />
@@ -3006,16 +3045,15 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
       question={liveQuestion}
       isFullPage={isFullPage}
       onClose={onClose}
-      currentUser={currentUser}
-      availableUsers={availableUsers}
-      solvers={solvers}
-      allQuestions={questions}
-      onSelectQuestion={handleSelectQuestion}
       authorDisplayName={authorDisplayName}
       authorDisplayAvatar={authorDisplayAvatar}
-      isAuthorDeactivated={isAuthorDeactivated}
-      isAuthor={isAuthor}
-      isAdmin={isAdmin}
+      authorColorClass={getUserNameColorClass(question.authorId, availableUsers, {
+        isOfficial: question.isOfficial,
+        name: question.authorName,
+        title: question.authorTitle,
+      })}
+      referencedPainPointObj={referencedPainPointObj}
+      onSelectReferencedPainPoint={handleSelectQuestion}
       canUpdateProposal={Boolean(canUpdateProposal)}
       isBookmarked={Boolean(isBookmarked)}
       onToggleBookmark={() => toggleBookmarkQuestion(question.id)}
@@ -3024,25 +3062,13 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
       onToggleLike={handleLikeQuestionClick}
       onOpenTipModal={() => setIsTipModalOpen(true)}
       onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
-      onOpenUnifiedActionModal={() => {
-        setUnifiedActionTab('violation');
-        setIsUnifiedActionModalOpen(true);
-      }}
-      onOpenConfirmDeleteModal={() => setIsConfirmDeleteQuestionOpen(true)}
-      onOpenDisputeModal={() => setIsDisputeModalOpen(true)}
-      onRelistQuestion={handleRelistQuestion}
       onShare={handleShareQuestion}
-      onPrivateChat={handlePrivateChat}
-      onSearchTag={onSearchTag}
+      isShareCopied={isUrlCopied}
+      discussionsCount={discussionAnswers.length}
       discussionAnswers={discussionAnswers}
       quickComment={quickComment}
       setQuickComment={setQuickComment}
       onQuickCommentSubmit={handleQuickCommentSubmit}
-      onLikeDiscussion={handleLikeDiscussion}
-      isDiscussionLiked={isDiscussionAnswerLiked}
-      getDiscussionLikesCount={getDiscussionAnswerLikesCount}
-      onDeleteDiscussion={(target) => setDeletingAnswerTarget(target)}
-      onSelectSolver={onSelectSolver}
     />
   ) : (
     content
@@ -3525,20 +3551,21 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         onClose={() => setIsSeoModalOpen(false)}
       />
 
-      <TipPainPointModal
-        isOpen={isTipModalOpen}
-        onClose={() => setIsTipModalOpen(false)}
-        question={question}
-        onSuccess={() => {
-          // Refresh or toast is handled inside modal
-        }}
-      />
+      {isTipModalOpen && (
+        <TipPainPointModal
+          isOpen={isTipModalOpen}
+          onClose={() => setIsTipModalOpen(false)}
+          question={question}
+        />
+      )}
 
-      <UpdateProposalModal
-        isOpen={isUpdateModalOpen}
-        onClose={() => setIsUpdateModalOpen(false)}
-        question={liveQuestion}
-      />
+      {isUpdateModalOpen && (
+        <UpdateProposalModal
+          isOpen={isUpdateModalOpen}
+          onClose={() => setIsUpdateModalOpen(false)}
+          question={liveQuestion}
+        />
+      )}
     </>
   );
 };

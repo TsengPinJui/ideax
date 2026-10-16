@@ -36,6 +36,7 @@ import {
   downloadContractFile 
 } from '../utils/contractGenerator';
 import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP, saveCustomUserProfile, getDefaultAvatarForUser } from '../utils/userDisplay';
+import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
 import { syncUserToFirestore } from '../services/firestoreSync';
 import { updateFirebaseUserPassword } from '../services/firebaseAuth';
 import { validatePassword } from '../utils/validators';
@@ -76,6 +77,7 @@ import {
   ShieldCheck,
   BadgeCheck,
   Star,
+  Heart,
   RefreshCw,
   LogOut,
   Users,
@@ -208,6 +210,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     conversations,
     bookmarkedQuestionIds,
     toggleBookmarkQuestion,
+    secondedQuestionIds,
+    sameQuestionIds,
+    likedQuestionIds,
+    likedDiscussionAnswerIds,
     togglePrivacySettings,
     switchRole,
     updateSolverPreferences,
@@ -1029,9 +1035,121 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     return sum + (q?.bounty || 0);
   }, 0);
 
-  // 問題管理三大分類資料聚合
+  // 問題管理三大分類資料聚合與「回饋類型 ↔ 發布類型」統一映射
   const myQuestions = userQuestions;
-  const bookmarkedQuestions = questions.filter((q) => bookmarkedQuestionIds.includes(q.id));
+  const [favoriteFilter, setFavoriteFilter] = useState<'all' | 'bookmark' | 'like' | 'seconded' | 'thumbs_up'>('all');
+
+  const getQuestionPostTypeAndFeedbackMeta = (q: Question) => {
+    const isSoftware =
+      q.postType === 'vibecoding_app' ||
+      q.category === '網站程式' ||
+      q.specialZone === 'vibecoding';
+    const isProposal = q.postType === 'innovation_proposal';
+    const isPain = q.postType === 'pain_point' || isPainPointQuestion(q);
+    const isL0 = isL0DiscussionQuestion(q);
+
+    if (isSoftware) {
+      return {
+        postTypeKey: 'software' as const,
+        postTypeLabel: '💻 軟體刊登',
+        postTypeBadgeClass: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+        feedbackRuleLabel: '⭐ 收藏 + ❤️ Like',
+        feedbackCategory: 'like' as const,
+      };
+    }
+    if (isProposal) {
+      return {
+        postTypeKey: 'proposal' as const,
+        postTypeLabel: '🚀 創新提案',
+        postTypeBadgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        feedbackRuleLabel: '⭐ 收藏 + ❤️ Like',
+        feedbackCategory: 'like' as const,
+      };
+    }
+    if (isPain) {
+      return {
+        postTypeKey: 'pain_point' as const,
+        postTypeLabel: '🔥 痛點',
+        postTypeBadgeClass: 'bg-rose-50 text-rose-800 border-rose-200',
+        feedbackRuleLabel: '⭐ 收藏 + 🔥 +1 附議',
+        feedbackCategory: 'seconded' as const,
+      };
+    }
+    if (isL0) {
+      return {
+        postTypeKey: 'l0_discussion' as const,
+        postTypeLabel: '💬 L0 討論',
+        postTypeBadgeClass: 'bg-sky-50 text-sky-800 border-sky-200',
+        feedbackRuleLabel: '⭐ 收藏 + 👍 按讚',
+        feedbackCategory: 'thumbs_up' as const,
+      };
+    }
+    return {
+      postTypeKey: 'question' as const,
+      postTypeLabel: '❓ 問題類型',
+      postTypeBadgeClass: 'bg-amber-50 text-amber-900 border-amber-200',
+      feedbackRuleLabel: '⭐ 收藏 + 🔥 +1 附議',
+      feedbackCategory: 'seconded' as const,
+    };
+  };
+
+  const getQuestionUserFeedbackStatus = (q: Question) => {
+    const meta = getQuestionPostTypeAndFeedbackMeta(q);
+    const isBookmarked = (bookmarkedQuestionIds || []).includes(q.id);
+    const hasDirectInteraction =
+      (likedQuestionIds || []).includes(q.id) ||
+      (secondedQuestionIds || []).includes(q.id) ||
+      (sameQuestionIds || []).includes(q.id);
+    const hasLikedComment = (answers || []).some(
+      (a) => a.questionId === q.id && (likedDiscussionAnswerIds || []).includes(a.id)
+    );
+
+    const isHeartLiked = meta.feedbackCategory === 'like' && hasDirectInteraction;
+    const isSecondedPlusOne = meta.feedbackCategory === 'seconded' && hasDirectInteraction;
+    const isThumbsUpLiked =
+      (meta.feedbackCategory === 'thumbs_up' && hasDirectInteraction) || hasLikedComment;
+
+    return {
+      meta,
+      isBookmarked,
+      isHeartLiked,
+      isSecondedPlusOne,
+      isThumbsUpLiked,
+      hasLikedComment,
+    };
+  };
+
+  const favoriteQuestionIds = useMemo(() => {
+    const commentLikedQIds = (answers || [])
+      .filter((a) => (likedDiscussionAnswerIds || []).includes(a.id))
+      .map((a) => a.questionId);
+    return Array.from(
+      new Set([
+        ...(bookmarkedQuestionIds || []),
+        ...(likedQuestionIds || []),
+        ...(sameQuestionIds || []),
+        ...(secondedQuestionIds || []),
+        ...commentLikedQIds,
+      ])
+    );
+  }, [bookmarkedQuestionIds, likedQuestionIds, sameQuestionIds, secondedQuestionIds, answers, likedDiscussionAnswerIds]);
+
+  const allFavoriteQuestions = useMemo(() => {
+    return questions.filter((q) => favoriteQuestionIds.includes(q.id));
+  }, [questions, favoriteQuestionIds]);
+
+  const filteredFavoriteQuestions = useMemo(() => {
+    return allFavoriteQuestions.filter((q) => {
+      const status = getQuestionUserFeedbackStatus(q);
+      if (favoriteFilter === 'bookmark') return status.isBookmarked;
+      if (favoriteFilter === 'like') return status.isHeartLiked;
+      if (favoriteFilter === 'seconded') return status.isSecondedPlusOne;
+      if (favoriteFilter === 'thumbs_up') return status.isThumbsUpLiked;
+      return true;
+    });
+  }, [allFavoriteQuestions, favoriteFilter, bookmarkedQuestionIds, likedQuestionIds, sameQuestionIds, secondedQuestionIds, answers, likedDiscussionAnswerIds]);
+
+  const bookmarkedQuestions = allFavoriteQuestions;
   const clientQuestions = questions.filter((q) => {
     if (q.authorId === currentUser.id) return false;
     const hasMyAnswer = answers.some((a) => a.questionId === q.id && a.solverId === currentUser.id);
@@ -6093,14 +6211,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 onClick={() => setQuestionSubTab('bookmarked_questions')}
                 className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   questionSubTab === 'bookmarked_questions'
-                    ? 'bg-white text-amber-950 shadow-2xs border border-amber-300'
+                    ? 'bg-white text-rose-950 shadow-2xs border border-rose-300'
                     : 'text-stone-500 hover:text-stone-900'
                 }`}
               >
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                <span>收藏的問題</span>
-                <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 font-mono">
-                  {bookmarkedQuestions.length}
+                <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                <span>我的按讚收藏</span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-900 font-mono">
+                  {allFavoriteQuestions.length}
                 </span>
               </button>
 
@@ -6121,6 +6239,59 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               </button>
             </div>
 
+            {/* 各類型回饋對應之發布類型說明卡 */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50/80 via-white to-rose-50/60 border border-amber-200/80 shadow-2xs">
+              <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>互動回饋與對應發布類型規範</span>
+                </span>
+                <span className="text-[11px] font-bold text-stone-500">
+                  點擊任一互動皆自動收錄至「我的按讚收藏」
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div className="p-2.5 rounded-xl bg-white border border-rose-200/80 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-black text-stone-900 flex items-center gap-1">
+                      <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px]">創新提案</span>
+                      <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-800 border border-indigo-200 text-[10px]">軟體刊登</span>
+                    </div>
+                    <div className="text-[11px] text-stone-500 mt-1">適用回饋機制</div>
+                  </div>
+                  <div className="text-right font-black text-rose-600 shrink-0">
+                    ⭐ 收藏 + ❤️ Like
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-white border border-orange-200/80 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-black text-stone-900 flex items-center gap-1">
+                      <span className="px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-200 text-[10px]">問題類型</span>
+                      <span className="px-1.5 py-0.2 rounded bg-rose-50 text-rose-800 border border-rose-200 text-[10px]">痛點</span>
+                    </div>
+                    <div className="text-[11px] text-stone-500 mt-1">適用回饋機制</div>
+                  </div>
+                  <div className="text-right font-black text-orange-700 shrink-0">
+                    ⭐ 收藏 + 🔥 +1 附議
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-white border border-sky-200/80 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-black text-stone-900 flex items-center gap-1">
+                      <span className="px-1.5 py-0.2 rounded bg-sky-50 text-sky-800 border border-sky-200 text-[10px]">L0 討論</span>
+                      <span className="px-1.5 py-0.2 rounded bg-blue-50 text-blue-800 border border-blue-200 text-[10px]">留言討論</span>
+                    </div>
+                    <div className="text-[11px] text-stone-500 mt-1">適用回饋機制</div>
+                  </div>
+                  <div className="text-right font-black text-blue-700 shrink-0">
+                    ⭐ 收藏 + 👍 按讚
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* 子頁面 1: 我發布的提問 */}
             {questionSubTab === 'my_questions' && (
               <div className="space-y-3">
@@ -6133,13 +6304,21 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  myQuestions.map((q) => (
+                  myQuestions.map((q) => {
+                    const postMeta = getQuestionPostTypeAndFeedbackMeta(q);
+                    return (
                     <div
                       key={q.id}
                       className="p-4 rounded-2xl bg-white border border-stone-200/90 shadow-2xs hover:border-amber-300 transition-all space-y-2.5"
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${postMeta.postTypeBadgeClass}`}>
+                            {postMeta.postTypeLabel}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-50 text-stone-600 border border-stone-200">
+                            對應回饋：{postMeta.feedbackRuleLabel}
+                          </span>
                           <button
                             type="button"
                             onClick={() => {
@@ -6260,86 +6439,222 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         </div>
                       </div>
                     </div>
-                  ))
+                  );
+                  })
                 )}
               </div>
             )}
 
-            {/* 子頁面 2: 收藏的問題 */}
+            {/* 子頁面 2: 我的按讚收藏 (依發布類型統一：⭐收藏、❤️Like[提案/軟體]、🔥+1附議[問題/痛點]、👍按讚[L0討論/留言]) */}
             {questionSubTab === 'bookmarked_questions' && (
-              <div className="space-y-3">
-                {bookmarkedQuestions.length === 0 ? (
+              <div className="space-y-4">
+                {/* 互動維度篩選標籤 (Pills) — 明確標示各類型回饋對應之發布類型 */}
+                <div className="flex items-center gap-1.5 flex-wrap pb-2 border-b border-stone-100">
+                  <span className="text-[11px] font-bold text-stone-500 mr-1">篩選維度：</span>
+                  {[
+                    {
+                      key: 'all',
+                      label: '全部',
+                      subLabel: '',
+                      count: allFavoriteQuestions.length,
+                    },
+                    {
+                      key: 'bookmark',
+                      label: '⭐ 收藏',
+                      subLabel: '全類型通用',
+                      count: allFavoriteQuestions.filter((q) => getQuestionUserFeedbackStatus(q).isBookmarked).length,
+                    },
+                    {
+                      key: 'like',
+                      label: '❤️ Like',
+                      subLabel: '創新提案・軟體刊登',
+                      count: allFavoriteQuestions.filter((q) => getQuestionUserFeedbackStatus(q).isHeartLiked).length,
+                    },
+                    {
+                      key: 'seconded',
+                      label: '🔥 +1 附議',
+                      subLabel: '問題類型・痛點',
+                      count: allFavoriteQuestions.filter((q) => getQuestionUserFeedbackStatus(q).isSecondedPlusOne).length,
+                    },
+                    {
+                      key: 'thumbs_up',
+                      label: '👍 按讚',
+                      subLabel: 'L0 討論・留言',
+                      count: allFavoriteQuestions.filter((q) => getQuestionUserFeedbackStatus(q).isThumbsUpLiked).length,
+                    },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setFavoriteFilter(tab.key as any)}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        favoriteFilter === tab.key
+                          ? 'bg-rose-500 text-white shadow-2xs'
+                          : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                      {tab.subLabel && (
+                        <span
+                          className={`text-[10px] font-medium px-1.5 py-0.2 rounded ${
+                            favoriteFilter === tab.key
+                              ? 'bg-white/20 text-white'
+                              : 'bg-white text-stone-500 border border-stone-200/80'
+                          }`}
+                        >
+                          {tab.subLabel}
+                        </span>
+                      )}
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                          favoriteFilter === tab.key ? 'bg-white/30 text-white' : 'bg-stone-200 text-stone-700'
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {filteredFavoriteQuestions.length === 0 ? (
                   <div className="text-center py-12 bg-stone-50 rounded-2xl border border-dashed border-stone-200 space-y-3">
-                    <Star className="w-10 h-10 text-stone-300 mx-auto" />
+                    <Heart className="w-10 h-10 text-stone-300 mx-auto" />
                     <div>
-                      <h4 className="font-bold text-sm text-stone-800">尚未收藏任何問題</h4>
-                      <p className="text-xs text-stone-500 mt-1">在市場瀏覽問題時點擊星號，即可在此方便列出追蹤</p>
+                      <h4 className="font-bold text-sm text-stone-800">尚未有任何符合條件的互動記錄</h4>
+                      <p className="text-xs text-stone-500 mt-1">
+                        瀏覽「創新提案/軟體刊登」點擊 ⭐ 收藏 或 ❤️ Like、「問題類型/痛點」點擊 ⭐ 收藏 或 🔥 +1 附議、「L0 討論/留言」點擊 👍 按讚，系統皆會自動收錄至此！
+                      </p>
                     </div>
                   </div>
                 ) : (
-                  bookmarkedQuestions.map((q) => (
-                    <div
-                      key={q.id}
-                      className="p-4 rounded-2xl bg-white border border-stone-200/90 shadow-2xs hover:border-amber-300 transition-all space-y-2.5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <img src={q.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={q.authorName} className="w-6 h-6 rounded-full object-cover" />
-                          <span className="text-xs font-bold text-stone-800">
-                            {q.authorName}
-                            {q.authorTitle ? ` · ${q.authorTitle}` : ''}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (onSelectCategory) {
-                                onSelectCategory(q.category, q.subcategory || '全部');
-                                onClose();
-                              }
-                            }}
-                            className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 hover:bg-amber-100 hover:text-amber-950 transition-colors cursor-pointer border border-stone-200 hover:border-amber-300"
-                            title="直達該領域看板"
-                          >
-                            {q.category} {q.subcategory ? `· ${q.subcategory}` : ''}
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => toggleBookmarkQuestion(q.id)}
-                          className="text-amber-500 hover:text-stone-400 p-1 cursor-pointer"
-                          title="取消收藏"
-                        >
-                          <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
-                        </button>
-                      </div>
+                  filteredFavoriteQuestions.map((q) => {
+                    const status = getQuestionUserFeedbackStatus(q);
+                    const { meta, isBookmarked, isHeartLiked, isSecondedPlusOne, isThumbsUpLiked } = status;
+                    const authorColor = getUserNameColorClass(q.authorId, availableUsers, {
+                      name: q.authorName,
+                      role: (q as any).authorRole,
+                    });
 
-                      <h4
-                        onClick={() => {
-                          onClose();
-                          onOpenQuestion(q.id);
-                        }}
-                        className="font-extrabold text-sm text-stone-900 hover:text-amber-700 cursor-pointer line-clamp-1"
+                    return (
+                      <div
+                        key={q.id}
+                        className="p-4 rounded-2xl bg-white border border-stone-200/90 shadow-2xs hover:border-amber-300 transition-all space-y-2.5"
                       >
-                        {q.title}
-                      </h4>
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <img
+                              src={
+                                q.authorAvatar ||
+                                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+                              }
+                              alt={q.authorName}
+                              className="w-6 h-6 rounded-full object-cover ring-1 ring-stone-200"
+                            />
+                            <span className={`text-xs font-bold ${authorColor}`}>
+                              {q.authorName}
+                              {q.authorTitle ? ` · ${q.authorTitle}` : ''}
+                            </span>
 
-                      <div className="flex items-center justify-between text-xs pt-1">
-                        <span className="font-black text-amber-900 font-mono">
-                          {(q.bounty || 0) > 0 ? `懸賞 NT$ ${(q.bounty || 0).toLocaleString()}` : '免費諮詢提案'}
-                        </span>
-                        <button
-                          type="button"
+                            {/* 發布類型標籤 */}
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${meta.postTypeBadgeClass}`}
+                              title={`發布類型：${meta.postTypeLabel}（適用回饋：${meta.feedbackRuleLabel}）`}
+                            >
+                              {meta.postTypeLabel}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (onSelectCategory) {
+                                  onSelectCategory(q.category, q.subcategory || '全部');
+                                  onClose();
+                                }
+                              }}
+                              className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 hover:bg-amber-100 hover:text-amber-950 transition-colors cursor-pointer border border-stone-200 hover:border-amber-300"
+                              title="直達該領域看板"
+                            >
+                              {q.category} {q.subcategory ? `· ${q.subcategory}` : ''}
+                            </button>
+
+                            {/* 顯示該題目的個人互動標籤（對應各發布類型） */}
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {isBookmarked && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-0.5">
+                                  ⭐ 收藏
+                                </span>
+                              )}
+                              {isHeartLiked && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+                                  <span>❤️ Like</span>
+                                  <span className="text-[9px] text-rose-500 font-normal">({meta.postTypeLabel.replace(/^[^\s]+\s/, '')})</span>
+                                </span>
+                              )}
+                              {isSecondedPlusOne && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 text-orange-800 border border-orange-200 flex items-center gap-1">
+                                  <span>🔥 +1 附議</span>
+                                  <span className="text-[9px] text-orange-600 font-normal">({meta.postTypeLabel.replace(/^[^\s]+\s/, '')})</span>
+                                </span>
+                              )}
+                              {isThumbsUpLiked && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                                  <span>👍 按讚</span>
+                                  <span className="text-[9px] text-blue-500 font-normal">
+                                    ({status.hasLikedComment && meta.feedbackCategory !== 'thumbs_up' ? '留言按讚' : 'L0 討論'})
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="hidden sm:inline-block text-[10px] font-semibold text-stone-400">
+                              回饋類型：{meta.feedbackRuleLabel}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggleBookmarkQuestion(q.id)}
+                              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                                isBookmarked
+                                  ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                                  : 'bg-stone-50 text-stone-400 border-stone-200 hover:text-amber-600'
+                              }`}
+                              title={isBookmarked ? '取消 ⭐ 收藏' : '加入 ⭐ 收藏'}
+                            >
+                              <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <h4
                           onClick={() => {
                             onClose();
                             onOpenQuestion(q.id);
                           }}
-                          className="text-xs font-bold text-amber-700 hover:underline cursor-pointer"
+                          className="font-extrabold text-sm text-stone-900 hover:text-amber-700 cursor-pointer line-clamp-1"
                         >
-                          前往問題頁面 →
-                        </button>
+                          {q.title}
+                        </h4>
+
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-100">
+                          <span className="font-black text-amber-900 font-mono">
+                            {(q.bounty || 0) > 0 ? `懸賞 NT$ ${(q.bounty || 0).toLocaleString()}` : meta.postTypeLabel}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onOpenQuestion(q.id);
+                            }}
+                            className="text-xs font-bold text-amber-700 hover:text-amber-900 hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            <span>前往詳情頁面</span>
+                            <span>→</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}

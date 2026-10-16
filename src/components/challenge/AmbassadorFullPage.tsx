@@ -73,7 +73,7 @@ export const AmbassadorFullPage: React.FC<AmbassadorFullPageProps> = ({
 
   const showToast = (message: string) => {
     addNotification({
-      title: '校園推廣大使',
+      title: '推廣大使',
       message,
       type: 'system',
     });

@@ -4,7 +4,7 @@ import { Question, MarketViewMode } from '../types';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { resolveUserDisplayName, resolveUserAvatar, getUserNameColorClass } from '../utils/userDisplay';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
-import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark, Share2, Check, Hand, ThumbsUp, Coins, Flame } from 'lucide-react';
+import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle, Bookmark, Star, Heart, Share2, Check, Hand, ThumbsUp, Coins, Flame } from 'lucide-react';
 import { getQuestionShareUrl } from '../services/seoService';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
@@ -17,6 +17,62 @@ interface QuestionCardProps {
   onSelectCategory?: (category: import('../types').Category, subcategory?: string | '全部') => void;
   onSearchTag?: (tag: string) => void;
   viewMode?: MarketViewMode;
+}
+
+export function getFormattedAppNameAndTitle(question: Question): { appName: string; cleanTitle: string } {
+  const isVibe =
+    question.category === '網站程式' ||
+    question.postType === 'vibecoding_app' ||
+    question.specialZone === 'vibecoding' ||
+    Boolean(question.appName || question.vibeCodingData?.appName);
+
+  let rawAppName = (question.appName || question.vibeCodingData?.appName || '').trim();
+  let rawTitle = (question.title || '').trim();
+
+  if (!isVibe) {
+    return { appName: '', cleanTitle: rawTitle };
+  }
+
+  if (rawAppName && rawAppName === rawTitle) {
+    const sepMatch = rawTitle.match(/^([^：:—\-]+)[：:—\-]\s*(.+)$/);
+    if (sepMatch) {
+      return { appName: sepMatch[1].trim(), cleanTitle: sepMatch[2].trim() };
+    }
+  }
+  if (rawAppName.includes(' — ')) {
+    rawAppName = rawAppName.split(' — ')[0].trim();
+  }
+
+  if (rawAppName) {
+    const prefixes = [
+      `${rawAppName}：`,
+      `${rawAppName}:`,
+      `${rawAppName} — `,
+      `${rawAppName} - `,
+      `${rawAppName}-`,
+    ];
+    for (const p of prefixes) {
+      if (rawTitle.startsWith(p) && rawTitle.slice(p.length).trim().length > 0) {
+        rawTitle = rawTitle.slice(p.length).trim();
+        break;
+      }
+    }
+    const colonIdx = rawTitle.indexOf('：');
+    if (colonIdx > 0 && colonIdx <= 24) {
+      const prefixPart = rawTitle.slice(0, colonIdx).trim();
+      if (rawAppName.startsWith(prefixPart) || prefixPart.startsWith(rawAppName)) {
+        rawTitle = rawTitle.slice(colonIdx + 1).trim();
+      }
+    }
+  } else {
+    const colonMatch = rawTitle.match(/^([^：:]{2,22})[：:]\s*(.+)$/);
+    if (colonMatch) {
+      rawAppName = colonMatch[1].trim();
+      rawTitle = colonMatch[2].trim();
+    }
+  }
+
+  return { appName: rawAppName, cleanTitle: rawTitle };
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({
@@ -62,23 +118,26 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     e.stopPropagation();
     const res = toggleSecondQuestion(question.id);
     if (res.isSeconded) {
-      addNotification(`已為痛點「${question.title}」附議 +1！`, 'success');
+      const targetType = isPainPoint ? '痛點' : '問題';
+      addNotification(`🔥 已對${targetType}「${question.title}」+1 附議，並收錄至「我的按讚收藏」！`, 'success');
     }
   };
 
   const handleSameQuestionClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const res = toggleSameQuestion(question.id);
-    if (res.isSameQuestion) {
-      addNotification(`已加入同問！有更多人關注此提問「${question.title}」`, 'success');
-    }
+    handleSecondClick(e);
   };
 
   const handleLikeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     const res = toggleLikeQuestion(question.id);
     if (res.isLiked) {
-      addNotification(`已為討論「${question.title}」按讚！`, 'success');
+      const isProposalOrSoftware = isVibeCoding || isInnovationProposal;
+      addNotification(
+        isProposalOrSoftware
+          ? `❤️ 已對${isVibeCoding ? '軟體刊登' : '創新提案'}「${question.title}」按 Like，並收錄至「我的按讚收藏」！`
+          : `👍 已為 L0 討論「${question.title}」按讚，並收錄至「我的按讚收藏」！`,
+        'success'
+      );
     }
   };
 
@@ -106,6 +165,13 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   const isPromoted = question.status === 'open' && question.isFeatured;
   const isPainPoint = isPainPointQuestion(question);
   const isL0Discussion = isL0DiscussionQuestion(question);
+  const isVibeCoding =
+    question.category === '網站程式' ||
+    question.postType === 'vibecoding_app' ||
+    question.specialZone === 'vibecoding';
+  const isInnovationProposal = question.postType === 'innovation_proposal';
+  const displayCategoryLabel = isVibeCoding ? 'VibeCoding' : question.category;
+  const { appName: displayAppName, cleanTitle: displayCleanTitle } = getFormattedAppNameAndTitle(question);
   const referencedPainPointObj = findReferencedPainPoint(question, questions);
   const referencingProposals = isPainPoint ? findProposalsReferencingPainPoint(question, questions) : [];
   const questionDiscussions = React.useMemo(
@@ -137,81 +203,92 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
   const handleBookmarkClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleBookmarkQuestion(question.id);
+    const isAdded = toggleBookmarkQuestion(question.id);
+    addNotification(
+      isAdded ? `已收藏「${question.title}」，並收錄至「我的按讚收藏」！` : `已取消收藏「${question.title}」`,
+      isAdded ? 'success' : 'info'
+    );
   };
 
   // =========================================================================
-  // 3. 方格式 (Grid Mode - 雙欄緊湊卡片)
-  // 字更小、顯示的字更少、只顯示題目名稱、$+數字、子領域、1~3個標籤、提問者頭像，招募中就用紫框不貼標籤
+  // 3. 方格式 (Grid Mode - 雙欄緊湊卡片，適合手機與快速瀏覽)
   // =========================================================================
   if (viewMode === 'grid') {
     return (
       <article
         onClick={onClick}
-        className={`group bg-white rounded-xl border p-2.5 sm:p-3 transition-all duration-200 hover:shadow-xs cursor-pointer flex flex-col justify-between relative h-full ${
+        className={`group bg-white rounded-2xl border p-3 sm:p-3.5 transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between relative h-full ${
           isPromoted
-            ? 'border-purple-400 ring-1 ring-purple-300/60 bg-gradient-to-b from-purple-50/20 via-white to-white'
+            ? 'border-purple-300/90 bg-gradient-to-b from-purple-50/15 via-white to-white'
             : isSolved
-            ? 'border-emerald-200/90 bg-emerald-50/10 hover:border-emerald-400'
-            : 'border-stone-200 hover:border-amber-400'
+            ? 'border-emerald-200/80 bg-emerald-50/5 hover:border-emerald-300'
+            : 'border-stone-200/80 hover:border-stone-300'
         }`}
       >
         <div className="space-y-1.5">
-          {/* Top Line: 子領域 (左) + 綠色「創星季」與 $+數字懸賞 (右上) */}
+          {/* Top Line: 子領域 + 懸賞金 */}
           <div className="flex items-center justify-between gap-1.5">
-            <div className="flex items-center gap-1 min-w-0">
-              <span
-                onClick={handleSubcategoryClick}
-                className="text-[10px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80 truncate max-w-[85px] select-none hover:bg-amber-100"
-                title={question.subcategory || question.category}
-              >
-                {question.subcategory || question.category}
-              </span>
-            </div>
+            <span
+              onClick={handleSubcategoryClick}
+              className="text-[10px] font-bold text-stone-500 hover:text-stone-900 truncate max-w-[125px] select-none transition-colors"
+              title={
+                question.subcategories && question.subcategories.length > 0
+                  ? question.subcategories.join(' · ')
+                  : question.subcategory || question.category
+              }
+            >
+              {question.subcategories && question.subcategories.length > 0
+                ? question.subcategories.slice(0, 3).join(' · ')
+                : question.subcategory || question.category}
+            </span>
 
-            {/* 右上角：綠色創星季標籤 + $+數字懸賞 */}
-            <div className="shrink-0 font-mono text-right flex items-center gap-1.5">
+            <div className="shrink-0 font-mono text-right flex items-center gap-1">
               {(question.isStarSeason || question.tags?.includes('創星季')) && (
-                <span className="bg-emerald-600 text-white text-[9.5px] font-black px-2 py-0.5 rounded-full shadow-2xs shrink-0 flex items-center gap-0.5" title="創星季參賽題目（擁有獨立網址）">
-                  <Sparkles className="w-2.5 h-2.5" />
-                  <span>創星季</span>
-                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="創星季參賽題目" />
               )}
-              {isNoPaymentMode ? (
-                <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                  免費
+              {isVibeCoding ? (
+                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded shadow-2xs">
+                  軟體作品
                 </span>
+              ) : isInnovationProposal ? (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shadow-2xs">
+                  創新提案
+                </span>
+              ) : isNoPaymentMode ? (
+                <span className="text-[10px] font-semibold text-stone-500">免費</span>
               ) : isPainPoint ? (
-                <span
-                  className="text-xs sm:text-[13px] font-black font-mono px-2 py-0.5 rounded-lg border border-rose-300 bg-rose-50/80 text-rose-600 shadow-2xs inline-block"
-                  title={question.bounty > 0 ? '痛點提問懸賞' : '痛點'}
-                >
+                <span className="text-xs font-black font-mono text-rose-600">
                   {question.bounty > 0 ? `$${question.bounty.toLocaleString()}` : '痛點'}
                 </span>
               ) : question.bounty > 0 ? (
-                <span className="text-xs sm:text-[13px] font-black text-amber-600 font-mono">
+                <span className="text-xs font-black text-amber-600 font-mono">
                   ${question.bounty.toLocaleString()}
                 </span>
               ) : (
-                <span className="text-[10px] font-bold text-sky-800 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">
-                  L0 討論
-                </span>
+                <span className="text-[10px] font-semibold text-sky-700">討論</span>
               )}
             </div>
           </div>
 
           {/* 題目名稱 */}
           <h3 className="text-xs sm:text-[13px] font-bold text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2">
-            {question.title}
+            {displayAppName ? (
+              <>
+                <span className="text-blue-600 font-black">{displayAppName}：</span>
+                <span>{displayCleanTitle}</span>
+              </>
+            ) : (
+              question.title
+            )}
           </h3>
 
-          {/* 1~3 個標籤 (方格模式不綁定點擊搜尋，避免手機滑動誤觸) */}
+          {/* 標籤 (極簡無外框文字標籤) */}
           {question.tags && question.tags.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap pt-0.5">
-              {question.tags.slice(0, 3).map((tag, idx) => (
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              {question.tags.slice(0, 2).map((tag, idx) => (
                 <span
                   key={`${tag}-${idx}`}
-                  className="text-[9.5px] font-medium px-1.5 py-0.2 rounded border truncate max-w-[80px] select-none pointer-events-none text-stone-600 bg-stone-100 border-stone-200/70"
+                  className="text-[10px] font-medium text-stone-400 truncate max-w-[80px] select-none pointer-events-none"
                 >
                   #{tag}
                 </span>
@@ -220,8 +297,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           )}
         </div>
 
-        {/* Bottom Line: 提問者頭像 + 方案/採納狀態 */}
-        <div className="mt-2.5 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[10px] text-stone-500">
+        {/* Bottom Line: 提問者 + 互動與方案數 */}
+        <div className="mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-between text-[10px] text-stone-500">
           <div className="flex items-center gap-1.5 min-w-0 pr-1">
             <img
               src={authorDisplayAvatar}
@@ -233,48 +310,61 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             </span>
           </div>
 
-          <div className="shrink-0 flex items-center gap-1.5">
-            {isPainPoint ? (
+          <div className="shrink-0 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleBookmarkClick}
+              className={`p-1 rounded-full border transition-all cursor-pointer ${
+                isBookmarked
+                  ? 'bg-amber-50 text-amber-600 border-amber-300'
+                  : 'bg-stone-50 text-stone-400 border-stone-200 hover:text-amber-600'
+              }`}
+              title={isBookmarked ? '⭐ 已收藏' : '⭐ 收藏'}
+            >
+              <Star className={`w-2.5 h-2.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
+            </button>
+
+            {isVibeCoding || isInnovationProposal ? (
               <button
                 type="button"
-                onClick={handleSecondClick}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  isSeconded
-                    ? 'bg-rose-600 text-white border border-rose-600 shadow-2xs font-black'
-                    : 'bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100'
+                onClick={handleLikeClick}
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition-all cursor-pointer border ${
+                  isLiked || isSeconded
+                    ? 'bg-rose-500 text-white border-rose-500'
+                    : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
                 }`}
-                title="附議此痛點 (+1 共鳴支持)"
+                title="❤️ Like（創新提案 / 軟體刊登）"
               >
-                <span className={`font-mono font-black px-1 rounded text-[9px] leading-tight ${isSeconded ? 'bg-white text-rose-800' : 'bg-white text-rose-700 border border-rose-300'}`}>+1</span>
-                <span className="font-mono text-[9.5px]">{secondCount || 0}</span>
+                <Heart className={`w-2.5 h-2.5 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                <span className="font-mono text-[9.5px]">{Math.max(likesCount || 0, secondCount || 0)}</span>
               </button>
             ) : isL0Discussion ? (
               <button
                 type="button"
                 onClick={handleLikeClick}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition-all cursor-pointer border ${
                   isLiked
-                    ? 'bg-blue-600 text-white border border-blue-600 shadow-2xs font-black'
-                    : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
                 }`}
-                title="為此討論按讚"
+                title="👍 按讚（L0 討論）"
               >
-                <ThumbsUp className={`w-3 h-3 ${isLiked ? 'fill-white text-white' : 'text-blue-600'}`} />
+                <ThumbsUp className="w-2.5 h-2.5" />
                 <span className="font-mono text-[9.5px]">{likesCount || 0}</span>
               </button>
             ) : (
               <button
                 type="button"
-                onClick={handleSameQuestionClick}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  isSame
-                    ? 'bg-amber-500 text-stone-950 border border-amber-500 shadow-2xs font-black'
-                    : 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
+                onClick={handleSecondClick}
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition-all cursor-pointer border ${
+                  isSeconded
+                    ? 'bg-orange-600 text-white border-orange-600'
+                    : 'bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100'
                 }`}
-                title="我也想知道！加入同問"
+                title="🔥 +1 附議（問題類型 / 痛點）"
               >
-                <Hand className={`w-3 h-3 ${isSame ? 'fill-stone-950 text-stone-950' : 'text-amber-700'}`} />
-                <span className="font-mono text-[9.5px]">{sameCount || 0}</span>
+                <span className="font-mono font-black">+1</span>
+                <span className="font-mono text-[9.5px]">{secondCount || 0}</span>
               </button>
             )}
 
@@ -284,7 +374,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 <span>已採納</span>
               </span>
             ) : (
-              <span className="font-bold font-mono text-amber-700">
+              <span className="font-bold font-mono text-stone-700">
                 {solutionsCount ?? question.answersCount} 方案
               </span>
             )}
@@ -295,113 +385,111 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   }
 
   // =========================================================================
-  // 2. 條列式 (List Mode - 拿掉題目說明、題目分級標籤、收藏鍵、AI診斷和建議)
+  // 2. 條列式 (List Mode - 極簡高密度清單)
   // =========================================================================
   if (viewMode === 'list') {
     return (
       <article
         onClick={onClick}
-        className={`group bg-white rounded-xl border p-3 sm:p-4 transition-all duration-200 hover:shadow-xs cursor-pointer flex flex-col justify-between relative ${
+        className={`group bg-white rounded-2xl border p-3 sm:p-4 transition-all duration-200 hover:shadow-sm cursor-pointer flex flex-col justify-between relative ${
           isPromoted
-            ? 'border-purple-300 ring-1 ring-purple-300/40 bg-gradient-to-r from-purple-50/15 via-white to-white'
+            ? 'border-purple-300/80 bg-gradient-to-r from-purple-50/10 via-white to-white'
             : isSolved
-            ? 'border-emerald-200 bg-emerald-50/10 hover:border-emerald-400'
-            : 'border-stone-200 hover:border-amber-400'
+            ? 'border-emerald-200/80 bg-emerald-50/5 hover:border-emerald-300'
+            : 'border-stone-200/80 hover:border-stone-300'
         }`}
       >
         <div>
-          {/* Top Line: 分類、招募中標籤、已採納 與 懸賞金 (拿掉分級標籤、拿掉收藏鍵) */}
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Top Line: 麵包屑分類 + 右側懸賞金 */}
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap text-xs text-stone-500">
               {isPromoted && (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-800 text-white border border-purple-400/60 shadow-2xs flex items-center gap-1 tracking-wider">
-                  <Sparkles className="w-3 h-3 text-purple-200 fill-purple-300 animate-pulse" />
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5 text-purple-600" />
                   <span>招募中</span>
                 </span>
               )}
 
-              {/* Category tag */}
-              <button
-                type="button"
-                onClick={handleCategoryClick}
-                className="text-[11px] font-bold text-stone-800 bg-amber-50/80 hover:bg-amber-100 hover:text-amber-950 px-2 py-0.5 rounded-md border border-amber-200/90 shadow-2xs transition-colors cursor-pointer"
-                title={`前往「${question.category}」主分類版面`}
-              >
-                {question.category}
-              </button>
-
-              {/* Subcategory tag */}
-              {question.subcategory && (
-                <button
-                  type="button"
-                  onClick={handleSubcategoryClick}
-                  className="text-[11px] font-bold text-amber-900 bg-white hover:bg-amber-500 hover:text-stone-950 px-2 py-0.5 rounded-md border border-amber-300 shadow-2xs transition-colors cursor-pointer flex items-center gap-0.5"
-                  title={`進入「${question.subcategory}」子領域看板`}
-                >
-                  <span>{question.subcategory}</span>
-                </button>
-              )}
-
-              {/* 綠色創星季標籤 */}
               {(question.isStarSeason || question.tags?.includes('創星季')) && (
-                <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-1 shrink-0" title="創星季參賽題目">
-                  <Sparkles className="w-2.5 h-2.5" />
+                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">
                   <span>創星季</span>
                 </span>
               )}
 
+              <button
+                type="button"
+                onClick={handleCategoryClick}
+                className="text-xs font-semibold text-stone-500 hover:text-stone-900 transition-colors cursor-pointer"
+              >
+                {displayCategoryLabel}
+              </button>
+
+              {(question.subcategories && question.subcategories.length > 0) ? (
+                <>
+                  <span className="text-stone-300">/</span>
+                  <span className="text-xs font-bold text-stone-700">
+                    {question.subcategories.slice(0, 3).join(' · ')}
+                  </span>
+                </>
+              ) : question.subcategory && (
+                <>
+                  <span className="text-stone-300">/</span>
+                  <button
+                    type="button"
+                    onClick={handleSubcategoryClick}
+                    className="text-xs font-bold text-stone-700 hover:text-amber-600 transition-colors cursor-pointer"
+                  >
+                    {question.subcategory}
+                  </button>
+                </>
+              )}
+
               {isSolved && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> 已採納方案
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> 已採納
                 </span>
               )}
             </div>
 
-            {/* Bounty Tag (痛點提問懸賞匡用紅色框起來) */}
+            {/* Bounty Tag */}
             <div className="shrink-0">
-              {isNoPaymentMode ? (
-                <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-300 shadow-2xs">
-                  免費交流
+              {isVibeCoding ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-black shadow-2xs">
+                  軟體作品
                 </span>
+              ) : isInnovationProposal ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black shadow-2xs">
+                  創新提案
+                </span>
+              ) : isNoPaymentMode ? (
+                <span className="text-xs font-semibold text-stone-500">免費交流</span>
               ) : isPainPoint ? (
-                <div
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-50/80 border border-rose-300 text-rose-950 shadow-2xs"
-                  title={question.bounty > 0 ? '痛點提問懸賞' : '痛點'}
-                >
-                  {question.bounty > 0 ? (
-                    <>
-                      <span className="text-[11px] text-rose-600 font-bold">痛點懸賞</span>
-                      <span className="text-xs sm:text-sm font-black font-mono text-rose-600">
-                        NT$ {question.bounty.toLocaleString()}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-xs sm:text-sm font-black font-mono text-rose-600">
-                      痛點
-                    </span>
-                  )}
-                </div>
-              ) : question.bounty > 0 ? (
-                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 shadow-2xs">
-                  <span className="text-[11px] text-amber-700 font-medium">懸賞</span>
-                  <span className="text-xs sm:text-sm font-black font-mono">
-                    NT$ {question.bounty.toLocaleString()}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-xs font-bold text-sky-800 bg-sky-50 px-2.5 py-0.5 rounded-lg border border-sky-200">
-                  L0 閒聊討論
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-xs font-black font-mono">
+                  {question.bounty > 0 ? `痛點 NT$ ${question.bounty.toLocaleString()}` : '痛點'}
                 </span>
+              ) : question.bounty > 0 ? (
+                <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-black font-mono text-amber-600">
+                  NT$ {question.bounty.toLocaleString()}
+                </span>
+              ) : (
+                <span className="text-xs font-semibold text-sky-700">討論</span>
               )}
             </div>
           </div>
 
-          {/* 題目名稱 (拿掉題目說明、拿掉AI診斷和建議) */}
+          {/* 題目名稱 */}
           <h3 className="text-sm sm:text-base font-bold text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2">
-            {question.title}
+            {displayAppName ? (
+              <>
+                <span className="text-blue-600 font-black">{displayAppName}：</span>
+                <span>{displayCleanTitle}</span>
+              </>
+            ) : (
+              question.title
+            )}
           </h3>
 
-          {/* 創新提案/軟體提案：連結對應痛點貼文 */}
+          {/* 對應痛點或解決提案 (精簡單行提示) */}
           {(referencedPainPointObj || question.referencedPainPoint) && (
             <div
               onClick={(e) => {
@@ -410,151 +498,134 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   setSelectedQuestion(referencedPainPointObj);
                 }
               }}
-              className="mt-2 p-2 rounded-lg bg-rose-50/80 hover:bg-rose-100/80 border border-rose-200/90 text-[11px] text-rose-900 flex items-center justify-between gap-2 transition-colors cursor-pointer"
-              title="點擊前往對應的痛點貼文"
+              className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-rose-700 hover:text-rose-900 font-medium cursor-pointer max-w-full"
             >
-              <span className="truncate font-semibold flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                <span>對應痛點：{referencedPainPointObj ? referencedPainPointObj.title : question.referencedPainPoint?.replace(/^\[[^\]]+\]\s*/, '')}</span>
+              <Flame className="w-3 h-3 text-rose-500 shrink-0" />
+              <span className="truncate">
+                對應痛點：{referencedPainPointObj ? referencedPainPointObj.title : question.referencedPainPoint?.replace(/^\[[^\]]+\]\s*/, '')}
               </span>
-              {referencedPainPointObj && (
-                <span className="text-[10px] font-black text-rose-700 shrink-0">查看痛點 ➔</span>
-              )}
             </div>
           )}
 
-          {/* 痛點貼文：下方顯示解決此痛點的提案 */}
           {isPainPoint && referencingProposals.length > 0 && (
-            <div className="mt-2 p-2 rounded-lg bg-amber-50/80 border border-amber-200/90 space-y-1">
-              <div className="text-[10.5px] font-extrabold text-amber-900 flex items-center justify-between">
-                <span>💡 解決此痛點的提案 ({referencingProposals.length})</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                {referencingProposals.slice(0, 2).map((prop) => (
-                  <div
-                    key={prop.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedQuestion(prop);
-                    }}
-                    className="px-2 py-1 rounded bg-white hover:bg-amber-100/60 border border-amber-200/80 text-[11px] text-stone-800 flex items-center justify-between gap-2 transition-colors cursor-pointer"
-                  >
-                    <span className="truncate font-semibold">
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 mr-1">
-                        {prop.postType === 'vibecoding_app' ? '軟體提案' : '創新提案'}
-                      </span>
-                      {prop.title}
-                    </span>
-                    <span className="text-[10px] font-black text-amber-700 shrink-0">查看提案 ➔</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Tags */}
-          {question.tags && question.tags.length > 0 && (
-            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-              {question.tags.map((tag, idx) => (
-                <button
-                  key={`${tag}-${idx}`}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onSearchTag) {
-                      onSearchTag(tag);
-                    } else {
-                      setSearchQuery(tag.replace(/^#/, ''));
-                    }
-                  }}
-                  className="text-[10.5px] font-medium px-2 py-0.2 rounded border select-none text-stone-600 bg-stone-100 hover:bg-amber-100 hover:text-amber-950 hover:border-amber-300 border-stone-200 transition-colors cursor-pointer"
-                  title={`點擊搜尋「#${tag}」`}
-                >
-                  #{tag}
-                </button>
-              ))}
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedQuestion(referencingProposals[0]);
+              }}
+              className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-amber-700 hover:text-amber-950 font-medium cursor-pointer max-w-full"
+            >
+              <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+              <span className="truncate">
+                已有 {referencingProposals.length} 件解方提案：{referencingProposals[0].title}
+              </span>
             </div>
           )}
         </div>
 
         {/* Footer Info: Author, Stats */}
-        <div className="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-          <div className="flex items-center gap-2">
+        <div className="mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
+          <div className="flex items-center gap-2 min-w-0">
             <img
               src={authorDisplayAvatar}
               alt={authorDisplayName}
-              className="w-4.5 h-4.5 rounded-full object-cover ring-1 ring-stone-200"
+              className="w-4.5 h-4.5 rounded-full object-cover ring-1 ring-stone-200 shrink-0"
             />
-            <span className={`font-medium truncate max-w-[140px] sm:max-w-[200px] ${authorColorClass}`}>
+            <span className={`font-medium truncate max-w-[120px] sm:max-w-[180px] ${authorColorClass}`}>
               {authorDisplayName}
             </span>
+            {question.tags && question.tags.length > 0 && (
+              <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-stone-400">
+                {question.tags.slice(0, 3).map((tag, idx) => (
+                  <button
+                    key={`${tag}-${idx}`}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onSearchTag) onSearchTag(tag);
+                      else setSearchQuery(tag.replace(/^#/, ''));
+                    }}
+                    className="hover:text-stone-800 transition-colors cursor-pointer"
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-2.5 font-medium text-[11px] sm:text-xs">
-            {/* 中卡片互動鍵：只顯示圖示與數字 */}
-            {isPainPoint ? (
+          <div className="flex items-center gap-2 font-medium text-[11px] sm:text-xs shrink-0">
+            <button
+              type="button"
+              onClick={handleBookmarkClick}
+              className={`p-1.5 rounded-full text-[11px] font-bold flex items-center justify-center border transition-all cursor-pointer ${
+                isBookmarked
+                  ? 'bg-amber-50 text-amber-700 border-amber-300'
+                  : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-amber-50 hover:text-amber-700'
+              }`}
+              title={isBookmarked ? '⭐ 已收藏' : '⭐ 收藏'}
+            >
+              <Star className={`w-3 h-3 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
+            </button>
+
+            {isVibeCoding || isInnovationProposal ? (
               <button
                 type="button"
-                onClick={handleSecondClick}
-                className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  isSeconded
-                    ? 'bg-rose-600 text-white border border-rose-600 shadow-2xs font-black'
-                    : 'bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100'
+                onClick={handleLikeClick}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                  isLiked || isSeconded
+                    ? 'bg-rose-500 text-white border-rose-500'
+                    : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
                 }`}
-                title="附議此痛點 (+1 共鳴支持)"
+                title="❤️ Like（創新提案 / 軟體刊登）"
               >
-                <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isSeconded ? 'bg-white text-rose-800 border-white' : 'bg-white text-rose-700 border-rose-300'}`}>+1</span>
-                <span className="font-mono font-bold text-xs">{secondCount || 0}</span>
+                <Heart className={`w-3 h-3 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                <span className="font-mono">{Math.max(likesCount || 0, secondCount || 0)}</span>
               </button>
             ) : isL0Discussion ? (
               <button
                 type="button"
                 onClick={handleLikeClick}
-                className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
                   isLiked
-                    ? 'bg-blue-600 text-white border border-blue-600 shadow-2xs font-black'
-                    : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
                 }`}
-                title="為此討論按讚"
+                title="👍 按讚（L0 討論）"
               >
-                <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'fill-white text-white' : 'text-blue-600'}`} />
-                <span className="font-mono font-bold text-xs">{likesCount || 0}</span>
+                <ThumbsUp className="w-3 h-3" />
+                <span className="font-mono">{likesCount || 0}</span>
               </button>
             ) : (
               <button
                 type="button"
-                onClick={handleSameQuestionClick}
-                className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  isSame
-                    ? 'bg-amber-500 text-stone-950 border border-amber-500 shadow-2xs font-black'
-                    : 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
+                onClick={handleSecondClick}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                  isSeconded
+                    ? 'bg-orange-600 text-white border-orange-600'
+                    : 'bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100'
                 }`}
-                title="我也想知道！加入同問"
+                title="🔥 +1 附議（問題類型 / 痛點）"
               >
-                <Hand className={`w-3.5 h-3.5 ${isSame ? 'fill-stone-950 text-stone-950' : 'text-amber-700'}`} />
-                <span className="font-mono font-bold text-xs">{sameCount || 0}</span>
+                <span className="font-mono font-black">+1</span>
+                <span className="font-mono">{secondCount || 0}</span>
               </button>
             )}
 
-            {/* 觀看數 */}
-            <span className="flex items-center gap-1 text-stone-400" title="瀏覽次數">
+            <span className="hidden sm:flex items-center gap-1 text-stone-400" title="瀏覽次數">
               <Eye className="w-3.5 h-3.5" />
-              <span>{(question.views || 0).toLocaleString()}</span>
+              <span className="font-mono">{(question.views || 0).toLocaleString()}</span>
             </span>
 
-            {/* 討論數量（對話框圖示+數字，淡黃色） */}
-            <span className="flex items-center gap-1 text-amber-500 font-semibold" title="討論數量">
-              <MessageCircle className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-mono text-amber-500">{discussionsCount ?? 0}</span>
+            <span className="flex items-center gap-1 text-stone-400" title="討論數量">
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span className="font-mono">{discussionsCount ?? 0}</span>
             </span>
 
-            {/* 方案數：不用圖示，就顯示「（數字）方案」 */}
             {isSolved ? (
-              <span className="font-bold text-emerald-600" title="已採納方案">
-                已採納
-              </span>
+              <span className="font-bold text-emerald-600">已採納</span>
             ) : (
-              <span className="font-bold font-mono text-amber-700" title="方案數量">
+              <span className="font-bold font-mono text-stone-800">
                 {solutionsCount ?? question.answersCount} 方案
               </span>
             )}
@@ -565,143 +636,134 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   }
 
   // =========================================================================
-  // 1. 大視窗 (Large Mode - 完整詳細資訊)
+  // 1. 大視窗 (Large Mode - FlyingV / 嘖嘖 / Apple 卡片式簡約美學)
   // =========================================================================
   return (
     <article
       onClick={onClick}
-      className={`group bg-white rounded-2xl border p-3.5 sm:p-5 transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between relative ${
+      className={`group bg-white rounded-2xl border p-4 sm:p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between relative ${
         isPromoted
-          ? 'border-purple-300 ring-1 ring-purple-300/40 bg-gradient-to-b from-purple-50/15 via-white to-white'
-          : 'border-stone-200 hover:border-amber-400'
+          ? 'border-purple-300/80 bg-gradient-to-b from-purple-50/10 via-white to-white'
+          : 'border-stone-200/80 hover:border-stone-300'
       }`}
     >
       <div>
-        {/* Top Header: Category, Level & Bounty */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Promoted badge: 以尊貴紫色為主體的「招募中」高質感提示標籤 */}
+        {/* Top Header: Clean Breadcrumb Category (Left) + Crisp Bounty & Bookmark (Right) */}
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
             {isPromoted && (
-              <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-800 text-white border border-purple-400/60 shadow-sm shadow-purple-950/25 flex items-center gap-1.5 tracking-wider" title="置頂推播 · 積極招募最佳解答中">
-                <Sparkles className="w-3.5 h-3.5 text-purple-200 fill-purple-300 drop-shadow-xs animate-pulse" />
-                <span className="font-extrabold tracking-wide text-white">招募中</span>
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 flex items-center gap-1 shrink-0"
+                title="置頂招募解答中"
+              >
+                <Sparkles className="w-2.5 h-2.5 text-purple-600" />
+                <span>招募中</span>
               </span>
             )}
 
-            {/* Category tag */}
-            <button
-              type="button"
-              onClick={handleCategoryClick}
-              className="text-xs font-bold text-stone-800 bg-amber-50/80 hover:bg-amber-100 hover:text-amber-950 px-2.5 py-0.5 rounded-lg border border-amber-200/90 shadow-2xs transition-colors cursor-pointer"
-              title={`前往「${question.category}」主分類版面`}
-            >
-              {question.category}
-            </button>
-
-            {/* Subcategory tag */}
-            {question.subcategory && (
-              <button
-                type="button"
-                onClick={handleSubcategoryClick}
-                className="text-xs font-bold text-amber-900 bg-white hover:bg-amber-500 hover:text-stone-950 px-2 py-0.5 rounded-lg border border-amber-300 shadow-2xs transition-colors cursor-pointer flex items-center gap-0.5"
-                title={`進入「${question.subcategory}」子領域看板`}
-              >
-                <span>{question.subcategory}</span>
-              </button>
-            )}
-
-            {/* Level badge */}
-            <span
-              className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border ${
-                isPainPoint
-                  ? 'bg-rose-50 text-rose-700 border-rose-200 shadow-2xs font-extrabold'
-                  : levelConfig.badgeClass
-              }`}
-            >
-              {isPainPoint
-                ? '痛點/創點子'
-                : `${question.level} · ${levelConfig.name}`}
-            </span>
-
-            {/* 綠色創星季標籤 */}
             {(question.isStarSeason || question.tags?.includes('創星季')) && (
-              <span className="bg-emerald-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-2xs flex items-center gap-1 shrink-0" title="創星季參賽題目">
-                <Sparkles className="w-3 h-3" />
+              <span
+                className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0"
+                title="創星季參賽題目"
+              >
+                <Sparkles className="w-2.5 h-2.5" />
                 <span>創星季</span>
               </span>
             )}
 
-            {isSolved && (
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> 已採納方案
-              </span>
-            )}
+            {/* Breadcrumb Category / Subcategory (無外框，簡潔俐落) */}
+            <div className="flex items-center gap-1 text-xs text-stone-500 truncate">
+              <button
+                type="button"
+                onClick={handleCategoryClick}
+                className="font-semibold hover:text-stone-900 transition-colors cursor-pointer truncate"
+              >
+                {displayCategoryLabel}
+              </button>
+              {(question.subcategories && question.subcategories.length > 0) ? (
+                <>
+                  <span className="text-stone-300">·</span>
+                  <span className="font-bold text-stone-700 truncate">
+                    {question.subcategories.slice(0, 3).join(' · ')}
+                  </span>
+                </>
+              ) : question.subcategory && (
+                <>
+                  <span className="text-stone-300">·</span>
+                  <button
+                    type="button"
+                    onClick={handleSubcategoryClick}
+                    className="font-bold text-stone-700 hover:text-amber-600 transition-colors cursor-pointer truncate"
+                  >
+                    {question.subcategory}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Bounty Tag & Bookmark Button (痛點提問懸賞匡用紅色框起來) */}
+          {/* Right: Bounty & Bookmark */}
           <div className="shrink-0 flex items-center gap-1.5">
-            {isNoPaymentMode ? (
-              <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs">
-                免費交流
+            {isVibeCoding ? (
+              <span className="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full shadow-2xs">
+                軟體作品
               </span>
+            ) : isInnovationProposal ? (
+              <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full shadow-2xs">
+                創新提案
+              </span>
+            ) : isNoPaymentMode ? (
+              <span className="text-xs font-semibold text-stone-500">免費</span>
             ) : isPainPoint ? (
-              <div
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-rose-50/80 border border-rose-300 text-rose-950 shadow-2xs"
-                title={question.bounty > 0 ? '痛點提問懸賞' : '痛點'}
+              <span
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200/80 text-xs font-black font-mono"
+                title="痛點許願"
               >
-                {question.bounty > 0 ? (
-                  <>
-                    <span className="text-xs text-rose-600 font-bold">痛點懸賞</span>
-                    <span className="text-sm font-black font-mono text-rose-600">
-                      NT$ {question.bounty.toLocaleString()}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-xs sm:text-sm font-black font-mono text-rose-600">
-                    痛點
-                  </span>
-                )}
-              </div>
+                {question.bounty > 0 ? `痛點 NT$ ${question.bounty.toLocaleString()}` : '痛點'}
+              </span>
             ) : question.bounty > 0 ? (
-              <div className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 shadow-2xs">
-                <span className="text-xs text-amber-700 font-medium">懸賞</span>
-                <span className="text-sm font-black font-mono">
-                  NT$ {question.bounty.toLocaleString()}
-                </span>
-              </div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50/90 text-amber-800 border border-amber-200/80 text-xs sm:text-sm font-black font-mono">
+                NT$ {question.bounty.toLocaleString()}
+              </span>
             ) : (
-              <span className="text-xs font-bold text-sky-800 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">
-                L0 閒聊討論
+              <span className="text-xs font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full">
+                討論
               </span>
             )}
 
-            {/* Bookmark button */}
             <button
               type="button"
               onClick={handleBookmarkClick}
-              className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+              className={`p-1.5 rounded-full border text-[11px] font-bold flex items-center justify-center transition-all cursor-pointer ${
                 isBookmarked
-                  ? 'bg-amber-100 border-amber-300 text-amber-800 shadow-2xs'
-                  : 'bg-white/80 hover:bg-stone-100 border-stone-200 text-stone-400 hover:text-stone-700'
+                  ? 'text-amber-800 bg-amber-50 border-amber-300'
+                  : 'text-stone-500 bg-stone-50 border-stone-200 hover:text-amber-700 hover:bg-amber-50/70'
               }`}
-              title={isBookmarked ? '取消收藏問題' : '收藏此問題'}
+              title={isBookmarked ? '⭐ 取消收藏' : '⭐ 收藏'}
             >
-              <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-amber-500 text-amber-600' : ''}`} />
+              <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
             </button>
           </div>
         </div>
 
         {/* Title */}
-        <h3 className="text-base sm:text-lg font-bold text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2">
-          {question.title}
+        <h3 className="text-[15px] sm:text-base font-bold text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2">
+          {displayAppName ? (
+            <>
+              <span className="text-blue-600 font-black">{displayAppName}：</span>
+              <span>{displayCleanTitle}</span>
+            </>
+          ) : (
+            question.title
+          )}
         </h3>
 
         {/* Description snippet */}
-        <p className="mt-2 hidden sm:block text-xs sm:text-sm text-stone-600 line-clamp-2 leading-relaxed font-normal">
+        <p className="mt-1.5 text-xs text-stone-500 line-clamp-2 leading-relaxed font-normal">
           {question.description}
         </p>
 
-        {/* 創新提案或是軟體提案：連結到對應的痛點貼文 */}
+        {/* 對應痛點或解決提案 (精簡為俐落單行膠囊，避免卡片內多層色塊堆疊) */}
         {(referencedPainPointObj || question.referencedPainPoint) && (
           <div
             onClick={(e) => {
@@ -710,75 +772,40 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 setSelectedQuestion(referencedPainPointObj);
               }
             }}
-            className="mt-3 p-2.5 rounded-xl bg-gradient-to-r from-rose-50/90 via-orange-50/50 to-white hover:from-rose-100/80 border border-rose-200/90 text-xs text-rose-950 flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs"
-            title="點擊查看對應的痛點貼文"
+            className="mt-2.5 px-2.5 py-1.5 rounded-xl bg-rose-50/60 hover:bg-rose-50 border border-rose-100 text-[11px] text-rose-900 flex items-center justify-between gap-2 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-black shrink-0">
-                連結痛點
-              </span>
-              <span className="font-bold text-stone-900 truncate">
-                {referencedPainPointObj
-                  ? referencedPainPointObj.title
-                  : question.referencedPainPoint?.replace(/^\[[^\]]+\]\s*/, '')}
+              <Flame className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+              <span className="font-semibold truncate">
+                對應痛點：{referencedPainPointObj ? referencedPainPointObj.title : question.referencedPainPoint?.replace(/^\[[^\]]+\]\s*/, '')}
               </span>
             </div>
-            {referencedPainPointObj && (
-              <span className="text-[11px] font-black text-rose-700 shrink-0 flex items-center gap-0.5">
-                <span>前往痛點貼文 ➔</span>
-              </span>
-            )}
+            <span className="text-[10px] font-bold text-rose-600 shrink-0">查看 ➔</span>
           </div>
         )}
 
-        {/* 痛點貼文下方：出現解決這個痛點的提案 */}
         {isPainPoint && referencingProposals.length > 0 && (
-          <div className="mt-3 p-3 rounded-xl bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-white border border-amber-300/90 space-y-2 shadow-2xs">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                <span className="w-4.5 h-4.5 rounded bg-amber-500 text-stone-950 flex items-center justify-center text-[10px] font-black">💡</span>
-                <span>解決此痛點的創新提案與軟體提案 ({referencingProposals.length})</span>
-              </span>
-              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                點擊跳轉提案
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedQuestion(referencingProposals[0]);
+            }}
+            className="mt-2.5 px-2.5 py-1.5 rounded-xl bg-amber-50/60 hover:bg-amber-50 border border-amber-100 text-[11px] text-amber-950 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span className="font-semibold truncate">
+                {referencingProposals.length} 件解方提案：{referencingProposals[0].title}
               </span>
             </div>
-            <div className="space-y-1.5">
-              {referencingProposals.slice(0, 3).map((prop) => (
-                <div
-                  key={prop.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedQuestion(prop);
-                  }}
-                  className="p-2 rounded-lg bg-white hover:bg-amber-50/80 border border-amber-200/90 hover:border-amber-400 flex items-center justify-between gap-2 transition-all cursor-pointer group/prop"
-                  title="點擊查看解決此痛點的提案詳情"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded shrink-0 ${
-                      prop.postType === 'vibecoding_app'
-                        ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                        : 'bg-amber-100 text-amber-900 border border-amber-200'
-                    }`}>
-                      {prop.postType === 'vibecoding_app' ? '軟體提案' : '創新提案'}
-                    </span>
-                    <span className="text-xs font-bold text-stone-800 group-hover/prop:text-amber-900 truncate">
-                      {prop.title}
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-black text-amber-700 shrink-0">
-                    查看提案 ➔
-                  </span>
-                </div>
-              ))}
-            </div>
+            <span className="text-[10px] font-bold text-amber-700 shrink-0">查看 ➔</span>
           </div>
         )}
 
-        {/* Tags */}
+        {/* Tags (最多顯示 3 個，無邊框純淨呈現) */}
         {question.tags && question.tags.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {question.tags.map((tag, idx) => (
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {question.tags.slice(0, 3).map((tag, idx) => (
               <button
                 key={idx}
                 type="button"
@@ -790,33 +817,17 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                     setSearchQuery(tag.replace(/^#/, ''));
                   }
                 }}
-                className="text-[11px] font-medium text-stone-600 bg-stone-100 hover:bg-amber-100 hover:text-amber-900 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-transparent hover:border-amber-300"
-                title={`點擊搜尋「#${tag}」`}
+                className="text-[11px] font-medium text-stone-400 hover:text-stone-800 transition-colors cursor-pointer"
+                title={`搜尋 #${tag}`}
               >
                 #{tag}
               </button>
             ))}
           </div>
         )}
-
-        {/* 貼文下方：留言討論精選預覽 */}
-        {questionDiscussions.length > 0 && (
-          <div className="mt-3 pt-2.5 border-t border-stone-100 space-y-1.5">
-            <div className="px-2.5 py-1.5 rounded-lg bg-stone-50 border border-stone-200/70 text-[11px] text-stone-700 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0 truncate">
-                <MessageCircle className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="font-bold text-stone-900 shrink-0">{questionDiscussions[0].solverName}：</span>
-                <span className="text-stone-600 truncate">{questionDiscussions[0].freePreview.split('\n')[0]}</span>
-              </div>
-              <span className="text-[10px] font-bold text-blue-700 shrink-0">
-                查看 {questionDiscussions.length} 則討論 ➔
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Card Footer */}
+      {/* Card Footer: 簡潔線條與圖示數據 */}
       <div className="mt-3.5 pt-3 border-t border-stone-100 flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2 min-w-0">
           <img
@@ -824,39 +835,81 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             alt={authorDisplayName}
             className="w-5 h-5 rounded-full object-cover ring-1 ring-stone-200 shrink-0"
           />
-          <span className={`font-semibold truncate max-w-[140px] sm:max-w-[180px] ${authorColorClass}`}>
+          <span className={`font-medium truncate max-w-[120px] sm:max-w-[150px] ${authorColorClass}`}>
             {authorDisplayName}
           </span>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* 打賞支持總額 */}
+        <div className="flex items-center gap-2.5 text-stone-400 font-medium shrink-0">
+          {isVibeCoding || isInnovationProposal ? (
+            <button
+              type="button"
+              onClick={handleLikeClick}
+              className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                isLiked || isSeconded
+                  ? 'bg-rose-500 text-white border-rose-500 shadow-2xs'
+                  : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+              }`}
+              title="❤️ Like（創新提案 / 軟體刊登）"
+            >
+              <Heart className={`w-3 h-3 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+              <span className="font-mono">{Math.max(likesCount || 0, secondCount || 0)}</span>
+            </button>
+          ) : isL0Discussion ? (
+            <button
+              type="button"
+              onClick={handleLikeClick}
+              className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                isLiked
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                  : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
+              }`}
+              title="👍 按讚（L0 討論）"
+            >
+              <ThumbsUp className="w-3 h-3" />
+              <span className="font-mono">{likesCount || 0}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSecondClick}
+              className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                isSeconded
+                  ? 'bg-orange-600 text-white border-orange-600 shadow-2xs'
+                  : 'bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100'
+              }`}
+              title="🔥 +1 附議（問題類型 / 痛點）"
+            >
+              <span className="font-mono font-black">+1</span>
+              <span className="font-mono">{secondCount || 0}</span>
+            </button>
+          )}
+
           {(question.supportPoints || 0) > 0 && (
             <span
-              className="flex items-center gap-1 text-amber-950 bg-amber-100/90 hover:bg-amber-200/90 px-2.5 py-1 rounded-xl border border-amber-200/80 font-bold text-xs shadow-2xs"
+              className="flex items-center gap-1 text-amber-700 font-mono text-[11px] font-bold"
               title="累積獲得打賞支持點數"
             >
-              <Coins className="w-3.5 h-3.5 text-amber-600" />
-              <span className="font-mono text-amber-900">
-                🪙 {(question.supportPoints || 0).toLocaleString()} 點
-              </span>
+              <Coins className="w-3.5 h-3.5 text-amber-500" />
+              <span>{(question.supportPoints || 0).toLocaleString()}</span>
             </span>
           )}
 
-          <span className="flex items-center gap-1 text-blue-700 bg-blue-50/90 px-2.5 py-1 rounded-xl border border-blue-200/80 font-semibold text-xs" title="討論留言數">
-            <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
-            <span className="font-mono text-blue-700">{discussionsCount ?? questionDiscussions.length} 討論</span>
+          <span className="flex items-center gap-1 text-[11px]" title="討論留言數">
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span className="font-mono">{discussionsCount ?? questionDiscussions.length}</span>
           </span>
 
-          {/* 4. 方案數 */}
           {isSolved ? (
-            <span className="font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 text-xs">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+            <span className="font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full text-[11px]">
+              <CheckCircle2 className="w-3 h-3" />
               <span>已採納</span>
             </span>
           ) : (
-            <span className="flex items-center gap-1 font-bold text-amber-700 bg-amber-50/80 px-2.5 py-1 rounded-xl border border-amber-200/80 text-xs" title="方案解答數">
-              <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+            <span
+              className="flex items-center gap-1 font-bold text-stone-800 bg-stone-100 group-hover:bg-amber-500 group-hover:text-stone-950 px-2.5 py-0.5 rounded-full transition-colors text-[11px] font-mono"
+              title="方案解答數"
+            >
               <span>{solutionsCount ?? question.answersCount} 方案</span>
             </span>
           )}

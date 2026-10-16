@@ -42,11 +42,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
   };
 
   return (
-    <footer className="block bg-stone-950 text-stone-300 border-t border-stone-800 pt-10 sm:pt-12 pb-24 md:pb-8">
+    <footer className="block bg-stone-950 text-stone-300 border-t border-stone-800/80 pt-8 sm:pt-10 pb-24 lg:pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pb-10 border-b border-stone-800 text-xs">
-          {/* Brand info - 頁尾 IdeaX 左下角去背低飽和燈泡 + IdeaX 品牌識別 */}
-          <div className="col-span-2 lg:col-span-1 space-y-3.5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pb-8 border-b border-stone-800/70 text-xs">
+          {/* Brand info */}
+          <div className="col-span-2 lg:col-span-1 space-y-2.5">
             <button
               type="button"
               onClick={() => {
@@ -54,35 +54,34 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               title="回到首頁頂部"
-              className="inline-flex items-center gap-0.5 sm:gap-1 py-1 hover:opacity-95 transition-all text-left cursor-pointer focus:outline-none group"
+              className="inline-flex items-center gap-1 py-0.5 hover:opacity-95 transition-all text-left cursor-pointer focus:outline-none group"
             >
-              <div className="w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] shrink-0 flex items-center justify-center">
-                <IdeaXLogo variant="bulb" size="lg" className="group-hover:scale-108 transition-transform duration-200" />
+              <div className="w-[46px] h-[46px] sm:w-[54px] sm:h-[54px] shrink-0 flex items-center justify-center">
+                <IdeaXLogo variant="bulb" size="lg" className="group-hover:scale-105 transition-transform duration-200" />
               </div>
               <img
                 src="/logo-6-trans-dark.png"
                 alt="IdeaX"
-                className="h-6 sm:h-7 md:h-8 w-auto object-contain shrink-0"
+                className="h-5 sm:h-6 md:h-7 w-auto object-contain shrink-0"
               />
             </button>
-            <p className="text-stone-400 leading-relaxed pt-0.5">
-              一個問題，找到更多可能。專為新創團隊、商業領袖與技術探索者打造的高價值問題與解決方案交易市場。讓想法發光，連結無限可能。
+            <p className="text-stone-400 leading-relaxed text-[11px] sm:text-xs max-w-xs">
+              一個問題，找到更多可能。讓真實痛點連結落地解決方案。
             </p>
           </div>
 
           {/* Quick links: 平台導覽 */}
-          <div className="space-y-3">
-            <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">平台導覽</h4>
-            <ul className="space-y-2 text-stone-400">
+          <div className="space-y-2.5">
+            <h4 className="font-bold text-stone-200 tracking-wider text-[11px]">平台導覽</h4>
+            <ul className="space-y-1.5 text-stone-400">
               <li>
                 <button
                   type="button"
                   onClick={() => onNavClick('star_season')}
-                  className="hover:text-emerald-300 transition-colors text-left font-bold text-emerald-400 cursor-pointer flex items-center gap-1.5 active:scale-95 group"
-                  title="前往 IdeaX 創星季 • 創新挑戰賽"
+                  className="hover:text-emerald-300 transition-colors text-left font-bold text-emerald-400 cursor-pointer flex items-center gap-1.5"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span>創星季 • 創新挑戰賽</span>
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>創星季挑戰賽</span>
                 </button>
               </li>
               <li>
@@ -95,150 +94,99 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                       onNavClick('about', 'story');
                     }
                   }}
-                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 active:scale-95"
-                  title="啟動平台手把手 10 步驟使用教學導覽"
+                  className="hover:text-amber-300 transition-colors text-left font-semibold text-amber-400 cursor-pointer flex items-center gap-1.5"
                 >
                   <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>導覽教學</span>
+                  <span>新手導覽教學</span>
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => onNavClick('explore')}
-                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
+                  className="hover:text-white transition-colors cursor-pointer text-left"
                 >
-                  探索問題
+                  探索問題市場
                 </button>
               </li>
               <li>
                 <button
                   onClick={onPostClick}
-                  className="hover:text-amber-400 transition-colors text-left cursor-pointer"
+                  className="hover:text-white transition-colors text-left cursor-pointer"
                 >
-                  發布問題
+                  發布問題需求
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => onNavClick('solvers')}
-                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
+                  className="hover:text-white transition-colors cursor-pointer text-left"
                 >
-                  專家智庫
+                  認證專家智庫
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => onNavClick('leaderboard')}
-                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
+                  className="hover:text-white transition-colors cursor-pointer text-left"
                 >
-                  榮譽榜
+                  榮譽排行榜
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* 關於我們 */}
+          <div className="space-y-2.5">
+            <h4 className="font-bold text-stone-200 tracking-wider text-[11px]">關於與支援</h4>
+            <ul className="space-y-1.5 text-stone-400">
+              <li>
+                <button
+                  onClick={() => onNavClick('about', 'intro')}
+                  className="hover:text-white transition-colors text-left cursor-pointer"
+                >
+                  平台介紹與機制
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => onNavClick('about', 'tiers')}
-                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
+                  className="hover:text-white transition-colors text-left cursor-pointer"
                 >
-                  功能說明
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => {
-                    onNavClick('about', 'other_4');
-                    setTimeout(() => {
-                      const el = document.getElementById('suitable-personas-section');
-                      if (el) {
-                        el.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }, 120);
-                  }}
-                  className="hover:text-amber-400 transition-colors cursor-pointer text-left"
-                >
-                  什麼人適合使用IdeaX？
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* 關於我們：平台介紹、其他說明、條款與聲明、客服與回報、下載 APP */}
-          <div className="space-y-3">
-            <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">關於我們</h4>
-            <ul className="space-y-2 text-stone-400">
-              <li>
-                <button
-                  onClick={() => onNavClick('about', 'intro')}
-                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5"
-                >
-                  <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>平台介紹</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavClick('about', 'others')}
-                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5"
-                >
-                  <Layers className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>其他說明</span>
+                  L0–L4 分級說明
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => onNavClick('about', 'terms')}
-                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5"
+                  className="hover:text-white transition-colors text-left cursor-pointer"
                 >
-                  <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>條款與聲明</span>
+                  服務條款與聲明
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => openCustomerService({ subject: '平台一般客服諮詢與支援' })}
-                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5"
+                  className="hover:text-white transition-colors text-left cursor-pointer"
                 >
-                  <Headphones className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>客服與回報</span>
+                  線上客服與回報
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => triggerDirectAppDownloadOrInstall(openPwaInstallModal)}
-                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 active:scale-95"
-                  title="下載或安裝 IdeaX創點子 App"
+                  className="hover:text-amber-300 transition-colors text-left font-semibold text-amber-400 cursor-pointer flex items-center gap-1"
                 >
-                  <Download className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-bounce" />
-                  <span>下載 APP</span>
+                  <Download className="w-3 h-3 shrink-0" />
+                  <span>安裝手機 App</span>
                 </button>
               </li>
             </ul>
-
-            {/* 聯繫我們：（預留mail和聯繫方式） */}
-            <div className="pt-2 border-t border-stone-800/80 space-y-1.5 text-stone-400 text-[11px]">
-              <span className="font-bold text-stone-300 block">聯繫我們：</span>
-              <div className="flex items-center gap-1.5 text-stone-400">
-                <Mail className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                <a
-                  href="mailto:ideax.office@gmail.com"
-                  className="hover:text-amber-400 transition-colors underline font-mono"
-                >
-                  ideax.office@gmail.com
-                </a>
-              </div>
-              <div className="flex items-center gap-1.5 text-stone-400">
-                <Clock className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                <span>週一至週五 09:30 ~ 18:30</span>
-              </div>
-            </div>
           </div>
 
-          {/* Categories / Hashtags: 點擊直接搜尋題目分類 */}
-          <div className="col-span-2 lg:col-span-1 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">熱門題目分類標籤</h4>
-              <span className="text-[10px] text-amber-500 font-semibold">點擊直接搜尋</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5 text-stone-300">
+          {/* 熱門標籤與聯絡資訊 */}
+          <div className="col-span-2 lg:col-span-1 space-y-3">
+            <h4 className="font-bold text-stone-200 tracking-wider text-[11px]">熱門探索標籤</h4>
+            <div className="flex flex-wrap gap-1.5">
               {[
                 '#商業模式',
                 '#AI應用',
@@ -248,39 +196,42 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                 '#股權募資',
                 '#合約法律',
                 '#產品設計',
-                '#職場顧問',
                 '#生醫科技',
-                '#生活疑難',
                 '#跨境電商',
               ].map((tag) => (
                 <button
                   key={tag}
                   type="button"
                   onClick={() => handleTagClick(tag)}
-                  className="px-2.5 py-1 bg-stone-900 hover:bg-amber-500 hover:text-stone-950 text-amber-300 border border-stone-800 hover:border-amber-400 rounded-lg font-bold text-[11px] transition-all cursor-pointer active:scale-95 shadow-2xs group flex items-center gap-1"
-                  title={`點擊立即搜尋「${tag}」相關題目`}
+                  className="px-2 py-0.5 bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-amber-300 rounded-md font-medium text-[11px] transition-colors cursor-pointer"
                 >
-                  <span className="text-amber-500 group-hover:text-stone-950">#</span>
-                  <span>{tag.replace('#', '')}</span>
+                  {tag}
                 </button>
               ))}
+            </div>
+
+            <div className="pt-2 border-t border-stone-800/60 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-stone-500">
+              <a
+                href="mailto:ideax.office@gmail.com"
+                className="hover:text-stone-300 transition-colors font-mono flex items-center gap-1"
+              >
+                <Mail className="w-3 h-3 text-stone-500 shrink-0" />
+                <span>ideax.office@gmail.com</span>
+              </a>
+              <span>週一至週五 09:30–18:30</span>
             </div>
           </div>
         </div>
 
-        <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-stone-500">
-          <div className="flex items-center gap-2 flex-wrap text-center md:text-left justify-center md:justify-start">
-            <span>© {new Date().getFullYear()} 創點子 IdeaX. All rights reserved.</span>
-            <span>•</span>
-            <span>讓創新想法化為真實商業價值。</span>
+        <div className="pt-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-stone-500">
+          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+            <span>© {new Date().getFullYear()} 創點子 IdeaX</span>
+            <span>·</span>
+            <span>讓創新想法化為真實價值</span>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap text-stone-500 font-mono text-[10px] sm:text-[11px] select-none tracking-tight shrink-0 justify-center md:justify-end">
-            <span className="text-stone-600 font-sans">Powered by AI Engine</span>
-            <span>•</span>
-            <span className="text-stone-500">
-              v{APP_VERSION} • {APP_RELEASE_DATE} • {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
-            </span>
+          <div className="font-mono text-[10px] text-stone-600 select-none">
+            v{APP_VERSION} ({APP_RELEASE_DATE}) · {isRaceMode ? 'RACE' : isDemoMode ? 'TEST' : isNoPaymentMode ? 'FREE' : 'NORM'}-{isHideTestAccounts ? 'HIDE' : 'SHOW'}
           </div>
         </div>
       </div>

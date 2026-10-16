@@ -137,15 +137,18 @@ export type Subcategory =
   | '感情'
   | '時事'
   | '購物'
-  | '其他';
+  | '其他'
+  | '小遊戲';
 
 export const CATEGORY_HIERARCHY: Record<Category, string[]> = {
   '創新創業': ['資訊科技', '生醫材料', '機械工業', '服務餐飲', '文創工藝'],
   '專業問題': ['水電', '室內裝修', '法律智財', '會計稅務', '企業管理'],
   '學術探討': ['生技醫療', '資訊工程', '電機', '法律政治', '商管', '文學', '社會科學', '藝術設計'],
   '日常疑難': ['職場', '家務', '感情', '時事', '購物', '其他'],
-  '網站程式': ['網站程式', 'Web 應用程式', 'AI 智慧工具', '自動化工作流', '擴充功能插件'],
+  '網站程式': ['網站程式', 'AI工具', '小遊戲', '自動化', '擴充功能'],
 };
+
+export const VIBECODING_CATEGORIES = ['網站程式', 'AI工具', '小遊戲', '自動化', '擴充功能'] as const;
 
 export type ProblemLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
 
@@ -874,6 +877,7 @@ export interface Question {
   description: string;
   category: Category;
   subcategory?: string;
+  subcategories?: string[];
   tags: string[];
   level: ProblemLevel;
   bounty: number; // 懸賞金額 NT$

@@ -9,9 +9,30 @@
  * 5. 敏感資料（銀行/身分/聯絡）隔離存放於 competition_private_submissions，公開集合 competition_proposals 絕對不含敏感個資。
  */
 
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import fs from 'fs';
+import path from 'path';
+import { initializeApp as initAdminApp, getApps as getAdminApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { initializeApp as initClientApp, getApps as getClientApps, getApp as getClientApp } from 'firebase/app';
+import {
+  getFirestore as getClientFirestore,
+  collection as clientCollection,
+  doc as clientDoc,
+  getDoc as clientGetDoc,
+  getDocs as clientGetDocs,
+  setDoc as clientSetDoc,
+  updateDoc as clientUpdateDoc,
+  deleteDoc as clientDeleteDoc,
+  addDoc as clientAddDoc,
+  query as clientQuery,
+  where as clientWhere,
+  limit as clientLimit,
+  writeBatch as clientWriteBatch,
+  runTransaction as clientRunTransaction,
+  increment as clientIncrement,
+  arrayUnion as clientArrayUnion,
+} from 'firebase/firestore';
+import firebaseConfigJson from '../firebase-applet-config.json';
 import {
   StarSeasonProposal,
   ProposalPrivateDetails,
@@ -23,26 +44,443 @@ import {
   JudgeApplicationData,
   ProposalComment,
 } from '../src/types/competition';
+import { DEFAULT_DEMO_PROPOSALS } from '../src/data/competitionProposals';
+import {
+  ALL_VIRTUAL_PROPOSALS_SEED,
+  SEED_INNOVATION_PROPOSALS,
+  ALL_VIRTUAL_ANSWERS_SEED,
+  VIRTUAL_PERSONA_USERS,
+} from '../src/data/virtualProposalsSeed';
+import { DEFAULT_VIBECODING_APPS } from '../src/data/vibeCodingData';
+import { MOCK_QUESTIONS } from '../src/data/mockData';
+import { questionToStarSeasonProposal } from '../src/utils/questionUtils';
 
-// 初始化 Firebase Admin (共用既有專案 ideax-2af9c)
-if (!getApps().length) {
-  initializeApp({
-    projectId: 'ideax-2af9c',
+// 初始化 Firebase Admin Auth
+if (!getAdminApps().length) {
+  initAdminApp({
+    projectId: firebaseConfigJson.projectId || 'ideax-2af9c',
   });
 }
 
-// 支援指定 Firestore 資料庫 ID (ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c)
-const databaseId = 'ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c';
-let adminDb: FirebaseFirestore.Firestore;
-try {
-  if (process.env.FIRESTORE_EMULATOR_HOST) {
-    adminDb = getFirestore();
-  } else {
-    adminDb = getFirestore(databaseId);
+// 初始化 Firebase Firestore (連接 ai-studio-ideax-6902feae-e5d6-4a4d-84d3-58e8b342c54c 資料庫)
+const clientApp = getClientApps().length > 0 ? getClientApp() : initClientApp(firebaseConfigJson);
+const rawFirestoreDb = getClientFirestore(clientApp, firebaseConfigJson.firestoreDatabaseId);
+
+const LOCAL_DB_FILE = path.resolve(process.cwd(), 'server/data/firestore_db.json');
+let localDbStore: Record<string, Record<string, any>> = {};
+let isFirestoreReadQuotaExhausted = false;
+
+function loadLocalDbStore() {
+  try {
+    if (fs.existsSync(LOCAL_DB_FILE)) {
+      const raw = fs.readFileSync(LOCAL_DB_FILE, 'utf8');
+      localDbStore = JSON.parse(raw);
+    }
+  } catch (err) {
+    console.warn('[Database] Failed to read firestore_db.json:', err);
   }
-} catch {
-  adminDb = getFirestore();
 }
+loadLocalDbStore();
+
+let saveLocalDbTimer: NodeJS.Timeout | null = null;
+function scheduleSaveLocalDbStore() {
+  if (saveLocalDbTimer) clearTimeout(saveLocalDbTimer);
+  saveLocalDbTimer = setTimeout(() => {
+    try {
+      const dir = path.dirname(LOCAL_DB_FILE);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(LOCAL_DB_FILE, JSON.stringify(localDbStore, null, 2), 'utf8');
+    } catch (err) {
+      console.warn('[Database] Failed to save firestore_db.json:', err);
+    }
+  }, 150);
+}
+
+function isQuotaError(err: any): boolean {
+  const msg = err?.message || String(err);
+  const code = err?.code || '';
+  return (
+    code === 'resource-exhausted' ||
+    msg.includes('resource-exhausted') ||
+    msg.includes('Quota limit exceeded') ||
+    msg.includes('Quota exceeded')
+  );
+}
+
+function cleanFirestorePayload(val: any): any {
+  if (val === undefined) return null;
+  if (val === null || typeof val !== 'object') return val;
+  if (val instanceof Date) return val.toISOString();
+  if (Array.isArray(val)) {
+    return val.filter((v) => v !== undefined).map(cleanFirestorePayload);
+  }
+  if (val.constructor && val.constructor.name !== 'Object') {
+    return val;
+  }
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(val)) {
+    if (v !== undefined) {
+      out[k] = cleanFirestorePayload(v);
+    }
+  }
+  return out;
+}
+
+export const FieldValue = {
+  increment: (n: number) => ({ __op: 'increment', value: n, _firestoreOp: clientIncrement(n) }),
+  arrayUnion: (...elements: any[]) => ({ __op: 'arrayUnion', elements, _firestoreOp: clientArrayUnion(...elements) }),
+};
+
+function toFirestoreNativePayload(val: any): any {
+  if (val === undefined) return null;
+  if (val === null || typeof val !== 'object') return val;
+  if (val._firestoreOp) return val._firestoreOp;
+  if (val instanceof Date) return val.toISOString();
+  if (Array.isArray(val)) {
+    return val.filter((v) => v !== undefined).map(toFirestoreNativePayload);
+  }
+  if (val.constructor && val.constructor.name !== 'Object') {
+    return val;
+  }
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(val)) {
+    if (v !== undefined) {
+      out[k] = toFirestoreNativePayload(v);
+    }
+  }
+  return out;
+}
+
+function applyPayloadToLocalDoc(colName: string, docId: string, data: any, merge: boolean = true) {
+  if (!localDbStore[colName]) localDbStore[colName] = {};
+  const existing = merge && localDbStore[colName][docId] ? { ...localDbStore[colName][docId] } : {};
+  for (const [k, v] of Object.entries(data || {})) {
+    if (v === undefined) continue;
+    if (v && typeof v === 'object' && v.__op === 'increment') {
+      existing[k] = (typeof existing[k] === 'number' ? existing[k] : 0) + v.value;
+    } else if (v && typeof v === 'object' && v.__op === 'arrayUnion') {
+      const arr = Array.isArray(existing[k]) ? [...existing[k]] : [];
+      for (const el of v.elements) {
+        if (!arr.includes(el)) arr.push(el);
+      }
+      existing[k] = arr;
+    } else {
+      existing[k] = JSON.parse(JSON.stringify(v));
+    }
+  }
+  localDbStore[colName][docId] = existing;
+  scheduleSaveLocalDbStore();
+}
+
+function deleteLocalDoc(colName: string, docId: string) {
+  if (localDbStore[colName] && localDbStore[colName][docId]) {
+    delete localDbStore[colName][docId];
+    scheduleSaveLocalDbStore();
+  }
+}
+
+export function getMirrorCollectionMap(colName: string): Record<string, any> {
+  return localDbStore[colName] || {};
+}
+
+export async function upsertMirrorAndFirestoreDoc(colName: string, docId: string, data: any, merge = true): Promise<void> {
+  applyPayloadToLocalDoc(colName, docId, data, merge);
+  try {
+    const ref = clientDoc(rawFirestoreDb, colName, docId);
+    await clientSetDoc(ref, toFirestoreNativePayload(data), { merge });
+  } catch (err) {
+    if (!isQuotaError(err)) {
+      console.warn(`[Database] Firestore set warning (${colName}/${docId}):`, (err as any)?.message);
+    }
+  }
+}
+
+export async function deleteMirrorAndFirestoreDoc(colName: string, docId: string): Promise<void> {
+  deleteLocalDoc(colName, docId);
+  try {
+    const ref = clientDoc(rawFirestoreDb, colName, docId);
+    await clientDeleteDoc(ref);
+  } catch (err) {
+    if (!isQuotaError(err)) {
+      console.warn(`[Database] Firestore delete warning (${colName}/${docId}):`, (err as any)?.message);
+    }
+  }
+}
+
+function createDocWrapper(colName: string, docId?: string) {
+  const ref = docId ? clientDoc(rawFirestoreDb, colName, docId) : clientDoc(clientCollection(rawFirestoreDb, colName));
+  const id = ref.id;
+  return {
+    id,
+    _colName: colName,
+    _ref: ref,
+    async get() {
+      if (!isFirestoreReadQuotaExhausted) {
+        try {
+          const snap = await clientGetDoc(ref);
+          if (snap.exists()) {
+            const d = snap.data() as any;
+            applyPayloadToLocalDoc(colName, id, d, true);
+          }
+          return {
+            exists: snap.exists(),
+            id: snap.id,
+            data: () => snap.data() as any,
+            ref,
+          };
+        } catch (err) {
+          if (isQuotaError(err)) {
+            isFirestoreReadQuotaExhausted = true;
+          } else {
+            throw err;
+          }
+        }
+      }
+      const localDoc = localDbStore[colName]?.[id];
+      return {
+        exists: Boolean(localDoc),
+        id,
+        data: () => (localDoc ? { ...localDoc } : undefined),
+        ref,
+      };
+    },
+    async set(data: any, options?: any) {
+      const merge = Boolean(options?.merge);
+      applyPayloadToLocalDoc(colName, id, data, merge);
+      try {
+        await clientSetDoc(ref, toFirestoreNativePayload(data), options);
+      } catch (err) {
+        if (!isQuotaError(err)) throw err;
+      }
+    },
+    async update(data: any) {
+      applyPayloadToLocalDoc(colName, id, data, true);
+      try {
+        await clientUpdateDoc(ref, toFirestoreNativePayload(data));
+      } catch (err) {
+        if (!isQuotaError(err)) throw err;
+      }
+    },
+    async delete() {
+      deleteLocalDoc(colName, id);
+      try {
+        await clientDeleteDoc(ref);
+      } catch (err) {
+        if (!isQuotaError(err)) throw err;
+      }
+    },
+  };
+}
+
+interface FilterSpec {
+  field: string;
+  op: string;
+  value: any;
+}
+
+function createQueryWrapper(colName: string, constraints: any[] = [], filterSpecs: FilterSpec[] = [], limitCount?: number) {
+  const colRef = clientCollection(rawFirestoreDb, colName);
+  return {
+    where(field: string, op: any, value: any) {
+      return createQueryWrapper(
+        colName,
+        [...constraints, clientWhere(field, op, value)],
+        [...filterSpecs, { field, op, value }],
+        limitCount
+      );
+    },
+    limit(n: number) {
+      return createQueryWrapper(colName, [...constraints, clientLimit(n)], filterSpecs, n);
+    },
+    async get() {
+      if (!isFirestoreReadQuotaExhausted) {
+        try {
+          const q = constraints.length > 0 ? clientQuery(colRef, ...constraints) : colRef;
+          const snap = await clientGetDocs(q);
+          const docs = snap.docs.map((d) => {
+            const data = d.data() as any;
+            applyPayloadToLocalDoc(colName, d.id, data, true);
+            return {
+              exists: true,
+              id: d.id,
+              data: () => data,
+              ref: d.ref,
+            };
+          });
+          return {
+            empty: snap.empty,
+            size: snap.size,
+            docs,
+            forEach(cb: (doc: any) => void) {
+              docs.forEach(cb);
+            },
+          };
+        } catch (err) {
+          if (isQuotaError(err)) {
+            isFirestoreReadQuotaExhausted = true;
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      const colMap = localDbStore[colName] || {};
+      let entries = Object.entries(colMap);
+      for (const f of filterSpecs) {
+        entries = entries.filter(([, docData]) => {
+          const val = docData?.[f.field];
+          if (f.op === '==') return val === f.value;
+          if (f.op === '!=') return val !== f.value;
+          if (f.op === 'array-contains') return Array.isArray(val) && val.includes(f.value);
+          if (f.op === 'in') return Array.isArray(f.value) && f.value.includes(val);
+          if (f.op === '>') return val > f.value;
+          if (f.op === '>=') return val >= f.value;
+          if (f.op === '<') return val < f.value;
+          if (f.op === '<=') return val <= f.value;
+          return true;
+        });
+      }
+      if (typeof limitCount === 'number') {
+        entries = entries.slice(0, limitCount);
+      }
+      const docs = entries.map(([id, docData]) => ({
+        exists: true,
+        id,
+        data: () => ({ ...docData }),
+        ref: clientDoc(rawFirestoreDb, colName, id),
+      }));
+      return {
+        empty: docs.length === 0,
+        size: docs.length,
+        docs,
+        forEach(cb: (doc: any) => void) {
+          docs.forEach(cb);
+        },
+      };
+    },
+  };
+}
+
+const adminDb = {
+  collection(colName: string) {
+    const queryWrapper = createQueryWrapper(colName, []);
+    return {
+      ...queryWrapper,
+      doc(docId?: string) {
+        return createDocWrapper(colName, docId);
+      },
+      async add(data: any) {
+        const wrapper = createDocWrapper(colName);
+        await wrapper.set(data, { merge: false });
+        return wrapper._ref;
+      },
+    };
+  },
+  batch() {
+    const b = clientWriteBatch(rawFirestoreDb);
+    const localOps: Array<() => void> = [];
+    return {
+      set(docWrapper: any, data: any, options?: any) {
+        const colName = docWrapper._colName || docWrapper.parent?.id;
+        const id = docWrapper.id;
+        if (colName && id) {
+          localOps.push(() => applyPayloadToLocalDoc(colName, id, data, Boolean(options?.merge)));
+        }
+        b.set(docWrapper._ref || docWrapper, toFirestoreNativePayload(data), options);
+      },
+      update(docWrapper: any, data: any) {
+        const colName = docWrapper._colName || docWrapper.parent?.id;
+        const id = docWrapper.id;
+        if (colName && id) {
+          localOps.push(() => applyPayloadToLocalDoc(colName, id, data, true));
+        }
+        b.update(docWrapper._ref || docWrapper, toFirestoreNativePayload(data));
+      },
+      delete(docWrapper: any) {
+        const colName = docWrapper._colName || docWrapper.parent?.id;
+        const id = docWrapper.id;
+        if (colName && id) {
+          localOps.push(() => deleteLocalDoc(colName, id));
+        }
+        b.delete(docWrapper._ref || docWrapper);
+      },
+      async commit() {
+        localOps.forEach((fn) => fn());
+        try {
+          await b.commit();
+        } catch (err) {
+          if (!isQuotaError(err)) throw err;
+        }
+      },
+    };
+  },
+  async runTransaction<T>(updateFn: (transaction: any) => Promise<T>): Promise<T> {
+    if (!isFirestoreReadQuotaExhausted) {
+      try {
+        return await clientRunTransaction(rawFirestoreDb, async (tx) => {
+          const localOps: Array<() => void> = [];
+          const txWrapper = {
+            async get(docWrapper: any) {
+              const snap = await tx.get(docWrapper._ref || docWrapper);
+              return {
+                exists: snap.exists(),
+                id: snap.id,
+                data: () => snap.data() as any,
+              };
+            },
+            set(docWrapper: any, data: any, options?: any) {
+              if (docWrapper._colName && docWrapper.id) {
+                localOps.push(() => applyPayloadToLocalDoc(docWrapper._colName, docWrapper.id, data, Boolean(options?.merge)));
+              }
+              tx.set(docWrapper._ref || docWrapper, toFirestoreNativePayload(data), options);
+            },
+            update(docWrapper: any, data: any) {
+              if (docWrapper._colName && docWrapper.id) {
+                localOps.push(() => applyPayloadToLocalDoc(docWrapper._colName, docWrapper.id, data, true));
+              }
+              tx.update(docWrapper._ref || docWrapper, toFirestoreNativePayload(data));
+            },
+            delete(docWrapper: any) {
+              if (docWrapper._colName && docWrapper.id) {
+                localOps.push(() => deleteLocalDoc(docWrapper._colName, docWrapper.id));
+              }
+              tx.delete(docWrapper._ref || docWrapper);
+            },
+          };
+          const res = await updateFn(txWrapper);
+          localOps.forEach((fn) => fn());
+          return res;
+        });
+      } catch (err) {
+        if (isQuotaError(err)) {
+          isFirestoreReadQuotaExhausted = true;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    // Fallback atomic transaction on localDbStore + Firestore write
+    const batch = adminDb.batch();
+    const txWrapper = {
+      async get(docWrapper: any) {
+        return await docWrapper.get();
+      },
+      set(docWrapper: any, data: any, options?: any) {
+        batch.set(docWrapper, data, options);
+      },
+      update(docWrapper: any, data: any) {
+        batch.update(docWrapper, data);
+      },
+      delete(docWrapper: any) {
+        batch.delete(docWrapper);
+      },
+    };
+    const res = await updateFn(txWrapper);
+    await batch.commit();
+    return res;
+  },
+};
 
 const adminAuth = getAuth();
 
@@ -714,6 +1152,180 @@ export async function confirmFinalAwardByAdmin(params: {
   return { success: true, message: `已成功確認名次 (第 ${params.finalRank} 名) 與相關獎勵核准！` };
 }
 
+const DATABASE_PROPOSALS_SEED_VERSION = 'v2026_10_16_db_v5';
+let isDatabaseSeedInProgress = false;
+let isDatabaseSeedDone = false;
+
+/**
+ * 將所有提案、軟體應用、痛點與虛擬留言一次性完整同步存入 Firestore 資料庫
+ * 確保前端與後端皆完全從資料庫讀取，不依賴硬編碼覆寫
+ */
+export async function ensureProposalsSyncedToFirestore(force = false): Promise<void> {
+  if (isDatabaseSeedDone && !force) return;
+  if (isDatabaseSeedInProgress) return;
+  isDatabaseSeedInProgress = true;
+
+  try {
+    const versionRef = adminDb.collection('platform_settings').doc('database_seed_version');
+    const [versionSnap, purgeSnap, deletedSnap] = await Promise.all([
+      versionRef.get(),
+      adminDb.collection('platform_settings').doc('simulated_data_purge').get(),
+      adminDb.collection('platform_settings').doc('permanently_deleted_questions').get(),
+    ]);
+
+    if (!force && versionSnap.exists && versionSnap.data()?.version === DATABASE_PROPOSALS_SEED_VERSION) {
+      isDatabaseSeedDone = true;
+      return;
+    }
+
+    const isPurged = purgeSnap.exists && Boolean(purgeSnap.data()?.purged);
+    if (isPurged && !force) {
+      isDatabaseSeedDone = true;
+      return;
+    }
+
+    const deletedIds = new Set<string>(
+      deletedSnap.exists && Array.isArray(deletedSnap.data()?.deletedIds)
+        ? deletedSnap.data()!.deletedIds
+        : []
+    );
+
+    const priorityRefreshIds = new Set<string>([
+      'q-vp-idea-ideax',
+      'q-vp-vibe-ideax',
+      'q-vp-idea-gosun',
+      'q-vp-vibe-gosun',
+      'q-vp-idea-deeperdigger',
+      'q-vp-vibe-deeperdigger',
+      'q-vp-vibe-aiwolf',
+      'q-vp-idea-pace',
+      'q-vp-vibe-pace',
+      'q-vp-idea-aiyaya',
+      'q-vp-vibe-aiyaya',
+      'q-vp-idea-stallmatch',
+      'q-vp-vibe-stallmatch',
+    ]);
+
+    // 1. 同步競賽與創新解方提案至 competition_proposals 集合
+    const existingPropsSnap = await adminDb.collection('competition_proposals').get();
+    const existingPropIds = new Set<string>(existingPropsSnap.docs.map((d) => d.id));
+
+    const allStarProposalsMap = new Map<string, StarSeasonProposal>();
+    DEFAULT_DEMO_PROPOSALS.forEach((p) => {
+      if (!deletedIds.has(p.id)) {
+        allStarProposalsMap.set(p.id, p);
+      }
+    });
+    SEED_INNOVATION_PROPOSALS.forEach((q) => {
+      if (!deletedIds.has(q.id) && !allStarProposalsMap.has(q.id)) {
+        allStarProposalsMap.set(q.id, questionToStarSeasonProposal(q));
+      }
+    });
+
+    const propsToWrite = Array.from(allStarProposalsMap.values()).filter(
+      (p) => !existingPropIds.has(p.id) || priorityRefreshIds.has(p.id) || force
+    );
+
+    for (let i = 0; i < propsToWrite.length; i += 100) {
+      const chunk = propsToWrite.slice(i, i + 100);
+      const batch = adminDb.batch();
+      chunk.forEach((p) => {
+        const ref = adminDb.collection('competition_proposals').doc(p.id);
+        batch.set(ref, { ...p, updatedAt: new Date().toISOString() }, { merge: true });
+      });
+      await batch.commit();
+    }
+
+    // 2. 同步所有提案（創新解方、軟體提案 VibeCoding、痛點）至 questions 集合
+    const existingQSnap = await adminDb.collection('questions').get();
+    const existingQIds = new Set<string>(
+      existingQSnap.docs
+        .filter((d) => {
+          const data = d.data();
+          return Boolean(data && typeof data.title === 'string' && data.title.trim());
+        })
+        .map((d) => d.id)
+    );
+
+    const allSeedQuestionsMap = new Map<string, any>();
+    [...MOCK_QUESTIONS, ...DEFAULT_VIBECODING_APPS, ...ALL_VIRTUAL_PROPOSALS_SEED].forEach((q) => {
+      if (q && q.id && !deletedIds.has(q.id)) {
+        allSeedQuestionsMap.set(q.id, q);
+      }
+    });
+
+    const questionsToWrite = Array.from(allSeedQuestionsMap.values()).filter(
+      (q) => !existingQIds.has(q.id) || priorityRefreshIds.has(q.id) || force
+    );
+
+    for (let i = 0; i < questionsToWrite.length; i += 100) {
+      const chunk = questionsToWrite.slice(i, i + 100);
+      const batch = adminDb.batch();
+      chunk.forEach((q) => {
+        const ref = adminDb.collection('questions').doc(q.id);
+        batch.set(ref, { ...q, updatedAt: new Date().toISOString() }, { merge: true });
+      });
+      await batch.commit();
+    }
+
+    // 3. 同步對應之解答與討論留言至 answers 集合
+    const existingASnap = await adminDb.collection('answers').get();
+    const existingAIds = new Set<string>(existingASnap.docs.map((d) => d.id));
+    const answersToWrite = ALL_VIRTUAL_ANSWERS_SEED.filter(
+      (a) => a && a.id && !deletedIds.has(a.questionId) && (!existingAIds.has(a.id) || priorityRefreshIds.has(a.questionId))
+    );
+
+    for (let i = 0; i < answersToWrite.length; i += 100) {
+      const chunk = answersToWrite.slice(i, i + 100);
+      const batch = adminDb.batch();
+      chunk.forEach((a) => {
+        const ref = adminDb.collection('answers').doc(a.id);
+        batch.set(ref, { ...a, updatedAt: new Date().toISOString() }, { merge: true });
+      });
+      await batch.commit();
+    }
+
+    // 4. 同步提案作者帳號至 users 集合
+    const existingUSnap = await adminDb.collection('users').get();
+    const existingUIds = new Set<string>(existingUSnap.docs.map((d) => d.id));
+    const usersToWrite = VIRTUAL_PERSONA_USERS.filter((u) => u && u.id && !existingUIds.has(u.id));
+
+    for (let i = 0; i < usersToWrite.length; i += 100) {
+      const chunk = usersToWrite.slice(i, i + 100);
+      const batch = adminDb.batch();
+      chunk.forEach((u) => {
+        const ref = adminDb.collection('users').doc(u.id);
+        batch.set(ref, { ...u, updatedAt: new Date().toISOString() }, { merge: true });
+      });
+      await batch.commit();
+    }
+
+    await versionRef.set(
+      {
+        version: DATABASE_PROPOSALS_SEED_VERSION,
+        syncedAt: new Date().toISOString(),
+        proposalsSynced: propsToWrite.length,
+        questionsSynced: questionsToWrite.length,
+      },
+      { merge: true }
+    );
+
+    isDatabaseSeedDone = true;
+    console.log(
+      `[Database Seed] Synced ${propsToWrite.length} competition proposals, ${questionsToWrite.length} questions, ${answersToWrite.length} answers to Firestore.`
+    );
+  } catch (err: any) {
+    console.warn('[Database Seed] Warning during Firestore seed sync:', err?.message || err);
+  } finally {
+    isDatabaseSeedInProgress = false;
+  }
+}
+
+// 伺服器啟動時自動將提案同步存入資料庫
+setTimeout(() => {
+  ensureProposalsSyncedToFirestore().catch(() => {});
+}, 500);
+
 /**
  * 取得公開提案列表（敏感個資已被剝除）
  */
@@ -722,7 +1334,9 @@ export async function getPublicProposals(
   track?: StarSeasonTrack,
   options?: { includePending?: boolean; authorId?: string }
 ): Promise<StarSeasonProposal[]> {
-  let query: FirebaseFirestore.Query = adminDb.collection('competition_proposals');
+  await ensureProposalsSyncedToFirestore();
+
+  let query: any = adminDb.collection('competition_proposals');
 
   if (stage) {
     query = query.where('stage', '==', stage);
@@ -734,7 +1348,7 @@ export async function getPublicProposals(
   const snap = await query.get();
   const list: StarSeasonProposal[] = [];
 
-  snap.forEach((doc) => {
+  snap.forEach((doc: any) => {
     const data = doc.data() as StarSeasonProposal;
     // 待審不公開原則：未通過審核之提案僅作者本人或管理員可查閱
     if (data.status === 'approved' || options?.includePending || (options?.authorId && data.authorId === options.authorId)) {

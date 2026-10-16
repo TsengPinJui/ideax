@@ -35,6 +35,10 @@ import {
   bindAmbassadorReferralCode,
   incrementProposalView,
   adminDb,
+  getMirrorCollectionMap,
+  upsertMirrorAndFirestoreDoc,
+  deleteMirrorAndFirestoreDoc,
+  ensureProposalsSyncedToFirestore,
 } from './competitionService';
 import { StarSeasonStage, StarSeasonTrack, COMPETITION_POINTS_CONFIG, DEFAULT_COMPETITION_SCHEDULE } from '../src/types/competition';
 
@@ -737,6 +741,61 @@ router.post('/admin/notify-expert-review', async (req: Request, res: Response) =
   } catch (err: any) {
     console.error('[notify-expert-review error]:', err);
     return res.status(500).json({ success: false, error: err.message || '發送郵件通知失敗' });
+  }
+});
+
+// 19. 平台完整資料庫讀寫端點 (確保前後端完全透過資料庫存取提案，不依賴硬編碼)
+router.get('/db-mirror', async (req: Request, res: Response) => {
+  try {
+    await ensureProposalsSyncedToFirestore();
+    const questions = Object.values(getMirrorCollectionMap('questions'));
+    const answers = Object.values(getMirrorCollectionMap('answers'));
+    const users = Object.values(getMirrorCollectionMap('users'));
+    const competitionProposals = Object.values(getMirrorCollectionMap('competition_proposals'));
+    const deletedSettings = getMirrorCollectionMap('platform_settings')?.permanently_deleted_questions;
+    const deletedQuestionIds = Array.isArray(deletedSettings?.deletedIds) ? deletedSettings.deletedIds : [];
+    res.json({
+      success: true,
+      questions,
+      answers,
+      users,
+      competitionProposals,
+      deletedQuestionIds,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/db-mirror/:collection/:docId', async (req: Request, res: Response) => {
+  try {
+    const colName = String(req.params.collection || '');
+    const docId = String(req.params.docId || '');
+    const { data, merge = true } = req.body || {};
+    if (!colName || !docId || !data) {
+      return res.status(400).json({ success: false, error: 'Missing collection, docId, or data' });
+    }
+    await upsertMirrorAndFirestoreDoc(colName, docId, data, Boolean(merge));
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete('/db-mirror/:collection/:docId', async (req: Request, res: Response) => {
+  try {
+    const colName = String(req.params.collection || '');
+    const docId = String(req.params.docId || '');
+    if (!colName || !docId) {
+      return res.status(400).json({ success: false, error: 'Missing collection or docId' });
+    }
+    await deleteMirrorAndFirestoreDoc(colName, docId);
+    if (colName === 'questions') {
+      await deleteMirrorAndFirestoreDoc('competition_proposals', docId);
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

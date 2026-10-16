@@ -362,154 +362,6 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     };
   }, []);
 
-  // 創星季首頁「當前提案」批次輪播 (一次顯示三個提案，一批一批向左輪播，純以募得創星幣為主)
-  const defaultHomepageProposals = useMemo(() => [
-    {
-      id: 'demo-1',
-      title: '智農 AI 蔬果病蟲害即時預警無人機',
-      school: '國立臺灣大學',
-      team: '臺大智慧農創隊',
-      authorName: '臺大智慧農創隊',
-      track: 'ai_applications' as StarSeasonTrack,
-      stage: 'solution' as StarSeasonStage,
-      cohort: '第一梯次',
-      summary: '結合輕量邊緣運算無人機與近紅外光譜分析，於田間即時偵測早期病蟲害，減少 60% 農藥使用量。',
-      imageUrl: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=800&q=80',
-      supportPoints: 128000,
-      supporterCount: 65,
-      likeCount: 42,
-      commentsCount: 9,
-    },
-    {
-      id: 'demo-2',
-      title: '全齡永續健康守護手環與居家照護雲',
-      school: '國立陽明交通大學',
-      team: '陽明交大銀髮智慧生技',
-      authorName: '陽明交大銀髮智慧生技',
-      track: 'social_innovation' as StarSeasonTrack,
-      stage: 'solution' as StarSeasonStage,
-      cohort: '第一梯次',
-      summary: '無感配戴之毫米波跌倒偵測與心律異步回報系統，串連社區照護據點與家屬即時告警通知。',
-      imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80',
-      supportPoints: 86000,
-      supporterCount: 43,
-      likeCount: 31,
-      commentsCount: 6,
-    },
-    {
-      id: 'demo-3',
-      title: '大學校園循環包材共享快遞站系統',
-      school: '國立成功大學',
-      team: '成大淨零綠生活專案組',
-      authorName: '成大淨零綠生活專案組',
-      track: 'green_tech' as StarSeasonTrack,
-      stage: 'pain_point' as StarSeasonStage,
-      cohort: '第一梯次',
-      summary: '解決大專校園網購快遞包裝垃圾堆積成災問題，建置模組化循環包裝回收與點數回饋站。',
-      imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=800&q=80',
-      supportPoints: 45000,
-      supporterCount: 32,
-      likeCount: 28,
-      commentsCount: 4,
-    },
-    {
-      id: 'demo-4',
-      title: '智慧高齡步態震顫聲學穿戴監測系統',
-      school: '國立清華大學',
-      team: '清華生醫訊號實驗室',
-      authorName: '清華生醫訊號實驗室',
-      track: 'ai_applications' as StarSeasonTrack,
-      stage: 'solution' as StarSeasonStage,
-      cohort: '第一梯次',
-      summary: '運用微機電微型音頻與三軸加速度感測，精準捕捉帕金森氏症早期步態異樣，提供遠距神經內科醫師客觀數據。',
-      imageUrl: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&w=800&q=80',
-      supportPoints: 115000,
-      supporterCount: 58,
-      likeCount: 39,
-      commentsCount: 11,
-    },
-    {
-      id: 'demo-5',
-      title: '海洋廢棄塑料升級高值化建築隔熱磚',
-      school: '國立臺灣科技大學',
-      team: '臺科大永續創客隊',
-      authorName: '臺科大永續創客隊',
-      track: 'green_tech' as StarSeasonTrack,
-      stage: 'solution' as StarSeasonStage,
-      cohort: '第一梯次',
-      summary: '將東北角淨灘廢塑膠改質為中空蜂巢式隔熱建材磚，減碳 45% 且隔熱係數優於傳統水泥磚，已獲金門示範基地採用。',
-      imageUrl: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80',
-      supportPoints: 92000,
-      supporterCount: 47,
-      likeCount: 36,
-      commentsCount: 8,
-    },
-    {
-      id: 'demo-6',
-      title: '社區閒置空間青銀共創共食共享廚房',
-      school: '國立臺北大學',
-      team: '鳶山社創團隊',
-      authorName: '鳶山社創團隊',
-      track: 'social_innovation' as StarSeasonTrack,
-      stage: 'pain_point' as StarSeasonStage,
-      cohort: '第一梯次',
-      summary: '活化老舊眷村與國宅活動中心，由在地長者傳授手路菜、青年提供數位點餐與品牌社群運營，打造世代共融新典範。',
-      imageUrl: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=800&q=80',
-      supportPoints: 78000,
-      supporterCount: 41,
-      likeCount: 33,
-      commentsCount: 7,
-    },
-    {
-      id: 'demo-7',
-      title: '城市微氣候降溫植生牆與物聯網霧化系統',
-      school: '國立成功大學',
-      team: '綠建築能源創研組',
-      authorName: '綠建築能源創研組',
-      track: 'green_tech' as StarSeasonTrack,
-      stage: 'solution' as StarSeasonStage,
-      cohort: '第一梯次',
-      summary: '藉由雨水回收結合微氣象即時感測，在熱島效應最劇烈時自動噴灑微米級水霧降溫 3~5°C，有效減緩都市熱浪。',
-      imageUrl: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=800&q=80',
-      supportPoints: 104000,
-      supporterCount: 52,
-      likeCount: 44,
-      commentsCount: 12,
-    },
-    {
-      id: 'demo-8',
-      title: '工業高壓管線智慧聲學洩漏偵測攀附機器人',
-      school: '國立臺北科技大學',
-      team: '北科智慧自動化團隊',
-      authorName: '北科智慧自動化團隊',
-      track: 'ai_applications' as StarSeasonTrack,
-      stage: 'solution' as StarSeasonStage,
-      cohort: '第一梯次',
-      summary: '磁吸式履帶機器人搭載超聲波陣列麥克風，於石化廠複雜管線上自主巡檢，精準定位微米級氣體洩漏點，守護工安。',
-      imageUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80',
-      supportPoints: 88000,
-      supporterCount: 46,
-      likeCount: 29,
-      commentsCount: 5,
-    },
-    {
-      id: 'demo-9',
-      title: '偏鄉教育沉浸式 VR 職業與科學探索基地',
-      school: '國立臺灣師範大學',
-      team: '師大數位學習領航隊',
-      authorName: '師大數位學習領航隊',
-      track: 'social_innovation' as StarSeasonTrack,
-      stage: 'pain_point' as StarSeasonStage,
-      cohort: '第一梯次',
-      summary: '打破城鄉教育資源藩籬，以輕量一體機 VR 提供 50+ 種專業職涯與前沿科學實驗沉浸式探索體驗，啟發偏鄉學子夢想。',
-      imageUrl: 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?auto=format&fit=crop&w=800&q=80',
-      supportPoints: 95000,
-      supporterCount: 50,
-      likeCount: 48,
-      commentsCount: 14,
-    },
-  ], []);
-
   const [homepageCarouselBatchIndex, setHomepageCarouselBatchIndex] = useState(0);
   const [isHomepageCarouselPaused, setIsHomepageCarouselPaused] = useState(false);
   const [expandedBatchMobileSummaryId, setExpandedBatchMobileSummaryId] = useState<string | null>(null);
@@ -519,10 +371,17 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [isPainPointCarouselPaused, setIsPainPointCarouselPaused] = useState(false);
   const [isPainPointCarouselTransitionDisabled, setIsPainPointCarouselTransitionDisabled] = useState(false);
 
-  // 提案列表：優先採用真實提案。當進入提案階段 (11/14 起) 後，隱藏預設示範提案；若尚無提案則保留真實清單
+  // 提案列表：完全從資料庫讀取，不硬編碼。當進入提案階段 (11/14 起) 後，隱藏預設示範提案
   const homepageAllProposals = useMemo(() => {
-    const liveFiltered = proposals.filter((p) => !p.id.startsWith('test-') && !p.id.startsWith('demo-'));
-    const normalizedLive = liveFiltered.map((p) => ({
+    const liveFiltered = proposals.filter((p) => {
+      if (p.id.startsWith('test-')) return false;
+      if (isSimulatedDataPurged && p.id.startsWith('demo-')) return false;
+      if ((stageInfo.isProposalStage || stageInfo.isExpertReviewStage || stageInfo.isResultsStage) && p.id.startsWith('demo-')) {
+        return false;
+      }
+      return true;
+    });
+    return liveFiltered.map((p) => ({
       id: p.id,
       title: p.title,
       school: (p as any).schoolOrOrg || '參賽隊伍',
@@ -540,15 +399,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       sourcePainPointTitle: p.sourcePainPointTitle,
       referencedPainPoint: p.referencedPainPoint,
     }));
-    if (normalizedLive.length > 0) {
-      return normalizedLive;
-    }
-    // 若已正式進入「我想提案！」時程（11/14 10:00 起），隱藏示範提案，完全以真實參賽作品為準
-    if (stageInfo.isProposalStage || stageInfo.isExpertReviewStage || stageInfo.isResultsStage) {
-      return [];
-    }
-    return defaultHomepageProposals;
-  }, [proposals, defaultHomepageProposals, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage]);
+  }, [proposals, isSimulatedDataPurged, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage]);
 
   // 每批顯示 3 個提案
   const homepageProposalBatches = useMemo(() => {
@@ -636,9 +487,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     setSelectedProposalIdForExplore(proposalId || null);
     try {
       if (typeof window !== 'undefined') {
+        const currentParams = new URLSearchParams(window.location.search);
+        const isFromCreate =
+          currentParams.get('zone') === 'create_ideas' ||
+          sessionStorage.getItem('ideax_from_create_ideas') === 'true';
         let targetPath = normalizedView === 'home' ? '/challenge' : `/challenge/${normalizedView}`;
         if (proposalId) {
-          targetPath += `?proposalId=${proposalId}`;
+          targetPath += `?proposalId=${proposalId}${isFromCreate ? '&zone=create_ideas' : ''}`;
         }
         window.history.pushState({ subView: normalizedView, proposalId }, '', targetPath);
       }
@@ -3732,7 +3587,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             <>
               {/* 領域探索標籤（四大領域分類：機電運輸、資通訊、生醫化材、服務文創） */}
               <div id="star-tour-painpoint-filter" className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                <span className="text-[11px] font-bold text-stone-500 shrink-0">領域標注探索：</span>
+                <span className="text-[11px] font-bold text-stone-500 shrink-0">領域：</span>
                 {OFFICIAL_COMPETITION_TRACKS.map((tr) => (
                   <button
                     key={tr.id}
@@ -3741,9 +3596,6 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100 text-stone-700 border border-stone-200 text-xs font-bold whitespace-nowrap cursor-pointer transition-colors shadow-2xs flex items-center gap-1.5"
                   >
                     <span>{tr.name}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
-                      {tr.tag}
-                    </span>
                   </button>
                 ))}
               </div>
@@ -4161,10 +4013,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                 }`}
                                 title="附議此痛點 (+1 共鳴支持)"
                               >
-                                <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isQuestionSeconded(pp.id) ? 'bg-white text-rose-800 border-white' : 'bg-white text-rose-700 border-rose-300'}`}>+1</span>
-                                <span>附議</span>
+                                <span className="font-mono font-black">+1</span>
                                 {getQuestionSecondCount(pp.id) > 0 && (
-                                  <span className="font-mono font-black">({getQuestionSecondCount(pp.id)})</span>
+                                  <span className="font-mono font-black">{getQuestionSecondCount(pp.id)}</span>
                                 )}
                               </button>
 
@@ -4976,7 +4827,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 )}
               </div>
 
-              {/* 愛心按讚收藏條 (參賽者、專家、用戶皆可按讚並收入個人收藏) */}
+              {/* 愛心 Like 收藏條 (參賽者、專家、用戶皆可按 Like 並收入個人收藏) */}
               <div className="p-3.5 rounded-2xl bg-rose-50/60 border border-rose-200 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <button
@@ -4989,14 +4840,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     }`}
                   >
                     <Heart className={`w-4 h-4 ${likedProposalIds.includes(selectedProposalForDetail.id) ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
-                    <span>按讚收藏</span>
+                    <span>Like 收藏</span>
                   </button>
                   <span className="text-xs text-rose-900 font-bold">
-                    累計 {selectedProposalForDetail.likeCount || 0} 個愛心
+                    累計 {selectedProposalForDetail.likeCount || 0} 個 Like
                   </span>
                 </div>
                 <span className="text-[11px] text-stone-500 hidden sm:inline">
-                  按讚後將為此提案累積人氣與鼓勵支持
+                  點擊 ❤️ Like 後將為此提案累積人氣並收錄至個人收藏
                 </span>
               </div>
 
@@ -5353,9 +5204,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               </div>
 
-              {/* 校園大使推薦碼 */}
+              {/* 推廣大使推薦碼 */}
               <div>
-                <label className="block text-stone-800 font-bold mb-1">校園大使推薦碼 (選填)</label>
+                <label className="block text-stone-800 font-bold mb-1">推廣大使推薦碼 (選填)</label>
                 <input
                   type="text"
                   value={formAmbassadorCode}

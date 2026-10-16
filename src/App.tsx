@@ -53,7 +53,7 @@ import {
   isUserInterestedInQuestionTopic,
   isQuestionExpired,
 } from './services/recommendationService';
-import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, Lightbulb } from 'lucide-react';
+import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Search, Heart, ThumbsUp, Square, List, LayoutGrid } from 'lucide-react';
 
 const CATEGORIES: Category[] = [
   '專業問題',
@@ -99,6 +99,14 @@ function MainContent() {
     centerToast,
     hideCenterToast,
     promptLogin,
+    isQuestionBookmarked,
+    isQuestionSeconded,
+    isQuestionLiked,
+    isSameQuestionActive,
+    bookmarkedQuestionIds,
+    likedQuestionIds,
+    secondedQuestionIds,
+    sameQuestionIds,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<AppTab>(() => {
@@ -270,6 +278,9 @@ function MainContent() {
   const [selectedCategory, setSelectedCategory] = useState<Category | '全部'>('全部');
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | '全部'>('全部');
   const [selectedLevel, setSelectedLevel] = useState<ProblemLevel | '全部'>('全部');
+  const [showPainPointHelp, setShowPainPointHelp] = useState(false);
+  const [showL0Help, setShowL0Help] = useState(false);
+  const [showOnlyZoneFavorites, setShowOnlyZoneFavorites] = useState(false);
   const [specialZone, setSpecialZone] = useState<SpecialZone>(() => {
     try {
       if (typeof window !== 'undefined') {
@@ -1120,12 +1131,55 @@ function MainContent() {
     return counts;
   }, [baseQuestions]);
 
+  const isQuestionSavedByUser = (qId: string) =>
+    isQuestionBookmarked(qId) ||
+    isQuestionSeconded(qId) ||
+    isQuestionLiked(qId) ||
+    isSameQuestionActive(qId);
+
+  const allPainPointQuestions = useMemo(
+    () => baseQuestions.filter(isPainPointQuestion),
+    [baseQuestions]
+  );
+  const painPointsFavoriteCount = useMemo(
+    () => allPainPointQuestions.filter((q) => isQuestionSavedByUser(q.id)).length,
+    [allPainPointQuestions, bookmarkedQuestionIds, likedQuestionIds, secondedQuestionIds, sameQuestionIds]
+  );
+
+  const allL0Questions = useMemo(
+    () => baseQuestions.filter(isL0DiscussionQuestion),
+    [baseQuestions]
+  );
+  const l0FavoriteCount = useMemo(
+    () => allL0Questions.filter((q) => isQuestionSavedByUser(q.id)).length,
+    [allL0Questions, bookmarkedQuestionIds, likedQuestionIds, secondedQuestionIds, sameQuestionIds]
+  );
+
+  const subcategoryFavoriteCount = useMemo(() => {
+    if (selectedCategory === '全部' || selectedSubcategory === '全部') return 0;
+    return baseQuestions.filter(
+      (q) =>
+        q.category === selectedCategory &&
+        (q.subcategory === selectedSubcategory || q.tags.includes(selectedSubcategory)) &&
+        isQuestionSavedByUser(q.id)
+    ).length;
+  }, [baseQuestions, selectedCategory, selectedSubcategory, bookmarkedQuestionIds, likedQuestionIds, secondedQuestionIds, sameQuestionIds]);
+
   const filteredQuestions = useMemo(() => {
     const rawTerm = searchQuery.trim().toLowerCase();
     const qTerm = rawTerm.replace(/^#/, '').trim();
 
     return baseQuestions
       .filter((q) => {
+        if (
+          showOnlyZoneFavorites &&
+          (specialZone === 'pain_points' ||
+            specialZone === 'l0_discussion' ||
+            (selectedCategory !== '全部' && selectedSubcategory !== '全部'))
+        ) {
+          if (!isQuestionSavedByUser(q.id)) return false;
+        }
+
         const matchesCategory = selectedCategory === '全部' || q.category === selectedCategory;
         const matchesSubcategory =
           selectedSubcategory === '全部' ||
@@ -1344,6 +1398,16 @@ function MainContent() {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
 
+        // 6. 最多回饋（依看板類型：+1 附議 / ❤️ Like / 👍 按讚）
+        if (sortBy === 'most_likes') {
+          const aScore = getQuestionSecondCount(a.id) + (a.likes || 0) + (a.sameQuestionCount || 0);
+          const bScore = getQuestionSecondCount(b.id) + (b.likes || 0) + (b.sameQuestionCount || 0);
+          if (bScore !== aScore) {
+            return bScore - aScore;
+          }
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
   }, [
@@ -1360,6 +1424,11 @@ function MainContent() {
     currentUser.id,
     userProfileVersion,
     isDemoMode,
+    showOnlyZoneFavorites,
+    bookmarkedQuestionIds,
+    likedQuestionIds,
+    secondedQuestionIds,
+    sameQuestionIds,
   ]);
 
   // 搜尋專用：匹配專家智庫與全站人物帳號清單 (支援 ID 與姓名搜尋)
@@ -1638,7 +1707,6 @@ function MainContent() {
                       }, 0);
                     }}
                     onCloseZone={() => {
-                      setActiveTab('star_season');
                       setSpecialZone('all');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
@@ -1649,187 +1717,493 @@ function MainContent() {
                 )}
 
                 {specialZone === 'pain_points' && (
-                  <div className="p-4 rounded-3xl bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 border border-rose-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-200">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-xs shrink-0">
-                        <Flame className="w-5 h-5" />
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
+                  <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-rose-500/10 via-rose-100/40 to-orange-50 border-2 border-rose-300 shadow-sm relative overflow-hidden animate-in fade-in duration-200">
+                    <div className="absolute top-0 right-0 -mr-8 -mt-8 w-36 h-36 bg-rose-200/40 rounded-full blur-2xl pointer-events-none" />
+
+                    {/* 右上角叉叉按鈕：點擊回到全部問題 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSpecialZone('all');
+                        setShowOnlyZoneFavorites(false);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-stone-500 hover:text-stone-900 border border-rose-300 shadow-2xs flex items-center justify-center transition-all cursor-pointer active:scale-95"
+                      title="回到全部問題"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+
+                    <div className="relative z-10 space-y-2.5">
+                      {/* 第一列：圖示 + 標題 + 釘選 + 數量 */}
+                      <div className="flex items-center gap-2.5 flex-wrap pr-10">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-rose-500 text-white flex items-center justify-center font-black shadow-xs shrink-0">
+                          <Flame className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+                        </div>
+                        <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
                           <span>痛點許願池</span>
                           <button
+                            type="button"
                             onClick={() => handleTogglePin('special_zone', 'pain_points')}
                             className={`p-1 rounded-lg transition-all cursor-pointer ${
                               pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'pain_points'
-                                ? 'bg-rose-100 text-rose-700 border border-rose-300'
-                                : 'bg-white hover:bg-stone-50 text-stone-400 hover:text-stone-600 border border-stone-200 shadow-2xs'
+                                ? 'bg-rose-600 text-white border border-rose-700 shadow-xs'
+                                : 'bg-white hover:bg-stone-50 text-stone-400 hover:text-stone-700 border border-stone-200'
                             }`}
-                            title={pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'pain_points' ? '取消釘選此專區' : '將此專區設為起始畫面'}
+                            title={pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'pain_points' ? '取消釘選此專區' : '釘選為首頁專區'}
                           >
-                            <Pin className={`w-3.5 h-3.5 ${pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'pain_points' ? 'fill-rose-500' : ''}`} />
+                            <Pin className={`w-3.5 h-3.5 ${pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'pain_points' ? 'fill-white' : ''}`} />
                           </button>
-                          <span className="text-xs font-mono font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">
-                            {filteredQuestions.length} 則
+                          <span className="text-[11px] font-mono font-black text-rose-900 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full">
+                            {allPainPointQuestions.length} 個切身痛點
                           </span>
-                        </h3>
-                        <HelpTooltip
-                          title="痛點許願池說明"
-                          content={
-                            isRaceMode
-                              ? "匯集真實生活與產業未解痛點。創星季競賽期間免費，開放給參賽團隊作為解題題目與共創解方。"
-                              : "匯集真實生活與產業未解痛點。發布痛點徵集創新腦洞，各領域人才提供落地解法，由第三方金流安全託管拆款。"
-                          }
-                          learnMoreText="前往查閱完整「說明二 • 痛點機制」→"
-                          onLearnMore={() => {
-                            setAboutPageSection('other_2');
-                            setActiveTab('about');
-                          }}
-                        />
+                        </h1>
+                      </div>
 
-                        {/* 1. 提出痛點 (移至左側標題區) */}
+                      {/* 第二列：說明按鈕 (左) + 提出痛點 / 解方提案按鈕 (置右) */}
+                      <div className="flex items-center justify-between gap-2">
                         <button
-                          onClick={() => handleOpenCreateWithType('pain_point')}
-                          className="ml-1 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer active:scale-98"
-                          title="發布產業或生活真實痛點"
+                          type="button"
+                          onClick={() => setShowPainPointHelp(!showPainPointHelp)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                            showPainPointHelp
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                              : 'bg-white/90 hover:bg-white text-rose-900 border-rose-300'
+                          }`}
+                          title="點擊展開/收合專區說明"
                         >
-                          <Flame className="w-3.5 h-3.5 text-white" />
-                          <span>提出痛點</span>
+                          <HelpCircle className="w-3.5 h-3.5" />
+                          <span>說明</span>
+                          {showPainPointHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                window.history.pushState({ subView: 'proposal' }, '', '/challenge/proposals');
+                              } catch {}
+                              setActiveTab('star_season');
+                              setTimeout(() => {
+                                window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', {
+                                  detail: { subView: 'proposal' }
+                                }));
+                              }, 0);
+                            }}
+                            className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-rose-300 bg-white/90 hover:bg-white text-stone-700 hover:text-stone-950 font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                            title="前往創星季查看解方提案"
+                          >
+                            <span>解方提案 ↗</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCreateWithType('pain_point')}
+                            className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-rose-600 bg-white text-rose-700 hover:bg-rose-600 hover:text-white active:bg-rose-700 active:text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Flame className="w-3.5 h-3.5" />
+                            <span>提出痛點</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                      {/* 0. 創點子(解決痛點) - 右上角小字純文字連結 */}
-                      <button
-                        onClick={() => {
-                          try {
-                            window.history.pushState({ subView: 'proposal' }, '', '/challenge/proposals');
-                          } catch {}
-                          setActiveTab('star_season');
-                          setTimeout(() => {
-                            window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', {
-                              detail: { subView: 'proposal' }
-                            }));
-                          }, 0);
-                        }}
-                        className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline decoration-amber-400 hover:decoration-amber-600 transition-colors cursor-pointer px-1 py-0.5 active:scale-98"
-                        title="前往創星季提案總覽，查看解方提案與點子作品"
-                      >
-                        創點子(解決痛點) ↗
-                      </button>
 
-                      <button
-                        onClick={() => setSpecialZone('all')}
-                        className="p-1.5 rounded-full hover:bg-rose-200/60 text-stone-500 hover:text-stone-900 transition-colors cursor-pointer"
-                        title="關閉專區"
-                        aria-label="關閉專區"
-                      >
-                        <X className="w-4.5 h-4.5" />
-                      </button>
+                    {/* 點擊展開之專區介紹 */}
+                    {showPainPointHelp && (
+                      <div className="relative z-10 mt-3 pt-3 border-t border-rose-200/80 space-y-1.5 animate-in fade-in duration-150">
+                        <p className="text-xs font-medium text-stone-700 leading-relaxed">
+                          {isRaceMode
+                            ? "匯集真實生活與產業未解痛點。創星季競賽期間免費，開放給參賽團隊作為解題題目與共創解方。"
+                            : "匯集真實生活與產業未解痛點。發布痛點徵集創新腦洞，各領域人才提供落地解法，由第三方金流安全託管拆款。"}
+                        </p>
+                        <div className="flex items-center gap-2 text-[11px] text-rose-800 font-bold pt-0.5">
+                          <span>生活產業痛點 · 創新孵化起點</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAboutPageSection('other_2');
+                              setActiveTab('about');
+                            }}
+                            className="underline hover:text-rose-950 cursor-pointer"
+                          >
+                            查閱完整痛點機制 →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 篩選分類、我的按讚收藏、搜尋、排序與檢視切換 (與創點子 / VibeCoding 統一形式) */}
+                    <div className="relative z-10 mt-3 pt-3 border-t border-rose-200/80 space-y-2">
+                      {/* 上排：選擇分類下拉選單 (含全部分類) + 我的按讚收藏 */}
+                      <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+                        <div className="relative">
+                          <select
+                            value={selectedCategory}
+                            onChange={(e) => {
+                              handleSelectCategory(e.target.value as Category | '全部');
+                              handleSelectSubcategory('全部');
+                              setShowOnlyZoneFavorites(false);
+                            }}
+                            className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-400 ${
+                              !showOnlyZoneFavorites
+                                ? 'bg-rose-600 text-white border border-rose-600 shadow-xs'
+                                : 'bg-white/90 text-stone-800 hover:bg-white border border-rose-300'
+                            }`}
+                          >
+                            <option value="全部" className="bg-white text-stone-900 font-bold">
+                              全部分類 ({allPainPointQuestions.length})
+                            </option>
+                            {(['創新創業', '專業問題', '學術探討', '日常疑難'] as Category[]).map((cat) => {
+                              const count = allPainPointQuestions.filter((q) => q.category === cat).length;
+                              return (
+                                <option key={cat} value={cat} className="bg-white text-stone-900 font-bold">
+                                  {cat} ({count})
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowOnlyZoneFavorites(!showOnlyZoneFavorites)}
+                          className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            showOnlyZoneFavorites
+                              ? 'bg-rose-600 text-white shadow-xs border border-rose-600'
+                              : 'bg-white/90 text-stone-700 hover:bg-white border border-rose-200/90'
+                          }`}
+                        >
+                          <span
+                            className={`px-1.5 py-0.5 rounded-md text-[11px] font-mono font-black leading-none shrink-0 ${
+                              showOnlyZoneFavorites
+                                ? 'bg-white text-rose-700'
+                                : 'bg-rose-100 text-rose-700 border border-rose-300'
+                            }`}
+                          >
+                            +1
+                          </span>
+                          <span className="truncate">我的附議收藏 ({painPointsFavoriteCount})</span>
+                        </button>
+                      </div>
+
+                      {/* 下排：搜尋框 + 排序下拉選單 + 卡片檢視切換 (大卡片/條列式/小卡片) */}
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                        <div className="relative flex-1 min-w-[160px]">
+                          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="搜尋痛點標題、關鍵字或發布者..."
+                            className="w-full pl-9 pr-7 py-2 rounded-xl border border-rose-200 bg-white text-xs font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                          />
+                          {searchQuery && (
+                            <button
+                              type="button"
+                              onClick={() => setSearchQuery('')}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+                          <select
+                            value={sortBy}
+                            onChange={(e) => handleSetSortBy(e.target.value as QuestionSortOption)}
+                            className="px-2.5 py-2 rounded-xl border border-rose-200 bg-white text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-400 cursor-pointer shrink-0"
+                          >
+                            <option value="recruiting_promoted">🔥 熱門推薦</option>
+                            <option value="most_likes">🔥 +1 附議最多</option>
+                            <option value="highest_tips">🪙 點數支持 高到低</option>
+                            <option value="highest_bounty">💰 懸賞金額 高到低</option>
+                            <option value="most_solutions">💡 方案數最多</option>
+                            <option value="most_discussions">💬 討論數最多</option>
+                          </select>
+
+                          {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}
+                          <div className="inline-flex rounded-xl bg-white/90 border border-rose-200 p-0.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleSetViewMode('large')}
+                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                viewMode === 'large'
+                                  ? 'bg-rose-600 text-white shadow-2xs'
+                                  : 'text-stone-500 hover:text-stone-800'
+                              }`}
+                              title="大卡片模式"
+                            >
+                              <Square className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetViewMode('list')}
+                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                viewMode === 'list'
+                                  ? 'bg-rose-600 text-white shadow-2xs'
+                                  : 'text-stone-500 hover:text-stone-800'
+                              }`}
+                              title="條列式清單"
+                            >
+                              <List className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetViewMode('grid')}
+                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                viewMode === 'grid'
+                                  ? 'bg-rose-600 text-white shadow-2xs'
+                                  : 'text-stone-500 hover:text-stone-800'
+                              }`}
+                              title="小卡片（雙欄方格）"
+                            >
+                              <LayoutGrid className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {specialZone === 'l0_discussion' && (
-                  <div className="p-4 rounded-3xl bg-gradient-to-r from-blue-50 via-indigo-50 to-sky-50 border border-blue-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-200">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                        <MessageCircle className="w-5 h-5" />
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
-                          <span>L0討論區</span>
+                  <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-sky-500/10 via-sky-100/40 to-blue-50 border-2 border-sky-300 shadow-sm relative overflow-hidden animate-in fade-in duration-200">
+                    <div className="absolute top-0 right-0 -mr-8 -mt-8 w-36 h-36 bg-sky-200/40 rounded-full blur-2xl pointer-events-none" />
+
+                    {/* 右上角叉叉按鈕：點擊回到全部問題 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSpecialZone('all');
+                        setShowOnlyZoneFavorites(false);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-stone-500 hover:text-stone-900 border border-sky-300 shadow-2xs flex items-center justify-center transition-all cursor-pointer active:scale-95"
+                      title="回到全部問題"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+
+                    <div className="relative z-10 space-y-2.5">
+                      {/* 第一列：圖示 + 標題 + 釘選 + 數量 */}
+                      <div className="flex items-center gap-2.5 flex-wrap pr-10">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-sky-600 text-white flex items-center justify-center font-black shadow-xs shrink-0">
+                          <MessageCircle className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+                        </div>
+                        <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
+                          <span>L0 討論區 (免懸賞自由交流)</span>
                           <button
+                            type="button"
                             onClick={() => handleTogglePin('special_zone', 'l0_discussion')}
                             className={`p-1 rounded-lg transition-all cursor-pointer ${
                               pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'l0_discussion'
-                                ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                                : 'bg-white hover:bg-stone-50 text-stone-400 hover:text-stone-600 border border-stone-200 shadow-2xs'
+                                ? 'bg-sky-600 text-white border border-sky-700 shadow-xs'
+                                : 'bg-white hover:bg-stone-50 text-stone-400 hover:text-stone-700 border border-stone-200'
                             }`}
-                            title={pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'l0_discussion' ? '取消釘選此專區' : '將此專區設為起始畫面'}
+                            title={pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'l0_discussion' ? '取消釘選此專區' : '釘選為首頁專區'}
                           >
-                            <Pin className={`w-3.5 h-3.5 ${pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'l0_discussion' ? 'fill-blue-500' : ''}`} />
+                            <Pin className={`w-3.5 h-3.5 ${pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'l0_discussion' ? 'fill-white' : ''}`} />
                           </button>
-                          <span className="text-xs font-mono font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-                            {filteredQuestions.length} 則
+                          <span className="text-[11px] font-mono font-black text-sky-900 bg-sky-100 border border-sky-300 px-2 py-0.5 rounded-full">
+                            {allL0Questions.length} 則免懸賞交流
                           </span>
-                        </h3>
-                        <HelpTooltip
-                          title="L0討論區說明"
-                          content="無門檻日常交流、閒聊討論、觀點碰撞與輕量求助。完全免費公開，適合社群激盪與早期方向探索。"
-                          onLearnMore={() => setActiveTab('about')}
-                        />
+                        </h1>
+                      </div>
+
+                      {/* 第二列：說明按鈕 (左) + 發起討論按鈕 (置右) */}
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowL0Help(!showL0Help)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                            showL0Help
+                              ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                              : 'bg-white/90 hover:bg-white text-sky-900 border-sky-300'
+                          }`}
+                          title="點擊展開/收合專區說明"
+                        >
+                          <HelpCircle className="w-3.5 h-3.5" />
+                          <span>說明</span>
+                          {showL0Help ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCreateWithType('chat_discussion')}
+                          className="ml-auto px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-sky-600 bg-white text-sky-700 hover:bg-sky-600 hover:text-white active:bg-sky-700 active:text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>發起討論</span>
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleOpenCreateWithType('chat_discussion')}
-                        className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>發布閒聊討論</span>
-                      </button>
-                      <button
-                        onClick={() => setSpecialZone('all')}
-                        className="p-1.5 rounded-full hover:bg-blue-200/60 text-stone-500 hover:text-stone-900 transition-colors cursor-pointer"
-                        title="關閉專區"
-                        aria-label="關閉專區"
-                      >
-                        <X className="w-4.5 h-4.5" />
-                      </button>
+
+                    {/* 點擊展開之專區介紹 */}
+                    {showL0Help && (
+                      <div className="relative z-10 mt-3 pt-3 border-t border-sky-200/80 space-y-1.5 animate-in fade-in duration-150">
+                        <p className="text-xs font-medium text-stone-700 leading-relaxed">
+                          無門檻日常交流、閒聊討論、觀點碰撞與輕量求助。完全免費公開，適合社群激盪與早期方向探索。
+                        </p>
+                        <div className="flex items-center gap-2 text-[11px] text-sky-800 font-bold pt-0.5">
+                          <span>0 門檻自由交流 · 社群觀點激盪</span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('about')}
+                            className="underline hover:text-sky-950 cursor-pointer"
+                          >
+                            查閱平台服務規範 →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 篩選分類、我的按讚收藏、搜尋、排序與檢視切換 (與創點子 / VibeCoding 統一形式) */}
+                    <div className="relative z-10 mt-3 pt-3 border-t border-sky-200/80 space-y-2">
+                      {/* 上排：選擇分類下拉選單 (含全部分類) + 我的按讚收藏 */}
+                      <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+                        <div className="relative">
+                          <select
+                            value={selectedCategory}
+                            onChange={(e) => {
+                              handleSelectCategory(e.target.value as Category | '全部');
+                              handleSelectSubcategory('全部');
+                              setShowOnlyZoneFavorites(false);
+                            }}
+                            className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-400 ${
+                              !showOnlyZoneFavorites
+                                ? 'bg-sky-600 text-white border border-sky-600 shadow-xs'
+                                : 'bg-white/90 text-stone-800 hover:bg-white border border-sky-300'
+                            }`}
+                          >
+                            <option value="全部" className="bg-white text-stone-900 font-bold">
+                              全部分類 ({allL0Questions.length})
+                            </option>
+                            {(['創新創業', '專業問題', '學術探討', '日常疑難'] as Category[]).map((cat) => {
+                              const count = allL0Questions.filter((q) => q.category === cat).length;
+                              return (
+                                <option key={cat} value={cat} className="bg-white text-stone-900 font-bold">
+                                  {cat} ({count})
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowOnlyZoneFavorites(!showOnlyZoneFavorites)}
+                          className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            showOnlyZoneFavorites
+                              ? 'bg-sky-600 text-white shadow-xs border border-sky-600'
+                              : 'bg-white/90 text-stone-700 hover:bg-white border border-sky-200/90'
+                          }`}
+                        >
+                          <ThumbsUp className={`w-4 h-4 shrink-0 ${showOnlyZoneFavorites ? 'fill-white text-white' : 'text-sky-600'}`} />
+                          <span className="truncate">我的按讚收藏 ({l0FavoriteCount})</span>
+                        </button>
+                      </div>
+
+                      {/* 下排：搜尋框 + 排序下拉選單 + 卡片檢視切換 (大卡片/條列式/小卡片) */}
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                        <div className="relative flex-1 min-w-[160px]">
+                          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="搜尋討論標題、關鍵字或發起人..."
+                            className="w-full pl-9 pr-7 py-2 rounded-xl border border-sky-200 bg-white text-xs font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                          />
+                          {searchQuery && (
+                            <button
+                              type="button"
+                              onClick={() => setSearchQuery('')}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+                          <select
+                            value={sortBy}
+                            onChange={(e) => handleSetSortBy(e.target.value as QuestionSortOption)}
+                            className="px-2.5 py-2 rounded-xl border border-sky-200 bg-white text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-sky-400 cursor-pointer shrink-0"
+                          >
+                            <option value="recruiting_promoted">🔥 熱門推薦</option>
+                            <option value="most_likes">👍 按讚收藏最多</option>
+                            <option value="most_discussions">💬 討論數最多</option>
+                            <option value="most_solutions">💡 方案數最多</option>
+                            <option value="highest_tips">🪙 點數支持 高到低</option>
+                          </select>
+
+                          {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}
+                          <div className="inline-flex rounded-xl bg-white/90 border border-sky-200 p-0.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleSetViewMode('large')}
+                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                viewMode === 'large'
+                                  ? 'bg-sky-600 text-white shadow-2xs'
+                                  : 'text-stone-500 hover:text-stone-800'
+                              }`}
+                              title="大卡片模式"
+                            >
+                              <Square className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetViewMode('list')}
+                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                viewMode === 'list'
+                                  ? 'bg-sky-600 text-white shadow-2xs'
+                                  : 'text-stone-500 hover:text-stone-800'
+                              }`}
+                              title="條列式清單"
+                            >
+                              <List className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetViewMode('grid')}
+                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                viewMode === 'grid'
+                                  ? 'bg-sky-600 text-white shadow-2xs'
+                                  : 'text-stone-500 hover:text-stone-800'
+                              }`}
+                              title="小卡片（雙欄方格）"
+                            >
+                              <LayoutGrid className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Section Header & Filters */}
+                {/* Unified Filter Controls */}
                 {!(specialZone !== 'all' || (selectedCategory !== '全部' && selectedSubcategory !== '全部')) && (
-                  <>
-                    <div className="flex sm:flex-row items-center justify-between gap-1.5 sm:gap-4 mb-1.5 sm:mb-3">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 sm:gap-2">
-                          <span>探索問題市場</span>
-                          <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 font-mono">
-                            {filteredQuestions.length} 則待解
-                          </span>
-                        </h2>
-                        <HelpTooltip
-                          title="說明二 • 痛點機制與專家解鎖"
-                          content="在 IdeaX 上，提問者可 NT$ 0 元免費上架生活與產業痛點；各領域專家提交專屬落地解法並自訂解鎖定價，提問者或社群付費解鎖查閱完整方案。"
-                          learnMoreText="前往查閱完整「說明二 • 痛點機制」→"
-                          onLearnMore={() => {
-                            setAboutPageSection('other_2');
-                            setActiveTab('about');
-                          }}
-                        />
-                      </div>
-
-                      <button
-                        onClick={() => handleOpenCreateWithType('seek_solution')}
-                        className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-bold text-xs sm:text-sm shadow-sm transition-all cursor-pointer"
-                      >
-                        <MessageSquarePlus className="w-4 h-4" />
-                        <span>我有新難題，立即發布</span>
-                      </button>
-                    </div>
-
-                    {/* Filter controls */}
-                    <CategoryFilter
-                      categories={CATEGORIES}
-                      selectedCategory={selectedCategory}
-                      setSelectedCategory={handleSelectCategory}
-                      selectedSubcategory={selectedSubcategory}
-                      setSelectedSubcategory={handleSelectSubcategory}
-                      searchQuery={searchQuery}
-                      setSearchQuery={setSearchQuery}
-                      selectedLevel={selectedLevel}
-                      setSelectedLevel={setSelectedLevel}
-                      sortBy={sortBy}
-                      setSortBy={handleSetSortBy}
-                      totalCount={filteredQuestions.length}
-                      categoryCounts={categoryCounts}
-                      viewMode={viewMode}
-                      setViewMode={handleSetViewMode}
-                    />
-                  </>
+                  <CategoryFilter
+                    categories={CATEGORIES}
+                    selectedCategory={selectedCategory}
+                    setSelectedCategory={handleSelectCategory}
+                    selectedSubcategory={selectedSubcategory}
+                    setSelectedSubcategory={handleSelectSubcategory}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    selectedLevel={selectedLevel}
+                    setSelectedLevel={setSelectedLevel}
+                    sortBy={sortBy}
+                    setSortBy={handleSetSortBy}
+                    totalCount={filteredQuestions.length}
+                    categoryCounts={categoryCounts}
+                    viewMode={viewMode}
+                    setViewMode={handleSetViewMode}
+                  />
                 )}
 
                 {/* 相符人物與專家帳號 (搜尋時即時展示相符的人物帳號) */}
@@ -1945,10 +2319,20 @@ function MainContent() {
                     onSelectCategory={(cat, sub = '全部') => {
                       handleSelectCategory(cat);
                       handleSelectSubcategory(sub);
+                      setShowOnlyZoneFavorites(false);
                     }}
                     isPinned={pinnedBoard?.type === 'subcategory' && pinnedBoard?.id === selectedSubcategory}
                     onTogglePin={() => handleTogglePin('subcategory', selectedSubcategory, selectedCategory)}
                     onSearchTag={handleSearchTag}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    sortBy={sortBy}
+                    setSortBy={handleSetSortBy}
+                    viewMode={viewMode}
+                    setViewMode={handleSetViewMode}
+                    showOnlyFavorites={showOnlyZoneFavorites}
+                    setShowOnlyFavorites={setShowOnlyZoneFavorites}
+                    favoriteCount={subcategoryFavoriteCount}
                   />
                 )}
 
@@ -1957,23 +2341,49 @@ function MainContent() {
                   filteredQuestions.length === 0 ? (
                   <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-stone-300 space-y-3">
                     <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 mx-auto flex items-center justify-center">
-                      <Filter className="w-6 h-6" />
+                      {showOnlyZoneFavorites ? (
+                        specialZone === 'l0_discussion' ? (
+                          <ThumbsUp className="w-6 h-6 text-sky-600" />
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded-md text-xs font-mono font-black bg-rose-100 text-rose-700 border border-rose-300">
+                            +1
+                          </span>
+                        )
+                      ) : (
+                        <Filter className="w-6 h-6" />
+                      )}
                     </div>
-                    <h3 className="font-bold text-base text-stone-900">沒有找到相符的問題</h3>
+                    <h3 className="font-bold text-base text-stone-900">
+                      {showOnlyZoneFavorites
+                        ? specialZone === 'pain_points'
+                          ? '尚無附議或收藏的痛點'
+                          : specialZone === 'l0_discussion'
+                          ? '尚無按讚或收藏的討論'
+                          : '尚無附議或收藏的問題'
+                        : '沒有找到相符的問題'}
+                    </h3>
                     <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                      試著放寬篩選條件或切換分類，或是成為第一個針對此主題提出懸賞提問的人！
+                      {showOnlyZoneFavorites
+                        ? specialZone === 'l0_discussion'
+                          ? '瀏覽 L0 討論時點擊卡片上的 👍 或 ⭐，即可在此快速查看！'
+                          : '瀏覽卡片時點擊 +1 或 ⭐，即可自動加入此收藏清單！'
+                        : '試著放寬篩選條件或切換分類，或是成為第一個針對此主題提出懸賞提問的人！'}
                     </p>
                     <button
                       onClick={() => {
-                        setSelectedCategory('全部');
-                        setSelectedSubcategory('全部');
-                        setSelectedLevel('全部');
-                        setSearchQuery('');
-                        setSortBy('recruiting_promoted');
+                        if (showOnlyZoneFavorites) {
+                          setShowOnlyZoneFavorites(false);
+                        } else {
+                          setSelectedCategory('全部');
+                          setSelectedSubcategory('全部');
+                          setSelectedLevel('全部');
+                          setSearchQuery('');
+                          setSortBy('recruiting_promoted');
+                        }
                       }}
                       className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-colors cursor-pointer"
                     >
-                      重置所有篩選
+                      {showOnlyZoneFavorites ? '返回全部列表' : '重置所有篩選'}
                     </button>
                   </div>
                 ) : (

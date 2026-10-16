@@ -21,7 +21,16 @@ import {
   Lightbulb,
   Pin,
   Terminal,
+  Search,
+  Heart,
+  X,
+  ChevronUp,
+  Square,
+  List,
+  LayoutGrid,
 } from 'lucide-react';
+import { MarketViewMode, QuestionSortOption } from '../types';
+import { useApp } from '../context/AppContext';
 
 interface SubcategoryBoardBannerProps {
   category: Category;
@@ -35,6 +44,15 @@ interface SubcategoryBoardBannerProps {
   isPinned?: boolean;
   onTogglePin?: () => void;
   onSearchTag?: (tag: string) => void;
+  searchQuery?: string;
+  setSearchQuery?: (q: string) => void;
+  sortBy?: QuestionSortOption;
+  setSortBy?: (s: QuestionSortOption) => void;
+  viewMode?: MarketViewMode;
+  setViewMode?: (m: MarketViewMode) => void;
+  showOnlyFavorites?: boolean;
+  setShowOnlyFavorites?: (v: boolean) => void;
+  favoriteCount?: number;
 }
 
 // 次分類元數據：自訂描述、特色標籤、熱門痛點方向
@@ -302,15 +320,23 @@ export const SubcategoryBoardBanner: React.FC<SubcategoryBoardBannerProps> = ({
   subcategory,
   totalQuestionsCount,
   totalBountyAmount,
-  featuredSolvers = [],
   onOpenCreateQuestion,
   onSelectCategory,
-  onFilterSolver,
   isPinned,
   onTogglePin,
   onSearchTag,
+  searchQuery = '',
+  setSearchQuery,
+  sortBy = 'recruiting_promoted',
+  setSortBy,
+  viewMode = 'large',
+  setViewMode,
+  showOnlyFavorites = false,
+  setShowOnlyFavorites,
+  favoriteCount = 0,
 }) => {
-  const [isExpandedOnMobile, setIsExpandedOnMobile] = useState(false);
+  const [showZoneHelp, setShowZoneHelp] = useState(false);
+  const { questions } = useApp();
   const style = CATEGORY_STYLE[category] || CATEGORY_STYLE['創新創業'];
   const MainIcon = style.icon;
 
@@ -322,196 +348,263 @@ export const SubcategoryBoardBanner: React.FC<SubcategoryBoardBannerProps> = ({
     bountyLevelHint: '全系列懸賞階梯均有分佈',
   };
 
-  const peerSubcategories = (CATEGORY_HIERARCHY[category] || []).filter((s) => s !== subcategory);
+  const allSubcategories = CATEGORY_HIERARCHY[category] || [];
 
   return (
     <div
-      className={`rounded-3xl border ${style.themeBorder} ${style.themeBg} p-5 sm:p-7 shadow-xs relative overflow-hidden transition-all`}
+      className={`p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2 ${style.themeBorder} ${style.themeBg} shadow-sm relative overflow-hidden transition-all animate-in fade-in duration-200`}
     >
-      {/* Background soft decorative shapes */}
-      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/40 blur-2xl pointer-events-none" />
-      <div className="absolute -bottom-8 -left-8 w-40 h-40 rounded-full bg-amber-200/20 blur-xl pointer-events-none" />
+      <div className="absolute top-0 right-0 -mr-8 -mt-8 w-36 h-36 bg-white/40 rounded-full blur-2xl pointer-events-none" />
 
-      <div className="relative z-10 space-y-5">
-        {/* 1. Breadcrumb navigation */}
-        <div className="flex items-center gap-1.5 text-xs text-stone-500 font-medium flex-wrap">
-          <button
-            onClick={() => onSelectCategory('全部', '全部')}
-            className="hover:text-stone-900 transition-colors cursor-pointer"
-          >
-            首頁
-          </button>
-          <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-          <button
-            onClick={() => onSelectCategory(category, '全部')}
-            className="hover:text-stone-900 font-bold transition-colors cursor-pointer flex items-center gap-1"
-          >
-            <MainIcon className="w-3.5 h-3.5" />
-            <span>{category}</span>
-          </button>
-          <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
-          <span className="font-black text-stone-900 bg-white/80 px-2 py-0.5 rounded-md border border-stone-200 shadow-2xs">
-            {subcategory} 子領域看板
-          </span>
+      {/* 右上角叉叉按鈕：點擊回到全部問題 */}
+      <button
+        type="button"
+        onClick={() => onSelectCategory('全部', '全部')}
+        className={`absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-stone-500 hover:text-stone-900 border ${style.themeBorder} shadow-2xs flex items-center justify-center transition-all cursor-pointer active:scale-95`}
+        title="回到全部問題"
+      >
+        <X className="w-4 h-4" />
+      </button>
+
+      <div className="relative z-10 space-y-2.5">
+        {/* 第一列：圖示 + 標題 + 釘選 + 數量 */}
+        <div className="flex items-center gap-2.5 flex-wrap pr-10">
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl ${style.themeBadge} flex items-center justify-center font-black shadow-xs shrink-0 border`}>
+            <MainIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          </div>
+          <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
+            <span>{category} · {subcategory}</span>
+            {onTogglePin && (
+              <button
+                type="button"
+                onClick={onTogglePin}
+                className={`p-1 rounded-lg transition-all cursor-pointer ${
+                  isPinned
+                    ? 'bg-amber-500 text-white border border-amber-600 shadow-xs'
+                    : 'bg-white hover:bg-stone-50 text-stone-400 hover:text-stone-700 border border-stone-200'
+                }`}
+                title={isPinned ? '取消釘選此看板' : '釘選為首頁看板'}
+              >
+                <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
+              </button>
+            )}
+            <span className={`text-[11px] font-mono font-black px-2 py-0.5 rounded-full border ${style.themeBadge}`}>
+              {totalQuestionsCount} 則提問
+            </span>
+            {totalBountyAmount > 0 && (
+              <span className="text-[11px] font-mono font-black text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                累積懸賞 NT$ {totalBountyAmount.toLocaleString()}
+              </span>
+            )}
+          </h1>
         </div>
 
-        {/* 2. Board Main Header Info */}
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
-          <div className="space-y-2 max-w-3xl">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className={`text-xs font-black px-2.5 py-1 rounded-xl border ${style.themeBadge} flex items-center gap-1`}>
-                <Tag className="w-3.5 h-3.5" />
-                <span>子領域看板</span>
-              </span>
-              <span className="text-xs font-bold text-stone-600 bg-white/90 px-2.5 py-1 rounded-xl border border-stone-200">
-                主分類：{category}
-              </span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-black text-stone-950 tracking-tight flex items-center gap-2.5 flex-wrap">
-              <span className="flex items-center gap-2">
-                <span>{subcategory}</span>
-                {onTogglePin && (
-                  <button
-                    onClick={onTogglePin}
-                    className={`p-1 rounded-lg transition-all cursor-pointer ${
-                      isPinned
-                        ? 'bg-amber-100 text-amber-700 border border-amber-300'
-                        : 'bg-stone-50 hover:bg-stone-100 text-stone-400 hover:text-stone-600 border border-stone-200'
-                    }`}
-                    title={isPinned ? '取消釘選此看板' : '將此看板設為起始畫面'}
-                  >
-                    <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-amber-500' : ''}`} />
-                  </button>
-                )}
-              </span>
-              <span className="text-base sm:text-lg font-bold text-stone-600">
-                · {details.tagline}
-              </span>
-              <HelpTooltip
-                title={`${subcategory} 看板介紹`}
-                content={details.description}
-              />
-            </h1>
-          </div>
-
-          {/* Quick CTA and Stats Box */}
-          <div className="flex sm:flex-col items-center sm:items-end justify-between gap-3 shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="bg-white/90 border border-stone-200 rounded-2xl p-2.5 sm:px-4 sm:py-2 text-center shadow-2xs">
-                <div className="text-[10px] text-stone-500 font-bold">待解問題</div>
-                <div className="text-base sm:text-lg font-black text-stone-900 font-mono">
-                  {totalQuestionsCount} <span className="text-xs font-normal text-stone-500">則</span>
-                </div>
-              </div>
-
-              {totalBountyAmount > 0 && (
-                <div className="bg-white/90 border border-amber-300 rounded-2xl p-2.5 sm:px-4 sm:py-2 text-center shadow-2xs">
-                  <div className="text-[10px] text-amber-800 font-bold">版面積累懸賞</div>
-                  <div className="text-base sm:text-lg font-black text-amber-900 font-mono">
-                    NT$ {totalBountyAmount.toLocaleString()}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={onOpenCreateQuestion}
-              className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs sm:text-sm shadow-sm transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
-            >
-              <Lightbulb className="w-4 h-4 text-stone-950" />
-              <span>在看板發布懸賞</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Expand / Collapse Toggle Button */}
-        <div className="sm:hidden pt-1">
+        {/* 第二列：說明按鈕 (左) + 發布懸賞按鈕 (置右) */}
+        <div className="flex items-center justify-between gap-2">
           <button
             type="button"
-            onClick={() => setIsExpandedOnMobile(!isExpandedOnMobile)}
-            className="w-full py-2 px-3 rounded-xl bg-white/80 hover:bg-white text-stone-700 font-bold text-xs border border-stone-200/80 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            onClick={() => setShowZoneHelp(!showZoneHelp)}
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+              showZoneHelp
+                ? 'bg-stone-900 text-white border-stone-900 shadow-xs'
+                : `bg-white/90 hover:bg-white ${style.accentText} ${style.themeBorder}`
+            }`}
+            title="點擊展開/收合看板介紹與熱門趨勢"
           >
-            <span>{isExpandedOnMobile ? '收合看板詳細資訊' : '展開熱門探討與推薦專業'}</span>
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpandedOnMobile ? 'rotate-180' : ''}`} />
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>說明</span>
+            {showZoneHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenCreateQuestion}
+            className="ml-auto px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Lightbulb className="w-3.5 h-3.5 text-stone-950" />
+            <span>在看板發布懸賞</span>
           </button>
         </div>
+      </div>
 
-        {/* 3. Trending topics & Expert matching advice (Collapsible on mobile) */}
-        <div className={`${isExpandedOnMobile ? 'grid' : 'hidden'} sm:grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-stone-200/70`}>
-          {/* 热門探討方向 */}
-          <div className="bg-white/70 backdrop-blur-xs rounded-2xl p-3 border border-stone-200/80 space-y-1.5">
-            <div className="text-xs font-black text-stone-800 flex items-center gap-1.5">
+      {/* 點擊展開之看板介紹與熱門趨勢 */}
+      {showZoneHelp && (
+        <div className="relative z-10 mt-3 pt-3 border-t border-stone-200/80 space-y-2.5 animate-in fade-in duration-150">
+          <p className="text-xs font-medium text-stone-700 leading-relaxed">
+            <strong>{details.tagline}：</strong>{details.description}
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="font-black text-stone-800 flex items-center gap-1">
               <TrendingUp className="w-3.5 h-3.5 text-amber-600" />
-              <span>此版面熱門趨勢：</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {details.trendingTopics.map((topic) => (
-                <button
-                  key={topic}
-                  type="button"
-                  onClick={() => {
-                    if (onSearchTag) {
-                      onSearchTag(topic);
-                    }
-                  }}
-                  className="text-[11px] font-semibold text-stone-700 bg-stone-100 hover:bg-amber-100 hover:text-amber-950 hover:border-amber-300 px-2 py-0.5 rounded-lg border border-stone-200/60 transition-colors cursor-pointer"
-                  title={`點擊搜尋「#${topic}」`}
-                >
-                  #{topic}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 推薦專家畫像 & 賞金常態 */}
-          <div className="bg-white/70 backdrop-blur-xs rounded-2xl p-3 border border-stone-200/80 space-y-1.5">
-            <div className="text-xs font-black text-stone-800 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              <span>推薦專業</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-stone-700">
-              {details.recommendedSkills.map((skill) => (
-                <span
-                  key={skill}
-                  className="text-[11px] font-medium text-blue-900 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200"
-                >
-                  {skill}
-                </span>
-              ))}
-              <span className="text-[10px] text-stone-500 font-mono ml-auto">
-                {details.bountyLevelHint}
-              </span>
-            </div>
+              熱門話題：
+            </span>
+            {details.trendingTopics.map((topic) => (
+              <button
+                key={topic}
+                type="button"
+                onClick={() => onSearchTag && onSearchTag(topic)}
+                className="text-[11px] font-semibold text-stone-700 bg-white/90 hover:bg-amber-100 hover:text-amber-950 px-2 py-0.5 rounded-lg border border-stone-200 transition-colors cursor-pointer"
+              >
+                #{topic}
+              </button>
+            ))}
           </div>
         </div>
+      )}
 
-        {/* 4. Peer subcategories quick navigation (Collapsible on mobile) */}
-        {peerSubcategories.length > 0 && (
-          <div className={`${isExpandedOnMobile ? 'flex' : 'hidden'} sm:flex pt-2 border-t border-stone-200/60 items-center gap-2 overflow-x-auto scrollbar-none text-xs`}>
-            <span className="text-stone-500 font-bold shrink-0 text-[11px]">
-              切換「{category}」其他子領域看板：
-            </span>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {peerSubcategories.map((peer) => (
-                <button
-                  key={peer}
-                  onClick={() => onSelectCategory(category, peer)}
-                  className="px-2.5 py-1 rounded-lg bg-white/90 hover:bg-white text-stone-700 hover:text-stone-950 font-medium border border-stone-200/80 hover:border-amber-400 transition-all cursor-pointer flex items-center gap-1"
-                >
-                  <span>{peer}</span>
-                  <ArrowRight className="w-3 h-3 text-stone-400" />
-                </button>
-              ))}
-              <button
-                onClick={() => onSelectCategory(category, '全部')}
-                className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold transition-colors cursor-pointer"
-              >
-                看該主分類全部
-              </button>
-            </div>
+      {/* 篩選分類、我的按讚收藏、搜尋、排序與檢視切換 (與其他專區看板統一形式) */}
+      <div className="relative z-10 mt-3 pt-3 border-t border-stone-200/80 space-y-2">
+        {/* 上排：選擇子領域下拉選單 + 我的按讚收藏 */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+          <div className="relative">
+            <select
+              value={subcategory}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (setShowOnlyFavorites) setShowOnlyFavorites(false);
+                if (val === '全部') {
+                  onSelectCategory(category, '全部');
+                } else {
+                  onSelectCategory(category, val);
+                }
+              }}
+              className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400 ${
+                !showOnlyFavorites
+                  ? 'bg-stone-900 text-white border border-stone-900 shadow-xs'
+                  : 'bg-white/90 text-stone-800 hover:bg-white border border-stone-300'
+              }`}
+            >
+              <option value="全部" className="bg-white text-stone-900 font-bold">
+                返回「{category}」全部
+              </option>
+              {allSubcategories.map((sub) => {
+                const count = (questions || []).filter(
+                  (q) => q.status !== 'delisted' && q.category === category && (q.subcategory === sub || (q.tags || []).includes(sub))
+                ).length;
+                return (
+                  <option key={sub} value={sub} className="bg-white text-stone-900 font-bold">
+                    {sub} ({count})
+                  </option>
+                );
+              })}
+            </select>
           </div>
-        )}
+
+          {setShowOnlyFavorites && (
+            <button
+              type="button"
+              onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
+              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                showOnlyFavorites
+                  ? 'bg-rose-600 text-white shadow-xs border border-rose-600'
+                  : 'bg-white/90 text-stone-700 hover:bg-white border border-stone-200/90'
+              }`}
+            >
+              {isVibeCoding ? (
+                <>
+                  <Heart className={`w-4 h-4 shrink-0 ${showOnlyFavorites ? 'fill-white' : 'text-rose-500'}`} />
+                  <span className="truncate">我的 Like 收藏 ({favoriteCount})</span>
+                </>
+              ) : (
+                <>
+                  <span
+                    className={`px-1.5 py-0.5 rounded-md text-[11px] font-mono font-black leading-none shrink-0 ${
+                      showOnlyFavorites
+                        ? 'bg-white text-rose-700'
+                        : 'bg-rose-100 text-rose-700 border border-rose-300'
+                    }`}
+                  >
+                    +1
+                  </span>
+                  <span className="truncate">我的附議收藏 ({favoriteCount})</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* 下排：搜尋框 + 排序下拉選單 + 卡片檢視切換 */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+          {setSearchQuery && (
+            <div className="relative flex-1 min-w-[160px]">
+              <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`搜尋「${subcategory}」問題標題、內文或發布者...`}
+                className="w-full pl-9 pr-7 py-2 rounded-xl border border-stone-200 bg-white text-xs font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+            {setSortBy && (
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as QuestionSortOption)}
+                className="px-2.5 py-2 rounded-xl border border-stone-200 bg-white text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer shrink-0"
+              >
+                <option value="recruiting_promoted">🔥 推薦排序</option>
+                <option value="most_likes">{isVibeCoding ? '❤️ Like 收藏最多' : '🔥 +1 附議最多'}</option>
+                <option value="highest_bounty">💰 懸賞金額 高到低</option>
+                <option value="highest_tips">🪙 點數支持 高到低</option>
+                <option value="most_solutions">💡 方案數最多</option>
+                <option value="most_discussions">💬 討論數最多</option>
+              </select>
+            )}
+
+            {setViewMode && (
+              <div className="inline-flex rounded-xl bg-white/90 border border-stone-200 p-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('large')}
+                  className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                    viewMode === 'large'
+                      ? 'bg-amber-500 text-stone-950 shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="大卡片模式"
+                >
+                  <Square className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                    viewMode === 'list'
+                      ? 'bg-amber-500 text-stone-950 shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="條列式清單"
+                >
+                  <List className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                    viewMode === 'grid'
+                      ? 'bg-amber-500 text-stone-950 shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="小卡片（雙欄方格）"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

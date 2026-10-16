@@ -1521,7 +1521,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
 
             <div>
               <label className="block text-stone-800 font-bold mb-1">
-                校園推廣大使推薦碼 (選填)
+                推廣大使推薦碼 (選填)
               </label>
               <input
                 type="text"

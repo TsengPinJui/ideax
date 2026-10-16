@@ -305,125 +305,116 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const totalQuestions = Object.values(levelCountsOverall).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-stone-50 border border-stone-200">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-stone-200/80 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
-              <Trophy className="w-6 h-6 text-amber-500" />
-              <span>全站排行榜</span>
+            <h2 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-amber-500" />
+              <span>榮譽排行榜</span>
             </h2>
-            <p className="mt-1 text-stone-600 text-xs sm:text-sm">
-              公開展示解答者解題成效、提問委託活躍度與本週全站熱門問題
+            <p className="mt-0.5 text-stone-500 text-xs">
+              解題實績、懸賞活躍度與本週熱門問題（每週一 00:00 結算）
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap shrink-0 self-start sm:self-auto">
-            {onNavigateToSolvers && (
-              <button
-                type="button"
-                onClick={onNavigateToSolvers}
-                className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-white hover:bg-emerald-50/40 active:scale-95 text-stone-850 hover:text-emerald-950 font-black text-xs sm:text-sm shadow-2xs hover:shadow-xs transition-all flex items-center gap-1.5 cursor-pointer border border-stone-200 hover:border-emerald-400 group"
-                title="前往認證專家智庫"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
-                <span>找專家</span>
-                <ArrowRight className="w-3 h-3 text-stone-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            )}
-
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl bg-amber-100/80 text-amber-950 text-xs font-bold border border-amber-300">
-              <Clock className="w-3.5 h-3.5 text-amber-700" />
-              <span>每週一 00:00 結算</span>
-            </div>
-          </div>
+          {onNavigateToSolvers && (
+            <button
+              type="button"
+              onClick={onNavigateToSolvers}
+              className="px-3.5 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-800 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>專家智庫</span>
+              <ArrowRight className="w-3 h-3 text-stone-400" />
+            </button>
+          )}
         </div>
 
         {/* Tab Navigation */}
-        <div className="mt-5 pt-4 border-t border-stone-200 flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="pt-3 border-t border-stone-100 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
           <button
             onClick={() => setActiveTab('solvers')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'solvers'
-                ? 'bg-stone-900 text-white shadow-xs'
-                : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                ? 'bg-stone-900 text-white shadow-2xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
             <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            <span>頂尖解答者榜</span>
+            <span>解答者榜</span>
           </button>
 
           <button
             onClick={() => setActiveTab('questioners')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'questioners'
-                ? 'bg-stone-900 text-white shadow-xs'
-                : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                ? 'bg-stone-900 text-white shadow-2xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <Award className="w-3.5 h-3.5 text-amber-400" />
-            <span>卓越提問者榜</span>
+            <Award className="w-3.5 h-3.5 text-amber-500" />
+            <span>提問者榜</span>
           </button>
 
           <button
             onClick={() => setActiveTab('weekly_discussions')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'weekly_discussions'
-                ? 'bg-stone-900 text-white shadow-xs'
-                : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                ? 'bg-stone-900 text-white shadow-2xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
-            <span>本週熱門討論榜</span>
+            <span>熱門討論</span>
           </button>
 
           <button
             onClick={() => setActiveTab('weekly_solutions')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'weekly_solutions'
-                ? 'bg-stone-900 text-white shadow-xs'
-                : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                ? 'bg-stone-900 text-white shadow-2xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
             <Flame className="w-3.5 h-3.5 text-amber-500" />
-            <span>本週熱門方案榜</span>
+            <span>熱門方案</span>
           </button>
 
           <button
             onClick={() => setActiveTab('pain_point_tips')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'pain_point_tips'
-                ? 'bg-amber-500 text-stone-950 shadow-xs font-black'
-                : 'bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100'
+                ? 'bg-amber-500 text-stone-950 font-black shadow-2xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <Coins className="w-3.5 h-3.5 text-amber-700 fill-amber-400 shrink-0" />
-            <span>打賞排行榜</span>
+            <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span>痛點打賞</span>
           </button>
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeTab === 'analytics'
-                ? 'bg-stone-900 text-white shadow-xs'
-                : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                ? 'bg-stone-900 text-white shadow-2xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <BarChart3 className="w-3.5 h-3.5 text-stone-600" />
-            <span>各等級問題分佈 (L0~L4)</span>
+            <BarChart3 className="w-3.5 h-3.5 text-stone-500" />
+            <span>等級分佈</span>
           </button>
         </div>
       </div>
 
       {/* TAB 1: 頂尖解答者榜 */}
       {activeTab === 'solvers' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-stone-900 flex items-center gap-2">
-              <span>頂尖解題智庫榜單</span>
-              <span className="text-xs font-normal text-stone-500">（依採納次數、口碑評分與難度權重排序）</span>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs sm:text-sm font-bold text-stone-700">
+              依方案採納數、評價與難度權重綜合排序
             </h3>
-            <span className="text-xs text-stone-400 font-mono">公開數據</span>
+            <span className="text-[11px] text-stone-400">公開數據</span>
           </div>
 
           <div className="grid grid-cols-1 gap-3">

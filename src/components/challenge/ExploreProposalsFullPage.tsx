@@ -17,6 +17,7 @@ import {
   Award,
   Megaphone,
   Heart,
+  Star,
   MessageSquare,
   Percent,
   Search,
@@ -103,6 +104,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     setSelectedQuestion,
     toggleSecondQuestion,
     setQuestionLikeState,
+    isQuestionBookmarked,
+    toggleBookmarkQuestion,
     isQuestionSeconded,
     getQuestionSecondCount,
     isSimulatedDataPurged,
@@ -121,7 +124,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const [activeSectionTab, setActiveSectionTab] = useState<'solution' | 'pain_point'>(initialSectionTab || 'solution');
 
   const [proposals, setProposals] = useState<StarSeasonProposal[]>(() => {
-    const list = (initialProposals && initialProposals.length > 0) ? initialProposals : DEFAULT_DEMO_PROPOSALS;
+    const list = initialProposals && initialProposals.length > 0 ? initialProposals : [];
     return applyRealClicksToProposals(list);
   });
   const [selectedTrack, setSelectedTrack] = useState<string>('all');
@@ -133,9 +136,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
   // 彈窗狀態
   const [selectedProposalForDetail, setSelectedProposalForDetail] = useState<StarSeasonProposal | null>(() => {
-    if (initialProposalId) {
-      const list = (initialProposals && initialProposals.length > 0) ? initialProposals : DEFAULT_DEMO_PROPOSALS;
-      return list.find((p) => p.id === initialProposalId) || null;
+    if (initialProposalId && initialProposals && initialProposals.length > 0) {
+      return initialProposals.find((p) => p.id === initialProposalId) || null;
     }
     return null;
   });
@@ -157,25 +159,25 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const [expandedMobileSummaryId, setExpandedMobileSummaryId] = useState<string | null>(null);
 
   useEffect(() => {
-    const defaultList = isSimulatedDataPurged ? [] : DEFAULT_DEMO_PROPOSALS;
     if (initialProposals && initialProposals.length > 0) {
-      const merged = initialProposals.map((p) => {
-        const matchedQ = (questions || []).find((q) => q.id === p.id);
-        if (matchedQ && typeof matchedQ.likes === 'number' && matchedQ.likes > 0) {
-          return { ...p, likeCount: matchedQ.likes };
-        }
-        return p;
-      });
+      const merged = initialProposals
+        .filter((p) => !(isSimulatedDataPurged && p.id.startsWith('demo-')))
+        .map((p) => {
+          const matchedQ = (questions || []).find((q) => q.id === p.id);
+          if (matchedQ && typeof matchedQ.likes === 'number' && matchedQ.likes > 0) {
+            return { ...p, likeCount: matchedQ.likes };
+          }
+          return p;
+        });
       setProposals(applyRealClicksToProposals(merged));
     } else {
-      setProposals(applyRealClicksToProposals(defaultList));
+      setProposals([]);
     }
   }, [initialProposals, questions, isSimulatedDataPurged]);
 
   useEffect(() => {
     if (initialProposalId) {
-      const list = proposals.length > 0 ? proposals : DEFAULT_DEMO_PROPOSALS;
-      const found = list.find((p) => p.id === initialProposalId);
+      const found = proposals.find((p) => p.id === initialProposalId);
       if (found) {
         if (!selectedProposalForDetail || selectedProposalForDetail.id !== initialProposalId) {
           handleOpenProposalDetail(found);
@@ -453,7 +455,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   }, [proposals, questions]);
 
   const filteredPainPoints = useMemo(() => {
-    return allPainPoints.filter((item: any) => {
+    const filtered = allPainPoints.filter((item: any) => {
       if (selectedTrack !== 'all') {
         const trackMeta = STAR_SEASON_TRACKS[selectedTrack as keyof typeof STAR_SEASON_TRACKS];
         if (trackMeta && !item.category.includes(trackMeta.name) && !item.tags.includes(trackMeta.name)) {
@@ -473,7 +475,14 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
       }
       return true;
     });
-  }, [allPainPoints, selectedTrack, searchKeyword]);
+    if (sortBy === 'likes') {
+      return [...filtered].sort((a: any, b: any) => getQuestionSecondCount(b.id) - getQuestionSecondCount(a.id));
+    }
+    if (sortBy === 'comments') {
+      return [...filtered].sort((a: any, b: any) => (b.commentsCount || 0) - (a.commentsCount || 0));
+    }
+    return filtered;
+  }, [allPainPoints, selectedTrack, searchKeyword, sortBy, getQuestionSecondCount]);
 
   // 依採用此痛點的獲獎方案，為對應痛點標注冠軍痛點、亞軍痛點、季軍痛點、4~10名痛點
   const getPainPointAwardBadge = (painPointTitle: string, painPointId: string) => {
@@ -559,7 +568,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           );
         }
         setQuestionLikeState(proposalId, res.liked, res.likeCount);
-        showToast(res.liked ? '❤️ 已按讚並加入您的個人收藏名單！' : '已取消按讚與收藏');
+        showToast(res.liked ? '❤️ 已按 Like 並加入您的個人收藏名單！' : '已取消 Like 與收藏');
       }
     } catch {
       const fallback = toggleSecondQuestion(proposalId);
@@ -574,7 +583,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           prev ? { ...prev, likeCount: fallback.count } : null
         );
       }
-      showToast(fallback.isSeconded ? '❤️ 已按讚並加入您的個人收藏名單！' : '已取消按讚與收藏');
+      showToast(fallback.isSeconded ? '❤️ 已按 Like 並加入您的個人收藏名單！' : '已取消 Like 與收藏');
     }
   };
 
@@ -726,11 +735,15 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
   // 1. 點進去提案本身就是有獨立網址的完整全頁面，而非彈出視窗！
   if (selectedProposalForDetail) {
+    const isFromCreateIdeasActive =
+      sessionStorage.getItem('ideax_from_create_ideas') === 'true' ||
+      new URL(window.location.href).searchParams.get('zone') === 'create_ideas';
     return (
       <ProposalDetailFullPage
         proposal={selectedProposalForDetail}
         allProposals={proposals}
         onSelectProposal={(p) => handleOpenProposalDetail(p)}
+        isFromCreateIdeas={isFromCreateIdeasActive}
         onBack={() => {
           setSelectedProposalForDetail(null);
           const url = new URL(window.location.href);
@@ -883,15 +896,21 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               <span className="sm:hidden">導覽</span>
             </button>
 
-            {/* 3. 我的收藏 */}
+            {/* 3. 我的 Like 收藏 / 附議收藏 */}
             <button
               type="button"
               onClick={() => setIsFavoritesModalOpen(true)}
               className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-stone-700 hover:text-rose-700 border border-stone-200 hover:border-rose-300 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
-              title="查看我的個人按讚收藏提案清單"
+              title={activeSectionTab === 'pain_point' ? '查看我的附議收藏清單' : '查看我的個人 Like 收藏提案清單'}
             >
-              <Heart className={`w-3.5 h-3.5 ${likedProposalIds.length > 0 ? 'text-rose-500 fill-rose-500' : 'text-stone-400'}`} />
-              <span className="hidden sm:inline">我的收藏</span>
+              {activeSectionTab === 'pain_point' ? (
+                <span className="px-1 py-0.2 rounded text-[10px] font-mono font-black leading-none bg-rose-100 text-rose-700 border border-rose-300">
+                  +1
+                </span>
+              ) : (
+                <Heart className={`w-3.5 h-3.5 ${likedProposalIds.length > 0 ? 'text-rose-500 fill-rose-500' : 'text-stone-400'}`} />
+              )}
+              <span className="hidden sm:inline">{activeSectionTab === 'pain_point' ? '我的附議收藏' : '我的 Like 收藏'}</span>
               {likedProposalIds.length > 0 && (
                 <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-black">
                   {likedProposalIds.length}
@@ -1074,7 +1093,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                 onClick={() => setSelectedTrack('all')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border shadow-2xs ${
                   selectedTrack === 'all'
-                    ? 'bg-stone-900 text-white border-stone-900'
+                    ? 'bg-amber-500 text-stone-950 border-amber-500 font-bold'
                     : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
                 }`}
               >
@@ -1098,7 +1117,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             {/* 排序方式按鈕：依募資額、按讚數、討論數 */}
             <div className="flex items-center gap-1 shrink-0 bg-stone-100 p-1 rounded-2xl border border-stone-200 shadow-2xs self-start md:self-auto">
               <span className="text-[10px] font-black text-stone-400 px-2 flex items-center gap-1">
-                <ArrowUpDown className="w-3 h-3 text-stone-500" />
+                <ArrowUpDown className="w-3.5 h-3.5 text-stone-500" />
                 <span>排序</span>
               </span>
               <button
@@ -1122,26 +1141,41 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                     ? 'bg-rose-500 text-white shadow-2xs font-black'
                     : 'text-stone-600 hover:text-rose-600 hover:bg-white/70'
                 }`}
-                title="依按讚愛心數高至低排序"
+                title={activeSectionTab === 'pain_point' ? '依 +1 附議數高至低排序' : '依 ❤️ Like 數高至低排序'}
               >
-                <Heart
-                  className={`w-3.5 h-3.5 ${
-                    sortBy === 'likes' ? 'fill-white text-white' : 'text-rose-500 fill-rose-500/20'
-                  }`}
-                />
-                <span>按讚數</span>
+                {activeSectionTab === 'pain_point' ? (
+                  <>
+                    <span
+                      className={`px-1 py-0.2 rounded text-[10px] font-mono font-black leading-none ${
+                        sortBy === 'likes' ? 'bg-white text-rose-600' : 'bg-rose-100 text-rose-700 border border-rose-300'
+                      }`}
+                    >
+                      +1
+                    </span>
+                    <span>附議數</span>
+                  </>
+                ) : (
+                  <>
+                    <Heart
+                      className={`w-3.5 h-3.5 ${
+                        sortBy === 'likes' ? 'fill-white text-white' : 'text-rose-500 fill-rose-500/20'
+                      }`}
+                    />
+                    <span>Like 數</span>
+                  </>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setSortBy('comments')}
                 className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                   sortBy === 'comments'
-                    ? 'bg-stone-900 text-white shadow-2xs font-black'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-white/70'
+                    ? 'bg-indigo-600 text-white shadow-2xs font-black'
+                    : 'text-stone-600 hover:text-indigo-600 hover:bg-white/70'
                 }`}
                 title="依討論留言數高至低排序"
               >
-                <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+                <MessageSquare className={`w-3.5 h-3.5 ${sortBy === 'comments' ? 'text-white' : 'text-indigo-500'}`} />
                 <span>討論數</span>
               </button>
             </div>
@@ -1212,7 +1246,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               return (
                 <div
                   key={proposal.id}
-                  className="bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden"
+                  onClick={() => handleOpenProposalDetail(proposal)}
+                  className="bg-white rounded-3xl border border-stone-200/90 hover:border-amber-400 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden cursor-pointer"
                 >
                   {/* 大卡片模式或預設封面大圖 */}
                   {cardViewMode === 'large' && (
@@ -1406,23 +1441,49 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   {/* 底部操作與互動列 */}
                   <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-3 border-t border-stone-100 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      {/* 社群互動 (按讚愛心、留言、分享) */}
+                      {/* 社群互動 (⭐ 收藏、❤️ Like、留言) */}
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => handleToggleLike(proposal.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const isAdded = toggleBookmarkQuestion(proposal.id);
+                            showToast(isAdded ? '⭐ 已收藏提案，並收錄至我的按讚收藏！' : '已取消收藏提案');
+                          }}
+                          className={`p-1.5 px-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                            isQuestionBookmarked(proposal.id)
+                              ? 'bg-amber-50 text-amber-700 border-amber-300'
+                              : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-amber-50 hover:text-amber-700'
+                          }`}
+                          title={isQuestionBookmarked(proposal.id) ? '⭐ 已收藏' : '⭐ 收藏'}
+                        >
+                          <Star
+                            className={`w-3.5 h-3.5 ${
+                              isQuestionBookmarked(proposal.id)
+                                ? 'fill-amber-400 text-amber-500'
+                                : 'text-stone-400'
+                            }`}
+                          />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleLike(proposal.id);
+                          }}
                           className={`p-1.5 px-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                             likedProposalIds.includes(proposal.id)
-                              ? 'bg-rose-50 text-rose-600 border-rose-300'
-                              : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-rose-50 hover:text-rose-600'
+                              ? 'bg-rose-500 text-white border-rose-500'
+                              : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
                           }`}
-                          title={likedProposalIds.includes(proposal.id) ? '已收藏' : '按讚收藏'}
+                          title={likedProposalIds.includes(proposal.id) ? '❤️ 已 Like' : '❤️ Like'}
                         >
                           <Heart
                             className={`w-3.5 h-3.5 ${
                               likedProposalIds.includes(proposal.id)
-                                ? 'fill-rose-500 text-rose-500'
-                                : 'text-stone-400'
+                                ? 'fill-white text-white'
+                                : 'fill-rose-500 text-rose-500'
                             }`}
                           />
                           <span className="text-[11px] font-mono">{proposal.likeCount || 0}</span>
@@ -1430,7 +1491,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
                         <button
                           type="button"
-                          onClick={() => handleOpenProposalDetail(proposal)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenProposalDetail(proposal);
+                          }}
                           className="p-1.5 px-2 rounded-lg bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200/80 text-amber-600 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                           title="查看評論留言"
                         >
@@ -1443,7 +1507,10 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => handleOpenProposalDetail(proposal)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenProposalDetail(proposal);
+                          }}
                           className="py-1.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs transition-colors cursor-pointer"
                         >
                           查看提案
@@ -1451,7 +1518,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (stageInfo.activeStage === 0) {
                               showToast('ℹ️ 創星季籌備中，第一階段痛點徵件將於 10/24 00:00 正式開跑！');
                               return;
@@ -1619,27 +1687,44 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   </div>
 
                   <div className="flex items-center gap-2 text-stone-400 text-xs shrink-0 font-mono">
-                    {/* 痛點附議按鍵（綠色+1圖示） */}
+                    {/* ⭐ 收藏按鈕 */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const isAdded = toggleBookmarkQuestion(pp.id);
+                        showToast(isAdded ? `⭐ 已收藏痛點「${pp.title}」！` : '已取消收藏');
+                      }}
+                      className={`p-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center border transition-all cursor-pointer active:scale-95 ${
+                        isQuestionBookmarked(pp.id)
+                          ? 'bg-amber-50 text-amber-700 border-amber-300'
+                          : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-amber-50 hover:text-amber-700'
+                      }`}
+                      title="⭐ 收藏此痛點"
+                    >
+                      <Star className={`w-3.5 h-3.5 ${isQuestionBookmarked(pp.id) ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
+                    </button>
+
+                    {/* 痛點 +1 附議按鍵 */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         const res = toggleSecondQuestion(pp.id);
                         if (res.isSeconded) {
-                          addNotification(`已為痛點「${pp.title}」附議 +1！`, 'success');
+                          addNotification(`🔥 已對痛點「${pp.title}」+1 附議！`, 'success');
                         }
                       }}
-                      className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                      className={`p-1.5 px-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
                         isQuestionSeconded(pp.id)
                           ? 'bg-rose-600 text-white border border-rose-600 shadow-2xs font-black'
-                          : 'bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
                       }`}
-                      title="附議此痛點 (+1 共鳴支持)"
+                      title="🔥 +1 附議此痛點"
                     >
-                      <span className={`font-mono font-black border px-1 py-0.2 rounded text-[10px] leading-tight ${isQuestionSeconded(pp.id) ? 'bg-white text-rose-800 border-white' : 'bg-white text-rose-700 border-rose-300'}`}>+1</span>
-                      <span>附議</span>
+                      <span className="font-mono font-black">+1</span>
                       {getQuestionSecondCount(pp.id) > 0 && (
-                        <span className="font-mono font-black">({getQuestionSecondCount(pp.id)})</span>
+                        <span className="font-mono font-black">{getQuestionSecondCount(pp.id)}</span>
                       )}
                     </button>
 

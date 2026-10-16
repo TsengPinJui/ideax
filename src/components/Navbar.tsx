@@ -427,20 +427,20 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
-        {/* Left Section: 側邊欄入口 + Logo + 導覽（探索問題、認證專家） */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-stone-200/70">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+        {/* Left Section: 側邊欄入口 + Logo + 導覽 */}
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* 左上燈泡圖片左側側邊欄入口 */}
           <button
             id="onboarding-step-6-sidebar-btn"
             type="button"
             onClick={() => setIsCategorySidebarOpen(true)}
-            className="p-2 -ml-1 sm:ml-0 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-stone-100 active:bg-amber-100 transition-all flex items-center justify-center cursor-pointer border border-stone-200/90 shadow-2xs group"
-            title="開啟熱門看板與主題側邊欄"
-            aria-label="開啟熱門看板與主題側邊欄"
+            className="p-2 -ml-1 sm:ml-0 rounded-full text-stone-600 hover:text-stone-950 hover:bg-stone-100 active:bg-stone-200/70 transition-all flex items-center justify-center cursor-pointer group"
+            title="開啟分類與專區側邊欄"
+            aria-label="開啟分類與專區側邊欄"
           >
-            <PanelLeft className="w-5 h-5 text-stone-700 group-hover:text-amber-600 transition-colors" />
+            <PanelLeft className="w-5 h-5 text-stone-600 group-hover:text-stone-950 transition-colors" />
           </button>
 
           {/* Desktop Logo (點選回到首頁頂部) */}
@@ -482,14 +482,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }
             }}
-            title="點擊回到首頁頂部"
+            title="回到首頁"
             className="flex items-center text-left group transition-transform active:scale-95 cursor-pointer"
           >
             <IdeaXLogo variant="bulb" size="lg" />
           </div>
 
-          {/* Navigation Links: 「探索問題」、「找專家」與「我的案件」 */}
-          <nav className="hidden md:flex items-center gap-1 text-sm font-semibold">
+          {/* Navigation Links: 簡潔俐落無冗餘邊框 */}
+          <nav className="hidden md:flex items-center gap-1 text-sm font-medium ml-1">
             <button
               onClick={() => {
                 setActiveTab('explore');
@@ -515,14 +515,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setTimeout(scrollToMarket, 50);
                 setTimeout(scrollToMarket, 150);
               }}
-              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-full transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
                 activeTab === 'explore'
-                  ? 'bg-amber-50/90 text-amber-950 font-black border-amber-400 ring-2 ring-amber-200 shadow-2xs'
-                  : 'bg-white text-stone-800 border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 hover:text-amber-950 shadow-2xs'
+                  ? 'bg-stone-900 text-white font-bold shadow-2xs'
+                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950 font-semibold'
               }`}
             >
-              <Compass className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>探索問題</span>
+              <Compass className={`w-4 h-4 shrink-0 ${activeTab === 'explore' ? 'text-amber-400' : 'text-stone-500'}`} />
+              <span>探索</span>
             </button>
             {!isRaceMode && (
               <button
@@ -532,18 +532,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setSelectedQuestion(null);
                   setSelectedSolver(null);
                 }}
-                className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-full transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
                   activeTab === 'solvers'
-                    ? 'bg-emerald-50/90 text-emerald-950 font-black border-emerald-400 ring-2 ring-emerald-200 shadow-2xs'
-                    : 'bg-white text-stone-800 border-stone-200 hover:border-emerald-400 hover:bg-emerald-50/40 hover:text-emerald-950 shadow-2xs'
+                    ? 'bg-stone-900 text-white font-bold shadow-2xs'
+                    : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950 font-semibold'
                 }`}
               >
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTab === 'solvers' ? 'text-emerald-400' : 'text-stone-500'}`} />
                 <span>找專家</span>
               </button>
             )}
 
-            {/* 創星季 (創星季圖片，點擊回到創星季首頁) */}
+            {/* 創星季 */}
             <button
               type="button"
               onClick={() => {
@@ -557,27 +557,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }
                 } catch {}
               }}
-              className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs group active:scale-98 ${
+              className={`px-3 py-1.5 rounded-full transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 group active:scale-98 ${
                 activeTab === 'star_season'
-                  ? 'bg-amber-100 text-stone-950 font-black border-amber-400 ring-2 ring-amber-200 shadow-2xs'
-                  : 'bg-white hover:bg-amber-50/60 border-stone-200 hover:border-amber-400 text-stone-800'
+                  ? 'bg-amber-100/90 text-stone-950 font-bold ring-1 ring-amber-300'
+                  : 'hover:bg-stone-100 text-stone-700'
               }`}
-              title="前往 IdeaX 創星季 競賽首頁"
+              title="前往創星季競賽"
             >
               <img
                 src="/logo-chuangxingji-text.png"
                 alt="創星季"
-                className="h-5 sm:h-5.5 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform drop-shadow-2xs"
+                className="h-5 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
               />
             </button>
           </nav>
         </div>
 
-        {/* Middle Section: 搜尋欄 (置中、適當寬度且左右留有舒適空間，支援關鍵字與用戶/專家雙模式) */}
-        <div className="flex-1 max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl mx-2 sm:mx-6 md:mx-8 relative" ref={searchDropdownRef}>
+        {/* Middle Section: Google/FB 極簡膠囊搜尋欄 */}
+        <div className="flex-1 max-w-xs sm:max-w-md md:max-w-lg mx-1 sm:mx-4 relative" ref={searchDropdownRef}>
           <div className="relative flex items-center">
-            {/* 搜尋圖示（置於左側，取消輸入框內預選類型標籤） */}
-            <Search className="absolute left-3 w-4 h-4 text-stone-400 pointer-events-none" />
+            <Search className="absolute left-3.5 w-4 h-4 text-stone-400 pointer-events-none" />
 
             <input
               ref={searchInputRef}
@@ -608,18 +607,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               placeholder={
                 searchMode === 'keywords'
-                  ? '搜尋關鍵字（問題、方案、討論、內文）...'
-                  : '搜尋用戶或專家（輸入 ID 如 user-chen 或姓名）...'
+                  ? '搜尋問題、痛點或方案...'
+                  : '搜尋專家或用戶 ID...'
               }
-              className="w-full pl-9 sm:pl-10 pr-8 py-1.5 sm:py-2 text-xs sm:text-sm bg-stone-100/90 hover:bg-stone-150 focus:bg-white border border-stone-200 focus:border-amber-500 rounded-xl outline-none focus:ring-2 focus:ring-amber-200 transition-all text-stone-900 placeholder:text-stone-400 font-medium"
+              className="w-full pl-9 sm:pl-10 pr-8 py-1.5 sm:py-2 text-xs sm:text-sm bg-stone-100/90 hover:bg-stone-200/60 focus:bg-white border border-transparent focus:border-stone-300 rounded-full outline-none focus:ring-4 focus:ring-stone-900/5 transition-all text-stone-900 placeholder:text-stone-400 font-medium"
             />
             {searchQuery && (
               <button
                 onClick={() => {
                   if (setSearchQuery) setSearchQuery('');
                 }}
-                className="absolute right-2.5 p-0.5 rounded-full hover:bg-stone-200 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
-                title="清除搜尋"
+                className="absolute right-2.5 p-1 rounded-full hover:bg-stone-200 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
+                title="清除"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -887,16 +886,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Right Section:
-            排版順序：
-            1. 簡潔的加號 (+) 發布按鈕 (點擊展開分類：尋求解答 / 提出痛點 / 閒聊討論 / 平台官方貼文)
-            2. 私聊
-            3. 通知/郵件中心 (管理員身分點擊直接前往申訴與郵件頁面)
-            4. 個人欄
-            （已移除頂部餘額顯示）
-        */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 mr-2 sm:mr-6 md:mr-10 lg:mr-14">
-          {/* 1. 簡潔的加號 (+) 發布按鈕 (管理員可選發文身分，一般用戶進入編輯頁，訪客引導登入) */}
+        {/* Right Section: 簡潔俐落的圖示與操作鍵 */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {/* 1. 簡潔的加號 (+) 發布按鈕 */}
           <div className="relative hidden sm:block" ref={createMenuRef}>
             <button
               id="onboarding-step-9-create-desktop"
@@ -913,18 +905,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                   else setActiveTab('create_question');
                 }
               }}
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl font-black flex items-center justify-center shadow-xs transition-all hover:shadow-md cursor-pointer ${
+              className={`w-9 h-9 rounded-full font-black flex items-center justify-center shadow-2xs transition-all hover:shadow-sm cursor-pointer ${
                 activeTab === 'create_question' || isCreateMenuOpen
-                  ? 'bg-amber-600 text-white ring-2 ring-amber-300'
-                  : 'bg-amber-500 text-stone-950 hover:bg-amber-400 active:bg-amber-600'
+                  ? 'bg-stone-900 text-amber-400 ring-2 ring-amber-300'
+                  : 'bg-amber-500 text-stone-950 hover:bg-amber-400 active:scale-95'
               }`}
-              title="發布問題"
-              aria-label="發布問題"
+              title="發布"
+              aria-label="發布"
             >
-              <Plus className={`w-5 h-5 stroke-[2.8] transition-transform duration-200 ${isCreateMenuOpen ? 'rotate-45' : ''}`} />
+              <Plus className={`w-5 h-5 stroke-[2.6] transition-transform duration-200 ${isCreateMenuOpen ? 'rotate-45' : ''}`} />
             </button>
 
-            {/* +號點擊展開的管理員發文身分選單 (管理員身分 / 平台身分) */}
+            {/* +號點擊展開的管理員發文身分選單 */}
             {isCreateMenuOpen && currentUser.role === 'admin' && (
               <div className="absolute right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-stone-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-3 py-1.5 text-[11px] font-extrabold text-stone-500 border-b border-stone-100 mb-1.5 flex items-center justify-between">
@@ -953,7 +945,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     </div>
                     <div className="text-[10px] text-stone-500 mt-0.5 leading-tight">
-                      以管理員（{currentUser.name}）名義發布，進入編輯頁後再選擇類型
+                      以管理員（{currentUser.name}）名義發布
                     </div>
                   </div>
                 </button>
@@ -977,7 +969,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     </div>
                     <div className="text-[10px] text-stone-500 mt-0.5 leading-tight">
-                      以 💡IdeaX 官方帳號💡 名義發布官方公告、活動或破局懸賞
+                      以 💡IdeaX 官方帳號💡 名義發布官方公告或活動
                     </div>
                   </div>
                 </button>
@@ -985,7 +977,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* 我的案件 (移至 + 號右邊，電腦版顯示) */}
+          {/* 我的案件 (電腦版顯示，無冗餘外框) */}
           <button
             onClick={() => {
               if (isGuest) {
@@ -996,18 +988,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               setSelectedQuestion(null);
               setSelectedSolver(null);
             }}
-            className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm font-bold shadow-2xs ${
+            className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all cursor-pointer text-xs sm:text-sm ${
               activeTab === 'my_projects'
-                ? 'bg-blue-50 text-blue-950 font-black border-blue-400 ring-2 ring-blue-200'
-                : 'bg-white text-stone-700 border-stone-200 hover:border-blue-400 hover:bg-blue-50/40 hover:text-blue-950'
+                ? 'bg-stone-900 text-white font-bold shadow-2xs'
+                : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950 font-semibold'
             }`}
-            title="查看我發布與參與的案件"
+            title="我的案件"
           >
-            <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span>我的案件</span>
+            <Briefcase className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'my_projects' ? 'text-amber-400' : 'text-stone-500'}`} />
+            <span>案件</span>
           </button>
 
-          {/* 2. 訊息 (電腦版 - 僅保留圖示，數字徽章移至右上角) */}
+          {/* 2. 訊息 (電腦與手機共用極簡圓形圖示鍵) */}
           <button
             onClick={() => {
               if (isGuest) {
@@ -1019,23 +1011,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               setSelectedSolver(null);
               setActiveConversationId(null);
             }}
-            className={`hidden sm:flex relative p-2 rounded-xl transition-colors cursor-pointer border ${
+            className={`relative p-2 rounded-full transition-colors cursor-pointer ${
               activeTab === 'chat'
-                ? 'bg-amber-100/90 text-amber-950 border-amber-300 ring-2 ring-amber-300'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:bg-amber-50 border-stone-200/80'
+                ? 'bg-stone-900 text-white'
+                : 'text-stone-600 hover:text-stone-950 hover:bg-stone-100'
             }`}
-            title={`開啟訊息${!isGuest && unreadChatCount > 0 ? `（${unreadChatCount} 則未讀訊息）` : ''}`}
+            title={`訊息${!isGuest && unreadChatCount > 0 ? `（${unreadChatCount} 則未讀）` : ''}`}
             aria-label="開啟訊息"
           >
-            <MessageCircle className={`w-5 h-5 ${activeTab === 'chat' ? 'text-amber-700' : 'text-stone-700'}`} />
+            <MessageCircle className="w-5 h-5" />
             {!isGuest && unreadChatCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-amber-500 text-stone-950 font-black text-[10px] rounded-full ring-2 ring-white flex items-center justify-center shadow-2xs font-mono">
+              <span className="absolute top-0.5 right-0.5 min-w-[16px] h-[16px] px-1 bg-amber-500 text-stone-950 font-black text-[9px] rounded-full ring-2 ring-white flex items-center justify-center font-mono">
                 {unreadChatCount > 99 ? '99+' : unreadChatCount}
               </span>
             )}
           </button>
 
-          {/* 3. 通知/郵件中心入口 (管理員身分點擊直接前往「申訴與郵件」頁面) */}
+          {/* 3. 通知/郵件中心入口 (電腦與手機皆可直接點擊開啟通知) */}
           <button
             type="button"
             onClick={() => {
@@ -1049,191 +1041,102 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setIsNotificationsSidebarOpen(true);
               }
             }}
-            className="hidden sm:flex relative p-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:bg-amber-50 transition-colors cursor-pointer border border-stone-200/80"
-            aria-label={currentUser.role === 'admin' ? "申訴與郵件管理中心" : "開啟通知中心右側欄"}
+            className="relative p-2 rounded-full text-stone-600 hover:text-stone-950 hover:bg-stone-100 transition-colors cursor-pointer"
+            aria-label={currentUser.role === 'admin' ? "申訴與郵件管理中心" : "開啟通知中心"}
             title={
               isGuest
                 ? "請登入以查看通知"
                 : currentUser.role === 'admin'
-                ? `申訴與郵件管理中心（待辦總計：${adminMailBadgeCount} 件，含客服工單 ${pendingTicketsCount} 件、案件申訴調解 ${pendingDisputesCount} 件、檢舉反饋 ${pendingReportsCount} 件）`
-                : "開啟通知中心右側欄"
+                ? `申訴與郵件管理中心（待辦 ${adminMailBadgeCount} 件）`
+                : "通知中心"
             }
           >
             {currentUser.role === 'admin' ? (
               <Mail className="w-5 h-5 text-purple-700" />
             ) : (
-              <Bell className="w-5 h-5 text-stone-700" />
+              <Bell className="w-5 h-5" />
             )}
             {!isGuest && displayBadgeCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-amber-500 text-stone-950 font-black text-[10px] rounded-full ring-2 ring-white flex items-center justify-center shadow-2xs font-mono">
+              <span className="absolute top-0.5 right-0.5 min-w-[16px] h-[16px] px-1 bg-rose-500 text-white font-black text-[9px] rounded-full ring-2 ring-white flex items-center justify-center font-mono">
                 {displayBadgeCount > 99 ? '99+' : displayBadgeCount}
               </span>
             )}
           </button>
 
-          {/* 3.5 點數 / 應收帳款快捷按鈕 (僅登入用戶顯示，訪客不顯示) */}
+          {/* 3.5 點數 / 應收帳款快捷膠囊 (僅登入用戶顯示，精簡無多餘外框) */}
           {!isGuest && (
-            <>
-              {/* 電腦版 */}
-              <button
-                onClick={() => {
-                  if (currentUser.role === 'solver') {
-                    handleOpenDashboard('points_receivables');
-                  } else {
-                    handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
-                  }
-                }}
-                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs hover:shadow-xs group shrink-0 ${
-                  currentUser.role === 'solver'
-                    ? 'bg-blue-50/90 hover:bg-blue-100 border-blue-200/90 text-blue-950'
-                    : currentUser.role === 'admin'
-                    ? 'bg-purple-50/90 hover:bg-purple-100 border-purple-200/90 text-purple-950'
-                    : 'bg-amber-50/90 hover:bg-amber-100 border-amber-200/90 text-amber-950'
-                }`}
-                title={currentUser.role === 'solver' ? '應收帳款中心' : currentUser.role === 'admin' ? '管理員每日可撥付配額中心' : '點數中心'}
-              >
-                {currentUser.role === 'solver' ? (
-                  <>
-                    <Building2 className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
-                    <span>{isNoPaymentMode ? '應收 尚未開放' : `應收 NT$ ${(currentUser.withheldPoints || 0).toLocaleString()}`}</span>
-                  </>
-                ) : currentUser.role === 'admin' ? (
-                  <>
-                    <Coins className="w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition-transform" />
-                    <span className="font-mono text-purple-950 font-extrabold">{(getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()} 點</span>
-                  </>
-                ) : (
-                  <>
-                    <Coins className="w-3.5 h-3.5 text-amber-600 group-hover:scale-110 transition-transform" />
-                    <span className="font-mono text-amber-900 font-extrabold">{(currentUser?.balance || 0).toLocaleString()} 點</span>
-                  </>
-                )}
-              </button>
-
-              {/* 手機版 */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentUser.role === 'solver') {
-                    handleOpenDashboard('points_receivables');
-                  } else {
-                    handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
-                  }
-                }}
-                className={`sm:hidden flex items-center gap-1 px-2 py-1.5 rounded-xl border font-black text-xs transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0 ${
-                  currentUser.role === 'solver'
-                    ? 'bg-blue-50/95 hover:bg-blue-100 border-blue-200 text-blue-950'
-                    : currentUser.role === 'admin'
-                    ? 'bg-purple-50/95 hover:bg-purple-100 border-purple-200 text-purple-950'
-                    : 'bg-amber-50/95 hover:bg-amber-100 border-amber-200 text-amber-950'
-                }`}
-                title={currentUser.role === 'solver' ? '應收帳款管理' : currentUser.role === 'admin' ? '管理員每日可撥配額' : '點數儲值管理'}
-              >
-                {currentUser.role === 'solver' ? (
-                  <>
-                    <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                    <span className="text-[10px] font-bold text-blue-800">應收</span>
-                    <span className={`text-[11px] font-black text-blue-950 ${isNoPaymentMode ? 'font-sans text-[10px]' : 'font-mono'}`}>
-                      {isNoPaymentMode ? '尚未開放' : `NT$${(currentUser.withheldPoints || 0).toLocaleString()}`}
-                    </span>
-                  </>
-                ) : currentUser.role === 'admin' ? (
-                  <>
-                    <Coins className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                    <span className="font-mono text-purple-950 font-black text-[11px]">
-                      {(getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()}
-                    </span>
-                    <span className="text-[10px] text-purple-900 font-bold">點</span>
-                  </>
-                ) : (
-                  <>
-                    <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="font-mono text-amber-950 font-black text-[11px]">
-                      {(currentUser?.balance || 0).toLocaleString()}
-                    </span>
-                    <span className="text-[10px] text-amber-900 font-bold">點</span>
-                  </>
-                )}
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => {
+                if (currentUser.role === 'solver') {
+                  handleOpenDashboard('points_receivables');
+                } else {
+                  handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
+                }
+              }}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-xs transition-all cursor-pointer active:scale-95 shrink-0 ${
+                currentUser.role === 'solver'
+                  ? 'bg-blue-50/90 hover:bg-blue-100 text-blue-900'
+                  : currentUser.role === 'admin'
+                  ? 'bg-purple-50/90 hover:bg-purple-100 text-purple-900'
+                  : 'bg-amber-50/90 hover:bg-amber-100 text-amber-950'
+              }`}
+              title={currentUser.role === 'solver' ? '應收帳款' : currentUser.role === 'admin' ? '管理員配額' : '點數中心'}
+            >
+              {currentUser.role === 'solver' ? (
+                <>
+                  <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span className="font-mono text-[11px] sm:text-xs font-extrabold">
+                    {isNoPaymentMode ? '應收' : `NT$${(currentUser.withheldPoints || 0).toLocaleString()}`}
+                  </span>
+                </>
+              ) : currentUser.role === 'admin' ? (
+                <>
+                  <Coins className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                  <span className="font-mono text-[11px] sm:text-xs font-extrabold">
+                    {(getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span className="font-mono text-[11px] sm:text-xs font-extrabold">
+                    {(currentUser?.balance || 0).toLocaleString()}
+                  </span>
+                </>
+              )}
+            </button>
           )}
 
-          {/* Mobile Message Center Entry (替代頭像) */}
-          <button
-            onClick={() => {
-              if (isGuest) {
-                promptLogin('訪客請先登入帳號以查看您的訊息與聊天室');
-                return;
-              }
-              setActiveTab('chat');
-              setSelectedQuestion(null);
-              setSelectedSolver(null);
-              setActiveConversationId(null);
-            }}
-            className="sm:hidden p-2 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 hover:border-amber-300 text-stone-700 flex items-center justify-center cursor-pointer relative"
-            title="訊息"
-          >
-            <MessageCircle className="w-5 h-5 text-stone-700" />
-            {!isGuest && unreadChatCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 bg-amber-500 text-stone-950 font-black text-[9px] rounded-full ring-2 ring-white flex items-center justify-center shadow-2xs font-mono">
-                {unreadChatCount > 99 ? '99+' : unreadChatCount}
-              </span>
-            )}
-          </button>
-
-          {/* 4. User Profile Dropdown Menu (個人欄 - 訪客顯示登入按鈕，無頭像與名稱) */}
+          {/* 4. User Profile Dropdown Menu (個人欄) */}
           {isGuest ? (
             <button
               type="button"
               onClick={() => {
                 openAuthModal('login', 'email');
               }}
-              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+              className="px-3.5 py-1.5 rounded-full bg-stone-900 hover:bg-stone-800 active:scale-95 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
             >
-              <LogIn className="w-4 h-4 text-stone-950" />
-              <span>登入 / 註冊</span>
+              <LogIn className="w-3.5 h-3.5 text-amber-400" />
+              <span>登入</span>
             </button>
           ) : (
             <div className="relative hidden sm:block" ref={userMenuRef}>
               <button
                 id="onboarding-step-10-profile-desktop"
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="relative flex items-center gap-2 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-stone-200 hover:border-amber-300 hover:bg-stone-50 transition-all cursor-pointer"
+                className="relative flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full hover:bg-stone-100 transition-all cursor-pointer"
               >
                 <img
                   src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                   alt={currentUser.name}
-                  className="w-7 h-7 rounded-lg object-cover ring-1 ring-stone-200"
+                  className="w-7 h-7 rounded-full object-cover ring-1 ring-stone-200"
                 />
-                <div className="text-left hidden sm:block">
-                  <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5 flex-wrap">
-                    <span>
-                      <span className={getUserNameColorClass(currentUser.id, availableUsers, currentUser)}>
-                        {resolveUserDisplayName(currentUser.id, currentUser.name, availableUsers)}
-                      </span>
-                      {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title
-                        ? ` · ${currentUser.title}`
-                        : ''}
-                    </span>
-                    <span
-                      className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                        currentUser.role === 'admin'
-                          ? 'bg-purple-100 text-purple-800'
-                          : currentUser.role === 'solver'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-amber-100 text-amber-900'
-                      }`}
-                    >
-                      {currentUser.role === 'admin'
-                        ? '管理員'
-                        : currentUser.role === 'solver'
-                        ? '解答者'
-                        : '提問者'}
-                    </span>
-                  </div>
-                </div>
-              <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
-            </button>
+                <span className={`text-xs font-bold max-w-[90px] truncate hidden lg:inline ${getUserNameColorClass(currentUser.id, availableUsers, currentUser)}`}>
+                  {resolveUserDisplayName(currentUser.id, currentUser.name, availableUsers)}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
+              </button>
 
             {isUserMenuOpen && (
               <div className="absolute right-0 mt-2 w-72 max-h-[82vh] overflow-y-auto overscroll-contain bg-white rounded-2xl shadow-2xl border border-stone-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-100 custom-scrollbar">

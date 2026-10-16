@@ -1,423 +1,577 @@
-import React, { useState } from 'react';
-import { Question } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Question, VIBECODING_CATEGORIES } from '../types';
 import { useApp } from '../context/AppContext';
+import { PainPointAutocompleteInput } from './PainPointAutocompleteInput';
 import {
   X,
   FileEdit,
-  Tag,
-  Trophy,
-  Flame,
   Globe,
   Cpu,
-  ImageIcon,
-  MessageSquare,
-  AlertCircle,
-  Sparkles,
-  Terminal,
+  Target,
+  Image as ImageIcon,
   CheckCircle2,
+  AlertCircle,
+  Plus,
+  Trash2,
+  GitBranch,
+  Flame,
+  Eye,
 } from 'lucide-react';
-import { PainPointAutocompleteInput } from './PainPointAutocompleteInput';
+import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
 
 interface UpdateProposalModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   question: Question;
-  onSuccess?: (updatedQuestion: Question) => void;
+  isOpen?: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
 }
 
 export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
-  isOpen,
-  onClose,
   question,
+  isOpen = true,
+  onClose,
   onSuccess,
 }) => {
-  const { updateProposalContent, questions } = useApp();
+  const { updateProposalContent } = useApp();
+  const isVibeCoding = question.postType === 'vibecoding_app';
 
-  const isVibeCoding = question.postType === 'vibecoding_app' || question.category === '網站程式';
+  const getInitialCats = () => {
+    const raw =
+      Array.isArray(question.subcategories) && question.subcategories.length > 0
+        ? question.subcategories.filter((c) => (VIBECODING_CATEGORIES as readonly string[]).includes(c))
+        : question.subcategory && (VIBECODING_CATEGORIES as readonly string[]).includes(question.subcategory)
+        ? [question.subcategory]
+        : ['網站程式'];
+    return raw.length > 0 ? raw.slice(0, 3) : ['網站程式'];
+  };
 
-  // 基本欄位狀態
+  const getNextVersion = () => {
+    const cur = question.currentVersion || 'v1.0.0';
+    const match = cur.match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+    if (match) {
+      return `v${match[1]}.${Number(match[2]) + 1}.0`;
+    }
+    return cur;
+  };
+
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(getInitialCats);
+  const [appName, setAppName] = useState(question.appName || question.vibeCodingData?.appName || '');
   const [title, setTitle] = useState(question.title || '');
   const [description, setDescription] = useState(question.description || '');
-  const [targetGoal, setTargetGoal] = useState(question.targetGoal || '');
   const [referencedPainPoint, setReferencedPainPoint] = useState(question.referencedPainPoint || '');
-
-  // 軟體程式 (VibeCoding) 專屬欄位
-  const [appName, setAppName] = useState(question.appName || (question as any).vibeCodingData?.appName || '');
-  const [demoUrl, setDemoUrl] = useState(question.demoUrl || '');
+  const [targetGoal, setTargetGoal] = useState(question.targetGoal || '');
+  const [demoUrl, setDemoUrl] = useState(question.demoUrl || question.vibeCodingData?.demoUrl || '');
+  const [fileLink, setFileLink] = useState(question.fileLink || question.fileUrl || '');
   const [techArchitecture, setTechArchitecture] = useState(question.techArchitecture || '');
-  const [coverImage, setCoverImage] = useState(question.coverImage || '');
+  const [coverImage, setCoverImage] = useState(question.coverImage || question.vibeCodingData?.coverImageUrl || '');
+  const [galleryImages, setGalleryImages] = useState<string[]>(
+    question.galleryImages || question.vibeCodingData?.screenshots || []
+  );
+  const [newGalleryUrl, setNewGalleryUrl] = useState('');
 
-  // 版本號碼（如果是 vibecoding 再加一個版本號碼，選填）
-  const [version, setVersion] = useState<string>(question.currentVersion || '');
+  const [version, setVersion] = useState(getNextVersion);
+  const [changelogContent, setChangelogContent] = useState('');
+  const [changelogNote, setChangelogNote] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
-  // 更新日誌核心欄位
-  // 1. 更新內容：每次更新要重新發布前的必填項目，未填無法發布
-  const [updateContent, setUpdateContent] = useState<string>('');
-  // 2. 提案者註記：選填
-  const [updateNote, setUpdateNote] = useState<string>('');
-
-  const [formError, setFormError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedCategories(getInitialCats());
+      setAppName(question.appName || question.vibeCodingData?.appName || '');
+      setTitle(question.title || '');
+      setDescription(question.description || '');
+      setReferencedPainPoint(question.referencedPainPoint || '');
+      setTargetGoal(question.targetGoal || '');
+      setDemoUrl(question.demoUrl || question.vibeCodingData?.demoUrl || '');
+      setFileLink(question.fileLink || question.fileUrl || '');
+      setTechArchitecture(question.techArchitecture || '');
+      setCoverImage(question.coverImage || question.vibeCodingData?.coverImageUrl || '');
+      setGalleryImages(question.galleryImages || question.vibeCodingData?.screenshots || []);
+      setNewGalleryUrl('');
+      setVersion(getNextVersion());
+      setChangelogContent('');
+      setChangelogNote('');
+      setError('');
+      setSubmitting(false);
+    }
+  }, [isOpen, question.id]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!updateContent.trim()) {
-      setFormError('「更新內容」為每次重新發布前之必填項目，未填無法發布！');
+  const handleAddGalleryImage = () => {
+    const trimmed = newGalleryUrl.trim();
+    if (!trimmed) return;
+    if (galleryImages.length >= 6) {
+      setError('最多可上傳 6 張展示圖片');
       return;
     }
+    setGalleryImages([...galleryImages, trimmed]);
+    setNewGalleryUrl('');
+    setError('');
+  };
 
-    if (isVibeCoding && !appName.trim()) {
-      setFormError('「作品名稱（軟體或網站名稱）」為必填項目！');
-      return;
-    }
+  const handleRemoveGalleryImage = (index: number) => {
+    setGalleryImages(galleryImages.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setError('');
 
     if (!title.trim()) {
-      setFormError('標題不可為空！');
+      setError('請填寫標題');
       return;
     }
-
     if (!description.trim()) {
-      setFormError('內容說明不可為空！');
+      setError('請填寫內容說明');
       return;
     }
 
-    setIsSubmitting(true);
-    setFormError(null);
+    const summaryText =
+      changelogContent.trim() || (isVibeCoding ? '更新作品內容與資訊' : '更新提案內容說明');
 
-    const result = updateProposalContent(question.id, {
+    setSubmitting(true);
+    const res = updateProposalContent(question.id, {
       appName: isVibeCoding ? appName.trim() : undefined,
       title: title.trim(),
       description: description.trim(),
-      targetGoal: targetGoal.trim() || undefined,
-      referencedPainPoint: referencedPainPoint.trim() || undefined,
-      demoUrl: isVibeCoding ? (demoUrl.trim() || undefined) : undefined,
-      techArchitecture: isVibeCoding ? (techArchitecture.trim() || undefined) : undefined,
-      coverImage: isVibeCoding ? (coverImage.trim() || undefined) : undefined,
-      version: isVibeCoding ? (version.trim() || undefined) : undefined,
-      updateContent: updateContent.trim(),
-      updateNote: updateNote.trim() || undefined,
+      subcategory: isVibeCoding ? (selectedCategories[0] || '網站程式') : undefined,
+      subcategories: isVibeCoding ? selectedCategories : undefined,
+      referencedPainPoint: referencedPainPoint.trim(),
+      targetGoal: targetGoal.trim(),
+      demoUrl: demoUrl.trim(),
+      fileLink: fileLink.trim(),
+      techArchitecture: techArchitecture.trim(),
+      coverImage: coverImage.trim(),
+      galleryImages,
+      version: isVibeCoding ? version.trim() : undefined,
+      updateContent: summaryText,
+      updateNote: changelogNote.trim() || undefined,
+      changelogContent: summaryText,
+      changelogNote: changelogNote.trim() || undefined,
     });
 
-    setIsSubmitting(false);
-
-    if (result.success) {
-      if (onSuccess && result.updatedQuestion) {
-        onSuccess(result.updatedQuestion);
-      }
-      onClose();
-    } else {
-      setFormError(result.message || '更新失敗，請檢查輸入內容！');
+    setSubmitting(false);
+    if (!res.success && !res.ok) {
+      setError(res.message || res.reason || '更新失敗，請稍後再試');
+      return;
     }
+
+    if (onSuccess) onSuccess();
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-2xl w-full my-6 p-5 sm:p-7 shadow-2xl border border-stone-200 space-y-5 max-h-[92vh] overflow-y-auto">
-        {/* 頂部標題 */}
-        <div className="flex items-center justify-between border-b border-stone-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-white shadow-xs ${
-              isVibeCoding ? 'bg-purple-600' : 'bg-emerald-600'
-            }`}>
-              {isVibeCoding ? <Terminal className="w-5 h-5" /> : <FileEdit className="w-5 h-5" />}
+    <div
+      className="fixed inset-0 z-[120] bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+    >
+      <div
+        className="bg-white rounded-xl border border-stone-200 shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600">
+              <FileEdit className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base sm:text-lg text-stone-900 tracking-tight">
-                  {isVibeCoding ? '更新軟體程式作品與發布日誌' : '更新解方提案內容與發布日誌'}
-                </h3>
-                {isVibeCoding && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                    VibeCoding
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-stone-500 mt-0.5">
-                每次更新重新發布前需填寫更新內容，以公開記錄透明的進展日誌
+              <h3 className="text-base font-bold text-stone-900">
+                {isVibeCoding ? '更新作品內容與版本紀錄' : '更新提案內容'}
+              </h3>
+              <p className="text-xs text-stone-500">
+                儲存後將自動寫入版本紀錄，方便讀者查看更新內容
               </p>
             </div>
           </div>
           <button
             type="button"
-            onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-colors cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            aria-label="關閉視窗"
+            className="p-2 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 active:bg-rose-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {formError && (
-          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-bold animate-in fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-            <span>{formError}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* 🌟 核心一：更新日誌區塊（必填更新內容 + 選填註記 + 選填版本號） */}
-          <div className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-amber-50/80 via-purple-50/40 to-stone-50 border-2 border-amber-300 shadow-2xs space-y-3.5">
-            <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
-              <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>本次重新發布紀錄（將載於提案最下方更新日誌）</span>
-              </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-                更新內容為必填
-              </span>
-            </div>
-
-            {/* 1. 更新內容 (必填項目) */}
-            <div>
-              <label className="block text-xs font-bold text-stone-900 mb-1 flex items-center justify-between">
-                <span>本次更新內容說明 <span className="text-rose-600 font-extrabold">* (必填)</span></span>
-                <span className="text-[10px] text-stone-500">未填無法發布更新</span>
-              </label>
-              <textarea
-                required
-                rows={3}
-                value={updateContent}
-                onChange={(e) => {
-                  setUpdateContent(e.target.value);
-                  if (formError) setFormError(null);
-                }}
-                placeholder="請詳述本次更新了哪些功能、修復哪些問題、優化或新成果（例如：修復線上體驗網址、新增手機版適配、下載量已達 5,000 次並更新下一里程碑目標等）..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 text-stone-900 text-xs outline-none bg-white font-medium leading-relaxed"
-              />
-            </div>
-
-            {/* 2. 提案者註記 (選填項目) */}
-            <div>
-              <label className="block text-xs font-bold text-stone-900 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <MessageSquare className="w-3.5 h-3.5 text-amber-600" />
-                  <span>提案者註記 (選填)</span>
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="p-5 overflow-y-auto space-y-4 flex-1">
+            {/* Version & Changelog */}
+            <div className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                  <GitBranch className="w-4 h-4 text-emerald-600" />
+                  本次版本更新說明
                 </span>
-                <span className="text-[10px] text-stone-400">作為日誌專屬重點備註</span>
-              </label>
-              <input
-                type="text"
-                value={updateNote}
-                onChange={(e) => setUpdateNote(e.target.value)}
-                placeholder="例如：重大架構重構 / 慶祝下載量達標里程碑 / 社群反饋緊急修正"
-                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 text-stone-900 text-xs outline-none bg-white font-medium"
-              />
+                {question.currentVersion && (
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-100/80 text-emerald-800">
+                    目前版本：{question.currentVersion}
+                  </span>
+                )}
+              </div>
+
+              {isVibeCoding && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      新版本號
+                    </label>
+                    <input
+                      type="text"
+                      value={version}
+                      onChange={(e) => setVersion(e.target.value)}
+                      placeholder="例如：v1.2.0"
+                      className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs font-semibold text-stone-900 focus:border-emerald-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      更新備註（選填）
+                    </label>
+                    <input
+                      type="text"
+                      value={changelogNote}
+                      onChange={(e) => setChangelogNote(e.target.value)}
+                      placeholder="例如：修正手機版排版、新增匯出功能"
+                      className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-900 focus:border-emerald-600 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  更新內容摘要（若未填寫將自動帶入預設更新紀錄）
+                </label>
+                <textarea
+                  rows={2}
+                  value={changelogContent}
+                  onChange={(e) => setChangelogContent(e.target.value)}
+                  placeholder="簡短說明這次改了什麼（例如：新增多因素回測圖表、加快載入速度）"
+                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-900 focus:border-emerald-600 outline-none resize-none"
+                />
+              </div>
+
+              {!isVibeCoding && (
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    更新備註（選填）
+                  </label>
+                  <input
+                    type="text"
+                    value={changelogNote}
+                    onChange={(e) => setChangelogNote(e.target.value)}
+                    placeholder="例如：補充財務預算與執行時程"
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-900 focus:border-emerald-600 outline-none"
+                  />
+                </div>
+              )}
             </div>
 
-            {/* 3. 如果是 vibecoding 再加一個版本號碼 (選填) */}
+            {/* Software Categories (up to 3) */}
             {isVibeCoding && (
-              <div className="pt-1">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-purple-600" />
-                    <span>版本號碼 (選填)</span>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-stone-700">
+                    軟體分類（最多選 3 個）*
                   </label>
-                  <span className="text-[10px] text-purple-700 font-bold">VibeCoding 專屬版本標籤</span>
+                  <span className="text-[11px] font-semibold text-indigo-600">
+                    已選 {selectedCategories.length} / 3
+                  </span>
                 </div>
-                <input
-                  type="text"
-                  value={version}
-                  onChange={(e) => setVersion(e.target.value)}
-                  placeholder="例如：v1.1.0、v2.0.0 (留空則維持原版本)"
-                  className="w-full px-3.5 py-2 rounded-xl border border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-stone-900 text-xs outline-none bg-white font-mono"
-                />
-                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                  <span className="text-[10px] text-stone-400">快速填入：</span>
-                  {['v1.0.1', 'v1.1.0', 'v1.2.0', 'v2.0.0'].map((ver) => (
-                    <button
-                      key={ver}
-                      type="button"
-                      onClick={() => setVersion(ver)}
-                      className="px-2 py-0.5 rounded bg-purple-50 hover:bg-purple-100 text-purple-800 text-[10px] font-mono font-bold border border-purple-200 cursor-pointer transition-colors"
-                    >
-                      {ver}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {VIBECODING_CATEGORIES.map((cat) => {
+                    const isSelected = selectedCategories.includes(cat);
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategories((prev) => {
+                            if (prev.includes(cat)) {
+                              if (prev.length <= 1) return prev;
+                              return prev.filter((c) => c !== cat);
+                            }
+                            if (prev.length >= 3) return prev;
+                            return [...prev, cat];
+                          });
+                        }}
+                        className={`px-2.5 py-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                            : 'bg-white text-stone-700 border-stone-200 hover:border-indigo-400 hover:text-indigo-700 hover:bg-indigo-50/40'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
-          </div>
 
-          {/* 🌟 核心二：提案/作品內容更新 */}
-          <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3.5">
-            <h4 className="text-xs font-black text-stone-800 border-b border-stone-200 pb-2">
-              提案與作品內容修改
-            </h4>
-
-            {/* 作品名稱（軟體或網站名稱） */}
+            {/* App Name (for VibeCoding) */}
             {isVibeCoding && (
               <div>
-                <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center justify-between">
-                  <span>作品名稱（軟體或網站名稱） *</span>
-                  <span className="text-[10px] text-blue-700 font-bold bg-blue-100 px-1.5 py-0.2 rounded">
-                    藍色顯示於卡片左下角
-                  </span>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  作品名稱
                 </label>
                 <input
                   type="text"
-                  required
-                  maxLength={40}
                   value={appName}
                   onChange={(e) => setAppName(e.target.value)}
-                  placeholder="例如：ReceiptSnap AI、VibeForm AI..."
-                  className="w-full px-3.5 py-2 rounded-xl border border-blue-300 focus:border-blue-500 text-stone-900 text-xs font-bold outline-none bg-white"
+                  placeholder="例如：NexSight洞鑑"
+                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-sm font-semibold text-stone-900 focus:border-emerald-600 outline-none"
                 />
               </div>
             )}
 
-            {/* 標題 */}
+            {/* Title */}
             <div>
-              <label className="block text-xs font-bold text-stone-800 mb-1">
-                {isVibeCoding ? '應用標題 / 核心功能亮點 *' : '提案標題 / 創新主題 *'}
+              <label className="block text-xs font-bold text-stone-700 mb-1">
+                標題 *
               </label>
               <input
                 type="text"
-                required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 focus:border-stone-500 text-stone-900 text-xs font-bold outline-none bg-white"
+                className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-sm font-semibold text-stone-900 focus:border-emerald-600 outline-none"
               />
             </div>
 
-            {/* 內容說明 */}
+            {/* Description */}
             <div>
-              <label className="block text-xs font-bold text-stone-800 mb-1">
-                {isVibeCoding ? '作品簡介與特色說明 *' : '提案內容與創新亮點說明 *'}
+              <label className="block text-xs font-bold text-stone-700 mb-1">
+                內容說明 *
               </label>
               <textarea
-                required
-                rows={4}
+                rows={5}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 focus:border-stone-500 text-stone-900 text-xs outline-none bg-white leading-relaxed"
+                className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs sm:text-sm text-stone-800 leading-relaxed focus:border-emerald-600 outline-none"
               />
             </div>
 
-            {/* 引用相關痛點與希望達成的目標 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* Referenced Pain Point & Target Goal */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-stone-800 font-bold mb-1 flex items-center gap-1.5 text-xs">
-                  <Flame className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                  <span>引用相關痛點 (選填)</span>
+                <label className="block text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+                  <Flame className="w-3.5 h-3.5 text-amber-600" />
+                  解決的痛點
                 </label>
                 <PainPointAutocompleteInput
                   value={referencedPainPoint}
-                  onChange={(val) => setReferencedPainPoint(val)}
-                  questions={questions}
-                  placeholder="輸入關鍵字自動搜尋公開痛點"
+                  onChange={setReferencedPainPoint}
+                  placeholder="輸入關鍵字搜尋站內痛點..."
+                  inputClassName="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
                 />
               </div>
-
               <div>
-                <label className="block text-stone-800 font-bold mb-1 flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5">
-                    <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span>［希望達成的目標］ (選填)</span>
-                  </span>
-                  {isVibeCoding && (
-                    <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-1.5 py-0.2 rounded">
-                      下載量 / 里程碑
-                    </span>
-                  )}
+                <label className="block text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+                  <Target className="w-3.5 h-3.5 text-emerald-600" />
+                  期望目標
                 </label>
                 <input
                   type="text"
                   value={targetGoal}
                   onChange={(e) => setTargetGoal(e.target.value)}
-                  placeholder={
-                    isVibeCoding
-                      ? '例如：希望 6 個月內達成 50,000 次下載量，並累積 5,000 位活躍用戶'
-                      : '例: 於 6 個月內完成 POC 實證並獲得 100 位企業付費用戶'
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-emerald-500 text-stone-900 text-xs outline-none bg-white font-medium"
+                  placeholder="例如：希望達成 10,000 人次使用"
+                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
                 />
-                <p className="text-[11px] text-stone-500 mt-1">
-                  {isVibeCoding
-                    ? '💡 目標說明：例如「希望 6 個月達成 ××× 下載次數」或累積活躍用戶數、產品留存率等具體可衡量成果。'
-                    : '💡 目標說明：填寫短期至中期預期驗證成果、商業合作或驗證指標。'}
-                </p>
               </div>
             </div>
 
-            {/* VibeCoding 專屬：線上網址、技術架構、封面圖 */}
+            {/* URLs & Tech Stack */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+                  <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                  網站連結 (Demo URL)
+                </label>
+                <input
+                  type="url"
+                  value={demoUrl}
+                  onChange={(e) => setDemoUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  原始碼或相關檔案連結
+                </label>
+                <input
+                  type="url"
+                  value={fileLink}
+                  onChange={(e) => setFileLink(e.target.value)}
+                  placeholder="https://github.com/..."
+                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
+                />
+              </div>
+            </div>
+
             {isVibeCoding && (
-              <div className="space-y-3 pt-2 border-t border-stone-200">
-                <div>
-                  <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>網站網址或線上體驗 Demo 連結</span>
-                  </label>
-                  <input
-                    type="url"
-                    value={demoUrl}
-                    onChange={(e) => setDemoUrl(e.target.value)}
-                    placeholder="https://my-app.vercel.app 或 GitHub 專案"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs text-stone-900 outline-none bg-white font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center gap-1.5">
-                    <Cpu className="w-3.5 h-3.5 text-purple-600" />
-                    <span>技術架構 (Front-end / Back-end / AI 工具)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={techArchitecture}
-                    onChange={(e) => setTechArchitecture(e.target.value)}
-                    placeholder="例如：React + Vite + Tailwind + Firebase + Gemini API"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs text-stone-900 outline-none bg-white font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center gap-1.5">
-                    <ImageIcon className="w-3.5 h-3.5 text-purple-600" />
-                    <span>作品封面大圖 URL</span>
-                  </label>
-                  <input
-                    type="url"
-                    value={coverImage}
-                    onChange={(e) => setCoverImage(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs text-stone-900 outline-none bg-white font-mono"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+                  <Cpu className="w-3.5 h-3.5 text-indigo-600" />
+                  技術架構
+                </label>
+                <input
+                  type="text"
+                  value={techArchitecture}
+                  onChange={(e) => setTechArchitecture(e.target.value)}
+                  placeholder="例如：React + TypeScript + Tailwind CSS + Gemini API"
+                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
+                />
               </div>
             )}
+
+            {/* Cover & Gallery Images */}
+            <div className="space-y-3 pt-2 border-t border-stone-200">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
+                  <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
+                  封面圖片網址
+                </label>
+                <input
+                  type="text"
+                  value={coverImage}
+                  onChange={(e) => setCoverImage(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  畫面截圖（最多 6 張）
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={newGalleryUrl}
+                    onChange={(e) => setNewGalleryUrl(e.target.value)}
+                    placeholder="貼上圖片網址後點選新增..."
+                    className="flex-1 px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddGalleryImage}
+                    className="px-3 py-1.5 rounded-lg border border-indigo-500 bg-white text-indigo-600 hover:bg-indigo-600 hover:text-white active:bg-indigo-700 active:text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    新增
+                  </button>
+                </div>
+                {galleryImages.length > 0 && (
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {galleryImages.map((img, idx) => (
+                      <div key={idx} className="relative group aspect-video rounded-lg overflow-hidden border border-stone-200 bg-stone-100">
+                        <img src={img} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveGalleryImage(idx)}
+                          className="absolute top-1 right-1 p-1 rounded bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* 底部按鈕 */}
-          <div className="flex items-center justify-between gap-3 pt-3 border-t border-stone-100">
-            <span className="text-[11px] text-stone-400">
-              * 更新後將同步寫入資料庫並於提案最底部顯示更新日誌
-            </span>
-            <div className="flex items-center gap-2">
+          {/* Pinned Footer Actions */}
+          <div className="px-5 py-3.5 border-t border-stone-200 bg-white shrink-0 space-y-2.5">
+            {error && (
+              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-2.5">
               <button
                 type="button"
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-all cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="px-4 py-2 rounded-lg border border-stone-300 bg-white text-stone-600 text-xs font-bold hover:bg-stone-100 hover:text-stone-900 active:bg-stone-200 transition-colors cursor-pointer"
               >
                 取消
               </button>
+
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(true)}
+                className="px-4 py-2 rounded-lg border-2 border-indigo-500 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                title="預覽更新後的展示效果"
+              >
+                <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                <span>預覽效果</span>
+              </button>
+
               <button
                 type="submit"
-                disabled={isSubmitting || !updateContent.trim()}
-                className={`px-5 py-2.5 rounded-xl text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                  isVibeCoding
-                    ? 'bg-purple-600 hover:bg-purple-500 active:bg-purple-700'
-                    : 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700'
+                disabled={submitting}
+                onClick={() => handleSubmit()}
+                className={`px-5 py-2 rounded-lg border-2 border-emerald-600 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                  submitting
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white'
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>發布更新日誌與內容</span>
+                <span>{submitting ? '儲存發布中...' : '儲存並發布更新'}</span>
               </button>
             </div>
           </div>
         </form>
       </div>
+
+      {showPreviewModal && (
+        <PublishEffectPreviewModal
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          onConfirmPublish={() => {
+            setShowPreviewModal(false);
+            handleSubmit();
+          }}
+          isSubmitting={submitting}
+          postType={isVibeCoding ? 'vibecoding_app' : 'innovation_proposal'}
+          title={title}
+          description={description}
+          category={question.category}
+          subcategory={selectedCategories[0] || question.subcategory}
+          tags={question.tags}
+          authorName={question.authorName || '創作者'}
+          authorAvatar={question.authorAvatar}
+          authorTitle={question.authorTitle}
+          bounty={question.bounty}
+          coverImage={coverImage}
+          galleryImages={galleryImages}
+          appName={appName}
+          demoUrl={demoUrl || fileLink}
+          techArchitecture={techArchitecture}
+          referencedPainPoint={referencedPainPoint}
+          targetGoal={targetGoal}
+          currentVersion={version}
+          selectedVibeCategories={selectedCategories}
+          domainTrack={question.category || '資通訊'}
+        />
+      )}
     </div>
   );
 };

@@ -217,18 +217,23 @@ interface AppContextType {
       appName?: string;
       title?: string;
       description?: string;
+      subcategory?: string;
+      subcategories?: string[];
       targetGoal?: string;
       referencedPainPoint?: string;
       tags?: string[];
       demoUrl?: string;
+      fileLink?: string;
       techArchitecture?: string;
       coverImage?: string;
       galleryImages?: string[];
       version?: string;
-      updateContent: string;
+      updateContent?: string;
       updateNote?: string;
+      changelogContent?: string;
+      changelogNote?: string;
     }
-  ) => { success: boolean; message: string; updatedQuestion?: Question };
+  ) => { success: boolean; ok?: boolean; message: string; reason?: string; updatedQuestion?: Question };
   submitAnswer: (ans: Partial<Answer>) => Answer;
   unlockAnswer: (answerId: string, useWithheldOffset?: boolean, paymentMethod?: string) => boolean;
   acceptAnswer: (answerId: string, rating?: number, review?: string) => void;
@@ -400,7 +405,7 @@ interface AppContextType {
   adminResetDailyPoints: () => { success: boolean; message: string };
 
   // Pain Point Tipping & Weekly Payout (痛點打賞支持點數與週結撥款)
-  tipPainPoint: (questionId: string, amount: number, message?: string) => { success: boolean; message: string };
+  tipPainPoint: (questionId: string, amount: number, message?: string, paymentSource?: 'wallet' | 'direct') => { success: boolean; message: string };
   requestTipPayout: (amountPoints: number) => { success: boolean; message: string; netCash?: number };
 
   // Cloud Firestore Persistence & Sync
@@ -1232,38 +1237,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       [...ALL_VIRTUAL_PROPOSALS_SEED, ...MOCK_QUESTIONS].map((vq) => [vq.id, vq])
     );
     const sanitizeQuestion = (rawQ: any): Question => {
-      const seedItem = virtualSeedMap.get(rawQ.id);
-      const q = seedItem
-        ? {
-            ...seedItem,
-            ...rawQ,
-            appName: rawQ.appName || seedItem.appName,
-            title: seedItem.postType === 'vibecoding_app' ? seedItem.title : (rawQ.title || seedItem.title),
-            isSimulated: true,
-            simulatedBatchId: seedItem.simulatedBatchId || SIMULATED_BATCH_ID,
-            coverImage: seedItem.coverImage || rawQ.coverImage,
-            galleryImages: (rawQ.galleryImages && rawQ.galleryImages.length > 0) ? rawQ.galleryImages : seedItem.galleryImages,
-            referencedPainPoint:
-              seedItem.referencedPainPoint && (!rawQ.referencedPainPoint || !rawQ.referencedPainPoint.includes('['))
-                ? seedItem.referencedPainPoint
-                : (rawQ.referencedPainPoint || seedItem.referencedPainPoint),
-            targetGoal: rawQ.targetGoal || seedItem.targetGoal,
-            techArchitecture: rawQ.techArchitecture || seedItem.techArchitecture,
-            demoUrl: rawQ.demoUrl || seedItem.demoUrl,
-            currentVersion: rawQ.currentVersion || seedItem.currentVersion,
-            likes: (typeof rawQ.likes === 'number' && rawQ.likes > 0) ? rawQ.likes : (seedItem.likes || 12),
-            secondedCount: (typeof rawQ.secondedCount === 'number' && rawQ.secondedCount > 0) ? rawQ.secondedCount : (seedItem.secondedCount || seedItem.likes || 12),
-            sameQuestionCount: (typeof rawQ.sameQuestionCount === 'number' && rawQ.sameQuestionCount > 0) ? rawQ.sameQuestionCount : (seedItem.sameQuestionCount || 8),
-            supportPoints: (typeof rawQ.supportPoints === 'number' && rawQ.supportPoints > 0) ? rawQ.supportPoints : seedItem.supportPoints,
-            tippersCount: (typeof rawQ.tippersCount === 'number' && rawQ.tippersCount > 0) ? rawQ.tippersCount : seedItem.tippersCount,
-            supporterCount: (typeof rawQ.supporterCount === 'number' && rawQ.supporterCount > 0) ? rawQ.supporterCount : seedItem.supporterCount,
-            tipsHistory: (Array.isArray(rawQ.tipsHistory) && rawQ.tipsHistory.length > 0) ? rawQ.tipsHistory : seedItem.tipsHistory,
-            answersCount:
-              typeof rawQ.answersCount === 'number' && rawQ.answersCount !== 4 && rawQ.answersCount > (seedItem.answersCount || 0)
-                ? rawQ.answersCount
-                : (seedItem.answersCount ?? 0),
-          }
-        : enrichQuestionWithSimulatedData(rawQ);
+      const seedQ = virtualSeedMap.get(rawQ?.id);
+      const hasUserUpdates =
+        Array.isArray(rawQ?.updateLogs) &&
+        rawQ.updateLogs.length > (seedQ?.updateLogs?.length || 0);
+      const q = {
+        ...rawQ,
+        ...(seedQ && !hasUserUpdates
+          ? {
+              appName: seedQ.appName || rawQ.appName,
+              title: seedQ.title,
+              description: seedQ.description,
+              category: seedQ.category,
+              subcategory: seedQ.subcategory,
+              subcategories: seedQ.subcategories,
+              tags: seedQ.tags,
+              coverImage: seedQ.coverImage || rawQ.coverImage,
+              galleryImages: seedQ.galleryImages || rawQ.galleryImages,
+              demoUrl: seedQ.demoUrl || rawQ.demoUrl,
+              vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+            }
+          : {
+              subcategories: rawQ.subcategories || seedQ?.subcategories,
+            }),
+      };
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (q.views || 0);
       return {
         ...q,
@@ -1312,7 +1309,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               (vq) => !existingIds.has(vq.id) && !deletedIds.has(vq.id)
             );
             return dedupeQuestions(
-              [...validParsed, ...missingVirtual]
+              [...missingVirtual, ...validParsed]
                 .filter((q: any) => isValidQ(q) && !deletedIds.has(q.id) && !isMockQuestionId(q.id, q.authorId) && !isDelistedExpired(q))
                 .map(sanitizeQuestion)
             );
@@ -1338,7 +1335,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const parsedIdMap = new Set(validParsed.map((q: any) => q.id));
           const missingSeeds = combinedSeeds.filter((mq) => !parsedIdMap.has(mq.id) && !deletedIds.has(mq.id));
           return dedupeQuestions(
-            [...validParsed, ...missingSeeds]
+            [...missingSeeds, ...validParsed]
               .filter((q: any) => isValidQ(q) && !deletedIds.has(q.id) && !isDelistedExpired(q))
               .map(sanitizeQuestion)
           );
@@ -2046,6 +2043,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return true;
           })
           .map((q) => {
+            const seedQ = ALL_VIRTUAL_PROPOSALS_SEED.find((sq) => sq.id === q.id) || MOCK_QUESTIONS.find((mq) => mq.id === q.id);
+            const hasUserUpdates =
+              Array.isArray(q?.updateLogs) &&
+              q.updateLogs.length > (seedQ?.updateLogs?.length || 0);
             const highestViews = Math.max(
               typeof q.views === 'number' ? q.views : 0,
               typeof q.viewsCount === 'number' ? q.viewsCount : 0,
@@ -2053,7 +2054,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             );
             return {
               ...q,
-              tags: Array.isArray(q.tags) ? q.tags : [],
+              ...(seedQ && !hasUserUpdates
+                ? {
+                    appName: seedQ.appName || q.appName,
+                    title: seedQ.title,
+                    description: seedQ.description,
+                    category: seedQ.category,
+                    subcategory: seedQ.subcategory,
+                    subcategories: seedQ.subcategories,
+                    tags: seedQ.tags,
+                  }
+                : {
+                    subcategories: q.subcategories || seedQ?.subcategories,
+                  }),
+              tags: Array.isArray(seedQ?.tags || q.tags) ? (seedQ && !hasUserUpdates ? seedQ.tags : q.tags) : [],
               views: highestViews,
               viewsCount: highestViews,
             };
@@ -2331,83 +2345,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return true;
               })
               .map((rawQ) => {
-                const seedItem = ALL_VIRTUAL_PROPOSALS_SEED.find((vq) => vq.id === rawQ.id) || MOCK_QUESTIONS.find((mq) => mq.id === rawQ.id);
-                const q = seedItem
-                  ? {
-                      ...seedItem,
-                      ...rawQ,
-                      appName: rawQ.appName || seedItem.appName,
-                      title: seedItem.postType === 'vibecoding_app' ? seedItem.title : (rawQ.title || seedItem.title),
-                      isSimulated: true,
-                      simulatedBatchId: seedItem.simulatedBatchId || SIMULATED_BATCH_ID,
-                      coverImage: seedItem.coverImage || rawQ.coverImage,
-                      galleryImages: (rawQ.galleryImages && rawQ.galleryImages.length > 0) ? rawQ.galleryImages : seedItem.galleryImages,
-                      referencedPainPoint:
-                        seedItem.referencedPainPoint && (!rawQ.referencedPainPoint || !rawQ.referencedPainPoint.includes('['))
-                          ? seedItem.referencedPainPoint
-                          : (rawQ.referencedPainPoint || seedItem.referencedPainPoint),
-                      targetGoal: rawQ.targetGoal || seedItem.targetGoal,
-                      techArchitecture: rawQ.techArchitecture || seedItem.techArchitecture,
-                      demoUrl: rawQ.demoUrl || seedItem.demoUrl,
-                      currentVersion: rawQ.currentVersion || seedItem.currentVersion,
-                      likes: (typeof rawQ.likes === 'number' && rawQ.likes > 0) ? rawQ.likes : (seedItem.likes || 12),
-                      secondedCount: (typeof rawQ.secondedCount === 'number' && rawQ.secondedCount > 0) ? rawQ.secondedCount : (seedItem.secondedCount || seedItem.likes || 12),
-                      sameQuestionCount: (typeof rawQ.sameQuestionCount === 'number' && rawQ.sameQuestionCount > 0) ? rawQ.sameQuestionCount : (seedItem.sameQuestionCount || 8),
-                      supportPoints: (typeof rawQ.supportPoints === 'number' && rawQ.supportPoints > 0) ? rawQ.supportPoints : seedItem.supportPoints,
-                      tippersCount: (typeof rawQ.tippersCount === 'number' && rawQ.tippersCount > 0) ? rawQ.tippersCount : seedItem.tippersCount,
-                      supporterCount: (typeof rawQ.supporterCount === 'number' && rawQ.supporterCount > 0) ? rawQ.supporterCount : seedItem.supporterCount,
-                      tipsHistory: (Array.isArray(rawQ.tipsHistory) && rawQ.tipsHistory.length > 0) ? rawQ.tipsHistory : seedItem.tipsHistory,
-                      answersCount:
-                        typeof rawQ.answersCount === 'number' && rawQ.answersCount !== 4 && rawQ.answersCount > (seedItem.answersCount || 0)
-                          ? rawQ.answersCount
-                          : (seedItem.answersCount ?? 0),
-                    }
-                  : enrichQuestionWithSimulatedData(rawQ);
+                const seedQ = ALL_VIRTUAL_PROPOSALS_SEED.find((sq) => sq.id === rawQ.id) || MOCK_QUESTIONS.find((mq) => mq.id === rawQ.id);
+                const hasUserUpdates =
+                  Array.isArray(rawQ?.updateLogs) &&
+                  rawQ.updateLogs.length > (seedQ?.updateLogs?.length || 0);
                 const highestViews = Math.max(
-                  typeof q.views === 'number' ? q.views : 0,
-                  typeof q.viewsCount === 'number' ? q.viewsCount : 0,
-                  typeof realClicks[q.id] === 'number' ? realClicks[q.id] : 0
+                  typeof rawQ.views === 'number' ? rawQ.views : 0,
+                  typeof rawQ.viewsCount === 'number' ? rawQ.viewsCount : 0,
+                  typeof realClicks[rawQ.id] === 'number' ? realClicks[rawQ.id] : 0
                 );
                 const finalQ: Question = {
-                  ...q,
-                  tags: Array.isArray(q.tags) ? q.tags : [],
+                  ...rawQ,
+                  ...(seedQ && !hasUserUpdates
+                    ? {
+                        appName: seedQ.appName || rawQ.appName,
+                        title: seedQ.title,
+                        description: seedQ.description,
+                        category: seedQ.category,
+                        subcategory: seedQ.subcategory,
+                        subcategories: seedQ.subcategories,
+                        tags: seedQ.tags,
+                        coverImage: seedQ.coverImage || rawQ.coverImage,
+                        galleryImages: seedQ.galleryImages || rawQ.galleryImages,
+                        demoUrl: seedQ.demoUrl || rawQ.demoUrl,
+                        vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+                      }
+                    : {
+                        subcategories: rawQ.subcategories || seedQ?.subcategories,
+                      }),
                   views: highestViews,
                   viewsCount: highestViews,
                 };
-                if (
-                  seedItem &&
-                  (!rawQ.sameQuestionCount ||
-                    rawQ.answersCount !== finalQ.answersCount ||
-                    rawQ.title !== finalQ.title ||
-                    rawQ.appName !== finalQ.appName ||
-                    !rawQ.isSimulated ||
-                    !rawQ.simulatedBatchId)
-                ) {
-                  questionsNeedingCloudUpdate.push(finalQ);
-                }
                 return finalQ;
               });
             const existingCloudQIds = new Set(filteredQ.map((q) => q.id));
+            const isSeedMigratedV8 = localStorage.getItem(`${STORAGE_KEY_PREFIX}db_seed_v8`) === 'true';
+            const priorityIds = new Set([
+              'q-vp-idea-ideax',
+              'q-vp-vibe-ideax',
+              'q-vp-vibe-nexsight',
+              'q-vp-idea-gosun',
+              'q-vp-vibe-gosun',
+              'q-vp-idea-deeperdigger',
+              'q-vp-vibe-deeperdigger',
+              'q-vp-vibe-aiwolf',
+              'q-vp-vibe-mazewar',
+              'q-vp-idea-pace',
+              'q-vp-vibe-pace',
+              'q-vp-idea-aiyaya',
+              'q-vp-vibe-aiyaya',
+              'q-vp-idea-stallmatch',
+              'q-vp-vibe-stallmatch',
+            ]);
             const missingVirtualForCloud = isPurgedBoot
               ? []
               : ALL_VIRTUAL_PROPOSALS_SEED.filter(
-                  (vq) => !existingCloudQIds.has(vq.id) && !currentDeleted.has(vq.id)
+                  (vq) =>
+                    !currentDeleted.has(vq.id) &&
+                    (!existingCloudQIds.has(vq.id) || (!isSeedMigratedV8 && priorityIds.has(vq.id)))
                 );
             if (connected) {
-              const toSyncQ = [...missingVirtualForCloud, ...questionsNeedingCloudUpdate];
-              if (toSyncQ.length > 0) {
-                syncQuestionsToFirestore(toSyncQ);
-              }
-              if (!isPurgedBoot && missingVirtualForCloud.length > 0) {
+              if (missingVirtualForCloud.length > 0) {
+                syncQuestionsToFirestore(missingVirtualForCloud);
                 syncUsersToFirestore(VIRTUAL_PERSONA_USERS);
               }
+              try {
+                localStorage.setItem(`${STORAGE_KEY_PREFIX}db_seed_v8`, 'true');
+              } catch {}
             }
-            const seenMerged = new Set<string>();
-            const finalMergedQ = [...filteredQ, ...missingVirtualForCloud].filter((q) => {
-              if (!q || !q.id || seenMerged.has(q.id)) return false;
-              seenMerged.add(q.id);
-              return true;
-            });
+            const mergedById = new Map<string, Question>();
+            filteredQ.forEach((q) => mergedById.set(q.id, q));
+            missingVirtualForCloud.forEach((vq) => mergedById.set(vq.id, vq));
+            const finalMergedQ = Array.from(mergedById.values());
             setQuestions(finalMergedQ);
             try {
               localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(finalMergedQ));
@@ -2451,7 +2460,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   };
                   finalAns.push(mergedSimAns);
                   const existingCloudA = cloudAnsMap.get(rawA.id);
-                  if (!existingCloudA || existingCloudA.content !== mergedSimAns.content || !existingCloudA.isSimulated) {
+                  if (!existingCloudA || existingCloudA.freePreview !== mergedSimAns.freePreview || !existingCloudA.isSimulated) {
                     answersToSync.push(mergedSimAns);
                   }
                 } else {
@@ -2535,52 +2544,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               }
               return true;
             })
-            .map((rawQ) => {
-              const seedItem = ALL_VIRTUAL_PROPOSALS_SEED.find((vq) => vq.id === rawQ.id) || MOCK_QUESTIONS.find((mq) => mq.id === rawQ.id);
-              const merged = seedItem
-                ? {
-                    ...seedItem,
-                    ...rawQ,
-                    appName: rawQ.appName || seedItem.appName,
-                    title: seedItem.postType === 'vibecoding_app' ? seedItem.title : (rawQ.title || seedItem.title),
-                    isSimulated: true,
-                    simulatedBatchId: seedItem.simulatedBatchId || SIMULATED_BATCH_ID,
-                    coverImage: seedItem.coverImage || rawQ.coverImage,
-                    galleryImages: (rawQ.galleryImages && rawQ.galleryImages.length > 0) ? rawQ.galleryImages : seedItem.galleryImages,
-                    referencedPainPoint:
-                      seedItem.referencedPainPoint && (!rawQ.referencedPainPoint || !rawQ.referencedPainPoint.includes('['))
-                        ? seedItem.referencedPainPoint
-                        : (rawQ.referencedPainPoint || seedItem.referencedPainPoint),
-                    targetGoal: rawQ.targetGoal || seedItem.targetGoal,
-                    techArchitecture: rawQ.techArchitecture || seedItem.techArchitecture,
-                    demoUrl: rawQ.demoUrl || seedItem.demoUrl,
-                    currentVersion: rawQ.currentVersion || seedItem.currentVersion,
-                    likes: (typeof rawQ.likes === 'number' && rawQ.likes > 0) ? rawQ.likes : (seedItem.likes || 12),
-                    secondedCount: (typeof rawQ.secondedCount === 'number' && rawQ.secondedCount > 0) ? rawQ.secondedCount : (seedItem.secondedCount || seedItem.likes || 12),
-                    sameQuestionCount: (typeof rawQ.sameQuestionCount === 'number' && rawQ.sameQuestionCount > 0) ? rawQ.sameQuestionCount : (seedItem.sameQuestionCount || 8),
-                    supportPoints: (typeof rawQ.supportPoints === 'number' && rawQ.supportPoints > 0) ? rawQ.supportPoints : seedItem.supportPoints,
-                    tippersCount: (typeof rawQ.tippersCount === 'number' && rawQ.tippersCount > 0) ? rawQ.tippersCount : seedItem.tippersCount,
-                    supporterCount: (typeof rawQ.supporterCount === 'number' && rawQ.supporterCount > 0) ? rawQ.supporterCount : seedItem.supporterCount,
-                    tipsHistory: (Array.isArray(rawQ.tipsHistory) && rawQ.tipsHistory.length > 0) ? rawQ.tipsHistory : seedItem.tipsHistory,
-                    answersCount:
-                      typeof rawQ.answersCount === 'number' && rawQ.answersCount !== 4 && rawQ.answersCount > (seedItem.answersCount || 0)
-                        ? rawQ.answersCount
-                        : (seedItem.answersCount ?? 0),
-                  }
-                : enrichQuestionWithSimulatedData(rawQ);
-              return {
-                ...merged,
-                tags: Array.isArray(merged.tags) ? merged.tags : [],
-              };
-            });
-          const validIdSet = new Set(valid.map((q) => q.id));
-          const missingVirtual = isPurgedSnap
-            ? []
-            : ALL_VIRTUAL_PROPOSALS_SEED.filter(
-                (vq) => !validIdSet.has(vq.id) && !currentDeleted.has(vq.id)
-              );
+            .map((rawQ) => ({
+              ...rawQ,
+              tags: Array.isArray(rawQ.tags) ? rawQ.tags : [],
+            }));
           const seenValid = new Set<string>();
-          const finalValid = [...valid, ...missingVirtual].filter((q) => {
+          const finalValid = valid.filter((q) => {
             if (!q || !q.id || seenValid.has(q.id)) return false;
             seenValid.add(q.id);
             return true;
@@ -2703,9 +2672,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let active = true;
     loadUserInteractionsFromFirestore(currentUser.id).then((cloudInteractions) => {
       if (!active || !cloudInteractions) return;
-      if (Array.isArray(cloudInteractions.questionIds)) {
+      const cloudBmIds = (cloudInteractions as any).questionIds || cloudInteractions.bookmarkedQuestionIds;
+      if (Array.isArray(cloudBmIds)) {
         setBookmarkedQuestionIds((prev) => {
-          const merged = Array.from(new Set([...prev, ...cloudInteractions.questionIds!]));
+          const merged = Array.from(new Set([...prev, ...cloudBmIds]));
           try {
             localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(merged));
           } catch {}
@@ -3614,24 +3584,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // 提痛點獲得讀者打賞支持（存在點數收支 > 應收帳款，每週結算一次）
-  const tipPainPoint = (questionId: string, amount: number, message?: string): { success: boolean; message: string } => {
-    if (!currentUser || currentUser.id === 'guest') {
-      return { success: false, message: '請先登入帳號後再進行打賞！' };
+  const tipPainPoint = (questionId: string, amount: number, message?: string, paymentSource: 'wallet' | 'direct' = 'wallet'): { success: boolean; message: string } => {
+    if (!currentUser || currentUser.id === 'guest' || currentUser.id === 'user-guest') {
+      return { success: false, message: '請先登入帳號後再進行支持！' };
     }
     const cleanAmount = Math.max(0, Math.floor(amount));
     if (cleanAmount <= 0) {
-      return { success: false, message: '打賞點數必須大於 0！' };
+      return { success: false, message: '支持數額必須大於 0！' };
     }
-    if ((currentUser.balance || 0) < cleanAmount) {
-      return { success: false, message: `點數餘額不足！您目前有 ${(currentUser.balance || 0).toLocaleString()} 點，需 ${cleanAmount.toLocaleString()} 點。` };
+    const effectiveBalance = isRaceMode
+      ? Math.max(currentUser.balance || 0, 10000)
+      : (currentUser.balance || 0);
+    if ((isRaceMode || paymentSource === 'wallet') && effectiveBalance < cleanAmount) {
+      const unit = isRaceMode ? '創星幣' : '點';
+      return { success: false, message: `${unit}餘額不足！您目前有 ${effectiveBalance.toLocaleString()} ${unit}，需 ${cleanAmount.toLocaleString()} ${unit}。` };
     }
 
     const q = questions.find((item) => item.id === questionId);
     if (!q) {
-      return { success: false, message: '找不到目標痛點題目！' };
+      return { success: false, message: '找不到目標題目或作品！' };
     }
-    if (q.authorId === currentUser.id) {
-      return { success: false, message: '無法打賞給自己發布的痛點！' };
+    if (!isRaceMode && q.authorId === currentUser.id) {
+      return { success: false, message: '正式模式下無法打賞給自己發布的貼文！' };
     }
 
     const tipId = `tip-${Date.now()}`;
@@ -3645,29 +3619,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
-    // 1. 扣除打賞者（讀者）點數餘額
-    const newReaderBalance = Math.max(0, (currentUser.balance || 0) - cleanAmount);
+    // 1. 扣除打賞者（讀者）點數餘額（若為線上支付則不扣點數餘額）
+    const newReaderBalance = (!isRaceMode && paymentSource === 'direct')
+      ? (currentUser.balance || 0)
+      : Math.max(0, effectiveBalance - cleanAmount);
     const updatedReader = { ...currentUser, balance: newReaderBalance };
     setCurrentUser(updatedReader);
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedReader));
     } catch (e) {}
 
-    // 2. 更新問題題目上的打賞總額與明細
-    setQuestions((prev) =>
-      prev.map((item) => {
+    // 2. 更新問題題目上的打賞總額與明細並同步至 Firestore
+    setQuestions((prev) => {
+      let syncedQ: Question | null = null;
+      const nextList = prev.map((item) => {
         if (item.id === questionId) {
           const prevHistory = item.tipsHistory || [];
-          return {
+          const updatedItem: Question = {
             ...item,
             supportPoints: (item.supportPoints || 0) + cleanAmount,
             tippersCount: (item.tippersCount || prevHistory.length) + 1,
             tipsHistory: [tipRecord, ...prevHistory],
           };
+          syncedQ = updatedItem;
+          return updatedItem;
         }
         return item;
-      })
-    );
+      });
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}questions`, JSON.stringify(nextList));
+      } catch {}
+      if (syncedQ) {
+        syncQuestionToFirestore(syncedQ);
+      }
+      return nextList;
+    });
+
+    // 同步將支持過的作品/痛點收錄至「我的按讚收藏」
+    setBookmarkedQuestionIds((prev) => {
+      if (!prev.includes(questionId)) {
+        const nextBm = [...prev, questionId];
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
+        } catch {}
+        if (currentUser?.id && currentUser.id !== 'user-guest') {
+          syncBookmarksToFirestore(currentUser.id, nextBm);
+        }
+        return nextBm;
+      }
+      return prev;
+    });
 
     // 3. 撥入提案者（作者）的【點數收支 > 應收帳款】（而非直接存為錢包可用點數）
     const author = availableUsers.find((u) => u.id === q.authorId);
@@ -4158,6 +4159,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       description: newQ.description || '',
       category: finalCategory,
       subcategory: finalSubcategory,
+      subcategories: newQ.subcategories,
       tags: finalTags,
       level: finalLevel,
       bounty: finalBounty,
@@ -4285,33 +4287,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       appName?: string;
       title?: string;
       description?: string;
+      subcategory?: string;
+      subcategories?: string[];
       targetGoal?: string;
       referencedPainPoint?: string;
       tags?: string[];
       demoUrl?: string;
+      fileLink?: string;
       techArchitecture?: string;
       coverImage?: string;
       galleryImages?: string[];
       version?: string;
-      updateContent: string;
+      updateContent?: string;
       updateNote?: string;
+      changelogContent?: string;
+      changelogNote?: string;
     }
-  ): { success: boolean; message: string; updatedQuestion?: Question } => {
-    if (!params.updateContent || !params.updateContent.trim()) {
-      return { success: false, message: '「更新內容」為每次更新重新發布前之必填項目，未填無法發布！' };
-    }
+  ): { success: boolean; ok: boolean; message: string; reason?: string; updatedQuestion?: Question } => {
+    const resolvedContent = (params.updateContent || params.changelogContent || '').trim() || '更新內容與資訊';
+    const resolvedNote = (params.updateNote || params.changelogNote || '').trim() || undefined;
 
     const targetIndex = questions.findIndex((q) => q.id === questionId);
     if (targetIndex === -1) {
-      return { success: false, message: '找不到目標提案項目！' };
+      return { success: false, ok: false, message: '找不到目標提案項目', reason: '找不到目標提案項目' };
     }
 
     const currentQ = questions[targetIndex];
-    // 權限檢查：僅提案者本人或管理員可更新
-    const isAuthor = currentQ.authorId === currentUser.id;
-    const isAdmin = currentUser.role === 'admin';
-    if (!isAuthor && !isAdmin) {
-      return { success: false, message: '您並非此提案作者，無權限更新內容！' };
+    // 權限檢查：僅該提案或內容的發布者本人可編輯更新，其餘人僅能於頁尾瀏覽版本更新紀錄
+    const isAuthor = Boolean(
+      currentUser?.id &&
+      currentUser.id !== 'user-guest' &&
+      currentQ.authorId === currentUser.id
+    );
+    if (!isAuthor) {
+      const msg = '此功能只限該提案或內容的發布者編輯，其他人只能於頁尾查看版本更新紀錄';
+      return { success: false, ok: false, message: msg, reason: msg };
     }
 
     const now = new Date();
@@ -4321,18 +4331,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (params.appName !== undefined && params.appName !== currentQ.appName) changedFields.push('作品名稱');
     if (params.title && params.title !== currentQ.title) changedFields.push('標題');
     if (params.description && params.description !== currentQ.description) changedFields.push('內容說明');
+    if (params.subcategories !== undefined) changedFields.push('分類');
     if (params.targetGoal !== undefined && params.targetGoal !== currentQ.targetGoal) changedFields.push('目標');
-    if (params.demoUrl !== undefined && params.demoUrl !== currentQ.demoUrl) changedFields.push('成果網址');
+    if (params.demoUrl !== undefined && params.demoUrl !== currentQ.demoUrl) changedFields.push('網址');
     if (params.techArchitecture !== undefined && params.techArchitecture !== currentQ.techArchitecture) changedFields.push('技術架構');
     if (params.version && params.version !== currentQ.currentVersion) changedFields.push('版本號');
-    if (changedFields.length === 0) changedFields.push('提案內容更新');
+    if (changedFields.length === 0) changedFields.push('內容更新');
 
     const newLog: ProposalUpdateLog = {
       id: `log-${Date.now()}`,
       timestamp: formattedTime,
       version: params.version?.trim() || undefined,
-      content: params.updateContent.trim(),
-      note: params.updateNote?.trim() || undefined,
+      content: resolvedContent,
+      note: resolvedNote,
       authorId: currentUser.id,
       authorName: currentUser.name,
       authorAvatar: currentUser.avatar,
@@ -4344,13 +4355,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       appName: params.appName !== undefined ? params.appName : currentQ.appName,
       title: params.title !== undefined ? params.title : currentQ.title,
       description: params.description !== undefined ? params.description : currentQ.description,
+      subcategory: params.subcategory !== undefined ? params.subcategory : currentQ.subcategory,
+      subcategories: params.subcategories !== undefined ? params.subcategories : currentQ.subcategories,
       targetGoal: params.targetGoal !== undefined ? params.targetGoal : currentQ.targetGoal,
       referencedPainPoint: params.referencedPainPoint !== undefined ? params.referencedPainPoint : currentQ.referencedPainPoint,
       tags: params.tags !== undefined ? params.tags : currentQ.tags,
       demoUrl: params.demoUrl !== undefined ? params.demoUrl : currentQ.demoUrl,
+      fileLink: params.fileLink !== undefined ? params.fileLink : currentQ.fileLink,
       techArchitecture: params.techArchitecture !== undefined ? params.techArchitecture : currentQ.techArchitecture,
       coverImage: params.coverImage !== undefined ? params.coverImage : currentQ.coverImage,
       galleryImages: params.galleryImages !== undefined ? params.galleryImages : currentQ.galleryImages,
+      vibeCodingData: currentQ.vibeCodingData
+        ? {
+            ...currentQ.vibeCodingData,
+            appName: params.appName !== undefined ? params.appName : currentQ.vibeCodingData.appName,
+            demoUrl: params.demoUrl !== undefined ? params.demoUrl : currentQ.vibeCodingData.demoUrl,
+            githubUrl: params.fileLink !== undefined ? params.fileLink : currentQ.vibeCodingData.githubUrl,
+            coverImageUrl: params.coverImage !== undefined ? params.coverImage : currentQ.vibeCodingData.coverImageUrl,
+            screenshots: params.galleryImages !== undefined ? params.galleryImages : currentQ.vibeCodingData.screenshots,
+          }
+        : currentQ.vibeCodingData,
       currentVersion: params.version?.trim() || currentQ.currentVersion,
       updateLogs: [newLog, ...(currentQ.updateLogs || [])],
     };
@@ -4369,11 +4393,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const typeLabel = isApp ? '軟體程式' : '解方提案';
     showCenterToast(
       `${typeLabel}更新發布成功！`,
-      `已發布${params.version ? `【${params.version}】` : ''}更新日誌並同步更新提案內容`,
+      `已發布${params.version ? `【${params.version}】` : ''}更新紀錄並同步更新內容`,
       { type: 'success', duration: 3000 }
     );
 
-    return { success: true, message: '更新發布成功', updatedQuestion: updatedQ };
+    return { success: true, ok: true, message: '更新發布成功', updatedQuestion: updatedQ };
   };
 
   // Action: Submit answer (當回答會自動切換至解答者身份，支持 討論留言 vs 專業方案)
@@ -7141,11 +7165,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return nextList;
     });
 
+    // 點擊 +1 附議時，同步收錄至「我的按讚收藏」
+    if (nextState) {
+      setBookmarkedQuestionIds((prev) => {
+        if (!prev.includes(questionId)) {
+          const nextBm = [...prev, questionId];
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
+          } catch {}
+          if (currentUser?.id && currentUser.id !== 'user-guest') {
+            syncBookmarksToFirestore(currentUser.id, nextBm);
+          }
+          return nextBm;
+        }
+        return prev;
+      });
+
+      if (targetQ) {
+        setNotifications((prev) => [
+          {
+            id: `notif-sec-${Date.now()}`,
+            title: '已附議並收錄至我的按讚收藏',
+            message: `您已對「${targetQ.title}」完成 +1 附議，並已同步收錄至「我的按讚收藏」清單以便日後隨時查看。`,
+            type: 'system',
+            createdAt: '剛剛',
+            read: false,
+            linkQuestionId: questionId,
+          },
+          ...prev,
+        ]);
+      }
+    }
+
     return { isSeconded: nextState, count: newCount };
   };
 
   // 供後端 API `/api/competition/proposals/:id/like` 成功回傳後，直接同步最新按讚狀態與數量至全域 questions 與 Firestore
   const setQuestionLikeState = (questionId: string, liked: boolean, likeCount: number) => {
+    setLikedQuestionIds((prev) => {
+      const updated = liked
+        ? Array.from(new Set([...prev, questionId]))
+        : prev.filter((id) => id !== questionId);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}liked_questions`, JSON.stringify(updated));
+      } catch {}
+      if (currentUser?.id && currentUser.id !== 'user-guest') {
+        syncUserInteractionsToFirestore(currentUser.id, { likedQuestionIds: updated });
+      }
+      return updated;
+    });
+
     setSecondedQuestionIds((prev) => {
       const updated = liked
         ? Array.from(new Set([...prev, questionId]))
@@ -7158,6 +7227,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return updated;
     });
+
+    if (liked) {
+      setBookmarkedQuestionIds((prev) => {
+        if (!prev.includes(questionId)) {
+          const nextBm = [...prev, questionId];
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
+          } catch {}
+          if (currentUser?.id && currentUser.id !== 'user-guest') {
+            syncBookmarksToFirestore(currentUser.id, nextBm);
+          }
+          return nextBm;
+        }
+        return prev;
+      });
+    }
 
     setQuestions((prev) => {
       let syncedQ: Question | null = null;
@@ -7184,12 +7269,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const isQuestionSeconded = (questionId: string): boolean => {
-    return secondedQuestionIds.includes(questionId);
+    return secondedQuestionIds.includes(questionId) || sameQuestionIds.includes(questionId);
   };
 
   const getQuestionSecondCount = (questionId: string): number => {
     const q = questions.find((item) => item.id === questionId);
-    return q?.secondedCount ?? q?.likes ?? 0;
+    return Math.max(q?.secondedCount ?? 0, q?.sameQuestionCount ?? 0, q?.likes ?? 0);
   };
 
   // 2. 創點子提問同問 (舉手)（同步寫入 Firestore 資料庫）
@@ -7235,6 +7320,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return nextList;
     });
+
+    // 點擊同問時，同步收錄至「我的按讚收藏」
+    if (nextState) {
+      setBookmarkedQuestionIds((prev) => {
+        if (!prev.includes(questionId)) {
+          const nextBm = [...prev, questionId];
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
+          } catch {}
+          if (currentUser?.id && currentUser.id !== 'user-guest') {
+            syncBookmarksToFirestore(currentUser.id, nextBm);
+          }
+          return nextBm;
+        }
+        return prev;
+      });
+
+      if (targetQ) {
+        setNotifications((prev) => [
+          {
+            id: `notif-same-${Date.now()}`,
+            title: '已同問並收錄至我的按讚收藏',
+            message: `您已對「${targetQ.title}」發起同問，並已同步收錄至「我的按讚收藏」清單以便日後隨時查看。`,
+            type: 'system',
+            createdAt: '剛剛',
+            read: false,
+            linkQuestionId: questionId,
+          },
+          ...prev,
+        ]);
+      }
+    }
 
     return { isSameQuestion: nextState, count: newCount };
   };
@@ -7292,6 +7409,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return nextList;
     });
 
+    if (nextState && targetA?.questionId) {
+      setBookmarkedQuestionIds((prev) => {
+        if (!prev.includes(targetA.questionId)) {
+          const nextBm = [...prev, targetA.questionId];
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
+          } catch {}
+          if (currentUser?.id && currentUser.id !== 'user-guest') {
+            syncBookmarksToFirestore(currentUser.id, nextBm);
+          }
+          return nextBm;
+        }
+        return prev;
+      });
+    }
+
     return { isLiked: nextState, count: newCount };
   };
 
@@ -7348,6 +7481,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return nextList;
     });
+
+    // 點擊按讚時，同步收錄至「我的按讚收藏」
+    if (nextState) {
+      setBookmarkedQuestionIds((prev) => {
+        if (!prev.includes(questionId)) {
+          const nextBm = [...prev, questionId];
+          try {
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(nextBm));
+          } catch {}
+          if (currentUser?.id && currentUser.id !== 'user-guest') {
+            syncBookmarksToFirestore(currentUser.id, nextBm);
+          }
+          return nextBm;
+        }
+        return prev;
+      });
+
+      if (targetQ) {
+        setNotifications((prev) => [
+          {
+            id: `notif-like-${Date.now()}`,
+            title: '已按讚並收錄至我的按讚收藏',
+            message: `您已為「${targetQ.title}」按讚，並已同步收錄至「我的按讚收藏」清單以便日後隨時查看。`,
+            type: 'system',
+            createdAt: '剛剛',
+            read: false,
+            linkQuestionId: questionId,
+          },
+          ...prev,
+        ]);
+      }
+    }
 
     return { isLiked: nextState, count: newCount };
   };
@@ -8184,7 +8349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (Array.isArray(q.tipsHistory) && q.tipsHistory.some((t) => t.isSimulated || t.id.startsWith('tip-sim-'))) {
             const realTips = q.tipsHistory.filter((t) => !t.isSimulated && !t.id.startsWith('tip-sim-'));
             const realPts = realTips.reduce((sum, t) => sum + (t.amount || 0), 0);
-            const realSupporters = new Set(realTips.map((t) => t.tipperId)).size;
+            const realSupporters = new Set(realTips.map((t) => (t as any).tipperId || t.userId)).size;
             return {
               ...q,
               tipsHistory: realTips,

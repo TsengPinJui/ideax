@@ -99,11 +99,20 @@ export async function testFirestoreConnection(): Promise<boolean> {
 // =========================================================================
 
 export async function syncQuestionToFirestore(question: Question): Promise<void> {
-  if (!question || !question.id || isQuotaExhausted) return;
+  if (!question || !question.id) return;
+  const cleanQ = JSON.parse(JSON.stringify(question));
+  const payload = { ...cleanQ, updatedAt: new Date().toISOString() };
+  try {
+    await fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(question.id)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: payload, merge: true }),
+    });
+  } catch {}
+  if (isQuotaExhausted) return;
   try {
     const qRef = doc(db, 'questions', question.id);
-    const cleanQ = JSON.parse(JSON.stringify(question));
-    await setDoc(qRef, { ...cleanQ, updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(qRef, payload, { merge: true });
   } catch (err) {
     handleFirestoreError(`Failed to sync question ${question.id}`, err);
   }
@@ -128,35 +137,65 @@ export async function incrementQuestionViewInFirestore(questionId: string, amoun
 }
 
 export async function deleteQuestionFromFirestore(questionId: string): Promise<void> {
-  if (!questionId || isQuotaExhausted) return;
+  if (!questionId) return;
+  try {
+    await fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(questionId)}`, {
+      method: 'DELETE',
+    });
+  } catch {}
+  if (isQuotaExhausted) return;
   try {
     const qRef = doc(db, 'questions', questionId);
     await deleteDoc(qRef);
+    try {
+      await deleteDoc(doc(db, 'competition_proposals', questionId));
+    } catch {}
   } catch (err) {
     handleFirestoreError(`Failed to delete question ${questionId}`, err);
   }
 }
 
 export async function deleteQuestionsFromFirestore(questionIds: string[]): Promise<void> {
-  if (!questionIds || questionIds.length === 0 || isQuotaExhausted) return;
+  if (!questionIds || questionIds.length === 0) return;
   try {
-    const batch = writeBatch(db);
-    questionIds.forEach((id) => {
-      const qRef = doc(db, 'questions', id);
-      batch.delete(qRef);
-    });
-    await batch.commit();
+    await Promise.all(
+      questionIds.map((id) =>
+        fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {})
+      )
+    );
+  } catch {}
+  if (isQuotaExhausted) return;
+  try {
+    const CHUNK_SIZE = 150;
+    for (let i = 0; i < questionIds.length; i += CHUNK_SIZE) {
+      const chunk = questionIds.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach((id) => {
+        batch.delete(doc(db, 'questions', id));
+        batch.delete(doc(db, 'competition_proposals', id));
+      });
+      await batch.commit();
+    }
   } catch (err) {
     handleFirestoreError(`Failed to batch delete questions`, err);
   }
 }
 
 export async function deleteQuestionAndRelatedDataFromFirestore(questionId: string): Promise<void> {
-  if (!questionId || isQuotaExhausted) return;
+  if (!questionId) return;
   try {
-    // 1. Delete question doc directly and immediately
+    await fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(questionId)}`, {
+      method: 'DELETE',
+    });
+  } catch {}
+  if (isQuotaExhausted) return;
+  try {
+    // 1. Delete question doc and corresponding competition_proposals doc directly and immediately
     const qRef = doc(db, 'questions', questionId);
     await deleteDoc(qRef);
+    try {
+      await deleteDoc(doc(db, 'competition_proposals', questionId));
+    } catch {}
 
     // 2. Find and delete related answers
     try {
@@ -366,14 +405,18 @@ export function subscribeToUsers(onUpdate: (users: User[]) => void): Unsubscribe
 export async function syncQuestionsToFirestore(questions: Question[]): Promise<void> {
   if (!questions || questions.length === 0 || isQuotaExhausted) return;
   try {
-    const batch = writeBatch(db);
-    questions.forEach((q) => {
-      if (!q.id) return;
-      const qRef = doc(db, 'questions', q.id);
-      const cleanQ = JSON.parse(JSON.stringify(q));
-      batch.set(qRef, { ...cleanQ, updatedAt: new Date().toISOString() }, { merge: true });
-    });
-    await batch.commit();
+    const CHUNK_SIZE = 150;
+    for (let i = 0; i < questions.length; i += CHUNK_SIZE) {
+      const chunk = questions.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach((q) => {
+        if (!q.id) return;
+        const qRef = doc(db, 'questions', q.id);
+        const cleanQ = JSON.parse(JSON.stringify(q));
+        batch.set(qRef, { ...cleanQ, updatedAt: new Date().toISOString() }, { merge: true });
+      });
+      await batch.commit();
+    }
   } catch (err) {
     handleFirestoreError('Failed to batch sync questions', err);
   }
@@ -393,14 +436,18 @@ export async function syncAnswerToFirestore(answer: Answer): Promise<void> {
 export async function syncAnswersToFirestore(answers: Answer[]): Promise<void> {
   if (!answers || answers.length === 0 || isQuotaExhausted) return;
   try {
-    const batch = writeBatch(db);
-    answers.forEach((ans) => {
-      if (!ans.id) return;
-      const aRef = doc(db, 'answers', ans.id);
-      const cleanA = JSON.parse(JSON.stringify(ans));
-      batch.set(aRef, { ...cleanA, updatedAt: new Date().toISOString() }, { merge: true });
-    });
-    await batch.commit();
+    const CHUNK_SIZE = 150;
+    for (let i = 0; i < answers.length; i += CHUNK_SIZE) {
+      const chunk = answers.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach((ans) => {
+        if (!ans.id) return;
+        const aRef = doc(db, 'answers', ans.id);
+        const cleanA = JSON.parse(JSON.stringify(ans));
+        batch.set(aRef, { ...cleanA, updatedAt: new Date().toISOString() }, { merge: true });
+      });
+      await batch.commit();
+    }
   } catch (err) {
     handleFirestoreError('Failed to batch sync answers', err);
   }
@@ -1086,7 +1133,22 @@ export async function loadAllDataFromFirestore(): Promise<{
 
     return result;
   } catch (err) {
-    handleFirestoreError('Could not load data from Firestore (falling back to cache)', err);
+    handleFirestoreError('Could not load data from Firestore (falling back to server database mirror)', err);
+    try {
+      const resp = await fetch('/api/competition/db-mirror');
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.success) {
+          return {
+            users: Array.isArray(data.users) ? data.users : undefined,
+            questions: Array.isArray(data.questions)
+              ? data.questions.filter((q: any) => Boolean(q && typeof q.id === 'string' && q.id.trim() && typeof q.title === 'string' && q.title.trim()))
+              : undefined,
+            answers: Array.isArray(data.answers) ? data.answers : undefined,
+          };
+        }
+      }
+    } catch {}
     return null;
   }
 }

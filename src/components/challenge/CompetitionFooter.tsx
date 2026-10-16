@@ -110,7 +110,7 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
                   onClick={() => onNavigate('ambassador')}
                   className="text-left hover:text-amber-400 transition-colors cursor-pointer"
                 >
-                  • 校園推廣大使
+                  • 推廣大使
                 </button>
                 {onOpenGuide && (
                   <button

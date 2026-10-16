@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Category, Question } from '../types';
 import { isSimulatedQuestion, SIMULATED_BATCH_ID } from '../data/virtualProposalsSeed';
+import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
 import {
   HelpCircle,
   Search,
@@ -680,6 +681,41 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                           </span>
                         )}
 
+                        {/* 發布類型與對應回饋機制標籤 */}
+                        {(() => {
+                          const isSoftware =
+                            q.postType === 'vibecoding_app' ||
+                            q.category === '網站程式' ||
+                            q.specialZone === 'vibecoding';
+                          const isProposal = q.postType === 'innovation_proposal';
+                          const isPain = q.postType === 'pain_point' || isPainPointQuestion(q);
+                          const isL0 = isL0DiscussionQuestion(q);
+                          const typeLabel = isSoftware
+                            ? '💻 軟體刊登'
+                            : isProposal
+                            ? '🚀 創新提案'
+                            : isPain
+                            ? '🔥 痛點'
+                            : isL0
+                            ? '💬 L0 討論'
+                            : '❓ 問題類型';
+                          const feedbackLabel = isSoftware || isProposal
+                            ? '⭐ 收藏 + ❤️ Like'
+                            : isL0
+                            ? '⭐ 收藏 + 👍 按讚'
+                            : '⭐ 收藏 + 🔥 +1 附議';
+                          return (
+                            <>
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                {typeLabel}
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-50 text-stone-600 border border-stone-200">
+                                回饋：{feedbackLabel}
+                              </span>
+                            </>
+                          );
+                        })()}
+
                         {/* 真實 / 模擬來源區隔標籤 */}
                         {isSimulatedQuestion(q) ? (
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
@@ -714,9 +750,13 @@ export const AdminQuestionsManagementTab: React.FC = () => {
                         <span>•</span>
                         <span>{q.answersCount || 0} 則討論/方案</span>
                         <span>•</span>
-                        <span>同問 {q.sameQuestionCount ?? 0}</span>
-                        <span>•</span>
-                        <span>按讚 {q.likes ?? q.secondedCount ?? 0}</span>
+                        <span>
+                          {q.postType === 'vibecoding_app' || q.category === '網站程式' || q.specialZone === 'vibecoding' || q.postType === 'innovation_proposal'
+                            ? `❤️ Like ${q.likes ?? 0}`
+                            : isL0DiscussionQuestion(q)
+                            ? `👍 按讚 ${q.likes ?? 0}`
+                            : `🔥 +1 附議 ${(q.secondedCount ?? 0) + (q.sameQuestionCount ?? 0)}`}
+                        </span>
                         <span>•</span>
                         <span>{q.views || 0} 次瀏覽</span>
                       </div>

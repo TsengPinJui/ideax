@@ -1,506 +1,463 @@
 import React, { useState, useMemo } from 'react';
-import { Question } from '../types';
+import { Question, MarketViewMode } from '../types';
 import { useApp } from '../context/AppContext';
-import { shareOrCopyUrl } from '../utils/shareUtils';
-import { isVibeCodingAppQuestion } from '../utils/questionUtils';
-import { findReferencedPainPoint } from '../utils/painPointLinking';
+import { QuestionCard } from './QuestionCard';
 import {
-  Terminal,
-  Sparkles,
-  ExternalLink,
-  Code2,
-  Bookmark,
-  Share2,
-  ThumbsUp,
-  Coins,
+  Search,
+  Plus,
+  Heart,
+  Globe,
+  Cpu,
+  Gamepad2,
+  Workflow,
+  Puzzle,
+  LayoutGrid,
   Pin,
   X,
-  Search,
-  Layers,
-  Flame,
-  Plus,
-  Image as ImageIcon,
-  CheckCircle2,
-  Eye,
-  MessageCircle,
-  FolderGit2,
-  Cpu,
-  Trophy,
-  Tag,
   HelpCircle,
   ChevronDown,
   ChevronUp,
+  Square,
+  List,
+  Terminal,
 } from 'lucide-react';
 
 interface VibeCodingExhibitionViewProps {
-  onSelectApp: (app: Question) => void;
-  onOpenCreateApp: () => void;
-  onCloseZone: () => void;
-  onTogglePin: () => void;
-  isPinned: boolean;
+  questions?: Question[];
+  onSelectQuestion?: (q: Question) => void;
+  onSelectApp?: (q: Question) => void;
+  onOpenCreateVibeCoding?: () => void;
+  onOpenCreateApp?: () => void;
+  onCloseZone?: () => void;
+  onTogglePin?: () => void;
+  isPinned?: boolean;
 }
 
+const VIBE_CATEGORIES = [
+  { id: 'all', label: '全部分類', icon: LayoutGrid },
+  { id: '網站程式', label: '網站程式', icon: Globe },
+  { id: 'AI工具', label: 'AI工具', icon: Cpu },
+  { id: '小遊戲', label: '小遊戲', icon: Gamepad2 },
+  { id: '自動化', label: '自動化', icon: Workflow },
+  { id: '擴充功能', label: '擴充功能', icon: Puzzle },
+];
+
+export const normalizeVibeCategory = (raw: string): string => {
+  const s = (raw || '').trim();
+  if (s === '網站程式' || s === '網站功能' || s === 'Web 應用程式' || s === 'Web應用') return '網站程式';
+  if (s === 'AI工具' || s === 'AI 智慧工具' || s === 'AI Agent 助手') return 'AI工具';
+  if (s === '小遊戲' || s === '創新互動與遊戲') return '小遊戲';
+  if (s === '自動化' || s === '自動化工作流' || s === '自動化流程' || s === '產業自動化流程') return '自動化';
+  if (s === '擴充功能' || s === '瀏覽器擴充功能' || s === '效率工具') return '擴充功能';
+  return s;
+};
+
+export const getQuestionVibeCategories = (q: Question): string[] => {
+  const rawList =
+    Array.isArray(q.subcategories) && q.subcategories.length > 0
+      ? q.subcategories
+      : q.subcategory
+      ? [q.subcategory]
+      : ['網站程式'];
+  const normalized = Array.from(
+    new Set(
+      rawList
+        .map(normalizeVibeCategory)
+        .filter((c) => ['網站程式', 'AI工具', '小遊戲', '自動化', '擴充功能'].includes(c))
+    )
+  );
+  return normalized.length > 0 ? normalized.slice(0, 3) : ['網站程式'];
+};
+
 export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> = ({
+  questions: propQuestions,
+  onSelectQuestion,
   onSelectApp,
+  onOpenCreateVibeCoding,
   onOpenCreateApp,
   onCloseZone,
   onTogglePin,
-  isPinned,
+  isPinned = false,
 }) => {
-  const { questions, answers, toggleBookmarkQuestion, bookmarkedQuestionIds } = useApp();
+  const {
+    questions: contextQuestions,
+    answers,
+    isQuestionBookmarked,
+    isQuestionSeconded,
+    isQuestionLiked,
+    isSameQuestionActive,
+  } = useApp();
+  const questions = propQuestions || contextQuestions || [];
+  const handleSelect = onSelectApp || onSelectQuestion || (() => {});
+  const handleOpenCreate = onOpenCreateApp || onOpenCreateVibeCoding || (() => {});
 
-  const [selectedSubCat, setSelectedSubCat] = useState<string>('全部');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'newest' | 'highest_tips' | 'most_liked' | 'most_views'>('newest');
   const [showZoneHelp, setShowZoneHelp] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'tipped' | 'liked' | 'discussions'>('popular');
+  const [viewMode, setViewMode] = useState<MarketViewMode>('large');
 
-  // Filter VibeCoding exhibition items - 僅展示軟體網站與 VibeCoding 應用作品，嚴格排除痛點、討論、解方等其他提案
-  const vibeCodingApps = useMemo(() => {
-    return questions.filter(isVibeCodingAppQuestion);
+  const vibeApps = useMemo(() => {
+    return questions.filter(
+      (q) =>
+        q.postType === 'vibecoding_app' ||
+        q.specialZone === 'vibecoding' ||
+        q.category === '網站程式' ||
+        (q.category as string) === 'vibecoding' ||
+        (q.tags && q.tags.some((t) => t.toLowerCase().includes('vibecoding')))
+    );
   }, [questions]);
 
-  // Apply subcategory & search query filtering
-  const filteredApps = useMemo(() => {
-    return vibeCodingApps.filter((app) => {
-      // Subcategory filter
-      if (selectedSubCat !== '全部') {
-        const matchesCat =
-          app.subcategory === selectedSubCat ||
-          app.tags?.includes(selectedSubCat) ||
-          (selectedSubCat === '網站程式' && (app.category === '網站程式' || app.tags?.includes('網站程式')));
-        if (!matchesCat) return false;
-      }
-
-      // Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.trim().toLowerCase();
-        const matchAppName = (app.appName || (app as any).vibeCodingData?.appName || '').toLowerCase().includes(q);
-        const matchTitle = (app.title || '').toLowerCase().includes(q);
-        const matchDesc = (app.description || '').toLowerCase().includes(q);
-        const matchTech = app.techArchitecture?.toLowerCase().includes(q) || false;
-        const matchPain = app.referencedPainPoint?.toLowerCase().includes(q) || false;
-        const matchTags = app.tags?.some((t) => (t || '').toLowerCase().includes(q)) || false;
-        if (!matchAppName && !matchTitle && !matchDesc && !matchTech && !matchPain && !matchTags) return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === 'highest_tips') {
-        return (b.supportPoints || 0) - (a.supportPoints || 0);
-      }
-      if (sortBy === 'most_liked') {
-        return (b.likes || 0) - (a.likes || 0);
-      }
-      if (sortBy === 'most_views') {
-        return (b.views || 0) - (a.views || 0);
-      }
-      // default newest
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  }, [vibeCodingApps, selectedSubCat, searchQuery, sortBy]);
-
-  const handleShareApp = async (e: React.MouseEvent, app: Question) => {
-    e.stopPropagation();
-    const url = `${window.location.origin}/question/${app.id}`;
-    await shareOrCopyUrl({
-      title: app.title,
-      text: `來 IdeaX 查看「${app.title}」VibeCoding 創新應用作品！`,
-      url,
-    });
+  const isAppSavedByUser = (qId: string) => {
+    return (
+      isQuestionBookmarked(qId) ||
+      isQuestionSeconded(qId) ||
+      isQuestionLiked(qId) ||
+      isSameQuestionActive(qId)
+    );
   };
 
+  const favoriteCount = useMemo(() => {
+    return vibeApps.filter((q) => isAppSavedByUser(q.id)).length;
+  }, [vibeApps, questions]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: vibeApps.length };
+    VIBE_CATEGORIES.forEach((c) => {
+      if (c.id !== 'all') counts[c.id] = 0;
+    });
+    vibeApps.forEach((q) => {
+      const cats = getQuestionVibeCategories(q);
+      cats.forEach((cat) => {
+        if (counts[cat] !== undefined) {
+          counts[cat] += 1;
+        }
+      });
+    });
+    return counts;
+  }, [vibeApps]);
+
+  const filteredApps = useMemo(() => {
+    let list = [...vibeApps];
+
+    if (activeTab === 'favorites') {
+      list = list.filter((q) => isAppSavedByUser(q.id));
+    }
+
+    if (selectedSubcat !== 'all') {
+      list = list.filter((q) => {
+        const cats = getQuestionVibeCategories(q);
+        return cats.includes(selectedSubcat);
+      });
+    }
+
+    if (searchQuery.trim()) {
+      const kw = searchQuery.toLowerCase();
+      list = list.filter(
+        (q) =>
+          (q.appName && q.appName.toLowerCase().includes(kw)) ||
+          q.title.toLowerCase().includes(kw) ||
+          q.description.toLowerCase().includes(kw) ||
+          (q.authorName && q.authorName.toLowerCase().includes(kw)) ||
+          (q.techArchitecture && q.techArchitecture.toLowerCase().includes(kw)) ||
+          (q.referencedPainPoint && q.referencedPainPoint.toLowerCase().includes(kw)) ||
+          q.tags.some((t) => t.toLowerCase().includes(kw))
+      );
+    }
+
+    list.sort((a, b) => {
+      if (sortBy === 'latest') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortBy === 'tipped') {
+        return (b.supportPoints || 0) - (a.supportPoints || 0);
+      }
+      if (sortBy === 'liked') {
+        return (b.likes || 0) - (a.likes || 0);
+      }
+      if (sortBy === 'discussions') {
+        const aDisc = (answers || []).filter((ans) => ans.questionId === a.id).length + (a.answersCount || 0);
+        const bDisc = (answers || []).filter((ans) => ans.questionId === b.id).length + (b.answersCount || 0);
+        return bDisc - aDisc;
+      }
+      const scoreA = (a.likes || 0) * 3 + (a.supportPoints || 0) * 0.5 + (a.views || 0) * 0.1;
+      const scoreB = (b.likes || 0) * 3 + (b.supportPoints || 0) * 0.5 + (b.views || 0) * 0.1;
+      return scoreB - scoreA;
+    });
+
+    return list;
+  }, [vibeApps, activeTab, selectedSubcat, searchQuery, sortBy, answers, questions]);
+
+  const totalLikes = useMemo(
+    () => vibeApps.reduce((acc, q) => acc + (q.likes || 0), 0),
+    [vibeApps]
+  );
+  const totalSupportPoints = useMemo(
+    () => vibeApps.reduce((acc, q) => acc + (q.supportPoints || 0), 0),
+    [vibeApps]
+  );
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Top Banner Container (手機版緊湊設計，敘述改用 ? 按鈕收合展開) */}
-      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-purple-900 via-indigo-900 to-slate-900 text-white p-3.5 sm:p-5 shadow-lg border border-purple-500/30">
-        {/* Background Decorative Glow */}
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+    <div className="space-y-5 animate-in fade-in duration-200">
+      {/* 專區 Main Banner Block (與創點子統一佈局) */}
+      <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-indigo-500/10 via-indigo-100/40 to-purple-50 border-2 border-indigo-300 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mr-8 -mt-8 w-36 h-36 bg-indigo-200/40 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1.5 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-xs flex items-center gap-1 border border-purple-300/40">
-                <Terminal className="w-3 h-3 text-purple-200" />
-                <span>AI VibeCoding 展場</span>
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-white/10 text-purple-200 border border-white/10">
-                {vibeCodingApps.length} 件作品
-              </span>
-              <button
-                type="button"
-                onClick={onTogglePin}
-                className={`px-2 py-0.5 rounded-full transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold ${
-                  isPinned
-                    ? 'bg-purple-500 text-white border border-purple-400'
-                    : 'bg-white/10 hover:bg-white/20 text-purple-200 border border-white/10'
-                }`}
-                title={isPinned ? '取消釘選此展場' : '釘選至首頁主畫面'}
-              >
-                <Pin className={`w-3 h-3 ${isPinned ? 'fill-white' : ''}`} />
-                <span>{isPinned ? '已釘選' : '釘選'}</span>
-              </button>
-            </div>
+        {/* 右上角叉叉按鈕：點擊回到全部問題 */}
+        {onCloseZone && (
+          <button
+            type="button"
+            onClick={onCloseZone}
+            className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-stone-500 hover:text-stone-900 border border-indigo-300 shadow-2xs flex items-center justify-center transition-all cursor-pointer active:scale-95"
+            title="回到全部問題"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center gap-1.5">
-                <span>VibeCoding 創新應用</span>
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-300 shrink-0" />
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowZoneHelp(!showZoneHelp)}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold transition-all cursor-pointer border ${
-                  showZoneHelp
-                    ? 'bg-purple-500 text-white border-purple-300 shadow-xs'
-                    : 'bg-white/15 hover:bg-white/25 text-purple-100 border-white/20'
-                }`}
-                title="點擊展開/收合展場介紹與說明"
-              >
-                <HelpCircle className="w-3.5 h-3.5" />
-                <span>說明</span>
-                {showZoneHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </button>
+        <div className="relative z-10 space-y-2.5">
+          {/* 第一列：圖示 + 標題 + 釘選 + 數量 */}
+          <div className="flex items-center gap-2.5 flex-wrap pr-10">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-xs shrink-0">
+              <Terminal className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
             </div>
+            <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
+              <span>VibeCoding (軟體與網站作品)</span>
+              {onTogglePin && (
+                <button
+                  type="button"
+                  onClick={onTogglePin}
+                  className={`p-1 rounded-lg transition-all cursor-pointer ${
+                    isPinned
+                      ? 'bg-indigo-600 text-white border border-indigo-700 shadow-xs'
+                      : 'bg-white hover:bg-stone-50 text-stone-400 hover:text-stone-700 border border-stone-200'
+                  }`}
+                  title={isPinned ? '取消釘選此專區' : '釘選為首頁專區'}
+                >
+                  <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-white' : ''}`} />
+                </button>
+              )}
+              <span className="text-[11px] font-mono font-black text-indigo-900 bg-indigo-100 border border-indigo-300 px-2 py-0.5 rounded-full">
+                {vibeApps.length} 件作品
+              </span>
+            </h1>
           </div>
 
-          {/* Action Buttons (橫向緊湊排列) */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* 第二列：說明按鈕 (左) + 刊登作品按鈕 (置右) */}
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
-              onClick={onOpenCreateApp}
-              className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 hover:from-purple-400 hover:to-indigo-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 border border-purple-300/40"
+              onClick={() => setShowZoneHelp(!showZoneHelp)}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                showZoneHelp
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  : 'bg-white/90 hover:bg-white text-indigo-900 border-indigo-300'
+              }`}
+              title="點擊展開/收合專區說明"
             >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>刊登創新應用</span>
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>說明</span>
+              {showZoneHelp ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
 
             <button
               type="button"
-              onClick={onCloseZone}
-              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-purple-200 font-bold text-xs backdrop-blur-md transition-colors flex items-center justify-center gap-1 cursor-pointer shrink-0"
+              onClick={handleOpenCreate}
+              className="ml-auto px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
-              <span>退出展場</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>刊登作品</span>
             </button>
           </div>
         </div>
 
-        {/* 點擊 ? 說明展開之展場簡介與特色說明 */}
+        {/* 點擊 ? 展開之專區介紹 */}
         {showZoneHelp && (
-          <div className="relative z-10 mt-3 space-y-2.5 animate-in fade-in duration-150">
-            {/* 展場主要說明與簡介 */}
-            <p className="text-xs sm:text-sm text-purple-100/95 leading-relaxed font-medium bg-white/10 p-3 rounded-2xl border border-white/10">
-              妳嘔心瀝血開發的的應用還只能放在 Github 只有工程師鑑賞卻無法真正走向大眾嗎？ 或是等待平台上架的繁瑣程序嗎？IdeaX提供給所有創意展示與測試市場的空間，歡迎多加利用！
+          <div className="relative z-10 mt-3 pt-3 border-t border-indigo-200/80 space-y-1.5 animate-in fade-in duration-150">
+            <p className="text-xs font-medium text-stone-700 leading-relaxed">
+              收錄網站程式、AI工具、小遊戲、自動化與擴充功能，可直接試用、留言回饋或給予開發者點數支持。
             </p>
-
-            {/* 展場特色標籤 */}
-            <div className="pt-2 border-t border-white/15 flex items-center gap-3 text-[11px] font-semibold text-purple-200 flex-wrap">
-              <span className="flex items-center gap-1">
-                <ImageIcon className="w-3.5 h-3.5 text-purple-300" />
-                <span>封面大圖 + 0~6 張截圖</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 text-rose-300" />
-                <span>引用/解決痛點</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <Cpu className="w-3.5 h-3.5 text-indigo-300" />
-                <span>技術架構展示</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <Coins className="w-3.5 h-3.5 text-amber-300" />
-                <span>雙幣點數打賞支持</span>
-              </span>
+            <div className="text-[11px] text-indigo-800 font-bold">
+              累計 {totalLikes.toLocaleString()} 個讚 · 累計支持 {totalSupportPoints.toLocaleString()} 點
             </div>
           </div>
         )}
-      </div>
 
-      {/* Filter and Search Toolbar */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-4 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Subcategory Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
-            {['全部', '網站程式', 'AI 智慧工具', 'Web 應用程式', '自動化工作流', '擴充功能插件'].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedSubCat(cat)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                  selectedSubCat === cat
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
+        {/* 篩選分類、我的收藏、搜尋、排序與檢視切換 */}
+        <div className="relative z-10 mt-3 pt-3 border-t border-indigo-200/80 space-y-2">
+          {/* 上排：選擇分類下拉選單 (含全部分類) + 我的按讚收藏 */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+            <div className="relative">
+              <select
+                value={selectedSubcat}
+                onChange={(e) => {
+                  setSelectedSubcat(e.target.value);
+                  setActiveTab('all');
+                }}
+                className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
+                  activeTab === 'all'
+                    ? 'bg-indigo-600 text-white border border-indigo-600 shadow-xs'
+                    : 'bg-white/90 text-stone-800 hover:bg-white border border-indigo-300'
                 }`}
               >
-                {cat}
-              </button>
-            ))}
+                {VIBE_CATEGORIES.map((cat) => {
+                  const count = categoryCounts[cat.id] ?? 0;
+                  return (
+                    <option key={cat.id} value={cat.id} className="bg-white text-stone-900 font-bold">
+                      {cat.label} ({count})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab(activeTab === 'favorites' ? 'all' : 'favorites')}
+              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'favorites'
+                  ? 'bg-rose-600 text-white shadow-xs border border-rose-600'
+                  : 'bg-white/90 text-stone-700 hover:bg-white border border-indigo-200/90'
+              }`}
+            >
+              <Heart className={`w-4 h-4 shrink-0 ${activeTab === 'favorites' ? 'fill-white' : 'text-rose-500'}`} />
+              <span className="truncate">我的 Like 收藏 ({favoriteCount})</span>
+            </button>
           </div>
 
-          {/* Sort Selector */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-bold text-stone-500">排序：</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="text-xs font-bold bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-stone-800 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
-            >
-              <option value="newest">最新發表</option>
-              <option value="highest_tips">最高打賞</option>
-              <option value="most_liked">最多按讚</option>
-              <option value="most_views">最多瀏覽</option>
-            </select>
+          {/* 下排：搜尋框 + 排序下拉選單 + 卡片檢視切換 (大卡片/條列式/小卡片) */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            <div className="relative flex-1 min-w-[160px]">
+              <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜尋作品名稱、功能或開發者..."
+                className="w-full pl-9 pr-7 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+              <select
+                value={sortBy}
+                onChange={(e: any) => setSortBy(e.target.value)}
+                className="px-2.5 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer shrink-0"
+              >
+                <option value="popular">🔥 熱門推薦</option>
+                <option value="tipped">🪙 點數支持 高到低</option>
+                <option value="liked">❤️ Like 收藏最多</option>
+                <option value="discussions">💬 討論數最多</option>
+                <option value="latest">🕒 最新發布</option>
+              </select>
+
+              {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}
+              <div className="inline-flex rounded-xl bg-white/90 border border-indigo-200 p-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('large')}
+                  className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                    viewMode === 'large'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="大卡片模式"
+                >
+                  <Square className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                    viewMode === 'list'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="條列式清單"
+                >
+                  <List className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                    viewMode === 'grid'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                  title="小卡片（雙欄方格）"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜尋 VibeCoding 作品名稱、技術架構、欲解決痛點或關鍵字..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 placeholder-stone-400 bg-stone-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all"
-          />
-          {searchQuery && (
+      {/* Exhibition Grid */}
+      {filteredApps.length === 0 ? (
+        <div className="bg-white rounded-3xl border border-stone-200 p-10 text-center space-y-3">
+          <h3 className="text-sm font-bold text-stone-800">
+            {activeTab === 'favorites' ? '尚無 Like 或收藏的軟體作品' : '沒有找到符合條件的作品'}
+          </h3>
+          <p className="text-xs text-stone-500">
+            {activeTab === 'favorites'
+              ? '瀏覽作品時點擊 ❤️ 或 ⭐，即可在此快速查看！'
+              : '試試看切換其他分類，或直接刊登你的第一件軟體作品。'}
+          </p>
+          {activeTab === 'favorites' ? (
             <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-bold cursor-pointer"
+              type="button"
+              onClick={() => setActiveTab('all')}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer"
             >
-              清除
+              瀏覽全部作品
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleOpenCreate}
+              className="px-4 py-2 rounded-lg border-2 border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-bold text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>刊登作品</span>
             </button>
           )}
         </div>
-      </div>
-
-      {/* App Cards Grid */}
-      {filteredApps.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-dashed border-stone-300 p-12 text-center space-y-4">
-          <div className="w-16 h-16 rounded-3xl bg-purple-100 text-purple-600 flex items-center justify-center mx-auto">
-            <Code2 className="w-8 h-8" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-stone-900">尚無符合條件的 VibeCoding 應用作品</h3>
-            <p className="text-xs text-stone-500 mt-1 max-w-md mx-auto">
-              快來刊登第一個基於 Vibe Coding 開發的創新應用吧！上傳作品大圖與網站連結，獲得讀者點數支持！
-            </p>
-          </div>
-          <button
-            onClick={onOpenCreateApp}
-            className="px-4 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs shadow-md hover:bg-purple-700 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>刊登創新應用</span>
-          </button>
-        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
-          {filteredApps.map((app, idx) => {
-            const isBookmarked = bookmarkedQuestionIds.includes(app.id);
-            const totalTips = app.supportPoints || 0;
-            const galleryList = app.galleryImages || app.screenshots || (app as any).vibeCodingData?.screenshots || [];
-            const galleryCount = galleryList.length;
-            const fallbackCovers = [
-              'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80',
-              'https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=800&q=80',
-              'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80',
-              'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&q=80',
-              'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80',
-              'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80',
-            ];
-            const coverImgUrl =
-              app.coverImage ||
-              (app as any).vibeCodingData?.coverImageUrl ||
-              fallbackCovers[idx % fallbackCovers.length];
-
+        <div
+          className={
+            viewMode === 'grid'
+              ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
+              : viewMode === 'list'
+              ? 'flex flex-col space-y-2.5 sm:space-y-3'
+              : 'grid grid-cols-1 md:grid-cols-2 gap-3.5'
+          }
+        >
+          {filteredApps.map((q) => {
+            const questionAnswers = (answers || []).filter((a) => a.questionId === q.id);
+            const solutionsCount = questionAnswers.filter((a) => a.type === 'solution' || !a.type).length;
+            const discussionsCount = questionAnswers.filter((a) => a.type === 'discussion').length;
             return (
-              <div
-                key={app.id}
-                onClick={() => onSelectApp(app)}
-                className="group bg-white rounded-2xl border border-stone-200 hover:border-purple-400 p-3 sm:p-4 transition-all duration-200 hover:shadow-lg cursor-pointer flex flex-col justify-between relative overflow-hidden space-y-2.5"
-              >
-                {/* Hero Cover Image Preview */}
-                <div className="relative w-full h-36 sm:h-44 rounded-xl overflow-hidden bg-stone-900 border border-stone-100 shrink-0">
-                  <img
-                    src={coverImgUrl}
-                    alt={app.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-black/20" />
-
-                  {/* Top Badges */}
-                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-black bg-purple-600 text-white shadow-md flex items-center gap-1 border border-purple-400/50">
-                        <Terminal className="w-3 h-3 text-purple-200" />
-                        <span>{app.subcategory || '網站程式'}</span>
-                      </span>
-                      {app.currentVersion && (
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-black font-mono bg-black/60 backdrop-blur-md text-purple-200 border border-purple-400/40">
-                          {app.currentVersion}
-                        </span>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleBookmarkQuestion(app.id);
-                      }}
-                      className={`p-1.5 rounded-xl backdrop-blur-md border transition-all cursor-pointer ${
-                        isBookmarked
-                          ? 'bg-purple-500/90 border-purple-400 text-white shadow-xs'
-                          : 'bg-black/40 hover:bg-black/60 border-white/20 text-white'
-                      }`}
-                      title={isBookmarked ? '取消收藏' : '收藏作品'}
-                    >
-                      <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-white' : ''}`} />
-                    </button>
-                  </div>
-
-                  {/* Bottom Left: 藍色顯示作品名稱（軟體或網站名稱） & Bottom Right: Demo URL Button */}
-                  <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 text-white">
-                    {(() => {
-                      const displayAppName =
-                        app.appName ||
-                        (app as any).vibeCodingData?.appName ||
-                        app.title;
-                      return displayAppName ? (
-                        <span
-                          className="text-[11px] font-black px-2.5 py-1 rounded-lg bg-blue-600/95 text-white backdrop-blur-md border border-blue-400/60 shadow-md flex items-center gap-1 max-w-[65%] truncate"
-                          title={`作品名稱：${displayAppName}`}
-                        >
-                          <Code2 className="w-3 h-3 text-blue-200 shrink-0" />
-                          <span className="truncate">{displayAppName}</span>
-                        </span>
-                      ) : (
-                        <span />
-                      );
-                    })()}
-
-                    {app.demoUrl && (
-                      <a
-                        href={app.demoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-stone-950 shadow-md transition-colors flex items-center gap-1 active:scale-95 cursor-pointer"
-                        title="開啟線上成果網址"
-                      >
-                        <ExternalLink className="w-3 h-3 stroke-[2.5]" />
-                        <span>前往網址</span>
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {/* Content Details */}
-                <div className="space-y-2 flex-1">
-                  <h3 className="text-sm sm:text-base font-extrabold text-stone-900 group-hover:text-purple-600 transition-colors line-clamp-2 leading-snug">
-                    {app.title}
-                  </h3>
-
-                  <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
-                    {app.description}
-                  </p>
-
-                  {/* Pain point solved link */}
-                  {(() => {
-                    const refPainObj = findReferencedPainPoint(app, questions);
-                    const rawRef = app.referencedPainPoint || (app as any).sourcePainPointTitle;
-                    if (!refPainObj && !rawRef) return null;
-                    return (
-                      <div
-                        onClick={(e) => {
-                          if (refPainObj) {
-                            e.stopPropagation();
-                            onSelectApp(refPainObj);
-                          }
-                        }}
-                        className={`p-2 rounded-xl bg-rose-50/90 border border-rose-200/80 text-[11px] text-rose-900 flex items-center justify-between gap-1.5 transition-colors ${
-                          refPainObj ? 'hover:bg-rose-100/80 hover:border-rose-300 cursor-pointer' : ''
-                        }`}
-                        title={refPainObj ? '點擊前往查看對應之痛點貼文' : undefined}
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Flame className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                          <span className="truncate font-bold">
-                            解決痛點：{refPainObj ? refPainObj.title : String(rawRef).replace(/^\[[^\]]+\]\s*/, '')}
-                          </span>
-                        </div>
-                        {refPainObj && (
-                          <span className="text-[10px] font-black text-rose-700 shrink-0">
-                            查看痛點 ➔
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Target Goal (希望達成目標) */}
-                  {app.targetGoal && (
-                    <div className="p-2 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-950 flex items-start gap-1.5">
-                      <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                      <span className="line-clamp-1 font-semibold">
-                        目標：{app.targetGoal}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* 留言討論預覽 */}
-                  {(() => {
-                    const appAnswers = (answers || []).filter((a) => a.questionId === app.id);
-                    const latestComment = appAnswers.length > 0 ? appAnswers[0] : null;
-                    if (!latestComment) return null;
-                    return (
-                      <div className="p-2 rounded-xl bg-stone-50/90 border border-stone-200/70 space-y-1 text-[11px]">
-                        <div className="flex items-center gap-1 text-stone-600 min-w-0">
-                          <MessageCircle className="w-3 h-3 text-purple-500 shrink-0" />
-                          <span className="font-bold text-stone-700 shrink-0">{latestComment.solverName}：</span>
-                          <span className="truncate">{latestComment.content || latestComment.preview}</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Footer Bar: Author, Support Points & Share */}
-                <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2 text-xs">
-                  {/* Author */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <img
-                      src={app.authorAvatar}
-                      alt={app.authorName}
-                      className="w-6 h-6 rounded-full object-cover ring-1 ring-stone-200 shrink-0"
-                    />
-                    <span className="font-bold text-stone-700 text-xs truncate">
-                      {app.authorName}
-                    </span>
-                  </div>
-
-                  {/* Tips & Share */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className="px-2 py-0.5 rounded-lg bg-amber-100/90 text-amber-950 border border-amber-300 font-extrabold text-[11px] shadow-2xs flex items-center gap-1"
-                      title="打賞支持點數 (雙幣：🪙 點數 / NT$ 現金)"
-                    >
-                      <Coins className="w-3 h-3 text-amber-600" />
-                      <span>🪙 {(totalTips * 10).toLocaleString()} 點</span>
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={(e) => handleShareApp(e, app)}
-                      className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
-                      title="分享作品連結"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <QuestionCard
+                key={q.id}
+                question={q}
+                solutionsCount={solutionsCount}
+                discussionsCount={discussionsCount}
+                viewMode={viewMode}
+                onClick={() => handleSelect(q)}
+              />
             );
           })}
         </div>
@@ -508,3 +465,4 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     </div>
   );
 };
+

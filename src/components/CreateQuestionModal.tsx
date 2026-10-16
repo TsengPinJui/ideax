@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Category, ProblemLevel, Question, CATEGORY_HIERARCHY, PostType, DeliveryPhase } from '../types';
+import { Category, ProblemLevel, Question, CATEGORY_HIERARCHY, VIBECODING_CATEGORIES, PostType, DeliveryPhase } from '../types';
 import { useApp } from '../context/AppContext';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { AIAnalysisResult } from '../services/aiService';
@@ -35,7 +35,9 @@ import {
   Globe,
   Cpu,
   Code2,
+  Eye,
 } from 'lucide-react';
+import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
 
 interface CreateQuestionModalProps {
   onClose: () => void;
@@ -162,6 +164,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [category, setCategory] = useState<Category | ''>(initialCategory || '創新創業');
   const [subcategory, setSubcategory] = useState<string>(
     initialSubcategory && initialSubcategory !== '全部' ? initialSubcategory : '資訊科技'
+  );
+  const [selectedVibeCategories, setSelectedVibeCategories] = useState<string[]>(
+    initialSubcategory && (VIBECODING_CATEGORIES as readonly string[]).includes(initialSubcategory)
+      ? [initialSubcategory]
+      : ['網站程式']
   );
   const [tagsInput, setTagsInput] = useState('');
   const isPainPoint = initialPostType === 'pain_point' || postType === 'pain_point';
@@ -319,7 +326,10 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       setLevel('L0');
       setBounty(0);
       setCategory('網站程式');
-      setSubcategory('網站程式');
+      setSubcategory(selectedVibeCategories[0] || '網站程式');
+      if (selectedVibeCategories.length === 0) {
+        setSelectedVibeCategories(['網站程式']);
+      }
     } else {
       if (bounty === 0) setBounty(500);
       if (level === 'L0') setLevel('L2');
@@ -350,6 +360,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   }, [initialPostType]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPublishPreview, setShowPublishPreview] = useState(false);
+  const [hasConfirmedViaPreview, setHasConfirmedViaPreview] = useState(false);
 
   const effectiveBounty = isNoPaymentMode ? 0 : (enablePhasedDelivery && bounty > 0 ? totalPhasesBounty : bounty);
   const currentBounty = isNoPaymentMode ? 0 : (Number(effectiveBounty) || 0);
@@ -360,12 +372,10 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     setSubcategory('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const validateFormForPreview = () => {
     if (!currentUser || currentUser.id === 'user-guest') {
       setTermsError('登錄帳號及個人資料為提問之必要條件，請先登入會員帳號（登入即代表同意全站一般服務條款）');
-      return;
+      return false;
     }
 
     const isProfileComplete = Boolean(
@@ -375,7 +385,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
     );
     if (!isProfileComplete || currentUser.hasCompletedProfile === false) {
       setTermsError('⚠️ 個人資料為發布問題之必要條件！您在註冊時跳過了個人資料填寫，發布問題涉及履約通知，請先前往「會員中心 → 基本資料」補填完整個人資料。');
-      return;
+      return false;
     }
 
     const isL0OrChatType = postType === 'chat_discussion';
@@ -386,7 +396,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
     if (postType === 'vibecoding_app' && !appName.trim()) {
       setTermsError('【程式或網站】請輸入「作品名稱（軟體或網站名稱）」（必填）！');
-      return;
+      return false;
     }
 
     const titleLen = title.trim().length;
@@ -397,7 +407,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           ? `【閒聊討論/L0】${cleanTitleLabel}需介於 8 ~ 30 個字（目前已輸入 ${titleLen} 字）`
           : `【${getPostTypeName(postType)}】${cleanTitleLabel}需介於 10 ~ 50 個字（目前已輸入 ${titleLen} 字）`
       );
-      return;
+      return false;
     }
 
     const descLen = description.trim().length;
@@ -408,19 +418,52 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           ? `【閒聊討論/L0】${cleanDescLabel}需介於 20 ~ 300 個字（目前已輸入 ${descLen} 字）`
           : `【${getPostTypeName(postType)}】${cleanDescLabel}需介於 30 ~ 3000 個字（目前已輸入 ${descLen} 字）`
       );
-      return;
+      return false;
     }
 
     if (postType === 'seek_solution' && !agreeQuestionerTerms) {
       setTermsError('發布問題前，請先勾選確認已閱讀並同意 《提問會員服務條款》 與 《一般服務條款》');
-      return;
+      return false;
     }
 
     if (currentBounty > 0 && paymentMethod === '帳戶點數付點' && (currentUser?.balance || 0) < currentBounty) {
       setTermsError(`您的帳戶點數餘額不足（目前餘額 ${(currentUser?.balance || 0).toLocaleString()} 點 / 需支付 ${currentBounty.toLocaleString()} 點），請切換為信用卡或其他支付方式。`);
+      return false;
+    }
+
+    setTermsError(null);
+    return true;
+  };
+
+  const handleOpenPreview = () => {
+    if (validateFormForPreview()) {
+      setShowPublishPreview(true);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateFormForPreview()) {
       return;
     }
 
+    // 若發布類型為創新提案或軟體程式，送出前若尚未確認預覽效果，主動跳出預覽確認視窗
+    if ((postType === 'innovation_proposal' || postType === 'vibecoding_app') && !hasConfirmedViaPreview) {
+      setShowPublishPreview(true);
+      return;
+    }
+
+    await executeFinalSubmit();
+  };
+
+  const handleConfirmFromPreview = async () => {
+    setHasConfirmedViaPreview(true);
+    setShowPublishPreview(false);
+    await executeFinalSubmit();
+  };
+
+  const executeFinalSubmit = async () => {
     setTermsError(null);
     setIsSubmitting(true);
 
@@ -514,8 +557,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         title,
         description: finalDescription,
         category: postType === 'vibecoding_app' ? '網站程式' : finalCategory,
-        subcategory: postType === 'vibecoding_app' ? (subcategory || '網站程式') : finalSubcategory,
-        tags: postType === 'vibecoding_app' ? Array.from(new Set(['VibeCoding', '網站程式', ...finalTags])) : finalTags,
+        subcategory: postType === 'vibecoding_app' ? (selectedVibeCategories[0] || subcategory || '網站程式') : finalSubcategory,
+        subcategories: postType === 'vibecoding_app' ? (selectedVibeCategories.length > 0 ? selectedVibeCategories : ['網站程式']) : undefined,
+        tags: postType === 'vibecoding_app' ? Array.from(new Set(['網站程式', ...selectedVibeCategories, ...finalTags])) : finalTags,
         level,
         bounty: currentBounty,
         deadline,
@@ -1237,25 +1281,36 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         {postType === 'vibecoding_app' ? (
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-stone-700">Vibe Coding 應用分類</label>
-              <span className="text-[10px] text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded font-bold">
-                選擇作品所屬應用領域
+              <label className="text-xs font-bold text-stone-700">軟體提案分類（最多選 3 個）*</label>
+              <span className="text-[11px] text-stone-500 font-medium">
+                已選 {selectedVibeCategories.length} / 3
               </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {(['AI Agent 助手', 'SaaS 生產力工具', '資料視覺化與看板', '產業自動化流程', '創新互動與遊戲'] as const).map((sc) => {
-                const isSelected = (subcategory || 'AI Agent 助手') === sc;
+              {VIBECODING_CATEGORIES.map((sc) => {
+                const isSelected = selectedVibeCategories.includes(sc);
                 return (
                   <button
                     key={sc}
                     type="button"
                     onClick={() => {
-                      setCategory('vibecoding' as any);
-                      setSubcategory(sc);
+                      setCategory('網站程式');
+                      setSelectedVibeCategories((prev) => {
+                        if (prev.includes(sc)) {
+                          if (prev.length <= 1) return prev; // keep at least 1
+                          const next = prev.filter((item) => item !== sc);
+                          setSubcategory(next[0] || '網站程式');
+                          return next;
+                        }
+                        if (prev.length >= 3) return prev;
+                        const next = [...prev, sc];
+                        setSubcategory(next[0] || '網站程式');
+                        return next;
+                      });
                     }}
-                    className={`px-2.5 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
+                    className={`px-2.5 py-2 rounded-lg border text-xs font-bold transition-colors cursor-pointer text-center ${
                       isSelected
-                        ? 'border-amber-500 bg-amber-50 text-amber-950 ring-2 ring-amber-300/50 shadow-2xs'
+                        ? 'border-stone-900 bg-stone-900 text-white'
                         : 'border-stone-200 hover:border-stone-300 bg-white text-stone-700'
                     }`}
                   >
@@ -1795,7 +1850,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         )}
 
         {/* Submit Buttons */}
-        <div className="pt-2 flex items-center justify-end gap-3">
+        <div className="pt-2 flex items-center justify-end gap-2.5 sm:gap-3 flex-wrap">
           <button
             type="button"
             onClick={onClose}
@@ -1803,6 +1858,20 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           >
             取消返回
           </button>
+
+          {/* 創新提案或軟體程式：專屬預覽效果按鈕 */}
+          {(postType === 'innovation_proposal' || postType === 'vibecoding_app') && (
+            <button
+              type="button"
+              onClick={handleOpenPreview}
+              className="px-4 py-2.5 rounded-xl border-2 border-indigo-500 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              title="送出前預覽前台卡片與內頁展示效果"
+            >
+              <Eye className="w-4 h-4 text-indigo-600" />
+              <span>預覽效果</span>
+            </button>
+          )}
+
           <button
             type="submit"
             disabled={isSubmitting}
@@ -1826,6 +1895,36 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </button>
         </div>
       </form>
+
+      {/* 創新提案或軟體程式：刊登前效果即時預覽彈窗 */}
+      {showPublishPreview && (postType === 'innovation_proposal' || postType === 'vibecoding_app') && (
+        <PublishEffectPreviewModal
+          isOpen={showPublishPreview}
+          onClose={() => setShowPublishPreview(false)}
+          onConfirmPublish={handleConfirmFromPreview}
+          isSubmitting={isSubmitting}
+          postType={postType}
+          title={title}
+          description={description}
+          category={category}
+          subcategory={subcategory}
+          tags={tagsInput.split(/[#,\s，、]+/).map((t) => t.trim().replace(/^#/, '')).filter(Boolean)}
+          authorName={publishIdentity === 'platform' ? '💡IdeaX 官方帳號💡' : resolveUserDisplayName(currentUser?.id || 'guest', currentUser?.name || '訪客')}
+          authorAvatar={currentUser?.avatar}
+          authorTitle={currentUser?.title}
+          bounty={currentBounty}
+          coverImage={coverImage}
+          galleryImages={galleryImages}
+          appName={appName}
+          demoUrl={demoUrl || externalLink}
+          techArchitecture={techArchitecture}
+          referencedPainPoint={referencedPainPoint}
+          targetGoal={targetGoal}
+          currentVersion={currentVersion}
+          selectedVibeCategories={selectedVibeCategories}
+          domainTrack={category || '資通訊'}
+        />
+      )}
     </div>
   );
 
