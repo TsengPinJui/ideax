@@ -1084,13 +1084,12 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                               />
                             </div>
 
-                            {/* 價格 / 點數 Price */}
+                            {/* 點數 Points */}
                             <div className="flex items-center justify-between pt-1 border-t border-stone-200/60">
                               <span className="text-[11px] font-bold text-stone-700">
-                                💰 階段價格 / 點數：
+                                💰 階段解鎖點數：
                               </span>
                               <div className="flex items-center gap-1.5 font-mono">
-                                <span className="text-xs text-stone-400">NT$</span>
                                 <input
                                   type="number"
                                   min={50}
@@ -1107,10 +1106,9 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
 
                       <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs">
                         <span className="text-amber-950 font-bold">
-                          各階段合計總價格（共 {customPhases.length} 個階段）：
+                          各階段合計總點數（共 {customPhases.length} 個階段）：
                         </span>
                         <div className="flex items-center gap-1 font-mono font-black text-amber-900 text-sm">
-                          <span>NT$</span>
                           <span>{totalPhasesPoints.toLocaleString()}</span>
                           <span className="text-xs font-sans">點</span>
                         </div>
@@ -1124,10 +1122,9 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-stone-200">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-stone-700 font-semibold">
-                      {isPhasedDelivery ? '各階段合計總解鎖價格：' : '自訂解鎖價格：'}
+                      {isPhasedDelivery ? '各階段合計總解鎖點數：' : '自訂解鎖點數：'}
                     </span>
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-stone-400 font-mono">NT$</span>
                       <input
                         type="number"
                         min={50}
@@ -1139,6 +1136,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                           isPhasedDelivery ? 'opacity-90 bg-amber-50/60 text-amber-950 border-amber-300 cursor-not-allowed' : ''
                         }`}
                       />
+                      <span className="text-xs text-stone-600 font-bold">點</span>
                     </div>
                     {(question.bounty || 0) > 0 && price !== question.bounty && !isPhasedDelivery && (
                       <button
@@ -1146,7 +1144,7 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                         onClick={() => setPrice(question.bounty)}
                         className="text-[11px] text-amber-700 underline font-semibold cursor-pointer"
                       >
-                        恢復題目的懸賞額 (NT${(question.bounty || 0).toLocaleString()})
+                        恢復題目的懸賞額 ({(question.bounty || 0).toLocaleString()} 點)
                       </button>
                     )}
                   </div>

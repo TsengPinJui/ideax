@@ -243,7 +243,7 @@ export const TipPainPointModal: React.FC<TipPainPointModalProps> = ({
               {!isRaceMode && (
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-stone-700">
-                    付款方式
+                    付款方式（目前暫時只支援平台點數扣點）
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -252,16 +252,12 @@ export const TipPainPointModal: React.FC<TipPainPointModalProps> = ({
                         e.stopPropagation();
                         setPaymentSource('wallet');
                       }}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
-                        paymentSource === 'wallet'
-                          ? 'bg-amber-500 text-stone-950 border-amber-500 font-bold shadow-2xs'
-                          : 'bg-white text-stone-700 border-stone-200 hover:bg-amber-50/50'
-                      }`}
+                      className="p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 bg-amber-500 text-stone-950 border-amber-500 font-bold shadow-2xs"
                     >
                       <Wallet className="w-4 h-4 shrink-0" />
                       <div>
-                        <div className="text-xs font-black">點數扣款</div>
-                        <div className={`text-[10px] font-mono ${paymentSource === 'wallet' ? 'text-stone-900 font-bold' : 'text-stone-500'}`}>
+                        <div className="text-xs font-black">平台點數扣點</div>
+                        <div className="text-[10px] font-mono text-stone-900 font-bold">
                           餘額 {walletBalance.toLocaleString()} 點
                         </div>
                       </div>
@@ -269,47 +265,18 @@ export const TipPainPointModal: React.FC<TipPainPointModalProps> = ({
 
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPaymentSource('direct');
-                      }}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
-                        paymentSource === 'direct'
-                          ? 'bg-amber-500 text-stone-950 border-amber-500 font-bold shadow-2xs'
-                          : 'bg-white text-stone-700 border-stone-200 hover:bg-amber-50/50'
-                      }`}
+                      disabled
+                      className="p-2.5 rounded-xl border text-left transition-all flex items-center gap-2 bg-stone-50 text-stone-400 border-stone-200 opacity-60 cursor-not-allowed"
                     >
                       <CreditCard className="w-4 h-4 shrink-0" />
                       <div>
-                        <div className="text-xs font-black">線上支付</div>
-                        <div className={`text-[10px] ${paymentSource === 'direct' ? 'text-stone-900 font-bold' : 'text-stone-500'}`}>
-                          信用卡 / LINE Pay
+                        <div className="text-xs font-black">外部金流支付</div>
+                        <div className="text-[10px] text-stone-400">
+                          暫不支援 (信用卡 / LINE Pay)
                         </div>
                       </div>
                     </button>
                   </div>
-
-                  {paymentSource === 'direct' && (
-                    <div className="grid grid-cols-3 gap-1.5 pt-1">
-                      {(['信用卡', 'LINE Pay', 'Apple Pay'] as const).map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDirectMethod(m);
-                          }}
-                          className={`py-1.5 px-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer ${
-                            directMethod === m
-                              ? 'bg-amber-500 text-stone-950 border-amber-500'
-                              : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
-                          }`}
-                        >
-                          {m}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
 

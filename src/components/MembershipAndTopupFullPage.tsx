@@ -87,9 +87,7 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
 
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(defaultTargetTier as SubscriptionTier);
   const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'semi_annual' | 'annual'>('monthly');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'信用卡' | 'LINE Pay' | 'Apple Pay' | 'ATM 虛擬帳號'>(
-    '信用卡'
-  );
+  const [selectedPaymentMethod] = useState<'平台點數扣點'>('平台點數扣點');
   const [agreeSubscriptionTerms, setAgreeSubscriptionTerms] = useState(true);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [subscriptionMsg, setSubscriptionMsg] = useState<{ text: string; isError?: boolean } | null>(null);
@@ -581,20 +579,26 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
 
               {/* 選擇付款方式 */}
               <div className="space-y-3">
-                <label className="text-xs font-bold text-stone-300 block">2. 選擇付款管道 (採用金管會合規第三方加密金流)：</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <label className="text-xs font-bold text-stone-300 block">2. 付款管道（目前暫時只支援平台點數扣點，外部金流暫不支援）：</label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+                  <button
+                    type="button"
+                    className="p-3.5 rounded-2xl border font-bold text-center transition-all cursor-pointer bg-amber-500/15 border-amber-400 text-amber-300 ring-2 ring-amber-400/30"
+                  >
+                    <div>🪙 平台點數扣點</div>
+                    <div className="text-[10px] text-amber-200/80 font-normal mt-0.5">
+                      餘額 {(currentUser.balance || 0).toLocaleString()} 點
+                    </div>
+                  </button>
                   {(['信用卡', 'LINE Pay', 'Apple Pay', 'ATM 虛擬帳號'] as const).map((method) => (
                     <button
                       key={method}
                       type="button"
-                      onClick={() => setSelectedPaymentMethod(method)}
-                      className={`p-3.5 rounded-2xl border font-bold text-center transition-all cursor-pointer ${
-                        selectedPaymentMethod === method
-                          ? 'bg-amber-500/15 border-amber-400 text-amber-300 ring-2 ring-amber-400/30'
-                          : 'bg-stone-800/80 border-stone-700 text-stone-300 hover:border-stone-600'
-                      }`}
+                      disabled
+                      className="p-3.5 rounded-2xl border font-bold text-center bg-stone-800/40 border-stone-700/60 text-stone-500 opacity-60 cursor-not-allowed"
                     >
-                      {method}
+                      <div>{method}</div>
+                      <div className="text-[10px] font-normal mt-0.5">暫不支援</div>
                     </button>
                   ))}
                 </div>

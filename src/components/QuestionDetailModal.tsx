@@ -934,20 +934,20 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           {isPainPoint ? (
             <div className="flex items-center gap-2">
               <div
-                className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border border-amber-300 bg-amber-50/80 shadow-2xs"
+                className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border border-rose-300 bg-rose-50/80 shadow-2xs"
                 title={(question.bounty || 0) > 0 ? '痛點提問懸賞' : '痛點'}
               >
                 {(question.bounty || 0) > 0 ? (
                   <>
-                    <span className="text-[11px] font-bold text-amber-800 block">
+                    <span className="text-[11px] font-bold text-rose-700 block">
                       痛點懸賞
                     </span>
-                    <span className="text-lg sm:text-xl font-black text-amber-600 font-mono">
+                    <span className="text-lg sm:text-xl font-black text-rose-600 font-mono">
                       NT$ {(question.bounty || 0).toLocaleString()}
                     </span>
                   </>
                 ) : (
-                  <span className="text-base sm:text-lg font-black text-amber-600 font-mono py-0.5 block">
+                  <span className="text-base sm:text-lg font-black text-rose-600 font-mono py-0.5 block">
                     痛點
                   </span>
                 )}
@@ -1181,21 +1181,17 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           </div>
         </div>
 
-                {/* VibeCoding / 展場作品專屬多媒體大圖、圖集、技術架構與線上網址 */}
+        {/* 多媒體大圖、圖集、技術架構與線上網址 */}
         {(question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || question.techArchitecture || question.demoUrl) && (
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/90 via-indigo-50/40 to-white border border-purple-200/90 shadow-2xs space-y-4">
+          <div className="p-4 sm:p-5 rounded-2xl bg-stone-50/70 border border-stone-200/90 shadow-2xs space-y-4">
             {/* 封面大圖 */}
             {question.coverImage && (
-              <div className="relative w-full h-56 sm:h-72 rounded-xl overflow-hidden bg-stone-900 border border-purple-200 shadow-sm">
+              <div className="relative w-full h-56 sm:h-72 rounded-xl overflow-hidden bg-stone-900 border border-stone-200 shadow-sm">
                 <img
                   src={question.coverImage}
                   alt={question.title}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute top-3 left-3 bg-purple-900/90 text-white backdrop-blur-md px-3 py-1 rounded-lg text-xs font-black flex items-center gap-1.5 border border-purple-400/50">
-                  <Terminal className="w-3.5 h-3.5 text-purple-300" />
-                  <span>VibeCoding / 提案封面大圖</span>
-                </div>
               </div>
             )}
             {/* Gallery Images (0~6張圖片) */}
@@ -2049,7 +2045,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                         </button>
                         <button
                           onClick={handleGoToChallengeProposal}
-                          className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-black transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                          className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
                           title="針對此痛點提交創星季競賽提案，角逐競賽大獎（不賺取提問者賞金）"
                         >
                           <Sparkles className="w-3.5 h-3.5" />
@@ -2165,7 +2161,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                                   }
                                 }}
                                 className={`text-sm ${
-                                  isSolverDeactivated ? 'text-stone-500 font-bold' : `${getUserNameColorClass(ans.solverId, availableUsers, { name: ans.solverName, title: ans.solverTitle, verifiedBadge: ans.solverBadge, verifiedExpert: true })} hover:opacity-80 cursor-pointer transition-colors`
+                                  isSolverDeactivated ? 'text-stone-500 font-bold' : `${getUserNameColorClass(ans.solverId, availableUsers, { name: ans.solverName, title: ans.solverTitle, verifiedBadge: ans.solverBadge, verifiedExpert: Boolean(ans.solverBadge) || ans.solverId?.startsWith('solver') || ans.solverId?.startsWith('c2') })} hover:opacity-80 cursor-pointer transition-colors`
                                 }`}
                                 title={isSolverDeactivated ? '此帳號已註銷' : `點擊查看 ${solverDisplayName} 詳細檔案`}
                               >

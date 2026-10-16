@@ -475,8 +475,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       return false;
     }
 
-    if (currentBounty > 0 && paymentMethod === '帳戶點數付點' && (currentUser?.balance || 0) < currentBounty) {
-      setTermsError(`您的帳戶點數餘額不足（目前餘額 ${(currentUser?.balance || 0).toLocaleString()} 點 / 需支付 ${currentBounty.toLocaleString()} 點），請切換為信用卡或其他支付方式。`);
+    const totalRequiredPoints = currentBounty + (isPromotedWithMegaphone ? 50 : 0);
+    if (totalRequiredPoints > 0 && (currentUser?.balance || 0) < totalRequiredPoints) {
+      setTermsError(`您的帳戶點數餘額不足（目前餘額 ${(currentUser?.balance || 0).toLocaleString()} 點 / 需支付 ${totalRequiredPoints.toLocaleString()} 點）。目前暫時僅支援以平台點數扣點，請調整點數設定。`);
       return false;
     }
 
@@ -1601,7 +1602,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             <div className="flex items-center gap-2">
               <Coins className="w-4 h-4 text-amber-600" />
               <h3 className="font-extrabold text-sm text-stone-900">
-                問題分級與懸賞金額
+                問題分級與懸賞點數
               </h3>
             </div>
             <span className="text-[11px] text-amber-700 font-semibold">
@@ -1647,17 +1648,16 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           {level !== 'L0' ? (
             <div className="mt-3 p-3.5 rounded-xl bg-amber-50/60 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-amber-600 shrink-0" />
+                <Coins className="w-4 h-4 text-amber-600 shrink-0" />
                 <span className="text-xs font-bold text-stone-800">
-                  【{level} {levelConfig.name}】懸賞金額（{levelConfig.rangeText}）：
+                  【{level} {levelConfig.name}】懸賞點數（{levelConfig.rangeText}）：
                 </span>
                 <HelpTooltip
-                  title="懸賞資金託管說明"
-                  content="買方透過第三方支付安全託管，採納驗收時由系統依約撥付，確保買賣雙方價金與履約保障。"
+                  title="懸賞點數託管說明"
+                  content="發布時由平台點數安全預扣託管，採納驗收時由系統依約撥付，確保買賣雙方履約保障。"
                 />
               </div>
               <div className="flex items-center gap-2 self-end sm:self-auto">
-                <span className="text-xs text-stone-400 font-mono">NT$</span>
                 <input
                   type="number"
                   min={levelConfig.minPrice}
@@ -1667,6 +1667,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                   onChange={(e) => setBounty(Number(e.target.value))}
                   className="w-32 px-2.5 py-1.5 rounded-lg border border-amber-400 text-sm font-black text-amber-900 text-right font-mono outline-none focus:border-amber-600 bg-white shadow-2xs"
                 />
+                <span className="text-xs text-stone-600 font-bold">點</span>
               </div>
             </div>
           ) : (
@@ -1674,7 +1675,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               <div className="flex items-center gap-2">
                 <Gift className="w-4 h-4 text-emerald-600" />
                 <span className="font-bold text-stone-800">
-                  {isRaceMode ? '競賽期間免費' : 'L0 發布（NT$ 0）'}
+                  {isRaceMode ? '競賽期間免費' : 'L0 發布（0 點）'}
                 </span>
                 <HelpTooltip
                   title={isRaceMode ? '競賽期間免費說明' : '痛點與討論發布說明'}
@@ -1686,7 +1687,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 />
               </div>
               <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                {isRaceMode ? '競賽期間免費' : '免付懸賞金'}
+                {isRaceMode ? '競賽期間免費' : '免付懸賞點數'}
               </span>
             </div>
           )}
@@ -1787,13 +1788,12 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                           />
                         </div>
 
-                        {/* 價格 / 點數 Price */}
+                        {/* 階段點數 Points */}
                         <div className="flex items-center justify-between pt-1 border-t border-amber-200/60">
                           <span className="text-[11px] font-bold text-stone-700">
-                            💰 階段價格 / 點數：
+                            💰 階段懸賞點數：
                           </span>
                           <div className="flex items-center gap-1.5 font-mono">
-                            <span className="text-xs text-stone-400">NT$</span>
                             <input
                               type="number"
                               min={50}
@@ -1810,12 +1810,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
                   <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs">
                     <span className="text-amber-950 font-bold">
-                      各階段合計總懸賞金（共 {customPhases.length} 個階段）：
+                      各階段合計總懸賞點數（共 {customPhases.length} 個階段）：
                     </span>
                     <div className="flex items-center gap-1 font-mono font-black text-amber-900 text-sm">
-                      <span>NT$</span>
                       <span>{totalPhasesBounty.toLocaleString()}</span>
-                      <span className="text-xs font-sans">元</span>
+                      <span className="text-xs font-sans">點</span>
                     </div>
                   </div>
                 </div>
@@ -1823,7 +1822,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             </div>
           )}
 
-          {/* 招募中置頂推播 (每次推播 $50) */}
+          {/* 招募中置頂推播 (每次推播 50 點) */}
           <div className="mt-3 p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/5 border border-amber-300 space-y-2">
             <label className="flex items-center justify-between cursor-pointer">
               <div className="flex items-center gap-2.5">
@@ -1833,7 +1832,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs font-black text-stone-900">啟用招募中置頂推播</span>
                   <span className="px-1.5 py-0.2 rounded-md bg-amber-500 text-stone-950 font-black text-[10px]">
-                    +NT$ 50
+                    +50 點
                   </span>
                   <HelpTooltip
                     title="置頂推播說明"
@@ -1850,19 +1849,19 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
             </label>
           </div>
 
-          {/* 懸賞付點/第三方金流支付選擇 (若 bounty > 0 或有勾選推播) */}
+          {/* 懸賞付點選擇 (目前暫時只支援平台點數扣點) */}
           {(currentBounty > 0 || isPromotedWithMegaphone) && (
             <div className="mt-3 p-3.5 rounded-xl bg-white border border-stone-200 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
                   <Coins className="w-4 h-4 text-amber-600" />
-                  <span>支付方式（懸賞金由安全履約託管）：</span>
+                  <span>支付方式（目前暫時只支援平台點數扣點）：</span>
                 </span>
                 <span className="text-xs font-black font-mono text-amber-700">
-                  應付總計 {(currentBounty + (isPromotedWithMegaphone ? 50 : 0)).toLocaleString()} 點/元
+                  應付總計 {(currentBounty + (isPromotedWithMegaphone ? 50 : 0)).toLocaleString()} 點
                   {isPromotedWithMegaphone && currentBounty > 0 && (
                     <span className="text-[10px] text-stone-400 font-normal block text-right">
-                      (懸賞 {currentBounty.toLocaleString()} + 推播 50)
+                      (懸賞 {currentBounty.toLocaleString()} 點 + 推播 50 點)
                     </span>
                   )}
                 </span>
@@ -1870,27 +1869,32 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {(['帳戶點數付點', '信用卡', 'LINE Pay', 'Apple Pay', 'ATM 轉帳'] as const).map((method) => {
                   const isPoints = method === '帳戶點數付點';
-                  const isSelected = paymentMethod === method;
                   return (
                     <button
                       key={method}
                       type="button"
-                      onClick={() => setPaymentMethod(method)}
-                      className={`py-2 px-2 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
-                        isSelected
-                          ? 'border-amber-500 bg-amber-50 text-amber-950 ring-1 ring-amber-300 font-black shadow-2xs'
-                          : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                      disabled={!isPoints}
+                      onClick={() => {
+                        if (isPoints) setPaymentMethod('帳戶點數付點');
+                      }}
+                      className={`py-2 px-2 rounded-xl border text-xs font-bold text-center transition-all ${
+                        isPoints
+                          ? 'border-amber-500 bg-amber-50 text-amber-950 ring-1 ring-amber-300 font-black shadow-2xs cursor-pointer'
+                          : 'border-stone-200 bg-stone-50 text-stone-400 opacity-60 cursor-not-allowed'
                       }`}
                     >
                       {isPoints ? (
                         <div className="truncate">
-                          <div>🪙 帳戶點數</div>
+                          <div>🪙 平台點數扣點</div>
                           <div className="text-[10px] text-amber-700 font-normal">
                             餘額 {(currentUser?.balance || 0).toLocaleString()} 點
                           </div>
                         </div>
                       ) : (
-                        method
+                        <div className="truncate">
+                          <div>{method}</div>
+                          <div className="text-[10px] text-stone-400 font-normal">暫不支援</div>
+                        </div>
                       )}
                     </button>
                   );

@@ -186,6 +186,23 @@ function MainContent() {
           return 'solvers';
         }
 
+        // 2.5 我的案件獨立網址: /my-projects, /my_projects, /my-cases, /my_cases
+        if (
+          targetPath.includes('/my-projects') ||
+          targetPath.includes('/my_projects') ||
+          targetPath.includes('/my-cases') ||
+          targetPath.includes('/my_cases') ||
+          redirectParam.includes('/my-projects') ||
+          redirectParam.includes('/my-cases') ||
+          search.includes('tab=my_projects') ||
+          search.includes('tab=my_cases') ||
+          hash.includes('my-projects') ||
+          hash.includes('my_projects') ||
+          hash.includes('my-cases')
+        ) {
+          return 'my_projects';
+        }
+
         // 3. 創星季子網址與捷徑: /challenge, /challenge/join, /challenge/expert, /challenge/proposals, /challenge/rules
         if (
           targetPath.includes('/challenge') ||
@@ -647,6 +664,11 @@ function MainContent() {
             window.history.pushState({ tab: 'solvers' }, '', '/solvers');
             updateSEOForSubpage('solvers');
           }
+        } else if (activeTab === 'my_projects') {
+          if (curPath !== '/my-projects' && curPath !== '/my-cases' && curPath !== '/my_projects' && curPath !== '/my_cases') {
+            window.history.pushState({ tab: 'my_projects' }, '', '/my-projects');
+          }
+          updateSEOForSubpage('my_projects');
         } else if (activeTab === 'explore') {
           if (specialZone === 'vibecoding') {
             if (curPath !== '/vibecoding') {
@@ -666,7 +688,7 @@ function MainContent() {
             updateSEOForSubpage('explore');
           } else if (
             specialZone === 'all' &&
-            (curPath === '/painpoints' || curPath === '/vibecoding' || curPath === '/create-ideas' || curPath === '/createideas' || curPath.startsWith('/vibecoding/') || curPath === '/create' || curPath === '/solvers' || curPath.startsWith('/challenge'))
+            (curPath === '/painpoints' || curPath === '/vibecoding' || curPath === '/create-ideas' || curPath === '/createideas' || curPath.startsWith('/vibecoding/') || curPath === '/create' || curPath === '/solvers' || curPath === '/my-projects' || curPath === '/my-cases' || curPath === '/my_projects' || curPath === '/my_cases' || curPath.startsWith('/challenge'))
           ) {
             window.history.pushState({ tab: 'explore' }, '', '/');
             resetSEOToDefault();
@@ -718,6 +740,12 @@ function MainContent() {
         window.history.pushState({ sitelink: 'solvers' }, '', '/solvers');
       } catch {}
       updateSEOForSubpage('solvers');
+    } else if (item.id === 'my_projects') {
+      setActiveTab('my_projects');
+      try {
+        window.history.pushState({ sitelink: 'my_projects' }, '', '/my-projects');
+      } catch {}
+      updateSEOForSubpage('my_projects');
     } else if (item.id === 'challenge') {
       setActiveTab('star_season');
       try {
@@ -973,6 +1001,15 @@ function MainContent() {
         } else if (normalizedPath === '/solvers' || tabParam === 'solvers') {
           setActiveTab('solvers');
         } else if (
+          normalizedPath === '/my-projects' ||
+          normalizedPath === '/my_projects' ||
+          normalizedPath === '/my-cases' ||
+          normalizedPath === '/my_cases' ||
+          tabParam === 'my_projects' ||
+          tabParam === 'my_cases'
+        ) {
+          setActiveTab('my_projects');
+        } else if (
           normalizedPath.startsWith('/challenge') ||
           normalizedPath.startsWith('/rules') ||
           normalizedPath.startsWith('/proposal') ||
@@ -1000,8 +1037,6 @@ function MainContent() {
           setActiveTab('leaderboard');
         } else if (normalizedPath === '/mechanism' || tabParam === 'mechanism') {
           setActiveTab('mechanism');
-        } else if (normalizedPath === '/my-projects' || normalizedPath === '/my_projects' || tabParam === 'my_projects') {
-          setActiveTab('my_projects');
         } else if (normalizedPath === '/chat' || tabParam === 'chat') {
           setActiveTab('chat');
         } else if (normalizedPath === '/ai-crm' || normalizedPath === '/ai_crm' || tabParam === 'ai_crm') {

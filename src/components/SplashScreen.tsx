@@ -30,14 +30,33 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     isInitialBootComplete,
   } = useApp();
 
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return false;
+  });
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [isRendered, setIsRendered] = useState(true);
+  const [isRendered, setIsRendered] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return true;
+  });
   const [displayProgress, setDisplayProgress] = useState<number>(() => {
     if (typeof window !== 'undefined' && typeof (window as any).__ideaxBootProgress === 'number') {
       return Math.max(15, Math.min(95, (window as any).__ideaxBootProgress));
     }
     return 18;
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      setIsDesktop(true);
+      setIsRendered(false);
+      if (onDismiss) onDismiss();
+    }
+  }, [onDismiss]);
 
   const handleDismiss = useCallback(() => {
     if (!isInitialBootComplete || isFadingOut || !isRendered) return;
@@ -79,7 +98,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     return () => clearTimeout(finishTimer);
   }, [isInitialBootComplete, displayProgress, handleDismiss]);
 
-  if (!isRendered) return null;
+  if (isDesktop || !isRendered) return null;
 
   return (
     <div

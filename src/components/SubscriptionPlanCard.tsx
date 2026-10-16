@@ -37,7 +37,7 @@ export const SubscriptionPlanCard: React.FC = () => {
 
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(defaultTargetTier as SubscriptionTier);
   const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'semi_annual' | 'annual'>('monthly');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'信用卡' | 'LINE Pay' | 'Apple Pay' | 'ATM 虛擬帳號'>('信用卡');
+  const [selectedPaymentMethod] = useState<'平台點數扣點'>('平台點數扣點');
 
   // 付款確認頁面狀態
   const [isPaymentStep, setIsPaymentStep] = useState(false);
@@ -532,20 +532,26 @@ export const SubscriptionPlanCard: React.FC = () => {
 
             {/* 付款方式選擇 */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-stone-700 block">請選擇付款方式：</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <label className="text-[11px] font-bold text-stone-700 block">付款方式（目前暫時只支援平台點數扣點）：</label>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                <button
+                  type="button"
+                  className="py-1.5 px-2 rounded-lg text-xs font-black border bg-amber-500 text-stone-950 border-amber-500 shadow-2xs cursor-pointer text-center"
+                >
+                  <div>🪙 平台點數扣點</div>
+                  <div className="text-[10px] font-normal text-stone-800">
+                    餘額 {(currentUser.balance || 0).toLocaleString()} 點
+                  </div>
+                </button>
                 {(['信用卡', 'LINE Pay', 'Apple Pay', 'ATM 虛擬帳號'] as const).map((method) => (
                   <button
                     key={method}
                     type="button"
-                    onClick={() => setSelectedPaymentMethod(method)}
-                    className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer text-center ${
-                      selectedPaymentMethod === method
-                        ? 'bg-amber-500 text-stone-950 border-amber-500 font-black shadow-2xs'
-                        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
-                    }`}
+                    disabled
+                    className="py-1.5 px-2 rounded-lg text-xs font-bold border bg-stone-50 text-stone-400 border-stone-200 opacity-60 cursor-not-allowed text-center"
                   >
-                    {method}
+                    <div>{method}</div>
+                    <div className="text-[10px] font-normal">暫不支援</div>
                   </button>
                 ))}
               </div>

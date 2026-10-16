@@ -896,28 +896,6 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               <span className="sm:hidden">導覽</span>
             </button>
 
-            {/* 3. 我的 Like 收藏 / 附議收藏 */}
-            <button
-              type="button"
-              onClick={() => setIsFavoritesModalOpen(true)}
-              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-stone-700 hover:text-rose-700 border border-stone-200 hover:border-rose-300 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
-              title={activeSectionTab === 'pain_point' ? '查看我的附議收藏清單' : '查看我的個人 Like 收藏提案清單'}
-            >
-              {activeSectionTab === 'pain_point' ? (
-                <span className="px-1 py-0.2 rounded text-[10px] font-mono font-black leading-none bg-rose-100 text-rose-700 border border-rose-300">
-                  +1
-                </span>
-              ) : (
-                <Heart className={`w-3.5 h-3.5 ${likedProposalIds.length > 0 ? 'text-rose-500 fill-rose-500' : 'text-stone-400'}`} />
-              )}
-              <span className="hidden sm:inline">{activeSectionTab === 'pain_point' ? '我的附議收藏' : '我的 Like 收藏'}</span>
-              {likedProposalIds.length > 0 && (
-                <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-black">
-                  {likedProposalIds.length}
-                </span>
-              )}
-            </button>
-
             {/* 4. 登入 / 註冊 或 已登入狀態 */}
             {currentUser && currentUser.id !== 'user-guest' && currentUser.id !== 'guest' ? (
               <div className="flex items-center gap-1.5 bg-white border border-amber-300 px-2 sm:px-2.5 py-1 rounded-2xl text-xs shadow-2xs">
@@ -1073,15 +1051,38 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               </button>
             </div>
 
-            {/* 關鍵字搜尋 */}
-            <div className="relative">
-              <input
-                type="text"
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder="搜尋提案標題、摘要、提案人..."
-                className="w-full sm:w-64 bg-white border border-stone-200 rounded-xl px-3.5 py-1.5 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-400 shadow-2xs"
-              />
+            {/* 我的 Like 收藏 / 我的附議收藏 + 關鍵字搜尋 */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsFavoritesModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-stone-700 hover:text-rose-700 border border-stone-200 hover:border-rose-300 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98 shrink-0"
+                title={activeSectionTab === 'pain_point' ? '查看我的附議收藏清單' : '查看我的個人 Like 收藏提案清單'}
+              >
+                {activeSectionTab === 'pain_point' ? (
+                  <span className="px-1 py-0.2 rounded text-[10px] font-mono font-black leading-none bg-rose-100 text-rose-700 border border-rose-300">
+                    +1
+                  </span>
+                ) : (
+                  <Heart className={`w-3.5 h-3.5 ${likedProposalIds.length > 0 ? 'text-rose-500 fill-rose-500' : 'text-stone-400'}`} />
+                )}
+                <span>{activeSectionTab === 'pain_point' ? '我的附議收藏' : '我的 Like 收藏'}</span>
+                {likedProposalIds.length > 0 && (
+                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-black">
+                    {likedProposalIds.length}
+                  </span>
+                )}
+              </button>
+
+              <div className="relative flex-1 sm:flex-initial">
+                <input
+                  type="text"
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  placeholder="搜尋提案標題、摘要、提案人..."
+                  className="w-full sm:w-64 bg-white border border-stone-200 rounded-xl px-3.5 py-1.5 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-400 shadow-2xs"
+                />
+              </div>
             </div>
           </div>
 

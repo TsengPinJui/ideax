@@ -140,6 +140,9 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
         <div id="onboarding-step-2-search" className="flex items-center justify-between lg:justify-end gap-1.5 sm:gap-2.5 overflow-x-auto scrollbar-none">
           {/* Sort selector */}
           <div className="inline-flex items-center rounded-full bg-stone-100/90 p-0.5 md:p-1 shrink-0">
+            <span className="pl-2.5 pr-1 text-[11px] sm:text-xs md:text-sm font-bold text-stone-500 whitespace-nowrap select-none">
+              排序:
+            </span>
             <button
               onClick={() => setSortBy('recruiting_promoted')}
               className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm transition-all cursor-pointer flex items-center gap-1 md:gap-1.5 whitespace-nowrap ${
@@ -163,7 +166,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
               title="依方案數排序"
             >
               <Lightbulb className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-500 shrink-0 hidden sm:inline" />
-              <span>解答</span>
+              <span>方案數</span>
             </button>
 
             <button
@@ -173,10 +176,10 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                   ? 'bg-white text-stone-950 shadow-2xs font-bold'
                   : 'text-stone-600 hover:text-stone-900 font-medium'
               }`}
-              title="依討論熱度排序"
+              title="依留言數排序"
             >
               <Flame className="w-3 h-3 md:w-3.5 md:h-3.5 text-orange-500 shrink-0 hidden sm:inline" />
-              <span>討論</span>
+              <span>留言數</span>
             </button>
 
             <button
@@ -186,10 +189,10 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                   ? 'bg-white text-stone-950 shadow-2xs font-bold'
                   : 'text-stone-600 hover:text-stone-900 font-medium'
               }`}
-              title="依懸賞金額排序"
+              title="依懸賞額排序"
             >
               <Award className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-500 shrink-0 hidden sm:inline" />
-              <span>懸賞</span>
+              <span>懸賞額</span>
             </button>
 
             <button
@@ -199,10 +202,10 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
                   ? 'bg-white text-stone-950 shadow-2xs font-bold'
                   : 'text-stone-600 hover:text-stone-900 font-medium'
               }`}
-              title="依打賞點數排序"
+              title="依總打賞排序"
             >
               <Coins className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-600 shrink-0 hidden sm:inline" />
-              <span>打賞</span>
+              <span>總打賞</span>
             </button>
           </div>
 

@@ -674,16 +674,11 @@ export function resolveUserDisplayName(
 }
 
 /**
- * 依身分取得使用者名稱文字顏色分辨 class：
- * 紫色：管理員 (text-purple-700)
- * 藍色：企業機構 (text-blue-700)
- * 依使用者身分標準代表色：
- * 1. 官方 / 管理員 (Admin) -> 紫色 (text-purple-700 font-bold)
+ * 依身分取得使用者名稱文字顏色分辨 class（不使用金色字）：
+ * 1. 管理員 (Admin) -> 紫色 (text-purple-700 font-bold)
  * 2. 企業機構 (Enterprise) -> 藍色 (text-blue-700 font-bold)
- * 3. 認證專家 / 解題高手 (Solver / Expert) -> 琥珀金橘色 (text-amber-600 font-bold)
- * 4. 提問者 / 痛點發起人 (Questioner) -> 翡翠綠色 (text-emerald-700 font-bold)
- * 5. 推廣大使 (Ambassador) -> 玫瑰粉紅色 (text-rose-600 font-bold)
- * 6. 一般註冊會員 / 訪客 -> 深灰石色 (text-stone-800 font-bold)
+ * 3. 認證專家 (Solver / Expert) -> 綠色 (text-emerald-700 font-bold)
+ * 4. 一般用戶 (General User) -> 黑色 (text-stone-900 font-bold)
  */
 export function getUserNameColorClass(
   userId?: string,
@@ -704,7 +699,7 @@ export function getUserNameColorClass(
   const effectiveId = userId || targetUser?.id || '';
   const idCategory = resolveIdCategory(targetUser || { id: effectiveId });
 
-  // 1. 官方 / 管理員 -> 紫色 (text-purple-700 font-bold)
+  // 1. 管理員 -> 紫色 (text-purple-700 font-bold)
   if (
     (idCategory as string) === 'a' ||
     effectiveId === 'user-admin' ||
@@ -733,6 +728,7 @@ export function getUserNameColorClass(
       effectiveId !== 'solver-2' &&
       effectiveId !== 'c100000003' &&
       effectiveId !== 'solver-1' &&
+      !effectiveId.startsWith('u-vc-') &&
       Boolean(
         targetUser?.name &&
           (targetUser.name.includes('公司') ||
@@ -746,53 +742,20 @@ export function getUserNameColorClass(
     return 'text-blue-700 font-bold';
   }
 
-  // 3. 推廣大使 -> 玫瑰粉紅色 (text-rose-600 font-bold)
+  // 3. 認證專家 -> 綠色 (text-emerald-700 font-bold)
   if (
-    targetUser?.isAmbassador ||
-    targetUser?.role === ('ambassador' as any) ||
-    (targetUser?.title && targetUser.title.includes('大使')) ||
-    (targetUser?.name && targetUser.name.includes('大使'))
-  ) {
-    return 'text-rose-600 font-bold';
-  }
-
-  // 4. 解答者 / 認證解題專家 -> 琥珀金橘色 (text-amber-600 font-bold)
-  if (
-    targetUser?.role === 'solver' ||
-    targetUser?.verifiedExpert ||
-    targetUser?.verifiedBadge ||
-    effectiveId.startsWith('c2') ||
-    effectiveId.startsWith('solver') ||
-    (targetUser?.title &&
-      (targetUser.title.includes('專家') ||
-        targetUser.title.includes('顧問') ||
-        targetUser.title.includes('工程師') ||
-        targetUser.title.includes('律師') ||
-        targetUser.title.includes('會計師') ||
-        targetUser.title.includes('建築師') ||
-        targetUser.title.includes('設計師') ||
-        targetUser.title.includes('解題')))
-  ) {
-    return 'text-amber-600 font-bold';
-  }
-
-  // 5. 提問者 / 痛點發起人 -> 翡翠綠色 (text-emerald-700 font-bold)
-  if (
-    targetUser?.role === 'questioner' ||
-    effectiveId.startsWith('c1') ||
-    effectiveId === 'user-questioner' ||
-    effectiveId.startsWith('user-author') ||
-    (targetUser?.title &&
-      (targetUser.title.includes('創作者') ||
-        targetUser.title.includes('創始人') ||
-        targetUser.title.includes('發起人') ||
-        targetUser.title.includes('提問者')))
+    !effectiveId.startsWith('u-vc-') &&
+    (targetUser?.role === 'solver' ||
+      targetUser?.verifiedExpert ||
+      Boolean(targetUser?.verifiedBadge) ||
+      effectiveId.startsWith('c2') ||
+      effectiveId.startsWith('solver'))
   ) {
     return 'text-emerald-700 font-bold';
   }
 
-  // 6. 一般註冊會員 / 訪客 -> 深灰石色 (text-stone-800 font-bold)
-  return 'text-stone-800 font-bold';
+  // 4. 一般用戶 -> 黑色 (text-stone-900 font-bold)
+  return 'text-stone-900 font-bold';
 }
 
 /**

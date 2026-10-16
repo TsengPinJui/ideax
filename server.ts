@@ -3449,6 +3449,9 @@ async function startServer() {
       } else if (rawPath.startsWith('/solvers')) {
         pageTitle = '找專家智庫 — 認證顧問與跨領域專業智囊團 | IdeaX 創點子';
         pageDesc = '探索商業營運、軟硬體研發、法務財稅、人工智慧等各領域認證專家智庫，提供 1 對 1 諮詢。';
+      } else if (rawPath.startsWith('/my-projects') || rawPath.startsWith('/my_projects') || rawPath.startsWith('/my-cases') || rawPath.startsWith('/my_cases')) {
+        pageTitle = '我的案件 — 提問委託與解答提案進度管理 | IdeaX 創點子';
+        pageDesc = '集中管理您在 IdeaX 創點子的提問委託、專家解答提案、諮詢階段交付與已結案紀錄。';
       } else if (rawPath.startsWith('/about')) {
         pageTitle = '關於我們 — 讓想法發光，連接無限可能 | IdeaX 創點子';
         pageDesc = '了解 IdeaX 創點子之核心願景、創始團隊與創新問題交易市場運作機制。';

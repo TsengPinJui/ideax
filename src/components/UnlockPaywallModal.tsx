@@ -42,16 +42,26 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
   const availableWithheld = isAuthor ? (targetQ?.withheldBounty || 0) : 0;
 
   const [useWithheldOffset, setUseWithheldOffset] = useState<boolean>(availableWithheld > 0);
-  const [paymentMethod, setPaymentMethod] = useState<'信用卡' | 'LINE Pay' | 'Apple Pay' | 'ATM 轉帳'>('信用卡');
+  const [paymentMethod] = useState<'平台點數扣點'>('平台點數扣點');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const price = answer.price || 0;
   const offsetAmount = useWithheldOffset && availableWithheld > 0 ? Math.min(price, availableWithheld) : 0;
   const balanceToPay = Math.max(0, price - offsetAmount);
+  const currentPoints = currentUser?.balance || 0;
   const spec = getAnswerSpecifications(answer);
 
   const handleUnlock = () => {
+    setErrorMessage(null);
+    if (balanceToPay > 0 && currentPoints < balanceToPay) {
+      setErrorMessage(
+        `您的平台點數餘額不足（目前餘額 ${currentPoints.toLocaleString()} 點 / 需支付 ${balanceToPay.toLocaleString()} 點）。目前暫時僅支援以平台點數扣點解鎖方案。`
+      );
+      return;
+    }
+
     setIsProcessing(true);
 
     setTimeout(() => {
@@ -62,6 +72,8 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
         setTimeout(() => {
           onSuccess();
         }, 1200);
+      } else {
+        setErrorMessage('平台點數餘額不足或解鎖失敗，請確認帳戶點數餘額。');
       }
     }, 600);
   };
@@ -82,7 +94,7 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
           </div>
           <div>
             <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-1.5">
-              <span>第三方支付安全解鎖方案</span>
+              <span>平台點數安全解鎖方案</span>
             </h3>
             <p className="text-xs text-stone-500">
               解答者：<strong className="text-stone-800">{answer.solverName}</strong>
@@ -107,7 +119,7 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
             <div className="space-y-0.5 leading-relaxed">
               <span className="font-extrabold text-rose-900">痛點免費提出 • 專家自訂落地方案解鎖：</span>
               <p className="text-[11px] text-rose-800">
-                本問題為免費發布之痛點/討論。下方解答者已精心研擬專屬深度解決方案，需透過平台支援的第三方支付付<strong>解答者所設金額（NT$ {price.toLocaleString()} 元）</strong>進行解鎖。
+                本問題為免費發布之痛點/討論。下方解答者已精心研擬專屬深度解決方案，需使用平台點數支付<strong>解答者所設定價（{price.toLocaleString()} 點）</strong>進行解鎖。
               </p>
             </div>
           </div>
@@ -164,16 +176,15 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
           <div className="flex justify-between items-center text-stone-700">
             <span className="font-bold text-sm">解鎖方案定價：</span>
             <div className="flex items-baseline gap-1 font-mono">
-              <span className="text-xs text-stone-500">NT$</span>
               <span className="font-black text-stone-900 text-xl">
                 {price.toLocaleString()}
               </span>
-              <span className="text-xs text-stone-500 font-sans">元</span>
+              <span className="text-xs text-stone-500 font-sans">點</span>
             </div>
           </div>
           <p className="text-[11px] text-stone-500 flex items-center gap-1 pt-1 border-t border-amber-200/80">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>第三方價金保管・確認驗收履約保障</span>
+            <span>平台點數安全託管・確認驗收履約保障</span>
           </p>
         </div>
 
@@ -183,10 +194,10 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
             <div className="flex items-center justify-between">
               <span className="font-bold text-amber-950 flex items-center gap-1.5">
                 <Coins className="w-3.5 h-3.5 text-amber-600" />
-                <span>本問題原懸賞預扣款：</span>
+                <span>本問題原懸賞預扣點數：</span>
               </span>
               <span className="font-mono font-black text-amber-900">
-                NT$ {availableWithheld.toLocaleString()} 元
+                {availableWithheld.toLocaleString()} 點
               </span>
             </div>
 
@@ -202,10 +213,10 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
                 <div className="flex-1">
                   <span className="font-bold text-stone-900 block">使用原懸賞預扣額折抵</span>
                   <span className="text-[11px] text-stone-500">
-                    折抵 NT$ {offsetAmount.toLocaleString()} 元
+                    折抵 {offsetAmount.toLocaleString()} 點
                     {balanceToPay > 0
-                      ? `，差額 NT$ ${balanceToPay.toLocaleString()} 元由第三方支付補足`
-                      : '（全額折抵，無需額外付款）'}
+                      ? `，差額 ${balanceToPay.toLocaleString()} 點由平台帳戶點數扣抵`
+                      : '（全額折抵，無需額外扣點）'}
                   </span>
                 </div>
               </label>
@@ -219,9 +230,9 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
                   className="accent-amber-600 cursor-pointer"
                 />
                 <div>
-                  <span className="font-bold text-stone-900 block">直接第三方支付全額付費</span>
+                  <span className="font-bold text-stone-900 block">直接以平台點數全額扣點</span>
                   <span className="text-[11px] text-stone-500">
-                    保留本問題原懸賞預扣款供後續其他方案採納
+                    保留本問題原懸賞預扣點數供後續其他方案採納
                   </span>
                 </div>
               </label>
@@ -229,29 +240,41 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
           </div>
         )}
 
-        {/* Third-Party Payment Method Selector */}
+        {/* Payment Method Selector (Points only; external payment disabled) */}
         {balanceToPay > 0 && (
           <div className="space-y-2">
             <label className="text-xs font-bold text-stone-700 block flex items-center gap-1.5">
-              <CreditCard className="w-3.5 h-3.5 text-amber-600" />
-              <span>選擇第三方支付方式（買賣雙方交易安全保障）：</span>
+              <Coins className="w-3.5 h-3.5 text-amber-600" />
+              <span>付款方式（目前暫時只支援平台點數扣點）：</span>
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <button
+                type="button"
+                className="p-2.5 rounded-xl border border-amber-500 bg-amber-50 text-stone-950 font-black ring-2 ring-amber-300 shadow-2xs text-center cursor-pointer"
+              >
+                <div className="text-xs">🪙 平台點數扣點</div>
+                <div className="text-[10px] text-amber-700 font-normal mt-0.5">
+                  餘額 {currentPoints.toLocaleString()} 點
+                </div>
+              </button>
               {(['信用卡', 'LINE Pay', 'Apple Pay', 'ATM 轉帳'] as const).map((method) => (
                 <button
                   key={method}
                   type="button"
-                  onClick={() => setPaymentMethod(method)}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                    paymentMethod === method
-                      ? 'border-amber-500 bg-amber-50 text-stone-950 font-black ring-2 ring-amber-300 shadow-2xs'
-                      : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50 font-medium'
-                  }`}
+                  disabled
+                  className="p-2.5 rounded-xl border border-stone-200 bg-stone-50 text-stone-400 opacity-60 text-center cursor-not-allowed"
                 >
-                  <span className="text-xs">{method}</span>
+                  <div className="text-xs font-bold">{method}</div>
+                  <div className="text-[10px] text-stone-400 font-normal mt-0.5">暫不支援</div>
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
+            {errorMessage}
           </div>
         )}
 
@@ -265,14 +288,14 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
           </div>
 
           <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/70 text-[10px] text-stone-500 leading-relaxed">
-            依據《消費者保護法》第 19 條第 2 項及《通訊交易解除權合理例外情事準用原則》，本付費解答屬「非以有形媒介提供之數位內容，一經提供即為完成之線上服務」，經您點擊付款解鎖即視為同意即時交付，排除七日無條件解除權。
+            依據《消費者保護法》第 19 條第 2 項及《通訊交易解除權合理例外情事準用原則》，本付費解答屬「非以有形媒介提供之數位內容，一經提供即為完成之線上服務」，經您點擊扣點解鎖即視為同意即時交付，排除七日無條件解除權。
           </div>
         </div>
 
         {isSuccess && (
           <div className="p-3 rounded-xl bg-emerald-50 text-emerald-900 text-xs font-bold flex items-center gap-2 border border-emerald-200 animate-in fade-in">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>第三方支付授權成功！方案已解鎖開放閱讀。</span>
+            <span>平台點數扣抵成功！方案已解鎖開放閱讀。</span>
           </div>
         )}
 
@@ -295,12 +318,12 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
             <Unlock className="w-4 h-4" />
             <span>
               {isProcessing
-                ? '第三方支付連線授權中...'
+                ? '平台點數扣抵處理中...'
                 : isSuccess
                 ? '解鎖成功！'
                 : balanceToPay > 0
-                ? `透過 ${paymentMethod} 付費 NT$ ${balanceToPay.toLocaleString()} 解鎖`
-                : '使用預扣額全額折抵解鎖'}
+                ? `扣抵 ${balanceToPay.toLocaleString()} 點解鎖方案`
+                : '使用預扣點數全額折抵解鎖'}
             </span>
           </button>
         </div>

@@ -463,6 +463,18 @@ export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
     keywords: ['刊登 VibeCoding', '作品刊登', '網站程式刊登', 'AI 應用刊登', 'IdeaX'],
     icon: 'Terminal',
   },
+  {
+    id: 'my_projects',
+    name: '我的案件',
+    category: 'ideax',
+    categoryLabel: 'IdeaX 創點子',
+    path: '/my-projects',
+    queryParam: '?tab=my_projects',
+    title: '我的案件 — IdeaX 創點子 提問委託與解答提案進度管理',
+    description: '集中管理您在 IdeaX 創點子的提問委託、專家解答提案、諮詢階段交付與已結案紀錄。',
+    keywords: ['我的案件', '案件管理', '提問委託', '解答提案', '階段交付'],
+    icon: 'Layers',
+  },
   // --- 創星季 ---
   {
     id: 'challenge',

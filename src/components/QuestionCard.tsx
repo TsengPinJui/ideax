@@ -257,8 +257,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               ) : isNoPaymentMode ? (
                 <span className="text-[10px] font-semibold text-stone-500">免費</span>
               ) : isPainPoint ? (
-                <span className="text-xs font-black font-mono text-amber-600">
-                  {question.bounty > 0 ? `$${question.bounty.toLocaleString()}` : '痛點'}
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 text-[11px] font-black font-mono">
+                  {question.bounty > 0 ? `${question.bounty.toLocaleString()} 點` : '痛點'}
                 </span>
               ) : question.bounty > 0 ? (
                 <span className="text-xs font-black text-amber-600 font-mono">
@@ -464,8 +464,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               ) : isNoPaymentMode ? (
                 <span className="text-xs font-semibold text-stone-500">免費交流</span>
               ) : isPainPoint ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-300 text-xs font-black font-mono">
-                  {question.bounty > 0 ? `痛點 NT$ ${question.bounty.toLocaleString()}` : '痛點'}
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 text-xs font-black font-mono">
+                  {question.bounty > 0 ? `痛點 ${question.bounty.toLocaleString()} 點` : '痛點'}
                 </span>
               ) : question.bounty > 0 ? (
                 <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-black font-mono text-amber-600">
@@ -716,10 +716,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               <span className="text-xs font-semibold text-stone-500">免費</span>
             ) : isPainPoint ? (
               <span
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-300 text-xs font-black font-mono"
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 text-xs font-black font-mono"
                 title="痛點許願"
               >
-                {question.bounty > 0 ? `痛點 NT$ ${question.bounty.toLocaleString()}` : '痛點'}
+                {question.bounty > 0 ? `痛點 ${question.bounty.toLocaleString()} 點` : '痛點'}
               </span>
             ) : question.bounty > 0 ? (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50/90 text-amber-800 border border-amber-200/80 text-xs sm:text-sm font-black font-mono">

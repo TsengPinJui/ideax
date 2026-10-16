@@ -4549,17 +4549,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return ans;
   };
 
-  // Action: Unlock Paywall Answer via Third-party Payment & Automatic Split
+  // Action: Unlock Paywall Answer via Platform Points & Automatic Split
   const unlockAnswer = (
     answerId: string,
-    _useWithheldOffset: boolean = true,
-    paymentMethod: string = '信用卡'
+    useWithheldOffset: boolean = true,
+    paymentMethod: string = '平台點數扣點'
   ): boolean => {
     const target = answers.find((a) => a.id === answerId);
     if (!target) return false;
 
     const targetQ = questions.find((q) => q.id === target.questionId);
-    const price = target.price;
+    const price = target.price || 0;
+    const isAuthor = Boolean(targetQ && targetQ.authorId === currentUser.id);
+    const availableWithheld = isAuthor ? (targetQ?.withheldBounty || 0) : 0;
+    const offsetAmount = useWithheldOffset && availableWithheld > 0 ? Math.min(price, availableWithheld) : 0;
+    const balanceToPay = Math.max(0, price - offsetAmount);
+
+    if (!isNoPaymentMode && !isRaceMode && balanceToPay > 0 && (currentUser.balance || 0) < balanceToPay) {
+      return false;
+    }
+
+    // Deduct points from buyer if balanceToPay > 0
+    if (!isNoPaymentMode && !isRaceMode && balanceToPay > 0) {
+      setCurrentUser((prev) => ({
+        ...prev,
+        balance: Math.max(0, (prev.balance || 0) - balanceToPay),
+      }));
+      setAvailableUsers((prev) =>
+        prev.map((u) =>
+          u.id === currentUser.id
+            ? { ...u, balance: Math.max(0, (u.balance || 0) - balanceToPay) }
+            : u
+        )
+      );
+    }
+
+    // Deduct offsetAmount from question withheldBounty if used
+    if (offsetAmount > 0 && targetQ) {
+      setQuestions((prev) =>
+        prev.map((q) =>
+          q.id === targetQ.id
+            ? { ...q, withheldBounty: Math.max(0, (q.withheldBounty || 0) - offsetAmount) }
+            : q
+        )
+      );
+    }
 
     // Calculate third-party split settlement
     const split = calculateSplitPayout(price, target.solverId);
