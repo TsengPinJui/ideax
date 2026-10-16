@@ -21,6 +21,11 @@ import {
   PROPOSAL_TEXT_COLOR_PALETTE,
   DEFAULT_PROPOSAL_SECTION_TEMPLATES,
 } from '../../utils/proposalContentHelper';
+import {
+  processUploadedImageFile,
+  MAX_IMAGE_FILE_SIZE_MB,
+  ACCEPTED_IMAGE_TYPES,
+} from '../../utils/imageUploadUtils';
 
 interface ProposalSectionsEditorProps {
   sections: ProposalContentSection[];
@@ -92,25 +97,19 @@ export const ProposalSectionsEditor: React.FC<ProposalSectionsEditorProps> = ({
     );
   };
 
-  // 6. 本地上傳插入大圖 (投影片/海報/照片)
-  const handleFileUploadForSection = (sectionId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  // 6. 本地上傳插入大圖 (投影片/海報/照片，單張上限 2MB)
+  const handleFileUploadForSection = async (sectionId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      showToast?.('圖片檔案請勿超過 8MB');
+    const res = await processUploadedImageFile(file, MAX_IMAGE_FILE_SIZE_MB);
+    if (!res.ok || !res.dataUrl) {
+      showToast?.(res.error || '圖片上傳失敗');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      if (dataUrl) {
-        insertImageIntoSection(sectionId, dataUrl, file.name.replace(/\.[^/.]+$/, ''));
-      }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    insertImageIntoSection(sectionId, res.dataUrl, imageCaptionInput.trim() || file.name.replace(/\.[^/.]+$/, ''));
   };
 
   // 7. 插入圖片至指定段落
@@ -131,7 +130,7 @@ export const ProposalSectionsEditor: React.FC<ProposalSectionsEditorProps> = ({
     setActiveImageUploadSectionId(null);
     setImageUrlInput('');
     setImageCaptionInput('');
-    showToast?.('已在此段落成功插入大圖！');
+    showToast?.('已在此段落成功上傳並插入圖片！');
   };
 
   // 8. 移除段落中的指定大圖
@@ -373,49 +372,25 @@ export const ProposalSectionsEditor: React.FC<ProposalSectionsEditorProps> = ({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {/* 本地上傳 */}
-                  <div>
-                    <label className="block text-stone-700 font-bold mb-1">
-                      方法一：選擇電腦或手機圖片上傳 (限8MB)
+                <div className="text-xs space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <label className="block text-stone-700 font-bold">
+                      選擇電腦或手機圖片上傳插入段落
                     </label>
-                    <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed border-amber-300 hover:border-amber-500 rounded-xl bg-white hover:bg-amber-100/50 text-stone-700 cursor-pointer transition-colors">
-                      <Upload className="w-4 h-4 text-amber-700" />
-                      <span>選擇投影片或照片檔案...</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleFileUploadForSection(sec.id, e)}
-                        className="hidden"
-                      />
-                    </label>
+                    <span className="text-[11px] font-semibold text-amber-800">
+                      支援 JPG / PNG / WebP · 單張檔案大小上限 {MAX_IMAGE_FILE_SIZE_MB}MB
+                    </span>
                   </div>
-
-                  {/* 貼上網址 */}
-                  <div>
-                    <label className="block text-stone-700 font-bold mb-1">
-                      方法二：貼上圖片公開網址 (URL)
-                    </label>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="url"
-                        value={imageUrlInput}
-                        onChange={(e) => setImageUrlInput(e.target.value)}
-                        placeholder="https://example.com/slide.png"
-                        className="w-full bg-white border border-stone-200 rounded-xl p-2 text-stone-900 focus:outline-none focus:border-amber-400 font-mono text-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!imageUrlInput.trim()) return;
-                          insertImageIntoSection(sec.id, imageUrlInput.trim(), imageCaptionInput);
-                        }}
-                        className="px-3 py-2 rounded-xl bg-stone-900 text-white font-bold shrink-0 hover:bg-stone-800 cursor-pointer"
-                      >
-                        加入
-                      </button>
-                    </div>
-                  </div>
+                  <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-amber-300 hover:border-amber-500 rounded-xl bg-white hover:bg-amber-100/50 text-stone-800 font-bold cursor-pointer transition-colors">
+                    <Upload className="w-4 h-4 text-amber-700" />
+                    <span>點擊選擇投影片、架構圖或照片檔案上傳（限 {MAX_IMAGE_FILE_SIZE_MB}MB 以內）...</span>
+                    <input
+                      type="file"
+                      accept={ACCEPTED_IMAGE_TYPES}
+                      onChange={(e) => handleFileUploadForSection(sec.id, e)}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
 
                 <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-amber-200/60">

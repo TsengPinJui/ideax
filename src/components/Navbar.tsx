@@ -489,7 +489,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Navigation Links: 簡潔俐落無冗餘邊框 */}
-          <nav className="hidden md:flex items-center gap-1 text-sm font-medium ml-1">
+          <nav className="hidden md:flex items-center gap-1.5 text-sm font-medium ml-1">
             <button
               onClick={() => {
                 setActiveTab('explore');
@@ -515,13 +515,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setTimeout(scrollToMarket, 50);
                 setTimeout(scrollToMarket, 150);
               }}
-              className={`px-3 py-1.5 rounded-full transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full transition-all cursor-pointer text-xs sm:text-sm lg:text-[15px] flex items-center gap-1.5 ${
                 activeTab === 'explore'
                   ? 'bg-stone-900 text-white font-bold shadow-2xs'
                   : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950 font-semibold'
               }`}
             >
-              <Compass className={`w-4 h-4 shrink-0 ${activeTab === 'explore' ? 'text-amber-400' : 'text-stone-500'}`} />
+              <Compass className={`w-4 h-4 lg:w-4.5 lg:h-4.5 shrink-0 ${activeTab === 'explore' ? 'text-amber-400' : 'text-stone-500'}`} />
               <span>探索</span>
             </button>
             {!isRaceMode && (
@@ -532,13 +532,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setSelectedQuestion(null);
                   setSelectedSolver(null);
                 }}
-                className={`px-3 py-1.5 rounded-full transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full transition-all cursor-pointer text-xs sm:text-sm lg:text-[15px] flex items-center gap-1.5 ${
                   activeTab === 'solvers'
                     ? 'bg-stone-900 text-white font-bold shadow-2xs'
                     : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950 font-semibold'
                 }`}
               >
-                <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTab === 'solvers' ? 'text-emerald-400' : 'text-stone-500'}`} />
+                <ShieldCheck className={`w-4 h-4 lg:w-4.5 lg:h-4.5 shrink-0 ${activeTab === 'solvers' ? 'text-emerald-400' : 'text-stone-500'}`} />
                 <span>找專家</span>
               </button>
             )}
@@ -557,7 +557,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }
                 } catch {}
               }}
-              className={`px-3 py-1.5 rounded-full transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 group active:scale-98 ${
+              className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 group active:scale-98 ${
                 activeTab === 'star_season'
                   ? 'bg-amber-100/90 text-stone-950 font-bold ring-1 ring-amber-300'
                   : 'hover:bg-stone-100 text-stone-700'
@@ -567,14 +567,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               <img
                 src="/logo-chuangxingji-text.png"
                 alt="創星季"
-                className="h-5 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
+                className="h-5 lg:h-6 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
               />
             </button>
           </nav>
         </div>
 
         {/* Middle Section: Google/FB 極簡膠囊搜尋欄 */}
-        <div className="flex-1 max-w-xs sm:max-w-md md:max-w-lg mx-1 sm:mx-4 relative" ref={searchDropdownRef}>
+        <div className="flex-1 max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl mx-1 sm:mx-4 relative" ref={searchDropdownRef}>
           <div className="relative flex items-center">
             <Search className="absolute left-3.5 w-4 h-4 text-stone-400 pointer-events-none" />
 

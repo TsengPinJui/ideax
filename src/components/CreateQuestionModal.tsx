@@ -36,8 +36,14 @@ import {
   Cpu,
   Code2,
   Eye,
+  Upload,
 } from 'lucide-react';
 import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
+import {
+  processUploadedImageFile,
+  MAX_IMAGE_FILE_SIZE_MB,
+  ACCEPTED_IMAGE_TYPES,
+} from '../utils/imageUploadUtils';
 
 interface CreateQuestionModalProps {
   onClose: () => void;
@@ -184,14 +190,57 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [referencedPainPoint, setReferencedPainPoint] = useState('');
   const [targetGoal, setTargetGoal] = useState('');
 
-  // VibeCoding 專屬欄位狀態
+  // VibeCoding 與創新提案專屬欄位狀態
   const [appName, setAppName] = useState<string>('');
   const [coverImage, setCoverImage] = useState<string>('');
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
-  const [newGalleryInput, setNewGalleryInput] = useState<string>('');
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
   const [techArchitecture, setTechArchitecture] = useState<string>('');
   const [demoUrl, setDemoUrl] = useState<string>('');
   const [currentVersion, setCurrentVersion] = useState<string>('v1.0.0');
+
+  const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImageUploadError(null);
+    setIsUploadingImage(true);
+    const res = await processUploadedImageFile(file, MAX_IMAGE_FILE_SIZE_MB);
+    setIsUploadingImage(false);
+    if (!res.ok || !res.dataUrl) {
+      setImageUploadError(res.error || '圖片上傳失敗');
+      return;
+    }
+    setCoverImage(res.dataUrl);
+  };
+
+  const handleGalleryFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    e.target.value = '';
+    if (!files || files.length === 0) return;
+    setImageUploadError(null);
+    const remainingSlots = 6 - galleryImages.length;
+    if (remainingSlots <= 0) {
+      setImageUploadError('展示圖集最多可上傳 6 張圖片');
+      return;
+    }
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    setIsUploadingImage(true);
+    const uploadedList: string[] = [];
+    for (const file of filesToProcess) {
+      const res = await processUploadedImageFile(file, MAX_IMAGE_FILE_SIZE_MB);
+      if (!res.ok || !res.dataUrl) {
+        setImageUploadError(res.error || '圖片上傳失敗');
+      } else {
+        uploadedList.push(res.dataUrl);
+      }
+    }
+    setIsUploadingImage(false);
+    if (uploadedList.length > 0) {
+      setGalleryImages((prev) => [...prev, ...uploadedList].slice(0, 6));
+    }
+  };
 
   // 多階段交付設定（支援自訂階段數量、名稱、目標、預計交付與價格）
   const [enablePhasedDelivery, setEnablePhasedDelivery] = useState(false);
@@ -436,9 +485,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   };
 
   const handleOpenPreview = () => {
-    if (validateFormForPreview()) {
-      setShowPublishPreview(true);
-    }
+    setTermsError(null);
+    setShowPublishPreview(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -458,8 +506,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   };
 
   const handleConfirmFromPreview = async () => {
-    setHasConfirmedViaPreview(true);
     setShowPublishPreview(false);
+    if (!validateFormForPreview()) {
+      return;
+    }
+    setHasConfirmedViaPreview(true);
     await executeFinalSubmit();
   };
 
@@ -1029,85 +1080,183 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           </div>
         </div>
 
-        {/* VibeCoding 展場專屬欄位：封面大圖、0~6張圖片圖集、技術架構、成果網址 */}
-        {postType === 'vibecoding_app' && (
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50 via-indigo-50/50 to-purple-50/30 border border-purple-200/90 space-y-3.5 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
+        {/* 創新提案 & VibeCoding 軟體刊登：封面大圖、0~6張圖片圖集、以及 VibeCoding 專屬架構與網址 */}
+        {(postType === 'vibecoding_app' || postType === 'innovation_proposal') && (
+          <div
+            className={`p-4 rounded-2xl border space-y-3.5 animate-in fade-in duration-200 ${
+              postType === 'vibecoding_app'
+                ? 'bg-gradient-to-br from-purple-50 via-indigo-50/50 to-purple-50/30 border-purple-200/90'
+                : 'bg-gradient-to-br from-emerald-50/80 via-teal-50/40 to-emerald-50/30 border-emerald-200/90'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold">
-                  <Terminal className="w-3.5 h-3.5" />
+                <div
+                  className={`w-6 h-6 rounded-lg text-white flex items-center justify-center font-bold ${
+                    postType === 'vibecoding_app' ? 'bg-purple-600' : 'bg-emerald-600'
+                  }`}
+                >
+                  {postType === 'vibecoding_app' ? (
+                    <Terminal className="w-3.5 h-3.5" />
+                  ) : (
+                    <Lightbulb className="w-3.5 h-3.5" />
+                  )}
                 </div>
-                <h4 className="text-xs font-black text-purple-950">VibeCoding 應用多媒體與架構展示</h4>
+                <h4
+                  className={`text-xs font-black ${
+                    postType === 'vibecoding_app' ? 'text-purple-950' : 'text-emerald-950'
+                  }`}
+                >
+                  {postType === 'vibecoding_app'
+                    ? 'VibeCoding 應用多媒體與架構展示'
+                    : '創新提案視覺圖集與多媒體展示（選填）'}
+                </h4>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-200/80 text-purple-900 border border-purple-300">
-                專屬展場內容
-              </span>
+
+              <button
+                type="button"
+                onClick={handleOpenPreview}
+                className={`px-3 py-1 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs border ${
+                  postType === 'vibecoding_app'
+                    ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-700'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-700'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>即時預覽兩種類型提案效果</span>
+              </button>
             </div>
 
-            {/* 封面大圖 */}
+            {imageUploadError && (
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{imageUploadError}</span>
+              </div>
+            )}
+
+            {/* 封面大圖 (檔案上傳，單張限 2MB) */}
             <div>
-              <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-purple-600" />
-                  <span>作品封面大圖 URL (選填/建議)</span>
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                  <ImageIcon
+                    className={`w-3.5 h-3.5 ${
+                      postType === 'vibecoding_app' ? 'text-purple-600' : 'text-emerald-600'
+                    }`}
+                  />
+                  <span>
+                    {postType === 'vibecoding_app'
+                      ? '作品封面大圖上傳 (選填/建議)'
+                      : '提案主視覺封面圖上傳 (選填/建議)'}
+                  </span>
+                </label>
+                <span
+                  className={`text-[10px] font-semibold ${
+                    postType === 'vibecoding_app' ? 'text-purple-700' : 'text-emerald-700'
+                  }`}
+                >
+                  支援 JPG / PNG / WebP · 單張檔案大小上限 {MAX_IMAGE_FILE_SIZE_MB}MB
                 </span>
-                <span className="text-[10px] text-purple-700">支援 Unsplash, Imgur 等圖片網址</span>
-              </label>
-              <input
-                type="url"
-                value={coverImage}
-                onChange={(e) => setCoverImage(e.target.value)}
-                placeholder="https://images.unsplash.com/photo-... (或填寫線上圖片連結)"
-                className="w-full px-3 py-2 rounded-xl border border-purple-200 focus:border-purple-500 text-xs text-stone-900 outline-none bg-white font-mono"
-              />
-              {coverImage.trim() && (
-                <div className="mt-2 relative w-full h-36 rounded-xl overflow-hidden border border-purple-300 bg-stone-900">
+              </div>
+
+              {!coverImage.trim() ? (
+                <label
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-all bg-white text-xs font-bold ${
+                    postType === 'vibecoding_app'
+                      ? 'border-purple-300 hover:border-purple-500 text-purple-800 hover:bg-purple-50/60'
+                      : 'border-emerald-300 hover:border-emerald-500 text-emerald-800 hover:bg-emerald-50/60'
+                  }`}
+                >
+                  <Upload className="w-4 h-4 shrink-0" />
+                  <span>
+                    {isUploadingImage
+                      ? '圖片處理中...'
+                      : `點擊選擇電腦或手機圖片上傳封面（單張限 ${MAX_IMAGE_FILE_SIZE_MB}MB 以內）`}
+                  </span>
+                  <input
+                    type="file"
+                    accept={ACCEPTED_IMAGE_TYPES}
+                    onChange={handleCoverFileChange}
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                <div className="relative w-full h-40 rounded-xl overflow-hidden border border-stone-300 bg-stone-900 group">
                   <img src={coverImage} alt="封面預覽" className="w-full h-full object-cover" />
-                  <span className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-0.5 rounded text-[10px] font-bold">
+                  <span className="absolute bottom-2 left-2 bg-black/70 text-white px-2.5 py-0.5 rounded-lg text-[10px] font-bold">
                     封面大圖預覽
                   </span>
+                  <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                    <label className="px-2.5 py-1 rounded-lg bg-black/75 hover:bg-black text-white text-[11px] font-bold cursor-pointer flex items-center gap-1 transition-colors">
+                      <Upload className="w-3 h-3" />
+                      <span>更換封面</span>
+                      <input
+                        type="file"
+                        accept={ACCEPTED_IMAGE_TYPES}
+                        onChange={handleCoverFileChange}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setCoverImage('')}
+                      className="p-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white transition-colors cursor-pointer"
+                      title="移除封面圖片"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* 0~6 張截圖圖集 */}
+            {/* 0~6 張截圖圖集 (檔案上傳，單張限 2MB) */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
                 <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>功能介面與展示截圖 ({galleryImages.length} / 6 張)</span>
+                  <ImageIcon
+                    className={`w-3.5 h-3.5 ${
+                      postType === 'vibecoding_app' ? 'text-indigo-600' : 'text-teal-600'
+                    }`}
+                  />
+                  <span>
+                    {postType === 'vibecoding_app'
+                      ? `功能介面與展示截圖 (${galleryImages.length} / 6 張)`
+                      : `提案架構圖與補充圖集 (${galleryImages.length} / 6 張)`}
+                  </span>
                 </label>
-                <span className="text-[10px] text-stone-500">可上傳 0~6 張圖片連結</span>
+                <span className="text-[10px] text-stone-500 font-semibold">
+                  最多 6 張 · 每張上限 {MAX_IMAGE_FILE_SIZE_MB}MB
+                </span>
               </div>
 
               {galleryImages.length < 6 && (
-                <div className="flex items-center gap-2">
+                <label
+                  className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed cursor-pointer transition-all bg-white text-xs font-bold ${
+                    postType === 'vibecoding_app'
+                      ? 'border-indigo-300 hover:border-indigo-500 text-indigo-800 hover:bg-indigo-50/50'
+                      : 'border-teal-300 hover:border-teal-500 text-teal-800 hover:bg-teal-50/50'
+                  }`}
+                >
+                  <Upload className="w-4 h-4 shrink-0" />
+                  <span>
+                    {isUploadingImage
+                      ? '圖片處理中...'
+                      : `點擊上傳展示圖片（還可上傳 ${6 - galleryImages.length} 張，單張限 ${MAX_IMAGE_FILE_SIZE_MB}MB）`}
+                  </span>
                   <input
-                    type="url"
-                    value={newGalleryInput}
-                    onChange={(e) => setNewGalleryInput(e.target.value)}
-                    placeholder="貼上截圖圖片網址 (https://...)"
-                    className="flex-1 px-3 py-1.5 rounded-xl border border-stone-300 text-xs font-mono outline-none focus:border-purple-500 bg-white"
+                    type="file"
+                    accept={ACCEPTED_IMAGE_TYPES}
+                    multiple
+                    onChange={handleGalleryFilesChange}
+                    className="hidden"
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (newGalleryInput.trim()) {
-                        setGalleryImages([...galleryImages, newGalleryInput.trim()]);
-                        setNewGalleryInput('');
-                      }
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer shrink-0"
-                  >
-                    新增圖片
-                  </button>
-                </div>
+                </label>
               )}
 
               {galleryImages.length > 0 && (
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-2">
                   {galleryImages.map((img, idx) => (
-                    <div key={idx} className="relative group h-16 rounded-lg overflow-hidden border border-purple-200 bg-stone-900">
+                    <div key={idx} className="relative group h-16 rounded-lg overflow-hidden border border-stone-200 bg-stone-900">
                       <img src={img} alt={`截圖 ${idx + 1}`} className="w-full h-full object-cover" />
                       <button
                         type="button"
@@ -1123,53 +1272,57 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               )}
             </div>
 
-            {/* 技術架構 */}
-            <div>
-              <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center gap-1.5">
-                <Cpu className="w-3.5 h-3.5 text-purple-600" />
-                <span>技術架構 (Front-end / Back-end / AI 模型套件)</span>
-              </label>
-              <input
-                type="text"
-                value={techArchitecture}
-                onChange={(e) => setTechArchitecture(e.target.value)}
-                placeholder="例如：React + Vite + Tailwind CSS + Node.js + Firebase + Gemini API"
-                className="w-full px-3 py-2 rounded-xl border border-purple-200 focus:border-purple-500 text-xs text-stone-900 outline-none bg-white font-mono"
-              />
-            </div>
+            {postType === 'vibecoding_app' && (
+              <>
+                {/* 技術架構 */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center gap-1.5">
+                    <Cpu className="w-3.5 h-3.5 text-purple-600" />
+                    <span>技術架構 (Front-end / Back-end / AI 模型套件)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={techArchitecture}
+                    onChange={(e) => setTechArchitecture(e.target.value)}
+                    placeholder="例如：React + Vite + Tailwind CSS + Node.js + Firebase + Gemini API"
+                    className="w-full px-3 py-2 rounded-xl border border-purple-200 focus:border-purple-500 text-xs text-stone-900 outline-none bg-white font-mono"
+                  />
+                </div>
 
-            {/* 網站網址或檔案連結 */}
-            <div>
-              <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-emerald-600" />
-                <span>網站網址或線上體驗 Demo 連結</span>
-              </label>
-              <input
-                type="url"
-                value={demoUrl}
-                onChange={(e) => setDemoUrl(e.target.value)}
-                placeholder="例如：https://my-vibecoding-app.vercel.app 或 GitHub 專案連結"
-                className="w-full px-3 py-2 rounded-xl border border-emerald-200 focus:border-emerald-500 text-xs text-stone-900 outline-none bg-white font-mono"
-              />
-            </div>
+                {/* 網站網址或檔案連結 */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>網站網址或線上體驗 Demo 連結</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={demoUrl}
+                    onChange={(e) => setDemoUrl(e.target.value)}
+                    placeholder="例如：https://my-vibecoding-app.vercel.app 或 GitHub 專案連結"
+                    className="w-full px-3 py-2 rounded-xl border border-emerald-200 focus:border-emerald-500 text-xs text-stone-900 outline-none bg-white font-mono"
+                  />
+                </div>
 
-            {/* 版本號碼 (選填) */}
-            <div>
-              <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Tag className="w-3.5 h-3.5 text-purple-600" />
-                  <span>版本號碼 (選填)</span>
-                </span>
-                <span className="text-[10px] text-purple-700">例如：v1.0.0、v2.0.0</span>
-              </label>
-              <input
-                type="text"
-                value={currentVersion}
-                onChange={(e) => setCurrentVersion(e.target.value)}
-                placeholder="例如：v1.0.0 (初版發布)"
-                className="w-full px-3 py-2 rounded-xl border border-purple-200 focus:border-purple-500 text-xs text-stone-900 outline-none bg-white font-mono"
-              />
-            </div>
+                {/* 版本號碼 (選填) */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-purple-600" />
+                      <span>版本號碼 (選填)</span>
+                    </span>
+                    <span className="text-[10px] text-purple-700">例如：v1.0.0、v2.0.0</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={currentVersion}
+                    onChange={(e) => setCurrentVersion(e.target.value)}
+                    placeholder="例如：v1.0.0 (初版發布)"
+                    className="w-full px-3 py-2 rounded-xl border border-purple-200 focus:border-purple-500 text-xs text-stone-900 outline-none bg-white font-mono"
+                  />
+                </div>
+              </>
+            )}
           </div>
         )}
 

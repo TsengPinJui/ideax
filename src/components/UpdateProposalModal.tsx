@@ -16,8 +16,14 @@ import {
   GitBranch,
   Flame,
   Eye,
+  Upload,
 } from 'lucide-react';
 import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
+import {
+  processUploadedImageFile,
+  MAX_IMAGE_FILE_SIZE_MB,
+  ACCEPTED_IMAGE_TYPES,
+} from '../utils/imageUploadUtils';
 
 interface UpdateProposalModalProps {
   question: Question;
@@ -67,7 +73,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   const [galleryImages, setGalleryImages] = useState<string[]>(
     question.galleryImages || question.vibeCodingData?.screenshots || []
   );
-  const [newGalleryUrl, setNewGalleryUrl] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const [version, setVersion] = useState(getNextVersion);
   const [changelogContent, setChangelogContent] = useState('');
@@ -89,7 +95,6 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       setTechArchitecture(question.techArchitecture || '');
       setCoverImage(question.coverImage || question.vibeCodingData?.coverImageUrl || '');
       setGalleryImages(question.galleryImages || question.vibeCodingData?.screenshots || []);
-      setNewGalleryUrl('');
       setVersion(getNextVersion());
       setChangelogContent('');
       setChangelogNote('');
@@ -100,16 +105,46 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleAddGalleryImage = () => {
-    const trimmed = newGalleryUrl.trim();
-    if (!trimmed) return;
-    if (galleryImages.length >= 6) {
+  const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError('');
+    setIsUploadingImage(true);
+    const res = await processUploadedImageFile(file, MAX_IMAGE_FILE_SIZE_MB);
+    setIsUploadingImage(false);
+    if (!res.ok || !res.dataUrl) {
+      setError(res.error || '圖片上傳失敗');
+      return;
+    }
+    setCoverImage(res.dataUrl);
+  };
+
+  const handleGalleryFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    e.target.value = '';
+    if (!files || files.length === 0) return;
+    setError('');
+    const remainingSlots = 6 - galleryImages.length;
+    if (remainingSlots <= 0) {
       setError('最多可上傳 6 張展示圖片');
       return;
     }
-    setGalleryImages([...galleryImages, trimmed]);
-    setNewGalleryUrl('');
-    setError('');
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    setIsUploadingImage(true);
+    const uploadedList: string[] = [];
+    for (const file of filesToProcess) {
+      const res = await processUploadedImageFile(file, MAX_IMAGE_FILE_SIZE_MB);
+      if (!res.ok || !res.dataUrl) {
+        setError(res.error || '圖片上傳失敗');
+      } else {
+        uploadedList.push(res.dataUrl);
+      }
+    }
+    setIsUploadingImage(false);
+    if (uploadedList.length > 0) {
+      setGalleryImages((prev) => [...prev, ...uploadedList].slice(0, 6));
+    }
   };
 
   const handleRemoveGalleryImage = (index: number) => {
@@ -128,9 +163,12 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       setError('請填寫內容說明');
       return;
     }
+    if (!changelogContent.trim()) {
+      setError('請填寫本次版本的「更新摘要」（必填，將顯示於版本更新紀錄）');
+      return;
+    }
 
-    const summaryText =
-      changelogContent.trim() || (isVibeCoding ? '更新作品內容與資訊' : '更新提案內容說明');
+    const summaryText = changelogContent.trim();
 
     setSubmitting(true);
     const res = updateProposalContent(question.id, {
@@ -146,7 +184,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       techArchitecture: techArchitecture.trim(),
       coverImage: coverImage.trim(),
       galleryImages,
-      version: isVibeCoding ? version.trim() : undefined,
+      version: version.trim() || undefined,
       updateContent: summaryText,
       updateNote: changelogNote.trim() || undefined,
       changelogContent: summaryText,
@@ -220,62 +258,54 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                 )}
               </div>
 
-              {isVibeCoding && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      新版本號
-                    </label>
-                    <input
-                      type="text"
-                      value={version}
-                      onChange={(e) => setVersion(e.target.value)}
-                      placeholder="例如：v1.2.0"
-                      className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs font-semibold text-stone-900 focus:border-emerald-600 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      更新備註（選填）
-                    </label>
-                    <input
-                      type="text"
-                      value={changelogNote}
-                      onChange={(e) => setChangelogNote(e.target.value)}
-                      placeholder="例如：修正手機版排版、新增匯出功能"
-                      className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-900 focus:border-emerald-600 outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
-                  更新內容摘要（若未填寫將自動帶入預設更新紀錄）
-                </label>
-                <textarea
-                  rows={2}
-                  value={changelogContent}
-                  onChange={(e) => setChangelogContent(e.target.value)}
-                  placeholder="簡短說明這次改了什麼（例如：新增多因素回測圖表、加快載入速度）"
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-900 focus:border-emerald-600 outline-none resize-none"
-                />
-              </div>
-
-              {!isVibeCoding && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    更新備註（選填）
+                    新版本號
                   </label>
                   <input
                     type="text"
-                    value={changelogNote}
-                    onChange={(e) => setChangelogNote(e.target.value)}
-                    placeholder="例如：補充財務預算與執行時程"
+                    value={version}
+                    onChange={(e) => setVersion(e.target.value)}
+                    placeholder="例如：v1.2.0"
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs font-semibold text-stone-900 focus:border-emerald-600 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1 flex items-center justify-between">
+                    <span>
+                      更新摘要 <span className="text-rose-600">*</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-emerald-700">
+                      必填 · 顯示於版本更新紀錄
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={changelogContent}
+                    onChange={(e) => setChangelogContent(e.target.value)}
+                    placeholder="例如：修正手機版排版、新增匯出功能"
                     className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-900 focus:border-emerald-600 outline-none"
                   />
                 </div>
-              )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1 flex items-center justify-between">
+                  <span>內容詳述（選填）</span>
+                  <span className="text-[10px] font-medium text-stone-500">
+                    於版本下預設收合，可點擊展開顯示
+                  </span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={changelogNote}
+                  onChange={(e) => setChangelogNote(e.target.value)}
+                  placeholder="詳細說明本次版本的更新細節、修正項目或架構調整（選填，讀者可於版本紀錄下方點擊展開查看）..."
+                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-900 focus:border-emerald-600 outline-none resize-none"
+                />
+              </div>
             </div>
 
             {/* Software Categories (up to 3) */}
@@ -436,43 +466,89 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
               </div>
             )}
 
-            {/* Cover & Gallery Images */}
+            {/* Cover & Gallery Images (統一使用檔案上傳，單張限 2MB) */}
             <div className="space-y-3 pt-2 border-t border-stone-200">
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
-                  <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
-                  封面圖片網址
-                </label>
-                <input
-                  type="text"
-                  value={coverImage}
-                  onChange={(e) => setCoverImage(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
-                />
+                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                  <label className="text-xs font-bold text-stone-700 flex items-center gap-1">
+                    <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>封面圖片上傳</span>
+                  </label>
+                  <span className="text-[10px] font-semibold text-indigo-700">
+                    支援 JPG / PNG / WebP · 單張上限 {MAX_IMAGE_FILE_SIZE_MB}MB
+                  </span>
+                </div>
+
+                {!coverImage.trim() ? (
+                  <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-white hover:bg-indigo-50/40 text-indigo-800 text-xs font-bold cursor-pointer transition-all">
+                    <Upload className="w-4 h-4 shrink-0" />
+                    <span>
+                      {isUploadingImage
+                        ? '圖片處理中...'
+                        : `點擊選擇圖片上傳封面（單張限 ${MAX_IMAGE_FILE_SIZE_MB}MB 以內）`}
+                    </span>
+                    <input
+                      type="file"
+                      accept={ACCEPTED_IMAGE_TYPES}
+                      onChange={handleCoverFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                ) : (
+                  <div className="relative w-full h-36 rounded-lg overflow-hidden border border-stone-300 bg-stone-900 group">
+                    <img src={coverImage} alt="封面預覽" className="w-full h-full object-cover" />
+                    <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                      <label className="px-2.5 py-1 rounded bg-black/75 hover:bg-black text-white text-[11px] font-bold cursor-pointer flex items-center gap-1 transition-colors">
+                        <Upload className="w-3 h-3" />
+                        <span>更換封面</span>
+                        <input
+                          type="file"
+                          accept={ACCEPTED_IMAGE_TYPES}
+                          onChange={handleCoverFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setCoverImage('')}
+                        className="p-1.5 rounded bg-rose-600/90 hover:bg-rose-600 text-white transition-colors cursor-pointer"
+                        title="移除封面圖片"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
-                  畫面截圖（最多 6 張）
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={newGalleryUrl}
-                    onChange={(e) => setNewGalleryUrl(e.target.value)}
-                    placeholder="貼上圖片網址後點選新增..."
-                    className="flex-1 px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddGalleryImage}
-                    className="px-3 py-1.5 rounded-lg border border-indigo-500 bg-white text-indigo-600 hover:bg-indigo-600 hover:text-white active:bg-indigo-700 active:text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    新增
-                  </button>
+                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                  <label className="text-xs font-bold text-stone-700">
+                    畫面截圖與展示圖集（{galleryImages.length} / 6 張）
+                  </label>
+                  <span className="text-[10px] text-stone-500 font-semibold">
+                    最多 6 張 · 每張上限 {MAX_IMAGE_FILE_SIZE_MB}MB
+                  </span>
                 </div>
+
+                {galleryImages.length < 6 && (
+                  <label className="flex items-center justify-center gap-2 px-4 py-2.5 mb-2 rounded-lg border border-dashed border-stone-300 hover:border-indigo-500 bg-white hover:bg-indigo-50/40 text-stone-700 text-xs font-bold cursor-pointer transition-all">
+                    <Upload className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>
+                      {isUploadingImage
+                        ? '圖片處理中...'
+                        : `點擊上傳畫面截圖（還可上傳 ${6 - galleryImages.length} 張，單張限 ${MAX_IMAGE_FILE_SIZE_MB}MB）`}
+                    </span>
+                    <input
+                      type="file"
+                      accept={ACCEPTED_IMAGE_TYPES}
+                      multiple
+                      onChange={handleGalleryFilesChange}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+
                 {galleryImages.length > 0 && (
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     {galleryImages.map((img, idx) => (

@@ -41,6 +41,11 @@ import { syncUserToFirestore } from '../services/firestoreSync';
 import { updateFirebaseUserPassword } from '../services/firebaseAuth';
 import { validatePassword } from '../utils/validators';
 import {
+  processUploadedImageFile,
+  MAX_IMAGE_FILE_SIZE_MB,
+  ACCEPTED_IMAGE_TYPES,
+} from '../utils/imageUploadUtils';
+import {
   X,
   Wallet,
   Coins,
@@ -8996,34 +9001,40 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                       )}
 
                       {featuredCaseImages.length < 5 && (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={newImageUrl}
-                            onChange={(e) => setNewImageUrl(e.target.value)}
-                            placeholder="輸入圖片網址 (https://...)"
-                            className="flex-1 px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
-                          />
+                        <div className="flex items-center gap-2 flex-wrap">
                           <input
                             type="text"
                             value={newImageCaption}
                             onChange={(e) => setNewImageCaption(e.target.value)}
-                            placeholder="圖說 (選填)"
-                            className="w-28 px-2.5 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none hidden sm:block"
+                            placeholder="先輸入圖說 (選填)，再點擊右側上傳圖片..."
+                            className="flex-1 min-w-[160px] px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs font-medium focus:border-amber-500 outline-none"
                           />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (newImageUrl.trim()) {
-                                setFeaturedCaseImages((prev) => [...prev, { url: newImageUrl.trim(), caption: newImageCaption.trim() || undefined }]);
-                                setNewImageUrl('');
+                          <label className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold shrink-0 cursor-pointer shadow-2xs flex items-center gap-1.5">
+                            <span>+ 上傳圖片（限 {MAX_IMAGE_FILE_SIZE_MB}MB）</span>
+                            <input
+                              type="file"
+                              accept={ACCEPTED_IMAGE_TYPES}
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                e.target.value = '';
+                                if (!file) return;
+                                const res = await processUploadedImageFile(file, MAX_IMAGE_FILE_SIZE_MB);
+                                if (!res.ok || !res.dataUrl) {
+                                  showCenterToast(res.error || '圖片上傳失敗');
+                                  return;
+                                }
+                                setFeaturedCaseImages((prev) => [
+                                  ...prev,
+                                  {
+                                    url: res.dataUrl!,
+                                    caption: newImageCaption.trim() || file.name.replace(/\.[^/.]+$/, ''),
+                                  },
+                                ]);
                                 setNewImageCaption('');
-                              }
-                            }}
-                            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold shrink-0 cursor-pointer shadow-2xs"
-                          >
-                            + 新增圖片
-                          </button>
+                              }}
+                              className="hidden"
+                            />
+                          </label>
                         </div>
                       )}
                     </div>

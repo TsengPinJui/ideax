@@ -1888,15 +1888,15 @@ function MainContent() {
                       </div>
 
                       {/* 下排：搜尋框 + 排序下拉選單 + 卡片檢視切換 (大卡片/條列式/小卡片) */}
-                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5">
                         <div className="relative flex-1 min-w-[160px]">
-                          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                           <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="搜尋痛點標題、關鍵字或發布者..."
-                            className="w-full pl-9 pr-7 py-2 rounded-xl border border-rose-200 bg-white text-xs font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                            className="w-full pl-9 sm:pl-10 pr-7 py-2 sm:py-2.5 rounded-xl border border-rose-200 bg-white text-xs sm:text-sm font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
                           />
                           {searchQuery && (
                             <button
@@ -1904,16 +1904,16 @@ function MainContent() {
                               onClick={() => setSearchQuery('')}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
                             >
-                              <X className="w-3.5 h-3.5" />
+                              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto sm:ml-0">
                           <select
                             value={sortBy}
                             onChange={(e) => handleSetSortBy(e.target.value as QuestionSortOption)}
-                            className="px-2.5 py-2 rounded-xl border border-rose-200 bg-white text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-400 cursor-pointer shrink-0"
+                            className="px-2.5 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-rose-200 bg-white text-xs sm:text-sm font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-400 cursor-pointer shrink-0"
                           >
                             <option value="recruiting_promoted">🔥 熱門推薦</option>
                             <option value="most_likes">🔥 +1 附議最多</option>
@@ -1924,42 +1924,42 @@ function MainContent() {
                           </select>
 
                           {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}
-                          <div className="inline-flex rounded-xl bg-white/90 border border-rose-200 p-0.5 shrink-0">
+                          <div className="inline-flex rounded-xl bg-white/90 border border-rose-200 p-0.5 sm:p-1 shrink-0">
                             <button
                               type="button"
                               onClick={() => handleSetViewMode('large')}
-                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              className={`p-1.5 sm:p-2 rounded-lg transition-all cursor-pointer ${
                                 viewMode === 'large'
                                   ? 'bg-rose-600 text-white shadow-2xs'
                                   : 'text-stone-500 hover:text-stone-800'
                               }`}
                               title="大卡片模式"
                             >
-                              <Square className="w-3.5 h-3.5" />
+                              <Square className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleSetViewMode('list')}
-                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              className={`p-1.5 sm:p-2 rounded-lg transition-all cursor-pointer ${
                                 viewMode === 'list'
                                   ? 'bg-rose-600 text-white shadow-2xs'
                                   : 'text-stone-500 hover:text-stone-800'
                               }`}
                               title="條列式清單"
                             >
-                              <List className="w-3.5 h-3.5" />
+                              <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleSetViewMode('grid')}
-                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              className={`p-1.5 sm:p-2 rounded-lg transition-all cursor-pointer ${
                                 viewMode === 'grid'
                                   ? 'bg-rose-600 text-white shadow-2xs'
                                   : 'text-stone-500 hover:text-stone-800'
                               }`}
                               title="小卡片（雙欄方格）"
                             >
-                              <LayoutGrid className="w-3.5 h-3.5" />
+                              <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                           </div>
                         </div>
@@ -2106,15 +2106,15 @@ function MainContent() {
                       </div>
 
                       {/* 下排：搜尋框 + 排序下拉選單 + 卡片檢視切換 (大卡片/條列式/小卡片) */}
-                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5">
                         <div className="relative flex-1 min-w-[160px]">
-                          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                           <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="搜尋討論標題、關鍵字或發起人..."
-                            className="w-full pl-9 pr-7 py-2 rounded-xl border border-sky-200 bg-white text-xs font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                            className="w-full pl-9 sm:pl-10 pr-7 py-2 sm:py-2.5 rounded-xl border border-sky-200 bg-white text-xs sm:text-sm font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-sky-400"
                           />
                           {searchQuery && (
                             <button
@@ -2122,16 +2122,16 @@ function MainContent() {
                               onClick={() => setSearchQuery('')}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
                             >
-                              <X className="w-3.5 h-3.5" />
+                              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto sm:ml-0">
                           <select
                             value={sortBy}
                             onChange={(e) => handleSetSortBy(e.target.value as QuestionSortOption)}
-                            className="px-2.5 py-2 rounded-xl border border-sky-200 bg-white text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-sky-400 cursor-pointer shrink-0"
+                            className="px-2.5 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-sky-200 bg-white text-xs sm:text-sm font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-sky-400 cursor-pointer shrink-0"
                           >
                             <option value="recruiting_promoted">🔥 熱門推薦</option>
                             <option value="most_likes">👍 按讚收藏最多</option>
@@ -2141,42 +2141,42 @@ function MainContent() {
                           </select>
 
                           {/* 檢視模式切換 (大卡片 / 條列式 / 小卡片) */}
-                          <div className="inline-flex rounded-xl bg-white/90 border border-sky-200 p-0.5 shrink-0">
+                          <div className="inline-flex rounded-xl bg-white/90 border border-sky-200 p-0.5 sm:p-1 shrink-0">
                             <button
                               type="button"
                               onClick={() => handleSetViewMode('large')}
-                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              className={`p-1.5 sm:p-2 rounded-lg transition-all cursor-pointer ${
                                 viewMode === 'large'
                                   ? 'bg-sky-600 text-white shadow-2xs'
                                   : 'text-stone-500 hover:text-stone-800'
                               }`}
                               title="大卡片模式"
                             >
-                              <Square className="w-3.5 h-3.5" />
+                              <Square className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleSetViewMode('list')}
-                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              className={`p-1.5 sm:p-2 rounded-lg transition-all cursor-pointer ${
                                 viewMode === 'list'
                                   ? 'bg-sky-600 text-white shadow-2xs'
                                   : 'text-stone-500 hover:text-stone-800'
                               }`}
                               title="條列式清單"
                             >
-                              <List className="w-3.5 h-3.5" />
+                              <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleSetViewMode('grid')}
-                              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              className={`p-1.5 sm:p-2 rounded-lg transition-all cursor-pointer ${
                                 viewMode === 'grid'
                                   ? 'bg-sky-600 text-white shadow-2xs'
                                   : 'text-stone-500 hover:text-stone-800'
                               }`}
                               title="小卡片（雙欄方格）"
                             >
-                              <LayoutGrid className="w-3.5 h-3.5" />
+                              <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                           </div>
                         </div>

@@ -57,6 +57,11 @@ import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 import { analyzeCompetitionItemWithAgent } from '../../services/competitionAiAgent';
 import {
+  processUploadedImageFile,
+  MAX_IMAGE_FILE_SIZE_MB,
+  ACCEPTED_IMAGE_TYPES,
+} from '../../utils/imageUploadUtils';
+import {
   ProposalDraft,
   saveProposalDraft,
   deleteProposalDraft,
@@ -478,7 +483,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
     }
   };
 
-  const handleImageFilesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -489,33 +494,22 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
 
     setIsProcessingImages(true);
     const newImages: string[] = [];
-    let processed = 0;
 
-    Array.from(files).forEach((file) => {
-      if (file.size > 5 * 1024 * 1024) {
-        showToast(`檔案「${file.name}」超過 5MB，請選擇較小的圖片`);
-        processed++;
-        if (processed === files.length) setIsProcessingImages(false);
-        return;
+    for (const file of Array.from(files)) {
+      const res = await processUploadedImageFile(file, MAX_IMAGE_FILE_SIZE_MB);
+      if (!res.ok || !res.dataUrl) {
+        showToast(res.error || `檔案「${file.name}」上傳失敗`);
+      } else {
+        newImages.push(res.dataUrl);
       }
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        if (ev.target?.result) {
-          newImages.push(ev.target.result as string);
-        }
-        processed++;
-        if (processed === files.length) {
-          setFormImages((prev) => [...prev, ...newImages].slice(0, 3));
-          setIsProcessingImages(false);
-          showToast(`已成功載入 ${newImages.length} 張圖片`);
-        }
-      };
-      reader.onerror = () => {
-        processed++;
-        if (processed === files.length) setIsProcessingImages(false);
-      };
-      reader.readAsDataURL(file);
-    });
+    }
+
+    if (newImages.length > 0) {
+      setFormImages((prev) => [...prev, ...newImages].slice(0, 3));
+      showToast(`已成功上傳 ${newImages.length} 張圖片`);
+    }
+    setIsProcessingImages(false);
+    e.target.value = '';
   };
 
   const handleRemoveImage = (indexToRemove: number) => {
@@ -1379,12 +1373,16 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
 
             {formImages.length < 3 && (
               <div>
-                <label className="flex items-center justify-center gap-2 p-3 border border-dashed border-amber-300 rounded-xl hover:border-amber-500 bg-white hover:bg-amber-100/50 text-stone-700 cursor-pointer transition-colors">
+                <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-amber-300 rounded-xl hover:border-amber-500 bg-white hover:bg-amber-100/50 text-stone-800 font-bold cursor-pointer transition-colors">
                   <Upload className="w-4 h-4 text-amber-600" />
-                  <span>{isProcessingImages ? '處理中...' : `選擇電腦或手機圖片上傳（還可上傳 ${3 - formImages.length} 張）`}</span>
+                  <span>
+                    {isProcessingImages
+                      ? '圖片處理中...'
+                      : `選擇電腦或手機圖片上傳（還可上傳 ${3 - formImages.length} 張 · 單張上限 ${MAX_IMAGE_FILE_SIZE_MB}MB）`}
+                  </span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept={ACCEPTED_IMAGE_TYPES}
                     multiple
                     onChange={handleImageFilesUpload}
                     className="hidden"

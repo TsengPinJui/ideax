@@ -229,83 +229,83 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const visibleMetrics = isMetricsExpanded ? allMetricItems : allMetricItems.slice(0, 4);
 
   return (
-    <section className="relative pt-4 pb-4 sm:pt-8 sm:pb-8 overflow-hidden">
+    <section className="relative pt-4 pb-4 sm:pt-8 sm:pb-8 lg:pt-10 lg:pb-10 overflow-hidden">
       <YellowLiquidHeroBackground className="h-full" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
+        <div className="flex flex-col items-center text-center max-w-3xl lg:max-w-5xl mx-auto">
           {/* Official IdeaX Brand Display - 手機版精巧緊湊、電腦版大氣通透 */}
-          <div className="relative mb-3 sm:mb-5 group inline-flex max-w-[88%] sm:max-w-sm mx-auto justify-center">
+          <div className="relative mb-3 sm:mb-6 group inline-flex max-w-[90%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto justify-center">
             <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
-            <div className="relative py-2 px-4 sm:py-3 sm:px-5 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/85 border border-amber-200/70 shadow-sm flex items-center justify-center gap-2.5 sm:gap-3.5 transition-all duration-300">
+            <div className="relative py-2 px-4 sm:py-3.5 sm:px-6 md:py-4 md:px-8 lg:py-5 lg:px-10 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/85 border border-amber-200/70 shadow-sm flex items-center justify-center gap-2.5 sm:gap-4 md:gap-5 transition-all duration-300">
               <img
                 src="/logo-bulb.png"
                 alt="IdeaX 燈泡"
-                className="h-16 sm:h-24 md:h-28 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
+                className="h-16 sm:h-24 md:h-32 lg:h-36 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
               />
               <img
                 src="/logo-chuangdianzi-text.png"
                 alt="創點子 IdeaX"
-                className="h-11 sm:h-16 md:h-18 w-auto object-contain shrink-0"
+                className="h-11 sm:h-16 md:h-[88px] lg:h-[104px] w-auto object-contain shrink-0"
               />
             </div>
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-xl sm:text-3xl md:text-[34px] font-black text-stone-900 tracking-tight leading-snug my-1.5 sm:my-2.5">
+          <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-[42px] font-black text-stone-900 tracking-tight leading-snug my-1.5 sm:my-3">
             一個問題，找到<span className="text-amber-500 underline decoration-amber-300 decoration-wavy decoration-2">更多可能</span>。
           </h1>
 
           {/* Subtitle */}
-          <div className="mt-1 sm:mt-2 mb-3 sm:mb-5 flex items-center justify-center gap-1.5 text-xs sm:text-sm text-stone-600 font-medium">
+          <div className="mt-1 sm:mt-2 mb-3 sm:mb-6 flex items-center justify-center gap-1.5 text-xs sm:text-base md:text-lg text-stone-600 font-semibold">
             <span>痛點許願 · 創新提案 · 專家懸賞</span>
           </div>
 
           {/* Primary, Find Experts & Explore Action Buttons */}
-          <div className="mt-1 sm:mt-2 hidden sm:flex sm:flex-wrap items-center justify-center gap-3 w-full sm:w-auto">
+          <div className="mt-1 sm:mt-2 hidden sm:flex sm:flex-wrap items-center justify-center gap-3 md:gap-4 w-full sm:w-auto">
             {/* 1. 主行動：立即發布! */}
             <button
               onClick={onPostClick}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 active:from-amber-600 active:to-amber-600 text-stone-950 font-black text-sm sm:text-base shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center leading-tight cursor-pointer group border border-amber-300/80"
+              className="w-full sm:w-auto px-6 py-2.5 md:px-7 md:py-3 lg:px-8 lg:py-3.5 rounded-xl md:rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 active:from-amber-600 active:to-amber-600 text-stone-950 font-black text-sm sm:text-base md:text-lg shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center leading-tight cursor-pointer group border border-amber-300/80"
             >
-              <span className="flex items-center justify-center gap-1.5 text-sm sm:text-base font-black">
+              <span className="flex items-center justify-center gap-1.5 text-sm sm:text-base md:text-lg font-black">
                 <IdeaXLogo variant="bulb" size="sm" />
                 <span>立即發布!</span>
               </span>
-              <span className="text-[10px] sm:text-[11px] font-bold text-stone-900/80 mt-0.5">(問題、痛點、提案、刊登、討論)</span>
+              <span className="text-[10px] sm:text-xs font-bold text-stone-900/80 mt-0.5">(問題、痛點、提案、刊登、討論)</span>
             </button>
 
             {/* 2. 次行動：找專家 / 徵才 */}
             <button
               onClick={onFindExpertsClick}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:from-emerald-700 active:to-teal-700 text-white font-black text-sm sm:text-base shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-emerald-400/80"
+              className="w-full sm:w-auto px-6 py-3.5 md:px-7 md:py-4 lg:px-8 lg:py-4 rounded-xl md:rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:from-emerald-700 active:to-teal-700 text-white font-black text-sm sm:text-base md:text-lg shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-emerald-400/80"
             >
-              <ShieldCheck className="w-4 h-4 text-white" />
+              <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 text-white" />
               <span>找專家 / 徵才</span>
             </button>
 
             {/* 3. 探索行動：最新熱門趨勢 (柔和玫瑰粉紅框與羅盤圖示) */}
             <button
               onClick={onExploreClick}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-rose-50/50 active:bg-rose-50 text-stone-800 hover:text-rose-950 font-extrabold text-sm sm:text-base shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border-[1.5px] border-rose-400 hover:border-rose-500 group"
+              className="w-full sm:w-auto px-6 py-3.5 md:px-7 md:py-4 lg:px-8 lg:py-4 rounded-xl md:rounded-2xl bg-white hover:bg-rose-50/50 active:bg-rose-50 text-stone-800 hover:text-rose-950 font-extrabold text-sm sm:text-base md:text-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border-[1.5px] border-rose-400 hover:border-rose-500 group"
             >
-              <Compass className="w-4 h-4 text-rose-500 group-hover:rotate-45 transition-transform" />
+              <Compass className="w-4 h-4 md:w-5 md:h-5 text-rose-500 group-hover:rotate-45 transition-transform" />
               <span>最新熱門趨勢</span>
-              <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-rose-500 group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 text-stone-400 group-hover:text-rose-500 group-hover:translate-x-1 transition-all" />
             </button>
           </div>
         </div>
 
         {/* Clean Collapsible Metrics Bar (精簡橫條 + 可展開完整指標) */}
         {(allMetricItems.length > 0 || publicMetricsConfig.showHighestBounty) && (
-          <div className="mt-4 sm:mt-7 pt-3 sm:pt-4 border-t border-stone-200/60 max-w-5xl mx-auto">
-            <div className="flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-8 gap-y-2 text-center">
+          <div className="mt-4 sm:mt-7 lg:mt-8 pt-3 sm:pt-4 lg:pt-5 border-t border-stone-200/60 max-w-5xl lg:max-w-6xl mx-auto">
+            <div className="flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-8 lg:gap-x-10 gap-y-2 text-center">
               {visibleMetrics.map((m) => (
                 <div key={m.key} className="flex items-baseline gap-1.5">
-                  <span className="text-[11px] sm:text-xs text-stone-500 font-medium">{m.label}</span>
-                  <span className={`text-sm sm:text-base font-black font-mono ${m.accent || 'text-stone-900'}`}>
+                  <span className="text-[11px] sm:text-xs md:text-sm text-stone-500 font-medium">{m.label}</span>
+                  <span className={`text-sm sm:text-base md:text-lg lg:text-xl font-black font-mono ${m.accent || 'text-stone-900'}`}>
                     {m.value}
                   </span>
-                  {m.unit && <span className="text-[10px] text-stone-400">{m.unit}</span>}
+                  {m.unit && <span className="text-[10px] sm:text-xs text-stone-400">{m.unit}</span>}
                 </div>
               ))}
 
@@ -314,15 +314,15 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 <button
                   id="highest-bounty-section"
                   onClick={onLeaderboardClick}
-                  className="scroll-mt-14 sm:scroll-mt-20 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50/90 hover:bg-amber-100/90 border border-amber-200/80 transition-all cursor-pointer group"
+                  className="scroll-mt-14 sm:scroll-mt-20 inline-flex items-center gap-1.5 px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-amber-50/90 hover:bg-amber-100/90 border border-amber-200/80 transition-all cursor-pointer group"
                   title="點擊按最高懸賞排序"
                 >
-                  <Sparkles className="w-3 h-3 text-amber-600" />
-                  <span className="text-[11px] font-bold text-stone-600">最高懸賞</span>
-                  <span className="text-xs sm:text-sm font-black text-amber-600 font-mono">
+                  <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-600" />
+                  <span className="text-[11px] sm:text-xs md:text-sm font-bold text-stone-600">最高懸賞</span>
+                  <span className="text-xs sm:text-sm md:text-base font-black text-amber-600 font-mono">
                     NT$ {currentHighestBounty.toLocaleString()}
                   </span>
-                  <ArrowRight className="w-3 h-3 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowRight className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               )}
 
@@ -330,10 +330,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsMetricsExpanded(!isMetricsExpanded)}
-                  className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-0.5 text-[11px] sm:text-xs md:text-sm font-semibold text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
                 >
                   <span>{isMetricsExpanded ? '收合數據' : `更多數據 (${allMetricItems.length})`}</span>
-                  {isMetricsExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {isMetricsExpanded ? <ChevronUp className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <ChevronDown className="w-3 h-3 md:w-3.5 md:h-3.5" />}
                 </button>
               )}
             </div>

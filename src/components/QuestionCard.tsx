@@ -310,53 +310,53 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             </span>
           </div>
 
-          <div className="shrink-0 flex items-center gap-1">
+          <div className="shrink-0 flex items-center gap-1 sm:gap-1.5">
             <button
               type="button"
               onClick={handleBookmarkClick}
-              className={`p-1 rounded-full border transition-all cursor-pointer ${
+              className={`p-1 sm:p-1.5 rounded-full border transition-all cursor-pointer ${
                 isBookmarked
                   ? 'bg-amber-50 text-amber-600 border-amber-300'
                   : 'bg-stone-50 text-stone-400 border-stone-200 hover:text-amber-600'
               }`}
               title={isBookmarked ? '⭐ 已收藏' : '⭐ 收藏'}
             >
-              <Star className={`w-2.5 h-2.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
+              <Star className={`w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
             </button>
 
             {isVibeCoding || isInnovationProposal ? (
               <button
                 type="button"
                 onClick={handleLikeClick}
-                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition-all cursor-pointer border ${
+                className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold flex items-center gap-0.5 sm:gap-1 transition-all cursor-pointer border ${
                   isLiked || isSeconded
                     ? 'bg-rose-500 text-white border-rose-500'
                     : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
                 }`}
                 title="❤️ Like（創新提案 / 軟體刊登）"
               >
-                <Heart className={`w-2.5 h-2.5 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
-                <span className="font-mono text-[9.5px]">{Math.max(likesCount || 0, secondCount || 0)}</span>
+                <Heart className={`w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                <span className="font-mono text-[9.5px] sm:text-xs">{Math.max(likesCount || 0, secondCount || 0)}</span>
               </button>
             ) : isL0Discussion ? (
               <button
                 type="button"
                 onClick={handleLikeClick}
-                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition-all cursor-pointer border ${
+                className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold flex items-center gap-0.5 sm:gap-1 transition-all cursor-pointer border ${
                   isLiked
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
                 }`}
                 title="👍 按讚（L0 討論）"
               >
-                <ThumbsUp className="w-2.5 h-2.5" />
-                <span className="font-mono text-[9.5px]">{likesCount || 0}</span>
+                <ThumbsUp className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
+                <span className="font-mono text-[9.5px] sm:text-xs">{likesCount || 0}</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleSecondClick}
-                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition-all cursor-pointer border ${
+                className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold flex items-center gap-0.5 sm:gap-1 transition-all cursor-pointer border ${
                   isSeconded
                     ? 'bg-orange-600 text-white border-orange-600'
                     : 'bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100'
@@ -364,7 +364,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 title="🔥 +1 附議（問題類型 / 痛點）"
               >
                 <span className="font-mono font-black">+1</span>
-                <span className="font-mono text-[9.5px]">{secondCount || 0}</span>
+                <span className="font-mono text-[9.5px] sm:text-xs">{secondCount || 0}</span>
               </button>
             )}
 
@@ -558,49 +558,49 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             <button
               type="button"
               onClick={handleBookmarkClick}
-              className={`p-1.5 rounded-full text-[11px] font-bold flex items-center justify-center border transition-all cursor-pointer ${
+              className={`p-1.5 sm:p-2 rounded-full text-[11px] sm:text-xs font-bold flex items-center justify-center border transition-all cursor-pointer ${
                 isBookmarked
                   ? 'bg-amber-50 text-amber-700 border-amber-300'
                   : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-amber-50 hover:text-amber-700'
               }`}
               title={isBookmarked ? '⭐ 已收藏' : '⭐ 收藏'}
             >
-              <Star className={`w-3 h-3 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
+              <Star className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
             </button>
 
             {isVibeCoding || isInnovationProposal ? (
               <button
                 type="button"
                 onClick={handleLikeClick}
-                className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ${
                   isLiked || isSeconded
                     ? 'bg-rose-500 text-white border-rose-500'
                     : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
                 }`}
                 title="❤️ Like（創新提案 / 軟體刊登）"
               >
-                <Heart className={`w-3 h-3 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                <Heart className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
                 <span className="font-mono">{Math.max(likesCount || 0, secondCount || 0)}</span>
               </button>
             ) : isL0Discussion ? (
               <button
                 type="button"
                 onClick={handleLikeClick}
-                className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ${
                   isLiked
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
                 }`}
                 title="👍 按讚（L0 討論）"
               >
-                <ThumbsUp className="w-3 h-3" />
+                <ThumbsUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span className="font-mono">{likesCount || 0}</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleSecondClick}
-                className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ${
                   isSeconded
                     ? 'bg-orange-600 text-white border-orange-600'
                     : 'bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100'
@@ -734,14 +734,14 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             <button
               type="button"
               onClick={handleBookmarkClick}
-              className={`p-1.5 rounded-full border text-[11px] font-bold flex items-center justify-center transition-all cursor-pointer ${
+              className={`p-1.5 sm:p-2 rounded-full border text-[11px] sm:text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
                 isBookmarked
                   ? 'text-amber-800 bg-amber-50 border-amber-300'
                   : 'text-stone-500 bg-stone-50 border-stone-200 hover:text-amber-700 hover:bg-amber-50/70'
               }`}
               title={isBookmarked ? '⭐ 取消收藏' : '⭐ 收藏'}
             >
-              <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
+              <Star className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
             </button>
           </div>
         </div>
@@ -845,35 +845,35 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             <button
               type="button"
               onClick={handleLikeClick}
-              className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ${
                 isLiked || isSeconded
                   ? 'bg-rose-500 text-white border-rose-500 shadow-2xs'
                   : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
               }`}
               title="❤️ Like（創新提案 / 軟體刊登）"
             >
-              <Heart className={`w-3 h-3 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+              <Heart className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
               <span className="font-mono">{Math.max(likesCount || 0, secondCount || 0)}</span>
             </button>
           ) : isL0Discussion ? (
             <button
               type="button"
               onClick={handleLikeClick}
-              className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ${
                 isLiked
                   ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
                   : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
               }`}
               title="👍 按讚（L0 討論）"
             >
-              <ThumbsUp className="w-3 h-3" />
+              <ThumbsUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               <span className="font-mono">{likesCount || 0}</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={handleSecondClick}
-              className={`px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ${
                 isSeconded
                   ? 'bg-orange-600 text-white border-orange-600 shadow-2xs'
                   : 'bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100'
