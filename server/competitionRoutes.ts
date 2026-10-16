@@ -39,6 +39,9 @@ import {
   upsertMirrorAndFirestoreDoc,
   deleteMirrorAndFirestoreDoc,
   ensureProposalsSyncedToFirestore,
+  getRealSiteTrafficStats,
+  recordRealSiteVisit,
+  recordRealPresenceHeartbeat,
 } from './competitionService';
 import { StarSeasonStage, StarSeasonTrack, COMPETITION_POINTS_CONFIG, DEFAULT_COMPETITION_SCHEDULE } from '../src/types/competition';
 
@@ -794,6 +797,36 @@ router.delete('/db-mirror/:collection/:docId', async (req: Request, res: Respons
       await deleteMirrorAndFirestoreDoc('competition_proposals', docId);
     }
     res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 20. 真實全站流量統計 (UTC+8 台灣時間) & 即時在線人數端點
+router.get('/site-traffic', async (_req: Request, res: Response) => {
+  try {
+    const stats = await getRealSiteTrafficStats();
+    res.json({ success: true, stats });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/site-traffic/visit', async (req: Request, res: Response) => {
+  try {
+    const sessionId = req.body?.sessionId ? String(req.body.sessionId) : undefined;
+    const stats = await recordRealSiteVisit(sessionId);
+    res.json({ success: true, stats });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/site-traffic/heartbeat', (req: Request, res: Response) => {
+  try {
+    const sessionId = req.body?.sessionId ? String(req.body.sessionId) : undefined;
+    const result = recordRealPresenceHeartbeat(sessionId);
+    res.json({ success: true, ...result });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

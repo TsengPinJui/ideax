@@ -26,6 +26,11 @@ import {
   CustomerSupportTicket,
   CustomerSupportConversation,
 } from '../types';
+import {
+  recordUtc8SiteVisitBucket,
+  getCachedRealTrafficStats,
+  saveCachedRealTrafficStats,
+} from '../components/AdminSiteTrafficChart';
 
 const QUOTA_STORAGE_KEY = 'ideax_firestore_quota_exhausted_date';
 
@@ -1267,42 +1272,117 @@ export function subscribeToCustomerSupportConversations(callback: (convs: Custom
 // 網站造訪量 (Site Visits) & 即時線上人數 (Presence Tracking)
 // =========================================================================
 
-/**
- * 記錄網站總瀏覽量與造訪次數（本地累加並讀取雲端最新統計，避免每次重整消耗免費寫入配額）
- */
-export async function recordSiteVisitInFirestore(): Promise<number> {
-  const LOCAL_STORAGE_VISITS_KEY = 'ideax_total_site_visits';
-  let currentLocalVisits = parseInt(localStorage.getItem(LOCAL_STORAGE_VISITS_KEY) || '1280', 10);
-
-  currentLocalVisits += 1;
-  localStorage.setItem(LOCAL_STORAGE_VISITS_KEY, String(currentLocalVisits));
-  return currentLocalVisits;
+function getClientSessionId(): string {
+  const KEY = 'ideax_client_session_id';
+  try {
+    let sid = sessionStorage.getItem(KEY) || localStorage.getItem(KEY);
+    if (!sid) {
+      sid = `sid_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      sessionStorage.setItem(KEY, sid);
+      localStorage.setItem(KEY, sid);
+    }
+    return sid;
+  } catch {
+    return 'sid_default';
+  }
 }
 
 /**
- * 實時監聽全站「網站造訪量」
+ * 記錄網站總瀏覽量與造訪次數（100% 真實後端與雲端統計，不偽造過去歷史資料）
+ */
+export async function recordSiteVisitInFirestore(): Promise<number> {
+  try {
+    const res = await fetch('/api/competition/site-traffic/visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: getClientSessionId() }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.success && json.stats) {
+        saveCachedRealTrafficStats(json.stats);
+        return Number(json.stats.totalVisits) || 1;
+      }
+    }
+  } catch {
+    // fallback to local real counter if API unreachable
+  }
+  const fallback = recordUtc8SiteVisitBucket();
+  return fallback.totalVisits;
+}
+
+/**
+ * 實時監聽全站「網站造訪量」（真實數據）
  */
 export function subscribeSiteVisitsFromFirestore(callback: (visits: number) => void): Unsubscribe | null {
-  const LOCAL_STORAGE_VISITS_KEY = 'ideax_total_site_visits';
-  const initialLocal = parseInt(localStorage.getItem(LOCAL_STORAGE_VISITS_KEY) || '1280', 10);
-  callback(initialLocal);
+  const cached = getCachedRealTrafficStats();
+  if (cached.totalVisits > 0) {
+    callback(cached.totalVisits);
+  }
+
+  fetch('/api/competition/site-traffic')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((json) => {
+      if (json?.success && json.stats) {
+        saveCachedRealTrafficStats(json.stats);
+        callback(Number(json.stats.totalVisits) || 0);
+      }
+    })
+    .catch(() => {});
+
+  const handler = (e: Event) => {
+    const customEvt = e as CustomEvent;
+    if (customEvt.detail && typeof customEvt.detail.totalVisits === 'number') {
+      callback(customEvt.detail.totalVisits);
+    }
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('ideax_site_traffic_updated', handler);
+    return () => window.removeEventListener('ideax_site_traffic_updated', handler);
+  }
   return null;
 }
 
 /**
- * 發送即時線上活躍 Heartbeat（避免每 30 秒高頻寫入耗盡 Firestore 每日免費寫入額度）
+ * 發送即時線上活躍 Heartbeat（真實活躍連線統計）
  */
-export async function sendPresenceHeartbeat(_currentUserId?: string): Promise<void> {
-  return;
+export async function sendPresenceHeartbeat(currentUserId?: string): Promise<void> {
+  try {
+    const sessionId = currentUserId || getClientSessionId();
+    const res = await fetch('/api/competition/site-traffic/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.success && typeof json.onlineUsersCount === 'number' && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ideax_presence_updated', { detail: json.onlineUsersCount }));
+      }
+    }
+  } catch {}
 }
 
 /**
  * 實時監聽當前「即時線上人數」
  */
 export function subscribePresenceFromFirestore(callback: (onlineCount: number) => void): Unsubscribe | null {
-  callback(1);
+  const cached = getCachedRealTrafficStats();
+  callback(Math.max(1, cached.onlineUsersCount || 1));
+
+  const handler = (e: Event) => {
+    const customEvt = e as CustomEvent<number>;
+    if (typeof customEvt.detail === 'number') {
+      callback(Math.max(1, customEvt.detail));
+    }
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('ideax_presence_updated', handler);
+    return () => window.removeEventListener('ideax_presence_updated', handler);
+  }
   return null;
 }
+
 
 
 

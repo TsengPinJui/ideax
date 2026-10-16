@@ -14,6 +14,7 @@ import { AdminCertificationsTab } from './AdminCertificationsTab';
 import { AdminAiCrmTab } from './AdminAiCrmTab';
 import { AdminMailDisputesTab } from './AdminMailDisputesTab';
 import { AdminUserAnalyticsTab } from './AdminUserAnalyticsTab';
+import { AdminSiteTrafficChart } from './AdminSiteTrafficChart';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { ExpertCertificationApplyModal } from './ExpertCertificationApplyModal';
 import { RealNameAuthTab } from './RealNameAuthTab';
@@ -3160,6 +3161,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* 網站總瀏覽量與每日/每時瀏覽量趨勢折線圖 (UTC+8 台灣標準時間) */}
+                <AdminSiteTrafficChart
+                  totalViewsCount={totalViewsCount || 0}
+                  onlineUsersCount={liveOnlineUsersCount || 1}
+                />
 
                 {/* 第二排：總註冊用戶 ＋ 認證專家 (雙欄並排) */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">

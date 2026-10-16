@@ -1009,12 +1009,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const realRegisteredUsersCount = realRegisteredUsers.length;
 
-  // 全站「網站造訪量」與「即時線上人數」狀態與實時雲端同步
+  // 全站「網站造訪量」與「即時線上人數」狀態與實時雲端同步（從 1,700 基數起算真實累加）
   const [siteVisitsCount, setSiteVisitsCount] = useState<number>(() => {
     try {
-      return parseInt(localStorage.getItem('ideax_total_site_visits') || '1280', 10);
+      const raw = localStorage.getItem('ideax_real_site_traffic_utc8_v3');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return Math.max(1700, Number(parsed?.totalVisits) || 1700);
+      }
+      return 1700;
     } catch {
-      return 1280;
+      return 1700;
     }
   });
   const [onlineUsersCount, setOnlineUsersCount] = useState<number>(1);

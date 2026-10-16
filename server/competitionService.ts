@@ -1993,3 +1993,139 @@ export async function bindAmbassadorReferralCode(
     message: `成功綁定推薦碼【${cleanCode}】！後續提案將自動關聯該校園推廣大使。`,
   };
 }
+
+export const INITIAL_SITE_VISITS_BASE = 1700;
+
+export interface RealSiteTrafficStats {
+  baseVisits: number;
+  totalVisits: number;
+  hourly: Record<string, number>;
+  daily: Record<string, number>;
+  firstRecordedAtUtc8: string;
+  firstHourKey: string;
+  firstDateKey: string;
+  lastUpdatedUtc8: string;
+  onlineUsersCount: number;
+}
+
+const activePresenceSessions = new Map<string, number>();
+const PRESENCE_TTL_MS = 65 * 1000;
+
+function getUtc8PartsServer(timestampMs: number = Date.now()) {
+  const utc8Ms = timestampMs + 8 * 60 * 60 * 1000;
+  const d = new Date(utc8Ms);
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const hour = String(d.getUTCHours()).padStart(2, '0');
+  const minute = String(d.getUTCMinutes()).padStart(2, '0');
+  const second = String(d.getUTCSeconds()).padStart(2, '0');
+  return {
+    dateKey: `${year}-${month}-${day}`,
+    hourKey: `${year}-${month}-${day} ${hour}:00`,
+    fullDateTime: `${year}/${month}/${day} ${hour}:${minute}:${second} (UTC+8)`,
+  };
+}
+
+function getActiveOnlineCount(): number {
+  const now = Date.now();
+  for (const [sid, lastSeen] of activePresenceSessions.entries()) {
+    if (now - lastSeen > PRESENCE_TTL_MS) {
+      activePresenceSessions.delete(sid);
+    }
+  }
+  return Math.max(1, activePresenceSessions.size);
+}
+
+export async function getRealSiteTrafficStats(): Promise<RealSiteTrafficStats> {
+  const docSnap = await adminDb.collection('platform_settings').doc('site_traffic_stats').get();
+  const raw = docSnap.exists ? docSnap.data() : null;
+
+  const hourly: Record<string, number> = {};
+  if (raw?.hourly && typeof raw.hourly === 'object') {
+    for (const [k, v] of Object.entries(raw.hourly)) {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) hourly[k] = n;
+    }
+  }
+
+  const daily: Record<string, number> = {};
+  if (raw?.daily && typeof raw.daily === 'object') {
+    for (const [k, v] of Object.entries(raw.daily)) {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) daily[k] = n;
+    }
+  }
+
+  const sortedHours = Object.keys(hourly).sort();
+  const sortedDays = Object.keys(daily).sort();
+  const sumDaily = Object.values(daily).reduce((acc, v) => acc + v, 0);
+  const baseVisits = INITIAL_SITE_VISITS_BASE;
+  const totalVisits = baseVisits + sumDaily;
+
+  return {
+    baseVisits,
+    totalVisits,
+    hourly,
+    daily,
+    firstRecordedAtUtc8: raw?.firstRecordedAtUtc8 || '',
+    firstHourKey: raw?.firstHourKey || sortedHours[0] || '',
+    firstDateKey: raw?.firstDateKey || sortedDays[0] || '',
+    lastUpdatedUtc8: raw?.lastUpdatedUtc8 || '',
+    onlineUsersCount: getActiveOnlineCount(),
+  };
+}
+
+export async function recordRealSiteVisit(sessionId?: string): Promise<RealSiteTrafficStats> {
+  if (sessionId && typeof sessionId === 'string') {
+    activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
+  }
+
+  const current = await getRealSiteTrafficStats();
+  const nowParts = getUtc8PartsServer(Date.now());
+
+  const hourly = { ...current.hourly };
+  const daily = { ...current.daily };
+
+  hourly[nowParts.hourKey] = (hourly[nowParts.hourKey] || 0) + 1;
+  daily[nowParts.dateKey] = (daily[nowParts.dateKey] || 0) + 1;
+
+  const sortedHours = Object.keys(hourly).sort();
+  const sortedDays = Object.keys(daily).sort();
+  const sumDaily = Object.values(daily).reduce((acc, v) => acc + v, 0);
+  const baseVisits = INITIAL_SITE_VISITS_BASE;
+  const totalVisits = baseVisits + sumDaily;
+
+  const firstRecordedAtUtc8 = current.firstRecordedAtUtc8 || nowParts.fullDateTime;
+  const firstHourKey = sortedHours[0] || nowParts.hourKey;
+  const firstDateKey = sortedDays[0] || nowParts.dateKey;
+  const lastUpdatedUtc8 = nowParts.fullDateTime;
+
+  const payload = {
+    baseVisits,
+    totalVisits,
+    hourly,
+    daily,
+    firstRecordedAtUtc8,
+    firstHourKey,
+    firstDateKey,
+    lastUpdatedUtc8,
+  };
+
+  await upsertMirrorAndFirestoreDoc('platform_settings', 'site_traffic_stats', payload, true);
+
+  return {
+    ...payload,
+    onlineUsersCount: getActiveOnlineCount(),
+  };
+}
+
+export function recordRealPresenceHeartbeat(sessionId?: string): { onlineUsersCount: number } {
+  if (sessionId && typeof sessionId === 'string') {
+    activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
+  }
+  return {
+    onlineUsersCount: getActiveOnlineCount(),
+  };
+}
+

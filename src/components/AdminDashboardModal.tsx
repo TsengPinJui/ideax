@@ -5,6 +5,7 @@ import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { isMockTransactionId, isMockQuestionId, isRealRegisteredUser } from '../data/mockData';
 import { getTransactionBadge } from './AdminTransactionsTab';
 import { CompetitionAdminReviewTab } from './CompetitionAdminReviewTab';
+import { AdminSiteTrafficChart } from './AdminSiteTrafficChart';
 import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
 import {
   X,
@@ -90,6 +91,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     purgeAllSimulatedData,
     restoreAllSimulatedData,
     simulatedStats,
+    siteVisitsCount,
+    onlineUsersCount,
   } = useApp();
 
   const [pendingConfirm, setPendingConfirm] = useState<{
@@ -521,6 +524,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             </div>
           </div>
         </div>
+
+        {/* 0.5 網站總瀏覽量與每日/每時瀏覽量折線圖 (UTC+8 台灣時間) */}
+        <AdminSiteTrafficChart
+          totalViewsCount={siteVisitsCount || 0}
+          onlineUsersCount={onlineUsersCount || 1}
+        />
 
         {/* 1. 平台獲利數據與核心運營指標 */}
         <div>
