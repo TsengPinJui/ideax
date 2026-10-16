@@ -412,6 +412,9 @@ interface AppContextType {
   isFirestoreConnected: boolean;
   lastSyncTime: string | null;
   syncAllToCloud: () => Promise<CategorizedSyncResult>;
+  initialBootProgress: number;
+  initialBootStatusText: string;
+  isInitialBootComplete: boolean;
 
   // Demo Mode & Mock Data Management (管理員示範資料與測試模式開關)
   isDemoMode: boolean;
@@ -1835,9 +1838,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Cloud Firestore Sync State
+  // Cloud Firestore Sync State & Real Boot Progress
   const [isFirestoreConnected, setIsFirestoreConnected] = useState<boolean>(true);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [initialBootProgress, setInitialBootProgress] = useState<number>(18);
+  const [initialBootStatusText, setInitialBootStatusText] = useState<string>('正在連線至雲端資料庫...');
+  const [isInitialBootComplete, setIsInitialBootComplete] = useState<boolean>(false);
 
   // Save to localStorage & Cloud Firestore
   useEffect(() => {
@@ -2224,8 +2230,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     (async () => {
       try {
+        if (mounted) {
+          setInitialBootProgress(22);
+          setInitialBootStatusText('正在驗證雲端資料庫連線...');
+        }
         const connected = await testFirestoreConnection();
-        if (mounted) setIsFirestoreConnected(connected);
+        if (mounted) {
+          setIsFirestoreConnected(connected);
+          setInitialBootProgress(28);
+          setInitialBootStatusText('雲端連線就緒，正在同步全站痛點與提案...');
+        }
 
         // Auto purge expired 7-day delisted/deleted questions on startup
         const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -2262,8 +2276,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return remaining;
         });
 
-        const cloudData = await loadAllDataFromFirestore();
+        const cloudData = await loadAllDataFromFirestore((completedCount, totalCount, stepLabel) => {
+          if (!mounted) return;
+          const nextPct = Math.min(86, 28 + Math.round((completedCount / totalCount) * 58));
+          setInitialBootProgress((prev) => Math.max(prev, nextPct));
+          setInitialBootStatusText(stepLabel);
+        });
         if (!mounted) return;
+        setInitialBootProgress((prev) => Math.max(prev, 88));
+        setInitialBootStatusText('正在整合痛點、創新提案與專家解方...');
 
         if (cloudData && cloudData.settings) {
           if (cloudData.settings.publicMetricsConfig) {
@@ -2612,8 +2633,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setCurrentUser((prev) => (prev && prev.id !== 'user-guest' ? restoreCanonicalUserIdentity(prev) : prev));
           setLastSyncTime(new Date().toLocaleTimeString('zh-TW'));
         });
+        if (mounted) {
+          setInitialBootProgress((prev) => Math.max(prev, 95));
+          setInitialBootStatusText('正在完成版面與即時資料通道初始化...');
+        }
       } catch (err) {
         console.warn('Firestore initial boot load:', err);
+      } finally {
+        if (typeof window !== 'undefined' && document.readyState !== 'complete') {
+          if (mounted) {
+            setInitialBootStatusText('正在完成頁面資源載入...');
+          }
+          await new Promise<void>((resolve) => {
+            const onWindowLoad = () => {
+              window.removeEventListener('load', onWindowLoad);
+              resolve();
+            };
+            window.addEventListener('load', onWindowLoad);
+            setTimeout(() => {
+              window.removeEventListener('load', onWindowLoad);
+              resolve();
+            }, 4000);
+          });
+        }
+        if (mounted) {
+          setInitialBootProgress(100);
+          setInitialBootStatusText('資料載入完成，即刻探索！');
+          setIsInitialBootComplete(true);
+        }
       }
     })();
 
@@ -8665,6 +8712,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isFirestoreConnected,
         lastSyncTime,
         syncAllToCloud,
+        initialBootProgress,
+        initialBootStatusText,
+        isInitialBootComplete,
         deviceAccounts,
         switchAccount,
         logoutAccount,

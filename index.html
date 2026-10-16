@@ -185,10 +185,69 @@
       </ul>
     </nav>
     <div id="root">
-      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #fafaf9;">
-        <div style="width: 44px; height: 44px; border: 3px solid #fef3c7; border-top-color: #f59e0b; border-radius: 50%; animation: idx-spin 0.8s linear infinite;"></div>
-        <style>@keyframes idx-spin { to { transform: rotate(360deg); } }</style>
+      <div style="position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; justify-content: space-between; align-items: center; background-color: #FAFAFA; padding: 32px 20px 36px; user-select: none; font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;">
+        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%; max-width: 384px; padding-top: 8px;">
+          <div style="width: 100%; padding: 0 8px; margin-bottom: 12px; box-sizing: border-box;">
+            <div style="padding: 14px 24px; border-radius: 16px; background: linear-gradient(to bottom, rgba(255, 251, 235, 0.85), #ffffff); border: 1px solid rgba(253, 230, 138, 0.85); box-shadow: 0 1px 2px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: center; gap: 10px;">
+              <img src="/logo-bulb.png" alt="IdeaX" style="width: 36px; height: 36px; object-fit: contain;" onerror="this.style.display='none'" />
+              <div style="text-align: left;">
+                <div style="font-size: 20px; font-weight: 900; color: #1c1917; letter-spacing: -0.02em; line-height: 1.1;">IdeaX <span style="color: #d97706;">創點子</span></div>
+                <div style="font-size: 9px; font-weight: 800; color: #b45309; letter-spacing: 0.08em;">IDEAS CONNECT POSSIBILITIES</div>
+              </div>
+            </div>
+          </div>
+          <h1 style="font-size: 24px; font-weight: 900; color: #1c1917; margin: 14px 0 0; line-height: 1.35;">
+            一個問題，找到<span style="color: #f59e0b; text-decoration: underline; text-decoration-color: #fcd34d; text-decoration-style: wavy;">更多可能</span>。
+          </h1>
+        </div>
+
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; max-width: 384px; margin: 14px 0;">
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%;">
+            <div style="padding: 10px 12px; border-radius: 16px; background: #fffbeb; border: 1px solid rgba(253, 230, 138, 0.85); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 900; color: #451a03;"><span>⚡</span><span>徵創業痛點</span></div>
+            <div style="padding: 10px 12px; border-radius: 16px; background: #fffbeb; border: 1px solid rgba(253, 230, 138, 0.85); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 900; color: #451a03;"><span>👥</span><span>團隊協作</span></div>
+            <div style="padding: 10px 12px; border-radius: 16px; background: #fffbeb; border: 1px solid rgba(253, 230, 138, 0.85); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 900; color: #451a03;"><span>🏆</span><span>解題黑客松</span></div>
+            <div style="padding: 10px 12px; border-radius: 16px; background: #fffbeb; border: 1px solid rgba(253, 230, 138, 0.85); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 900; color: #451a03;"><span>💰</span><span>高額懸賞解方</span></div>
+            <div style="padding: 10px 12px; border-radius: 16px; background: #fffbeb; border: 1px solid rgba(253, 230, 138, 0.85); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 900; color: #451a03;"><span>💎</span><span>專業知識變現</span></div>
+            <div style="padding: 10px 12px; border-radius: 16px; background: #fffbeb; border: 1px solid rgba(253, 230, 138, 0.85); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 900; color: #451a03;"><span>🚀</span><span>副業斜槓</span></div>
+            <div style="padding: 10px 12px; border-radius: 16px; background: #fffbeb; border: 1px solid rgba(253, 230, 138, 0.85); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 900; color: #451a03;"><span>🛡️</span><span>第三方安全保障</span></div>
+            <div style="padding: 10px 12px; border-radius: 16px; background: #fffbeb; border: 1px solid rgba(253, 230, 138, 0.85); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 900; color: #451a03;"><span>🎯</span><span>1對1專家顧問</span></div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 384px;">
+          <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 800; color: #92400e; margin-bottom: 6px;">
+            <span>系統與資料庫同步進度</span>
+            <span id="ideax-boot-pct" style="font-family: monospace; color: #d97706;">8%</span>
+          </div>
+          <div style="width: 100%; height: 8px; background-color: #fef3c7; border-radius: 9999px; overflow: hidden; border: 1px solid rgba(253, 230, 138, 0.7);">
+            <div id="ideax-boot-bar" style="width: 8%; height: 100%; background: linear-gradient(to right, #f59e0b, #d97706, #f97316); border-radius: 9999px; transition: width 0.18s ease-out;"></div>
+          </div>
+          <div id="ideax-boot-text" style="margin-top: 10px; font-size: 12px; font-weight: 700; color: #57534e;">
+            正在載入核心模組與介面資源...
+          </div>
+        </div>
       </div>
+      <script>
+        (function () {
+          window.__ideaxBootProgress = 8;
+          var bar = document.getElementById('ideax-boot-bar');
+          var pct = document.getElementById('ideax-boot-pct');
+          var txt = document.getElementById('ideax-boot-text');
+          function updateBoot(val, msg) {
+            if (val > window.__ideaxBootProgress) window.__ideaxBootProgress = val;
+            if (bar) bar.style.width = window.__ideaxBootProgress + '%';
+            if (pct) pct.textContent = Math.round(window.__ideaxBootProgress) + '%';
+            if (msg && txt) txt.textContent = msg;
+          }
+          document.addEventListener('readystatechange', function () {
+            if (document.readyState === 'interactive') {
+              updateBoot(14, '正在初始化應用程式狀態...');
+            } else if (document.readyState === 'complete') {
+              updateBoot(18, '正在連線至雲端資料庫...');
+            }
+          });
+        })();
+      </script>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

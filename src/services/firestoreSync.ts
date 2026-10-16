@@ -1065,7 +1065,9 @@ export async function pushAllDataToFirestore(data: SyncDataPayload): Promise<Cat
 /**
  * Read all categorized collections from Firestore on initial load
  */
-export async function loadAllDataFromFirestore(): Promise<{
+export async function loadAllDataFromFirestore(
+  onProgress?: (completedCount: number, totalCount: number, stepLabel: string) => void
+): Promise<{
   users?: User[];
   questions?: Question[];
   answers?: Answer[];
@@ -1075,16 +1077,29 @@ export async function loadAllDataFromFirestore(): Promise<{
   solvers?: Solver[];
   settings?: any;
 } | null> {
+  const TOTAL_TASKS = 8;
+  let completedTasks = 0;
+  const trackTask = <T,>(promise: Promise<T>, label: string): Promise<T> =>
+    promise.then((res) => {
+      completedTasks += 1;
+      if (onProgress) {
+        try {
+          onProgress(completedTasks, TOTAL_TASKS, label);
+        } catch {}
+      }
+      return res;
+    });
+
   try {
     const [usersSnap, qSnap, aSnap, txSnap, cSnap, notifSnap, solversSnap, settingsSnap] = await Promise.all([
-      getDocs(collection(db, 'users')),
-      getDocs(collection(db, 'questions')),
-      getDocs(collection(db, 'answers')),
-      getDocs(collection(db, 'transactions')),
-      getDocs(collection(db, 'conversations')),
-      getDocs(collection(db, 'notifications')),
-      getDocs(collection(db, 'solvers')),
-      getDocs(collection(db, 'platform_settings')),
+      trackTask(getDocs(collection(db, 'users')), '正在載入創作者與專家資料...'),
+      trackTask(getDocs(collection(db, 'questions')), '正在同步全站痛點、提案與懸賞題目...'),
+      trackTask(getDocs(collection(db, 'answers')), '正在載入專家解方與討論串...'),
+      trackTask(getDocs(collection(db, 'transactions')), '正在同步點數與託管帳務紀錄...'),
+      trackTask(getDocs(collection(db, 'conversations')), '正在載入私訊與協作頻道...'),
+      trackTask(getDocs(collection(db, 'notifications')), '正在同步系統通知狀態...'),
+      trackTask(getDocs(collection(db, 'solvers')), '正在載入官方認證專家庫...'),
+      trackTask(getDocs(collection(db, 'platform_settings')), '正在套用平台環境與賽事設定...'),
     ]);
 
     const result: {
@@ -1135,9 +1150,11 @@ export async function loadAllDataFromFirestore(): Promise<{
   } catch (err) {
     handleFirestoreError('Could not load data from Firestore (falling back to server database mirror)', err);
     try {
+      if (onProgress) onProgress(4, TOTAL_TASKS, '正在從備援資料庫同步全站資料...');
       const resp = await fetch('/api/competition/db-mirror');
       if (resp.ok) {
         const data = await resp.json();
+        if (onProgress) onProgress(TOTAL_TASKS, TOTAL_TASKS, '備援資料庫同步完成！');
         if (data && data.success) {
           return {
             users: Array.isArray(data.users) ? data.users : undefined,
@@ -1149,6 +1166,7 @@ export async function loadAllDataFromFirestore(): Promise<{
         }
       }
     } catch {}
+    if (onProgress) onProgress(TOTAL_TASKS, TOTAL_TASKS, '已載入本地快取資料');
     return null;
   }
 }

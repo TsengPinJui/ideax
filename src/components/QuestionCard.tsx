@@ -257,7 +257,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               ) : isNoPaymentMode ? (
                 <span className="text-[10px] font-semibold text-stone-500">免費</span>
               ) : isPainPoint ? (
-                <span className="text-xs font-black font-mono text-rose-600">
+                <span className="text-xs font-black font-mono text-amber-600">
                   {question.bounty > 0 ? `$${question.bounty.toLocaleString()}` : '痛點'}
                 </span>
               ) : question.bounty > 0 ? (
@@ -464,7 +464,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               ) : isNoPaymentMode ? (
                 <span className="text-xs font-semibold text-stone-500">免費交流</span>
               ) : isPainPoint ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-xs font-black font-mono">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-300 text-xs font-black font-mono">
                   {question.bounty > 0 ? `痛點 NT$ ${question.bounty.toLocaleString()}` : '痛點'}
                 </span>
               ) : question.bounty > 0 ? (
@@ -716,7 +716,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               <span className="text-xs font-semibold text-stone-500">免費</span>
             ) : isPainPoint ? (
               <span
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200/80 text-xs font-black font-mono"
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-300 text-xs font-black font-mono"
                 title="痛點許願"
               >
                 {question.bounty > 0 ? `痛點 NT$ ${question.bounty.toLocaleString()}` : '痛點'}

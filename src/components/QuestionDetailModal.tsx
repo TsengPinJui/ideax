@@ -867,7 +867,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             <span
               className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
                 isPainPoint
-                  ? 'bg-rose-50 text-rose-700 border-rose-200 font-extrabold shadow-2xs'
+                  ? 'bg-amber-100 text-amber-800 border-amber-300 font-extrabold shadow-2xs'
                   : levelConfig.badgeClass
               }`}
             >
@@ -934,20 +934,20 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           {isPainPoint ? (
             <div className="flex items-center gap-2">
               <div
-                className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border border-rose-300 bg-rose-50/80 shadow-2xs"
+                className="text-right shrink-0 px-3 py-1 sm:py-1.5 rounded-xl border border-amber-300 bg-amber-50/80 shadow-2xs"
                 title={(question.bounty || 0) > 0 ? '痛點提問懸賞' : '痛點'}
               >
                 {(question.bounty || 0) > 0 ? (
                   <>
-                    <span className="text-[11px] font-bold text-rose-700 block">
+                    <span className="text-[11px] font-bold text-amber-800 block">
                       痛點懸賞
                     </span>
-                    <span className="text-lg sm:text-xl font-black text-rose-600 font-mono">
+                    <span className="text-lg sm:text-xl font-black text-amber-600 font-mono">
                       NT$ {(question.bounty || 0).toLocaleString()}
                     </span>
                   </>
                 ) : (
-                  <span className="text-base sm:text-lg font-black text-rose-600 font-mono py-0.5 block">
+                  <span className="text-base sm:text-lg font-black text-amber-600 font-mono py-0.5 block">
                     痛點
                   </span>
                 )}
@@ -1144,7 +1144,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 <button
                   type="button"
                   onClick={handleGoToChallengeProposal}
-                  className="px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border border-emerald-400 bg-emerald-400 hover:bg-emerald-300 text-stone-950 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                  className="px-3 py-1.5 rounded-lg font-black text-xs flex items-center gap-1.5 border border-amber-400 bg-amber-400 hover:bg-amber-300 text-stone-950 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
                   title="針對此痛點投入創星季競賽，角逐最高獎項與榮譽（不賺賞金）"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-stone-950 shrink-0" />
@@ -1414,7 +1414,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 <div className="w-6 h-6 rounded-lg bg-amber-400 text-stone-900 flex items-center justify-center">
                   <Sparkles className="w-4 h-4 fill-stone-900" />
                 </div>
-                <h4 className="font-bold text-sm text-stone-900">AI Agent「市場顧問」解題分析與建議</h4>
+                <h4 className="font-bold text-sm text-stone-900">AI摘要</h4>
               </div>
               <div className="flex items-center gap-2">
                 {effectiveAiAnalysis.marketFitRating && (
@@ -3000,7 +3000,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               {/* 痛點選項 2: 提案參賽(不賺賞金) */}
               <button
                 onClick={handleGoToChallengeProposal}
-                className="px-3.5 sm:px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95"
+                className="px-3.5 sm:px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95"
                 title="針對此痛點提交創星季競賽解方提案，角逐競賽大獎（不賺取提問者賞金）"
               >
                 <Sparkles className="w-3.5 h-3.5 shrink-0" />
