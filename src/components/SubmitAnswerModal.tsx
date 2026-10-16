@@ -955,9 +955,9 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
             <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <label className="text-xs font-bold text-stone-800 block">解鎖價格設定</label>
+                  <label className="text-xs font-bold text-stone-800 block">解鎖點數設定</label>
                   <span className="text-[11px] text-stone-500">
-                    默認為該題懸賞金額（NT$ {defaultQuestionBounty.toLocaleString()}），亦可自訂；提問者或其他有興趣者皆可付此價格解鎖
+                    默認為該題懸賞點數（{defaultQuestionBounty.toLocaleString()} 點），亦可自訂；提問者或其他有興趣者皆可扣點解鎖
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1156,14 +1156,14 @@ export const SubmitAnswerModal: React.FC<SubmitAnswerModalProps> = ({
                       <div className="text-xs text-stone-500 text-right space-y-1">
                         <div className="flex items-center justify-end gap-1.5">
                           <span className="font-bold text-stone-700">
-                            預估實收撥款（{split.planName}・實收 {split.sellerPayoutText}）：
+                            預估實收點數（{split.planName}・實收 {split.sellerPayoutText}）：
                           </span>
                           <span className="font-black text-emerald-700 font-mono text-sm sm:text-base">
-                            NT$ {split.netPayout.toLocaleString()} 元
+                            {split.netPayout.toLocaleString()} 點
                           </span>
                         </div>
                         <span className="text-[10px] text-stone-500 block">
-                          第三方金流自動拆款撥付・目前會員資格享【{split.planName}】{split.feeDiscountText}
+                          平台點數安全託管自動拆款・目前會員資格享【{split.planName}】{split.feeDiscountText}
                         </span>
                       </div>
                     );

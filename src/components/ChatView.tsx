@@ -1061,28 +1061,27 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
     setConversations((prev) => [...prev]);
   };
 
-  // 執行第三方支付託管簽約
+  // 執行平台點數託管簽約（目前暫時只支援扣點）
   const handleExecutePayment = () => {
     if (!paymentTargetMessage || !paymentTargetMessage.offer || !activeConversation) return;
     const price = paymentTargetMessage.offer.price;
 
+    if ((currentUser.balance || 0) < price) {
+      return;
+    }
+
     setIsProcessingPayment(true);
 
     setTimeout(() => {
-      // 檢查餘額，若不足則自動充值模擬完成
-      if (currentUser.balance < price) {
-        const diff = price - currentUser.balance;
-        depositBalance(diff + 500);
+      // 呼叫 Context acceptChatOffer 完成點數扣除、拆款與解鎖
+      const ok = acceptChatOffer(activeConversation.id, paymentTargetMessage.id);
+      if (ok) {
+        // 自動在聊天室生成簽約完成系統公告
+        sendMessage(
+          activeConversation.id,
+          `🎉【簽約成功通知】提問者已完成扣抵 ${price.toLocaleString()} 點並由平台點數安全託管！專家即刻開始交付，專屬解鎖內容現已開放閱讀。`
+        );
       }
-
-      // 呼叫 Context acceptChatOffer 完成拆款與解鎖
-      acceptChatOffer(activeConversation.id, paymentTargetMessage.id);
-
-      // 自動在聊天室生成簽約完成系統公告
-      sendMessage(
-        activeConversation.id,
-        `🎉【簽約成功通知】提問者已完成支付 NT$ ${price.toLocaleString()} 元並由第三方金流獨立託管！專家即刻開始交付，專屬解鎖內容現已開放閱讀。`
-      );
 
       setIsProcessingPayment(false);
       setPaymentTargetMessage(null);
@@ -3014,7 +3013,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
         </div>
       )}
 
-      {/* --- Modal 3: 買方「第三方金流託管支付確認」彈窗 --- */}
+      {/* --- Modal 3: 買方「平台點數託管支付確認」彈窗 --- */}
       {paymentTargetMessage && paymentTargetMessage.offer && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-6 max-w-md w-full shadow-2xl space-y-4 my-auto">
@@ -3024,8 +3023,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm sm:text-base text-stone-900">第三方金流託管簽約</h3>
-                  <p className="text-[11px] text-stone-500">獨立託管保障 • 驗收滿意再撥款</p>
+                  <h3 className="font-extrabold text-sm sm:text-base text-stone-900">平台點數安全託管簽約</h3>
+                  <p className="text-[11px] text-stone-500">點數託管保障 • 驗收滿意再撥付</p>
                 </div>
               </div>
               <button
@@ -3041,7 +3040,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-stone-900">{paymentTargetMessage.offer.title}</span>
                 <span className="font-black text-base text-amber-900 font-mono">
-                  NT$ {paymentTargetMessage.offer.price.toLocaleString()}
+                  {paymentTargetMessage.offer.price.toLocaleString()} 點
                 </span>
               </div>
               <div className="text-[11px] text-stone-500">
@@ -3049,32 +3048,41 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
               </div>
               <div className="pt-2 border-t border-stone-200/80 text-[11px] space-y-1">
                 <div className="flex items-center justify-between text-stone-600">
-                  <span>買方應付託管總額：</span>
-                  <span className="font-mono font-bold text-stone-900">NT$ {paymentTargetMessage.offer.price.toLocaleString()}</span>
+                  <span>買方應付託管點數：</span>
+                  <span className="font-mono font-bold text-stone-900">{paymentTargetMessage.offer.price.toLocaleString()} 點</span>
                 </div>
                 <div className="flex items-center justify-between text-stone-600">
                   <span>平台履約保障：</span>
-                  <span className="text-emerald-700 font-medium">第三方價金安全保管，確認驗收後撥付（買方免額外負擔）</span>
+                  <span className="text-emerald-700 font-medium">平台點數安全保管，確認驗收後撥付（買方免額外負擔）</span>
                 </div>
               </div>
             </div>
 
             {/* Payment Method / Balance status */}
             <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50/70 border border-amber-200">
-                <div className="flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-amber-700" />
-                  <span className="font-bold text-stone-800">您的錢包餘額</span>
+              <label className="font-bold text-stone-700 block">付款方式（目前暫時只支援平台點數扣點）：</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-500 ring-1 ring-amber-300 text-stone-950">
+                  <div className="font-black flex items-center gap-1">
+                    <Wallet className="w-3.5 h-3.5 text-amber-700" />
+                    <span>平台點數扣點</span>
+                  </div>
+                  <div className="text-[10px] text-amber-800 font-mono mt-0.5">
+                    餘額 {(currentUser.balance || 0).toLocaleString()} 點
+                  </div>
                 </div>
-                <span className="font-bold font-mono text-stone-900">
-                  NT$ {currentUser.balance.toLocaleString()}
-                </span>
+                <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-400 opacity-60 cursor-not-allowed">
+                  <div className="font-bold flex items-center gap-1">
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>外部金流支付</span>
+                  </div>
+                  <div className="text-[10px] mt-0.5">暫不支援 (信用卡/ATM)</div>
+                </div>
               </div>
 
-              {currentUser.balance < paymentTargetMessage.offer.price && (
-                <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px] flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span>餘額不足部分將自動由第三方支付通道（信用卡/ATM）模擬即時託管入帳。</span>
+              {(currentUser.balance || 0) < paymentTargetMessage.offer.price && (
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-bold">
+                  您的平台點數餘額不足（目前餘額 {(currentUser.balance || 0).toLocaleString()} 點 / 需支付 {paymentTargetMessage.offer.price.toLocaleString()} 點）。目前暫時僅支援以平台點數扣點，外部金流暫不支援。
                 </div>
               )}
             </div>
@@ -3088,7 +3096,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                 className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500"
               />
               <span className="text-[11px] text-stone-600 leading-relaxed">
-                我同意將本筆款項支付至 <strong className="text-stone-900">IdeaX 第三方金流獨立託管帳戶</strong>。待專家交付成果且經本人驗收完成後，系統方進行拆款撥付。
+                我同意將本筆點數支付至 <strong className="text-stone-900">IdeaX 平台點數獨立託管帳戶</strong>。待專家交付成果且經本人驗收完成後，系統方進行拆款撥付。
               </span>
             </label>
 
@@ -3102,16 +3110,16 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
               </button>
               <button
                 type="button"
-                disabled={!paymentAgreementAccepted || isProcessingPayment}
+                disabled={!paymentAgreementAccepted || isProcessingPayment || (currentUser.balance || 0) < paymentTargetMessage.offer.price}
                 onClick={handleExecutePayment}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 text-white font-black text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {isProcessingPayment ? (
-                  <span>正在處理第三方託管簽約...</span>
+                  <span>正在處理點數託管簽約...</span>
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4" />
-                    <span>確認支付 NT$ {(paymentTargetMessage?.offer?.price || 0).toLocaleString()} 並託管</span>
+                    <span>確認扣點 {(paymentTargetMessage?.offer?.price || 0).toLocaleString()} 點並託管</span>
                   </>
                 )}
               </button>

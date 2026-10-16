@@ -4658,7 +4658,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toUserName: target.solverName,
       status: '已完成',
       createdAt: new Date().toISOString(),
-      note: `買家透過線上支付（${paymentMethod}）支付 NT$ ${price.toLocaleString()} 元。系統自動結算：解答者實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText} 由解答者吸收）＋ IdeaX 服務費 NT$ ${split.platformFee.toLocaleString()} 元。款項已直撥入 ${split.bankAccountSnapshot}。`,
+      note: `買家透過平台點數（${paymentMethod}）扣抵 ${price.toLocaleString()} 點。系統自動結算：解答者實收 ${split.netPayout.toLocaleString()} 點（${split.feeDiscountText} 由解答者吸收）＋ IdeaX 服務費 ${split.platformFee.toLocaleString()} 點。`,
     };
     setTransactions((prev) => [tx, ...prev]);
 
@@ -4667,7 +4667,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-${Date.now()}`,
         title: '方案成功解鎖！',
-        message: `您已透過線上支付（${paymentMethod}）成功付款 NT$ ${price.toLocaleString()} 元解鎖「${target.solverName}」的深度解決方案，完整內容現已開放閱讀。`,
+        message: `您已透過平台點數（${paymentMethod}）成功扣抵 ${price.toLocaleString()} 點解鎖「${target.solverName}」的深度解決方案，完整內容現已開放閱讀。`,
         type: 'payment_unlocked',
         createdAt: '剛剛',
         read: false,
@@ -4680,8 +4680,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications((prev) => [
       {
         id: `notif-solver-${Date.now()}`,
-        title: '方案解鎖收益已撥款入帳！',
-        message: `買家已透過線上支付解鎖您的方案（定價 NT$ ${price.toLocaleString()} 元），系統已自動結算：實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText}）已成功撥款至您的 ${split.bankAccountSnapshot}！`,
+        title: '方案解鎖收益已入帳！',
+        message: `買家已扣抵點數解鎖您的方案（定價 ${price.toLocaleString()} 點），系統已自動結算：實收 ${split.netPayout.toLocaleString()} 點（${split.feeDiscountText}）！`,
         type: 'payment_unlocked',
         createdAt: '剛剛',
         read: false,
@@ -6256,7 +6256,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const subscribePlan = (
     tier: SubscriptionTier,
     cycle: 'monthly' | 'semi_annual' | 'annual' = 'monthly',
-    paymentMethod: string = '信用卡'
+    paymentMethod: string = '平台點數扣點'
   ): { success: boolean; message: string } => {
     const plan = SUBSCRIPTION_PLANS[tier];
     if (!plan) return { success: false, message: '無效的方案' };
@@ -6265,10 +6265,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const currentExpiry = currentUser.subscriptionExpiresAt || '2026-10-31';
 
     // 情況 1：轉換為一般會員（free）
-    // 轉換為一般會員不需要重新扣款 (免扣款 / NT$ 0)，視為取消會員資格。任何變換方案都會在下個期間開始。
+    // 轉換為一般會員不需要重新扣款 (免扣款 / 0 點)，視為取消會員資格。任何變換方案都會在下個期間開始。
     if (tier === 'free') {
       if (currentTier === 'free') {
-        return { success: true, message: '您目前已經是一般會員，無需重新扣款。' };
+        return { success: true, message: '您目前已經是一般會員，無需重新扣點。' };
       }
 
       // 現有付費會員轉為一般會員 -> 視為取消會員資格，下個期間開始生效，不重新扣款
@@ -6296,7 +6296,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         {
           id: `notif-${Date.now()}`,
           title: '已申請轉換為一般會員（視為取消會員資格）',
-          message: `您已申請轉換為一般會員，不需要重新扣款。此操作視為取消會員資格，現有特權將保留享有至本期到期（${currentExpiry}），下個期間開始正式轉換為一般會員。`,
+          message: `您已申請轉換為一般會員，不需要重新扣點。此操作視為取消會員資格，現有特權將保留享有至本期到期（${currentExpiry}），下個期間開始正式轉換為一般會員。`,
           type: 'system',
           createdAt: '剛剛',
           read: false,
@@ -6306,17 +6306,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return {
         success: true,
-        message: `已為您設定轉換為一般會員（視為取消會員資格，不需要重新扣款）。目前權益仍享有至本期到期日（${currentExpiry}），將於下個期間開始正式生效。`,
+        message: `已為您設定轉換為一般會員（視為取消會員資格，不需要重新扣點）。目前權益仍享有至本期到期日（${currentExpiry}），將於下個期間開始正式生效。`,
       };
     }
 
     const selectedCycle = plan.billingCycles.find((c) => c.cycle === cycle) || plan.billingCycles[0];
     const price = selectedCycle.price;
     const durationMonths = selectedCycle.durationMonths || 1;
-    const cycleDisplay = selectedCycle.label || `月繳 $${price.toLocaleString()}`;
+    const cycleDisplay = selectedCycle.label || `月繳 ${price.toLocaleString()} 點`;
 
     // 情況 2：若當前已有付費方案，進行「變換方案」
-    // 任何變換方案都會在下個期間開始（不立即重新扣款，新方案於下期續訂日扣款並生效）
     if (currentTier !== 'free') {
       setCurrentUser((prev) => ({
         ...prev,
@@ -6342,7 +6341,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         {
           id: `notif-${Date.now()}`,
           title: `預約變更為「${plan.name}」成功`,
-          message: `您已預約變換方案！任何變換方案都會在下個期間開始（${currentExpiry}）生效，屆時將依新方案（${cycleDisplay}）進行續訂扣款。本期享有原方案權益，不重複扣款。`,
+          message: `您已預約變換方案！任何變換方案都會在下個期間開始（${currentExpiry}）生效，屆時將依新方案（${cycleDisplay}）進行續訂扣點。本期享有原方案權益，不重複扣點。`,
           type: 'system',
           createdAt: '剛剛',
           read: false,
@@ -6352,18 +6351,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return {
         success: true,
-        message: `已成功預約變換為「${plan.name}」！任何變換方案都會在下個期間開始（${currentExpiry}）生效，本期不重複扣款。`,
+        message: `已成功預約變換為「${plan.name}」！任何變換方案都會在下個期間開始（${currentExpiry}）生效，本期不重複扣點。`,
       };
     }
 
-    // 情況 3：一般會員（free）首次訂閱付費方案
-    // 由於先前無付費週期，首次購買即刻開通第一期
+    // 情況 3：一般會員（free）首次訂閱付費方案（僅支援平台點數扣點）
+    if (!isNoPaymentMode && !isRaceMode && price > 0 && (currentUser.balance || 0) < price) {
+      return {
+        success: false,
+        message: `您的平台點數餘額不足（目前餘額 ${(currentUser.balance || 0).toLocaleString()} 點 / 需支付 ${price.toLocaleString()} 點）。目前暫時僅支援以平台點數扣點。`,
+      };
+    }
+
     const expiry = new Date();
     expiry.setMonth(expiry.getMonth() + durationMonths);
     const expiryStr = expiry.toISOString().split('T')[0];
 
     setCurrentUser((prev) => ({
       ...prev,
+      balance: !isNoPaymentMode && !isRaceMode ? Math.max(0, (prev.balance || 0) - price) : prev.balance,
       subscriptionTier: tier,
       subscriptionExpiresAt: expiryStr,
       nextSubscriptionTier: undefined,
@@ -6376,6 +6382,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         u.id === currentUser.id
           ? {
               ...u,
+              balance: !isNoPaymentMode && !isRaceMode ? Math.max(0, (u.balance || 0) - price) : u.balance,
               subscriptionTier: tier,
               subscriptionExpiresAt: expiryStr,
               nextSubscriptionTier: undefined,
@@ -6395,7 +6402,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       platformFee: 0,
       feeRate: 0,
       netAmount: price,
-      paymentMethod,
+      paymentMethod: '平台點數扣點',
       payoutStatus: '已完成',
       relatedQuestionTitle: cleanSubTitle,
       fromUserName: currentUser.name,
@@ -6410,7 +6417,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-${Date.now()}`,
         title: `成功開通「${plan.name}」！`,
-        message: `您已完成第三方支付 NT$ ${price.toLocaleString()} 元成功開通「${plan.name}」。即日起所有方案交易之服務費享有「${plan.feeDiscountText}」（解答者實收 ${plan.sellerPayoutText}）！後續任何變換方案均會在下個期間開始生效。`,
+        message: `您已完成扣抵 ${price.toLocaleString()} 點成功開通「${plan.name}」。即日起所有方案交易之服務費享有「${plan.feeDiscountText}」（解答者實收 ${plan.sellerPayoutText}）！後續任何變換方案均會在下個期間開始生效。`,
         type: 'system',
         createdAt: '剛剛',
         read: false,
@@ -6420,7 +6427,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return {
       success: true,
-      message: `成功開通「${plan.name}」！即刻享有服務費 ${plan.feeDiscountText}（實收 ${plan.sellerPayoutText}）。`,
+      message: `成功扣抵 ${price.toLocaleString()} 點開通「${plan.name}」！即刻享有服務費 ${plan.feeDiscountText}（實收 ${plan.sellerPayoutText}）。`,
     };
   };
 
@@ -6918,7 +6925,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Action: Accept and pay for custom offer directly in chat
+  // Action: Accept and pay for custom offer directly in chat (僅支援平台點數扣點)
   const acceptChatOffer = (conversationId: string, messageId: string): boolean => {
     const conv = conversations.find((c) => c.id === conversationId);
     if (!conv) return false;
@@ -6928,9 +6935,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const offer = msg.offer;
     const price = offer.price;
 
+    if (!isNoPaymentMode && !isRaceMode && price > 0 && (currentUser.balance || 0) < price) {
+      return false;
+    }
+
+    if (!isNoPaymentMode && !isRaceMode && price > 0) {
+      setCurrentUser((prev) => ({
+        ...prev,
+        balance: Math.max(0, (prev.balance || 0) - price),
+      }));
+      setAvailableUsers((prev) =>
+        prev.map((u) =>
+          u.id === currentUser.id
+            ? { ...u, balance: Math.max(0, (u.balance || 0) - price) }
+            : u
+        )
+      );
+    }
+
     const split = calculateSplitPayout(price, offer.creatorId);
 
-    // Update offer status to accepted (私聊自訂方案透過第三方支付付款採納)
+    // Update offer status to accepted
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id === conversationId) {
@@ -7001,7 +7026,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       feeRate: split.feeRate,
       bonusAmount: split.bonusAmount,
       netAmount: split.netPayout,
-      paymentMethod: '信用卡 / 第三方金流',
+      paymentMethod: '平台點數扣點',
       payoutStatus: '已撥款至銀行帳戶',
       bankAccountSnapshot: split.bankAccountSnapshot,
       relatedQuestionTitle: offer.title,
@@ -7009,7 +7034,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toUserName: offer.creatorName,
       status: '已完成',
       createdAt: new Date().toISOString(),
-      note: `買家透過第三方支付 NT$ ${price.toLocaleString()} 元解鎖自訂方案。系統自動拆款：賣家實收 NT$ ${split.netPayout.toLocaleString()} 元（${split.feeDiscountText}），平台服務費 NT$ ${split.platformFee.toLocaleString()} 元已撥款至 ${split.bankAccountSnapshot}。`,
+      note: `買家透過平台點數扣抵 ${price.toLocaleString()} 點解鎖自訂方案。系統自動拆款：賣家實收 ${split.netPayout.toLocaleString()} 點（${split.feeDiscountText}），平台服務費 ${split.platformFee.toLocaleString()} 點。`,
     };
     setTransactions((prev) => [tx, ...prev]);
 
@@ -7022,7 +7047,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             senderId: 'system',
             senderName: '平台交易安全託管',
             senderAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
-            text: `🎉 交易成功！${currentUser.name} 已支付 NT$ ${price.toLocaleString()} 解鎖自訂方案「${offer.title}」。款項已安全入帳。`,
+            text: `🎉 交易成功！${currentUser.name} 已扣抵 ${price.toLocaleString()} 點解鎖自訂方案「${offer.title}」。點數已安全入帳。`,
             createdAt: new Date().toISOString(),
           };
           return {
@@ -7607,24 +7632,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return q?.likes ?? 0;
   };
 
-  // Action: Promote question to top of recruiting list ($50)
+  // Action: Promote question to top of recruiting list (50 點)
   const promoteQuestion = (questionId: string): boolean => {
     const q = questions.find((item) => item.id === questionId);
     if (!q) return false;
+
+    if (!isNoPaymentMode && !isRaceMode && (currentUser.balance || 0) < 50) {
+      return false;
+    }
+
+    if (!isNoPaymentMode && !isRaceMode) {
+      setCurrentUser((prev) => ({
+        ...prev,
+        balance: Math.max(0, (prev.balance || 0) - 50),
+      }));
+      setAvailableUsers((prev) =>
+        prev.map((u) =>
+          u.id === currentUser.id
+            ? { ...u, balance: Math.max(0, (u.balance || 0) - 50) }
+            : u
+        )
+      );
+    }
 
     // Set question isFeatured
     setQuestions((prev) =>
       prev.map((item) => (item.id === questionId ? { ...item, isFeatured: true } : item))
     );
 
-    // Record $50 promotion transaction
+    // Record 50 points promotion transaction
     const tx: Transaction = {
       id: `tx-promo-${Date.now()}`,
       type: '付費推播方案' as any,
       amount: 50,
       platformFee: 0,
       netAmount: 50,
-      paymentMethod: '信用卡 / 第三方金流',
+      paymentMethod: '平台點數扣點',
       payoutStatus: '已完成',
       relatedQuestionTitle: q.title,
       relatedQuestionId: q.id,
@@ -7632,7 +7675,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toUserName: 'IdeaX 平台推播中心',
       status: '已完成',
       createdAt: new Date().toISOString(),
-      note: `已成功為「${q.title}」啟用招募中置頂推播（NT$ 50），享有置頂曝光與廣播大聲公 📢 專屬標章。`,
+      note: `已成功為「${q.title}」啟用招募中置頂推播（扣抵 50 點），享有置頂曝光與廣播大聲公 📢 專屬標章。`,
     };
     setTransactions((prev) => [tx, ...prev]);
 

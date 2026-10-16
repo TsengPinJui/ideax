@@ -515,17 +515,16 @@ export const SubscriptionPlanCard: React.FC = () => {
               </div>
 
               <div className="p-2.5 rounded-lg bg-white border border-stone-200 space-y-1">
-                <span className="text-stone-500 font-bold block text-[10px]">本期應付總金額</span>
+                <span className="text-stone-500 font-bold block text-[10px]">本期應付總點數</span>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xs text-stone-500 font-bold">NT$</span>
                   <span className="text-lg font-black text-stone-900 font-mono">
                     {(targetCycleObj.price || 0).toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-stone-400">元</span>
+                  <span className="text-[10px] text-stone-400">點</span>
                 </div>
                 <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
                   <ShieldCheck className="w-3 h-3" />
-                  <span>第三方安全加密託管扣款</span>
+                  <span>平台點數安全扣點</span>
                 </div>
               </div>
             </div>
@@ -599,7 +598,7 @@ export const SubscriptionPlanCard: React.FC = () => {
                 disabled={isProcessing || !agreeSubscriptionTerms}
                 className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 text-xs font-black shadow-xs transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span>確認扣款 NT$ {(targetCycleObj.price || 0).toLocaleString()} 並變更方案</span>
+                <span>確認扣點 {(targetCycleObj.price || 0).toLocaleString()} 點並變更方案</span>
               </button>
             </div>
           </div>

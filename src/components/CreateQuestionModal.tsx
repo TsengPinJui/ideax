@@ -1398,7 +1398,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                     建議領域：{aiAnalysisResult.category} › {aiAnalysisResult.subcategory}
                   </span>
                   <span className="text-[10px] font-bold bg-stone-100 text-stone-800 px-2 py-0.5 rounded-md">
-                    等級建議：{aiAnalysisResult.level}（NT$ {aiAnalysisResult.suggestedBounty?.toLocaleString()}）
+                    等級建議：{aiAnalysisResult.level}（{aiAnalysisResult.suggestedBounty?.toLocaleString()} 點）
                   </span>
                 </div>
                 <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">

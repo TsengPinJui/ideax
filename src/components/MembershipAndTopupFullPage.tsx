@@ -187,53 +187,14 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
   const finalRechargePrice = topupMode === 'package' ? selectedPackage.price : typeof customNTD === 'number' ? customNTD : 0;
   const finalRechargePoints = topupMode === 'package' ? selectedPackage.totalPoints : customCalc.total;
 
-  // 執行儲值購買動作
+  // 執行儲值購買動作（目前暫不支援外部金流）
   const handleExecuteTopup = () => {
-    if (currentUser.id === 'user-guest') {
-      openAuthModal('login');
-      showCenterToast('請先登入帳號', '儲值前請先登入或註冊帳號，以確保儲值點數準確記入您的個人錢包。');
-      return;
-    }
-
-    if (finalRechargePrice <= 0) {
-      setTopupResultMsg({ text: '請選擇儲值方案或輸入有效儲值金額', isError: true });
-      return;
-    }
-
-    if (!agreeRechargeTerms) {
-      setTopupResultMsg({ text: '請先勾選同意《點數儲值與會員方案訂閱服務條款》', isError: true });
-      return;
-    }
-
-    if (invoiceType === 'business' && (!companyTaxId.trim() || !companyTitle.trim())) {
-      setTopupResultMsg({ text: '選擇三聯式發票時，請填寫統一編號與公司抬頭', isError: true });
-      return;
-    }
-
-    setIsTopupProcessing(true);
-
-    if (topupMode === 'package') {
-      depositPackage(selectedPackage.id);
-    } else {
-      depositBalance(finalRechargePoints);
-    }
-
-    setIsTopupProcessing(false);
     setTopupResultMsg({
-      text: `⚡ 儲值成功！已成功撥付 NT$ ${finalRechargePrice.toLocaleString()}，自動帶入身份【${
-        currentUser.name
-      }】，${finalRechargePoints.toLocaleString()} 點已存入錢包可用餘額！`,
-      isError: false,
+      text: '💡 目前所有外部金流儲值選項（信用卡 / LINE Pay / Apple Pay / ATM）暫不支援，平台目前僅支援使用既有帳戶點數進行扣點。',
+      isError: true,
     });
-
-    showCenterToast(
-      '點數儲值成功！',
-      `已有 ${finalRechargePoints.toLocaleString()} 點存入帳號 (${currentUser.email || currentUser.name})，發票開立類別：${
-        invoiceType === 'business' ? `統一編號 ${companyTaxId}` : '電子發票個人載具'
-      }。`
-    );
-
-    setTimeout(() => setTopupResultMsg(null), 7000);
+    showCenterToast('目前暫不支援外部金流儲值', '目前所有金流選項暫不支援，僅支援使用平台點數扣點。');
+    setTimeout(() => setTopupResultMsg(null), 6000);
   };
 
   return (
@@ -569,7 +530,7 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
                           )}
                         </div>
                         <div className="text-lg font-black text-amber-300 font-mono">
-                          NT$ {cycle.price.toLocaleString()}
+                          {cycle.price.toLocaleString()} 點
                         </div>
                       </div>
                     );
@@ -628,7 +589,7 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-xs text-stone-400">
-                    應付總金額：<strong className="text-xl text-amber-400 font-mono font-black">NT$ {targetCycleObj.price.toLocaleString()}</strong>
+                    應付總點數：<strong className="text-xl text-amber-400 font-mono font-black">{targetCycleObj.price.toLocaleString()} 點</strong>
                   </div>
 
                   <button
@@ -638,7 +599,7 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
                     className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:from-amber-600 text-stone-950 font-black text-sm rounded-2xl shadow-xl shadow-amber-500/20 cursor-pointer transition-all hover:scale-102 active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <Zap className="w-4 h-4 fill-stone-950" />
-                    <span>{isSubscribing ? '開通處理中...' : `確認付款 NT$ ${targetCycleObj.price.toLocaleString()} 開通特權`}</span>
+                    <span>{isSubscribing ? '開通處理中...' : `確認扣點 ${targetCycleObj.price.toLocaleString()} 點開通特權`}</span>
                   </button>
                 </div>
               </div>
@@ -844,25 +805,41 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
 
               {/* 付款管道與結帳條款 */}
               <div className="pt-4 border-t border-stone-700/80 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-stone-300 block">付款方式（目前所有外部金流選項暫不支援）：</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    {(['信用卡', 'LINE Pay', 'Apple Pay', 'ATM 虛擬帳號'] as const).map((method) => (
+                      <button
+                        key={method}
+                        type="button"
+                        disabled
+                        className="p-3 rounded-2xl border font-bold text-center bg-stone-800/40 border-stone-700/60 text-stone-500 opacity-60 cursor-not-allowed"
+                      >
+                        <div>{method}</div>
+                        <div className="text-[10px] font-normal mt-0.5">暫不支援</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="space-y-0.5 text-xs">
                     <div className="text-stone-400">
                       儲值綁定帳號：<strong className="text-white">{currentUser.name}</strong> ({currentUser.id})
                     </div>
                     <div className="text-stone-400">
-                      應付總金額：<strong className="text-xl text-amber-400 font-mono font-black">NT$ {finalRechargePrice.toLocaleString()}</strong>
-                      <span className="text-emerald-400 font-bold ml-2">(獲得 {finalRechargePoints.toLocaleString()} 點)</span>
+                      選擇方案：<strong className="text-xl text-amber-400 font-mono font-black">{finalRechargePoints.toLocaleString()} 點</strong>
+                      <span className="text-stone-400 font-bold ml-2">(外部金流儲值暫不開放)</span>
                     </div>
                   </div>
 
                   <button
                     type="button"
                     onClick={handleExecuteTopup}
-                    disabled={isTopupProcessing}
-                    className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:from-amber-600 text-stone-950 font-black text-sm rounded-2xl shadow-xl shadow-amber-500/20 cursor-pointer transition-all hover:scale-102 active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-8 py-3.5 bg-stone-700 hover:bg-stone-600 text-stone-300 font-black text-sm rounded-2xl cursor-pointer transition-all flex items-center justify-center gap-2"
                   >
-                    <Coins className="w-4 h-4 fill-stone-950" />
-                    <span>{isTopupProcessing ? '金流處置中...' : `確認支付 NT$ ${finalRechargePrice.toLocaleString()} 並立即入帳`}</span>
+                    <Coins className="w-4 h-4" />
+                    <span>外部金流暫不支援（僅支援既有平台點數）</span>
                   </button>
                 </div>
 
