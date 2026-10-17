@@ -332,11 +332,8 @@ export function restoreCanonicalUserIdentity(u: User): User {
       accountType: canon.accountType,
       memberId: canon.memberId,
       username: custom?.username || canon.username,
-      password: isAdminCanon
-        ? 'Ideax_0922'
-        : u.password && u.password !== 'Ideax_0922'
-        ? u.password
-        : 'Ideax123456',
+      // 安全性：不再補上任何預設密碼；管理員一律透過 Firebase Authentication 驗證
+      password: isAdminCanon ? undefined : u.password,
       email: custom?.email || canon.email,
       title: resolvedTitle,
       avatar: resolvedAvatar,

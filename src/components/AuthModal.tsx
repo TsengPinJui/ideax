@@ -66,6 +66,14 @@ import { syncUserToFirestore, getUserFromFirestore } from '../services/firestore
 import { recordUserBoard, recordUserSpecialZone } from '../services/recommendationService';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './challenge/CompetitionTermsModal';
 
+// 管理員 Email 白名單（建置時由環境變數 ADMIN_EMAILS 注入，多組以逗號分隔）
+const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+const isAllowlistedAdminEmail = (email: string): boolean =>
+  ADMIN_EMAIL_ALLOWLIST.includes(email.trim().toLowerCase());
+
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -436,53 +444,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      // 1. 特殊判定：官方管理員 (Admin_001 / Ideax_0922)
-      const isAdminIdentifier =
+      // 1. 管理員登入（安全性）：不再接受寫死於前端的帳密。
+      //    管理員必須使用「已列入 ADMIN_EMAILS 白名單且已完成 Email 驗證」的 Firebase 帳號登入。
+      const isLegacyAdminIdentifier =
         identifier.toLowerCase() === 'admin_001' ||
         identifier.toLowerCase() === 'admin' ||
-        identifier.toLowerCase() === 'user-admin' ||
-        identifier.toLowerCase() === 'operations@ideax.io';
+        identifier.toLowerCase() === 'user-admin';
 
-      if (isAdminIdentifier) {
-        if (password === 'Ideax_0922') {
-          const adminUser: UserType = availableUsers.find((u) => u.id === 'user-admin') || {
-            id: 'user-admin',
-            username: 'Admin_001',
-            password: 'Ideax_0922',
-            name: 'IdeaX 管理團隊',
-            title: '平台總管',
-            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-            role: 'admin',
-            balance: 50000,
-            pendingEarnings: 0,
-            reputation: 100,
-            joinedDate: '2025-01-01',
-            bio: '創點子 IdeaX 官方管理員，維護第三方支付安全託管、自動拆款撥付及專家認證。',
-            email: 'operations@ideax.io',
-            phone: '0912-345-678',
-            verifiedExpert: true,
-            subscriptionTier: 'master',
-          };
-
-          switchAccount(adminUser.id);
-
-          if (rememberMe) {
-            localStorage.setItem(
-              STORAGE_REMEMBER_LOGIN_KEY,
-              JSON.stringify({ identifier: 'Admin_001', rememberMe: true, lastLoginAt: new Date().toISOString() })
-            );
-          } else {
-            localStorage.removeItem(STORAGE_REMEMBER_LOGIN_KEY);
-          }
-
-          setSuccessMsg('登入成功。');
-          setTimeout(() => onClose(), 400);
-          return;
-        } else {
-          setErrorMsg('密碼錯誤（需為 6 ~ 20 位英數組合）');
-          setIsLoading(false);
-          return;
-        }
+      if (isLegacyAdminIdentifier) {
+        setErrorMsg('管理員請改用已授權的管理員 Email 登入。');
+        setIsLoading(false);
+        return;
       }
 
       // 2. 本地現有用戶比對
@@ -503,6 +475,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         try {
           const fbUser = await loginWithFirebaseEmail(identifier, password);
           firebaseAuthSuccess = true;
+
+          // 管理員：Email 在白名單內且 Firebase 已驗證信箱，才切換為管理員身分
+          if (isAllowlistedAdminEmail(identifier)) {
+            if (!fbUser.emailVerified) {
+              setErrorMsg('管理員帳號需先完成 Email 驗證才能登入後台。');
+              setIsLoading(false);
+              return;
+            }
+            const adminUser = availableUsers.find((u) => u.role === 'admin' && (u.isInitialAdmin || u.id === 'a000000001' || u.id === 'user-admin'));
+            if (adminUser) {
+              switchAccount(adminUser.id);
+              setSuccessMsg('登入成功。');
+              setTimeout(() => onClose(), 400);
+              return;
+            }
+          }
           const firestoreUser = await getUserFromFirestore(fbUser.uid);
           const matched = firestoreUser || localMatched || {
             id: fbUser.uid,
@@ -516,6 +504,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             joinedDate: new Date().toISOString().split('T')[0],
             email: identifier,
           };
+
+          // 安全性：資料庫中標記為管理員的帳號，只有白名單內且已驗證信箱的 Email 才能登入
+          if (matched.role === 'admin') {
+            setErrorMsg('此帳號需使用已授權且已驗證的管理員 Email 登入。');
+            setIsLoading(false);
+            return;
+          }
 
           const checkRes = checkUserDeactivationStatus(matched);
           if (!checkRes.canLogin) {
@@ -556,13 +551,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         // 若 Firebase 找不到該帳號 (auth/user-not-found) 或處於離線/模擬環境，比對本地帳號密碼
         if (localMatched) {
-          const expectedPassword =
-            localMatched.password ||
-            (localMatched.id === 'user-admin'
-              ? 'Ideax_0922'
-              : localMatched.id.startsWith('solver-') || localMatched.id.startsWith('user-')
-              ? 'Ideax123456'
-              : undefined);
+          // 安全性：管理員帳號不可用本地密碼登入；一般帳號僅比對本機註冊時留存的密碼
+          const expectedPassword = localMatched.role === 'admin' ? undefined : localMatched.password;
 
           if (expectedPassword) {
             if (expectedPassword !== password) {
@@ -608,13 +598,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       // 4. 非 Email 格式（使用者帳號 / 手機號碼 / ID 登入）：嚴格核驗密碼
       if (localMatched) {
-        const expectedPassword =
-          localMatched.password ||
-          (localMatched.id === 'user-admin'
-            ? 'Ideax_0922'
-            : localMatched.id.startsWith('solver-') || localMatched.id.startsWith('user-')
-            ? 'Ideax123456'
-            : undefined);
+        // 安全性：管理員帳號不可用本地密碼登入；一般帳號僅比對本機註冊時留存的密碼
+        const expectedPassword = localMatched.role === 'admin' ? undefined : localMatched.password;
 
         if (expectedPassword) {
           if (expectedPassword !== password) {
@@ -622,6 +607,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             setIsLoading(false);
             return;
           }
+        } else if (localMatched.role === 'admin') {
+          setErrorMsg('管理員請改用已授權的管理員 Email 登入。');
+          setIsLoading(false);
+          return;
         } else if (localMatched.email) {
           // 本地無密碼但有 Email，嘗試以 Firebase 驗證密碼
           try {
@@ -679,6 +668,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const firestoreUser = await getUserFromFirestore(googleUser.uid);
       const existing = firestoreUser || availableUsers.find((u) => u.id === googleUser.uid || u.email?.toLowerCase() === googleUser.email?.toLowerCase());
       if (existing) {
+        // 安全性：管理員帳號只能以白名單內的已驗證 Email 登入
+        if (existing.role === 'admin' && !(googleUser.email && isAllowlistedAdminEmail(googleUser.email))) {
+          setErrorMsg('此帳號需使用已授權的管理員 Email 登入。');
+          setIsLoading(false);
+          return;
+        }
         const checkRes = checkUserDeactivationStatus(existing);
         if (!checkRes.canLogin) {
           setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已註銷。'));
@@ -727,6 +722,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             (fbUser.email && u.email?.toLowerCase() === fbUser.email.toLowerCase())
         );
       if (existing) {
+        // 安全性：管理員帳號只能以白名單內的已驗證 Email 登入
+        if (existing.role === 'admin' && !(fbUser.email && isAllowlistedAdminEmail(fbUser.email))) {
+          setErrorMsg('此帳號需使用已授權的管理員 Email 登入。');
+          setIsLoading(false);
+          return;
+        }
         const checkRes = checkUserDeactivationStatus(existing);
         if (!checkRes.canLogin) {
           setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已註銷。'));
@@ -762,6 +763,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           : null;
 
         if (existing) {
+          // 安全性：管理員帳號只能以白名單內的已驗證 Email 登入
+          if (existing.role === 'admin') {
+            setErrorMsg('此帳號需使用已授權的管理員 Email 登入。');
+            setIsLoading(false);
+            return;
+          }
           const checkRes = checkUserDeactivationStatus(existing);
           if (!checkRes.canLogin) {
             setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已註銷。'));
@@ -875,6 +882,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         );
 
       if (existing) {
+        // 安全性：管理員帳號只能以白名單內的已驗證 Email 登入
+        if (existing.role === 'admin') {
+          setErrorMsg('此帳號需使用已授權的管理員 Email 登入。');
+          setIsLoading(false);
+          return;
+        }
         const checkRes = checkUserDeactivationStatus(existing);
         if (!checkRes.canLogin) {
           setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已完成註銷。'));

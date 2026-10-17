@@ -24,6 +24,7 @@
 import * as XLSX from 'xlsx';
 import { StarSeasonProposal } from '../types/competition';
 import { CompetitionExpertRecord, getCompetitionExperts, getCompetitionRegistrations } from './competitionAdminSync';
+import { getAuthHeaders } from './authHeader';
 
 export interface FinalEvaluationCriterion {
   id: 'innovation' | 'completeness' | 'feasibility' | 'commercial';
@@ -815,11 +816,15 @@ export async function executeAutomatedRewardsDistribution(params: {
 
   // 7. 透過後端 API 同步儲存
   try {
-    fetch('/api/competition/admin/distribute-all-rewards', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(record),
-    }).catch(() => {});
+    getAuthHeaders()
+      .then((headers) =>
+        fetch('/api/competition/admin/distribute-all-rewards', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(record),
+        })
+      )
+      .catch(() => {});
   } catch {}
 
   return {

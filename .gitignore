@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Firebase 服務帳戶金鑰（最高權限，絕不可上傳）
+service-account*.json
+*-firebase-adminsdk-*.json

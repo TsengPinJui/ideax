@@ -31,6 +31,7 @@ import {
   getCachedRealTrafficStats,
   saveCachedRealTrafficStats,
 } from '../components/AdminSiteTrafficChart';
+import { getAuthHeaders } from './authHeader';
 
 const QUOTA_STORAGE_KEY = 'ideax_firestore_quota_exhausted_date';
 
@@ -110,7 +111,7 @@ export async function syncQuestionToFirestore(question: Question): Promise<void>
   try {
     await fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(question.id)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ data: payload, merge: true }),
     });
   } catch {}
@@ -146,6 +147,7 @@ export async function deleteQuestionFromFirestore(questionId: string): Promise<v
   try {
     await fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(questionId)}`, {
       method: 'DELETE',
+      headers: await getAuthHeaders(),
     });
   } catch {}
   if (isQuotaExhausted) return;
@@ -165,7 +167,7 @@ export async function deleteQuestionsFromFirestore(questionIds: string[]): Promi
   try {
     await Promise.all(
       questionIds.map((id) =>
-        fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {})
+        getAuthHeaders().then((headers) => fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(id)}`, { method: 'DELETE', headers })).catch(() => {})
       )
     );
   } catch {}
@@ -191,6 +193,7 @@ export async function deleteQuestionAndRelatedDataFromFirestore(questionId: stri
   try {
     await fetch(`/api/competition/db-mirror/questions/${encodeURIComponent(questionId)}`, {
       method: 'DELETE',
+      headers: await getAuthHeaders(),
     });
   } catch {}
   if (isQuotaExhausted) return;
@@ -525,11 +528,44 @@ export async function syncConversationToFirestore(conv: ChatConversation): Promi
 // 2. 用戶身分與審核治理類 (Identity, Verification & Governance)
 // =========================================================================
 
+export const PRIVATE_USER_COLLECTION = 'user_private';
+
+/** 安全性：要從公開 users 文件中移除的敏感欄位 */
+const SECRET_FIELD_DELETES = () => ({
+  password: deleteField(),
+  realNameAuthData: deleteField(),
+  realNameData: deleteField(),
+});
+
+/** 安全性：移除舊資料中殘留的明碼密碼與實名個資，避免流入每位訪客的瀏覽器 */
+export function stripUserSecrets(u: User): User {
+  if (!u) return u;
+  const { password, realNameAuthData, realNameData, ...rest } = u as any;
+  return rest as User;
+}
+
+/** 讀取單一使用者的實名認證資料（管理員審核或本人檢視時使用） */
+export async function getUserPrivateData(userId: string): Promise<{ realNameAuthData?: User['realNameAuthData'] } | null> {
+  if (!userId) return null;
+  try {
+    const snap = await getDoc(doc(db, PRIVATE_USER_COLLECTION, userId));
+    return snap.exists() ? (snap.data() as any) : null;
+  } catch (err) {
+    handleFirestoreError(`Failed to get private data ${userId}`, err);
+    return null;
+  }
+}
+
 export async function syncUserToFirestore(user: User): Promise<void> {
   if (!user || !user.id || isQuotaExhausted) return;
   try {
     const userRef = doc(db, 'users', user.id);
     const cleanUser = JSON.parse(JSON.stringify(user));
+    // 安全性：密碼與實名認證個資不寫入公開的 users 集合
+    const privateRealName = cleanUser.realNameAuthData;
+    delete cleanUser.password;
+    delete cleanUser.realNameAuthData;
+    delete cleanUser.realNameData;
     const isSiteAAdmin = Boolean(user.adminSites?.includes('site_a'));
     const isSiteBAdmin = Boolean(user.adminSites?.includes('site_b'));
     const firestoreData: any = {
@@ -550,6 +586,9 @@ export async function syncUserToFirestore(user: User): Promise<void> {
             : 'B站專屬管理員'
           : deleteField(),
       updatedAt: new Date().toISOString(),
+      // 清除雲端舊版殘留的明碼密碼與實名個資
+      ...SECRET_FIELD_DELETES(),
+      hasIdDocuments: Boolean(privateRealName?.idCardFrontFile || privateRealName?.idCardBackFile),
     };
 
     // 若使用者非處於註銷或反悔猶豫期，必須顯式透過 deleteField() 清除雲端舊殘留之猶豫期狀態
@@ -568,6 +607,11 @@ export async function syncUserToFirestore(user: User): Promise<void> {
 
     await setDoc(userRef, firestoreData, { merge: true });
 
+    // 實名認證個資改存於獨立的 user_private 集合（之後由安全規則限定本人與管理員讀取）
+    if (privateRealName) {
+      await setDoc(doc(db, PRIVATE_USER_COLLECTION, user.id), { realNameAuthData: privateRealName, updatedAt: new Date().toISOString() }, { merge: true });
+    }
+
     // 同步提取使用者審核證書資料至 certifications 集合
     if (user.realNameAuthStatus || user.expertCertStatus) {
       const certRef = doc(db, 'certifications', user.id);
@@ -579,8 +623,7 @@ export async function syncUserToFirestore(user: User): Promise<void> {
           userRole: user.role,
           realNameAuthStatus: user.realNameAuthStatus || 'unverified',
           expertCertStatus: user.expertCertStatus || 'unverified',
-          realNameData: user.realNameData || null,
-          expertCertData: user.expertCertData || null,
+                    expertCertData: user.expertCertData || null,
           updatedAt: new Date().toISOString(),
         },
         { merge: true }
@@ -661,7 +704,19 @@ export async function syncUsersToFirestore(users: User[]): Promise<void> {
       if (!user.id) return;
       const userRef = doc(db, 'users', user.id);
       const cleanUser = JSON.parse(JSON.stringify(user));
-      const firestoreData: any = { ...cleanUser, updatedAt: new Date().toISOString() };
+      const privateRealName = cleanUser.realNameAuthData;
+      delete cleanUser.password;
+      delete cleanUser.realNameAuthData;
+      delete cleanUser.realNameData;
+      const firestoreData: any = {
+        ...cleanUser,
+        updatedAt: new Date().toISOString(),
+        ...SECRET_FIELD_DELETES(),
+        hasIdDocuments: Boolean(privateRealName?.idCardFrontFile || privateRealName?.idCardBackFile || (user as any).hasIdDocuments),
+      };
+      if (privateRealName) {
+        batch.set(doc(db, PRIVATE_USER_COLLECTION, user.id), { realNameAuthData: privateRealName, updatedAt: new Date().toISOString() }, { merge: true });
+      }
 
       const isUserGraceOrDeact = Boolean(
         user.isDeactivated ||
@@ -689,8 +744,7 @@ export async function syncUsersToFirestore(users: User[]): Promise<void> {
             userRole: user.role,
             realNameAuthStatus: user.realNameAuthStatus || 'unverified',
             expertCertStatus: user.expertCertStatus || 'unverified',
-            realNameData: user.realNameData || null,
-            expertCertData: user.expertCertData || null,
+                        expertCertData: user.expertCertData || null,
             updatedAt: new Date().toISOString(),
           },
           { merge: true }
@@ -709,7 +763,7 @@ export async function getUserFromFirestore(userId: string): Promise<User | null>
     const userRef = doc(db, 'users', userId);
     const snap = await getDoc(userRef);
     if (snap.exists()) {
-      return snap.data() as User;
+      return stripUserSecrets(snap.data() as User);
     }
     return null;
   } catch (err) {
@@ -1119,7 +1173,7 @@ export async function loadAllDataFromFirestore(
     } = {};
 
     if (!usersSnap.empty) {
-      result.users = usersSnap.docs.map((d) => d.data() as User);
+      result.users = usersSnap.docs.map((d) => stripUserSecrets(d.data() as User));
     }
     if (!qSnap.empty) {
       result.questions = qSnap.docs

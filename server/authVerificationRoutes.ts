@@ -56,7 +56,7 @@ router.post('/send-email-code', async (req: Request, res: Response) => {
       verified: false,
     });
 
-    console.log(`[Auth Mail Service] 認證信已產生: Target=${cleanEmail}, Type=${type}, Code=${code}`);
+    console.log(`[Auth Mail Service] 認證信已產生: Type=${type}`); // 安全性：不在 log 中記錄驗證碼與信箱
 
     // 呼叫 Google Identity Toolkit 真正寄送官方密碼重設與認證郵件至外部真實信箱（如 Gmail）
     try {
@@ -166,7 +166,7 @@ router.post('/send-sms-code', async (req: Request, res: Response) => {
       verified: false,
     });
 
-    console.log(`[Auth SMS Service] 簡訊驗證碼已發送: Phone=${cleanPhone}, Type=${type}, Code=${code}`);
+    console.log(`[Auth SMS Service] 簡訊驗證碼已產生: Type=${type}`); // 安全性：不在 log 中記錄驗證碼與門號
 
     return res.json({
       success: true,

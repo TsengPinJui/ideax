@@ -17,6 +17,7 @@ import {
   getTicketsFromFirestore,
 } from './firestoreSync';
 import { callDifyClientDirect } from './difyClientService';
+import { getAuthHeaders } from './authHeader';
 
 const STORAGE_CONVERSATIONS_KEY = 'ideax_cs_conversations';
 const STORAGE_TICKETS_KEY = 'ideax_cs_tickets';
@@ -274,7 +275,7 @@ export async function aggregateQuestionsWithAi(
   try {
     const res = await fetch('/api/admin/aggregate-faqs', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ questions: payloadQuestions }),
     });
 

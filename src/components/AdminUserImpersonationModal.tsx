@@ -606,7 +606,7 @@ export const AdminUserImpersonationModal: React.FC<AdminUserImpersonationModalPr
                 </h4>
                 <div className="space-y-1.5 text-stone-700">
                   <div>認證審核狀態：<b>{user.realNameAuthStatus === 'verified' ? '已核准完成' : user.realNameAuthStatus === 'pending' ? '審核中' : '未申辦'}</b></div>
-                  <div>身分證件儲存：<b>{user.realNameAuthData?.idCardFrontFile ? '已上傳並安全封存' : '未附檔案'}</b></div>
+                  <div>身分證件儲存：<b>{(user.hasIdDocuments || user.realNameAuthData?.idCardFrontFile) ? '已上傳並安全封存' : '未附檔案'}</b></div>
                 </div>
               </div>
 

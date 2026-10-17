@@ -1,6 +1,30 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ===== 安全輔助函式 =====
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    // 管理員：僅認 /admins/{uid}（只能從 Firebase Console 或後端建立）或 Custom Claims
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        ('admin' in request.auth.token && request.auth.token.admin == true)
+      );
+    }
+
+    // 管理員名單：任何前端都不能寫入，避免自我提權
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // 實名認證個資：僅本人與管理員可讀寫
+    match /user_private/{userId} {
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
     // 1. 業務核心與交易類 (Core Business & Transactions)
     match /questions/{questionId} {
       allow read, write: if true;
@@ -54,8 +78,9 @@ service cloud.firestore {
     }
 
     // Default fallback
-    match /{document=**} {
-      allow read, write: if true;
+    // 注意：Firestore 規則是「任一條允許即放行」，因此萬用規則必須排除上方受保護的集合
+    match /{collectionId}/{document=**} {
+      allow read, write: if !(collectionId in ['admins', 'user_private']);
     }
   }
 }

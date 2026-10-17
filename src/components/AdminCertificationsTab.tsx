@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { User } from '../types';
+import { getUserPrivateData } from '../services/firestoreSync';
 import {
   BadgeCheck,
   ShieldCheck,
@@ -72,6 +73,21 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
   } | null>(null);
   const [lightboxRotation, setLightboxRotation] = useState<number>(0);
   const [lightboxZoom, setLightboxZoom] = useState<number>(1);
+
+  // 安全性：實名認證個資存在 user_private，開啟詳情時才向資料庫讀取
+  useEffect(() => {
+    const uid = inspectUser?.id;
+    if (!uid || inspectUser?.realNameAuthData) return;
+    let cancelled = false;
+    getUserPrivateData(uid).then((priv) => {
+      if (!cancelled && priv?.realNameAuthData) {
+        setInspectUser((prev) => (prev && prev.id === uid ? { ...prev, realNameAuthData: priv.realNameAuthData } : prev));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [inspectUser?.id]);
 
   // 當由「用戶管理頁」攜帶 targetUserId 跳轉過來時，自動鎖定該用戶並開啟檢驗彈窗
   useEffect(() => {
@@ -416,7 +432,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                           已停權
                         </span>
                       )}
-                      {(user.realNameAuthData?.idCardFrontFile || user.realNameAuthData?.idCardBackFile) && (
+                      {(user.hasIdDocuments || user.realNameAuthData?.idCardFrontFile || user.realNameAuthData?.idCardBackFile) && (
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-1 shadow-2xs">
                           <ImageIcon className="w-3 h-3 text-purple-700" />
                           <span>已附證件照 (Storage)</span>
