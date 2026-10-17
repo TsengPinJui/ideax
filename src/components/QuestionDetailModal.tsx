@@ -83,6 +83,7 @@ import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 import { getAnswerSpecifications } from '../utils/answerUtils';
 import { VibeCodingCaseDetailContent } from './VibeCodingCaseDetailContent';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
+import { isSampleContent } from '../utils/sampleContent';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -829,6 +830,14 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </button>
           )}
           <div className="flex items-center gap-2 flex-wrap">
+            {isSampleContent(question) && (
+              <span
+                className="text-xs font-bold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-lg border border-stone-200"
+                title="此為平台示範內容，非真實會員發布"
+              >
+                範例內容
+              </span>
+            )}
             {onSelectCategory ? (
               <button
                 type="button"

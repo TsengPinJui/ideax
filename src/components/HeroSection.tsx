@@ -209,7 +209,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     if (publicMetricsConfig.showAvgResponseSpeed) list.push({ key: 'speed', label: '平均回覆', value: avgResponseSpeedFormatted });
     if (publicMetricsConfig.showSatisfactionRate) list.push({ key: 'satisfaction', label: '滿意度', value: satisfactionRateFormatted });
     if (publicMetricsConfig.showTotalGMV) list.push({ key: 'gmv', label: '總交易額', value: totalGMVFormatted });
-    return list;
+    // 數據還是 0 時不顯示，避免新訪客看到「已解決 0、滿意度 0%」而覺得沒人在用；
+    // 尚無成交時，「平均回覆」與「滿意度」也沒有參考意義，一併隱藏
+    const isZeroLike = (v: string) => /^(NT\$\s*)?[0０]+(\.0+)?\s*(%|萬)?$/.test(String(v).trim()) || String(v).trim() === '-';
+    const noSolvedYet = isZeroLike(solvedCountFormatted);
+    return list.filter((m) => !isZeroLike(m.value) && !(noSolvedYet && (m.key === 'speed' || m.key === 'satisfaction')));
   }, [
     publicMetricsConfig,
     questionsCountFormatted,
@@ -296,7 +300,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
 
         {/* Clean Collapsible Metrics Bar (精簡橫條 + 可展開完整指標) */}
-        {(allMetricItems.length > 0 || publicMetricsConfig.showHighestBounty) && (
+        {(allMetricItems.length > 0 || (publicMetricsConfig.showHighestBounty && currentHighestBounty > 0)) && (
           <div className="mt-4 sm:mt-7 lg:mt-8 pt-3 sm:pt-4 lg:pt-5 border-t border-stone-200/60 max-w-5xl lg:max-w-6xl mx-auto">
             <div className="flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-8 lg:gap-x-10 gap-y-2 text-center">
               {visibleMetrics.map((m) => (
@@ -310,7 +314,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               ))}
 
               {/* 當前最高賞金快捷膠囊 */}
-              {publicMetricsConfig.showHighestBounty && (
+              {publicMetricsConfig.showHighestBounty && currentHighestBounty > 0 && (
                 <button
                   id="highest-bounty-section"
                   onClick={onLeaderboardClick}

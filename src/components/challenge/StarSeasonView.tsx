@@ -3454,14 +3454,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         )}
 
         {/* 🎛️ 競賽網首頁公開展示數據（依照管理員後台顯示設定呈現） */}
-        {(statsConfig.showLoggedInUsers ||
-          statsConfig.showParticipants ||
-          statsConfig.showExperts ||
-          statsConfig.showProposals ||
-          statsConfig.showPainPoints ||
-          statsConfig.showAllocatedPoints) && (
+        {/* 數據為 0 的項目不顯示，避免活動初期整排「0」讓訪客以為沒人參加 */}
+        {((statsConfig.showLoggedInUsers && adminMetrics.loggedInUsersCount > 0) ||
+          (statsConfig.showParticipants && adminMetrics.participantsCount > 0) ||
+          (statsConfig.showExperts && adminMetrics.approvedExpertsCount > 0) ||
+          (statsConfig.showProposals && adminMetrics.proposalsCount > 0) ||
+          (statsConfig.showPainPoints && adminMetrics.painPointsCount > 0) ||
+          (statsConfig.showAllocatedPoints && adminMetrics.totalAllocatedPoints >= 10000)) && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            {statsConfig.showLoggedInUsers && (
+            {statsConfig.showLoggedInUsers && adminMetrics.loggedInUsersCount > 0 && (
               <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-stone-600">登入會員</span>
@@ -3475,7 +3476,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               </div>
             )}
-            {statsConfig.showParticipants && (
+            {statsConfig.showParticipants && adminMetrics.participantsCount > 0 && (
               <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-stone-600">參賽團隊</span>
@@ -3489,7 +3490,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               </div>
             )}
-            {statsConfig.showExperts && (
+            {statsConfig.showExperts && adminMetrics.approvedExpertsCount > 0 && (
               <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-stone-600">認證專家</span>
@@ -3503,7 +3504,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               </div>
             )}
-            {statsConfig.showProposals && (
+            {statsConfig.showProposals && adminMetrics.proposalsCount > 0 && (
               <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-stone-600">創新提案</span>
@@ -3517,7 +3518,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               </div>
             )}
-            {statsConfig.showPainPoints && (
+            {statsConfig.showPainPoints && adminMetrics.painPointsCount > 0 && (
               <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-stone-600">痛點徵集</span>
@@ -3531,7 +3532,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
               </div>
             )}
-            {statsConfig.showAllocatedPoints && (
+            {statsConfig.showAllocatedPoints && adminMetrics.totalAllocatedPoints >= 10000 && (
               <div className="bg-white p-3.5 rounded-2xl border border-amber-300/80 shadow-2xs transition-all hover:border-amber-400">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-stone-600">配發點數</span>
