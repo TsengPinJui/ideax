@@ -519,7 +519,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                         ) : null}
 
                         {/* 身分證件照存檔標籤 */}
-                        {(u.realNameAuthData?.idCardFrontFile || u.realNameAuthData?.idCardBackFile) && (
+                        {(u.hasIdDocuments || u.realNameAuthData?.idCardFrontFile || u.realNameAuthData?.idCardBackFile) && (
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-1 shadow-2xs">
                             <ImageIcon className="w-3 h-3 text-purple-700" />
                             <span>已附證件照 (Storage)</span>

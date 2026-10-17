@@ -1723,21 +1723,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         (u.username && currentUser.username && u.username.toLowerCase() === currentUser.username.toLowerCase())
     );
 
-    const isAdmin =
-      currentUser.id === 'user-admin' ||
-      currentUser.username?.toLowerCase() === 'admin_001' ||
-      currentUser.username?.toLowerCase() === 'admin' ||
-      currentUser.email?.toLowerCase() === 'operations@ideax.io';
-
-    const isDemoUser =
-      currentUser.id === 'user-questioner' ||
-      currentUser.id.startsWith('solver-') ||
-      currentUser.id === 'user-test';
-
     const effectiveOldPassword =
       currentUser.password ||
       userInAvailable?.password ||
-      (isAdmin ? 'Ideax_0922' : isDemoUser ? 'Ideax123456' : undefined);
+      undefined;
 
     // 嚴格比對目前密碼，若有紀錄且不符合一律拒絕修改
     if (effectiveOldPassword) {

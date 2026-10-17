@@ -59,6 +59,7 @@ import {
   resetDifyConfig,
   DifyConfig,
 } from '../services/difyClientService';
+import { getAuthHeaders } from '../services/authHeader';
 
 export interface NotificationRule {
   id: string;
@@ -398,7 +399,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
         try {
           const res = await fetch('/api/admin/test-dify-agent', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: await getAuthHeaders(),
             body: JSON.stringify({
               agentType: targetAgent,
               query: q,

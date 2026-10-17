@@ -1,3 +1,4 @@
+import { getAuthHeaders } from './authHeader';
 /**
  * 創星季專家審核結果自動發送信件通知服務
  */
@@ -16,9 +17,7 @@ export async function notifyExpertReviewEmail(
   try {
     const res = await fetch('/api/competition/admin/notify-expert-review', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(params),
     });
     const data = await res.json();

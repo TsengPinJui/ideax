@@ -47,6 +47,27 @@ import { StarSeasonStage, StarSeasonTrack, COMPETITION_POINTS_CONFIG, DEFAULT_CO
 
 const router = Router();
 
+// ==========================================
+// 安全性：管理員驗證與敏感欄位過濾
+// ==========================================
+async function requireAdmin(req: Request, res: Response): Promise<{ uid: string } | null> {
+  const authUser = await verifyAuthToken(req.headers.authorization);
+  if (!authUser || !(await isVerifiedAdmin(authUser.uid))) {
+    res.status(403).json({ success: false, error: '未授權：僅限認證管理員' });
+    return null;
+  }
+  return authUser;
+}
+
+// 前端可透過 db-mirror 寫入的集合白名單（其餘集合一律拒絕）
+const MIRROR_WRITABLE_COLLECTIONS = new Set(['questions']);
+
+function stripUserSecretsForPublic(u: any) {
+  if (!u || typeof u !== 'object') return u;
+  const { password, realNameAuthData, realNameData, ...rest } = u;
+  return rest;
+}
+
 // 1. 公開時程與活動設定
 router.get('/config', (req: Request, res: Response) => {
   res.json({
@@ -595,6 +616,7 @@ router.post('/ambassador/bind', async (req: Request, res: Response) => {
 // 20. 競賽相關獎勵之自動化發放紀錄與批次同步 (管理員端點)
 router.post('/admin/distribute-all-rewards', async (req: Request, res: Response) => {
   try {
+    if (!(await requireAdmin(req, res))) return;
     const record = req.body;
     if (!record || !record.distributionId) {
       return res.status(400).json({ success: false, error: '缺少發放記錄資料' });
@@ -634,6 +656,7 @@ router.post('/admin/distribute-all-rewards', async (req: Request, res: Response)
 // 21. 取得競賽相關獎勵之自動化發放最新紀錄
 router.get('/admin/distribute-all-rewards', async (req: Request, res: Response) => {
   try {
+    if (!(await requireAdmin(req, res))) return;
     const snap = await adminDb
       .collection('competition_rewards_distributions')
       .orderBy('distributedAt', 'desc')
@@ -653,6 +676,7 @@ router.get('/admin/distribute-all-rewards', async (req: Request, res: Response) 
 // 22. 創星季專家審核結果（通過或未通過）自動發送電子郵件通知至申請信箱
 router.post('/admin/notify-expert-review', async (req: Request, res: Response) => {
   try {
+    if (!(await requireAdmin(req, res))) return;
     const { expertEmail, expertName, status, reviewNote, isJudgeSelected } = req.body;
     if (!expertEmail || typeof expertEmail !== 'string' || !expertEmail.includes('@')) {
       return res.status(400).json({ success: false, error: '請提供有效的專家電子郵件信箱' });
@@ -753,7 +777,8 @@ router.get('/db-mirror', async (req: Request, res: Response) => {
     await ensureProposalsSyncedToFirestore();
     const questions = Object.values(getMirrorCollectionMap('questions'));
     const answers = Object.values(getMirrorCollectionMap('answers'));
-    const users = Object.values(getMirrorCollectionMap('users'));
+    // 安全性：公開端點不回傳密碼與實名認證個資
+    const users = Object.values(getMirrorCollectionMap('users')).map(stripUserSecretsForPublic);
     const competitionProposals = Object.values(getMirrorCollectionMap('competition_proposals'));
     const deletedSettings = getMirrorCollectionMap('platform_settings')?.permanently_deleted_questions;
     const deletedQuestionIds = Array.isArray(deletedSettings?.deletedIds) ? deletedSettings.deletedIds : [];
@@ -778,6 +803,23 @@ router.post('/db-mirror/:collection/:docId', async (req: Request, res: Response)
     if (!colName || !docId || !data) {
       return res.status(400).json({ success: false, error: 'Missing collection, docId, or data' });
     }
+    // 安全性：僅允許已登入使用者寫入白名單集合；其他集合需管理員
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) {
+      return res.status(401).json({ success: false, error: '未授權：請先登入' });
+    }
+    if (!MIRROR_WRITABLE_COLLECTIONS.has(colName) && !(await isVerifiedAdmin(authUser.uid))) {
+      return res.status(403).json({ success: false, error: '未授權：不可寫入此集合' });
+    }
+    // 非管理員只能修改自己發布的問題
+    const existingDoc = getMirrorCollectionMap(colName)?.[docId];
+    if (existingDoc && existingDoc.authorId && existingDoc.authorId !== authUser.uid && !(await isVerifiedAdmin(authUser.uid))) {
+      const allowedKeys = new Set(['views', 'likes', 'answersCount', 'secondedCount', 'sameQuestionCount', 'updatedAt', 'commentsCount', 'tipTotal']);
+      const keys = Object.keys(data || {});
+      if (keys.some((k) => !allowedKeys.has(k) && JSON.stringify(data[k]) !== JSON.stringify(existingDoc[k]))) {
+        return res.status(403).json({ success: false, error: '未授權：只能修改自己發布的內容' });
+      }
+    }
     await upsertMirrorAndFirestoreDoc(colName, docId, data, Boolean(merge));
     res.json({ success: true });
   } catch (err: any) {
@@ -791,6 +833,18 @@ router.delete('/db-mirror/:collection/:docId', async (req: Request, res: Respons
     const docId = String(req.params.docId || '');
     if (!colName || !docId) {
       return res.status(400).json({ success: false, error: 'Missing collection or docId' });
+    }
+    // 安全性：刪除需登入；非管理員只能刪除自己發布的問題
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) {
+      return res.status(401).json({ success: false, error: '未授權：請先登入' });
+    }
+    const isAdminUser = await isVerifiedAdmin(authUser.uid);
+    if (!isAdminUser) {
+      const existingDoc = getMirrorCollectionMap(colName)?.[docId];
+      if (!MIRROR_WRITABLE_COLLECTIONS.has(colName) || (existingDoc && existingDoc.authorId !== authUser.uid)) {
+        return res.status(403).json({ success: false, error: '未授權：只能刪除自己發布的內容' });
+      }
     }
     await deleteMirrorAndFirestoreDoc(colName, docId);
     if (colName === 'questions') {

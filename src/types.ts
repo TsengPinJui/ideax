@@ -720,6 +720,7 @@ export interface User {
   // 實名認證 (KYC / 實名身分核驗)
   realNameAuthStatus?: 'none' | 'pending' | 'verified' | 'rejected';
   realNameData?: any;
+  hasIdDocuments?: boolean; // 是否已上傳身分證件（公開旗標，實際證件資料存於 user_private）
   realNameAuthData?: {
     legalName: string; // 真實姓名 (必填)
     idNumber: string; // 身分證字號 / 居留證號 (必填)

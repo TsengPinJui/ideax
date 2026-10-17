@@ -6,13 +6,37 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import competitionRouter from './server/competitionRoutes';
 import authVerificationRouter from './server/authVerificationRoutes';
+import { rateLimit, requireAdminMiddleware } from './server/security';
 
 dotenv.config();
+
+// 穩定性：用戶端中途斷線（ECONNRESET / EPIPE）不應讓整台伺服器崩潰；其他未預期錯誤仍照常終止
+process.on('uncaughtException', (err: any) => {
+  if (err && (err.code === 'ECONNRESET' || err.code === 'EPIPE')) {
+    console.warn(`[Server] 忽略用戶端連線中斷：${err.code}`);
+    return;
+  }
+  console.error('[Server] 未預期錯誤，伺服器終止：', err);
+  process.exit(1);
+});
 
 const app = express();
 const PORT = 3000;
 
+// 部署在 Cloud Run / Vercel 等代理之後，需信任代理標頭才能取得真實訪客 IP（流量限制用）
+app.set('trust proxy', true);
 app.use(express.json());
+
+// 安全性：流量限制
+// - AI 端點：每個 IP 每 10 分鐘最多 40 次
+// - 寄送驗證碼：每個 IP 每 10 分鐘最多 5 次
+app.use(['/api/ai', '/api/agent'], rateLimit({ windowMs: 10 * 60 * 1000, max: 40, name: 'ai' }));
+app.use(['/api/auth/send-email-code', '/api/auth/send-sms-code'], rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'send-code' }));
+app.use(['/api/auth/verify-email-code', '/api/auth/verify-sms-code'], rateLimit({ windowMs: 10 * 60 * 1000, max: 20, name: 'verify-code' }));
+
+// 安全性：所有 /api/admin/* 端點僅限認證管理員
+app.use('/api/admin', requireAdminMiddleware);
+
 app.use('/api/competition', competitionRouter);
 app.use('/api/auth', authVerificationRouter);
 
