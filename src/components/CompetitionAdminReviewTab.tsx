@@ -190,19 +190,21 @@ export const CompetitionAdminReviewTab: React.FC<CompetitionAdminReviewTabProps>
     if (success) {
       loadAll();
       const email = targetExpert?.expertEmail;
+      let mailNote = '';
       if (email) {
-        notifyExpertReviewEmail({
+        const mailResult = await notifyExpertReviewEmail({
           expertEmail: email,
           expertName: targetExpert?.expertName || '專家',
           status,
           reviewNote: finalNote,
           isJudgeSelected,
         });
+        mailNote = mailResult.success ? `，並已寄送通知信至 ${email}` : `（通知信未寄出：${mailResult.message}）`;
       }
       triggerToast(
         status === 'approved'
-          ? `✅ 已核准專家身分，已配發 3,000,000 創星幣${email ? `，並已發送審核通過通知信至 ${email}` : ''}！`
-          : `❌ 已退回該專家申請${email ? `，並已發送審核結果通知信至 ${email}` : ''}。`
+          ? `✅ 已核准專家身分，已配發 3,000,000 創星幣${mailNote}！`
+          : `❌ 已退回該專家申請${mailNote}。`
       );
       if (onNotify) {
         onNotify(
