@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Question,
   ProposalUpdateLog,
@@ -105,6 +105,9 @@ import {
   syncAuditLogsToFirestore,
   pushAllDataToFirestore,
   loadAllDataFromFirestore,
+  loadPersonalDataFromFirestore,
+  subscribePersonalData,
+  setFirestoreDataScope,
   incrementQuestionViewInFirestore,
   subscribeToTickets,
   recordSiteVisitInFirestore,
@@ -116,6 +119,17 @@ import {
 import { getStoredTickets } from '../services/customerSupportService';
 import { CenterToastData } from '../components/CenterToast';
 import { PwaNotificationService } from '../services/pwaNotificationService';
+
+/**
+ * 把雲端載入的「自己的」資料合併進本機資料（以 id 為準，雲端版本優先）。
+ * 私訊與通知目前有部分只存在本機，合併而非取代，避免本機紀錄被清掉。
+ */
+function mergeServerIntoLocal<T extends { id: string }>(local: T[], server: T[]): T[] {
+  const map = new Map<string, T>();
+  for (const item of local || []) if (item && item.id) map.set(item.id, item);
+  for (const item of server || []) if (item && item.id) map.set(item.id, item);
+  return Array.from(map.values());
+}
 
 interface AppContextType {
   currentUser: User;
@@ -2031,6 +2045,101 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Pull all data fresh from Firestore into local state & storage
+  // 告訴資料層「現在是誰」：一般會員只下載自己的交易、私訊與通知；管理員載入全站
+  const isScopeGuest = !currentUser?.id || currentUser.id === 'user-guest';
+  setFirestoreDataScope({
+    userId: isScopeGuest ? null : currentUser.id,
+    userName: isScopeGuest ? undefined : currentUser.name,
+    isAdmin: !isScopeGuest && currentUser.role === 'admin',
+  });
+
+  // 登入、登出或切換帳號後，重新載入「這位會員自己的」私人資料
+  const lastScopedUserKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = isScopeGuest ? 'guest' : `${currentUser.id}:${currentUser.role === 'admin' ? 'admin' : 'member'}`;
+    const prevKey = lastScopedUserKeyRef.current;
+    lastScopedUserKeyRef.current = key;
+    if (prevKey === null || prevKey === key) return; // 首次載入由開站流程處理
+    const isDemoNow = localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true';
+    if (isDemoNow) return;
+    if (key === 'guest') return; // 登出時不清除本機資料（部分私訊只存在本機）
+    let cancelled = false;
+    (async () => {
+      if (currentUser.role === 'admin') {
+        await pullAllDataFromFirestore();
+        return;
+      }
+      const personal = await loadPersonalDataFromFirestore();
+      if (cancelled || !personal) return;
+      setTransactions((prev) => mergeServerIntoLocal(prev, personal.transactions.filter((t) => !isMockTransactionId(t.id))));
+      setConversations((prev) => mergeServerIntoLocal(prev, personal.conversations.filter((c) => !isMockConversationId(c.id))));
+      setNotifications((prev) =>
+        mergeServerIntoLocal(prev, personal.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message)))
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser.id, currentUser.role]);
+
+  // 即時接收別人傳給我的私訊與通知（只監聽自己的資料）
+  useEffect(() => {
+    if (isScopeGuest) return;
+    if (localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true') return;
+    const myId = currentUser.id;
+    const unsubscribe = subscribePersonalData(myId, {
+      onConversations: (serverConvs) => {
+        setConversations((prev) => {
+          const map = new Map(prev.map((c) => [c.id, c]));
+          for (const sc of serverConvs) {
+            if (isMockConversationId(sc.id)) continue;
+            const local = map.get(sc.id);
+            // 本機訊息比較多（例如剛送出、尚未同步完成）時保留本機版本
+            if (!local || (sc.messages?.length || 0) >= (local.messages?.length || 0)) {
+              map.set(sc.id, sc);
+            }
+          }
+          return Array.from(map.values());
+        });
+      },
+      onNotifications: (serverNotifs, isInitial) => {
+        const fresh: NotificationItem[] = [];
+        setNotifications((prev) => {
+          const known = new Set(prev.map((n) => n.id));
+          for (const n of serverNotifs) {
+            if (known.has(n.id) || isModeOrEnvNotification(n.title, n.message)) continue;
+            fresh.push(n);
+          }
+          if (fresh.length === 0) return prev;
+          return [...fresh, ...prev].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        });
+        // 開站後才收到的新通知，跳出系統通知（使用中時由服務層自動略過）
+        if (!isInitial) {
+          setTimeout(() => {
+            fresh
+              .filter((n) => !n.read && n.userId === myId)
+              .slice(0, 3)
+              .forEach((n) => {
+                PwaNotificationService.sendNativeNotification({
+                  title: n.title || 'IdeaX 創點子',
+                  body: n.message || '您有一則新通知',
+                  url: n.linkQuestionId
+                    ? `/?q=${encodeURIComponent(n.linkQuestionId)}`
+                    : n.linkChatId || n.type === 'chat_message'
+                    ? '/chat'
+                    : '/',
+                  group: n.type === 'system' ? undefined : n.type,
+                });
+              });
+          }, 0);
+        }
+      },
+    });
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser.id, isScopeGuest]);
+
   const pullAllDataFromFirestore = async (): Promise<boolean> => {
     try {
       const cloudData = await loadAllDataFromFirestore();
@@ -2202,21 +2311,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch {}
       }
 
-      if (cloudData.transactions && cloudData.transactions.length > 0) {
+      // 管理員：以全站資料取代；一般會員：只拿到自己的資料，合併進本機
+      const isAdminScope = currentUser.role === 'admin';
+      if (Array.isArray(cloudData.transactions) && cloudData.transactions.length > 0) {
         const cleanTx = !isDemo ? cloudData.transactions.filter((t) => !isMockTransactionId(t.id)) : cloudData.transactions;
-        setTransactions(cleanTx);
-        try {
-          localStorage.setItem(`${STORAGE_KEY_PREFIX}transactions`, JSON.stringify(cleanTx));
-        } catch {}
+        setTransactions((prev) => (isAdminScope ? cleanTx : mergeServerIntoLocal(prev, cleanTx)));
       }
 
-      if (cloudData.conversations && cloudData.conversations.length > 0) {
+      if (Array.isArray(cloudData.conversations) && cloudData.conversations.length > 0) {
         const cleanConv = !isDemo ? cloudData.conversations.filter((c) => !isMockConversationId(c.id)) : cloudData.conversations;
-        setConversations(cleanConv);
+        setConversations((prev) => (isAdminScope ? cleanConv : mergeServerIntoLocal(prev, cleanConv)));
       }
 
-      if (cloudData.notifications && cloudData.notifications.length > 0) {
-        setNotifications(cloudData.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message)));
+      if (Array.isArray(cloudData.notifications) && cloudData.notifications.length > 0) {
+        const cleanNotifs = cloudData.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message));
+        setNotifications((prev) => (isAdminScope ? cleanNotifs : mergeServerIntoLocal(prev, cleanNotifs)));
       }
 
       if (cloudData.solvers && cloudData.solvers.length > 0) {
@@ -2511,22 +2620,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(finalAns));
             } catch {}
           }
-          if (cloudData.transactions && cloudData.transactions.length > 0) {
-            if (!isDemo) {
-              setTransactions(cloudData.transactions.filter((t) => !isMockTransactionId(t.id)));
-            } else {
-              setTransactions(cloudData.transactions);
-            }
+          // 管理員：以全站資料取代；一般會員：只拿到自己的資料，合併進本機
+          const isAdminBoot = currentUser.role === 'admin';
+          if (Array.isArray(cloudData.transactions) && cloudData.transactions.length > 0) {
+            const bootTx = !isDemo ? cloudData.transactions.filter((t) => !isMockTransactionId(t.id)) : cloudData.transactions;
+            setTransactions((prev) => (isAdminBoot ? bootTx : mergeServerIntoLocal(prev, bootTx)));
           }
-          if (cloudData.conversations && cloudData.conversations.length > 0) {
-            if (!isDemo) {
-              setConversations(cloudData.conversations.filter((c) => !isMockConversationId(c.id)));
-            } else {
-              setConversations(cloudData.conversations);
-            }
+          if (Array.isArray(cloudData.conversations) && cloudData.conversations.length > 0) {
+            const bootConv = !isDemo ? cloudData.conversations.filter((c) => !isMockConversationId(c.id)) : cloudData.conversations;
+            setConversations((prev) => (isAdminBoot ? bootConv : mergeServerIntoLocal(prev, bootConv)));
           }
-          if (cloudData.notifications && cloudData.notifications.length > 0) {
-            setNotifications(cloudData.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message)));
+          if (Array.isArray(cloudData.notifications) && cloudData.notifications.length > 0) {
+            const bootNotifs = cloudData.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message));
+            setNotifications((prev) => (isAdminBoot ? bootNotifs : mergeServerIntoLocal(prev, bootNotifs)));
           }
           if (cloudData.solvers && cloudData.solvers.length > 0) {
             if (!isDemo) {

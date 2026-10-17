@@ -12,6 +12,8 @@ import {
   deleteField,
   updateDoc,
   increment,
+  query,
+  where,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import {
@@ -1121,6 +1123,132 @@ export async function pushAllDataToFirestore(data: SyncDataPayload): Promise<Cat
   }
 }
 
+
+// =========================================================================
+// 資料載入範圍：每位訪客只下載「自己的」交易、私訊與通知
+// - 訪客：不下載任何私人資料
+// - 一般會員：只下載與自己相關的交易、自己參與的對話、發給自己（或全站廣播）的通知
+// - 管理員：維持載入全站資料，後台查閱不受影響
+// =========================================================================
+export interface FirestoreDataScope {
+  userId: string | null;
+  userName?: string;
+  isAdmin: boolean;
+}
+
+let currentDataScope: FirestoreDataScope = { userId: null, isAdmin: false };
+
+export function setFirestoreDataScope(scope: FirestoreDataScope) {
+  currentDataScope = scope;
+}
+
+export function getFirestoreDataScope(): FirestoreDataScope {
+  return currentDataScope;
+}
+
+/** 合併多次查詢的結果並以 id 去重 */
+function mergeDocsById<T>(snaps: Array<{ docs: Array<{ id: string; data: () => any }> }>): T[] {
+  const map = new Map<string, T>();
+  for (const snap of snaps) {
+    for (const d of snap.docs) {
+      const data = d.data() || {};
+      map.set(d.id, { id: d.id, ...data } as T);
+    }
+  }
+  return Array.from(map.values());
+}
+
+/** 只載入某位會員自己的交易、對話與通知 */
+export async function loadPersonalDataFromFirestore(scope: FirestoreDataScope = currentDataScope): Promise<{
+  transactions: Transaction[];
+  conversations: ChatConversation[];
+  notifications: NotificationItem[];
+} | null> {
+  if (!scope.userId) return { transactions: [], conversations: [], notifications: [] };
+  if (isQuotaExhausted) return null;
+  const uid = scope.userId;
+  const name = (scope.userName || '').trim();
+  const safe = (p: Promise<any>) => p.catch(() => ({ docs: [] }));
+  try {
+    const txCol = collection(db, 'transactions');
+    const convCol = collection(db, 'conversations');
+    const notifCol = collection(db, 'notifications');
+    const [txSnaps, convSnaps, notifSnap] = await Promise.all([
+      Promise.all([
+        safe(getDocs(query(txCol, where('fromUserId', '==', uid)))),
+        safe(getDocs(query(txCol, where('toUserId', '==', uid)))),
+        safe(getDocs(query(txCol, where('solverId', '==', uid)))),
+        safe(getDocs(query(txCol, where('userId', '==', uid)))),
+        // 舊資料只記錄名稱，沒有 id
+        ...(name
+          ? [
+              safe(getDocs(query(txCol, where('fromUserName', '==', name)))),
+              safe(getDocs(query(txCol, where('toUserName', '==', name)))),
+            ]
+          : []),
+      ]),
+      Promise.all([
+        safe(getDocs(query(convCol, where('participantIds', 'array-contains', uid)))),
+        safe(getDocs(query(convCol, where('participantId', '==', uid)))),
+      ]),
+      safe(getDocs(query(notifCol, where('userId', 'in', [uid, 'all'])))),
+    ]);
+    return {
+      transactions: mergeDocsById<Transaction>(txSnaps),
+      conversations: mergeDocsById<ChatConversation>(convSnaps),
+      notifications: mergeDocsById<NotificationItem>([notifSnap]),
+    };
+  } catch (err) {
+    handleFirestoreError('loadPersonalDataFromFirestore', err);
+    return null;
+  }
+}
+
+/**
+ * 即時接收「自己的」私訊與通知（只在有變動時才計算讀取量）
+ * 回傳取消訂閱函式
+ */
+export function subscribePersonalData(
+  userId: string,
+  handlers: {
+    onConversations: (conversations: ChatConversation[]) => void;
+    onNotifications: (notifications: NotificationItem[], isInitial: boolean) => void;
+  }
+): Unsubscribe {
+  if (isQuotaExhausted || !userId) return () => {};
+  const unsubs: Unsubscribe[] = [];
+  try {
+    unsubs.push(
+      onSnapshot(
+        query(collection(db, 'conversations'), where('participantIds', 'array-contains', userId)),
+        (snap) => handlers.onConversations(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }) as ChatConversation)),
+        (err) => handleFirestoreError('subscribePersonalData(conversations)', err)
+      )
+    );
+    let initial = true;
+    unsubs.push(
+      onSnapshot(
+        query(collection(db, 'notifications'), where('userId', 'in', [userId, 'all'])),
+        (snap) => {
+          handlers.onNotifications(
+            snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }) as NotificationItem),
+            initial
+          );
+          initial = false;
+        },
+        (err) => handleFirestoreError('subscribePersonalData(notifications)', err)
+      )
+    );
+  } catch (err) {
+    handleFirestoreError('subscribePersonalData', err);
+  }
+  return () => unsubs.forEach((u) => {
+    try {
+      u();
+    } catch {}
+  });
+}
+
 /**
  * Read all categorized collections from Firestore on initial load
  */
@@ -1150,13 +1278,24 @@ export async function loadAllDataFromFirestore(
     });
 
   try {
-    const [usersSnap, qSnap, aSnap, txSnap, cSnap, notifSnap, solversSnap, settingsSnap] = await Promise.all([
+    const scope = currentDataScope;
+    // 管理員載入全站；一般會員只載入自己的；訪客不載入私人資料
+    const personalPromise: Promise<any> = scope.isAdmin
+      ? Promise.all([
+          getDocs(collection(db, 'transactions')),
+          getDocs(collection(db, 'conversations')),
+          getDocs(collection(db, 'notifications')),
+        ]).then(([t, c, n]) => ({
+          transactions: t.docs.map((d) => d.data() as Transaction),
+          conversations: c.docs.map((d) => d.data() as ChatConversation),
+          notifications: n.docs.map((d) => d.data() as NotificationItem),
+        }))
+      : loadPersonalDataFromFirestore(scope);
+    const [usersSnap, qSnap, aSnap, personal, solversSnap, settingsSnap] = await Promise.all([
       trackTask(getDocs(collection(db, 'users')), '正在載入創作者與專家資料...'),
       trackTask(getDocs(collection(db, 'questions')), '正在同步全站痛點、提案與懸賞題目...'),
       trackTask(getDocs(collection(db, 'answers')), '正在載入專家解方與討論串...'),
-      trackTask(getDocs(collection(db, 'transactions')), '正在同步點數與託管帳務紀錄...'),
-      trackTask(getDocs(collection(db, 'conversations')), '正在載入私訊與協作頻道...'),
-      trackTask(getDocs(collection(db, 'notifications')), '正在同步系統通知狀態...'),
+      trackTask(personalPromise.then((r: any) => { completedTasks += 2; return r; }), '正在同步你的交易、私訊與通知...'),
       trackTask(getDocs(collection(db, 'solvers')), '正在載入官方認證專家庫...'),
       trackTask(getDocs(collection(db, 'platform_settings')), '正在套用平台環境與賽事設定...'),
     ]);
@@ -1186,14 +1325,11 @@ export async function loadAllDataFromFirestore(
     if (!aSnap.empty) {
       result.answers = aSnap.docs.map((d) => d.data() as Answer);
     }
-    if (!txSnap.empty) {
-      result.transactions = txSnap.docs.map((d) => d.data() as Transaction);
-    }
-    if (!cSnap.empty) {
-      result.conversations = cSnap.docs.map((d) => d.data() as ChatConversation);
-    }
-    if (!notifSnap.empty) {
-      result.notifications = notifSnap.docs.map((d) => d.data() as NotificationItem);
+    // 私人資料一律回傳陣列（可能為空），讓前端以雲端結果取代舊的本機快取
+    if (personal) {
+      result.transactions = personal.transactions;
+      result.conversations = personal.conversations;
+      result.notifications = personal.notifications;
     }
     if (!solversSnap.empty) {
       result.solvers = solversSnap.docs.map((d) => d.data() as Solver);
