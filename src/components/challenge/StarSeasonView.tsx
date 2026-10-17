@@ -143,6 +143,8 @@ import { getCompetitionExperts } from '../../services/competitionAdminSync';
 import { getProposalDrafts } from '../../services/draftService';
 import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
+import { isGuestUser } from '../../utils/userDisplay';
+import { GuestBoardGateBlurOverlay } from '../GuestBoardGateBlurOverlay';
 
 export type ChallengeSubView = 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador';
 
@@ -401,26 +403,32 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     }));
   }, [proposals, isSimulatedDataPurged, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage]);
 
-  // 每批顯示 3 個提案
+  // 每批顯示 3 個提案 (未登入訪客僅限瀏覽前 3 則)
+  const isGuest = isGuestUser(currentUser);
   const homepageProposalBatches = useMemo(() => {
     const list = homepageAllProposals.filter((p) => p.stage !== 'pain_point'); // 依需求：提案輪播只顯示提案解方，不顯示痛點
+    const effectiveList = isGuest ? list.slice(0, 3) : list;
     const batches: typeof homepageAllProposals[] = [];
-    for (let i = 0; i < list.length; i += 3) {
-      batches.push(list.slice(i, i + 3));
+    for (let i = 0; i < effectiveList.length; i += 3) {
+      batches.push(effectiveList.slice(i, i + 3));
     }
     return batches;
-  }, [homepageAllProposals]);
+  }, [homepageAllProposals, isGuest]);
 
   // 建立無限向左循環輪播批次 (末端追加首批，確保輪播完一輪依然持續往左滑動)
   const extendedProposalBatches = useMemo(() => {
-    if (homepageProposalBatches.length <= 1) return homepageProposalBatches;
+    if (isGuest || homepageProposalBatches.length <= 1) return homepageProposalBatches;
     return [...homepageProposalBatches, homepageProposalBatches[0]];
-  }, [homepageProposalBatches]);
+  }, [homepageProposalBatches, isGuest]);
 
   const [isCarouselTransitionDisabled, setIsCarouselTransitionDisabled] = useState(false);
 
   // 向左前進下一批
   const handleCarouselNext = useCallback(() => {
+    if (isGuest) {
+      onOpenAuth();
+      return;
+    }
     if (homepageProposalBatches.length <= 1) return;
     setHomepageCarouselBatchIndex((prev) => {
       if (prev >= homepageProposalBatches.length) {
@@ -428,10 +436,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       }
       return prev + 1;
     });
-  }, [homepageProposalBatches.length]);
+  }, [homepageProposalBatches.length, isGuest, onOpenAuth]);
 
   // 向右上一批
   const handleCarouselPrev = useCallback(() => {
+    if (isGuest) {
+      onOpenAuth();
+      return;
+    }
     if (homepageProposalBatches.length <= 1) return;
     setHomepageCarouselBatchIndex((prev) => {
       if (prev <= 0) {
@@ -439,7 +451,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       }
       return prev - 1;
     });
-  }, [homepageProposalBatches.length]);
+  }, [homepageProposalBatches.length, isGuest, onOpenAuth]);
 
   // 當滑動到末端的複製批次 (index === homepageProposalBatches.length) 時，動畫結束後無縫歸零
   const handleCarouselTransitionEnd = useCallback(() => {
@@ -456,12 +468,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 自動定時持續向左輪播 (每 4.5 秒向左滑動至下一批，一輪結束後無縫繼續向左)
   useEffect(() => {
-    if (homepageProposalBatches.length <= 1 || isHomepageCarouselPaused) return;
+    if (isGuest || homepageProposalBatches.length <= 1 || isHomepageCarouselPaused) return;
     const timer = setInterval(() => {
       handleCarouselNext();
     }, 4500);
     return () => clearInterval(timer);
-  }, [homepageProposalBatches.length, isHomepageCarouselPaused, handleCarouselNext]);
+  }, [homepageProposalBatches.length, isHomepageCarouselPaused, handleCarouselNext, isGuest]);
 
   const [selectedProposalIdForExplore, setSelectedProposalIdForExplore] = useState<string | null>(() => {
     try {
@@ -1206,24 +1218,29 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return list;
   }, [proposals, questions, stageInfo.isBeforeStart, stageInfo.isRegistrationOnlyStage]);
 
-  // 痛點問題每批 3 個（三張一批輪播）
+  // 痛點問題每批 3 個（三張一批輪播，未登入訪客僅限瀏覽前 3 則）
   const homepagePainPointBatches = useMemo(() => {
     const list = homepagePainPoints;
+    const effectiveList = isGuest ? list.slice(0, 3) : list;
     const batches: typeof homepagePainPoints[] = [];
-    for (let i = 0; i < list.length; i += 3) {
-      batches.push(list.slice(i, i + 3));
+    for (let i = 0; i < effectiveList.length; i += 3) {
+      batches.push(effectiveList.slice(i, i + 3));
     }
     return batches;
-  }, [homepagePainPoints]);
+  }, [homepagePainPoints, isGuest]);
 
   // 建立痛點無限向左循環輪播批次
   const extendedPainPointBatches = useMemo(() => {
-    if (homepagePainPointBatches.length <= 1) return homepagePainPointBatches;
+    if (isGuest || homepagePainPointBatches.length <= 1) return homepagePainPointBatches;
     return [...homepagePainPointBatches, homepagePainPointBatches[0]];
-  }, [homepagePainPointBatches]);
+  }, [homepagePainPointBatches, isGuest]);
 
   // 痛點向左前進下一批
   const handlePainPointCarouselNext = useCallback(() => {
+    if (isGuest) {
+      onOpenAuth();
+      return;
+    }
     if (homepagePainPointBatches.length <= 1) return;
     setHomepagePainPointBatchIndex((prev) => {
       if (prev >= homepagePainPointBatches.length) {
@@ -1231,10 +1248,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       }
       return prev + 1;
     });
-  }, [homepagePainPointBatches.length]);
+  }, [homepagePainPointBatches.length, isGuest, onOpenAuth]);
 
   // 痛點向右上一批
   const handlePainPointCarouselPrev = useCallback(() => {
+    if (isGuest) {
+      onOpenAuth();
+      return;
+    }
     if (homepagePainPointBatches.length <= 1) return;
     setHomepagePainPointBatchIndex((prev) => {
       if (prev <= 0) {
@@ -1242,7 +1263,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       }
       return prev - 1;
     });
-  }, [homepagePainPointBatches.length]);
+  }, [homepagePainPointBatches.length, isGuest, onOpenAuth]);
 
   // 痛點輪播過渡結束處理
   const handlePainPointCarouselTransitionEnd = useCallback(() => {
@@ -1259,12 +1280,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 痛點自動定時持續向左輪播 (每 4.5 秒向左滑動至下一批)
   useEffect(() => {
-    if (homepagePainPointBatches.length <= 1 || isPainPointCarouselPaused || homepageSectionTab !== 'pain_point') return;
+    if (isGuest || homepagePainPointBatches.length <= 1 || isPainPointCarouselPaused || homepageSectionTab !== 'pain_point') return;
     const timer = setInterval(() => {
       handlePainPointCarouselNext();
     }, 4500);
     return () => clearInterval(timer);
-  }, [homepagePainPointBatches.length, isPainPointCarouselPaused, homepageSectionTab, handlePainPointCarouselNext]);
+  }, [homepagePainPointBatches.length, isPainPointCarouselPaused, homepageSectionTab, handlePainPointCarouselNext, isGuest]);
 
   // 解方卡片角標 (決選 / 冠軍 / 亞軍 / 季軍 / 4~10名)
   const renderProposalCornerBadge = (proposal: any, idx: number) => {
@@ -1440,7 +1461,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           );
         }
         setQuestionLikeState(proposalId, res.liked, res.likeCount);
-        showToast(res.liked ? '❤️ 已按讚並加入您的個人收藏名單！' : '已取消按讚與收藏');
+        showToast(res.liked ? '❤️ 已按 Like 並加入「我的 Like」清單！' : '已取消 Like');
       }
     } catch {
       const fallback = toggleSecondQuestion(proposalId);
@@ -1457,7 +1478,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           prev ? { ...prev, likeCount: fallback.count } : null
         );
       }
-      showToast(fallback.isSeconded ? '❤️ 已按讚並加入您的個人收藏名單！' : '已取消按讚與收藏');
+      showToast(fallback.isSeconded ? '❤️ 已按 Like 並加入「我的 Like」清單！' : '已取消 Like');
     }
   };
 
@@ -3840,21 +3861,33 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               </div>
 
               {/* 批次指示圓點導航列 */}
-              <div className="flex items-center justify-center gap-2 pt-1 pb-1">
-                {homepageProposalBatches.map((_, dotIdx) => (
-                  <button
-                    key={`dot-${dotIdx}`}
-                    type="button"
-                    onClick={() => setHomepageCarouselBatchIndex(dotIdx)}
-                    className={`transition-all duration-300 rounded-full cursor-pointer ${
-                      homepageCarouselBatchIndex === dotIdx
-                        ? 'w-8 h-2.5 bg-amber-500 shadow-2xs'
-                        : 'w-2.5 h-2.5 bg-stone-300 hover:bg-stone-400'
-                    }`}
-                    title={`切換至第 ${dotIdx + 1} 批提案`}
-                  />
-                ))}
-              </div>
+              {!isGuest && homepageProposalBatches.length > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-1 pb-1">
+                  {homepageProposalBatches.map((_, dotIdx) => (
+                    <button
+                      key={`dot-${dotIdx}`}
+                      type="button"
+                      onClick={() => setHomepageCarouselBatchIndex(dotIdx)}
+                      className={`transition-all duration-300 rounded-full cursor-pointer ${
+                        homepageCarouselBatchIndex === dotIdx
+                          ? 'w-8 h-2.5 bg-amber-500 shadow-2xs'
+                          : 'w-2.5 h-2.5 bg-stone-300 hover:bg-stone-400'
+                      }`}
+                      title={`切換至第 ${dotIdx + 1} 批提案`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* 未登入訪客鎖定提示 */}
+              {isGuest && homepageAllProposals.filter((p) => p.stage !== 'pain_point').length > 3 && (
+                <GuestBoardGateBlurOverlay
+                  remainingCount={homepageAllProposals.filter((p) => p.stage !== 'pain_point').length - 3}
+                  totalCount={homepageAllProposals.filter((p) => p.stage !== 'pain_point').length}
+                  boardName="創星季解方提案看板"
+                  onOpenAuth={onOpenAuth}
+                />
+              )}
             </>
           ) : (
             /* 痛點問題專區（三張一批輪播展示） */
@@ -4042,7 +4075,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               </div>
 
               {/* 批次指示圓點導航列 */}
-              {homepagePainPointBatches.length > 1 && (
+              {!isGuest && homepagePainPointBatches.length > 1 && (
                 <div className="flex items-center justify-center gap-2 pt-1 pb-1">
                   {homepagePainPointBatches.map((_, dotIdx) => (
                     <button
@@ -4058,6 +4091,16 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     />
                   ))}
                 </div>
+              )}
+
+              {/* 未登入訪客鎖定提示 */}
+              {isGuest && homepagePainPoints.length > 3 && (
+                <GuestBoardGateBlurOverlay
+                  remainingCount={homepagePainPoints.length - 3}
+                  totalCount={homepagePainPoints.length}
+                  boardName="創星季痛點徵件看板"
+                  onOpenAuth={onOpenAuth}
+                />
               )}
 
               {/* 查看更多痛點按鈕 */}
@@ -4827,7 +4870,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 )}
               </div>
 
-              {/* 愛心 Like 收藏條 (參賽者、專家、用戶皆可按 Like 並收入個人收藏) */}
+              {/* 愛心 Like 互動條 (參賽者、專家、用戶皆可按 Like 並收入個人清單) */}
               <div className="p-3.5 rounded-2xl bg-rose-50/60 border border-rose-200 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <button
@@ -4840,14 +4883,14 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                     }`}
                   >
                     <Heart className={`w-4 h-4 ${likedProposalIds.includes(selectedProposalForDetail.id) ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
-                    <span>Like 收藏</span>
+                    <span>我的 Like</span>
                   </button>
                   <span className="text-xs text-rose-900 font-bold">
                     累計 {selectedProposalForDetail.likeCount || 0} 個 Like
                   </span>
                 </div>
                 <span className="text-[11px] text-stone-500 hidden sm:inline">
-                  點擊 ❤️ Like 後將為此提案累積人氣並收錄至個人收藏
+                  點擊 ❤️ Like 後將為此提案累積人氣並收錄至「我的 Like」清單
                 </span>
               </div>
 
@@ -6501,7 +6544,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         </div>
       )}
 
-      {/* 個人按讚收藏名單 Modal */}
+      {/* 個人按讚 Like 名單 Modal */}
       {isFavoritesModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
           <div className="bg-white border border-amber-300 rounded-3xl max-w-xl w-full p-6 space-y-4 my-8 max-h-[85vh] overflow-y-auto shadow-2xl text-stone-900">
@@ -6511,7 +6554,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                   <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-stone-900">我的個人收藏提案清單</h3>
+                  <h3 className="text-base font-black text-stone-900">我的個人 Like 提案清單</h3>
                   <p className="text-[11px] text-stone-500">按過愛心的參賽作品，隨時掌握募資進度</p>
                 </div>
               </div>
@@ -6528,7 +6571,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               {proposals.filter((p) => likedProposalIds.includes(p.id)).length === 0 ? (
                 <div className="py-12 text-center text-stone-400 space-y-2">
                   <Heart className="w-10 h-10 mx-auto text-stone-300 stroke-1" />
-                  <p className="text-sm font-bold text-stone-600">目前尚無收藏的提案</p>
+                  <p className="text-sm font-bold text-stone-600">目前尚無 Like 的提案</p>
                   <p className="text-[11px] text-stone-400 max-w-xs mx-auto">
                     在競賽提案列表點擊愛心圖示，即可將優秀的創意作品收錄至此，方便隨時追蹤與投點！
                   </p>
@@ -6555,7 +6598,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                             type="button"
                             onClick={() => handleToggleLike(prop.id)}
                             className="text-rose-500 hover:text-stone-400 p-1 cursor-pointer"
-                            title="取消收藏"
+                            title="取消 Like"
                           >
                             <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
                           </button>

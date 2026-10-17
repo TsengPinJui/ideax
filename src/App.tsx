@@ -23,6 +23,8 @@ import { UserDashboardModal } from './components/UserDashboardModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { AiCrmView } from './components/AiCrmView';
 import { MembershipAndTopupFullPage } from './components/MembershipAndTopupFullPage';
+import { GuestBoardGateBlurOverlay } from './components/GuestBoardGateBlurOverlay';
+import { isGuestUser } from './utils/userDisplay';
 import { ChatView } from './components/ChatView';
 import { StarSeasonView } from './components/challenge/StarSeasonView';
 import { CreateIdeasZoneView } from './components/CreateIdeasZoneView';
@@ -69,6 +71,7 @@ function MainContent() {
     questions,
     solvers,
     answers,
+    getQuestionSecondCount,
     selectedQuestion,
     setSelectedQuestion,
     selectedSolver,
@@ -2047,7 +2050,7 @@ function MainContent() {
                           >
                             +1
                           </span>
-                          <span className="truncate">我的附議收藏 ({painPointsFavoriteCount})</span>
+                          <span className="truncate">我的附議 ({painPointsFavoriteCount})</span>
                         </button>
                       </div>
 
@@ -2265,7 +2268,7 @@ function MainContent() {
                           }`}
                         >
                           <ThumbsUp className={`w-4 h-4 shrink-0 ${showOnlyZoneFavorites ? 'fill-white text-white' : 'text-sky-600'}`} />
-                          <span className="truncate">我的按讚收藏 ({l0FavoriteCount})</span>
+                          <span className="truncate">我的按讚 ({l0FavoriteCount})</span>
                         </button>
                       </div>
 
@@ -2298,7 +2301,7 @@ function MainContent() {
                             className="px-2.5 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-sky-200 bg-white text-xs sm:text-sm font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-sky-400 cursor-pointer shrink-0"
                           >
                             <option value="recruiting_promoted">🔥 熱門推薦</option>
-                            <option value="most_likes">👍 按讚收藏最多</option>
+                            <option value="most_likes">👍 按讚最多</option>
                             <option value="most_discussions">💬 討論數最多</option>
                             <option value="most_solutions">💡 方案數最多</option>
                             <option value="highest_tips">🪙 點數支持 高到低</option>
@@ -2520,17 +2523,17 @@ function MainContent() {
                     <h3 className="font-bold text-base text-stone-900">
                       {showOnlyZoneFavorites
                         ? specialZone === 'pain_points'
-                          ? '尚無附議或收藏的痛點'
+                          ? '尚無附議的痛點'
                           : specialZone === 'l0_discussion'
-                          ? '尚無按讚或收藏的討論'
-                          : '尚無附議或收藏的問題'
+                          ? '尚無按讚的討論'
+                          : '尚無附議或按讚的問題'
                         : '沒有找到相符的問題'}
                     </h3>
                     <p className="text-xs text-stone-500 max-w-sm mx-auto">
                       {showOnlyZoneFavorites
                         ? specialZone === 'l0_discussion'
-                          ? '瀏覽 L0 討論時點擊卡片上的 👍 或 ⭐，即可在此快速查看！'
-                          : '瀏覽卡片時點擊 +1 或 ⭐，即可自動加入此收藏清單！'
+                          ? '瀏覽 L0 討論時點擊卡片上的 👍，即可在此快速查看！'
+                          : '瀏覽卡片時點擊 +1，即可自動加入此清單！'
                         : '試著放寬篩選條件或切換分類，或是成為第一個針對此主題提出懸賞提問的人！'}
                     </p>
                     <button
@@ -2551,43 +2554,71 @@ function MainContent() {
                     </button>
                   </div>
                 ) : (
-                  <div
-                    id="onboarding-step-5-cards"
-                    className={
-                      viewMode === 'grid'
-                        ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
-                        : viewMode === 'list'
-                        ? 'flex flex-col space-y-2.5 sm:space-y-3'
-                        : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
-                    }
-                  >
-                    {filteredQuestions.map((q, idx) => {
-                      const questionAnswers = answers.filter((a) => a.questionId === q.id);
-                      const solutionsCount = questionAnswers.filter((a) => a.type === 'solution' || !a.type).length;
-                      const discussionsCount = questionAnswers.filter((a) => a.type === 'discussion').length;
+                  (() => {
+                    const isGuest = isGuestUser(currentUser);
+                    const visibleQuestions = isGuest ? filteredQuestions.slice(0, 3) : filteredQuestions;
+                    const boardDisplayName =
+                      specialZone === 'pain_points'
+                        ? '痛點許願池'
+                        : specialZone === 'l0_discussion'
+                        ? 'L0 討論區'
+                        : selectedSubcategory !== '全部'
+                        ? `${selectedSubcategory} 看板`
+                        : selectedCategory !== '全部'
+                        ? `${selectedCategory} 看板`
+                        : '問題市場';
 
-                      return (
-                        <QuestionCard
-                          key={`${q.id || 'question'}-${idx}`}
-                          question={q}
-                          solutionsCount={solutionsCount}
-                          discussionsCount={discussionsCount}
-                          viewMode={viewMode}
-                          onSelectCategory={(cat, sub) => {
-                            setSelectedCategory(cat);
-                            if (sub) setSelectedSubcategory(sub);
-                          }}
-                          onSearchTag={handleSearchTag}
-                          onClick={() => {
-                            recordUserViewedQuestion(currentUser.id, q);
-                            setUserProfileVersion((v) => v + 1);
-                            setSelectedQuestion(q);
-                            setActiveTab('question_detail');
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
+                    return (
+                      <>
+                        <div
+                          id="onboarding-step-5-cards"
+                          className={
+                            viewMode === 'grid'
+                              ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
+                              : viewMode === 'list'
+                              ? 'flex flex-col space-y-2.5 sm:space-y-3'
+                              : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
+                          }
+                        >
+                          {visibleQuestions.map((q, idx) => {
+                            const questionAnswers = answers.filter((a) => a.questionId === q.id);
+                            const solutionsCount = questionAnswers.filter((a) => a.type === 'solution' || !a.type).length;
+                            const discussionsCount = questionAnswers.filter((a) => a.type === 'discussion').length;
+
+                            return (
+                              <QuestionCard
+                                key={`${q.id || 'question'}-${idx}`}
+                                question={q}
+                                solutionsCount={solutionsCount}
+                                discussionsCount={discussionsCount}
+                                viewMode={viewMode}
+                                onSelectCategory={(cat, sub) => {
+                                  setSelectedCategory(cat);
+                                  if (sub) setSelectedSubcategory(sub);
+                                }}
+                                onSearchTag={handleSearchTag}
+                                onClick={() => {
+                                  recordUserViewedQuestion(currentUser.id, q);
+                                  setUserProfileVersion((v) => v + 1);
+                                  setSelectedQuestion(q);
+                                  setActiveTab('question_detail');
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+
+                        {isGuest && filteredQuestions.length > 3 && (
+                          <GuestBoardGateBlurOverlay
+                            remainingCount={filteredQuestions.length - 3}
+                            totalCount={filteredQuestions.length}
+                            boardName={boardDisplayName}
+                            onOpenAuth={() => openAuthModal('login')}
+                          />
+                        )}
+                      </>
+                    );
+                  })()
                 ))}
               </div>
             </div>

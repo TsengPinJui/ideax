@@ -20,9 +20,9 @@ import {
   Square,
   List,
   Terminal,
-  Eye,
 } from 'lucide-react';
-import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
+import { isGuestUser } from '../utils/userDisplay';
+import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 
 interface VibeCodingExhibitionViewProps {
   questions?: Question[];
@@ -89,13 +89,13 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     isQuestionSeconded,
     isQuestionLiked,
     isSameQuestionActive,
+    openAuthModal,
   } = useApp();
   const questions = propQuestions || contextQuestions || [];
   const handleSelect = onSelectApp || onSelectQuestion || (() => {});
   const handleOpenCreate = onOpenCreateApp || onOpenCreateVibeCoding || (() => {});
 
   const [showZoneHelp, setShowZoneHelp] = useState(false);
-  const [showDemoPreviewModal, setShowDemoPreviewModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
@@ -268,16 +268,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setShowDemoPreviewModal(true)}
-                className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border border-indigo-300 bg-indigo-50/90 hover:bg-indigo-100 text-indigo-800 font-black text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                title="預覽兩種類型提案（創新提案 / 軟體與網站作品）的卡片與內頁效果"
-              >
-                <Eye className="w-3.5 h-3.5 text-indigo-600" />
-                <span>預覽提案效果</span>
-              </button>
-
-              <button
-                type="button"
                 onClick={handleOpenCreate}
                 className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl border-2 border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
@@ -338,7 +328,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               }`}
             >
               <Heart className={`w-4 h-4 shrink-0 ${activeTab === 'favorites' ? 'fill-white' : 'text-rose-500'}`} />
-              <span className="truncate">我的 Like 收藏 ({favoriteCount})</span>
+              <span className="truncate">我的 Like ({favoriteCount})</span>
             </button>
           </div>
 
@@ -372,7 +362,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               >
                 <option value="popular">🔥 熱門推薦</option>
                 <option value="tipped">🪙 點數支持 高到低</option>
-                <option value="liked">❤️ Like 收藏最多</option>
+                <option value="liked">❤️ Like 最多</option>
                 <option value="discussions">💬 討論數最多</option>
                 <option value="latest">🕒 最新發布</option>
               </select>
@@ -425,11 +415,11 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
       {filteredApps.length === 0 ? (
         <div className="bg-white rounded-3xl border border-stone-200 p-10 text-center space-y-3">
           <h3 className="text-sm font-bold text-stone-800">
-            {activeTab === 'favorites' ? '尚無 Like 或收藏的軟體作品' : '沒有找到符合條件的作品'}
+            {activeTab === 'favorites' ? '尚無 Like 的軟體作品' : '沒有找到符合條件的作品'}
           </h3>
           <p className="text-xs text-stone-500">
             {activeTab === 'favorites'
-              ? '瀏覽作品時點擊 ❤️ 或 ⭐，即可在此快速查看！'
+              ? '瀏覽作品時點擊 ❤️，即可在此快速查看！'
               : '試試看切換其他分類，或直接刊登你的第一件軟體作品。'}
           </p>
           {activeTab === 'favorites' ? (
@@ -452,48 +442,49 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           )}
         </div>
       ) : (
-        <div
-          className={
-            viewMode === 'grid'
-              ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
-              : viewMode === 'list'
-              ? 'flex flex-col space-y-2.5 sm:space-y-3'
-              : 'grid grid-cols-1 md:grid-cols-2 gap-3.5'
-          }
-        >
-          {filteredApps.map((q) => {
-            const questionAnswers = (answers || []).filter((a) => a.questionId === q.id);
-            const solutionsCount = questionAnswers.filter((a) => a.type === 'solution' || !a.type).length;
-            const discussionsCount = questionAnswers.filter((a) => a.type === 'discussion').length;
-            return (
-              <QuestionCard
-                key={q.id}
-                question={q}
-                solutionsCount={solutionsCount}
-                discussionsCount={discussionsCount}
-                viewMode={viewMode}
-                onClick={() => handleSelect(q)}
-              />
-            );
-          })}
-        </div>
-      )}
+        (() => {
+          const isGuest = isGuestUser(currentUser);
+          const visibleApps = isGuest ? filteredApps.slice(0, 3) : filteredApps;
 
-      {showDemoPreviewModal && (
-        <PublishEffectPreviewModal
-          isOpen={showDemoPreviewModal}
-          onClose={() => setShowDemoPreviewModal(false)}
-          onConfirmPublish={() => {
-            setShowDemoPreviewModal(false);
-            handleOpenCreate();
-          }}
-          postType="vibecoding_app"
-          title=""
-          description=""
-          authorName={currentUser?.name || '開發者範例'}
-          authorAvatar={currentUser?.avatar}
-          authorTitle={currentUser?.title}
-        />
+          return (
+            <>
+              <div
+                className={
+                  viewMode === 'grid'
+                    ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
+                    : viewMode === 'list'
+                    ? 'flex flex-col space-y-2.5 sm:space-y-3'
+                    : 'grid grid-cols-1 md:grid-cols-2 gap-3.5'
+                }
+              >
+                {visibleApps.map((q) => {
+                  const questionAnswers = (answers || []).filter((a) => a.questionId === q.id);
+                  const solutionsCount = questionAnswers.filter((a) => a.type === 'solution' || !a.type).length;
+                  const discussionsCount = questionAnswers.filter((a) => a.type === 'discussion').length;
+                  return (
+                    <QuestionCard
+                      key={q.id}
+                      question={q}
+                      solutionsCount={solutionsCount}
+                      discussionsCount={discussionsCount}
+                      viewMode={viewMode}
+                      onClick={() => handleSelect(q)}
+                    />
+                  );
+                })}
+              </div>
+
+              {isGuest && filteredApps.length > 3 && (
+                <GuestBoardGateBlurOverlay
+                  remainingCount={filteredApps.length - 3}
+                  totalCount={filteredApps.length}
+                  boardName="VibeCoding 展場"
+                  onOpenAuth={() => openAuthModal('login')}
+                />
+              )}
+            </>
+          );
+        })()
       )}
     </div>
   );

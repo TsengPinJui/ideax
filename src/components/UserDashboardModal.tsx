@@ -213,6 +213,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     questions,
     answers,
     transactions,
+    showCenterToast,
     conversations,
     bookmarkedQuestionIds,
     toggleBookmarkQuestion,
@@ -6228,7 +6229,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 }`}
               >
                 <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-                <span>我的按讚收藏</span>
+                <span>我的按讚 / Like</span>
                 <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-900 font-mono">
                   {allFavoriteQuestions.length}
                 </span>
@@ -6259,7 +6260,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <span>互動回饋與對應發布類型規範</span>
                 </span>
                 <span className="text-[11px] font-bold text-stone-500">
-                  點擊任一互動皆自動收錄至「我的按讚收藏」
+                  點擊任一互動皆自動收錄至「我的按讚 / Like」
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">

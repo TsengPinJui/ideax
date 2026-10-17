@@ -38,6 +38,8 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { isGuestUser } from '../../utils/userDisplay';
+import { GuestBoardGateBlurOverlay } from '../GuestBoardGateBlurOverlay';
 import { getUniqueProposalCoverImage } from '../../utils/proposalImageUtils';
 import {
   StarSeasonProposal,
@@ -568,7 +570,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           );
         }
         setQuestionLikeState(proposalId, res.liked, res.likeCount);
-        showToast(res.liked ? '❤️ 已按 Like 並加入您的個人收藏名單！' : '已取消 Like 與收藏');
+        showToast(res.liked ? '❤️ 已按 Like 並加入「我的 Like」清單！' : '已取消 Like');
       }
     } catch {
       const fallback = toggleSecondQuestion(proposalId);
@@ -583,7 +585,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           prev ? { ...prev, likeCount: fallback.count } : null
         );
       }
-      showToast(fallback.isSeconded ? '❤️ 已按 Like 並加入您的個人收藏名單！' : '已取消 Like 與收藏');
+      showToast(fallback.isSeconded ? '❤️ 已按 Like 並加入「我的 Like」清單！' : '已取消 Like');
     }
   };
 
@@ -1051,22 +1053,22 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               </button>
             </div>
 
-            {/* 我的 Like 收藏 / 我的附議收藏 + 關鍵字搜尋 */}
+            {/* 我的 Like / 我的附議 + 關鍵字搜尋 */}
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsFavoritesModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-stone-700 hover:text-rose-700 border border-stone-200 hover:border-rose-300 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98 shrink-0"
-                title={activeSectionTab === 'pain_point' ? '查看我的附議收藏清單' : '查看我的個人 Like 收藏提案清單'}
+                title={activeSectionTab === 'pain_point' ? '查看我的附議清單' : '查看我的個人 Like 提案清單'}
               >
                 {activeSectionTab === 'pain_point' ? (
                   <span className="px-1 py-0.2 rounded text-[10px] font-mono font-black leading-none bg-rose-100 text-rose-700 border border-rose-300">
-                    +1
+                     +1
                   </span>
                 ) : (
                   <Heart className={`w-3.5 h-3.5 ${likedProposalIds.length > 0 ? 'text-rose-500 fill-rose-500' : 'text-stone-400'}`} />
                 )}
-                <span>{activeSectionTab === 'pain_point' ? '我的附議收藏' : '我的 Like 收藏'}</span>
+                <span>{activeSectionTab === 'pain_point' ? '我的附議' : '我的 Like'}</span>
                 {likedProposalIds.length > 0 && (
                   <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-black">
                     {likedProposalIds.length}
@@ -1237,8 +1239,11 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {sortedProposals.map((proposal, idx) => {
+          (() => {
+            const isGuest = isGuestUser(currentUser);
+            const visibleProposals = isGuest ? sortedProposals.slice(0, 3) : sortedProposals;
+
+            const renderProposalCard = (proposal: StarSeasonProposal, idx: number) => {
               const currentPoints = proposal.supportPoints || 0;
               const trackMeta = STAR_SEASON_TRACKS[proposal.track] || STAR_SEASON_TRACKS.ai_applications;
               const supporterCount = proposal.supporterCount || Math.max(1, Math.round(currentPoints / 2500));
@@ -1549,8 +1554,25 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   </div>
                 </div>
               );
-            })}
-          </div>
+            };
+
+            return (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {visibleProposals.map((proposal, idx) => renderProposalCard(proposal, idx))}
+                </div>
+
+                {isGuest && sortedProposals.length > 3 && (
+                  <GuestBoardGateBlurOverlay
+                    remainingCount={sortedProposals.length - 3}
+                    totalCount={sortedProposals.length}
+                    boardName="創星季解方提案看板"
+                    onOpenAuth={onOpenAuth}
+                  />
+                )}
+              </>
+            );
+          })()
         )
       ) : (
         /* 痛點問題專區（附圖一卡片形式不顯示圖片，3欄展示） */
@@ -1576,8 +1598,11 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredPainPoints.map((pp: any) => (
+          (() => {
+            const isGuest = isGuestUser(currentUser);
+            const visiblePainPoints = isGuest ? filteredPainPoints.slice(0, 3) : filteredPainPoints;
+
+            const renderPainPointCard = (pp: any) => (
               <div
                 key={pp.id}
                 onClick={() => {
@@ -1740,8 +1765,25 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+
+            return (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {visiblePainPoints.map(renderPainPointCard)}
+                </div>
+
+                {isGuest && filteredPainPoints.length > 3 && (
+                  <GuestBoardGateBlurOverlay
+                    remainingCount={filteredPainPoints.length - 3}
+                    totalCount={filteredPainPoints.length}
+                    boardName="創星季痛點問題看板"
+                    onOpenAuth={onOpenAuth}
+                  />
+                )}
+              </>
+            );
+          })()
         )
       )}
       </main>
@@ -1876,7 +1918,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-stone-900">我的個人收藏提案清單</h3>
+                  <h3 className="text-base font-black text-stone-900">我的個人 Like 提案清單</h3>
                   <p className="text-[11px] text-stone-500">按過愛心的參賽作品，隨時掌握募資進度</p>
                 </div>
               </div>
@@ -1893,7 +1935,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               {proposals.filter((p) => likedProposalIds.includes(p.id)).length === 0 ? (
                 <div className="py-12 text-center text-stone-400 space-y-2">
                   <Heart className="w-10 h-10 mx-auto text-stone-300 stroke-1" />
-                  <p className="text-sm font-bold text-stone-600">目前尚無收藏的提案</p>
+                  <p className="text-sm font-bold text-stone-600">目前尚無 Like 的提案</p>
                   <p className="text-[11px] text-stone-400 max-w-xs mx-auto">
                     在競賽提案列表點擊愛心圖示，即可將優秀的創意作品收錄至此，方便隨時追蹤與投點！
                   </p>
@@ -1920,7 +1962,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                             type="button"
                             onClick={() => handleToggleLike(prop.id)}
                             className="text-rose-500 hover:text-stone-400 p-1 cursor-pointer"
-                            title="取消收藏"
+                            title="取消 Like"
                           >
                             <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
                           </button>

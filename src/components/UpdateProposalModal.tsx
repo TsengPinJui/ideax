@@ -403,7 +403,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                   value={referencedPainPoint}
                   onChange={setReferencedPainPoint}
                   placeholder="輸入關鍵字搜尋站內痛點..."
-                  inputClassName="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
+                  className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
                 />
               </div>
               <div>

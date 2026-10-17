@@ -575,6 +575,7 @@ export interface User {
   avatar: string;
   role: UserRole;
   isTestAccount?: boolean; // 是否為一鍵生成或測試帳號
+  isGuest?: boolean; // 是否為訪客（未登入）模式
   isSimulated?: boolean; // 是否為系統模擬創作者帳號（可於未來一鍵刪除）
   simulatedBatchId?: string; // 模擬資料批次標記 (例如 ideax_virtual_seed_v1)
   isInitialAdmin?: boolean; // 是否為系統初始創始管理員（唯一具有指派其他用戶為管理員之權限）

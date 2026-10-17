@@ -3,6 +3,8 @@ import { Solver, Category, ProblemLevel, isCertifiedExpert } from '../types';
 import { useApp } from '../context/AppContext';
 import { HelpTooltip } from './HelpTooltip';
 import { AiHeadhunterModal } from './AiHeadhunterModal';
+import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
+import { isGuestUser } from '../utils/userDisplay';
 import {
   ShieldCheck,
   Star,
@@ -185,9 +187,12 @@ export const SolversView: React.FC<SolversViewProps> = ({
         </div>
       </div>
 
-      {/* Solvers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-        {filtered.map((s) => {
+      {/* Solvers Grid & Guest Gate */}
+      {(() => {
+        const isGuest = isGuestUser(currentUser);
+        const visibleSolvers = isGuest ? filtered.slice(0, 3) : filtered;
+
+        const renderSolverCard = (s: Solver, isBlurred = false) => {
           const acceptedSolutionsCount = Math.round(s.answerCount * (s.acceptedRate / 100)) || s.answerCount;
           const levelBreakdownText = (['L0', 'L1', 'L2', 'L3', 'L4'] as ProblemLevel[])
             .map((lvl) => {
@@ -210,7 +215,13 @@ export const SolversView: React.FC<SolversViewProps> = ({
           return (
             <div
               key={s.id}
-              onClick={() => onSelectSolver(s)}
+              onClick={() => {
+                if (isBlurred) {
+                  openAuthModal('login');
+                  return;
+                }
+                onSelectSolver(s);
+              }}
               className="group bg-white rounded-2xl border border-stone-200/80 hover:border-stone-300 p-4 sm:p-5 transition-all duration-200 hover:shadow-md flex flex-col justify-between cursor-pointer"
             >
               <div>
@@ -243,7 +254,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
 
                   {/* Rating Pill */}
                   <div className="flex items-center gap-1 text-xs font-black text-stone-800 bg-stone-100/80 px-2 py-0.5 rounded-full shrink-0">
-                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                     <span className="font-mono">{s.rating}</span>
                   </div>
                 </div>
@@ -293,7 +304,14 @@ export const SolversView: React.FC<SolversViewProps> = ({
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={(e) => handleStartChatWithSolver(e, s)}
+                    onClick={(e) => {
+                      if (isBlurred || isGuest) {
+                        e.stopPropagation();
+                        openAuthModal('login');
+                        return;
+                      }
+                      handleStartChatWithSolver(e, s);
+                    }}
                     className="px-2.5 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
                     title={`與 ${s.name} 私聊諮詢`}
                   >
@@ -304,6 +322,10 @@ export const SolversView: React.FC<SolversViewProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (isBlurred || isGuest) {
+                        openAuthModal('login');
+                        return;
+                      }
                       onPostQuestionForSolver(s);
                     }}
                     className="px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-black transition-colors cursor-pointer flex items-center gap-1"
@@ -314,8 +336,25 @@ export const SolversView: React.FC<SolversViewProps> = ({
               </div>
             </div>
           );
-        })}
-      </div>
+        };
+
+        return (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {visibleSolvers.map((s) => renderSolverCard(s))}
+            </div>
+
+            {isGuest && filtered.length > 3 && (
+              <GuestBoardGateBlurOverlay
+                remainingCount={filtered.length - 3}
+                totalCount={filtered.length}
+                boardName={selectedDomain !== '全部' ? `${selectedDomain} 推薦專家` : '專家智庫'}
+                onOpenAuth={() => openAuthModal('login')}
+              />
+            )}
+          </>
+        );
+      })()}
 
       {/* AI 獵頭找專家彈窗 */}
       <AiHeadhunterModal

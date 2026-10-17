@@ -3,6 +3,8 @@ import { useApp } from '../context/AppContext';
 import { Solver } from '../types';
 import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 import { HelpTooltip } from './HelpTooltip';
+import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
+import { isGuestUser } from '../utils/userDisplay';
 import {
   Sparkles,
   Search,
@@ -56,6 +58,7 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
     addNotification,
     openRechargePage,
     getAdminRemainingDailyQuota,
+    openAuthModal,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -527,8 +530,11 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {results.map((rec) => (
+            {(() => {
+              const isGuest = isGuestUser(currentUser);
+              const visibleResults = isGuest ? results.slice(0, 3) : results;
+
+              const renderMatchCard = (rec: HeadhunterRecommendation, isBlurred = false) => (
                 <div
                   key={rec.solver.id}
                   className="p-4 rounded-2xl border border-amber-200/90 bg-gradient-to-b from-white to-stone-50/50 hover:border-amber-400 hover:shadow-xs transition-all flex flex-col justify-between space-y-3"
@@ -548,7 +554,14 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
 
                     {/* Solver Profile Snapshot */}
                     <div
-                      onClick={() => onSelectSolver(rec.solver)}
+                      onClick={() => {
+                        if (isBlurred || isGuest) {
+                          onClose();
+                          openAuthModal('login');
+                          return;
+                        }
+                        onSelectSolver(rec.solver);
+                      }}
                       className="flex items-center gap-2.5 cursor-pointer group"
                     >
                       <img
@@ -591,7 +604,14 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
                   <div className="pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
                     <button
                       type="button"
-                      onClick={() => onSelectSolver(rec.solver)}
+                      onClick={() => {
+                        if (isBlurred || isGuest) {
+                          onClose();
+                          openAuthModal('login');
+                          return;
+                        }
+                        onSelectSolver(rec.solver);
+                      }}
                       className="text-xs font-bold text-stone-600 hover:text-stone-900 underline cursor-pointer"
                     >
                       檢視專家檔案
@@ -599,7 +619,14 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
 
                     <button
                       type="button"
-                      onClick={() => handleStartChat(rec.solver)}
+                      onClick={() => {
+                        if (isBlurred || isGuest) {
+                          onClose();
+                          openAuthModal('login');
+                          return;
+                        }
+                        handleStartChat(rec.solver);
+                      }}
                       className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 active:scale-95 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
@@ -607,8 +634,28 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+
+              return (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {visibleResults.map((rec) => renderMatchCard(rec))}
+                  </div>
+
+                  {isGuest && results.length > 3 && (
+                    <GuestBoardGateBlurOverlay
+                      remainingCount={results.length - 3}
+                      totalCount={results.length}
+                      boardName="AI 獵頭專家媒合名單"
+                      onOpenAuth={() => {
+                        onClose();
+                        openAuthModal('login');
+                      }}
+                    />
+                  )}
+                </>
+              );
+            })()}
 
             {/* Bottom "再搜一次" Action Bar */}
             <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/80">

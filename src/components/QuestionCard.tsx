@@ -11,7 +11,7 @@ import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../u
 
 interface QuestionCardProps {
   question: Question;
-  onClick: () => void;
+  onClick?: () => void;
   solutionsCount?: number;
   discussionsCount?: number;
   onSelectCategory?: (category: import('../types').Category, subcategory?: string | '全部') => void;
@@ -119,7 +119,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     const res = toggleSecondQuestion(question.id);
     if (res.isSeconded) {
       const targetType = isPainPoint ? '痛點' : '問題';
-      addNotification(`🔥 已對${targetType}「${question.title}」+1 附議，並收錄至「我的按讚收藏」！`, 'success');
+      addNotification(`🔥 已對${targetType}「${question.title}」+1 附議，並收錄至「我的附議」！`, 'success');
     }
   };
 
@@ -134,8 +134,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       const isProposalOrSoftware = isVibeCoding || isInnovationProposal;
       addNotification(
         isProposalOrSoftware
-          ? `❤️ 已對${isVibeCoding ? '軟體刊登' : '創新提案'}「${question.title}」按 Like，並收錄至「我的按讚收藏」！`
-          : `👍 已為 L0 討論「${question.title}」按讚，並收錄至「我的按讚收藏」！`,
+          ? `❤️ 已對${isVibeCoding ? '軟體刊登' : '創新提案'}「${question.title}」按 Like，並收錄至「我的 Like」！`
+          : `👍 已為 L0 討論「${question.title}」按讚，並收錄至「我的按讚」！`,
         'success'
       );
     }
@@ -205,7 +205,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     e.stopPropagation();
     const isAdded = toggleBookmarkQuestion(question.id);
     addNotification(
-      isAdded ? `已收藏「${question.title}」，並收錄至「我的按讚收藏」！` : `已取消收藏「${question.title}」`,
+      isAdded ? `已為「${question.title}」標記，並收錄至「我的清單」！` : `已取消標記「${question.title}」`,
       isAdded ? 'success' : 'info'
     );
   };

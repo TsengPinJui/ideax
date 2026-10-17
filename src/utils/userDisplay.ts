@@ -7,6 +7,26 @@ export const DEACTIVATED_USER_NAME = '此帳號已註銷';
 export const DEACTIVATED_USER_AVATAR =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239ca3af"%3E%3Cpath d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/%3E%3C/svg%3E';
 
+export const isGuestUser = (u: any): boolean => {
+  if (!u || !u.id) return true;
+  if (u.isGuest === true) return true;
+  const id = String(u.id).trim();
+  const name = String(u.name || '').trim();
+  const email = String(u.email || '').trim().toLowerCase();
+  return (
+    id === 'user-guest' ||
+    id === 'user_guest' ||
+    id === 'guest' ||
+    id === 'c000000000' ||
+    name === '未登入訪客' ||
+    name === '訪客探索身分' ||
+    name === '訪客用戶' ||
+    name === '訪客身份 (未登入)' ||
+    email === 'guest@ideax.user' ||
+    email === 'guest@ideax.tw'
+  );
+};
+
 /**
  * 檢查該使用者是否已正式註銷帳號
  */
@@ -410,20 +430,7 @@ export function deduplicateUsersList(
   const byName = new Map<string, number>();
 
   const isGuestAccount = (u: any): boolean => {
-    if (!u || !u.id) return true;
-    const id = String(u.id).trim();
-    const name = String(u.name || '').trim();
-    const email = String(u.email || '').trim().toLowerCase();
-    return (
-      id === 'user-guest' ||
-      id === 'user_guest' ||
-      id === 'c000000000' ||
-      name === '未登入訪客' ||
-      name === '訪客探索身分' ||
-      name === '訪客用戶' ||
-      email === 'guest@ideax.user' ||
-      email === 'guest@ideax.tw'
-    );
+    return isGuestUser(u);
   };
 
   const mergeTwoUsers = (primary: User, secondary: User): User => {

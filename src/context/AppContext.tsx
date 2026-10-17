@@ -34,7 +34,7 @@ import {
   isSiteBAdmin,
   getAdminSiteLabel,
 } from '../utils/adminPermissions';
-import { restoreCanonicalUserIdentity, USER_ALIAS_MAP, deduplicateUsersList } from '../utils/userDisplay';
+import { restoreCanonicalUserIdentity, USER_ALIAS_MAP, deduplicateUsersList, isGuestUser } from '../utils/userDisplay';
 import {
   MOCK_QUESTIONS,
   MOCK_SOLVERS,
@@ -423,7 +423,20 @@ interface AppContextType {
   clearMockData: () => void;
   resetDemoData: () => void;
   isSimulatedDataPurged: boolean;
-  purgeAllSimulatedData: () => Promise<{ deletedQuestions: number; deletedAnswers: number; deletedUsers: number }>;
+  simulatedStats: {
+    simulatedQuestionsCount: number;
+    simulatedUsersCount: number;
+    simulatedAnswersCount: number;
+    simulatedTransactionsCount: number;
+  };
+  purgeAllSimulatedData: () => Promise<{
+    deletedQuestions: number;
+    deletedAnswers: number;
+    deletedUsers: number;
+    purgedQuestions: number;
+    purgedAnswers: number;
+    purgedUsers: number;
+  }>;
   restoreAllSimulatedData: () => Promise<void>;
 
   // No Payment Mode (無金流環境開關：全站免付費，僅開放免費提問、無償解答與諮詢提案)
@@ -881,7 +894,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}user`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.id && parsed.name && parsed.id !== 'user-guest') {
+        if (parsed && parsed.id && parsed.name && !isGuestUser(parsed)) {
           // 若為舊版遺留之預設管理員/測試帳號且未曾明確手動登入過，一律清除並還原為訪客
           if (!isExplicitLogin && (parsed.id === 'user-admin' || isTestAccountUserId(parsed.id))) {
             localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
@@ -1853,7 +1866,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Save to localStorage & Cloud Firestore
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(currentUser));
-    if (currentUser && currentUser.id && currentUser.id !== 'user-guest') {
+    if (currentUser && currentUser.id && !isGuestUser(currentUser)) {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}is_authenticated`, 'true');
       localStorage.setItem(`${STORAGE_KEY_PREFIX}is_explicit_login`, 'true');
     } else {
@@ -4075,13 +4088,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDeviceAccounts((prev) =>
       prev.map((a) => (a.userId === targetId ? { ...a, isLoggedIn: false } : a))
     );
-    if (targetId === currentUser.id) {
+    if (!targetId || targetId === currentUser.id) {
       const guest = GUEST_USER;
       setCurrentUser(guest);
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
-      localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_explicit_login`);
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(guest));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(guest));
+      try {
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_authenticated`);
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}is_explicit_login`);
+        localStorage.removeItem('ideax_is_authenticated');
+        localStorage.removeItem('ideax_is_explicit_login');
+        localStorage.removeItem('ideax_user');
+        localStorage.removeItem('ideax_current_user');
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(guest));
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}current_user`, JSON.stringify(guest));
+      } catch {}
     }
   };
 
@@ -8425,6 +8444,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deletedQuestions: number;
     deletedAnswers: number;
     deletedUsers: number;
+    purgedQuestions: number;
+    purgedAnswers: number;
+    purgedUsers: number;
   }> => {
     setIsSimulatedDataPurged(true);
     setIsDemoMode(false);
@@ -8530,6 +8552,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deletedQuestions: simQIds.length,
       deletedAnswers: simAIds.length,
       deletedUsers: simUIds.length,
+      purgedQuestions: simQIds.length,
+      purgedAnswers: simAIds.length,
+      purgedUsers: simUIds.length,
     };
   };
 
@@ -8603,6 +8628,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearMockData,
         resetDemoData,
         isSimulatedDataPurged,
+        simulatedStats: {
+          simulatedQuestionsCount: questions.filter((q) => q.isSimulated || isMockQuestionId(q.id)).length,
+          simulatedUsersCount: availableUsers.filter((u) => u.isSimulated || isMockSolverId(u.id) || isTestAccountUserId(u.id) || u.id.startsWith('u-vc-')).length,
+          simulatedAnswersCount: answers.filter((a) => a.isSimulated || isMockAnswerId(a.id)).length,
+          simulatedTransactionsCount: transactions.filter((t) => isMockTransactionId(t.id)).length,
+        },
         purgeAllSimulatedData,
         restoreAllSimulatedData,
         isNoPaymentMode: isRaceMode ? false : isNoPaymentMode,

@@ -1,4 +1,4 @@
-import { Question, User, Category, Answer } from '../types';
+import { Question, User, Category, Answer, UserRole } from '../types';
 import { ProposalComment } from '../types/competition';
 import { DEFAULT_VIBECODING_APPS } from './vibeCodingData';
 
@@ -70,7 +70,7 @@ export const VIRTUAL_PERSONA_USERS: User[] = VIRTUAL_PERSONAS.map((p, idx) => ({
   name: p.name,
   title: p.title,
   avatar: p.avatar,
-  role: idx % 2 === 0 ? 'questioner' : 'solver',
+  role: (idx % 2 === 0 ? 'questioner' : 'solver') as UserRole,
   balance: 2000 + (idx * 350) % 8000,
   reputation: 78 + (idx % 22),
   joinedDate: `2026-0${1 + (idx % 9)}-${String(10 + (idx % 18)).padStart(2, '0')}`,
@@ -83,19 +83,18 @@ export const VIRTUAL_PERSONA_USERS: User[] = VIRTUAL_PERSONAS.map((p, idx) => ({
 })).concat([
   {
     id: 'u-vc-ideax',
+    memberId: 'c900000000',
     username: 'ideax_team',
     name: 'IdeaX創點子團隊',
     avatar: '/logo-bulb.png',
     role: 'solver' as const,
     balance: 18800,
-    pointsBalance: 268000,
-    cashBalance: 18800,
     title: 'IdeaX創點子團隊',
     reputation: 99,
     joinedDate: '2026-01-01',
     bio: 'IdeaX 創點子平台官方核心共創團隊',
     email: 'team@ideax.community',
-    domain: '資訊科技',
+    domain: '網站程式' as Category,
     honorLevel: 4 as const,
     isSimulated: true,
     simulatedBatchId: SIMULATED_BATCH_ID,

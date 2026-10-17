@@ -178,6 +178,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
     subcategories: isVibeApp ? effectiveVibeCategories : [displaySubcategory],
     level: 'L0',
     bounty: isVibeApp ? 0 : bounty || 0,
+    answersCount: 0,
     authorId: 'preview-author',
     authorName: authorName || '創作者',
     authorAvatar: displayAvatar,

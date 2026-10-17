@@ -60,6 +60,7 @@ export const GUEST_USER: User = {
   title: '訪客身份 (未登入)',
   avatar: '',
   role: 'questioner',
+  isGuest: true,
   balance: 0,
   pendingEarnings: 0,
   reputation: 0,

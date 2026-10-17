@@ -6,6 +6,8 @@ import { matchSolversWithAI, AISolverMatch, generatePreliminaryReportWithAI, get
 import { computeBidirectionalHandshake } from '../services/bidirectionalMatchService';
 import { HelpTooltip } from './HelpTooltip';
 import { CopyableUserId } from './CopyableUserId';
+import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
+import { isGuestUser } from '../utils/userDisplay';
 import {
   X,
   Sparkles,
@@ -1798,135 +1800,171 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             </div>
           )}
 
-        {/* 提問者專屬：專家推薦推播（僅發布本題之提問者本人與管理員可見） */}
-        {isAuthor && (
-          <div className="space-y-3 pt-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 border border-amber-300 inline-flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  <span>提問者專家推薦</span>
-                </span>
-              </div>
-              <HelpTooltip
-                title="提問專家推薦與雙向握手機制"
-                content="【提問專家推薦】系統依據題意痛點、專長標籤與歷史履約評價，從認證智庫專家庫中即時精準媒合最佳解答專家。
-【雙向握手機制說明】提問端由「市場顧問 AI Agent」深度解析痛點意圖，解答端則由「AICRM 客情巡航 Agent」動態評估專家勝率與承接意願。當雙方條件高度契合時即達成「雙向握手」特選標記，提問者可一鍵直接「邀請解答」或發起一對一私聊諮詢！"
-              />
-            </div>
+        {/* 提問專家推薦與雙向握手媒合推播（未登入訪客開放前 3 位預覽，其餘模糊遮罩引導登入） */}
+        {Boolean(question && (aiMatches.length > 0 || isMatching)) && (
+          (() => {
+            const isGuest = isGuestUser(currentUser);
+            const visibleMatches = isGuest ? aiMatches.slice(0, 3) : aiMatches;
 
-            {isMatching ? (
-              <div className="p-6 text-center text-xs text-stone-500 bg-stone-50 rounded-2xl animate-pulse">
-                AI 正在深入分析專家領域與解題勝率...
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {aiMatches.map((match) => {
-                  if (!match || !match.solver) return null;
-                  const isInvited = invitedSolvers[match.solver.id];
-                  const handshake = handshakeMatches.find((h) => h.solverId === match.solver.id);
-                  const isHandshake = handshake?.isHandshake ?? (match.matchScore >= 80);
+            const renderMatchCard = (match: AISolverMatch, isBlurred = false) => {
+              if (!match || !match.solver) return null;
+              const isInvited = invitedSolvers[match.solver.id];
+              const handshake = handshakeMatches.find((h) => h.solverId === match.solver.id);
+              const isHandshake = handshake?.isHandshake ?? (match.matchScore >= 80);
 
-                  return (
-                    <div
-                      key={match.solver.id}
-                      className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
-                        isHandshake
-                          ? 'bg-gradient-to-b from-amber-50/80 via-white to-white border-amber-400 ring-2 ring-amber-300/60 shadow-xs'
-                          : 'bg-white border-stone-200 hover:border-amber-300'
-                      }`}
-                    >
-                      <div>
-                        {/* Top Badge & Rating */}
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          {isHandshake ? (
-                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 flex items-center gap-1 shadow-2xs">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-950 animate-pulse" />
-                              <span>🤝 雙向握手 {match.matchScore}%</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                              媒合度 {match.matchScore}%
-                            </span>
-                          )}
+              return (
+                <div
+                  key={match.solver.id}
+                  className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
+                    isHandshake
+                      ? 'bg-gradient-to-b from-amber-50/80 via-white to-white border-amber-400 ring-2 ring-amber-300/60 shadow-xs'
+                      : 'bg-white border-stone-200 hover:border-amber-300'
+                  }`}
+                >
+                  <div>
+                    {/* Top Badge & Rating */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      {isHandshake ? (
+                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 flex items-center gap-1 shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-950 animate-pulse" />
+                          <span>🤝 雙向握手 {match.matchScore}%</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                          媒合度 {match.matchScore}%
+                        </span>
+                      )}
 
-                          <div className="flex items-center gap-1 text-xs font-bold text-stone-700">
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                            <span>{match.solver.rating}</span>
-                          </div>
-                        </div>
-
-                        {/* Dual Agent Sub-metrics if Handshake */}
-                        {isHandshake && handshake && (
-                          <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
-                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100/90 text-amber-900 border border-amber-200">
-                              市場顧問 {handshake.marketAdvisorScore}%
-                            </span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-900 border border-emerald-200">
-                              AICRM巡航 {handshake.aicrmCruiseScore}%
-                            </span>
-                          </div>
-                        )}
-
-                        <div
-                          onClick={() => onSelectSolver(match.solver)}
-                          className="flex items-center gap-2 cursor-pointer group"
-                        >
-                          <img
-                            src={match.solver.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                            alt={match.solver.name || '專家'}
-                            className="w-9 h-9 rounded-xl object-cover ring-1 ring-stone-200"
-                          />
-                          <div className="overflow-hidden">
-                            <h5 className="font-bold text-xs text-stone-900 group-hover:text-amber-600 transition-colors truncate">
-                              {match.solver.name || '特邀顧問'}
-                            </h5>
-                            <p className="text-[11px] text-stone-500 truncate">{match.solver.title}</p>
-                          </div>
-                        </div>
-
-                        <p className="text-[11px] text-stone-600 mt-2 line-clamp-2 bg-stone-50 p-2 rounded-lg leading-relaxed">
-                          {match.matchReason}
-                        </p>
-                      </div>
-
-                      <div className="mt-3 pt-2 border-t border-stone-100 flex items-center justify-between gap-2">
-                        <button
-                          onClick={() =>
-                            handlePrivateChat({
-                              id: match.solver.id,
-                              name: match.solver.name,
-                              avatar: match.solver.avatar,
-                              title: match.solver.title,
-                            })
-                          }
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer flex items-center gap-1"
-                          title="私聊諮詢此專家"
-                        >
-                          <MessageCircle className="w-3 h-3 text-amber-600" />
-                          <span>私聊</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleInvite(match.solver.id)}
-                          disabled={isInvited}
-                          className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
-                            isInvited
-                              ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
-                              : isHandshake
-                              ? 'bg-amber-500 hover:bg-amber-400 text-stone-950 font-black shadow-2xs'
-                              : 'bg-stone-900 hover:bg-stone-800 text-white shadow-2xs'
-                          }`}
-                        >
-                          {isInvited ? '已邀請' : isHandshake ? '🤝 邀請解答' : '邀請回答'}
-                        </button>
+                      <div className="flex items-center gap-1 text-xs font-bold text-stone-700">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+                        <span>{match.solver.rating}</span>
                       </div>
                     </div>
-                  );
-                })}
+
+                    {/* Dual Agent Sub-metrics if Handshake */}
+                    {isHandshake && handshake && (
+                      <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100/90 text-amber-900 border border-amber-200">
+                          市場顧問 {handshake.marketAdvisorScore}%
+                        </span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-900 border border-emerald-200">
+                          AICRM巡航 {handshake.aicrmCruiseScore}%
+                        </span>
+                      </div>
+                    )}
+
+                    <div
+                      onClick={() => {
+                        if (isBlurred || isGuest) {
+                          openAuthModal('login');
+                          return;
+                        }
+                        onSelectSolver(match.solver);
+                      }}
+                      className="flex items-center gap-2 cursor-pointer group"
+                    >
+                      <img
+                        src={match.solver.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                        alt={match.solver.name || '專家'}
+                        className="w-9 h-9 rounded-xl object-cover ring-1 ring-stone-200"
+                      />
+                      <div className="overflow-hidden">
+                        <h5 className="font-bold text-xs text-stone-900 group-hover:text-amber-600 transition-colors truncate">
+                          {match.solver.name || '特邀顧問'}
+                        </h5>
+                        <p className="text-[11px] text-stone-500 truncate">{match.solver.title}</p>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-stone-600 mt-2 line-clamp-2 bg-stone-50 p-2 rounded-lg leading-relaxed">
+                      {match.matchReason}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-stone-100 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => {
+                        if (isBlurred || isGuest) {
+                          openAuthModal('login');
+                          return;
+                        }
+                        handlePrivateChat({
+                          id: match.solver.id,
+                          name: match.solver.name,
+                          avatar: match.solver.avatar,
+                          title: match.solver.title,
+                        });
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer flex items-center gap-1"
+                      title="私聊諮詢此專家"
+                    >
+                      <MessageCircle className="w-3 h-3 text-amber-600" />
+                      <span>私聊</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (isBlurred || isGuest) {
+                          openAuthModal('login');
+                          return;
+                        }
+                        handleInvite(match.solver.id);
+                      }}
+                      disabled={isInvited}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                        isInvited
+                          ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
+                          : isHandshake
+                          ? 'bg-amber-500 hover:bg-amber-400 text-stone-950 font-black shadow-2xs'
+                          : 'bg-stone-900 hover:bg-stone-800 text-white shadow-2xs'
+                      }`}
+                    >
+                      {isInvited ? '已邀請' : isHandshake ? '🤝 邀請解答' : '邀請回答'}
+                    </button>
+                  </div>
+                </div>
+              );
+            };
+
+            return (
+              <div className="space-y-3 pt-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 border border-amber-300 inline-flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{isAuthor ? '提問者專家推薦' : 'AI 媒合解答專家'}</span>
+                    </span>
+                  </div>
+                  <HelpTooltip
+                    title="提問專家推薦與雙向握手機制"
+                    content="【提問專家推薦】系統依據題意痛點、專長標籤與歷史履約評價，從認證智庫專家庫中即時精準媒合最佳解答專家。
+【雙向握手機制說明】提問端由「市場顧問 AI Agent」深度解析痛點意圖，解答端則由「AICRM 客情巡航 Agent」動態評估專家勝率與承接意願。當雙方條件高度契合時即達成「雙向握手」特選標記，提問者可一鍵直接「邀請解答」或發起一對一私聊諮詢！"
+                  />
+                </div>
+
+                {isMatching ? (
+                  <div className="p-6 text-center text-xs text-stone-500 bg-stone-50 rounded-2xl animate-pulse">
+                    AI 正在深入分析專家領域與解題勝率...
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {visibleMatches.map((match) => renderMatchCard(match))}
+                    </div>
+
+                    {isGuest && aiMatches.length > 3 && (
+                      <GuestBoardGateBlurOverlay
+                        remainingCount={aiMatches.length - 3}
+                        totalCount={aiMatches.length}
+                        boardName="AI 媒合推薦專家"
+                        onOpenAuth={() => openAuthModal('login')}
+                      />
+                    )}
+                  </>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()
         )}
 
         {/* Dual-Track Tabs: 公開討論 (留言式無賞金，優先顯示) vs 解決方案 (付費解鎖/延伸提案) */}

@@ -504,7 +504,7 @@ export const SubcategoryBoardBanner: React.FC<SubcategoryBoardBannerProps> = ({
               {isVibeCoding ? (
                 <>
                   <Heart className={`w-4 h-4 shrink-0 ${showOnlyFavorites ? 'fill-white' : 'text-rose-500'}`} />
-                  <span className="truncate">我的 Like 收藏 ({favoriteCount})</span>
+                  <span className="truncate">我的 Like ({favoriteCount})</span>
                 </>
               ) : (
                 <>
@@ -517,7 +517,7 @@ export const SubcategoryBoardBanner: React.FC<SubcategoryBoardBannerProps> = ({
                   >
                     +1
                   </span>
-                  <span className="truncate">我的附議收藏 ({favoriteCount})</span>
+                  <span className="truncate">我的附議 ({favoriteCount})</span>
                 </>
               )}
             </button>
@@ -556,7 +556,7 @@ export const SubcategoryBoardBanner: React.FC<SubcategoryBoardBannerProps> = ({
                 className="px-2.5 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-stone-200 bg-white text-xs sm:text-sm font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer shrink-0"
               >
                 <option value="recruiting_promoted">🔥 推薦排序</option>
-                <option value="most_likes">{isVibeCoding ? '❤️ Like 收藏最多' : '🔥 +1 附議最多'}</option>
+                <option value="most_likes">{isVibeCoding ? '❤️ Like 最多' : '🔥 +1 附議最多'}</option>
                 <option value="highest_bounty">💰 懸賞金額 高到低</option>
                 <option value="highest_tips">🪙 點數支持 高到低</option>
                 <option value="most_solutions">💡 方案數最多</option>

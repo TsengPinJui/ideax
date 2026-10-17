@@ -29,6 +29,7 @@ import {
   addDoc as clientAddDoc,
   query as clientQuery,
   where as clientWhere,
+  orderBy as clientOrderBy,
   limit as clientLimit,
   writeBatch as clientWriteBatch,
   runTransaction as clientRunTransaction,
@@ -202,11 +203,11 @@ function applyPayloadToLocalDoc(colName: string, docId: string, data: any, merge
   const existing = merge && localDbStore[colName][docId] ? { ...localDbStore[colName][docId] } : {};
   for (const [k, v] of Object.entries(data || {})) {
     if (v === undefined) continue;
-    if (v && typeof v === 'object' && v.__op === 'increment') {
-      existing[k] = (typeof existing[k] === 'number' ? existing[k] : 0) + v.value;
-    } else if (v && typeof v === 'object' && v.__op === 'arrayUnion') {
+    if (v && typeof v === 'object' && (v as any).__op === 'increment') {
+      existing[k] = (typeof existing[k] === 'number' ? existing[k] : 0) + (v as any).value;
+    } else if (v && typeof v === 'object' && (v as any).__op === 'arrayUnion') {
       const arr = Array.isArray(existing[k]) ? [...existing[k]] : [];
-      for (const el of v.elements) {
+      for (const el of (v as any).elements || []) {
         if (!arr.includes(el)) arr.push(el);
       }
       existing[k] = arr;
@@ -332,6 +333,14 @@ function createQueryWrapper(colName: string, constraints: any[] = [], filterSpec
         colName,
         [...constraints, clientWhere(field, op, value)],
         [...filterSpecs, { field, op, value }],
+        limitCount
+      );
+    },
+    orderBy(field: string, direction: 'asc' | 'desc' = 'asc') {
+      return createQueryWrapper(
+        colName,
+        [...constraints, clientOrderBy(field, direction)],
+        filterSpecs,
         limitCount
       );
     },
@@ -759,7 +768,7 @@ export async function supportProposalWithPoints(params: {
       supportRecordsColl.where('supporterId', '==', userId).where('proposalId', '==', proposalId)
     );
     let currentTotalForThisProposal = 0;
-    priorSupportsSnap.forEach((doc) => {
+    priorSupportsSnap.forEach((doc: any) => {
       currentTotalForThisProposal += Number(doc.data().points || 0);
     });
 
@@ -1049,8 +1058,8 @@ export async function reviewProposalByAdmin(params: {
 
   await adminDb.runTransaction(async (transaction) => {
     // 1. ALL READS FIRST
-    let ambSnap: FirebaseFirestore.DocumentSnapshot | null = null;
-    let ambStatsRef: FirebaseFirestore.DocumentReference | null = null;
+    let ambSnap: any = null;
+    let ambStatsRef: any = null;
     const hasAmbassador = params.status === 'approved' && Boolean(proposal.referredByAmbassadorCode);
 
     if (hasAmbassador) {

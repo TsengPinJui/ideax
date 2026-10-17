@@ -49,8 +49,8 @@ import { shareOrCopyUrl } from '../utils/shareUtils';
 import { auth } from '../services/firebase';
 import { findReferencedPainPoint } from '../utils/painPointLinking';
 import { getSimulatedCommentsForProposalId } from '../data/virtualProposalsSeed';
-import { getUserNameColorClass } from '../utils/userDisplay';
-import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
+import { isGuestUser, getUserNameColorClass } from '../utils/userDisplay';
+import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 
 export function getRemainingDaysText(unpublishAt?: string): string {
   if (!unpublishAt || unpublishAt === '永久' || unpublishAt === '永久刊登') return '永久';
@@ -97,9 +97,9 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
     toggleSecondQuestion,
     setQuestionLikeState,
     isSimulatedDataPurged,
+    openAuthModal,
   } = useApp();
   const [showZoneHelp, setShowZoneHelp] = useState(false);
-  const [showDemoPreviewModal, setShowDemoPreviewModal] = useState(false);
   const [dbCompetitionProposals, setDbCompetitionProposals] = useState<StarSeasonProposal[]>(initialProposals || []);
 
   useEffect(() => {
@@ -252,7 +252,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
     e.stopPropagation();
     if (!currentUser || currentUser.id === 'user-guest') {
       if (onOpenAuth) onOpenAuth();
-      else showCenterToast('請先登入帳號以收藏提案');
+      else showCenterToast('請先登入帳號以 Like 提案');
       return;
     }
 
@@ -269,8 +269,8 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         setQuestionLikeState(proposal.id, isNowLiked, res.likeCount);
         showCenterToast(
           isNowLiked
-            ? '❤️ 已按 Like 並加入［創點子］個人收藏提案！'
-            : '已取消 Like 與收藏'
+            ? '❤️ 已按 Like 並加入「我的 Like」清單！'
+            : '已取消 Like'
         );
       }
     } catch {
@@ -283,8 +283,8 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
       );
       showCenterToast(
         fallback.isSeconded
-          ? '❤️ 已按 Like 並加入［創點子］個人收藏提案！'
-          : '已取消 Like 與收藏'
+          ? '❤️ 已按 Like 並加入「我的 Like」清單！'
+          : '已取消 Like'
       );
     }
   };
@@ -597,16 +597,6 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
             </button>
 
             <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowDemoPreviewModal(true)}
-                className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border border-amber-300 bg-white/90 hover:bg-white text-amber-900 font-black text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                title="預覽兩種類型提案（創新提案 / 軟體與網站作品）的卡片與內頁效果"
-              >
-                <Eye className="w-3.5 h-3.5 text-amber-700" />
-                <span>預覽提案效果</span>
-              </button>
-
               {onOpenCreateProposal && (
                 <button
                   type="button"
@@ -625,7 +615,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         {showZoneHelp && (
           <div className="relative z-10 mt-3 pt-3 border-t border-amber-200/80 space-y-2 animate-in fade-in duration-150">
             <p className="text-xs font-medium text-stone-700 leading-relaxed">
-              匯集創星季競賽與全站大眾創新解方與作品！在此自由探索優秀點子、給予<strong>點數支持</strong>，點擊 ❤️ Like 或 ⭐ 收藏即自動加入您的個人收藏名單。
+              匯集創星季競賽與全站大眾創新解方與作品！在此自由探索優秀點子、給予<strong>點數支持</strong>，點擊 ❤️ Like 即自動加入您的個人清單。
             </p>
             <div className="flex items-center gap-2 text-[11px] text-amber-900 font-bold bg-amber-100/70 border border-amber-200 px-2.5 py-1.5 rounded-xl w-fit">
               <ShieldCheck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
@@ -675,7 +665,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
               }`}
             >
               <Heart className={`w-4 h-4 shrink-0 ${activeTab === 'favorites' ? 'fill-white' : 'text-rose-500'}`} />
-              <span className="truncate">我的 Like 收藏 ({favoriteCount})</span>
+              <span className="truncate">我的 Like ({favoriteCount})</span>
             </button>
           </div>
 
@@ -708,7 +698,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                 className="px-2.5 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-amber-200 bg-white text-xs sm:text-sm font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer shrink-0"
               >
                 <option value="support">點數支持 高到低</option>
-                <option value="likes">❤️ Like 收藏最多</option>
+                <option value="likes">❤️ Like 最多</option>
                 <option value="discussions">💬 討論數最多</option>
                 <option value="latest">最新發布</option>
               </select>
@@ -764,11 +754,11 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
             {activeTab === 'favorites' ? <Heart className="w-6 h-6 text-rose-500" /> : <Lightbulb className="w-6 h-6 text-amber-600" />}
           </div>
           <h3 className="text-base font-black text-stone-800">
-            {activeTab === 'favorites' ? '尚無 Like 或收藏的創新提案' : '未找到符合條件的創新提案'}
+            {activeTab === 'favorites' ? '尚無 Like 的創新提案' : '未找到符合條件的創新提案'}
           </h3>
           <p className="text-xs text-stone-500 max-w-sm mx-auto">
             {activeTab === 'favorites'
-              ? '瀏覽點子提案時，點擊卡片上的 ❤️ 或 ⭐ 即可自動加入個人收藏專區，方便隨時追蹤與參考！'
+              ? '瀏覽點子提案時，點擊卡片上的 ❤️ 即可自動加入個人清單，方便隨時追蹤與參考！'
               : '請嘗試清除關鍵字或切換領域分類。'}
           </p>
           {activeTab === 'favorites' && (
@@ -781,16 +771,13 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
           )}
         </div>
       ) : (
-        <div
-          className={
-            viewMode === 'grid'
-              ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
-              : viewMode === 'list'
-              ? 'flex flex-col space-y-2.5 sm:space-y-3'
-              : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5'
-          }
-        >
-          {finalFilteredProposals.map((proposal) => {
+        (() => {
+          const isGuest = isGuestUser(currentUser);
+          const visibleProposals = isGuest ? finalFilteredProposals.slice(0, 3) : finalFilteredProposals;
+          const blurredProposals =
+            isGuest && finalFilteredProposals.length > 3 ? finalFilteredProposals.slice(3, 7) : [];
+
+          const renderProposalCard = (proposal: StarSeasonProposal) => {
             const isLiked = isProposalSavedByUser(proposal.id);
             const isBookmarked = isQuestionBookmarked(proposal.id);
             const trackInfo = STAR_SEASON_TRACKS[proposal.track] || STAR_SEASON_TRACKS.ict;
@@ -1081,7 +1068,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                     </div>
 
                     <div className="text-right">
-                      <div className="text-[10px] text-stone-500 font-bold">收藏 / Like</div>
+                      <div className="text-[10px] text-stone-500 font-bold">Like</div>
                       <div className="text-xs font-mono font-black text-rose-600 flex items-center gap-1 justify-end">
                         <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
                         <span>{proposal.likeCount || 0}</span>
@@ -1133,8 +1120,33 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                 </div>
               </div>
             );
-          })}
-        </div>
+          };
+
+          return (
+            <>
+              <div
+                className={
+                  viewMode === 'grid'
+                    ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
+                    : viewMode === 'list'
+                    ? 'flex flex-col space-y-2.5 sm:space-y-3'
+                    : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5'
+                }
+              >
+                {visibleProposals.map(renderProposalCard)}
+              </div>
+
+              {isGuest && finalFilteredProposals.length > 3 && (
+                <GuestBoardGateBlurOverlay
+                  remainingCount={finalFilteredProposals.length - 3}
+                  totalCount={finalFilteredProposals.length}
+                  boardName="創點子專區看板"
+                  onOpenAuth={() => (onOpenAuth ? onOpenAuth() : openAuthModal('login'))}
+                />
+              )}
+            </>
+          );
+        })()
       )}
 
       {/* 編輯刊登時間/下架時間彈窗 (刊登時間即下架時間，預設永久刊登) */}
@@ -1323,23 +1335,6 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
             </div>
           </div>
         </div>
-      )}
-
-      {showDemoPreviewModal && (
-        <PublishEffectPreviewModal
-          isOpen={showDemoPreviewModal}
-          onClose={() => setShowDemoPreviewModal(false)}
-          onConfirmPublish={() => {
-            setShowDemoPreviewModal(false);
-            if (onOpenCreateProposal) onOpenCreateProposal();
-          }}
-          postType="innovation_proposal"
-          title=""
-          description=""
-          authorName={currentUser?.name || '創新提案人範例'}
-          authorAvatar={currentUser?.avatar}
-          authorTitle={currentUser?.title}
-        />
       )}
     </div>
   );
