@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { formatNotificationTime } from '../services/cloudMessaging';
 import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import {
@@ -674,7 +675,7 @@ export const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                       </div>
                       <span className="text-[10px] text-stone-400 shrink-0 font-medium flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        <span>{n.createdAt}</span>
+                        <span>{formatNotificationTime(n.createdAt)}</span>
                       </span>
                     </div>
 

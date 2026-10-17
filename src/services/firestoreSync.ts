@@ -1210,6 +1210,7 @@ export async function loadPersonalDataFromFirestore(scope: FirestoreDataScope = 
  */
 export function subscribePersonalData(
   userId: string,
+  recipientIds: string[],
   handlers: {
     onConversations: (conversations: ChatConversation[]) => void;
     onNotifications: (notifications: NotificationItem[], isInitial: boolean) => void;
@@ -1228,7 +1229,7 @@ export function subscribePersonalData(
     let initial = true;
     unsubs.push(
       onSnapshot(
-        query(collection(db, 'notifications'), where('userId', 'in', [userId, 'all'])),
+        query(collection(db, 'notifications'), where('userId', 'in', Array.from(new Set([userId, 'all', ...recipientIds])).slice(0, 10))),
         (snap) => {
           handlers.onNotifications(
             snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }) as NotificationItem),
