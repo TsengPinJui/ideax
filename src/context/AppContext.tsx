@@ -119,6 +119,13 @@ import {
 import { getStoredTickets } from '../services/customerSupportService';
 import { CenterToastData } from '../components/CenterToast';
 import { PwaNotificationService } from '../services/pwaNotificationService';
+import {
+  conversationSignature,
+  deliverNotificationToCloud,
+  markNotificationReadInCloud,
+  mergeIncomingConversation,
+  pushConversationToCloud,
+} from '../services/cloudMessaging';
 
 /**
  * 把雲端載入的「自己的」資料合併進本機資料（以 id 為準，雲端版本優先）。
@@ -2083,42 +2090,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id, currentUser.role]);
 
-  // 即時接收別人傳給我的私訊與通知（只監聽自己的資料）
+  // ===================================================================
+  // 私訊與通知的雲端傳遞
+  // - 接收：即時監聽「自己的」對話與通知
+  // - 送出：自己參與的對話有新內容時寫入雲端；發給別人的通知寫入雲端
+  // ===================================================================
+  const cloudConvSigRef = useRef<Map<string, string>>(new Map());
+  const cloudConvReadyRef = useRef(false);
+  const cloudNotifIdsRef = useRef<Set<string>>(new Set());
+  const notifReadSyncedRef = useRef<Set<string>>(new Set());
+  const deliveredNotifIdsRef = useRef<Set<string> | null>(null);
+  const activeConversationIdRef = useRef<string | null>(null);
+  activeConversationIdRef.current = activeConversationId;
+  const isCloudMessagingOn = !isScopeGuest && localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) !== 'true';
+
   useEffect(() => {
-    if (isScopeGuest) return;
-    if (localStorage.getItem(`${STORAGE_KEY_PREFIX}demo_mode`) === 'true') return;
+    if (!isCloudMessagingOn) return;
     const myId = currentUser.id;
-    const unsubscribe = subscribePersonalData(myId, {
+    cloudConvReadyRef.current = false;
+    cloudConvSigRef.current = new Map();
+    const recipientIds = currentUser.role === 'admin' ? ['admin'] : [];
+    const unsubscribe = subscribePersonalData(myId, recipientIds, {
       onConversations: (serverConvs) => {
+        const isFirstSnapshot = !cloudConvReadyRef.current;
+        const incomingAlerts: Array<{ name: string; text: string }> = [];
         setConversations((prev) => {
           const map = new Map(prev.map((c) => [c.id, c]));
           for (const sc of serverConvs) {
-            if (isMockConversationId(sc.id)) continue;
-            const local = map.get(sc.id);
-            // 本機訊息比較多（例如剛送出、尚未同步完成）時保留本機版本
-            if (!local || (sc.messages?.length || 0) >= (local.messages?.length || 0)) {
-              map.set(sc.id, sc);
+            if (!sc?.id || isMockConversationId(sc.id)) continue;
+            const before = map.get(sc.id);
+            const isActive = activeConversationIdRef.current === sc.id;
+            const merged = mergeIncomingConversation(before, sc as any, myId, isActive);
+            if (!isFirstSnapshot && !isActive) {
+              const knownIds = new Set((before?.messages || []).map((m) => m.id));
+              const newest = merged.messages.filter((m) => !knownIds.has(m.id) && m.senderId !== myId).pop();
+              if (newest) incomingAlerts.push({ name: newest.senderName, text: merged.lastMessage || newest.text });
             }
+            map.set(sc.id, merged);
+            // 記下雲端版本，若合併後內容相同就不必再寫回
+            cloudConvSigRef.current.set(sc.id, conversationSignature(sc));
           }
           return Array.from(map.values());
         });
+        cloudConvReadyRef.current = true;
+        // 狀態更新完成後才會知道有哪些新訊息，所以延後到下一輪再跳通知
+        setTimeout(() => {
+          if (incomingAlerts.length > 0) {
+            incomingAlerts.slice(0, 3).forEach((a) =>
+              PwaNotificationService.sendNativeNotification({
+                title: `${a.name || '有人'} 傳了私訊給你`,
+                body: (a.text || '').slice(0, 80) || '點此查看',
+                url: '/chat',
+                group: 'chat_message',
+              })
+            );
+          }
+        }, 50);
       },
       onNotifications: (serverNotifs, isInitial) => {
         const fresh: NotificationItem[] = [];
+        serverNotifs.forEach((n) => cloudNotifIdsRef.current.add(n.id));
         setNotifications((prev) => {
-          const known = new Set(prev.map((n) => n.id));
+          const localById = new Map(prev.map((n) => [n.id, n]));
+          let changed = false;
           for (const n of serverNotifs) {
-            if (known.has(n.id) || isModeOrEnvNotification(n.title, n.message)) continue;
-            fresh.push(n);
+            if (isModeOrEnvNotification(n.title, n.message)) continue;
+            const local = localById.get(n.id);
+            if (!local) {
+              fresh.push(n);
+              changed = true;
+            } else if (n.read && !local.read) {
+              // 在別的裝置已讀
+              localById.set(n.id, { ...local, read: true });
+              changed = true;
+            }
           }
-          if (fresh.length === 0) return prev;
-          return [...fresh, ...prev].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+          if (!changed) return prev;
+          const updated = prev.map((n) => localById.get(n.id) || n);
+          return [...fresh, ...updated];
         });
         // 開站後才收到的新通知，跳出系統通知（使用中時由服務層自動略過）
         if (!isInitial) {
           setTimeout(() => {
             fresh
-              .filter((n) => !n.read && n.userId === myId)
+              .filter((n) => !n.read && (n.userId === myId || n.userId === 'all'))
               .slice(0, 3)
               .forEach((n) => {
                 PwaNotificationService.sendNativeNotification({
@@ -2132,13 +2187,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   group: n.type === 'system' ? undefined : n.type,
                 });
               });
-          }, 0);
+          }, 50);
         }
       },
     });
-    return unsubscribe;
+    return () => {
+      cloudConvReadyRef.current = false;
+      unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser.id, isScopeGuest]);
+  }, [currentUser.id, currentUser.role, isCloudMessagingOn]);
+
+  // 送出：自己參與的對話有新訊息、方案狀態改變時，寫入雲端讓對方收到
+  useEffect(() => {
+    if (!isCloudMessagingOn) return;
+    const myId = currentUser.id;
+    const timer = setTimeout(() => {
+      // 等雲端資料先載入，避免用舊的本機版本蓋掉對方的新訊息
+      if (!cloudConvReadyRef.current) return;
+      for (const conv of conversations) {
+        if (!conv?.id || isMockConversationId(conv.id)) continue;
+        if (!Array.isArray(conv.participantIds) || !conv.participantIds.includes(myId)) continue;
+        if (!conv.messages || conv.messages.length === 0) continue;
+        const sig = conversationSignature(conv);
+        if (cloudConvSigRef.current.get(conv.id) === sig) continue;
+        cloudConvSigRef.current.set(conv.id, sig);
+        void pushConversationToCloud(conv, myId);
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations, currentUser.id, isCloudMessagingOn]);
+
+  // 送出：發給別人的通知寫入雲端；自己已讀的通知把狀態寫回雲端
+  useEffect(() => {
+    if (!isCloudMessagingOn) return;
+    const myId = currentUser.id;
+    // 第一次執行時，把已存在的通知視為「已處理」，只送出之後新產生的
+    if (deliveredNotifIdsRef.current === null) {
+      deliveredNotifIdsRef.current = new Set(notifications.map((n) => n.id));
+      return;
+    }
+    const delivered = deliveredNotifIdsRef.current;
+    for (const n of notifications) {
+      if (!n?.id) continue;
+      if (n.userId && n.userId !== myId && !delivered.has(n.id) && !cloudNotifIdsRef.current.has(n.id)) {
+        delivered.add(n.id);
+        void deliverNotificationToCloud(n);
+      }
+      if (n.read && (n.userId === myId || n.userId === 'admin') && cloudNotifIdsRef.current.has(n.id) && !notifReadSyncedRef.current.has(n.id)) {
+        notifReadSyncedRef.current.add(n.id);
+        void markNotificationReadInCloud(n.id);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications, currentUser.id, isCloudMessagingOn]);
 
   const pullAllDataFromFirestore = async (): Promise<boolean> => {
     try {
@@ -8324,7 +8427,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         title: notifOrTitle,
         message: message || '',
         type: type || 'system',
-        createdAt: '剛剛',
+        createdAt: new Date().toISOString(),
         read: false,
       };
       setNotifications((prev) => [newNotif, ...prev].slice(0, 50));
