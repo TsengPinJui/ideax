@@ -1,4 +1,5 @@
-import { doc, setDoc } from 'firebase/firestore';
+import { arrayUnion, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { getMyAuthUid, resolveAuthUid, resolveAuthUids } from './authIdentity';
 import { db } from './firebase';
 import { ChatConversation, ChatMessage, NotificationItem } from '../types';
 
@@ -94,12 +95,16 @@ export function mergeIncomingConversation(
 export async function pushConversationToCloud(conv: ChatConversation, myId: string): Promise<boolean> {
   if (!conv?.id) return false;
   try {
+    // 資料庫規則：只有對話雙方的 Firebase 帳號能讀寫，沒有登入 Firebase 時不寫入
+    if (!getMyAuthUid()) return false;
     const { unreadCount, conversationRole, ...shared } = conv;
     const clean = JSON.parse(JSON.stringify(shared));
+    const uids = resolveAuthUids(conv.participantIds || []);
     await setDoc(
       doc(db, 'conversations', conv.id),
       {
         ...clean,
+        participantAuthUids: arrayUnion(...uids),
         ...(conversationRole ? { roleByUser: { [myId]: conversationRole } } : {}),
         updatedAt: new Date().toISOString(),
       },
@@ -115,10 +120,19 @@ export async function pushConversationToCloud(conv: ChatConversation, myId: stri
 /** 把通知送到對方（寫入雲端，對方的裝置會即時收到） */
 export async function deliverNotificationToCloud(n: NotificationItem): Promise<boolean> {
   if (!n?.id || !n.userId) return false;
+  const senderAuthUid = getMyAuthUid();
+  if (!senderAuthUid) return false;
+  // 收件人：一般會員以 Firebase UID 識別；'admin'、'all' 由資料庫規則另外處理
+  const recipientAuthUid = n.userId === 'admin' || n.userId === 'all' ? null : resolveAuthUid(n.userId);
+  if (n.userId !== 'admin' && n.userId !== 'all' && !recipientAuthUid) return false;
   try {
     const iso = Number.isNaN(Date.parse(n.createdAt)) ? new Date().toISOString() : n.createdAt;
     const clean = JSON.parse(JSON.stringify({ ...n, createdAt: iso, read: false }));
-    await setDoc(doc(db, 'notifications', n.id), { ...clean, deliveredAt: new Date().toISOString() }, { merge: true });
+    await setDoc(
+      doc(db, 'notifications', n.id),
+      { ...clean, recipientAuthUid, senderAuthUid, deliveredAt: new Date().toISOString() },
+      { merge: true }
+    );
     return true;
   } catch (err: any) {
     console.warn('[Cloud Messaging] 通知送出失敗:', err?.code || err?.message);
@@ -131,6 +145,13 @@ export async function markNotificationReadInCloud(id: string): Promise<void> {
   try {
     await setDoc(doc(db, 'notifications', id), { read: true, readAt: new Date().toISOString() }, { merge: true });
   } catch {}
+}
+
+/** 刪除自己收到的通知（雲端） */
+export async function deleteNotificationsInCloud(ids: string[]): Promise<void> {
+  await Promise.all(
+    ids.slice(0, 200).map((id) => deleteDoc(doc(db, 'notifications', id)).catch(() => {}))
+  );
 }
 
 /** 通知時間顯示：ISO 時間轉成「3 分鐘前」，舊資料的文字（如「剛剛」）照原樣顯示 */
