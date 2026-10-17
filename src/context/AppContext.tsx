@@ -620,13 +620,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   const promptLogin = useCallback(
-    (customSubtitle?: string) => {
-      showCenterToast('請先登入', customSubtitle || '訪客模式請先登入帳號以繼續操作', {
-        type: 'lock',
-        actionLabel: '前往登入',
-        onAction: () => openAuthModal('login', 'email'),
-        duration: 2200,
-      });
+    (_customSubtitle?: string) => {
+      // 訪客點擊需登入的功能時，直接開啟登入視窗（原本只跳 2 秒提示，需再點一次才會登入，容易被當成按鈕失效）
+      openAuthModal('login', 'email');
     },
     [showCenterToast, openAuthModal]
   );

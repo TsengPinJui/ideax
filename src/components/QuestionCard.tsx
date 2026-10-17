@@ -9,6 +9,7 @@ import { getQuestionShareUrl } from '../services/seoService';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
 import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
+import { isSampleContent } from '../utils/sampleContent';
 
 interface QuestionCardProps {
   question: Question;
@@ -477,6 +478,15 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 </span>
               )}
 
+              {isSampleContent(question) && (
+                <span
+                  className="bg-stone-100 text-stone-500 border border-stone-200 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                  title="此為平台示範內容，非真實會員發布"
+                >
+                  範例
+                </span>
+              )}
+
               {(question.isStarSeason || question.tags?.includes('創星季')) && (
                 <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">
                   <span>創星季</span>
@@ -764,6 +774,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
             {/* 右上角標籤：軟體作品 / 創新提案 / 創星季 */}
             <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 pointer-events-none">
+              {isSampleContent(question) && (
+                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-stone-800/80 backdrop-blur-md text-white shadow-xs" title="此為平台示範內容，非真實會員發布">
+                  範例
+                </span>
+              )}
               {(question.isStarSeason || question.tags?.includes('創星季')) && (
                 <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-600/95 backdrop-blur-md text-white shadow-xs flex items-center gap-1">
                   <Sparkles className="w-2.5 h-2.5" />
@@ -825,6 +840,14 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   </span>
                 )}
 
+                {isSampleContent(question) && (
+                  <span
+                    className="bg-stone-100 text-stone-500 border border-stone-200 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                    title="此為平台示範內容，非真實會員發布"
+                  >
+                    範例
+                  </span>
+                )}
                 {(question.isStarSeason || question.tags?.includes('創星季')) && (
                   <span
                     className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0"
