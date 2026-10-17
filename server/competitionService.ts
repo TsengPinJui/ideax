@@ -11,7 +11,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { initializeApp as initAdminApp, getApps as getAdminApps } from 'firebase-admin/app';
+import { initializeApp as initAdminApp, getApps as getAdminApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeApp as initClientApp, getApps as getClientApps, getApp as getClientApp } from 'firebase/app';
 import {
@@ -94,9 +94,28 @@ console.warn = (...args: any[]) => {
 };
 
 // 初始化 Firebase Admin Auth
+// 若有設定 FIREBASE_SERVICE_ACCOUNT（服務帳戶金鑰 JSON，或其 base64），就能使用需要管理權限的功能
+// （例如：用驗證碼重設密碼、產生 Email 驗證連結）。沒有設定時，其他功能照常運作。
+function loadServiceAccount(): Record<string, any> | null {
+  const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || '').trim();
+  if (!raw) return null;
+  try {
+    const json = raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
+    const parsed = JSON.parse(json);
+    if (parsed.private_key) parsed.private_key = String(parsed.private_key).replace(/\\n/g, '\n');
+    return parsed.client_email && parsed.private_key ? parsed : null;
+  } catch {
+    console.warn('[Firebase Admin] FIREBASE_SERVICE_ACCOUNT 格式無法解析，已略過');
+    return null;
+  }
+}
+const serviceAccount = loadServiceAccount();
+export const hasAdminCredentials = Boolean(serviceAccount);
+
 if (!getAdminApps().length) {
   initAdminApp({
     projectId: firebaseConfigJson.projectId || 'ideax-2af9c',
+    ...(serviceAccount ? { credential: cert(serviceAccount as any) } : {}),
   });
 }
 
