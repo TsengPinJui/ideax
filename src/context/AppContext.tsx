@@ -4330,6 +4330,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       : `已成功發布提問「${q.title.slice(0, 24)}」${q.bounty > 0 ? `（懸賞 NT$ ${q.bounty.toLocaleString()} 元）` : ''}！`;
     showCenterToast(toastTitle, toastSubtitle, { type: 'success', duration: 2500 });
 
+    // 發布後是詢問通知權限的好時機（「有人回覆時要通知你嗎？」），等成功提示消失後再顯示
+    try {
+      setTimeout(() => window.dispatchEvent(new CustomEvent('ideax:suggest-notification-optin')), 2800);
+    } catch {}
+
     // Add notification
     setNotifications((prev) => [
       {
@@ -8236,13 +8241,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setNotifications((prev) => [newNotif, ...prev].slice(0, 50));
     }
 
-    // 若使用者啟用了原生推播通知，同步發送系統層級跳通知 (PWA Native Notification)
+    // 系統層級通知（PWA Native Notification）
+    // - 只在「這則通知是給目前登入者」時才在本機跳出（發給別人的通知不該在自己的裝置上跳）
+    // - 點擊後直接開啟相關的問題或私訊
+    // - 同類通知合併；網頁在前景時不跳（由服務層判斷）
     try {
-      PwaNotificationService.sendNativeNotification({
-        title: titleStr || 'IdeaX 創點子',
-        body: msgStr || '您有一則新通知',
-        url: '/',
-      });
+      const notifObj = typeof notifOrTitle === 'string' ? null : notifOrTitle;
+      const recipientId = (notifObj && notifObj.userId) || targetUserId;
+      const isForCurrentUser = !recipientId || recipientId === currentUser.id;
+      const notifType: string = (notifObj && notifObj.type) || type || 'system';
+      const linkQuestionId = notifObj?.linkQuestionId;
+      const linkChatId = notifObj?.linkChatId;
+      const deepLink = linkQuestionId
+        ? `/?q=${encodeURIComponent(linkQuestionId)}`
+        : linkChatId || notifType === 'chat_message'
+        ? '/chat'
+        : '/';
+      if (isForCurrentUser && currentUser.id !== 'user-guest') {
+        PwaNotificationService.sendNativeNotification({
+          title: titleStr || 'IdeaX 創點子',
+          body: msgStr || '您有一則新通知',
+          url: deepLink,
+          group: notifType === 'system' ? undefined : notifType,
+        });
+      }
     } catch {}
   }, [currentUser.id]);
 
