@@ -59,6 +59,7 @@ import {
 } from './services/recommendationService';
 import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Search, Heart, ThumbsUp, Square, List, LayoutGrid } from 'lucide-react';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from './utils/guestAccess';
+import { NotificationOptInPrompt } from './components/NotificationOptInPrompt';
 
 const CATEGORIES: Category[] = [
   '專業問題',
@@ -3319,6 +3320,9 @@ function MainContent() {
         viewMode={viewMode}
         onSetViewMode={handleSetViewMode}
       />
+
+      {/* 發布內容後詢問是否開啟通知 */}
+      <NotificationOptInPrompt />
 
       {/* 舊網站獨立創星季懸浮按鈕：可拖動、可貼齊隱藏到邊框、可隨時再叫出（使用創星季圖片，不用燈泡） */}
       {activeTab !== 'star_season' && (

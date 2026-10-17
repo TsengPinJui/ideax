@@ -12,7 +12,29 @@ export interface NativeNotificationOptions {
   tag?: string;
   icon?: string;
   badge?: string;
+  /** 同類通知的分組名稱（例如 'new_answer'），同組會合併成一則並顯示累計數量 */
+  group?: string;
+  /** 網頁正在前景使用中時是否仍顯示系統通知（預設不顯示，避免重複打擾） */
+  showWhenFocused?: boolean;
 }
+
+// 同組通知在使用者回到網頁前的累計數（回到網頁即歸零）
+const groupCounts = new Map<string, number>();
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') groupCounts.clear();
+  });
+}
+
+const GROUP_LABELS: Record<string, string> = {
+  new_answer: '則新方案',
+  new_discussion: '則新留言',
+  chat_message: '則新私訊',
+  handshake: '則媒合邀請',
+  ai_match: '則推薦媒合',
+  payment_unlocked: '筆解鎖付款',
+  solution_accepted: '則方案被採納',
+};
 
 export class PwaNotificationService {
   /**
@@ -159,12 +181,33 @@ export class PwaNotificationService {
     if (Notification.permission !== 'granted') return false;
     if (!this.isPushEnabled()) return false;
 
-    const title = options.title || 'IdeaX 創點子';
-    const body = options.body || '';
+    // 使用者正在看網頁時不跳系統通知（站內通知欄已經會顯示），避免重複打擾
+    if (
+      !options.showWhenFocused &&
+      typeof document !== 'undefined' &&
+      document.visibilityState === 'visible' &&
+      document.hasFocus()
+    ) {
+      return false;
+    }
+
+    let title = options.title || 'IdeaX 創點子';
+    let body = options.body || '';
     const url = options.url || '/';
     const icon = options.icon || '/pwa-192x192.png';
     const badge = options.badge || '/favicon-32x32.png';
-    const tag = options.tag || `ideax-${Date.now()}`;
+    const tag = options.tag || (options.group ? `ideax-${options.group}` : `ideax-${Date.now()}`);
+
+    // 同組通知合併：第二則起改為「你有 N 則新留言」，並沿用同一個 tag 取代舊通知
+    if (options.group) {
+      const count = (groupCounts.get(options.group) || 0) + 1;
+      groupCounts.set(options.group, count);
+      if (count > 1) {
+        const unit = GROUP_LABELS[options.group] || '則新通知';
+        body = `最新：${title}${body ? `｜${body}` : ''}`;
+        title = `IdeaX 創點子：你有 ${count} ${unit}`;
+      }
+    }
 
     // 優先使用 Service Worker 的 showNotification（在手機與背景 PWA 更穩定）
     if (this.isServiceWorkerSupported()) {
@@ -200,8 +243,9 @@ export class PwaNotificationService {
 
       notif.onclick = () => {
         window.focus();
+        // 直接開啟相關頁面（例如 /?q=問題ID 或 /chat）
         if (url && url !== '/') {
-          window.location.hash = url;
+          window.location.href = url;
         }
         notif.close();
       };
@@ -221,6 +265,7 @@ export class PwaNotificationService {
       body: '恭喜！您的裝置已成功開啟原生推播通知。未來有新懸賞題目、方案採納或私聊互動將即時收到提醒！',
       url: '/',
       tag: 'ideax-test-notification',
+      showWhenFocused: true,
     });
     return success;
   }
