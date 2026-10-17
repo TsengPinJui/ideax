@@ -7,26 +7,15 @@ import { CategoryFilter } from './components/CategoryFilter';
 import { SubcategoryBoardBanner } from './components/SubcategoryBoardBanner';
 import { QuestionCard } from './components/QuestionCard';
 import { QuestionDetailModal } from './components/QuestionDetailModal';
-import { CreateQuestionModal } from './components/CreateQuestionModal';
 import { SubmitAnswerModal } from './components/SubmitAnswerModal';
-import { UnlockPaywallModal } from './components/UnlockPaywallModal';
 import { SolversView } from './components/SolversView';
-import { SolverProfileModal } from './components/SolverProfileModal';
 import { MechanismView } from './components/MechanismView';
-import { LeaderboardView } from './components/LeaderboardView';
 import { AboutUsView } from './components/AboutUsView';
 import { AboutUsModal } from './components/AboutUsModal';
 import { AuthModal } from './components/AuthModal';
-import { MyProjectsView } from './components/MyProjectsView';
 import { CustomerServiceModal } from './components/CustomerServiceModal';
-import { UserDashboardModal } from './components/UserDashboardModal';
-import { AdminDashboardModal } from './components/AdminDashboardModal';
-import { AiCrmView } from './components/AiCrmView';
-import { MembershipAndTopupFullPage } from './components/MembershipAndTopupFullPage';
 import { GuestBoardGateBlurOverlay } from './components/GuestBoardGateBlurOverlay';
 import { isGuestUser } from './utils/userDisplay';
-import { ChatView } from './components/ChatView';
-import { StarSeasonView } from './components/challenge/StarSeasonView';
 import { CreateIdeasZoneView } from './components/CreateIdeasZoneView';
 import { SpecialZonesTopBar } from './components/SpecialZonesTopBar';
 import { DraggableStarSeasonFloat } from './components/challenge/DraggableStarSeasonFloat';
@@ -59,6 +48,23 @@ import {
 } from './services/recommendationService';
 import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Search, Heart, ThumbsUp, Square, List, LayoutGrid } from 'lucide-react';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from './utils/guestAccess';
+import { NotificationOptInPrompt } from './components/NotificationOptInPrompt';
+import { lazyNamed, preloadWhenIdle } from './utils/lazyNamed';
+
+// 需要時才載入的頁面（程式碼分割）：縮小首頁第一次下載的檔案大小
+const CreateQuestionModal = lazyNamed<typeof import('./components/CreateQuestionModal').CreateQuestionModal>(() => import('./components/CreateQuestionModal'), 'CreateQuestionModal');
+const UnlockPaywallModal = lazyNamed<typeof import('./components/UnlockPaywallModal').UnlockPaywallModal>(() => import('./components/UnlockPaywallModal'), 'UnlockPaywallModal', { fallback: null });
+const SolverProfileModal = lazyNamed<typeof import('./components/SolverProfileModal').SolverProfileModal>(() => import('./components/SolverProfileModal'), 'SolverProfileModal');
+const LeaderboardView = lazyNamed<typeof import('./components/LeaderboardView').LeaderboardView>(() => import('./components/LeaderboardView'), 'LeaderboardView');
+const MyProjectsView = lazyNamed<typeof import('./components/MyProjectsView').MyProjectsView>(() => import('./components/MyProjectsView'), 'MyProjectsView');
+const UserDashboardModal = lazyNamed<typeof import('./components/UserDashboardModal').UserDashboardModal>(() => import('./components/UserDashboardModal'), 'UserDashboardModal');
+const AdminDashboardModal = lazyNamed<typeof import('./components/AdminDashboardModal').AdminDashboardModal>(() => import('./components/AdminDashboardModal'), 'AdminDashboardModal');
+const AiCrmView = lazyNamed<typeof import('./components/AiCrmView').AiCrmView>(() => import('./components/AiCrmView'), 'AiCrmView');
+const MembershipAndTopupFullPage = lazyNamed<typeof import('./components/MembershipAndTopupFullPage').MembershipAndTopupFullPage>(() => import('./components/MembershipAndTopupFullPage'), 'MembershipAndTopupFullPage');
+const ChatView = lazyNamed<typeof import('./components/ChatView').ChatView>(() => import('./components/ChatView'), 'ChatView');
+const StarSeasonView = lazyNamed<typeof import('./components/challenge/StarSeasonView').StarSeasonView>(() => import('./components/challenge/StarSeasonView'), 'StarSeasonView');
+// 首頁載入完成、瀏覽器閒置後，預先下載最常用的頁面（發布、創星季、私訊）
+preloadWhenIdle([CreateQuestionModal.preload, StarSeasonView.preload, ChatView.preload]);
 
 const CATEGORIES: Category[] = [
   '專業問題',
@@ -3319,6 +3325,9 @@ function MainContent() {
         viewMode={viewMode}
         onSetViewMode={handleSetViewMode}
       />
+
+      {/* 發布內容後詢問是否開啟通知 */}
+      <NotificationOptInPrompt />
 
       {/* 舊網站獨立創星季懸浮按鈕：可拖動、可貼齊隱藏到邊框、可隨時再叫出（使用創星季圖片，不用燈泡） */}
       {activeTab !== 'star_season' && (

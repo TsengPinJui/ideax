@@ -20,16 +20,19 @@ export async function notifyExpertReviewEmail(
       headers: await getAuthHeaders(),
       body: JSON.stringify(params),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) {
+      return { success: false, message: data.error || '通知信寄送失敗，請稍後再試' };
+    }
     return {
-      success: data.success ?? true,
-      message: data.message || `已通知 ${params.expertEmail}`,
+      success: true,
+      message: data.message || `已寄送通知信至 ${params.expertEmail}`,
     };
   } catch (err: any) {
     console.warn('[Expert Notification Service Warning]:', err);
     return {
-      success: true,
-      message: `已為 ${params.expertEmail} 記錄審核狀態`,
+      success: false,
+      message: '無法連線寄送通知信，請稍後再試',
     };
   }
 }

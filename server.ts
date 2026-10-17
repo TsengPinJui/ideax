@@ -31,8 +31,8 @@ app.use(express.json());
 // - AI 端點：每個 IP 每 10 分鐘最多 40 次
 // - 寄送驗證碼：每個 IP 每 10 分鐘最多 5 次
 app.use(['/api/ai', '/api/agent'], rateLimit({ windowMs: 10 * 60 * 1000, max: 40, name: 'ai' }));
-app.use(['/api/auth/send-email-code', '/api/auth/send-sms-code'], rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'send-code' }));
-app.use(['/api/auth/verify-email-code', '/api/auth/verify-sms-code'], rateLimit({ windowMs: 10 * 60 * 1000, max: 20, name: 'verify-code' }));
+app.use(['/api/auth/send-email-code', '/api/auth/send-sms-code', '/api/auth/send-welcome-email'], rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'send-code' }));
+app.use(['/api/auth/verify-email-code', '/api/auth/verify-sms-code', '/api/auth/reset-password-with-code'], rateLimit({ windowMs: 10 * 60 * 1000, max: 20, name: 'verify-code' }));
 
 // 安全性：所有 /api/admin/* 端點僅限認證管理員
 app.use('/api/admin', requireAdminMiddleware);

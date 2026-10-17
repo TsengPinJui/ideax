@@ -1,3 +1,4 @@
+import { getAuthHeaders } from './authHeader';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -218,53 +219,102 @@ export async function sendFirebaseEmailVerification(user?: FirebaseUser): Promis
   }
 }
 
+// 伺服器回傳的驗證碼簽章（讓多台伺服器之間也能驗證），只存在記憶體中
+const emailCodeTokens = new Map<string, string>();
+const tokenKey = (email: string, type: string) => `${email.trim().toLowerCase()}:${type}`;
+
 /**
- * 伺服器端發送電子郵件驗證碼 / 認證信
+ * 寄送 6 位數 Email 驗證碼（由 IdeaX 創點子團隊 noreply@ideax.tw 寄出）
+ * canResetWithCode = true：可直接用驗證碼重設密碼；false：請改用 Firebase 重設密碼連結
  */
 export async function sendEmailVerificationCode(
   email: string,
-  type: 'register' | 'forgot_password' | 'verify_email' | 'general' = 'general',
+  type: 'forgot_password' | 'verify_email' | 'general' = 'general',
   name?: string
-): Promise<{ success: boolean; message: string; code?: string; expiresAt?: number }> {
+): Promise<{ success: boolean; message: string; canResetWithCode?: boolean; expiresAt?: number }> {
+  let res: Response;
   try {
-    const res = await fetch('/api/auth/send-email-code', {
+    res = await fetch('/api/auth/send-email-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email.trim(), type, name }),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || '發送認證信失敗');
-    }
-    return data;
-  } catch (err: any) {
-    console.warn('Send email code error:', err);
-    throw new Error(err.message || '無法連線發送認證信，請檢查網路');
+  } catch {
+    throw new Error('無法連線寄送驗證信，請檢查網路');
   }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err: any = new Error(data.error || '寄送驗證信失敗');
+    err.canResetWithCode = data.canResetWithCode;
+    throw err;
+  }
+  if (data.token) emailCodeTokens.set(tokenKey(email, type), data.token);
+  return data;
 }
 
-/**
- * 伺服器端驗證電子郵件驗證碼
- */
+/** 驗證 Email 驗證碼（重設密碼請改用 resetPasswordWithEmailCode） */
 export async function verifyEmailCode(
   email: string,
   code: string,
-  type: 'register' | 'forgot_password' | 'verify_email' | 'general' = 'general'
+  type: 'verify_email' | 'general' = 'general'
 ): Promise<{ success: boolean; verified: boolean; message?: string }> {
+  let res: Response;
   try {
-    const res = await fetch('/api/auth/verify-email-code', {
+    res = await fetch('/api/auth/verify-email-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), code: code.trim(), type }),
+      body: JSON.stringify({
+        email: email.trim(),
+        code: code.trim(),
+        type,
+        token: emailCodeTokens.get(tokenKey(email, type)),
+      }),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || '驗證碼錯誤或過期');
-    }
-    return data;
-  } catch (err: any) {
-    console.warn('Verify email code error:', err);
-    throw new Error(err.message || '驗證失敗，請重新輸入');
+  } catch {
+    throw new Error('無法連線驗證，請檢查網路');
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || '驗證碼錯誤或過期');
+  return data;
+}
+
+/** 用 Email 收到的 6 位數驗證碼直接重設密碼 */
+export async function resetPasswordWithEmailCode(email: string, code: string, newPassword: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch('/api/auth/reset-password-with-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim(),
+        code: code.trim(),
+        newPassword,
+        token: emailCodeTokens.get(tokenKey(email, 'forgot_password')),
+      }),
+    });
+  } catch {
+    throw new Error('無法連線重設密碼，請檢查網路');
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || '重設密碼失敗，請稍後再試');
+  emailCodeTokens.delete(tokenKey(email, 'forgot_password'));
+}
+
+/**
+ * 註冊完成後寄送 IdeaX 歡迎信（含 Email 驗證連結）
+ * 回傳 sentVerification = false 時，請改寄 Firebase 官方驗證信
+ */
+export async function sendWelcomeEmail(name?: string): Promise<{ sentVerification: boolean }> {
+  try {
+    const res = await fetch('/api/auth/send-welcome-email', {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { sentVerification: Boolean(res.ok && data.sentVerification) };
+  } catch {
+    return { sentVerification: false };
   }
 }
 

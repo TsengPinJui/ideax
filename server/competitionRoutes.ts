@@ -15,6 +15,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { expertReviewEmail, sendMail } from './mailer';
 import {
   verifyAuthToken,
   isVerifiedAdmin,
@@ -685,65 +686,31 @@ router.post('/admin/notify-expert-review', async (req: Request, res: Response) =
     const cleanEmail = expertEmail.trim().toLowerCase();
     const isApproved = status === 'approved';
 
-    const subject = isApproved
-      ? `【IdeaX 創星季】恭喜！您的專家身分審核已通過${isJudgeSelected ? '（獲指派為決選評審）' : ''}`
-      : `【IdeaX 創星季】您的專家身分資格審核結果通知`;
+    const noteText =
+      typeof reviewNote === 'string' && reviewNote.trim()
+        ? reviewNote.trim().slice(0, 1000)
+        : isApproved
+        ? '審核通過，評選額度已撥入您的帳號。'
+        : '專家證明文件未符標準或未齊全';
 
-    const noteText = reviewNote && reviewNote.trim() ? reviewNote.trim() : (isApproved ? '審核通過，已配發 3,000,000 創星幣！' : '專家證明文件未符標準或未齊全');
-
-    const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f5f5f4; margin: 0; padding: 24px; color: #1c1917; }
-    .card { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e7e5e4; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-    .header { background: ${isApproved ? '#059669' : '#e11d48'}; padding: 28px 24px; color: #ffffff; text-align: center; }
-    .header h1 { margin: 0; font-size: 22px; font-weight: 800; }
-    .body { padding: 28px 24px; line-height: 1.6; }
-    .highlight-box { background: ${isApproved ? '#ecfdf5' : '#fff1f2'}; border: 1px solid ${isApproved ? '#a7f3d0' : '#fecdd3'}; border-radius: 12px; padding: 16px; margin: 20px 0; }
-    .footer { text-align: center; font-size: 11px; color: #78716c; padding: 16px 24px; background: #fafaf9; border-top: 1px solid #e7e5e4; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="header">
-      <h1>${isApproved ? '🎉 創星季專家資格審核通過' : '📋 創星季專家資格審核結果'}</h1>
-    </div>
-    <div class="body">
-      <p>親愛的 <strong>${expertName || '專家'}</strong> 您好：</p>
-      ${
-        isApproved
-          ? `<p>感謝您對 IdeaX 創星季的支持與參與！經賽事評審組審定，您的<strong>專家身分資格審核已正式核定通過</strong>！</p>
-             <div class="highlight-box">
-               <p style="margin:0 0 8px 0; font-weight: bold; color: #065f46;">✨ 專家專屬權益已生效：</p>
-               <ul style="margin:0; padding-left: 20px; color: #047857;">
-                 <li>已為您的帳號自動配發 <strong>3,000,000 創星幣</strong> 評選支持額度</li>
-                 <li>可自由審閱所有公開賽道提案並投點支持最具潛力之團隊</li>
-                 ${isJudgeSelected ? '<li><strong>官方決選評審資格已啟用：</strong>具備決選打分權限與車馬費津貼資格</li>' : ''}
-               </ul>
-             </div>
-             <p><strong>審核備註與核定意見：</strong><br/>${noteText}</p>
-             <p>您現在即可登入 IdeaX 創星季專區，開啟專家工作台開始評選！</p>`
-          : `<p>感謝您對 IdeaX 創星季的關注與申請。經主辦單位審查小組綜合評估後，本次專家資格申請<strong>未獲核准通過</strong>。</p>
-             <div class="highlight-box">
-               <p style="margin:0 0 6px 0; font-weight: bold; color: #9f1239;">審核退回備註：</p>
-               <p style="margin:0; color: #be123c;">${noteText}</p>
-             </div>
-             <p>若您希望補充相關證明文件或有任何疑問，歡迎隨時登入平台補正資料後重新送件，或聯繫主辦單位客服專線。</p>`
-      }
-      <p style="margin-top: 24px;">祝 順心，<br/><strong>IdeaX 創星季 賽事組委會</strong></p>
-    </div>
-    <div class="footer">
-      本郵件由 IdeaX 創星季系統自動發送至 ${cleanEmail}，請勿直接回覆。
-    </div>
-  </div>
-</body>
-</html>
-    `;
-
-    console.log(`[Expert Review Notification] 寄發至: ${cleanEmail}, 結果: ${status}, 主旨: ${subject}`);
+    const mail = expertReviewEmail({
+      name: typeof expertName === 'string' ? expertName.slice(0, 40) : undefined,
+      approved: isApproved,
+      note: noteText,
+      isJudgeSelected: Boolean(isJudgeSelected),
+    });
+    const subject = mail.subject;
+    const sendResult = await sendMail({ to: cleanEmail, ...mail, tag: 'expert_review' });
+    if (!sendResult.ok) {
+      return res.status(502).json({
+        success: false,
+        error:
+          sendResult.error === 'mailer_not_configured'
+            ? '寄信服務尚未設定（缺少 RESEND_API_KEY），通知信未寄出'
+            : '通知信寄送失敗，請稍後再試',
+      });
+    }
+    console.log(`[Expert Review Notification] 已寄出: status=${status}`);
 
     // 儲存發送通知紀錄至 Firestore (不可篡改審計紀錄)
     try {
@@ -753,6 +720,7 @@ router.post('/admin/notify-expert-review', async (req: Request, res: Response) =
         status,
         subject,
         reviewNote: noteText,
+        resendId: sendResult.id || null,
         sentAt: new Date().toISOString(),
       });
     } catch (dbErr) {

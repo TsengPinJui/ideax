@@ -419,7 +419,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 建立無限向左循環輪播批次 (末端追加首批，確保輪播完一輪依然持續往左滑動)
   const extendedProposalBatches = useMemo(() => {
-    if (isGuest || homepageProposalBatches.length <= 1) return homepageProposalBatches;
+    if (homepageProposalBatches.length <= 1) return homepageProposalBatches;
     return [...homepageProposalBatches, homepageProposalBatches[0]];
   }, [homepageProposalBatches, isGuest]);
 
@@ -427,10 +427,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 向左前進下一批
   const handleCarouselNext = useCallback(() => {
-    if (isGuest) {
-      onOpenAuth();
-      return;
-    }
+    // 訪客也可以左右切換，瀏覽前 10 則（第 11 則起由下方登入遮罩提示）
     if (homepageProposalBatches.length <= 1) return;
     setHomepageCarouselBatchIndex((prev) => {
       if (prev >= homepageProposalBatches.length) {
@@ -442,10 +439,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 向右上一批
   const handleCarouselPrev = useCallback(() => {
-    if (isGuest) {
-      onOpenAuth();
-      return;
-    }
+    // 訪客也可以左右切換，瀏覽前 10 則（第 11 則起由下方登入遮罩提示）
     if (homepageProposalBatches.length <= 1) return;
     setHomepageCarouselBatchIndex((prev) => {
       if (prev <= 0) {
@@ -470,7 +464,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 自動定時持續向左輪播 (每 4.5 秒向左滑動至下一批，一輪結束後無縫繼續向左)
   useEffect(() => {
-    if (isGuest || homepageProposalBatches.length <= 1 || isHomepageCarouselPaused) return;
+    if (homepageProposalBatches.length <= 1 || isHomepageCarouselPaused) return;
     const timer = setInterval(() => {
       handleCarouselNext();
     }, 4500);
@@ -1234,16 +1228,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 建立痛點無限向左循環輪播批次
   const extendedPainPointBatches = useMemo(() => {
-    if (isGuest || homepagePainPointBatches.length <= 1) return homepagePainPointBatches;
+    if (homepagePainPointBatches.length <= 1) return homepagePainPointBatches;
     return [...homepagePainPointBatches, homepagePainPointBatches[0]];
   }, [homepagePainPointBatches, isGuest]);
 
   // 痛點向左前進下一批
   const handlePainPointCarouselNext = useCallback(() => {
-    if (isGuest) {
-      onOpenAuth();
-      return;
-    }
+    // 訪客也可以左右切換，瀏覽前 10 則（第 11 則起由下方登入遮罩提示）
     if (homepagePainPointBatches.length <= 1) return;
     setHomepagePainPointBatchIndex((prev) => {
       if (prev >= homepagePainPointBatches.length) {
@@ -1255,10 +1246,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 痛點向右上一批
   const handlePainPointCarouselPrev = useCallback(() => {
-    if (isGuest) {
-      onOpenAuth();
-      return;
-    }
+    // 訪客也可以左右切換，瀏覽前 10 則（第 11 則起由下方登入遮罩提示）
     if (homepagePainPointBatches.length <= 1) return;
     setHomepagePainPointBatchIndex((prev) => {
       if (prev <= 0) {
@@ -1283,7 +1271,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 痛點自動定時持續向左輪播 (每 4.5 秒向左滑動至下一批)
   useEffect(() => {
-    if (isGuest || homepagePainPointBatches.length <= 1 || isPainPointCarouselPaused || homepageSectionTab !== 'pain_point') return;
+    if (homepagePainPointBatches.length <= 1 || isPainPointCarouselPaused || homepageSectionTab !== 'pain_point') return;
     const timer = setInterval(() => {
       handlePainPointCarouselNext();
     }, 4500);
