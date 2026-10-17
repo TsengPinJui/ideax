@@ -8,6 +8,7 @@ import { Sparkles, MessageSquare, Eye, Clock, Award, CheckCircle2, MessageCircle
 import { getQuestionShareUrl } from '../services/seoService';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
+import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 
 interface QuestionCardProps {
   question: Question;
@@ -214,10 +215,29 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   // 3. 方格式 (Grid Mode - 雙欄緊湊卡片，適合手機與快速瀏覽)
   // =========================================================================
   if (viewMode === 'grid') {
+    const showGridCover =
+      isVibeCoding ||
+      isInnovationProposal ||
+      Boolean(question.coverImage) ||
+      Boolean(question.galleryImages && question.galleryImages.length > 0) ||
+      Boolean(question.screenshots && question.screenshots.length > 0);
+
+    const gridCoverImg =
+      question.coverImage ||
+      question.galleryImages?.[0] ||
+      question.screenshots?.[0] ||
+      getUniqueProposalCoverImage({
+        id: question.id,
+        title: question.title,
+        track: question.subcategory,
+      });
+
     return (
       <article
         onClick={onClick}
-        className={`group bg-white rounded-2xl border p-3 sm:p-3.5 transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between relative h-full ${
+        className={`group bg-white rounded-2xl border transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between relative h-full overflow-hidden ${
+          showGridCover ? 'p-0' : 'p-3 sm:p-3.5'
+        } ${
           isPromoted
             ? 'border-purple-300/90 bg-gradient-to-b from-purple-50/15 via-white to-white'
             : isSolved
@@ -225,7 +245,54 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             : 'border-stone-200/80 hover:border-stone-300'
         }`}
       >
-        <div className="space-y-1.5">
+        {showGridCover && (
+          <div className="relative h-28 sm:h-34 bg-stone-100 overflow-hidden group/img">
+            <img
+              src={gridCoverImg}
+              alt={question.title}
+              className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: question.id, title: question.title }, 2);
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
+
+            <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none">
+              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
+                {displayCategoryLabel}
+              </span>
+            </div>
+
+            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleBookmarkClick}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer ${
+                  isBookmarked
+                    ? 'bg-amber-400 text-stone-950 scale-105'
+                    : 'bg-white/95 backdrop-blur-md text-stone-700 hover:bg-white'
+                }`}
+                title={isBookmarked ? '⭐ 已收藏' : '⭐ 收藏'}
+              >
+                <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
+              </button>
+              <button
+                type="button"
+                onClick={handleLikeClick}
+                className={`h-7 px-2 rounded-lg flex items-center justify-center gap-1 text-[11px] font-bold transition-all shadow-md cursor-pointer ${
+                  isLiked || isSeconded
+                    ? 'bg-rose-500 text-white scale-105'
+                    : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white'
+                }`}
+                title="❤️ Like"
+              >
+                <Heart className={`w-3 h-3 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                <span className="font-mono">{Math.max(likesCount || 0, secondCount || 0)}</span>
+              </button>
+            </div>
+          </div>
+        )}
+        <div className={`space-y-1.5 ${showGridCover ? 'p-3 pb-0' : ''}`}>
           {/* Top Line: 子領域 + 懸賞金 */}
           <div className="flex items-center justify-between gap-1.5">
             <span
@@ -298,7 +365,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         </div>
 
         {/* Bottom Line: 提問者 + 互動與方案數 */}
-        <div className="mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-between text-[10px] text-stone-500">
+        <div className={`mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-between text-[10px] text-stone-500 ${showGridCover ? 'px-3 pb-3' : ''}`}>
           <div className="flex items-center gap-1.5 min-w-0 pr-1">
             <img
               src={authorDisplayAvatar}
@@ -636,115 +703,216 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   }
 
   // =========================================================================
-  // 1. 大視窗 (Large Mode - FlyingV / 嘖嘖 / Apple 卡片式簡約美學)
+  // 1. 大視窗 (Large Mode - FlyingV / 嘖嘖 / Apple 卡片式簡約美學，含大圖展示)
   // =========================================================================
+  const hasCoverImage =
+    isVibeCoding ||
+    isInnovationProposal ||
+    Boolean(question.coverImage) ||
+    Boolean(question.galleryImages && question.galleryImages.length > 0) ||
+    Boolean(question.screenshots && question.screenshots.length > 0) ||
+    question.specialZone === 'vibecoding' ||
+    question.specialZone === 'create_ideas';
+
+  const coverImg =
+    question.coverImage ||
+    question.galleryImages?.[0] ||
+    question.screenshots?.[0] ||
+    getUniqueProposalCoverImage({
+      id: question.id,
+      title: question.title,
+      track: question.subcategory,
+    });
+
   return (
     <article
       onClick={onClick}
-      className={`group bg-white rounded-2xl border p-4 sm:p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between relative ${
+      className={`group bg-white rounded-2xl sm:rounded-3xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between relative overflow-hidden ${
         isPromoted
           ? 'border-purple-300/80 bg-gradient-to-b from-purple-50/10 via-white to-white'
-          : 'border-stone-200/80 hover:border-stone-300'
+          : isSolved
+          ? 'border-emerald-200/80 bg-emerald-50/5 hover:border-emerald-300'
+          : 'border-stone-200/90 hover:border-amber-400'
       }`}
     >
       <div>
-        {/* Top Header: Clean Breadcrumb Category (Left) + Crisp Bounty & Bookmark (Right) */}
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-            {isPromoted && (
-              <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 flex items-center gap-1 shrink-0"
-                title="置頂招募解答中"
-              >
-                <Sparkles className="w-2.5 h-2.5 text-purple-600" />
-                <span>招募中</span>
-              </span>
-            )}
+        {hasCoverImage ? (
+          /* 像創點子 (創新提案) 的大圖展示橫幅 */
+          <div className="relative h-40 sm:h-48 overflow-hidden bg-stone-100 border-b border-stone-100 group/img">
+            <img
+              src={coverImg}
+              alt={question.title}
+              className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: question.id, title: question.title }, 2);
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent pointer-events-none" />
 
-            {(question.isStarSeason || question.tags?.includes('創星季')) && (
-              <span
-                className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0"
-                title="創星季參賽題目"
-              >
-                <Sparkles className="w-2.5 h-2.5" />
-                <span>創星季</span>
-              </span>
-            )}
-
-            {/* Breadcrumb Category / Subcategory (無外框，簡潔俐落) */}
-            <div className="flex items-center gap-1 text-xs text-stone-500 truncate">
-              <button
-                type="button"
-                onClick={handleCategoryClick}
-                className="font-semibold hover:text-stone-900 transition-colors cursor-pointer truncate"
-              >
+            {/* 左上角標籤：領域分類 + 版本 */}
+            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap pointer-events-none">
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-stone-900 border border-white/40 shadow-xs">
                 {displayCategoryLabel}
-              </button>
-              {(question.subcategories && question.subcategories.length > 0) ? (
-                <>
-                  <span className="text-stone-300">·</span>
-                  <span className="font-bold text-stone-700 truncate">
-                    {question.subcategories.slice(0, 3).join(' · ')}
-                  </span>
-                </>
-              ) : question.subcategory && (
-                <>
-                  <span className="text-stone-300">·</span>
-                  <button
-                    type="button"
-                    onClick={handleSubcategoryClick}
-                    className="font-bold text-stone-700 hover:text-amber-600 transition-colors cursor-pointer truncate"
-                  >
-                    {question.subcategory}
-                  </button>
-                </>
+                {question.subcategory ? ` · ${question.subcategory}` : ''}
+              </span>
+              {question.currentVersion && (
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-600/95 backdrop-blur-md text-white shadow-xs">
+                  {question.currentVersion}
+                </span>
               )}
             </div>
-          </div>
 
-          {/* Right: Bounty & Bookmark */}
-          <div className="shrink-0 flex items-center gap-1.5">
-            {isVibeCoding ? (
-              <span className="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full shadow-2xs">
-                軟體作品
-              </span>
-            ) : isInnovationProposal ? (
-              <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full shadow-2xs">
-                創新提案
-              </span>
-            ) : isNoPaymentMode ? (
-              <span className="text-xs font-semibold text-stone-500">免費</span>
-            ) : isPainPoint ? (
-              <span
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 text-xs font-black font-mono"
-                title="痛點許願"
+            {/* 右上角標籤：軟體作品 / 創新提案 / 創星季 */}
+            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 pointer-events-none">
+              {(question.isStarSeason || question.tags?.includes('創星季')) && (
+                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-600/95 backdrop-blur-md text-white shadow-xs flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  <span>創星季</span>
+                </span>
+              )}
+              {isVibeCoding ? (
+                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-indigo-600/95 backdrop-blur-md text-white shadow-xs">
+                  軟體作品
+                </span>
+              ) : isInnovationProposal ? (
+                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 font-black border border-amber-300 shadow-xs">
+                  創新提案
+                </span>
+              ) : null}
+            </div>
+
+            {/* 右下角浮動操作按鈕 (⭐ 收藏 + ❤️ Like) */}
+            <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleBookmarkClick}
+                className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer ${
+                  isBookmarked
+                    ? 'bg-amber-400 text-stone-950 hover:bg-amber-300 scale-105'
+                    : 'bg-white/95 backdrop-blur-md text-stone-700 hover:bg-white hover:text-amber-600'
+                }`}
+                title={isBookmarked ? '⭐ 取消收藏' : '⭐ 收藏'}
               >
-                {question.bounty > 0 ? `痛點 ${question.bounty.toLocaleString()} 點` : '痛點'}
-              </span>
-            ) : question.bounty > 0 ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50/90 text-amber-800 border border-amber-200/80 text-xs sm:text-sm font-black font-mono">
-                NT$ {question.bounty.toLocaleString()}
-              </span>
-            ) : (
-              <span className="text-xs font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full">
-                討論
-              </span>
-            )}
-
-            <button
-              type="button"
-              onClick={handleBookmarkClick}
-              className={`p-1.5 sm:p-2 rounded-full border text-[11px] sm:text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
-                isBookmarked
-                  ? 'text-amber-800 bg-amber-50 border-amber-300'
-                  : 'text-stone-500 bg-stone-50 border-stone-200 hover:text-amber-700 hover:bg-amber-50/70'
-              }`}
-              title={isBookmarked ? '⭐ 取消收藏' : '⭐ 收藏'}
-            >
-              <Star className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
-            </button>
+                <Star className={`w-4 h-4 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
+              </button>
+              <button
+                type="button"
+                onClick={handleLikeClick}
+                className={`h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 text-xs font-bold transition-all shadow-md cursor-pointer ${
+                  isLiked || isSeconded
+                    ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105'
+                    : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white hover:text-rose-500'
+                }`}
+                title="❤️ Like"
+              >
+                <Heart className={`w-4 h-4 ${isLiked || isSeconded ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                <span className="font-mono text-xs">{Math.max(likesCount || 0, secondCount || 0)}</span>
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* 非大圖卡片之一般頂部分類標籤與賞金列 */
+          <div className="p-4 sm:p-5 pb-0">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                {isPromoted && (
+                  <span
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 flex items-center gap-1 shrink-0"
+                    title="置頂招募解答中"
+                  >
+                    <Sparkles className="w-2.5 h-2.5 text-purple-600" />
+                    <span>招募中</span>
+                  </span>
+                )}
+
+                {(question.isStarSeason || question.tags?.includes('創星季')) && (
+                  <span
+                    className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0"
+                    title="創星季參賽題目"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>創星季</span>
+                  </span>
+                )}
+
+                {/* Breadcrumb Category / Subcategory (無外框，簡潔俐落) */}
+                <div className="flex items-center gap-1 text-xs text-stone-500 truncate">
+                  <button
+                    type="button"
+                    onClick={handleCategoryClick}
+                    className="font-semibold hover:text-stone-900 transition-colors cursor-pointer truncate"
+                  >
+                    {displayCategoryLabel}
+                  </button>
+                  {(question.subcategories && question.subcategories.length > 0) ? (
+                    <>
+                      <span className="text-stone-300">·</span>
+                      <span className="font-bold text-stone-700 truncate">
+                        {question.subcategories.slice(0, 3).join(' · ')}
+                      </span>
+                    </>
+                  ) : question.subcategory && (
+                    <>
+                      <span className="text-stone-300">·</span>
+                      <button
+                        type="button"
+                        onClick={handleSubcategoryClick}
+                        className="font-bold text-stone-700 hover:text-amber-600 transition-colors cursor-pointer truncate"
+                      >
+                        {question.subcategory}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Bounty & Bookmark */}
+              <div className="shrink-0 flex items-center gap-1.5">
+                {isVibeCoding ? (
+                  <span className="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full shadow-2xs">
+                    軟體作品
+                  </span>
+                ) : isInnovationProposal ? (
+                  <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full shadow-2xs">
+                    創新提案
+                  </span>
+                ) : isNoPaymentMode ? (
+                  <span className="text-xs font-semibold text-stone-500">免費</span>
+                ) : isPainPoint ? (
+                  <span
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 text-xs font-black font-mono"
+                    title="痛點許願"
+                  >
+                    {question.bounty > 0 ? `痛點 ${question.bounty.toLocaleString()} 點` : '痛點'}
+                  </span>
+                ) : question.bounty > 0 ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50/90 text-amber-800 border border-amber-200/80 text-xs sm:text-sm font-black font-mono">
+                    NT$ {question.bounty.toLocaleString()}
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full">
+                    討論
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleBookmarkClick}
+                  className={`p-1.5 sm:p-2 rounded-full border text-[11px] sm:text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
+                    isBookmarked
+                      ? 'text-amber-800 bg-amber-50 border-amber-300'
+                      : 'text-stone-500 bg-stone-50 border-stone-200 hover:text-amber-700 hover:bg-amber-50/70'
+                  }`}
+                  title={isBookmarked ? '⭐ 取消收藏' : '⭐ 收藏'}
+                >
+                  <Star className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isBookmarked ? 'fill-amber-400 text-amber-500' : 'text-stone-400'}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={`p-4 sm:p-5 ${hasCoverImage ? 'pt-3.5 sm:pt-4' : 'pt-2 sm:pt-2.5'}`}>
 
         {/* Title */}
         <h3 className="text-[15px] sm:text-base font-bold text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2">
@@ -825,10 +993,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {/* Card Footer: 簡潔線條與圖示數據 */}
-      <div className="mt-3.5 pt-3 border-t border-stone-100 flex items-center justify-between gap-2 text-xs">
+      <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-3 border-t border-stone-100 flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2 min-w-0">
           <img
             src={authorDisplayAvatar}

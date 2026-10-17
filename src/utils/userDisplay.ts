@@ -333,8 +333,8 @@ export function restoreCanonicalUserIdentity(u: User): User {
       memberId: canon.memberId,
       username: custom?.username || canon.username,
       password: isAdminCanon
-        ? 'John930521'
-        : u.password && u.password !== 'John930521'
+        ? 'Ideax_0922'
+        : u.password && u.password !== 'Ideax_0922'
         ? u.password
         : 'Ideax123456',
       email: custom?.email || canon.email,

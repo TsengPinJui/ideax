@@ -1737,7 +1737,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     const effectiveOldPassword =
       currentUser.password ||
       userInAvailable?.password ||
-      (isAdmin ? 'John930521' : isDemoUser ? 'Ideax123456' : undefined);
+      (isAdmin ? 'Ideax_0922' : isDemoUser ? 'Ideax123456' : undefined);
 
     // 嚴格比對目前密碼，若有紀錄且不符合一律拒絕修改
     if (effectiveOldPassword) {

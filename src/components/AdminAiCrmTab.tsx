@@ -1083,7 +1083,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         type="text"
                         value={difyForm.aicrmKey}
                         onChange={(e) => setDifyForm({ ...difyForm, aicrmKey: e.target.value })}
-                        placeholder="app-WnL0BqYzHviViu4Oogmbj85j"
+                        placeholder="app-xxxxxxxxxxxxxxxxxxxxxxxx"
                         className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
                       />
                     </div>
@@ -1097,7 +1097,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         type="text"
                         value={difyForm.csKey}
                         onChange={(e) => setDifyForm({ ...difyForm, csKey: e.target.value })}
-                        placeholder="app-VQ8gZUbV7tVlW1x916o1oeI6"
+                        placeholder="app-xxxxxxxxxxxxxxxxxxxxxxxx"
                         className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
                       />
                     </div>
@@ -1111,7 +1111,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         type="text"
                         value={difyForm.marketAdvisorKey}
                         onChange={(e) => setDifyForm({ ...difyForm, marketAdvisorKey: e.target.value })}
-                        placeholder="app-Hwi0hh3nGTIMpAMybQiKSNoO"
+                        placeholder="app-xxxxxxxxxxxxxxxxxxxxxxxx"
                         className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
                       />
                     </div>

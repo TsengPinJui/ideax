@@ -13,9 +13,11 @@ export default defineConfig(() => {
     },
     define: {
       'process.env.DIFY_API_BASE_URL': JSON.stringify(process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1'),
-      'process.env.DIFY_AICRM_API_KEY': JSON.stringify(process.env.DIFY_AICRM_API_KEY || 'app-WnL0BqYzHviViu4Oogmbj85j'),
-      'process.env.DIFY_CS_API_KEY': JSON.stringify(process.env.DIFY_CS_API_KEY || 'app-VQ8gZUbV7tVlW1x916o1oeI6'),
-      'process.env.DIFY_MARKET_ADVISOR_API_KEY': JSON.stringify(process.env.DIFY_MARKET_ADVISOR_API_KEY || 'app-Hwi0hh3nGTIMpAMybQiKSNoO'),
+      // 安全性：Dify 金鑰一律不打包進前端（任何人都能從瀏覽器原始碼讀到）。
+      // 金鑰只放在伺服器端 .env；管理員若需前端直連，可於後台「AI CRM 設定」自行填入（僅存於該瀏覽器）。
+      'process.env.DIFY_AICRM_API_KEY': JSON.stringify(''),
+      'process.env.DIFY_CS_API_KEY': JSON.stringify(''),
+      'process.env.DIFY_MARKET_ADVISOR_API_KEY': JSON.stringify(''),
       'process.env.DIFY_AICRM_WEB_URL': JSON.stringify(process.env.DIFY_AICRM_WEB_URL || 'https://udify.app/agent/BnAiF81AGw454x0u'),
     },
     server: {

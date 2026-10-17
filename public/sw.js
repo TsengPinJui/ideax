@@ -78,7 +78,10 @@ self.addEventListener('fetch', (event) => {
     event.request.method !== 'GET' ||
     !event.request.url.startsWith('http') ||
     !url.protocol.startsWith('http') ||
-    url.pathname.startsWith('/api/')
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/_vercel/') || // Vercel Web Analytics 腳本與回報請求不經 SW 快取
+    url.hostname.includes('googletagmanager.com') ||
+    url.hostname.includes('google-analytics.com')
   ) {
     return;
   }

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Question, MarketViewMode } from '../types';
+import { Question, MarketViewMode, SpecialZone } from '../types';
 import { useApp } from '../context/AppContext';
-import { QuestionCard } from './QuestionCard';
 import {
   Search,
   Plus,
@@ -20,9 +19,20 @@ import {
   Square,
   List,
   Terminal,
+  Star,
+  Coins,
+  Eye,
+  MessageCircle,
+  Share2,
+  ExternalLink,
+  Flame,
 } from 'lucide-react';
-import { isGuestUser } from '../utils/userDisplay';
+import { isGuestUser, resolveUserDisplayName, resolveUserAvatar, getUserNameColorClass } from '../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
+import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
+import { findReferencedPainPoint } from '../utils/painPointLinking';
+import { shareOrCopyUrl } from '../utils/shareUtils';
+import { getFormattedAppNameAndTitle } from './QuestionCard';
 
 interface VibeCodingExhibitionViewProps {
   questions?: Question[];
@@ -33,6 +43,7 @@ interface VibeCodingExhibitionViewProps {
   onCloseZone?: () => void;
   onTogglePin?: () => void;
   isPinned?: boolean;
+  onSwitchZone?: (zone: SpecialZone) => void;
 }
 
 const VIBE_CATEGORIES = [
@@ -80,15 +91,21 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   onCloseZone,
   onTogglePin,
   isPinned = false,
+  onSwitchZone,
 }) => {
   const {
     currentUser,
     questions: contextQuestions,
     answers,
     isQuestionBookmarked,
-    isQuestionSeconded,
+    toggleBookmarkQuestion,
     isQuestionLiked,
-    isSameQuestionActive,
+    toggleLikeQuestion,
+    isQuestionSeconded,
+    showCenterToast,
+    addNotification,
+    availableUsers,
+    setSelectedQuestion,
     openAuthModal,
   } = useApp();
   const questions = propQuestions || contextQuestions || [];
@@ -117,8 +134,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     return (
       isQuestionBookmarked(qId) ||
       isQuestionSeconded(qId) ||
-      isQuestionLiked(qId) ||
-      isSameQuestionActive(qId)
+      isQuestionLiked(qId)
     );
   };
 
@@ -166,7 +182,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           (q.authorName && q.authorName.toLowerCase().includes(kw)) ||
           (q.techArchitecture && q.techArchitecture.toLowerCase().includes(kw)) ||
           (q.referencedPainPoint && q.referencedPainPoint.toLowerCase().includes(kw)) ||
-          q.tags.some((t) => t.toLowerCase().includes(kw))
+          (q.tags && q.tags.some((t) => t.toLowerCase().includes(kw)))
       );
     }
 
@@ -202,8 +218,465 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     [vibeApps]
   );
 
+  // 收藏切換
+  const handleToggleBookmark = (e: React.MouseEvent, q: Question) => {
+    e.stopPropagation();
+    const isAdded = toggleBookmarkQuestion(q.id);
+    if (showCenterToast) {
+      showCenterToast(isAdded ? `⭐ 已收藏軟體作品「${q.title}」！` : `已取消收藏「${q.title}」`);
+    } else if (addNotification) {
+      addNotification(isAdded ? `⭐ 已收藏軟體作品「${q.title}」！` : `已取消收藏「${q.title}」`, 'success');
+    }
+  };
+
+  // Like 切換
+  const handleToggleLike = (e: React.MouseEvent, q: Question) => {
+    e.stopPropagation();
+    if (!currentUser || currentUser.id === 'user-guest') {
+      openAuthModal?.('login');
+      return;
+    }
+    const res = toggleLikeQuestion(q.id);
+    if (showCenterToast) {
+      showCenterToast(res.isLiked ? `❤️ 已對「${q.title}」按 Like！` : `已取消 Like`);
+    } else if (addNotification) {
+      addNotification(res.isLiked ? `❤️ 已對「${q.title}」按 Like！` : `已取消 Like`, 'success');
+    }
+  };
+
+  // 分享作品
+  const handleShare = async (e: React.MouseEvent, q: Question) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/?questionId=${q.id}`;
+    await shareOrCopyUrl({
+      title: `【IdeaX VibeCoding】${q.title}`,
+      text: `分享 VibeCoding 軟體作品：${q.title}\n${q.description}`,
+      url,
+    });
+    if (showCenterToast) showCenterToast('已複製作品網址！');
+  };
+
+  // 渲染大圖卡片 (像創點子創新提案那樣)
+  const renderVibeAppCard = (app: Question) => {
+    const isBookmarked = isQuestionBookmarked(app.id);
+    const isLiked = isQuestionLiked(app.id);
+    const { appName: displayAppName, cleanTitle: displayCleanTitle } = getFormattedAppNameAndTitle(app);
+    const referencedPainPointObj = findReferencedPainPoint(app, questions);
+    const authorDisplayName = resolveUserDisplayName(app.authorId, app.authorName, availableUsers);
+    const authorDisplayAvatar = resolveUserAvatar(app.authorId, app.authorAvatar, availableUsers);
+    const authorColorClass = getUserNameColorClass(app.authorId, availableUsers, {
+      isOfficial: app.isOfficial,
+      name: app.authorName,
+      title: app.authorTitle,
+    });
+    const questionDiscussions = (answers || []).filter((a) => a.questionId === app.id);
+    const discussionsCount = questionDiscussions.length || app.answersCount || 0;
+
+    const coverImg =
+      app.coverImage ||
+      app.galleryImages?.[0] ||
+      app.screenshots?.[0] ||
+      getUniqueProposalCoverImage({
+        id: app.id,
+        title: app.title,
+        track: app.subcategory,
+      });
+
+    const categories = getQuestionVibeCategories(app);
+    const primaryCategory = categories[0] || '網站程式';
+
+    // 1. 條列式 (List Mode)
+    if (viewMode === 'list') {
+      return (
+        <div
+          key={app.id}
+          onClick={() => handleSelect(app)}
+          className="bg-white rounded-2xl border border-stone-200 hover:border-indigo-400 p-3 sm:p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 group"
+        >
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <div className="w-24 h-20 sm:w-32 sm:h-24 rounded-xl overflow-hidden bg-stone-100 shrink-0 relative">
+              <img
+                src={coverImg}
+                alt={app.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: app.id, title: app.title }, 2);
+                }}
+              />
+              <span className="absolute top-1.5 left-1.5 text-[9px] font-black px-1.5 py-0.2 rounded bg-black/75 text-white backdrop-blur-xs">
+                {primaryCategory}
+              </span>
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {displayAppName && (
+                  <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded">
+                    {displayAppName}
+                  </span>
+                )}
+                {app.currentVersion && (
+                  <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded">
+                    {app.currentVersion}
+                  </span>
+                )}
+                <h3 className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                  {displayCleanTitle || app.title}
+                </h3>
+              </div>
+              <p className="text-[11px] sm:text-xs text-stone-500 line-clamp-1">
+                {app.description}
+              </p>
+              <div className="flex items-center gap-2 pt-0.5 text-[10px] sm:text-[11px] text-stone-500">
+                <span className={`font-bold truncate max-w-[100px] ${authorColorClass}`}>
+                  {authorDisplayName}
+                </span>
+                {app.techArchitecture && (
+                  <span className="text-indigo-700 font-semibold truncate max-w-[120px]">
+                    · {app.techArchitecture}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
+            <div className="text-right">
+              <div className="text-[10px] text-stone-400 font-bold">點數支持</div>
+              <div className="text-xs sm:text-sm font-mono font-black text-indigo-900 flex items-center gap-1 justify-end">
+                <Coins className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{(app.supportPoints || 0).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={(e) => handleToggleBookmark(e, app)}
+                className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                  isBookmarked
+                    ? 'bg-amber-50 text-amber-700 border-amber-300'
+                    : 'bg-stone-50 text-stone-400 border-stone-200 hover:text-amber-600'
+                }`}
+                title={isBookmarked ? '⭐ 已收藏' : '⭐ 收藏'}
+              >
+                <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleToggleLike(e, app)}
+                className={`px-2 py-1 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  isLiked
+                    ? 'bg-rose-500 text-white border-rose-500'
+                    : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                }`}
+                title="❤️ Like"
+              >
+                <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-white' : 'fill-rose-500 text-rose-500'}`} />
+                <span className="font-mono">{app.likes || 0}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. 雙欄小卡片 (Grid Mode - 雙欄展示大圖卡片)
+    if (viewMode === 'grid') {
+      return (
+        <div
+          key={app.id}
+          onClick={() => handleSelect(app)}
+          className="bg-white rounded-2xl border border-stone-200 hover:border-indigo-400 overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group h-full"
+        >
+          <div className="relative h-28 sm:h-36 bg-stone-100 overflow-hidden group/img">
+            <img
+              src={coverImg}
+              alt={app.title}
+              className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: app.id, title: app.title }, 2);
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
+
+            <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none">
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
+                {primaryCategory}
+              </span>
+              {app.currentVersion && (
+                <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-blue-600/90 text-white shadow-xs">
+                  {app.currentVersion}
+                </span>
+              )}
+            </div>
+
+            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={(e) => handleToggleBookmark(e, app)}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer ${
+                  isBookmarked
+                    ? 'bg-amber-400 text-stone-950 scale-105'
+                    : 'bg-white/95 backdrop-blur-md text-stone-700 hover:bg-white'
+                }`}
+                title={isBookmarked ? '⭐ 已收藏' : '⭐ 收藏'}
+              >
+                <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleToggleLike(e, app)}
+                className={`h-7 px-2 rounded-lg flex items-center justify-center gap-1 text-[11px] font-bold transition-all shadow-md cursor-pointer ${
+                  isLiked
+                    ? 'bg-rose-500 text-white scale-105'
+                    : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white'
+                }`}
+                title="❤️ Like"
+              >
+                <Heart className={`w-3 h-3 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                <span className="font-mono">{app.likes || 0}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-3 flex-1 flex flex-col justify-between gap-2">
+            <div className="space-y-1">
+              <h3 className="text-xs sm:text-sm font-black text-stone-900 line-clamp-2 group-hover:text-indigo-600 transition-colors leading-snug">
+                {displayAppName ? (
+                  <>
+                    <span className="text-indigo-600 font-black mr-1">【{displayAppName}】</span>
+                    <span>{displayCleanTitle}</span>
+                  </>
+                ) : (
+                  app.title
+                )}
+              </h3>
+              <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
+                {app.description}
+              </p>
+            </div>
+
+            <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-1 text-[10px]">
+              <span className={`font-bold truncate max-w-[80px] ${authorColorClass}`}>
+                {authorDisplayName}
+              </span>
+              <span className="font-mono font-black text-indigo-700 flex items-center gap-0.5 shrink-0">
+                <Coins className="w-3 h-3" />
+                {(app.supportPoints || 0).toLocaleString()} 點
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 3. 大卡片 (Large Mode - 預設含封面大圖，像創點子創新提案那樣)
+    return (
+      <div
+        key={app.id}
+        onClick={() => handleSelect(app)}
+        className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 hover:border-indigo-400 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden cursor-pointer group relative"
+      >
+        {/* Cover Image / Header Banner (像創點子創新提案的大圖展示) */}
+        <div className="h-40 sm:h-48 bg-stone-100 relative overflow-hidden group/img">
+          <img
+            src={coverImg}
+            alt={app.title}
+            className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: app.id, title: app.title }, 2);
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
+
+          {/* Top Overlay Badges */}
+          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
+                {primaryCategory}
+              </span>
+              {app.currentVersion && (
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-600/90 backdrop-blur-md text-white shadow-xs">
+                  {app.currentVersion}
+                </span>
+              )}
+            </div>
+
+            {app.demoUrl ? (
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-700/80 flex items-center gap-1 shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>可線上體驗</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-950/80 backdrop-blur-md text-indigo-200 border border-indigo-700/80 shadow-xs">
+                軟體作品
+              </span>
+            )}
+          </div>
+
+          {/* ⭐ 收藏 + ❤️ Like 按鈕組 (像創點子那樣) */}
+          <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => handleToggleBookmark(e, app)}
+              className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer ${
+                isBookmarked
+                  ? 'bg-amber-400 text-stone-950 hover:bg-amber-300 scale-105'
+                  : 'bg-white/95 backdrop-blur-md text-stone-700 hover:bg-white hover:text-amber-600'
+              }`}
+              title={isBookmarked ? '⭐ 已收藏（點擊取消）' : '⭐ 收藏作品'}
+            >
+              <Star className={`w-4 h-4 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => handleToggleLike(e, app)}
+              className={`h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 text-xs font-bold transition-all shadow-md cursor-pointer ${
+                isLiked
+                  ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105'
+                  : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white hover:text-rose-500'
+              }`}
+              title={isLiked ? '❤️ 已 Like（點擊取消）' : '❤️ Like 此作品'}
+            >
+              <Heart className={`w-4 h-4 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+              <span className="font-mono">{app.likes || 0}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Card Content Body */}
+        <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
+          <div className="space-y-2">
+            <h3 className="text-sm sm:text-base font-black text-stone-900 line-clamp-2 group-hover:text-indigo-600 transition-colors leading-snug">
+              {displayAppName ? (
+                <>
+                  <span className="text-indigo-600 font-black mr-1">【{displayAppName}】</span>
+                  <span>{displayCleanTitle}</span>
+                </>
+              ) : (
+                app.title
+              )}
+            </h3>
+            <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+              {app.description}
+            </p>
+
+            {/* 關聯痛點貼文連結 (解決痛點) */}
+            {(referencedPainPointObj || app.referencedPainPoint) && (
+              <div
+                onClick={(e) => {
+                  if (referencedPainPointObj) {
+                    e.stopPropagation();
+                    setSelectedQuestion(referencedPainPointObj);
+                  }
+                }}
+                className={`p-2 rounded-xl bg-rose-50/90 border border-rose-200/80 text-[11px] text-rose-900 flex items-center justify-between gap-1.5 transition-colors ${
+                  referencedPainPointObj ? 'hover:bg-rose-100/80 hover:border-rose-300 cursor-pointer' : ''
+                }`}
+                title={referencedPainPointObj ? '點擊前往查看對應之痛點貼文' : undefined}
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-rose-600 shrink-0">🎯</span>
+                  <span className="truncate font-bold">
+                    解決痛點：{referencedPainPointObj ? referencedPainPointObj.title : app.referencedPainPoint?.replace(/^\[[^\]]+\]\s*/, '')}
+                  </span>
+                </div>
+                {referencedPainPointObj && (
+                  <span className="text-[10px] font-black text-rose-700 shrink-0">
+                    查看痛點 ➔
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 開發者與技術架構 */}
+          <div className="flex items-center gap-2.5 pt-1 border-t border-stone-100">
+            <img
+              src={authorDisplayAvatar}
+              alt={authorDisplayName}
+              className="w-7 h-7 rounded-full object-cover border border-stone-200 shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <div className={`text-xs font-bold truncate ${authorColorClass}`}>
+                {authorDisplayName}
+              </div>
+              {app.techArchitecture && (
+                <div className="text-[10px] text-indigo-700 font-semibold truncate">
+                  {app.techArchitecture}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Data Stats: ［點數支持］ & 按讚收藏 (完全像創點子創新提案那樣！) */}
+          <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-2xl p-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <div className="w-7 h-7 rounded-xl bg-indigo-500/20 text-indigo-800 flex items-center justify-center shrink-0">
+                <Coins className="w-4 h-4 text-indigo-700" />
+              </div>
+              <div>
+                <div className="text-[10px] text-stone-500 font-bold">點數支持</div>
+                <div className="text-xs font-mono font-black text-indigo-950">
+                  {(app.supportPoints || 0).toLocaleString()} 點
+                </div>
+              </div>
+            </div>
+
+            <div className="text-right">
+              <div className="text-[10px] text-stone-500 font-bold">Like</div>
+              <div className="text-xs font-mono font-black text-rose-600 flex items-center gap-1 justify-end">
+                <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
+                <span>{app.likes || 0}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Action Footer */}
+          <div className="flex items-center justify-between pt-1 text-[11px] font-bold text-stone-500">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1" title="瀏覽次數">
+                <Eye className="w-3.5 h-3.5 text-stone-400" />
+                <span>{app.views || 0}</span>
+              </span>
+              <span className="flex items-center gap-1" title="討論數">
+                <MessageCircle className="w-3.5 h-3.5 text-stone-400" />
+                <span>{discussionsCount}</span>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {app.demoUrl && (
+                <a
+                  href={app.demoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="px-2.5 py-1 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold text-[10px] flex items-center gap-1 transition-colors"
+                  title="開啟線上試用網址"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>體驗</span>
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={(e) => handleShare(e, app)}
+                className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                title="分享作品"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-5 animate-in fade-in duration-200">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200">
       {/* 專區 Main Banner Block (與創點子統一佈局) */}
       <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-indigo-500/10 via-indigo-100/40 to-purple-50 border-2 border-indigo-300 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-8 -mt-8 w-36 h-36 bg-indigo-200/40 rounded-full blur-2xl pointer-events-none" />
@@ -445,6 +918,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
         (() => {
           const isGuest = isGuestUser(currentUser);
           const visibleApps = isGuest ? filteredApps.slice(0, 3) : filteredApps;
+          const blurredApps = isGuest && filteredApps.length > 3 ? filteredApps.slice(3, 6) : [];
 
           return (
             <>
@@ -454,24 +928,10 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                     ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
                     : viewMode === 'list'
                     ? 'flex flex-col space-y-2.5 sm:space-y-3'
-                    : 'grid grid-cols-1 md:grid-cols-2 gap-3.5'
+                    : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5'
                 }
               >
-                {visibleApps.map((q) => {
-                  const questionAnswers = (answers || []).filter((a) => a.questionId === q.id);
-                  const solutionsCount = questionAnswers.filter((a) => a.type === 'solution' || !a.type).length;
-                  const discussionsCount = questionAnswers.filter((a) => a.type === 'discussion').length;
-                  return (
-                    <QuestionCard
-                      key={q.id}
-                      question={q}
-                      solutionsCount={solutionsCount}
-                      discussionsCount={discussionsCount}
-                      viewMode={viewMode}
-                      onClick={() => handleSelect(q)}
-                    />
-                  );
-                })}
+                {visibleApps.map(renderVibeAppCard)}
               </div>
 
               {isGuest && filteredApps.length > 3 && (
@@ -480,6 +940,19 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                   totalCount={filteredApps.length}
                   boardName="VibeCoding 展場"
                   onOpenAuth={() => openAuthModal('login')}
+                  blurredPreviewChildren={
+                    <div
+                      className={
+                        viewMode === 'grid'
+                          ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
+                          : viewMode === 'list'
+                          ? 'flex flex-col space-y-2.5 sm:space-y-3'
+                          : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5'
+                      }
+                    >
+                      {blurredApps.map(renderVibeAppCard)}
+                    </div>
+                  }
                 />
               )}
             </>
@@ -489,4 +962,3 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
     </div>
   );
 };
-

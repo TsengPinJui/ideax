@@ -41,6 +41,79 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#049',
+    version: 'v2.2.3',
+    releaseDate: '2026.10.17',
+    releaseTime: '23:55',
+    author: 'IdeaX 創點子團隊',
+    summary: '管理員001密碼更新為 Ideax_0922，並修復首頁看板切換異常回滾至頁面頂端問題。',
+    changes: [
+      '官方管理員 Admin_001 (a000000001 / user-admin) 登入與資料庫密碼更新為 Ideax_0922。',
+      '修復首頁切換主題專區與看板時視窗異常回滾至頁面最頂端問題：徹底移除 SpecialZonesTopBar 之 activeEl.scrollIntoView()，改採容器限定之水平平滑捲動 (container.scrollTo)，保護全頁垂直視角穩定。',
+      '設定 window.history.scrollRestoration = manual，避免 SPA 路由切換時瀏覽器自動強制回滾至 (0, 0)。',
+      '事件 ideax_select_special_zone 監聽處理取消 window.scrollTo(0)，改為平滑對齊市場看板視角。',
+      '平台版本推進至 v2.2.3 (#049)。',
+    ],
+  },
+  {
+    seqNumber: '#048',
+    version: 'v2.2.2',
+    releaseDate: '2026.10.17',
+    releaseTime: '23:45',
+    author: 'IdeaX 創點子團隊',
+    summary: '導入 Google 廣告與網站數據分析追蹤 (Google tag / gtag.js: G-4VJ5394Y8K)。',
+    changes: [
+      '於 index.html 植入官方 Google tag (gtag.js: G-4VJ5394Y8K) 追蹤代碼。',
+      '建立 src/utils/googleAnalytics.ts 模組，支援 SPA 虛擬頁面瀏覽 (trackPageView) 與自定義事件追蹤 (trackEvent)。',
+      '於 App.tsx 路由與主題專區切換處串接自動發送虛擬頁面檢視，掌握使用者跳轉行為。',
+      'PWA Service Worker (sw.js) 略過 googletagmanager.com 與 google-analytics.com，確保追蹤封包即時回報。',
+      '平台版本推進至 v2.2.2 (#048)。',
+    ],
+  },
+  {
+    seqNumber: '#047',
+    version: 'v2.2.1',
+    releaseDate: '2026.10.17',
+    releaseTime: '23:35',
+    author: 'IdeaX 創點子團隊',
+    summary: '特定主題專區切換列版位重構：修復手機版與電腦版切換列被切掉問題，支援五欄自適應與雙欄平鋪。',
+    changes: [
+      '特定主題專區切換列重構為全寬獨立置頂版位，電腦版五欄自適應均分無溢出無裁切。',
+      '手機版支援「全部平鋪」雙欄網格（預設 100% 完整顯示絕不裁切）與「精簡滑動」（附左右平移箭頭與滑動指示）兩種模式。',
+      '清理 CategoryFilter 分類列混入的主題專區按鈕，解決分類與排序檢視模式在窄螢幕被擠壓推擠問題。',
+      '移除各專區內部重複渲染之頂部切換列，統一由看板頂端常駐切換。',
+      '平台版本推進至 v2.2.1 (#047)。',
+    ],
+  },
+  {
+    seqNumber: '#046',
+    version: 'v2.2.0',
+    releaseDate: '2026.10.17',
+    releaseTime: '23:10',
+    author: 'IdeaX 創點子團隊',
+    summary: '導入 Vercel Web Analytics，統計全站訪客數與頁面瀏覽量。',
+    changes: [
+      '安裝 @vercel/analytics，並於 src/main.tsx 掛載 <Analytics /> 元件。',
+      'PWA Service Worker 略過 /_vercel/ 路徑，避免統計腳本被快取成舊版。',
+      '平台版本推進至 v2.2.0 (#046)。',
+    ],
+  },
+  {
+    seqNumber: '#045',
+    version: 'v2.1.9',
+    releaseDate: '2026.10.17',
+    releaseTime: '22:55',
+    author: 'IdeaX 創點子團隊',
+    summary: '資安強化：移除寫死於程式碼與前端打包檔中的 Dify API 金鑰，金鑰改為僅從伺服器端環境變數讀取；.env.example 改放範例假值。',
+    changes: [
+      '移除 server.ts、vite.config.ts、difyClientService.ts 中寫死的三組 Dify 金鑰備用值；前端打包檔不再包含任何 Dify 金鑰。',
+      '未設定 Dify 金鑰時，AI 功能自動改由 Google Gemini 備援，不影響使用。',
+      '後台 AI CRM 設定頁的金鑰欄位提示改為範例格式，管理員仍可自行填入金鑰（僅存於該瀏覽器）。',
+      '.env.example 改為範例假值，並補上 DIFY_MARKET_ADVISOR_API_KEY 欄位。',
+      '平台版本推進至 v2.1.9 (#045)。',
+    ],
+  },
+  {
     seqNumber: '#036',
     version: 'v2.1.0',
     releaseDate: '2026.10.16',
@@ -483,10 +556,10 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         summary: '管理當前系統運作版本號、增量序號與最後更新時間戳記。',
         content: `### 當前運行版本與序號規格
 
-* **版本號碼**：v2.1.0
-* **遞增序號**：#036（從 #001 依序遞增）
-* **最後更新日期**：2026.10.16
-* **最後更新時間**：20:15（依發布時戳靜態留存，不隨時鐘跳動）
+* **版本號碼**：v2.2.3
+* **遞增序號**：#049（從 #001 依序遞增）
+* **最後更新日期**：2026.10.17
+* **最後更新時間**：23:55（依發布時戳靜態留存，不隨時鐘跳動）
 * **發布狀態**：Production（正式運作中）
 * **運作模式**：單日 0.2.0 增量限制、四選一平台運營模式與完整歷史版本隨時調閱與下載。`,
       },
@@ -545,6 +618,11 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#049** | **v2.2.3** | 2026.10.17 | 23:55 | IdeaX 創點子核心 | 管理員001密碼全面更新為 Ideax_0922；修復首頁看板切換異常回滾至頁面頂端問題 |
+| **#048** | **v2.2.2** | 2026.10.17 | 23:45 | IdeaX 創點子核心 | 導入 Google 廣告與網站數據分析追蹤 (Google tag / gtag.js: G-4VJ5394Y8K) |
+| **#047** | **v2.2.1** | 2026.10.17 | 23:35 | IdeaX 創點子核心 | 特定主題專區切換列版位重構：修復手機與電腦版切換列被切掉問題，支援五欄自適應與雙欄平鋪 |
+| **#046** | **v2.2.0** | 2026.10.17 | 23:10 | IdeaX 創點子核心 | 導入 Vercel Web Analytics 統計訪客與頁面瀏覽，Service Worker 略過 /_vercel/ 路徑 |
+| **#045** | **v2.1.9** | 2026.10.17 | 22:55 | IdeaX 創點子核心 | 資安強化：移除寫死的 Dify API 金鑰，前端打包檔不再含金鑰，改由伺服器環境變數讀取 |
 | **#036** | **v2.1.0** | 2026.10.16 | 20:15 | IdeaX 創點子核心 | 初始畫面改用與真實載入時間掛勾之進度條動畫（其他操作保留轉圈載入）、擴充日常生活痛點達日常3:專業2比例（共32~35則）、版本紀錄拆分為必填更新摘要與選填內容詳述（預設收合）、痛點橙黃色標籤與「AI摘要」標題更新 |
 | **#035** | **v2.0.8** | 2026.10.16 | 11:30 | IdeaX 創點子核心 | 軟體提案支援最多 3 個分類（網站程式、AI工具、小遊戲、自動化、擴充功能）、新增 NexSight 洞鑑與迷宮戰爭、子領域看板改為子領域、介面與文案去 AI 化精簡 |
 | **#034** | **v2.0.5** | 2026.10.16 | 04:10 | IdeaX 創點子核心 | 首頁行動按鈕整合（「立即發布!」、「找專家 / 徵才」、「探索最新熱門」）、VibeCoding 作品名稱必填與左下角藍色標籤、刊登時間新增 60 天與永久選項、次分類橫幅改為「此版面熱門趨勢」 |

@@ -436,7 +436,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      // 1. 特殊判定：官方管理員 (Admin_001 / John930521)
+      // 1. 特殊判定：官方管理員 (Admin_001 / Ideax_0922)
       const isAdminIdentifier =
         identifier.toLowerCase() === 'admin_001' ||
         identifier.toLowerCase() === 'admin' ||
@@ -444,11 +444,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         identifier.toLowerCase() === 'operations@ideax.io';
 
       if (isAdminIdentifier) {
-        if (password === 'John930521') {
+        if (password === 'Ideax_0922') {
           const adminUser: UserType = availableUsers.find((u) => u.id === 'user-admin') || {
             id: 'user-admin',
             username: 'Admin_001',
-            password: 'John930521',
+            password: 'Ideax_0922',
             name: 'IdeaX 管理團隊',
             title: '平台總管',
             avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
@@ -559,7 +559,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           const expectedPassword =
             localMatched.password ||
             (localMatched.id === 'user-admin'
-              ? 'John930521'
+              ? 'Ideax_0922'
               : localMatched.id.startsWith('solver-') || localMatched.id.startsWith('user-')
               ? 'Ideax123456'
               : undefined);
@@ -611,7 +611,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const expectedPassword =
           localMatched.password ||
           (localMatched.id === 'user-admin'
-            ? 'John930521'
+            ? 'Ideax_0922'
             : localMatched.id.startsWith('solver-') || localMatched.id.startsWith('user-')
             ? 'Ideax123456'
             : undefined);

@@ -1156,8 +1156,9 @@ async function handleMarketAdvisorJinaCrawl(req: Request, res: Response) {
 // Dify Agent Stream Client & JSON Extractor (市場顧問專屬 Agent)
 // ==========================================
 async function callDifyAgentStream(query: string, user: string = 'market_advisor', apiKeyOverride?: string): Promise<string | null> {
-  // 市場顧問專用 API Key：app-Hwi0hh3nGTIMpAMybQiKSNoO
-  const difyKey = apiKeyOverride || process.env.DIFY_MARKET_ADVISOR_API_KEY || 'app-Hwi0hh3nGTIMpAMybQiKSNoO';
+  // 市場顧問專用 API Key（僅從環境變數讀取，未設定則直接回傳 null 交由 Gemini 備援）
+  const difyKey = apiKeyOverride || process.env.DIFY_MARKET_ADVISOR_API_KEY || '';
+  if (!difyKey) return null;
   const difyBaseUrl = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
 
   const controller = new AbortController();
@@ -1263,13 +1264,13 @@ app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
   const { agentType, query, inputs } = req.body;
 
   const difyBaseUrl = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
-  let apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || 'app-Hwi0hh3nGTIMpAMybQiKSNoO';
+  let apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || '';
   if (agentType === 'cs_agent') {
-    apiKey = process.env.DIFY_CS_API_KEY || process.env.DIFY_API_KEY || 'app-VQ8gZUbV7tVlW1x916o1oeI6';
+    apiKey = process.env.DIFY_CS_API_KEY || process.env.DIFY_API_KEY || '';
   } else if (agentType === 'aicrm_agent') {
-    apiKey = process.env.DIFY_AICRM_API_KEY || 'app-WnL0BqYzHviViu4Oogmbj85j';
+    apiKey = process.env.DIFY_AICRM_API_KEY || '';
   } else if (agentType === 'market_advisor') {
-    apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || 'app-Hwi0hh3nGTIMpAMybQiKSNoO';
+    apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || '';
   }
 
   const agentLabel = agentType === 'aicrm_agent' ? 'AICRM 業務顧問' : agentType === 'cs_agent' ? '官方客服特助' : '市場顧問';

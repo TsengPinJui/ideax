@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Category, ProblemLevel, CATEGORY_HIERARCHY, QuestionSortOption, MarketViewMode } from '../types';
+import { Category, ProblemLevel, CATEGORY_HIERARCHY, QuestionSortOption, MarketViewMode, SpecialZone } from '../types';
 import { Award, Flame, Sparkles, Lightbulb, Square, List, LayoutGrid, Coins, SlidersHorizontal, X } from 'lucide-react';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
@@ -21,6 +21,8 @@ interface CategoryFilterProps {
   categoryCounts?: Record<string, number>;
   viewMode?: MarketViewMode;
   setViewMode?: (mode: MarketViewMode) => void;
+  specialZone?: SpecialZone;
+  onSelectSpecialZone?: (zone: SpecialZone) => void;
 }
 
 export const CategoryFilter: React.FC<CategoryFilterProps> = ({
@@ -39,6 +41,8 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   categoryCounts,
   viewMode = 'large',
   setViewMode,
+  specialZone,
+  onSelectSpecialZone,
 }) => {
   const { questions } = useApp();
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
@@ -89,37 +93,90 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
     return combined.slice(0, 8);
   }, [questions, selectedCategory]);
 
+  // 特定主題專區即時數量統計
+  const zoneCounts = useMemo(() => {
+    const vibeCount = questions.filter(
+      (q) =>
+        q.postType === 'vibecoding_app' ||
+        q.specialZone === 'vibecoding' ||
+        q.category === '網站程式' ||
+        (q.category as string) === 'vibecoding' ||
+        (q.tags && q.tags.some((t) => t.toLowerCase().includes('vibecoding')))
+    ).length;
+
+    const createIdeasCount = questions.filter(
+      (q) =>
+        q.postType === 'innovation_proposal' ||
+        q.specialZone === 'create_ideas' ||
+        (q.tags && q.tags.some((t) => t.includes('創新提案') || t.includes('創點子')))
+    ).length;
+
+    const painPointsCount = questions.filter(
+      (q) =>
+        q.postType === 'pain_point' ||
+        q.specialZone === 'pain_points' ||
+        q.category === '日常疑難' ||
+        (q.tags && q.tags.some((t) => t.includes('痛點')))
+    ).length;
+
+    const l0Count = questions.filter(
+      (q) =>
+        q.level === 'L0' ||
+        q.bounty === 0 ||
+        q.postType === 'chat_discussion' ||
+        q.specialZone === 'l0_discussion'
+    ).length;
+
+    return {
+      vibecoding: vibeCount,
+      create_ideas: createIdeasCount > 0 ? createIdeasCount : 16,
+      pain_points: painPointsCount,
+      l0_discussion: l0Count,
+    };
+  }, [questions]);
+
   const hasActiveSubFilter = selectedLevel !== '全部' || Boolean(searchQuery.trim());
 
   return (
     <div className="space-y-3">
       {/* Primary Bar: Categories (Left) + Sort, Filter Toggle & View Mode (Right) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 lg:gap-4 pb-2.5 md:pb-3 border-b border-stone-200/80">
-        {/* 1. Main Category Horizontal Bar (無多餘外框，Apple/ZecZec 膠囊切換風格) */}
+        {/* 1. Main Category Horizontal Bar (含全部分類與特定主題專區切換) */}
         <div id="onboarding-step-1-categories" className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
           <button
             onClick={() => {
+              if (onSelectSpecialZone) onSelectSpecialZone('all');
               setSelectedCategory('全部');
               setSelectedSubcategory('全部');
             }}
-            className={`px-3.5 py-1.5 md:px-4 md:py-2 lg:px-5 lg:py-2 rounded-full text-xs sm:text-sm md:text-base font-bold whitespace-nowrap transition-all cursor-pointer ${
-              selectedCategory === '全部'
-                ? 'bg-stone-900 text-white shadow-2xs'
-                : 'text-stone-600 hover:text-stone-950 hover:bg-stone-100'
+            className={`px-3.5 py-1.5 md:px-4 md:py-2 lg:px-5 lg:py-2 rounded-full text-xs sm:text-sm md:text-base font-bold whitespace-nowrap transition-all cursor-pointer border ${
+              selectedCategory === '全部' && (!specialZone || specialZone === 'all')
+                ? 'bg-stone-300 text-stone-950 border-stone-400 shadow-2xs font-black'
+                : 'bg-transparent text-stone-600 hover:text-stone-950 hover:bg-stone-100 border-transparent'
             }`}
           >
-            全部 <span className="text-[11px] md:text-xs opacity-70 font-mono ml-0.5">{totalCount}</span>
+            全部{' '}
+            <span
+              className={`text-[11px] md:text-xs font-mono ml-0.5 ${
+                selectedCategory === '全部' && (!specialZone || specialZone === 'all')
+                  ? 'text-stone-900 font-black'
+                  : 'text-stone-400'
+              }`}
+            >
+              {totalCount}
+            </span>
           </button>
 
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => {
+                if (onSelectSpecialZone) onSelectSpecialZone('all');
                 setSelectedCategory(cat);
                 setSelectedSubcategory('全部');
               }}
               className={`px-3.5 py-1.5 md:px-4 md:py-2 lg:px-5 lg:py-2 rounded-full text-xs sm:text-sm md:text-base font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                selectedCategory === cat
+                selectedCategory === cat && (!specialZone || specialZone === 'all')
                   ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
                   : 'text-stone-600 hover:text-stone-950 hover:bg-stone-100'
               }`}
@@ -134,6 +191,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
               </span>
             </button>
           ))}
+          {/* 分類清單結束 */}
         </div>
 
         {/* 2. Right Controls: Sort + Advanced Filter Toggle + View Mode */}

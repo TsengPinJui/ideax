@@ -1,5 +1,6 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import { Analytics } from '@vercel/analytics/react';
 import App from './App.tsx';
 import './index.css';
 
@@ -38,5 +39,7 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
+    {/* Vercel Web Analytics：統計訪客與頁面瀏覽（僅在 Vercel 部署環境回報資料） */}
+    <Analytics />
   </StrictMode>,
 );

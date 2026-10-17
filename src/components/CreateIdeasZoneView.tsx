@@ -51,6 +51,7 @@ import { findReferencedPainPoint } from '../utils/painPointLinking';
 import { getSimulatedCommentsForProposalId } from '../data/virtualProposalsSeed';
 import { isGuestUser, getUserNameColorClass } from '../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
+import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 
 export function getRemainingDaysText(unpublishAt?: string): string {
   if (!unpublishAt || unpublishAt === '永久' || unpublishAt === '永久刊登') return '永久';
@@ -71,6 +72,7 @@ interface CreateIdeasZoneViewProps {
   isPinned?: boolean;
   onOpenAuth?: () => void;
   onUpdateProposalPublication?: (proposalId: string, unpublishAt?: string, isUnpublished?: boolean) => void;
+  onSwitchZone?: (zone: import('../types').SpecialZone) => void;
 }
 
 export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
@@ -82,6 +84,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   isPinned = false,
   onOpenAuth,
   onUpdateProposalPublication,
+  onSwitchZone,
 }) => {
   const {
     currentUser,
@@ -534,7 +537,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200">
       {/* 專區 Main Banner Block */}
       <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-100/50 to-orange-50 border-2 border-amber-300 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-8 -mt-8 w-36 h-36 bg-amber-200/40 rounded-full blur-2xl pointer-events-none" />
@@ -860,63 +863,83 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
               );
             }
 
-            // 2. 小卡片 (Grid Mode - 雙欄緊湊卡片)
+            // 2. 小卡片 (Grid Mode - 雙欄展示大圖卡片)
             if (viewMode === 'grid') {
+              const coverImg =
+                (proposal.images && proposal.images.length > 0 && proposal.images[0]) ||
+                (proposal as any).coverImage ||
+                getUniqueProposalCoverImage(proposal);
               return (
                 <div
                   key={proposal.id}
                   onClick={() => handleOpenProposalInCreateIdeas(proposal)}
-                  className="bg-white rounded-2xl border border-stone-200 hover:border-amber-400 p-3 sm:p-3.5 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between gap-2 group h-full"
+                  className="bg-white rounded-2xl border border-stone-200 hover:border-amber-400 overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group h-full"
                 >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 truncate">
+                  <div className="relative h-28 sm:h-36 bg-stone-100 overflow-hidden group/img">
+                    <img
+                      src={coverImg}
+                      alt={proposal.title}
+                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: proposal.id }, 1);
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
+
+                    <div className="absolute top-2 left-2 pointer-events-none">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                         {trackInfo.name}
                       </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleBookmark(e, proposal)}
-                          className={`p-1 rounded-lg border text-[10px] font-bold flex items-center cursor-pointer ${
-                            isBookmarked
-                              ? 'bg-amber-50 text-amber-600 border-amber-300'
-                              : 'bg-stone-50 text-stone-400 border-stone-200 hover:text-amber-600'
-                          }`}
-                          title={isBookmarked ? '⭐ 已收藏' : '⭐ 收藏'}
-                        >
-                          <Star className={`w-3 h-3 ${isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleLike(e, proposal)}
-                          className={`p-1 px-1.5 rounded-lg text-[10px] font-bold flex items-center gap-0.5 cursor-pointer border ${
-                            isLiked
-                              ? 'bg-rose-500 text-white border-rose-500'
-                              : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
-                          }`}
-                          title="❤️ Like"
-                        >
-                          <Heart className={`w-3 h-3 ${isLiked ? 'fill-white' : 'fill-rose-500 text-rose-500'}`} />
-                          <span>{proposal.likeCount || 0}</span>
-                        </button>
-                      </div>
                     </div>
-                    <h3 className="text-xs sm:text-sm font-black text-stone-900 line-clamp-2 group-hover:text-amber-600 transition-colors leading-snug">
-                      {proposal.title}
-                    </h3>
-                    <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
-                      {proposal.summary}
-                    </p>
+
+                    <div className="absolute bottom-2 right-2 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleBookmark(e, proposal)}
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer ${
+                          isBookmarked
+                            ? 'bg-amber-400 text-stone-950 scale-105'
+                            : 'bg-white/95 backdrop-blur-md text-stone-700 hover:bg-white'
+                        }`}
+                        title={isBookmarked ? '⭐ 已收藏' : '⭐ 收藏'}
+                      >
+                        <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleLike(e, proposal)}
+                        className={`h-7 px-2 rounded-lg flex items-center justify-center gap-1 text-[11px] font-bold transition-all shadow-md cursor-pointer ${
+                          isLiked
+                            ? 'bg-rose-500 text-white scale-105'
+                            : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white'
+                        }`}
+                        title="❤️ Like"
+                      >
+                        <Heart className={`w-3 h-3 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                        <span className="font-mono">{proposal.likeCount || 0}</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-1 text-[10px]">
-                    <span className="font-bold text-stone-600 truncate max-w-[80px]">
-                      {proposal.authorName}
-                    </span>
-                    <span className="font-mono font-black text-amber-700 flex items-center gap-0.5 shrink-0">
-                      <Coins className="w-3 h-3" />
-                      {(proposal.supportPoints || 0).toLocaleString()}
-                    </span>
+                  <div className="p-3 flex-1 flex flex-col justify-between gap-2">
+                    <div className="space-y-1">
+                      <h3 className="text-xs sm:text-sm font-black text-stone-900 line-clamp-2 group-hover:text-amber-600 transition-colors leading-snug">
+                        {proposal.title}
+                      </h3>
+                      <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
+                        {proposal.summary}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-1 text-[10px]">
+                      <span className="font-bold text-stone-600 truncate max-w-[80px]">
+                        {proposal.authorName}
+                      </span>
+                      <span className="font-mono font-black text-amber-700 flex items-center gap-0.5 shrink-0">
+                        <Coins className="w-3 h-3" />
+                        {(proposal.supportPoints || 0).toLocaleString()} 點
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
@@ -929,63 +952,69 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                 onClick={() => handleOpenProposalInCreateIdeas(proposal)}
                 className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 hover:border-amber-400 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden cursor-pointer group relative"
               >
-                {/* Cover Image / Header Banner */}
-                <div className="h-36 sm:h-40 bg-stone-100 relative overflow-hidden">
-                  {proposal.images && proposal.images.length > 0 ? (
-                    <img
-                      src={proposal.images[0]}
-                      alt={proposal.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-amber-400/20 via-orange-200/30 to-amber-100 flex items-center justify-center">
-                      <Lightbulb className="w-12 h-12 text-amber-500/50" />
+                {/* Cover Image / Header Banner (像創點子創新提案的大圖展示) */}
+                {(() => {
+                  const coverImg =
+                    (proposal.images && proposal.images.length > 0 && proposal.images[0]) ||
+                    (proposal as any).coverImage ||
+                    getUniqueProposalCoverImage(proposal);
+                  return (
+                    <div className="h-40 sm:h-48 bg-stone-100 relative overflow-hidden group/img">
+                      <img
+                        src={coverImg}
+                        alt={proposal.title}
+                        className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: proposal.id }, 1);
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
+
+                      {/* Top Overlay Badges */}
+                      <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none">
+                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
+                          {trackInfo.name}
+                        </span>
+
+                        {proposal.unpublishAt && (
+                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-700/80 flex items-center gap-1 shadow-xs">
+                            <Clock className="w-3 h-3 text-emerald-400" />
+                            <span>刊登至 {proposal.unpublishAt}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* ⭐ 收藏 + ❤️ Like 按鈕組 (僅顯示圖示) */}
+                      <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleBookmark(e, proposal)}
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer ${
+                            isBookmarked
+                              ? 'bg-amber-400 text-stone-950 hover:bg-amber-300 scale-105'
+                              : 'bg-white/95 backdrop-blur-md text-stone-700 hover:bg-white hover:text-amber-600'
+                          }`}
+                          title={isBookmarked ? '⭐ 已收藏（點擊取消）' : '⭐ 收藏提案'}
+                        >
+                          <Star className={`w-4 h-4 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleLike(e, proposal)}
+                          className={`h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 text-xs font-bold transition-all shadow-md cursor-pointer ${
+                            isLiked
+                              ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105'
+                              : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white hover:text-rose-500'
+                          }`}
+                          title={isLiked ? '❤️ 已 Like（點擊取消）' : '❤️ Like 此提案'}
+                        >
+                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                          <span className="font-mono">{proposal.likeCount || 0}</span>
+                        </button>
+                      </div>
                     </div>
-                  )}
-
-                  {/* Top Overlay Badges */}
-                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none">
-                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
-                      {trackInfo.name}
-                    </span>
-
-                    {proposal.unpublishAt && (
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-700/80 flex items-center gap-1 shadow-xs">
-                        <Clock className="w-3 h-3 text-emerald-400" />
-                        <span>刊登至 {proposal.unpublishAt}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* ⭐ 收藏 + ❤️ Like 按鈕組 (僅顯示圖示) */}
-                  <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={(e) => handleToggleBookmark(e, proposal)}
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer ${
-                        isBookmarked
-                          ? 'bg-amber-400 text-stone-950 hover:bg-amber-300 scale-105'
-                          : 'bg-white/95 backdrop-blur-md text-stone-700 hover:bg-white hover:text-amber-600'
-                      }`}
-                      title={isBookmarked ? '⭐ 已收藏（點擊取消）' : '⭐ 收藏提案'}
-                    >
-                      <Star className={`w-4 h-4 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => handleToggleLike(e, proposal)}
-                      className={`h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 text-xs font-bold transition-all shadow-md cursor-pointer ${
-                        isLiked
-                          ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105'
-                          : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white hover:text-rose-500'
-                      }`}
-                      title={isLiked ? '❤️ 已 Like（點擊取消）' : '❤️ Like 此提案'}
-                    >
-                      <Heart className={`w-4 h-4 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
-                      <span className="font-mono">{proposal.likeCount || 0}</span>
-                    </button>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* Card Content Body */}
                 <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
@@ -1142,6 +1171,19 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                   totalCount={finalFilteredProposals.length}
                   boardName="創點子專區看板"
                   onOpenAuth={() => (onOpenAuth ? onOpenAuth() : openAuthModal('login'))}
+                  blurredPreviewChildren={
+                    <div
+                      className={
+                        viewMode === 'grid'
+                          ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
+                          : viewMode === 'list'
+                          ? 'flex flex-col space-y-2.5 sm:space-y-3'
+                          : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5'
+                      }
+                    >
+                      {blurredProposals.map(renderProposalCard)}
+                    </div>
+                  }
                 />
               )}
             </>

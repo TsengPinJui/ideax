@@ -1539,7 +1539,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                       /* LOCKED STATE: BLURRED CONTENT WITH PAYWALL OVERLAY (清透毛玻璃，文字更清晰透出) */
                       <div className="relative rounded-xl overflow-hidden pt-2">
                         {/* Blurred Mock Content (3 Dimensions Preview) */}
-                        <div className="filter blur-[0.75px] opacity-90 select-none pointer-events-none space-y-3 p-4 bg-black/30 rounded-xl border border-white/10">
+                        <div className="filter blur-[6px] opacity-85 select-none pointer-events-none space-y-3 p-4 bg-black/15 rounded-xl border border-white/10">
                           <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs space-y-1">
                             <span className="font-bold block">【核心癥結本質診斷】：</span>
                             <p>{preliminaryReport.problemAnalysis.coreDiagnosis || '專案關鍵痛點與商業邊界深度剖析...'}</p>
@@ -1565,8 +1565,8 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                         </div>
 
                         {/* Centered Paywall Unlock Overlay (高透毛玻璃) */}
-                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 sm:p-4 bg-stone-950/15 backdrop-blur-[0.75px] rounded-xl text-center space-y-3">
-                          <div className="bg-stone-900/85 backdrop-blur-md border border-amber-500/40 p-4 sm:p-5 rounded-2xl max-w-md w-full shadow-2xl space-y-2.5">
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 sm:p-4 bg-stone-950/15 backdrop-blur-[2.5px] rounded-xl text-center space-y-3">
+                          <div className="bg-stone-900/65 backdrop-blur-md border border-amber-500/35 p-4 sm:p-5 rounded-2xl max-w-md w-full shadow-2xl space-y-2.5">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-stone-950 flex items-center justify-center shadow-lg shadow-amber-500/20 animate-pulse mx-auto">
                               <Lock className="w-5 h-5" />
                             </div>

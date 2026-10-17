@@ -24,12 +24,12 @@ const STORAGE_KEYS = {
   WEB_URL: 'ideax_dify_aicrm_web_url',
 };
 
-// 預設金鑰與端點
+// 預設端點（金鑰不寫死在前端，需由管理員於後台設定）
 const DEFAULT_CONFIG: DifyConfig = {
   baseUrl: (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, ''),
-  aicrmKey: process.env.DIFY_AICRM_API_KEY || 'app-WnL0BqYzHviViu4Oogmbj85j',
-  csKey: process.env.DIFY_CS_API_KEY || 'app-VQ8gZUbV7tVlW1x916o1oeI6',
-  marketAdvisorKey: process.env.DIFY_MARKET_ADVISOR_API_KEY || 'app-Hwi0hh3nGTIMpAMybQiKSNoO',
+  aicrmKey: process.env.DIFY_AICRM_API_KEY || '',
+  csKey: process.env.DIFY_CS_API_KEY || '',
+  marketAdvisorKey: process.env.DIFY_MARKET_ADVISOR_API_KEY || '',
   aicrmWebUrl: process.env.DIFY_AICRM_WEB_URL && process.env.DIFY_AICRM_WEB_URL.includes('udify')
     ? process.env.DIFY_AICRM_WEB_URL
     : 'https://udify.app/agent/BnAiF81AGw454x0u',

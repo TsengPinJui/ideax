@@ -1,5 +1,5 @@
 import { VibeCodingExhibitionView } from './components/VibeCodingExhibitionView';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
@@ -28,6 +28,7 @@ import { isGuestUser } from './utils/userDisplay';
 import { ChatView } from './components/ChatView';
 import { StarSeasonView } from './components/challenge/StarSeasonView';
 import { CreateIdeasZoneView } from './components/CreateIdeasZoneView';
+import { SpecialZonesTopBar } from './components/SpecialZonesTopBar';
 import { DraggableStarSeasonFloat } from './components/challenge/DraggableStarSeasonFloat';
 import { DraggableChuangdianziFloat } from './components/challenge/DraggableChuangdianziFloat';
 import { Footer } from './components/Footer';
@@ -45,6 +46,7 @@ import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, P
 import { isMockQuestionId } from './data/mockData';
 import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } from './utils/questionUtils';
 import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
+import { trackPageView } from './utils/googleAnalytics';
 import {
   recordUserSearchKeyword,
   recordUserBoard,
@@ -645,6 +647,9 @@ function MainContent() {
         }, isSpecialZonePath ? 150 : 500);
         return () => clearTimeout(timer);
       }
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+      }
     }
   }, []);
 
@@ -662,9 +667,14 @@ function MainContent() {
     }
   }, [selectedQuestion]);
 
-  // Scroll to top and sync URL pathname when switching activeTab / specialZone
+  // 記錄前一次的分頁，僅在主要分頁切換時回到頁面最頂部（如 explore 切換至 star_season 或 solvers）
+  // 在首頁內部選擇看板、切換主題專區 (specialZone) 或分類時，絕對不回滾至頁面最頂端，維持視角平順
+  const prevActiveTabRef = useRef(activeTab);
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (prevActiveTabRef.current !== activeTab) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      prevActiveTabRef.current = activeTab;
+    }
     try {
       if (typeof window !== 'undefined') {
         const curPath = window.location.pathname.toLowerCase();
@@ -780,6 +790,14 @@ function MainContent() {
       }
     } catch {}
   }, [activeTab, specialZone, initialPostType]);
+
+  // Google Analytics (G-4VJ5394Y8K): 自動記錄 SPA 頁面與主題看板瀏覽
+  useEffect(() => {
+    try {
+      const curPath = window.location.pathname + window.location.search + window.location.hash;
+      trackPageView(curPath || '/', document.title);
+    } catch {}
+  }, [activeTab, specialZone, selectedQuestion?.id]);
 
   const handleNavigateToSitelink = (item: GoogleSitelinkItem) => {
     setSelectedQuestion(null);
@@ -917,8 +935,10 @@ function MainContent() {
         setSelectedCategory('全部');
         setSelectedSubcategory('全部');
         setSelectedQuestion(null);
-        setSelectedSolver(null);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const el = document.getElementById('market-grid');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     };
 
@@ -1828,8 +1848,16 @@ function MainContent() {
             {/* Questions Market Grid Section */}
             <div id="market-grid" className="scroll-mt-20 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-4 pb-12 sm:pt-6 sm:pb-16">
               <div className="space-y-3 sm:space-y-6">
+                {/* 頂部特定主題專區切換列 (常駐置頂，手機版與電腦版皆完美適配無裁切，隨時切換) */}
+                <SpecialZonesTopBar
+                  currentZone={specialZone}
+                  onSelectZone={handleSelectSpecialZone}
+                  questions={questions}
+                  showAllOption={true}
+                />
+
                 {/* Special Zone Banners */}
-                                {specialZone === 'vibecoding' && (
+                {specialZone === 'vibecoding' && (
                   <VibeCodingExhibitionView
                     onSelectApp={(app) => {
                       setSelectedQuestion(app);
@@ -1838,10 +1866,10 @@ function MainContent() {
                     onOpenCreateApp={() => handleOpenCreateWithType('vibecoding_app')}
                     onCloseZone={() => {
                       setSpecialZone('all');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     onTogglePin={() => handleTogglePin('special_zone', 'vibecoding')}
                     isPinned={pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'vibecoding'}
+                    onSwitchZone={handleSelectSpecialZone}
                   />
                 )}
                 {specialZone === 'create_ideas' && (
@@ -1875,11 +1903,11 @@ function MainContent() {
                     }}
                     onCloseZone={() => {
                       setSpecialZone('all');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     onTogglePin={() => handleTogglePin('special_zone', 'create_ideas')}
                     isPinned={pinnedBoard?.type === 'special_zone' && pinnedBoard?.id === 'create_ideas'}
                     onOpenAuth={() => openAuthModal('login')}
+                    onSwitchZone={handleSelectSpecialZone}
                   />
                 )}
 
@@ -1893,7 +1921,6 @@ function MainContent() {
                       onClick={() => {
                         setSpecialZone('all');
                         setShowOnlyZoneFavorites(false);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                       className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-stone-500 hover:text-stone-900 border border-rose-300 shadow-2xs flex items-center justify-center transition-all cursor-pointer active:scale-95"
                       title="回到全部問題"
@@ -2145,7 +2172,6 @@ function MainContent() {
                       onClick={() => {
                         setSpecialZone('all');
                         setShowOnlyZoneFavorites(false);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                       className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-stone-500 hover:text-stone-900 border border-sky-300 shadow-2xs flex items-center justify-center transition-all cursor-pointer active:scale-95"
                       title="回到全部問題"
@@ -2557,6 +2583,7 @@ function MainContent() {
                   (() => {
                     const isGuest = isGuestUser(currentUser);
                     const visibleQuestions = isGuest ? filteredQuestions.slice(0, 3) : filteredQuestions;
+                    const blurredQuestions = isGuest && filteredQuestions.length > 3 ? filteredQuestions.slice(3, 6) : [];
                     const boardDisplayName =
                       specialZone === 'pain_points'
                         ? '痛點許願池'
@@ -2614,6 +2641,27 @@ function MainContent() {
                             totalCount={filteredQuestions.length}
                             boardName={boardDisplayName}
                             onOpenAuth={() => openAuthModal('login')}
+                            blurredPreviewChildren={
+                              <div
+                                className={
+                                  viewMode === 'grid'
+                                    ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 items-stretch'
+                                    : viewMode === 'list'
+                                    ? 'flex flex-col space-y-2.5 sm:space-y-3'
+                                    : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
+                                }
+                              >
+                                {blurredQuestions.map((q, idx) => (
+                                  <QuestionCard
+                                    key={`gate-blur-${q.id || 'question'}-${idx}`}
+                                    question={q}
+                                    solutionsCount={0}
+                                    discussionsCount={0}
+                                    viewMode={viewMode}
+                                  />
+                                ))}
+                              </div>
+                            }
                           />
                         )}
                       </>

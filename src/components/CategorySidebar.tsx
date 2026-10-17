@@ -345,7 +345,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
             }}
             className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group shadow-2xs ${
               selectedCategory === '全部' && specialZone === 'all' && activeTab === 'explore'
-                ? 'bg-stone-50 border-stone-300 ring-2 ring-stone-200/80 shadow-xs'
+                ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-200/80 shadow-xs'
                 : 'bg-white hover:bg-stone-50 border-stone-200 hover:border-stone-300'
             }`}
           >
@@ -353,7 +353,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               <div
                 className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border transition-colors ${
                   selectedCategory === '全部' && specialZone === 'all' && activeTab === 'explore'
-                    ? 'bg-white border-stone-300 text-amber-600 shadow-2xs'
+                    ? 'bg-white border-amber-300 text-amber-600 shadow-2xs'
                     : 'bg-stone-50 border-stone-200 text-stone-400 group-hover:text-stone-600'
                 }`}
               >
@@ -362,7 +362,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
               <span
                 className={`text-xs sm:text-sm font-black transition-colors ${
                   selectedCategory === '全部' && specialZone === 'all' && activeTab === 'explore'
-                    ? 'text-stone-950 font-black'
+                    ? 'text-amber-950 font-black'
                     : 'text-stone-800 group-hover:text-stone-950'
                 }`}
               >

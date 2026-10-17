@@ -1242,6 +1242,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           (() => {
             const isGuest = isGuestUser(currentUser);
             const visibleProposals = isGuest ? sortedProposals.slice(0, 3) : sortedProposals;
+            const blurredProposals = isGuest && sortedProposals.length > 3 ? sortedProposals.slice(3, 6) : [];
 
             const renderProposalCard = (proposal: StarSeasonProposal, idx: number) => {
               const currentPoints = proposal.supportPoints || 0;
@@ -1568,6 +1569,11 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                     totalCount={sortedProposals.length}
                     boardName="創星季解方提案看板"
                     onOpenAuth={onOpenAuth}
+                    blurredPreviewChildren={
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {blurredProposals.map((proposal, idx) => renderProposalCard(proposal, idx + 3))}
+                      </div>
+                    }
                   />
                 )}
               </>
@@ -1601,6 +1607,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
           (() => {
             const isGuest = isGuestUser(currentUser);
             const visiblePainPoints = isGuest ? filteredPainPoints.slice(0, 3) : filteredPainPoints;
+            const blurredPainPoints = isGuest && filteredPainPoints.length > 3 ? filteredPainPoints.slice(3, 6) : [];
 
             const renderPainPointCard = (pp: any) => (
               <div
@@ -1779,6 +1786,11 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                     totalCount={filteredPainPoints.length}
                     boardName="創星季痛點問題看板"
                     onOpenAuth={onOpenAuth}
+                    blurredPreviewChildren={
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {blurredPainPoints.map(renderPainPointCard)}
+                      </div>
+                    }
                   />
                 )}
               </>

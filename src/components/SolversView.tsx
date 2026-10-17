@@ -338,6 +338,8 @@ export const SolversView: React.FC<SolversViewProps> = ({
           );
         };
 
+        const blurredSolvers = isGuest && filtered.length > 3 ? filtered.slice(3, 6) : [];
+
         return (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
@@ -350,6 +352,11 @@ export const SolversView: React.FC<SolversViewProps> = ({
                 totalCount={filtered.length}
                 boardName={selectedDomain !== '全部' ? `${selectedDomain} 推薦專家` : '專家智庫'}
                 onOpenAuth={() => openAuthModal('login')}
+                blurredPreviewChildren={
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    {blurredSolvers.map((s) => renderSolverCard(s, true))}
+                  </div>
+                }
               />
             )}
           </>
