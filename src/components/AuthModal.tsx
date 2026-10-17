@@ -436,10 +436,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    if (!agreeCompetitionTerms) {
-      setErrorMsg('登入失敗：請先勾選同意 《IdeaX一般條款》 與 《創星季一般用戶條款》。');
-      return;
-    }
+    // 登入即代表同意條款，不再要求勾選
 
     setIsLoading(true);
 
@@ -1906,40 +1903,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </div>
                   </div>
 
-                  {/* 登入勾選：我已閱讀並同意 IdeaX一般條款 與 創星季一般用戶條款 */}
-                  <label className="flex items-start gap-1.5 cursor-pointer select-none bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80">
-                    <input
-                      type="checkbox"
-                      checked={agreeCompetitionTerms}
-                      onChange={(e) => setAgreeCompetitionTerms(e.target.checked)}
-                      className="mt-0.5 w-3.5 h-3.5 rounded text-amber-600 accent-amber-600 cursor-pointer shrink-0"
-                    />
-                    <span className="text-[11px] sm:text-xs text-stone-700 font-medium leading-tight">
-                      我已閱讀並同意{' '}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          openAboutModal('general_terms');
-                        }}
-                        className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
-                      >
-                        《IdeaX一般條款》
-                      </button>
-                      {' '}與{' '}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setCompetitionTermsDoc('B');
-                        }}
-                        className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
-                      >
-                        《創星季一般用戶條款》
-                      </button>
-                      。
-                    </span>
-                  </label>
+                  {/* 登入即代表同意條款（不再需要另外勾選） */}
+                  <p className="text-[11px] sm:text-xs text-stone-500 leading-relaxed px-1">
+                    登入即代表您同意{' '}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openAboutModal('general_terms');
+                      }}
+                      className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+                    >
+                      《IdeaX一般條款》
+                    </button>
+                    {' '}與{' '}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCompetitionTermsDoc('B');
+                      }}
+                      className="text-amber-800 font-bold underline hover:text-amber-950 cursor-pointer"
+                    >
+                      《創星季一般用戶條款》
+                    </button>
+                    。
+                  </p>
                 </div>
 
                 {/* 4. 主要登入按鈕 */}

@@ -55,6 +55,9 @@ interface VibeCodingCaseDetailContentProps {
   quickComment?: string;
   setQuickComment?: (val: string) => void;
   onQuickCommentSubmit?: (e: React.FormEvent) => void;
+  /** 訪客僅預覽：只顯示前兩張圖片，其餘內容需登入 */
+  guestPreviewOnly?: boolean;
+  onRequestLogin?: () => void;
 }
 
 interface CaseRichMeta {
@@ -358,6 +361,8 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
   quickComment = '',
   setQuickComment,
   onQuickCommentSubmit,
+  guestPreviewOnly = false,
+  onRequestLogin,
 }) => {
   const { toggleLikeDiscussionAnswer, isDiscussionAnswerLiked, getDiscussionAnswerLikesCount } = useApp();
   const [activeImageIdx, setActiveImageIdx] = useState(0);
@@ -372,8 +377,10 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
       ...(question.vibeCodingData?.screenshots || []),
       ...(question.coverImage ? [question.coverImage] : []),
     ].filter(Boolean);
-    return Array.from(new Set(raw));
-  }, [question.galleryImages, question.vibeCodingData?.screenshots, question.coverImage]);
+    const unique = Array.from(new Set(raw));
+    // 訪客僅預覽時只開放前兩張圖片
+    return guestPreviewOnly ? unique.slice(0, 2) : unique;
+  }, [question.galleryImages, question.vibeCodingData?.screenshots, question.coverImage, guestPreviewOnly]);
 
   const currentImage = allImages[activeImageIdx] || question.coverImage || '';
   const currentCaption =
@@ -556,6 +563,20 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
         </div>
       )}
 
+      {guestPreviewOnly ? (
+        <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-6 text-center">
+          <h3 className="text-base sm:text-lg font-black text-stone-900">登入即可查看完整內容</h3>
+          <p className="mt-1.5 text-xs sm:text-sm text-stone-500">作品介紹、功能說明與留言討論需登入後瀏覽，免費註冊只要 Email 與密碼。</p>
+          <button
+            type="button"
+            onClick={() => onRequestLogin?.()}
+            className="mt-4 px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-sm font-black text-stone-950 cursor-pointer"
+          >
+            免費登入 / 註冊
+          </button>
+        </div>
+      ) : (
+      <>
       {/* 2. Quick Action & Stats Bar */}
       <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-4 flex-wrap text-xs text-stone-600">
@@ -939,6 +960,8 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
         canUpdate={canUpdateProposal}
         onOpenUpdateModal={onOpenUpdateModal}
       />
+      </>
+      )}
 
       {/* Lightbox Modal */}
       {lightboxOpen && allImages.length > 0 && (

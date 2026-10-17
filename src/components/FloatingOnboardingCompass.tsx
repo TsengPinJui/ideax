@@ -8,6 +8,24 @@ interface FloatingOnboardingCompassProps {
 
 const HIDE_STORAGE_KEY = 'ideax_hide_floating_compass';
 const ONBOARDING_COMPLETED_KEY = 'ideax_app_onboarding_completed_v1';
+// 只在第一次造訪時顯示導覽羅盤：首次造訪記下標記，之後的造訪不再出現（頁尾「新手導覽教學」仍可隨時開啟）
+const FIRST_VISIT_SEEN_KEY = 'ideax_compass_first_visit_seen';
+const FIRST_VISIT_SESSION_KEY = 'ideax_compass_first_visit_session';
+
+function isReturningVisit(): boolean {
+  try {
+    const seenBefore = localStorage.getItem(FIRST_VISIT_SEEN_KEY) === 'true';
+    const isFirstVisitSession = sessionStorage.getItem(FIRST_VISIT_SESSION_KEY) === 'true';
+    if (!seenBefore) {
+      localStorage.setItem(FIRST_VISIT_SEEN_KEY, 'true');
+      sessionStorage.setItem(FIRST_VISIT_SESSION_KEY, 'true');
+      return false;
+    }
+    return !isFirstVisitSession;
+  } catch {
+    return false;
+  }
+}
 const POS_STORAGE_KEY = 'ideax_compass_guide_pos_y';
 
 /**
@@ -141,8 +159,9 @@ export const FloatingOnboardingCompass: React.FC<FloatingOnboardingCompassProps>
     );
   });
 
-  // 檢查是否已手動隱藏到頁尾
+  // 檢查是否已手動隱藏到頁尾，或已不是第一次造訪
   const [isDismissed, setIsDismissed] = useState(() => {
+    if (isReturningVisit()) return true;
     try {
       return localStorage.getItem(HIDE_STORAGE_KEY) === 'true';
     } catch {

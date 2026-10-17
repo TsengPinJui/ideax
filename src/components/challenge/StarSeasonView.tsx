@@ -145,6 +145,7 @@ import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
 import { isGuestUser } from '../../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from '../GuestBoardGateBlurOverlay';
+import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../../utils/guestAccess';
 
 export type ChallengeSubView = 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador';
 
@@ -403,11 +404,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     }));
   }, [proposals, isSimulatedDataPurged, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage]);
 
-  // 每批顯示 3 個提案 (未登入訪客僅限瀏覽前 3 則)
+  // 每批顯示 3 個提案 (未登入訪客可瀏覽前 10 則：前 6 則完整、後 4 則僅預覽)
   const isGuest = isGuestUser(currentUser);
   const homepageProposalBatches = useMemo(() => {
     const list = homepageAllProposals.filter((p) => p.stage !== 'pain_point'); // 依需求：提案輪播只顯示提案解方，不顯示痛點
-    const effectiveList = isGuest ? list.slice(0, 3) : list;
+    const effectiveList = isGuest ? list.slice(0, GUEST_VISIBLE_COUNT) : list;
+    if (isGuest) registerGuestListExposure(list);
     const batches: typeof homepageAllProposals[] = [];
     for (let i = 0; i < effectiveList.length; i += 3) {
       batches.push(effectiveList.slice(i, i + 3));
@@ -1218,10 +1220,11 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return list;
   }, [proposals, questions, stageInfo.isBeforeStart, stageInfo.isRegistrationOnlyStage]);
 
-  // 痛點問題每批 3 個（三張一批輪播，未登入訪客僅限瀏覽前 3 則）
+  // 痛點問題每批 3 個（三張一批輪播，未登入訪客可瀏覽前 10 則）
   const homepagePainPointBatches = useMemo(() => {
     const list = homepagePainPoints;
-    const effectiveList = isGuest ? list.slice(0, 3) : list;
+    const effectiveList = isGuest ? list.slice(0, GUEST_VISIBLE_COUNT) : list;
+    if (isGuest) registerGuestListExposure(list);
     const batches: typeof homepagePainPoints[] = [];
     for (let i = 0; i < effectiveList.length; i += 3) {
       batches.push(effectiveList.slice(i, i + 3));
@@ -3881,9 +3884,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               )}
 
               {/* 未登入訪客鎖定提示 */}
-              {isGuest && homepageAllProposals.filter((p) => p.stage !== 'pain_point').length > 3 && (
+              {isGuest && homepageAllProposals.filter((p) => p.stage !== 'pain_point').length > GUEST_VISIBLE_COUNT && (
                 <GuestBoardGateBlurOverlay
-                  remainingCount={homepageAllProposals.filter((p) => p.stage !== 'pain_point').length - 3}
+                  remainingCount={homepageAllProposals.filter((p) => p.stage !== 'pain_point').length - GUEST_VISIBLE_COUNT}
                   totalCount={homepageAllProposals.filter((p) => p.stage !== 'pain_point').length}
                   boardName="創星季解方提案看板"
                   onOpenAuth={onOpenAuth}
@@ -4095,9 +4098,9 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
               )}
 
               {/* 未登入訪客鎖定提示 */}
-              {isGuest && homepagePainPoints.length > 3 && (
+              {isGuest && homepagePainPoints.length > GUEST_VISIBLE_COUNT && (
                 <GuestBoardGateBlurOverlay
-                  remainingCount={homepagePainPoints.length - 3}
+                  remainingCount={homepagePainPoints.length - GUEST_VISIBLE_COUNT}
                   totalCount={homepagePainPoints.length}
                   boardName="創星季痛點徵件看板"
                   onOpenAuth={onOpenAuth}

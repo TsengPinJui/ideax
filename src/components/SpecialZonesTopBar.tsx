@@ -9,6 +9,8 @@ interface SpecialZonesTopBarProps {
   questions?: Question[];
   className?: string;
   showAllOption?: boolean;
+  /** 點擊「創星季（限時競賽）」時前往競賽網站；未提供則不顯示此項 */
+  onOpenStarSeason?: () => void;
 }
 
 export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
@@ -17,6 +19,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
   questions: propQuestions,
   className = '',
   showAllOption = true,
+  onOpenStarSeason,
 }) => {
   const { questions: contextQuestions } = useApp();
   const questions = propQuestions || contextQuestions || [];
@@ -66,12 +69,12 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
   }, [questions]);
 
   const zones: Array<{
-    id: SpecialZone;
+    id: SpecialZone | 'star_season';
     label: string;
     shortLabel: string;
     subLabel: string;
     icon: string;
-    count: number;
+    count: number | string;
     activeClasses: string;
     badgeActiveClasses: string;
     idleClasses: string;
@@ -97,24 +100,42 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
           },
         ]
       : []),
+    ...(onOpenStarSeason
+      ? [
+          {
+            id: 'star_season' as const,
+            label: '創星季（限時競賽）',
+            shortLabel: '創星季（限時競賽）',
+            subLabel: '痛點徵件 × 創新提案挑戰賽',
+            icon: '🏆',
+            count: '限時',
+            activeClasses: 'bg-emerald-600 text-white border-emerald-500 ring-2 ring-emerald-200 shadow-sm font-black',
+            badgeActiveClasses: 'bg-white/25 text-white',
+            idleClasses: 'bg-emerald-50/70 hover:bg-emerald-100 text-emerald-800 border-emerald-200/80 hover:border-emerald-300 shadow-2xs',
+            badgeIdleClasses: 'bg-emerald-600 text-white',
+            accentDot: 'bg-emerald-500',
+            title: '前往創星季：限時競賽',
+          },
+        ]
+      : []),
     {
-      id: 'vibecoding',
-      label: 'VibeCoding',
-      shortLabel: 'VibeCoding',
-      subLabel: '網站程式、小遊戲、AI工具、自動化、擴充功能',
-      icon: '🚀',
-      count: zoneCounts.vibecoding,
-      activeClasses: 'bg-indigo-500 text-white border-indigo-400 ring-2 ring-indigo-200 shadow-sm font-black',
+      id: 'pain_points',
+      label: '痛點許願池',
+      shortLabel: '痛點許願池',
+      subLabel: '生活煩擾',
+      icon: '🎯',
+      count: zoneCounts.pain_points,
+      activeClasses: 'bg-rose-500 text-white border-rose-400 ring-2 ring-rose-200 shadow-sm font-black',
       badgeActiveClasses: 'bg-white/25 text-white',
-      idleClasses: 'bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border-indigo-200/80 hover:border-indigo-300 shadow-2xs',
-      badgeIdleClasses: 'bg-indigo-200/70 text-indigo-900',
-      accentDot: 'bg-indigo-500',
-      title: '切換至主題專區：VibeCoding（網站程式、小遊戲、AI工具、自動化、擴充功能）',
+      idleClasses: 'bg-rose-50/70 hover:bg-rose-100 text-rose-700 border-rose-200/80 hover:border-rose-300 shadow-2xs',
+      badgeIdleClasses: 'bg-rose-200/70 text-rose-900',
+      accentDot: 'bg-rose-500',
+      title: '切換至主題專區：痛點許願池（生活煩擾）',
     },
     {
       id: 'create_ideas',
-      label: '創點子',
-      shortLabel: '創點子',
+      label: '創點子（創新提案）',
+      shortLabel: '創點子（創新提案）',
       subLabel: '創新解方、創業企劃',
       icon: '💡',
       count: zoneCounts.create_ideas,
@@ -126,18 +147,18 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
       title: '切換至主題專區：創點子 創新解方專區',
     },
     {
-      id: 'pain_points',
-      label: '痛點許願池',
-      shortLabel: '痛點許願',
-      subLabel: '生活煩擾',
-      icon: '🎯',
-      count: zoneCounts.pain_points,
-      activeClasses: 'bg-rose-500 text-white border-rose-400 ring-2 ring-rose-200 shadow-sm font-black',
+      id: 'vibecoding',
+      label: 'VibeCoding 作品牆',
+      shortLabel: 'VibeCoding 作品牆',
+      subLabel: '網站程式、小遊戲、AI工具、自動化、擴充功能',
+      icon: '🚀',
+      count: zoneCounts.vibecoding,
+      activeClasses: 'bg-indigo-500 text-white border-indigo-400 ring-2 ring-indigo-200 shadow-sm font-black',
       badgeActiveClasses: 'bg-white/25 text-white',
-      idleClasses: 'bg-rose-50/70 hover:bg-rose-100 text-rose-700 border-rose-200/80 hover:border-rose-300 shadow-2xs',
-      badgeIdleClasses: 'bg-rose-200/70 text-rose-900',
-      accentDot: 'bg-rose-500',
-      title: '切換至主題專區：痛點許願池（生活煩擾）',
+      idleClasses: 'bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 border-indigo-200/80 hover:border-indigo-300 shadow-2xs',
+      badgeIdleClasses: 'bg-indigo-200/70 text-indigo-900',
+      accentDot: 'bg-indigo-500',
+      title: '切換至主題專區：VibeCoding（網站程式、小遊戲、AI工具、自動化、擴充功能）',
     },
     {
       id: 'l0_discussion',
@@ -193,14 +214,14 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
       </div>
 
       {/* 1. 電腦版與平板版版面 (sm: 及以上)：五欄均分網格，完整展示各主題名稱與詳細副標 */}
-      <div className="hidden sm:grid sm:grid-cols-5 gap-2 w-full">
+      <div className={`hidden sm:grid gap-2 w-full ${zones.length > 5 ? 'sm:grid-cols-3 lg:grid-cols-6' : 'sm:grid-cols-5'}`}>
         {zones.map((z) => {
           const isActive = currentZone === z.id;
           return (
             <button
               key={z.id}
               type="button"
-              onClick={() => onSelectZone(z.id)}
+              onClick={() => (z.id === 'star_season' ? onOpenStarSeason?.() : onSelectZone(z.id as SpecialZone))}
               className={`group relative px-2.5 py-2.5 lg:px-3 lg:py-3 rounded-xl text-left transition-all duration-150 cursor-pointer flex flex-col justify-between border active:scale-[0.99] ${
                 isActive ? z.activeClasses : z.idleClasses
               }`}
@@ -249,7 +270,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
                 type="button"
                 data-zone-id={z.id}
                 data-active={isActive ? 'true' : 'false'}
-                onClick={() => onSelectZone(z.id)}
+                onClick={() => (z.id === 'star_season' ? onOpenStarSeason?.() : onSelectZone(z.id as SpecialZone))}
                 className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border active:scale-95 whitespace-nowrap ${
                   isActive ? z.activeClasses : z.idleClasses
                 }`}

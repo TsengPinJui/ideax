@@ -235,7 +235,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                     }`}
                   >
                     {isVibeApp
-                      ? '💻 VibeCoding (軟體與網站作品牆) 預覽'
+                      ? '💻 VibeCoding 作品牆 預覽'
                       : '💡 創點子 (創新提案) 預覽'}
                   </span>
                   <span className="text-xs font-bold text-stone-600 hidden sm:inline">
@@ -363,7 +363,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
             />
             <span>
               {isVibeApp
-                ? '【程式或網站】刊登於「VibeCoding (軟體與網站作品牆)」，卡片統一採用圖示 ⭐ 收藏 + ❤️ Like，左下角固定顯示藍色作品名稱徽章。'
+                ? '【程式或網站】刊登於「VibeCoding 作品牆」，卡片統一採用圖示 ⭐ 收藏 + ❤️ Like，左下角固定顯示藍色作品名稱徽章。'
                 : '【創新提案】刊登於「創點子 (創新提案)」專區，卡片統一採用圖示 ⭐ 收藏 + ❤️ Like，支援引用痛點雙向關聯與點數支持。'}
             </span>
           </div>
@@ -469,7 +469,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                 <div className="text-center">
                   <span className="text-xs font-black text-stone-600">
                     {isVibeApp
-                      ? '── ② VibeCoding (軟體與網站作品牆) 封面視覺卡效果 ──'
+                      ? '── ② VibeCoding 作品牆 封面視覺卡效果 ──'
                       : '── ② 創點子 (創新提案) 專區焦點卡片效果 ──'}
                   </span>
                 </div>
@@ -795,7 +795,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                     <div className="flex items-center gap-2 text-xs font-bold text-stone-600">
                       <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200 font-black flex items-center gap-1">
                         <Terminal className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>VibeCoding (軟體與網站作品牆)</span>
+                        <span>VibeCoding 作品牆</span>
                       </span>
                       <span>/</span>
                       <span className="text-stone-900 font-black truncate max-w-[200px]">
@@ -1043,7 +1043,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                             </span>
                             <span className="text-[11px] font-bold text-emerald-700">最新</span>
                             <span className="text-xs font-bold text-stone-900">
-                              首次於 VibeCoding (軟體與網站作品牆) 發布上架
+                              首次於 VibeCoding 作品牆 發布上架
                             </span>
                           </div>
                           <button

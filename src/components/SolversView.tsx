@@ -23,6 +23,7 @@ import {
   Zap,
   Bot,
 } from 'lucide-react';
+import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../utils/guestAccess';
 
 interface SolversViewProps {
   onSelectSolver: (solver: Solver) => void;
@@ -190,7 +191,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
       {/* Solvers Grid & Guest Gate */}
       {(() => {
         const isGuest = isGuestUser(currentUser);
-        const visibleSolvers = isGuest ? filtered.slice(0, 3) : filtered;
+        const visibleSolvers = isGuest ? filtered.slice(0, GUEST_VISIBLE_COUNT) : filtered;
 
         const renderSolverCard = (s: Solver, isBlurred = false) => {
           const acceptedSolutionsCount = Math.round(s.answerCount * (s.acceptedRate / 100)) || s.answerCount;
@@ -338,7 +339,7 @@ export const SolversView: React.FC<SolversViewProps> = ({
           );
         };
 
-        const blurredSolvers = isGuest && filtered.length > 3 ? filtered.slice(3, 6) : [];
+        const blurredSolvers = isGuest && filtered.length > GUEST_VISIBLE_COUNT ? filtered.slice(GUEST_VISIBLE_COUNT, GUEST_VISIBLE_COUNT + GUEST_BLURRED_TEASER_COUNT) : [];
 
         // 空狀態：沒有任何專家時邀請成為第一批認證專家；有專家但搜尋/篩選無結果時提示調整條件
         if (filtered.length === 0) {
@@ -412,9 +413,9 @@ export const SolversView: React.FC<SolversViewProps> = ({
               {visibleSolvers.map((s) => renderSolverCard(s))}
             </div>
 
-            {isGuest && filtered.length > 3 && (
+            {isGuest && filtered.length > GUEST_VISIBLE_COUNT && (
               <GuestBoardGateBlurOverlay
-                remainingCount={filtered.length - 3}
+                remainingCount={filtered.length - GUEST_VISIBLE_COUNT}
                 totalCount={filtered.length}
                 boardName={selectedDomain !== '全部' ? `${selectedDomain} 推薦專家` : '專家智庫'}
                 onOpenAuth={() => openAuthModal('login')}

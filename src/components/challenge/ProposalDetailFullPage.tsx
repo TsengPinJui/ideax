@@ -40,6 +40,7 @@ import {
 import { ProposalRichContentDisplay } from './ProposalRichContentDisplay';
 import { withdrawCompetitionProposal } from '../../services/competitionAdminSync';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
+import { isGuestPreviewOnly } from '../../utils/guestAccess';
 
 interface ProposalDetailFullPageProps {
   proposal: StarSeasonProposal;
@@ -261,6 +262,10 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
 
   const authorInfo = getProposalCardAuthorText(proposal);
 
+  // 訪客瀏覽規則：列表第 7～10 則僅開放預覽（只顯示前兩張圖片，其餘內容需登入）
+  const guestPreviewOnly = (!currentUser || currentUser.id === 'user-guest') && isGuestPreviewOnly(proposal.id);
+  const guestPreviewImages = (proposal.images || []).filter(Boolean).slice(0, 2);
+
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-28 font-sans selection:bg-amber-300 selection:text-stone-950">
       {/* 頂部固定麵包屑與動作導覽列 */}
@@ -421,6 +426,40 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           </div>
         </section>
 
+        {guestPreviewOnly ? (
+          <section className="space-y-4">
+            {guestPreviewImages.length > 0 && (
+              <div className={`grid gap-3 ${guestPreviewImages.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                {guestPreviewImages.map((img, idx) => (
+                  <div key={idx} className="rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 aspect-video">
+                    <img
+                      src={img}
+                      alt={`展示圖片-${idx + 1}`}
+                      loading="lazy"
+                      onError={(e) => {
+                        const cell = (e.currentTarget as HTMLImageElement).parentElement;
+                        if (cell) cell.style.display = 'none';
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-6 text-center">
+              <h3 className="text-base sm:text-lg font-black text-stone-900">登入即可查看完整內容</h3>
+              <p className="mt-1.5 text-xs sm:text-sm text-stone-500">提案內容、點數支持與留言討論需登入後瀏覽。</p>
+              <button
+                type="button"
+                onClick={() => onOpenAuth?.()}
+                className="mt-4 px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-sm font-black text-stone-950 cursor-pointer"
+              >
+                免費登入 / 註冊
+              </button>
+            </div>
+          </section>
+        ) : (
+        <>
         {/* 2. ［點數支持］橫條 */}
         <section className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 rounded-3xl p-5 sm:p-6 border-2 border-amber-300 shadow-sm space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -1009,6 +1048,9 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             )}
           </div>
         </section>
+
+        </>
+        )}
 
         {/* 7. 底部固定返回動作列（上下留一組就好，分享與收藏常駐頂部導覽列） */}
         <div className="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-stone-200">

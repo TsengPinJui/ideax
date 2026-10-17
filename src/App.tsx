@@ -58,6 +58,7 @@ import {
   isQuestionExpired,
 } from './services/recommendationService';
 import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Search, Heart, ThumbsUp, Square, List, LayoutGrid } from 'lucide-react';
+import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from './utils/guestAccess';
 
 const CATEGORIES: Category[] = [
   '專業問題',
@@ -1854,6 +1855,15 @@ function MainContent() {
                   onSelectZone={handleSelectSpecialZone}
                   questions={questions}
                   showAllOption={true}
+                  onOpenStarSeason={() => {
+                    setSelectedQuestion(null);
+                    setSelectedSolver(null);
+                    setActiveTab('star_season');
+                    try {
+                      window.history.pushState(null, '', '/challenge');
+                    } catch {}
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                 />
 
                 {/* Special Zone Banners */}
@@ -2582,8 +2592,9 @@ function MainContent() {
                 ) : (
                   (() => {
                     const isGuest = isGuestUser(currentUser);
-                    const visibleQuestions = isGuest ? filteredQuestions.slice(0, 3) : filteredQuestions;
-                    const blurredQuestions = isGuest && filteredQuestions.length > 3 ? filteredQuestions.slice(3, 6) : [];
+                    const visibleQuestions = isGuest ? filteredQuestions.slice(0, GUEST_VISIBLE_COUNT) : filteredQuestions;
+                    if (isGuest) registerGuestListExposure(filteredQuestions);
+                    const blurredQuestions = isGuest && filteredQuestions.length > GUEST_VISIBLE_COUNT ? filteredQuestions.slice(GUEST_VISIBLE_COUNT, GUEST_VISIBLE_COUNT + GUEST_BLURRED_TEASER_COUNT) : [];
                     const boardDisplayName =
                       specialZone === 'pain_points'
                         ? '痛點許願池'
@@ -2635,9 +2646,9 @@ function MainContent() {
                           })}
                         </div>
 
-                        {isGuest && filteredQuestions.length > 3 && (
+                        {isGuest && filteredQuestions.length > GUEST_VISIBLE_COUNT && (
                           <GuestBoardGateBlurOverlay
-                            remainingCount={filteredQuestions.length - 3}
+                            remainingCount={filteredQuestions.length - GUEST_VISIBLE_COUNT}
                             totalCount={filteredQuestions.length}
                             boardName={boardDisplayName}
                             onOpenAuth={() => openAuthModal('login')}
