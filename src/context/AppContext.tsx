@@ -119,9 +119,13 @@ import {
 import { getStoredTickets } from '../services/customerSupportService';
 import { CenterToastData } from '../components/CenterToast';
 import { PwaNotificationService } from '../services/pwaNotificationService';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth as firebaseAuthInstance } from '../services/firebase';
+import { setMyAppUserId, updateAuthUidDirectory } from '../services/authIdentity';
 import {
   conversationSignature,
   deliverNotificationToCloud,
+  deleteNotificationsInCloud,
   markNotificationReadInCloud,
   mergeIncomingConversation,
   pushConversationToCloud,
@@ -2059,6 +2063,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     userName: isScopeGuest ? undefined : currentUser.name,
     isAdmin: !isScopeGuest && currentUser.role === 'admin',
   });
+
+  // 站內帳號 ↔ Firebase 登入帳號對照（資料庫以 Firebase 帳號判斷誰能讀寫私訊、通知、交易）
+  setMyAppUserId(isScopeGuest ? null : currentUser.id);
+  useEffect(() => {
+    updateAuthUidDirectory(availableUsers);
+  }, [availableUsers]);
+
+  // 登入 Firebase 後，把 Firebase UID 記在自己的會員資料上，讓別人傳訊時找得到
+  useEffect(() => {
+    const unsub = onAuthStateChanged(firebaseAuthInstance, (fbUser) => {
+      if (!fbUser) return;
+      setCurrentUser((prev) => {
+        if (!prev?.id || prev.id === 'user-guest' || prev.role === 'admin') return prev;
+        const sameAccount =
+          prev.id === fbUser.uid ||
+          (!!prev.email && !!fbUser.email && prev.email.toLowerCase() === fbUser.email.toLowerCase());
+        if (!sameAccount || prev.authUid === fbUser.uid) return prev;
+        const updated = { ...prev, authUid: fbUser.uid };
+        setAvailableUsers((users) => users.map((u) => (u.id === prev.id ? { ...u, authUid: fbUser.uid } : u)));
+        void syncUserToFirestore(updated);
+        return updated;
+      });
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser.id]);
 
   // 登入、登出或切換帳號後，重新載入「這位會員自己的」私人資料
   const lastScopedUserKeyRef = useRef<string | null>(null);
@@ -8478,11 +8508,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser.id]);
 
   const deleteNotification = (id: string) => {
+    const target = notifications.find((n) => n.id === id);
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    // 雲端只刪「發給我」的通知，避免管理員誤刪全站廣播
+    if (target && target.userId === currentUser.id && cloudNotifIdsRef.current.has(id)) {
+      cloudNotifIdsRef.current.delete(id);
+      void deleteNotificationsInCloud([id]);
+    }
   };
 
   const clearAllNotifications = () => {
+    // 雲端只刪「發給我」的通知；全站廣播與發給管理員的通知不刪
+    const mineInCloud = notifications
+      .filter((n) => n.userId === currentUser.id && cloudNotifIdsRef.current.has(n.id))
+      .map((n) => n.id);
     setNotifications([]);
+    if (mineInCloud.length > 0) {
+      mineInCloud.forEach((id) => cloudNotifIdsRef.current.delete(id));
+      void deleteNotificationsInCloud(mineInCloud);
+    }
   };
 
   const updateNotification = (id: string, updates: Partial<NotificationItem>) => {

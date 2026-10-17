@@ -14,6 +14,7 @@ import {
   increment,
   query,
   where,
+  arrayUnion,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import {
@@ -34,6 +35,8 @@ import {
   saveCachedRealTrafficStats,
 } from '../components/AdminSiteTrafficChart';
 import { getAuthHeaders } from './authHeader';
+import { auth } from './firebase';
+import { getMyAuthUid, resolveAuthUid, resolveAuthUids } from './authIdentity';
 
 const QUOTA_STORAGE_KEY = 'ideax_firestore_quota_exhausted_date';
 
@@ -488,12 +491,26 @@ export async function deleteAnswersFromFirestore(answerIds: string[]): Promise<v
   }
 }
 
+/** 交易相關人的 Firebase UID（含寫入者自己），供資料庫規則判斷誰能讀取 */
+function txPartyAuthUids(tx: Transaction): string[] {
+  const t = tx as any;
+  const uids = new Set(resolveAuthUids([t.fromUserId, t.toUserId, t.solverId, t.userId]));
+  const mine = getMyAuthUid();
+  if (mine) uids.add(mine);
+  return Array.from(uids);
+}
+
 export async function syncTransactionToFirestore(tx: Transaction): Promise<void> {
   if (!tx || !tx.id || isQuotaExhausted) return;
   try {
     const txRef = doc(db, 'transactions', tx.id);
     const cleanTx = JSON.parse(JSON.stringify(tx));
-    await setDoc(txRef, { ...cleanTx, updatedAt: new Date().toISOString() }, { merge: true });
+    const uids = txPartyAuthUids(tx);
+    await setDoc(
+      txRef,
+      { ...cleanTx, ...(uids.length ? { partyAuthUids: arrayUnion(...uids) } : {}), updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
   } catch (err) {
     handleFirestoreError(`Failed to sync transaction ${tx.id}`, err);
   }
@@ -507,7 +524,12 @@ export async function syncTransactionsToFirestore(transactions: Transaction[]): 
       if (!tx.id) return;
       const txRef = doc(db, 'transactions', tx.id);
       const cleanTx = JSON.parse(JSON.stringify(tx));
-      batch.set(txRef, { ...cleanTx, updatedAt: new Date().toISOString() }, { merge: true });
+      const uids = txPartyAuthUids(tx);
+      batch.set(
+        txRef,
+        { ...cleanTx, ...(uids.length ? { partyAuthUids: arrayUnion(...uids) } : {}), updatedAt: new Date().toISOString() },
+        { merge: true }
+      );
     });
     await batch.commit();
   } catch (err) {
@@ -519,8 +541,14 @@ export async function syncConversationToFirestore(conv: ChatConversation): Promi
   if (!conv || !conv.id || isQuotaExhausted) return;
   try {
     const cRef = doc(db, 'conversations', conv.id);
-    const cleanC = JSON.parse(JSON.stringify(conv));
-    await setDoc(cRef, { ...cleanC, updatedAt: new Date().toISOString() }, { merge: true });
+    const { unreadCount, conversationRole, ...shared } = conv as any;
+    const cleanC = JSON.parse(JSON.stringify(shared));
+    const uids = resolveAuthUids(conv.participantIds || []);
+    await setDoc(
+      cRef,
+      { ...cleanC, ...(uids.length ? { participantAuthUids: arrayUnion(...uids) } : {}), updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
   } catch (err) {
     handleFirestoreError(`Failed to sync conversation ${conv.id}`, err);
   }
@@ -808,7 +836,17 @@ export async function syncNotificationsToFirestore(notifications: NotificationIt
       if (!item.id) return;
       const notifRef = doc(db, 'notifications', item.id);
       const cleanItem = JSON.parse(JSON.stringify(item));
-      batch.set(notifRef, { ...cleanItem, updatedAt: new Date().toISOString() }, { merge: true });
+      const recipientAuthUid = item.userId && item.userId !== 'all' && item.userId !== 'admin' ? resolveAuthUid(item.userId) : null;
+      batch.set(
+        notifRef,
+        {
+          ...cleanItem,
+          ...(recipientAuthUid ? { recipientAuthUid } : {}),
+          senderAuthUid: getMyAuthUid(),
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
     });
     await batch.commit();
   } catch (err) {
@@ -1166,37 +1204,24 @@ export async function loadPersonalDataFromFirestore(scope: FirestoreDataScope = 
 } | null> {
   if (!scope.userId) return { transactions: [], conversations: [], notifications: [] };
   if (isQuotaExhausted) return null;
-  const uid = scope.userId;
-  const name = (scope.userName || '').trim();
+  // 資料庫規則以 Firebase 登入帳號判斷權限：等登入狀態還原後再查詢
+  try {
+    await auth.authStateReady();
+  } catch {}
+  const myUid = getMyAuthUid();
+  if (!myUid) return { transactions: [], conversations: [], notifications: [] };
   const safe = (p: Promise<any>) => p.catch(() => ({ docs: [] }));
   try {
-    const txCol = collection(db, 'transactions');
-    const convCol = collection(db, 'conversations');
-    const notifCol = collection(db, 'notifications');
-    const [txSnaps, convSnaps, notifSnap] = await Promise.all([
-      Promise.all([
-        safe(getDocs(query(txCol, where('fromUserId', '==', uid)))),
-        safe(getDocs(query(txCol, where('toUserId', '==', uid)))),
-        safe(getDocs(query(txCol, where('solverId', '==', uid)))),
-        safe(getDocs(query(txCol, where('userId', '==', uid)))),
-        // 舊資料只記錄名稱，沒有 id
-        ...(name
-          ? [
-              safe(getDocs(query(txCol, where('fromUserName', '==', name)))),
-              safe(getDocs(query(txCol, where('toUserName', '==', name)))),
-            ]
-          : []),
-      ]),
-      Promise.all([
-        safe(getDocs(query(convCol, where('participantIds', 'array-contains', uid)))),
-        safe(getDocs(query(convCol, where('participantId', '==', uid)))),
-      ]),
-      safe(getDocs(query(notifCol, where('userId', 'in', [uid, 'all'])))),
+    const [txSnap, convSnap, notifSnap, broadcastSnap] = await Promise.all([
+      safe(getDocs(query(collection(db, 'transactions'), where('partyAuthUids', 'array-contains', myUid)))),
+      safe(getDocs(query(collection(db, 'conversations'), where('participantAuthUids', 'array-contains', myUid)))),
+      safe(getDocs(query(collection(db, 'notifications'), where('recipientAuthUid', '==', myUid)))),
+      safe(getDocs(query(collection(db, 'notifications'), where('userId', '==', 'all')))),
     ]);
     return {
-      transactions: mergeDocsById<Transaction>(txSnaps),
-      conversations: mergeDocsById<ChatConversation>(convSnaps),
-      notifications: mergeDocsById<NotificationItem>([notifSnap]),
+      transactions: mergeDocsById<Transaction>([txSnap]),
+      conversations: mergeDocsById<ChatConversation>([convSnap]),
+      notifications: mergeDocsById<NotificationItem>([notifSnap, broadcastSnap]),
     };
   } catch (err) {
     handleFirestoreError('loadPersonalDataFromFirestore', err);
@@ -1218,36 +1243,56 @@ export function subscribePersonalData(
 ): Unsubscribe {
   if (isQuotaExhausted || !userId) return () => {};
   const unsubs: Unsubscribe[] = [];
-  try {
-    unsubs.push(
-      onSnapshot(
-        query(collection(db, 'conversations'), where('participantIds', 'array-contains', userId)),
-        (snap) => handlers.onConversations(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }) as ChatConversation)),
-        (err) => handleFirestoreError('subscribePersonalData(conversations)', err)
-      )
-    );
-    let initial = true;
-    unsubs.push(
-      onSnapshot(
-        query(collection(db, 'notifications'), where('userId', 'in', Array.from(new Set([userId, 'all', ...recipientIds])).slice(0, 10))),
-        (snap) => {
-          handlers.onNotifications(
-            snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }) as NotificationItem),
-            initial
-          );
-          initial = false;
-        },
-        (err) => handleFirestoreError('subscribePersonalData(notifications)', err)
-      )
-    );
-  } catch (err) {
-    handleFirestoreError('subscribePersonalData', err);
-  }
-  return () => unsubs.forEach((u) => {
+  let cancelled = false;
+  (async () => {
     try {
-      u();
+      await auth.authStateReady();
     } catch {}
-  });
+    const myUid = getMyAuthUid();
+    if (cancelled || !myUid) return;
+    try {
+      unsubs.push(
+        onSnapshot(
+          query(collection(db, 'conversations'), where('participantAuthUids', 'array-contains', myUid)),
+          (snap) => handlers.onConversations(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }) as ChatConversation)),
+          (err) => handleFirestoreError('subscribePersonalData(conversations)', err)
+        )
+      );
+      // 通知分三路：發給我的、全站廣播、（管理員）發給管理員的；各自第一次回傳都視為初始資料
+      const latest = new Map<string, NotificationItem[]>();
+      const seenInitial = new Set<string>();
+      const emit = (key: string, items: NotificationItem[]) => {
+        latest.set(key, items);
+        const isInitial = !seenInitial.has(key);
+        seenInitial.add(key);
+        handlers.onNotifications(Array.from(latest.values()).flat(), isInitial);
+      };
+      const notifQueries: Array<[string, any]> = [
+        ['mine', query(collection(db, 'notifications'), where('recipientAuthUid', '==', myUid))],
+        ['all', query(collection(db, 'notifications'), where('userId', '==', 'all'))],
+        ...recipientIds.map((rid) => [`to:${rid}`, query(collection(db, 'notifications'), where('userId', '==', rid))] as [string, any]),
+      ];
+      for (const [key, q] of notifQueries) {
+        unsubs.push(
+          onSnapshot(
+            q,
+            (snap: any) => emit(key, snap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as NotificationItem)),
+            (err: any) => handleFirestoreError(`subscribePersonalData(notifications:${key})`, err)
+          )
+        );
+      }
+    } catch (err) {
+      handleFirestoreError('subscribePersonalData', err);
+    }
+  })();
+  return () => {
+    cancelled = true;
+    unsubs.forEach((u) => {
+      try {
+        u();
+      } catch {}
+    });
+  };
 }
 
 /**
@@ -1281,17 +1326,24 @@ export async function loadAllDataFromFirestore(
   try {
     const scope = currentDataScope;
     // 管理員載入全站；一般會員只載入自己的；訪客不載入私人資料
+    const emptySnap = { docs: [] as any[] };
     const personalPromise: Promise<any> = scope.isAdmin
-      ? Promise.all([
-          getDocs(collection(db, 'transactions')),
-          getDocs(collection(db, 'conversations')),
-          getDocs(collection(db, 'notifications')),
-        ]).then(([t, c, n]) => ({
-          transactions: t.docs.map((d) => d.data() as Transaction),
-          conversations: c.docs.map((d) => d.data() as ChatConversation),
-          notifications: n.docs.map((d) => d.data() as NotificationItem),
-        }))
-      : loadPersonalDataFromFirestore(scope);
+      ? auth
+          .authStateReady()
+          .catch(() => {})
+          .then(() =>
+            Promise.all([
+              getDocs(collection(db, 'transactions')).catch(() => emptySnap),
+              getDocs(collection(db, 'conversations')).catch(() => emptySnap),
+              getDocs(collection(db, 'notifications')).catch(() => emptySnap),
+            ])
+          )
+          .then(([t, c, n]: any[]) => ({
+            transactions: t.docs.map((d: any) => d.data() as Transaction),
+            conversations: c.docs.map((d: any) => d.data() as ChatConversation),
+            notifications: n.docs.map((d: any) => d.data() as NotificationItem),
+          }))
+      : loadPersonalDataFromFirestore(scope).catch(() => null);
     const [usersSnap, qSnap, aSnap, personal, solversSnap, settingsSnap] = await Promise.all([
       trackTask(getDocs(collection(db, 'users')), '正在載入創作者與專家資料...'),
       trackTask(getDocs(collection(db, 'questions')), '正在同步全站痛點、提案與懸賞題目...'),

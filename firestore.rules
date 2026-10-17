@@ -34,12 +34,28 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // 交易紀錄：只有交易相關人（partyAuthUids）與管理員能讀
     match /transactions/{txId} {
-      allow read, write: if true;
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid in resource.data.partyAuthUids);
+      allow create: if isAdmin() || (isSignedIn() && request.auth.uid in request.resource.data.get('partyAuthUids', []));
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        request.auth.uid in request.resource.data.get('partyAuthUids', []) &&
+        (request.auth.uid in resource.data.get('partyAuthUids', []) || !('partyAuthUids' in resource.data))
+      );
+      allow delete: if isAdmin();
     }
 
+    // 私訊：只有對話雙方（participantAuthUids）與管理員能讀寫
     match /conversations/{convId} {
-      allow read, write: if true;
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid in resource.data.participantAuthUids);
+      allow create: if isAdmin() || (isSignedIn() && request.auth.uid in request.resource.data.get('participantAuthUids', []));
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        request.auth.uid in request.resource.data.get('participantAuthUids', []) &&
+        (request.auth.uid in resource.data.get('participantAuthUids', []) || !('participantAuthUids' in resource.data))
+      );
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid in resource.data.get('participantAuthUids', []));
     }
 
     // 2. 用戶身分與審核治理類 (Identity, Verification & Governance)
@@ -56,8 +72,25 @@ service cloud.firestore {
     }
 
     // 3. 互動通知與評價體系類 (Engagement, Notifications & Reviews)
+    // 通知：收件人本人、全站廣播（userId == 'all'）與管理員能讀
     match /notifications/{notifId} {
-      allow read, write: if true;
+      allow read: if isAdmin() || (isSignedIn() && (
+        resource.data.recipientAuthUid == request.auth.uid ||
+        resource.data.userId == 'all'
+      ));
+      // 任何登入會員都能發通知給別人，但寄件人必須是自己；全站廣播限管理員
+      allow create: if isAdmin() || (
+        isSignedIn() &&
+        request.resource.data.get('senderAuthUid', '') == request.auth.uid &&
+        request.resource.data.get('userId', '') != 'all'
+      );
+      // 收件人只能改已讀狀態
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        resource.data.get('recipientAuthUid', '') == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
+      );
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.get('recipientAuthUid', '') == request.auth.uid);
     }
 
     match /bookmarks/{userId} {
@@ -80,7 +113,7 @@ service cloud.firestore {
     // Default fallback
     // 注意：Firestore 規則是「任一條允許即放行」，因此萬用規則必須排除上方受保護的集合
     match /{collectionId}/{document=**} {
-      allow read, write: if !(collectionId in ['admins', 'user_private']);
+      allow read, write: if !(collectionId in ['admins', 'user_private', 'transactions', 'conversations', 'notifications']);
     }
   }
 }
