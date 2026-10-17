@@ -18,6 +18,7 @@ import {
   Coins,
   Gift,
 } from 'lucide-react';
+import { PointsGuideModal } from './PointsGuideModal';
 
 interface MembershipAndTopupFullPageProps {
   initialTab?: 'membership' | 'topup';
@@ -28,6 +29,7 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
   initialTab = 'membership',
   onBack,
 }) => {
+  const [isPointsGuideOpen, setIsPointsGuideOpen] = useState(false);
   const {
     currentUser,
     subscribePlan,
@@ -232,6 +234,15 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
           <p className="text-xs sm:text-sm text-stone-400 leading-relaxed max-w-2xl mx-auto">
             全站交易採金管會合規雙向獨立扣抵機制。系統會自動繫結帶入您當前的會員身份，享有專屬抽成減免優惠與即時點數存入保障。
           </p>
+
+          <button
+            type="button"
+            onClick={() => setIsPointsGuideOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-300 hover:text-amber-200 underline underline-offset-4 cursor-pointer"
+          >
+            點數、創星幣、打賞、懸賞、解鎖有什麼不同？
+          </button>
+          <PointsGuideModal isOpen={isPointsGuideOpen} onClose={() => setIsPointsGuideOpen(false)} />
 
           {/* 雙核心子網址導覽切換 Tab 按鈕 */}
           <div className="pt-3 flex justify-center">

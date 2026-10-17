@@ -84,6 +84,7 @@ import { getAnswerSpecifications } from '../utils/answerUtils';
 import { VibeCodingCaseDetailContent } from './VibeCodingCaseDetailContent';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
 import { isSampleContent } from '../utils/sampleContent';
+import { isGuestPreviewOnly } from '../utils/guestAccess';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -815,6 +816,12 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
     }
   };
 
+  // 訪客瀏覽規則：列表第 7～10 則僅開放預覽（只顯示前兩張圖片，其餘內容需登入）
+  const guestPreviewOnly = isGuestUser(currentUser) && isGuestPreviewOnly(question.id);
+  const guestPreviewImages = [question.coverImage, ...(question.galleryImages || [])]
+    .filter((u): u is string => Boolean(u))
+    .slice(0, 2);
+
   const content = (
     <div className={`bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-sm w-full ${isFullPage ? 'max-w-4xl mx-auto my-2' : 'max-w-4xl max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150'}`}>
       {/* Header */}
@@ -971,14 +978,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 NT$ {(question.bounty || 0).toLocaleString()}
               </span>
             </div>
-          ) : (
-            <div className="text-right shrink-0">
-              <span className="text-[11px] font-semibold text-stone-500 block">問題等級</span>
-              <span className="text-xs font-bold text-stone-700 bg-stone-100 px-2.5 py-1 rounded-lg">
-                L0 免費探討
-              </span>
-            </div>
-          )}
+          ) : null /* 無懸賞時，等級已顯示在左側標籤（如「L0 · 免費交流」），不重複顯示 */}
 
           {/* ⭐ 收藏按鈕 */}
           <button
@@ -1192,6 +1192,42 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           </div>
         </div>
 
+        {guestPreviewOnly ? (
+          <div className="space-y-4">
+            {guestPreviewImages.length > 0 && (
+              <div className={`grid gap-2.5 ${guestPreviewImages.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                {guestPreviewImages.map((img, idx) => (
+                  <div key={idx} className="relative h-40 sm:h-56 rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
+                    <img
+                      src={img}
+                      alt={`${question.title} 預覽圖 ${idx + 1}`}
+                      loading="lazy"
+                      onError={(e) => {
+                        const cell = (e.currentTarget as HTMLImageElement).parentElement;
+                        if (cell) cell.style.display = 'none';
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-6 text-center">
+              <h3 className="text-base sm:text-lg font-black text-stone-900">登入即可查看完整內容</h3>
+              <p className="mt-1.5 text-xs sm:text-sm text-stone-500">
+                完整說明、討論與方案需登入後瀏覽，免費註冊只要 Email 與密碼。
+              </p>
+              <button
+                type="button"
+                onClick={() => openAuthModal('login')}
+                className="mt-4 px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-sm font-black text-stone-950 cursor-pointer"
+              >
+                免費登入 / 註冊
+              </button>
+            </div>
+          </div>
+        ) : (
+        <>
         {/* 多媒體大圖、圖集、技術架構與線上網址 */}
         {(question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || question.techArchitecture || question.demoUrl) && (
           <div className="p-4 sm:p-5 rounded-2xl bg-stone-50/70 border border-stone-200/90 shadow-2xs space-y-4">
@@ -1210,7 +1246,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               <div className="space-y-2">
                 <div className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
                   <ImageIcon className="w-4 h-4 text-purple-600" />
-                  <span>功能介面與展示畫冊 ({question.galleryImages.length} 張截圖)</span>
+                  <span>功能介面與展示畫冊</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {question.galleryImages.map((imgUrl, idx) => (
@@ -1223,7 +1259,13 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     >
                       <img
                         src={imgUrl}
-                        alt="截圖"
+                        alt={`${question.appName || '作品'} 截圖 ${idx + 1}`}
+                        loading="lazy"
+                        onError={(e) => {
+                          // 圖片失效時整格隱藏，避免出現只剩「截圖」文字的破圖
+                          const cell = (e.currentTarget as HTMLImageElement).closest('a');
+                          if (cell) (cell as HTMLElement).style.display = 'none';
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
@@ -2993,6 +3035,8 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
             onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
           />
         )}
+        </>
+        )}
       </div>
 
       {/* Modal Sticky Bottom Action Bar */}
@@ -3112,6 +3156,8 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
       quickComment={quickComment}
       setQuickComment={setQuickComment}
       onQuickCommentSubmit={handleQuickCommentSubmit}
+      guestPreviewOnly={guestPreviewOnly}
+      onRequestLogin={() => openAuthModal('login')}
     />
   ) : (
     content

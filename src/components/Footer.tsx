@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Headphones,
   Mail,
@@ -16,6 +16,7 @@ import { AppTab, AboutSection } from '../types';
 import { useApp } from '../context/AppContext';
 import { triggerDirectAppDownloadOrInstall } from '../services/pwaInstaller';
 import { APP_VERSION, APP_RELEASE_DATE } from '../data/versionData';
+import { PointsGuideModal } from './PointsGuideModal';
 
 interface FooterProps {
   onNavClick: (tab: AppTab, section?: AboutSection | string) => void;
@@ -26,6 +27,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearchTag, onStartOnboarding }) => {
   const { openCustomerService, openPwaInstallModal, isDemoMode, isNoPaymentMode, isHideTestAccounts, isRaceMode } = useApp();
+  const [isPointsGuideOpen, setIsPointsGuideOpen] = useState(false);
 
   const handleTagClick = (tagWithHash: string) => {
     const rawTag = tagWithHash.replace('#', '').trim();
@@ -43,6 +45,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
 
   return (
     <footer className="block bg-stone-950 text-stone-300 border-t border-stone-800/80 pt-8 sm:pt-10 pb-24 lg:pb-8">
+      <PointsGuideModal isOpen={isPointsGuideOpen} onClose={() => setIsPointsGuideOpen(false)} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pb-8 border-b border-stone-800/70 text-xs">
           {/* Brand info */}
@@ -153,6 +156,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   className="hover:text-white transition-colors text-left cursor-pointer"
                 >
                   L0–L4 分級說明
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => setIsPointsGuideOpen(true)}
+                  className="hover:text-white transition-colors text-left cursor-pointer"
+                >
+                  點數與幣別怎麼用
                 </button>
               </li>
               <li>

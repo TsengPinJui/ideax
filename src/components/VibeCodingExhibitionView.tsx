@@ -33,6 +33,7 @@ import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 import { findReferencedPainPoint } from '../utils/painPointLinking';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { getFormattedAppNameAndTitle } from './QuestionCard';
+import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../utils/guestAccess';
 
 interface VibeCodingExhibitionViewProps {
   questions?: Question[];
@@ -700,7 +701,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               <Terminal className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
             </div>
             <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-1.5 flex-wrap">
-              <span>VibeCoding (軟體與網站作品牆)</span>
+              <span>VibeCoding 作品牆</span>
               {onTogglePin && (
                 <button
                   type="button"
@@ -917,8 +918,9 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
       ) : (
         (() => {
           const isGuest = isGuestUser(currentUser);
-          const visibleApps = isGuest ? filteredApps.slice(0, 3) : filteredApps;
-          const blurredApps = isGuest && filteredApps.length > 3 ? filteredApps.slice(3, 6) : [];
+          const visibleApps = isGuest ? filteredApps.slice(0, GUEST_VISIBLE_COUNT) : filteredApps;
+          if (isGuest) registerGuestListExposure(filteredApps);
+          const blurredApps = isGuest && filteredApps.length > GUEST_VISIBLE_COUNT ? filteredApps.slice(GUEST_VISIBLE_COUNT, GUEST_VISIBLE_COUNT + GUEST_BLURRED_TEASER_COUNT) : [];
 
           return (
             <>
@@ -934,9 +936,9 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 {visibleApps.map(renderVibeAppCard)}
               </div>
 
-              {isGuest && filteredApps.length > 3 && (
+              {isGuest && filteredApps.length > GUEST_VISIBLE_COUNT && (
                 <GuestBoardGateBlurOverlay
-                  remainingCount={filteredApps.length - 3}
+                  remainingCount={filteredApps.length - GUEST_VISIBLE_COUNT}
                   totalCount={filteredApps.length}
                   boardName="VibeCoding 展場"
                   onOpenAuth={() => openAuthModal('login')}

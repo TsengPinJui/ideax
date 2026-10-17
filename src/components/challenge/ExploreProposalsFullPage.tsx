@@ -72,6 +72,7 @@ import { getCompetitionStageInfo } from '../../utils/competitionSchedule';
 import { StarSeasonBroadcastBanner } from './StarSeasonBroadcastBanner';
 import { StarSeasonGuideModal } from './StarSeasonGuideModal';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
+import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../../utils/guestAccess';
 
 interface ExploreProposalsFullPageProps {
   onNavigate: (view: 'home' | 'proposal' | 'explore' | 'rules' | 'submit' | 'participant' | 'judge' | 'ambassador') => void;
@@ -1241,8 +1242,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         ) : (
           (() => {
             const isGuest = isGuestUser(currentUser);
-            const visibleProposals = isGuest ? sortedProposals.slice(0, 3) : sortedProposals;
-            const blurredProposals = isGuest && sortedProposals.length > 3 ? sortedProposals.slice(3, 6) : [];
+            const visibleProposals = isGuest ? sortedProposals.slice(0, GUEST_VISIBLE_COUNT) : sortedProposals;
+            if (isGuest) registerGuestListExposure(sortedProposals);
+            const blurredProposals = isGuest && sortedProposals.length > GUEST_VISIBLE_COUNT ? sortedProposals.slice(GUEST_VISIBLE_COUNT, GUEST_VISIBLE_COUNT + GUEST_BLURRED_TEASER_COUNT) : [];
 
             const renderProposalCard = (proposal: StarSeasonProposal, idx: number) => {
               const currentPoints = proposal.supportPoints || 0;
@@ -1563,9 +1565,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   {visibleProposals.map((proposal, idx) => renderProposalCard(proposal, idx))}
                 </div>
 
-                {isGuest && sortedProposals.length > 3 && (
+                {isGuest && sortedProposals.length > GUEST_VISIBLE_COUNT && (
                   <GuestBoardGateBlurOverlay
-                    remainingCount={sortedProposals.length - 3}
+                    remainingCount={sortedProposals.length - GUEST_VISIBLE_COUNT}
                     totalCount={sortedProposals.length}
                     boardName="創星季解方提案看板"
                     onOpenAuth={onOpenAuth}
@@ -1606,8 +1608,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         ) : (
           (() => {
             const isGuest = isGuestUser(currentUser);
-            const visiblePainPoints = isGuest ? filteredPainPoints.slice(0, 3) : filteredPainPoints;
-            const blurredPainPoints = isGuest && filteredPainPoints.length > 3 ? filteredPainPoints.slice(3, 6) : [];
+            const visiblePainPoints = isGuest ? filteredPainPoints.slice(0, GUEST_VISIBLE_COUNT) : filteredPainPoints;
+            if (isGuest) registerGuestListExposure(filteredPainPoints);
+            const blurredPainPoints = isGuest && filteredPainPoints.length > GUEST_VISIBLE_COUNT ? filteredPainPoints.slice(GUEST_VISIBLE_COUNT, GUEST_VISIBLE_COUNT + GUEST_BLURRED_TEASER_COUNT) : [];
 
             const renderPainPointCard = (pp: any) => (
               <div
@@ -1780,9 +1783,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   {visiblePainPoints.map(renderPainPointCard)}
                 </div>
 
-                {isGuest && filteredPainPoints.length > 3 && (
+                {isGuest && filteredPainPoints.length > GUEST_VISIBLE_COUNT && (
                   <GuestBoardGateBlurOverlay
-                    remainingCount={filteredPainPoints.length - 3}
+                    remainingCount={filteredPainPoints.length - GUEST_VISIBLE_COUNT}
                     totalCount={filteredPainPoints.length}
                     boardName="創星季痛點問題看板"
                     onOpenAuth={onOpenAuth}

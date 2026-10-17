@@ -68,7 +68,7 @@ export const GuestBoardGateBlurOverlay: React.FC<GuestBoardGateBlurOverlayProps>
               需要登入才能查看更多
             </h4>
             <p className="text-xs text-stone-600 leading-relaxed">
-              未登入僅開放預覽前 3 則項目。{boardName ? `【${boardName}】` : '此看板'}尚有{' '}
+              未登入可瀏覽前 10 則項目。{boardName ? `【${boardName}】` : '此看板'}尚有{' '}
               <strong className="text-amber-700 font-black font-mono">{remainingCount}</strong> 則內容，登入帳號即可免費暢覽完整討論、痛點細節與解方提案！
             </p>
           </div>

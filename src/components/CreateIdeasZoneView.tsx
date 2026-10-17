@@ -52,6 +52,7 @@ import { getSimulatedCommentsForProposalId } from '../data/virtualProposalsSeed'
 import { isGuestUser, getUserNameColorClass } from '../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
+import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../utils/guestAccess';
 
 export function getRemainingDaysText(unpublishAt?: string): string {
   if (!unpublishAt || unpublishAt === '永久' || unpublishAt === '永久刊登') return '永久';
@@ -776,9 +777,10 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
       ) : (
         (() => {
           const isGuest = isGuestUser(currentUser);
-          const visibleProposals = isGuest ? finalFilteredProposals.slice(0, 3) : finalFilteredProposals;
+          const visibleProposals = isGuest ? finalFilteredProposals.slice(0, GUEST_VISIBLE_COUNT) : finalFilteredProposals;
+          if (isGuest) registerGuestListExposure(finalFilteredProposals);
           const blurredProposals =
-            isGuest && finalFilteredProposals.length > 3 ? finalFilteredProposals.slice(3, 7) : [];
+            isGuest && finalFilteredProposals.length > GUEST_VISIBLE_COUNT ? finalFilteredProposals.slice(GUEST_VISIBLE_COUNT, GUEST_VISIBLE_COUNT + GUEST_BLURRED_TEASER_COUNT) : [];
 
           const renderProposalCard = (proposal: StarSeasonProposal) => {
             const isLiked = isProposalSavedByUser(proposal.id);
@@ -1165,9 +1167,9 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                 {visibleProposals.map(renderProposalCard)}
               </div>
 
-              {isGuest && finalFilteredProposals.length > 3 && (
+              {isGuest && finalFilteredProposals.length > GUEST_VISIBLE_COUNT && (
                 <GuestBoardGateBlurOverlay
-                  remainingCount={finalFilteredProposals.length - 3}
+                  remainingCount={finalFilteredProposals.length - GUEST_VISIBLE_COUNT}
                   totalCount={finalFilteredProposals.length}
                   boardName="創點子專區看板"
                   onOpenAuth={() => (onOpenAuth ? onOpenAuth() : openAuthModal('login'))}
