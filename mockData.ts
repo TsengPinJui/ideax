@@ -1,0 +1,2326 @@
+import { DEFAULT_VIBECODING_APPS } from './vibeCodingData';
+import { Question, Solver, Answer, Transaction, LevelConfig, User, ProblemLevel, DEFAULT_ASSISTANT_24HR_CONFIG } from '../types';
+
+export const LEVEL_CONFIGS: Record<ProblemLevel, LevelConfig> = {
+  L0: {
+    code: 'L0',
+    name: '免費交流',
+    description: '完全公開的社群交流與經驗碰撞，適合開放性回饋與跨領域腦力激盪。',
+    example: '一般交流 / 觀點碰撞 / 閒聊討論',
+    rangeText: '0 點（免費公開）',
+    minPrice: 0,
+    maxPrice: 0,
+    badgeClass: 'bg-stone-100 text-stone-700 border-stone-200',
+  },
+  L1: {
+    code: 'L1',
+    name: '基礎懸賞',
+    description: '快速痛點診斷、工具技術推薦或數據查核，給予解答者實質激勵回饋。',
+    example: '實務建議 / 痛點排查 / 基礎診斷',
+    rangeText: '100 ~ 300 點',
+    minPrice: 100,
+    maxPrice: 300,
+    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
+  },
+  L2: {
+    code: 'L2',
+    name: '進階懸賞',
+    description: '深度商業架構設計、新創冷啟動、單元經濟學拆解與增長策略規劃。',
+    example: '商業架構 / 產品驗證 / 增長模型',
+    rangeText: '301 ~ 899 點',
+    minPrice: 301,
+    maxPrice: 899,
+    badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
+  },
+  L3: {
+    code: 'L3',
+    name: '高階挑戰',
+    description: '跨領域技術突破、深度顧問方案、智財專利法務或客製化落地報告。',
+    example: '重大創新突破 / 產業級難題',
+    rangeText: '900 ~ 2,999 點',
+    minPrice: 900,
+    maxPrice: 2999,
+    badgeClass: 'bg-amber-500 text-stone-950 border-amber-600 font-black',
+  },
+  L4: {
+    code: 'L4',
+    name: '資深顧問級',
+    description: '核心技術架構、高階商務談判、重大產業併購或關鍵專利規避深度攻防。',
+    example: '關鍵技術突破 / 重大商務轉折 / 重磅懸賞',
+    rangeText: '3,000 點以上',
+    minPrice: 3000,
+    maxPrice: 100000,
+    badgeClass: 'bg-gradient-to-r from-amber-600 to-amber-700 text-white border-amber-800 shadow-xs font-bold',
+  },
+};
+
+export const GUEST_USER: User = {
+  id: 'user-guest',
+  name: '未登入訪客',
+  title: '訪客身份 (未登入)',
+  avatar: '',
+  role: 'questioner',
+  isGuest: true,
+  balance: 0,
+  pendingEarnings: 0,
+  reputation: 0,
+  joinedDate: '2026-01-01',
+  bio: '未登入訪客，僅限瀏覽內容。',
+  email: '',
+  phone: '',
+  totalWithdrawn: 0,
+  totalPaidOut: 0,
+  totalRevenue: 0,
+  escrowedEarnings: 0,
+  withheldPoints: 0,
+  reputationPoints: 0,
+  subscriptionTier: 'free',
+  verifiedExpert: false,
+  rating: 0,
+  reviewCount: 0,
+  surveyData: undefined,
+};
+
+export const MOCK_USERS: User[] = [
+  {
+    id: 'c100000001',
+    memberId: 'c100000001',
+    username: 'user_questioner',
+    name: '林書豪',
+    title: '新創團隊創始人',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    role: 'questioner',
+    balance: 0,
+    pendingEarnings: 0,
+    reputation: 94,
+    joinedDate: '2025-08-12',
+    bio: '正在孵化針對大專院校與年輕族群的無人零售與硬體租借專案，深信好的問題比解答更關鍵。',
+    email: 'shuhao.lin@startup.tw',
+    phone: '0988-776-655',
+    totalWithdrawn: 5200,
+    totalPaidOut: 4680,
+    totalRevenue: 5200,
+    escrowedEarnings: 0,
+    withheldPoints: 1000,
+    bankAccount: {
+      bankName: '822 中國信託商業銀行',
+      bankCode: '822',
+      branchName: '敦南分行',
+      accountNumber: '***-****-5821',
+      accountHolder: '林書豪',
+      isVerified: true,
+    },
+    honorTitle: '黃金天使提問家',
+    honorLevel: 3,
+    achievementsCount: 7,
+    weeklyTop10DiscussionCount: 8,
+    weeklyTop10SolutionCount: 6,
+    weeklyTop10Honors: [
+      {
+        id: 'w-hon-1',
+        weekRange: '2026 第 38 週 (09/15 ~ 09/21)',
+        boardType: 'discussion',
+        questionId: 'q-demo-pain-1',
+        questionTitle: '大專校園共享空間硬體租借的「押金與違約爭議」如何從制度設計根除？',
+        rank: 2,
+        settledAt: '2026-09-22 00:00 (每週一結算)',
+        metricText: '48 則熱烈交流討論',
+      },
+      {
+        id: 'w-hon-2',
+        weekRange: '2026 第 38 週 (09/15 ~ 09/21)',
+        boardType: 'solution',
+        questionId: 'q-demo-pain-1',
+        questionTitle: '大專校園共享空間硬體租借的「押金與違約爭議」如何從制度設計根除？',
+        rank: 4,
+        settledAt: '2026-09-22 00:00 (每週一結算)',
+        metricText: '11 份高價值專家落地方案',
+      },
+      {
+        id: 'w-hon-3',
+        weekRange: '2026 第 37 週 (09/08 ~ 09/14)',
+        boardType: 'solution',
+        questionId: 'q-mock-2',
+        questionTitle: 'AI 語音客服如何跨越「高併發語意歧義」並降低幻覺？',
+        rank: 3,
+        settledAt: '2026-09-15 00:00 (每週一結算)',
+        metricText: '8 份實戰落地解方',
+      },
+      {
+        id: 'w-hon-4',
+        weekRange: '2026 第 37 週 (09/08 ~ 09/14)',
+        boardType: 'discussion',
+        questionId: 'q-mock-3',
+        questionTitle: '求冷啟動社群早期破冰激勵制度設計',
+        rank: 6,
+        settledAt: '2026-09-15 00:00 (每週一結算)',
+        metricText: '32 則社群激盪交流',
+      },
+    ],
+    levelQuestionCounts: { L0: 3, L1: 4, L2: 5, L3: 2, L4: 1 },
+    levelAnswerCounts: { L0: 2, L1: 3, L2: 2, L3: 1, L4: 0 },
+    subscriptionTier: 'free',
+    domain: '創新創業',
+    skills: ['校園商業模式', '無人零售', '早期新創孵化', '社群運營'],
+    verifiedExpert: false,
+    rating: 4.8,
+    reviewCount: 9,
+    acceptedSolutionsCount: 5,
+    submittedSolutionsCount: 8,
+    acceptanceRate: 63,
+    avgSolutionBounty: 1200,
+    showSubmittedCount: false,
+    showAcceptanceRate: false,
+    showAvgSolutionBounty: false,
+  },
+  {
+    id: 'c100000003',
+    memberId: 'c100000003',
+    username: 'solver_koyuren',
+    name: '柯育任',
+    title: '前知名外送平台產品總監 / 新創商業策略顧問',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    role: 'solver',
+    balance: 0,
+    pendingEarnings: 4500,
+    reputation: 99,
+    joinedDate: '2025-03-01',
+    bio: '專注 O2O 商業模式重塑、異業聯盟分成架構與雙邊市場冷啟動，輔導過 20+ 家早期天使輪新創。',
+    email: 'koyuren.advisor@gmail.com',
+    phone: '0922-111-222',
+    totalWithdrawn: 82700,
+    totalPaidOut: 82700,
+    totalRevenue: 87000,
+    escrowedEarnings: 4500,
+    withheldPoints: 0,
+    bankAccount: {
+      bankName: '013 國泰世華銀行',
+      bankCode: '013',
+      branchName: '松仁旗艦分行',
+      accountNumber: '***-****-8812',
+      accountHolder: '柯育任',
+      isVerified: true,
+    },
+    honorTitle: '金牌戰略解題顧問',
+    honorLevel: 4,
+    achievementsCount: 11,
+    levelAnswerCounts: { L0: 5, L1: 8, L2: 12, L3: 7, L4: 4 },
+    levelQuestionCounts: { L0: 1, L1: 2, L2: 1, L3: 0, L4: 0 },
+    subscriptionTier: 'authority', // 權威方案（免服務費，享 24hr AI 特助代客服務）
+    subscriptionExpiresAt: '2026-10-31',
+    assistant24hrConfig: {
+      ...DEFAULT_ASSISTANT_24HR_CONFIG,
+      isEnabled: true,
+      tone: 'professional',
+      toneDescription: '以專業嚴謹且具同理心的態度接待，釐清客戶時程與需求痛點，引導具體合作方向。',
+    },
+    domain: '創新創業',
+    skills: ['雙邊市場冷啟動', '商業模式診斷', '分成架構設計', 'O2O 增長飛輪'],
+    verifiedExpert: true,
+    rating: 4.9,
+    reviewCount: 28,
+    acceptedSolutionsCount: 22,
+    submittedSolutionsCount: 25,
+    acceptanceRate: 88,
+    avgSolutionBounty: 2400,
+    showSubmittedCount: false,
+    showAcceptanceRate: false,
+    showAvgSolutionBounty: false,
+  },
+  {
+    id: 'a000000001',
+    memberId: 'a000000001',
+    username: 'Admin_001',
+    name: 'IdeaX 管理團隊',
+    title: '平台總管',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+    role: 'admin',
+    isInitialAdmin: true,
+    adminSites: ['site_a', 'site_b'],
+    balance: 0,
+    pendingEarnings: 12600,
+    reputation: 100,
+    joinedDate: '2025-01-01',
+    bio: '創點子 IdeaX 官方管理員，維護第三方支付安全託管、自動拆款撥付及專家認證。',
+    email: 'operations@ideax.io',
+    totalWithdrawn: 120000,
+    totalPaidOut: 120000,
+    totalRevenue: 135000,
+    escrowedEarnings: 12600,
+    withheldPoints: 0,
+    bankAccount: {
+      bankName: '012 台北富邦銀行',
+      bankCode: '012',
+      branchName: '安和分行',
+      accountNumber: '***-****-9900',
+      accountHolder: 'IdeaX 創點子團隊',
+      isVerified: true,
+    },
+    honorTitle: '殿堂級平台治理大師',
+    honorLevel: 5,
+    achievementsCount: 15,
+    levelAnswerCounts: { L0: 12, L1: 15, L2: 20, L3: 14, L4: 9 },
+    levelQuestionCounts: { L0: 5, L1: 6, L2: 8, L3: 5, L4: 3 },
+    subscriptionTier: 'master',
+    subscriptionExpiresAt: '2026-12-31',
+    domain: '專業問題',
+    skills: ['平台運營治理', '資安與風控', '專家實名驗證', '抽成清算'],
+    verifiedExpert: true,
+    rating: 5.0,
+    reviewCount: 42,
+    acceptedSolutionsCount: 38,
+    submittedSolutionsCount: 40,
+    acceptanceRate: 95,
+    avgSolutionBounty: 3500,
+    showSubmittedCount: false,
+    showAcceptanceRate: false,
+    showAvgSolutionBounty: false,
+  },
+  {
+    id: 'c200000002',
+    memberId: 'c200000002',
+    username: 'solver_yichun',
+    name: '陳怡君',
+    title: '資深全端系統架構師 / AI 應用工程顧問',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    role: 'solver',
+    balance: 21800,
+    pendingEarnings: 3200,
+    reputation: 98,
+    joinedDate: '2025-04-10',
+    bio: '專注高併發微服務、AI Agent 落地整合與大型系統資安評估，擅長從技術角度提供破局解方。',
+    email: 'yichun.chen.tech@gmail.com',
+    totalWithdrawn: 36000,
+    subscriptionTier: 'expert',
+    subscriptionExpiresAt: '2026-11-15',
+    domain: '專業問題',
+    skills: ['AI Agent 整合', '微服務架構', '系統性能調優', '高併發設計'],
+    verifiedExpert: true,
+    rating: 4.95,
+    reviewCount: 31,
+    acceptedSolutionsCount: 26,
+    submittedSolutionsCount: 28,
+    acceptanceRate: 93,
+    avgSolutionBounty: 2800,
+    showSubmittedCount: false,
+    showAcceptanceRate: false,
+    showAvgSolutionBounty: false,
+  },
+];
+
+export const MOCK_SOLVERS: Solver[] = [
+  {
+    id: 'solver-1',
+    name: '柯育任',
+    title: '前新創產品經理 / 雙邊市場商業顧問',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    domain: '創新創業',
+    subdomain: '服務餐飲',
+    subcategory: '服務餐飲',
+    skills: ['產品策略', 'SaaS', '市場驗證', '雙邊市場', '異業聯盟'],
+    rating: 4.9,
+    reviewCount: 92,
+    answerCount: 87,
+    acceptedRate: 91,
+    tier: '認證專家',
+    bio: '8 年新創產品從 0 到 1 實戰經驗。專精共享硬體營運、B2B 商家廣告分成協議與訂閱留存模型。',
+    earnings: 128500,
+    verifiedBadge: true,
+    featuredCase: {
+      title: '校園共享空間 3 個月翻倍單車位月坪效',
+      outcome: '透過週邊早餐店優惠券廣告置換，租借收入佔比降至 30%，周邊導流收益達 70%。',
+    },
+  },
+  {
+    id: 'solver-2',
+    name: '陳美琪 Maggie',
+    title: 'B2B SaaS 商業架構師 / 前矽谷增長負責人',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    domain: '專業問題',
+    subdomain: '企業管理',
+    subcategory: '企業管理',
+    skills: ['SaaS 定價', 'Unit Economics', 'PLG 增長', '客戶成功'],
+    rating: 4.95,
+    reviewCount: 64,
+    answerCount: 52,
+    acceptedRate: 94,
+    tier: '特邀顧問',
+    bio: '專為種子輪與 A 輪企業診斷定價分級、客戶獲取成本 (CAC) 與生命週期價值 (LTV) 槓桿。',
+    earnings: 98000,
+    verifiedBadge: true,
+    featuredCase: {
+      title: '協助企管軟體改制 Freemium 轉向 Seat-based',
+      outcome: '年經常性收入 (ARR) 於 6 個月內提升 180%，Churn rate 降低 4.2%。',
+    },
+  },
+  {
+    id: 'solver-3',
+    name: '張維哲 Allen',
+    title: 'AI 解決方案架構師 / 雲端全端資深工程師',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    domain: '創新創業',
+    subdomain: '資訊科技',
+    subcategory: '資訊科技',
+    skills: ['LLM 應用', 'RAG 知識庫', '高併發架構', '向量資料庫', '成本優化'],
+    rating: 4.88,
+    reviewCount: 58,
+    answerCount: 63,
+    acceptedRate: 89,
+    tier: '認證專家',
+    bio: '專門解決企業導入大語言模型時的幻覺、Token 爆表與資料隱私隔離等落地難題。',
+    earnings: 84000,
+    verifiedBadge: true,
+    featuredCase: {
+      title: '智慧法務合約檢索系統私有化架構',
+      outcome: '以混合檢索 + 語意快取，將推理成本壓低 72%，精準度維持在 94% 以上。',
+    },
+  },
+  {
+    id: 'solver-4',
+    name: '黃雅筑 Alice',
+    title: 'D2C 品牌增長策略師 / 數位社群操盤手',
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    domain: '創新創業',
+    subdomain: '文創工藝',
+    subcategory: '文創工藝',
+    skills: ['冷啟動流量', 'KOL 合作模型', '集客式行銷', '社群分銷'],
+    rating: 4.82,
+    reviewCount: 47,
+    answerCount: 41,
+    acceptedRate: 85,
+    tier: '專業解答者',
+    bio: '擅長以低預算達成高聲量，拆解跨通路社群轉換漏斗與內容裂變飛輪。',
+    earnings: 52000,
+    verifiedBadge: true,
+    featuredCase: {
+      title: '環保生活小物單月募資突破 300 萬實戰',
+      outcome: '打造創作者種草矩陣，ROI 達 4.3，有效累積前 5,000 位忠誠會員。',
+    },
+  },
+  {
+    id: 'solver-5',
+    name: '李立衡博士',
+    title: '台大創新育成產學顧問 / 科技政策研究員',
+    avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=150&auto=format&fit=crop&q=80',
+    domain: '學術探討',
+    subdomain: '生技醫療',
+    subcategory: '生技醫療',
+    skills: ['產學合作', '專利技術移轉', '科研補助計畫', '法規沙盒'],
+    rating: 4.91,
+    reviewCount: 39,
+    answerCount: 35,
+    acceptedRate: 92,
+    tier: '特邀顧問',
+    bio: '協助深科技（Deep Tech）與生醫/材料團隊申請政府研發補助、專利智財授權評估。',
+    earnings: 67000,
+    verifiedBadge: true,
+    featuredCase: {
+      title: '生醫感測晶片實驗室技轉方案評估',
+      outcome: '成功媒合上市電子廠產學合資，取得天使期 1,500 萬技術授權款。',
+    },
+  },
+  {
+    id: 'solver-6',
+    name: '周承翰 Ryan',
+    title: '科技獵頭總監 / 職涯策略諮詢師',
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
+    domain: '日常疑難',
+    subdomain: '職場',
+    subcategory: '職場',
+    skills: ['科技業薪資談判', '跨領域轉職', '主管領導力', '個人品牌'],
+    rating: 4.86,
+    reviewCount: 52,
+    answerCount: 59,
+    acceptedRate: 88,
+    tier: '專業解答者',
+    bio: '10 年軟體與半導體獵才歷練，一對一輔導超過 300 位工程與產品人才達成年薪躍升。',
+    earnings: 49500,
+    verifiedBadge: true,
+    featuredCase: {
+      title: '傳統硬體工程師轉進外商 AI 產品經理',
+      outcome: '重新包裝技術資產與跨部門專案亮點，成功獲取 1.6 倍年薪 Offer。',
+    },
+  },
+  {
+    id: 'solver-7',
+    name: '徐宛婷 Sonia',
+    title: '早期天使投資機構投資經理 / 財務分析師',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    domain: '專業問題',
+    subdomain: '法律智財',
+    subcategory: '法律智財',
+    skills: ['BP 募資簡報', '估值模型', '投資條款清單', '股權架構設計'],
+    rating: 4.93,
+    reviewCount: 33,
+    answerCount: 28,
+    acceptedRate: 93,
+    tier: '認證專家',
+    bio: '審查超過 800 份創業商業計畫書，精準洞察投資人關注的核心防禦力指標。',
+    earnings: 58000,
+    verifiedBadge: true,
+    featuredCase: {
+      title: '無人零售新創 Pre-A 輪 3,000 萬融資架構梳理',
+      outcome: '優化 Cap Table 與毛利結構，一個月內取得 2 家領投機構 Term Sheet。',
+    },
+  },
+  {
+    id: 'solver-8',
+    name: '陳金水 師傅',
+    title: '甲級水電技師 / 建築機電整合顧問',
+    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
+    domain: '專業問題',
+    subdomain: '水電',
+    subcategory: '水電',
+    skills: ['老屋電線抽換', '高低壓配電', '抓漏檢測', '機電負載計算'],
+    rating: 4.96,
+    reviewCount: 78,
+    answerCount: 82,
+    acceptedRate: 96,
+    tier: '特邀顧問',
+    bio: '25 年實體水電工程與智慧家庭水電設計經驗，專解各種疑難雜症漏水跳電與老屋整修管線規劃。',
+    earnings: 89000,
+    verifiedBadge: true,
+    featuredCase: {
+      title: '老舊商業大樓隱匿性漏水點紅外線熱成像查核',
+      outcome: '精準找出 7 樓管道間暗管破裂點，免敲大面積磁磚省下 15 萬修繕費。',
+    },
+  },
+];
+
+export const MOCK_QUESTIONS: Question[] = [
+  {
+    id: 'q-1',
+    title: '我們在三間大學擺了 40 台共享雨傘機，光靠租一次 20 塊根本養不起設備，怎麼跟周邊店家談合作？',
+    description: '目前在台北三間大學放了 40 台共享傘機，借一次收 20 元/天。但台北天氣一放晴就沒營收，下雨天大家又常把傘弄壞，維修跟折舊算下來很難賺。\n最近想改成「借傘順便領學校後門飲料店或早餐店折價券、跟店家收月費或傘面印 Logo」的模式，但不知道這種小店家願不願意每個月掏錢？分成跟話術該怎麼設計比較推得動？',
+    category: '創新創業',
+    subcategory: '服務餐飲',
+    tags: ['共享經濟', '校園商圈', '商業模式', '異業聯盟', '硬體廣告'],
+    level: 'L2',
+    bounty: 1000,
+    status: 'open',
+    authorId: 'user-questioner',
+    authorName: '林書豪',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-18T10:30:00Z',
+    deadline: '2026-12-30',
+    views: 0,
+    answersCount: 6,
+    isFeatured: true,
+    aiAnalysis: {
+      summary: '從資產出租轉向流量分發與商家精準引流的典型 O2O 轉型。關鍵在於把「借傘高頻接觸點」轉換為可量化的實體門市到店核銷轉換率。',
+      structuredNeed: [
+        '周邊商圈 500 公尺生活圈商家「抵用券 + 借傘免費」聯盟機制',
+        '傘布／握把／機台螢幕三合一廣告定價與分級權益方案',
+        '防損率與押金返還流程對轉換率影響的平衡點計算',
+      ],
+      solverProfileAdvice: '建議邀請具備雙邊市場合作、生活服務 O2O 拓展經驗之產品策略經理或商業顧問。',
+      marketFitRating: '高潛力（商業可行性 88%）',
+    },
+  },
+  {
+    id: 'q-2',
+    title: '以前幫傳產做買斷制系統一單 100 萬，現在想轉雲端月費制，老客戶一直嫌每年付錢很虧怎麼辦？',
+    description: '過去我們都在幫傳產工廠客製化專案管理系統，一案大概收 80~150 萬買斷。今年想把系統做成標準化的雲端 SaaS，賣給 50~200 人的中小型工廠。\n結果去拜訪幾家老客戶，老闆們聽到「依人頭按月收費、沒買斷權」都很抗拒，還一直砍帳號數說全廠共用三個帳號就好。想請教走過買斷轉訂閱的前輩，過渡期的方案跟定價該怎麼包？',
+    category: '專業問題',
+    subcategory: '企業管理',
+    tags: ['團隊協作', 'SaaS 定價', 'B2B 轉型', '經常性營收', '製造業數位化'],
+    level: 'L2',
+    bounty: 2500,
+    status: 'open',
+    authorId: 'user-author-2',
+    authorName: '黃柏翰 Jason',
+    authorAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-19T08:15:00Z',
+    deadline: '2026-12-25',
+    views: 0,
+    answersCount: 4,
+    isFeatured: true,
+    aiAnalysis: {
+      summary: '傳統重資產客製化軟體向 ARR（經常性收入）過渡的高難度課題。客戶心理防線在於「每年付費但看不到直接資產感」。',
+      structuredNeed: [
+        'Hybrid 混合過渡方案（基礎主機託管費 + 彈性座位梯度）',
+        '「免費檢視者 + 核心編輯者」雙軌席次設計，降低企業採購阻力',
+        '維護保固合約與功能更新權益的強制搭售策略',
+      ],
+      solverProfileAdvice: '需具備 Enterprise SaaS 定價經驗與 B2B 客戶成功管理顧問。',
+      marketFitRating: '關鍵轉折點（商業價值極高）',
+    },
+  },
+  {
+    id: 'q-3',
+    title: '公司內部建 RAG 知識庫踩到大雷：業務問個報價竟然搜出高階主管薪資表...權限跟快取怎麼重構？',
+    description: '公司大概 300 人，最近把各部門 SOP 跟財報合約塞進向量資料庫做內部問答。\n試營運兩週發現兩個頭痛問題：\n1. 大家連很常問的請假規定都一直重跑檢索 + LLM，API 帳單爆表\n2. 最慘的是向量檢索沒有把部門權限卡死，業務在問採購流程時，竟然被 AI 撈出含有採購底價跟主管獎金的段落。\n請問向量層的權限隔離（RBAC）跟語意快取實務上怎麼搭最穩？',
+    category: '創新創業',
+    subcategory: '資訊科技',
+    tags: ['解題黑客松', '團隊協作', 'RAG', '企業知識庫', '權限隔離', '成本優化'],
+    level: 'L3',
+    bounty: 6000,
+    status: 'open',
+    authorId: 'user-author-3',
+    authorName: '高宇翔 CTO',
+    authorAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-17T14:20:00Z',
+    deadline: '2026-12-28',
+    views: 0,
+    answersCount: 5,
+    isFeatured: true,
+    aiAnalysis: {
+      summary: '企業級 GenAI 落地的深水區難題：同時兼顧精準語意檢索、基於 RBAC/ABAC 的向量級別元資料過濾，以及高命中語意快取降本架構。',
+      structuredNeed: [
+        '向量資料庫 Metadata Pre-filtering 與安全安全標籤設計',
+        'Semantic Cache（語意快取）與 Small Model 重排（Rerank）降本實施',
+        '高敏感文檔（如薪資、財報）的隔離 Embedding Collection 路由機制',
+      ],
+      solverProfileAdvice: '需由具備大規模私有雲 RAG 與企業安全架構落地經驗之資深工程師解答。',
+      marketFitRating: '高技術門檻（極度急迫）',
+    },
+  },
+  {
+    id: 'q-4',
+    title: '在內湖賣健康餐盒被外送平台抽 35% 快做白工，想靠 LINE 揪大樓團購怎麼跨出第一步？',
+    description: '我們在內湖跟南港做低 GI 高蛋白餐盒，這半年食材一直漲，再被外送平台抽 35% 真的沒賺頭。\n想自己經營 LINE 官方帳號，主打「同一棟辦公大樓湊滿 10 個免運送到一樓大廳」，但剛開始沒有熟識的福委或大樓主揪。怎麼設計給主揪的福利跟一鍵跟團流程，才不用讓主揪幫忙收錢收到煩？',
+    category: '創新創業',
+    subcategory: '服務餐飲',
+    tags: ['行銷痛點', '餐飲 D2C', '私域流量', '辦公室團購', '社交裂變', '客戶留存'],
+    postType: 'pain_point',
+    level: 'L1',
+    bounty: 500,
+    status: 'open',
+    authorId: 'user-author-4',
+    authorName: '蘇小涵',
+    authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-20T11:00:00Z',
+    deadline: '2026-12-18',
+    views: 0,
+    answersCount: 7,
+    isFeatured: false,
+    aiAnalysis: {
+      summary: '以園區團長為核心節點的社群裂變與私域運營模式，需解決團長激勵、配送定點交付效率與菜單週期性疲勞問題。',
+      structuredNeed: [
+        '團長福利制度與週訂閱折扣階梯設計',
+        '定點限時自提配送流程降低履約物流邊際成本',
+        'LineBot 輕量拼單與免登入一鍵跟單互動體驗',
+      ],
+      solverProfileAdvice: 'D2C 電商操盤手或餐飲連鎖社群增長顧問。',
+    },
+  },
+  {
+    id: 'q-5',
+    title: '實驗室做出的快篩晶片：上櫃生技廠開 1,200 萬想買斷，該直接技轉還是自己帶學生出來開公司？',
+    description: '實驗室這三年做出一款微流體光學快篩晶片，發了兩篇頂刊也拿到專利。最近一家上櫃生技廠開價 1,200 萬技轉金 + 2% 銷售分潤想拿專屬授權；但同時國科會輔導團隊也鼓勵我們自己出來開 Spin-off 新創。\n坦白說教授兼職法規跟後續二期臨床燒錢很讓人猶豫，想聽聽生醫創投或走過技轉的學界前輩怎麼取捨？',
+    category: '學術探討',
+    subcategory: '生技醫療',
+    tags: ['科研技轉', '生醫專利', 'Spin-off', '股權設計', '產學合作'],
+    level: 'L3',
+    bounty: 8000,
+    status: 'open',
+    authorId: 'user-author-5',
+    authorName: '何副教授',
+    authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-15T09:40:00Z',
+    deadline: '2026-12-20',
+    views: 0,
+    answersCount: 3,
+    isFeatured: false,
+    aiAnalysis: {
+      summary: '深科技（Deep Tech）商業化路徑的經典二選一決策。涉及科研成果衍生條例、技術股作價出資稅賦及臨床醫材認證資金缺口。',
+      structuredNeed: [
+        '兩種路徑 5 年期預估淨收益與機會成本對比矩陣',
+        '技術作價入股與產學合作兼職法規風險審視',
+        '生醫新創由 Pre-seed 到 Series A 所需臨床驗證資本階梯',
+      ],
+      solverProfileAdvice: '生技醫療創投合夥人、智財技轉專利律師或產學總監。',
+    },
+  },
+  {
+    id: 'q-6',
+    title: '在傳產寫了 5 年 PLC 跟機械手臂，想轉職去外商或新創當 AIoT 系統顧問，作品集要補什麼？',
+    description: '在南部傳產待了五年，平常都在搞產線 PLC、感測器跟機器手臂串接，自己下班有練 Python。\n今年很想跳去外商系統整合商或 AIoT 新創做 Solution Architect，但沒碰過雲端架構跟 Docker。如果給自己半年時間準備，我該怎麼把「懂工廠老師傅跟老機台」的經驗包裝成優勢？面試最常被考什麼？',
+    category: '日常疑難',
+    subcategory: '職場',
+    tags: ['轉職策略', 'AIoT', '工業 4.0', '顧問諮詢', '履歷定位'],
+    level: 'L1',
+    bounty: 300,
+    status: 'open',
+    authorId: 'user-author-6',
+    authorName: '陳威廷',
+    authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-21T16:00:00Z',
+    deadline: '2026-12-15',
+    views: 0,
+    answersCount: 5,
+    isFeatured: false,
+    aiAnalysis: {
+      summary: '傳統 OT（營運技術）跨越至 IT/AI 的絕佳定位，工廠領域知識（Domain Knowledge）是罕見優勢，重點在於包裝端到端架構思維。',
+      structuredNeed: [
+        'OT 與 IT 技能重疊度的強項轉換敘事技巧',
+        '邊緣端推理（Edge AI）+ MQTT/OPC-UA 工業協定作品集架構',
+        '科技顧問與系統整合商面試常見 Case Study 拆解心法',
+      ],
+      solverProfileAdvice: '科技獵才顧問或由硬體轉型至雲端架構的資深前輩。',
+    },
+  },
+  {
+    id: 'q-7',
+    title: '賣狗狗鮮食包訂閱制，客人在第 3 個月退訂率突然暴增（都說冷凍庫塞不下），怎麼改比較好？',
+    description: '我們自己做寵物鮮食調理包，第一個月靠體驗價很順，第二個月也還有 75% 留存，但一到第三個月直接掉到剩 38%！\n打電話去問退訂的飼主，十個有八個說「冷凍庫已經塞滿還沒吃完、狗狗好像有點吃膩同一個口味」。除了叫客人自己上後台按延後出貨（大部分人都直接按取消比較快），包裝跟配送週期還能怎麼調？',
+    category: '創新創業',
+    subcategory: '服務餐飲',
+    tags: ['寵物經濟', '訂閱留存', 'D2C 電商', '會員經營', '客戶生命週期'],
+    level: 'L2',
+    bounty: 1500,
+    status: 'open',
+    authorId: 'user-author-7',
+    authorName: '林佩萱 Eva',
+    authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-18T18:40:00Z',
+    deadline: '2026-12-22',
+    views: 0,
+    answersCount: 4,
+    isFeatured: false,
+    aiAnalysis: {
+      summary: '消耗性生鮮訂閱面臨的「儲存空間瓶頸」與「消費疲勞」。解答核心需從單純商品買賣轉變為陪伴式寵物體重/毛質健康管理。',
+      structuredNeed: [
+        '「暫停配送 / 減量微調」的主動式關懷觸發機制設計',
+        '每月驚喜季節性限定風味包，打破適口性吃膩問題',
+        '冷凍包裝縮小 25% 空間專利折疊設計與分批彈性派送策略',
+      ],
+      solverProfileAdvice: '訂閱制電商產品經理或寵物產業資深營運專家。',
+    },
+  },
+  {
+    id: 'q-8',
+    title: '美國天使投資人想用 YC SAFE 投我們 10 萬美金，但我們是台灣閉鎖性公司，沒設境外公司怎麼簽？',
+    description: '好不容易談到一位矽谷個人天使願意投 10 萬美金，他習慣直接簽 YC 的標準 SAFE 合約。\n問題是我們公司目前只設在台北（閉鎖性股份有限公司），還沒去開曼或美國設紙上公司。台灣公司法跟投審會好像沒有直接對應 SAFE 的東西，如果用可轉換特別股或可轉債替代，外資匯進來會卡投審會很久嗎？',
+    category: '專業問題',
+    subcategory: '法律智財',
+    tags: ['SAFE 融資', '創投條款', '閉鎖性公司', '投審會', '天使投資'],
+    level: 'L2',
+    bounty: 3000,
+    status: 'open',
+    authorId: 'user-questioner',
+    authorName: '林書豪',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-16T12:00:00Z',
+    deadline: '2026-12-19',
+    views: 0,
+    answersCount: 3,
+    isFeatured: false,
+    aiAnalysis: {
+      summary: '美台跨國早期融資的經典合規架構衝突。涉及閉鎖性公司法非公開發行之特別股多元權利與海外投資人資金入境法規。',
+      structuredNeed: [
+        '閉鎖性股份有限公司章程中「複數表決權與轉換權特別股」對應條文範例',
+        '無息可轉換公司債（Convertible Note）與股權激勵替代路徑比較',
+        '投審會外資審查流程與資金結匯時程實務指南',
+      ],
+      solverProfileAdvice: '新創專精律師、會計師或跨境創投資深投資人。',
+    },
+  },
+  {
+    id: 'q-9',
+    title: '台北 30 年老公寓 4 樓洗澡水超小、廚房一開水就變冰的，裝加壓馬達真的會把老鐵管撐爆嗎？',
+    description: '住台北無電梯老公寓 4 樓（水塔在 5 樓頂），冬天洗澡超痛苦，只要家人在廚房洗碗或按馬桶，蓮蓬頭不是變滾水就是直接熄火變冰水。\n找了兩個水電師傅來看，一個說頂樓裝顆靜音恆壓馬達就好，另一個卻警告說牆壁裡三十年的老鍍鋅鐵管已經生鏽，加壓下去接頭一定漏水。到底該先檢查哪裡？還是只能拉明管了？',
+    category: '日常疑難',
+    subcategory: '家務',
+    tags: ['生活痛點', '老屋水電', '加壓馬達', '水壓不足', '熱水器忽冷忽熱', '管線配置'],
+    postType: 'pain_point',
+    level: 'L1',
+    bounty: 450,
+    status: 'open',
+    authorId: 'user-author-9',
+    authorName: '廖冠宇 Kevin',
+    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-19T20:30:00Z',
+    deadline: '2026-12-16',
+    views: 0,
+    answersCount: 5,
+    isFeatured: false,
+    aiAnalysis: {
+      summary: '典型老舊公寓重力供水壓差不足與管路水垢縮徑問題。核心在於區分「是熱水器水盤組老化阻力大」還是「主管路水垢生鏽」，切忌盲目上大功率加壓馬達以免舊管接頭滲水。',
+      structuredNeed: [
+        '熱水器進水端過濾網與冷熱出水三角凡爾流量排查',
+        '電子變頻恆壓馬達（1/4HP 緩啟動） vs 傳統定壓馬達水錘效應防護',
+        '老舊鍍鋅鐵管換裝白鐵壓接被覆管或明管走線的最佳成本路徑',
+      ],
+      solverProfileAdvice: '甲級水電技師、熱水器認證技術士或建築機電工程師。',
+    },
+  },
+  {
+    id: 'q-10',
+    title: '開 24 小時無人健身房，常遇到「一個人刷臉、後面兩個朋友跟著溜進來」，不想裝醜醜的旋轉門怎麼抓？',
+    description: '正在籌備一間 60 坪的 24 小時自助健身房。問了幾個同業，大家最頭痛的就是半夜常有會員刷一次 QR Code 或人臉，直接幫後面沒付錢的朋友撐住門一起進來運動。\n因為空間不大又考慮無障礙動線，完全不想裝捷運那種笨重的三叉旋轉柵門。有沒有用簡單鏡頭偵測人數或玄關雙道門的便宜解法？',
+    category: '創新創業',
+    subcategory: '機械工業',
+    tags: ['產業痛點', '無人零售', '物聯網硬體', '電腦視覺', '健身產業', '安防風控'],
+    postType: 'pain_point',
+    level: 'L2',
+    bounty: 2000,
+    status: 'open',
+    authorId: 'user-author-10',
+    authorName: '蔡宜倫',
+    authorAvatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-17T09:10:00Z',
+    deadline: '2026-12-29',
+    views: 0,
+    answersCount: 3,
+    isFeatured: false,
+    aiAnalysis: {
+      summary: '無人實體空間邊界防禦與商業損益防護。純靠硬體或純靠軟體都有漏洞，最佳解往往是「輕量 3D 深度相機 + 帳號黑名單自動停權 + 警報語音嚇阻」。',
+      structuredNeed: [
+        '入口玄關緩衝區（Mantle/Air-lock）與單眼/雙目深度計數硬體搭配',
+        '違規尾隨自動抓拍截圖推播至會員 App 與扣款違約金條款機制',
+        '夜間緊急求助鈴與跌倒姿態偵測（Fall Detection）串接保全機制',
+      ],
+      solverProfileAdvice: '物聯網邊緣運算工程師或智慧空間系統整合顧問。',
+    },
+  },
+  {
+    id: 'q-11',
+    title: '社區生鮮超市每天晚上 6 點後熟食跟葉菜報廢一堆，店員貼 8 折貼紙貼到手軟還是賣不完',
+    description: '我們在雙北有 8 家社區型生鮮超市，每天傍晚六點過後，烤雞、便當跟葉菜類沒賣完隔天就得報廢。現在靠店員拿打標機巡場貼 8 折黃標，不但花人力，附近婆婆媽媽還養成 5:50 在旁邊等貼貼紙才結帳的習慣。\n想做像日本或歐美那種「剩食福袋 LINE 預留」或依庫存自動跳折數的做法，不改既有 POS 的話怎麼跑比較順？',
+    category: '專業問題',
+    subcategory: '企業管理',
+    tags: ['動態定價', '剩食經濟', '零售庫存', '智慧超市', '邊際貢獻'],
+    level: 'L2',
+    bounty: 1800,
+    status: 'open',
+    authorId: 'user-author-11',
+    authorName: '朱正宏 營運協理',
+    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-20T14:15:00Z',
+    deadline: '2026-12-24',
+    views: 0,
+    answersCount: 3,
+    isFeatured: false,
+    aiAnalysis: {
+      summary: '易腐生鮮庫存衰減函數與動態收益管理。需在「刺激出清速度」與「避免蠶食正常時段客單」之間尋找帕累托最佳解。',
+      structuredNeed: [
+        '基於保鮮期、天氣狀況與歷史出清速度的階梯折價演算法',
+        '電子貨架標籤（ESL）與 POS 系統即時連動批次調價流程',
+        '社區惜福驚喜盲盒包（Too Good To Go 模式）預購提貨設計',
+      ],
+      solverProfileAdvice: '零售營運專家、供應鏈大數據科學家或智慧定價顧問。',
+    },
+  },
+  {
+    id: 'q-12',
+    title: '做 Vtuber 語音陪伴聊天 App，封測發現有國中生半夜對 AI 講自我傷害的話，安全護欄跟降溫機制怎麼設？',
+    description: '我們在做結合 Live2D 跟即時語音的虛擬偶像陪伴聊天室，原本預設是輕鬆陪聊。\n結果上禮拜看封測後台嚇到，有未成年使用者半夜兩點把 AI 當唯一傾訴對象，講了很多極端負面的話。單純用關鍵字直接跳「請撥打安心專線」並強制斷線，反而怕刺激到對方情緒。想請教有做過心理諮商或 AI Safety 的專家，這種情境怎麼設計溫和降溫跟防護界線？',
+    category: '學術探討',
+    subcategory: '社會科學',
+    tags: ['AI 倫理', '虛擬陪伴', '安全護欄', '青少年保護', '法規遵循'],
+    level: 'L3',
+    bounty: 5500,
+    status: 'open',
+    authorId: 'user-author-12',
+    authorName: '沈維新 創辦人',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-19T22:00:00Z',
+    deadline: '2026-12-21',
+    views: 0,
+    answersCount: 4,
+    isFeatured: true,
+    aiAnalysis: {
+      summary: '生成式 AI 陪伴產業必經的合規與人道大考。產品生命線不僅在於黏著度，更在於危機干預與心理健康責任免責邊界。',
+      structuredNeed: [
+        '即時情緒分類器（Sentiment Classifier）與危機訊號中斷接管機制',
+        '虛擬人設定守則：明確告知 AI 身份，拒絕不健康依賴暗示話術',
+        '未成年時間管理與法定代理人連線通知與救助專線自動嵌入',
+      ],
+      solverProfileAdvice: 'AI 產品合規專家、臨床心理師與社群安全產品經理。',
+      marketFitRating: '高敏感情境（合規先行）',
+    },
+  },
+  {
+    id: 'q-13',
+    title: '剛進全遠距科技新創，遇到卡關到底該自己硬啃多久再去 Slack 問前輩？',
+    description: '第一份工作進了全遠端的軟體新創，大家步調超快，平常都在 Slack 用文字溝通。\n有時候改 bug 卡住，自己查了兩小時還沒解出來，很怕太早問被覺得伸手牌，但悶頭研究太久又怕 standup 被主管說怎麼進度卡住不講。大家剛進職場時是怎麼抓「自己查 vs 開口問」的時間點？',
+    category: '日常疑難',
+    subcategory: '職場',
+    tags: ['職場適應', '新人指引', '非同步溝通', '向上管理', '工作習慣', '閒聊討論'],
+    postType: 'chat_discussion',
+    level: 'L0',
+    bounty: 0,
+    status: 'open',
+    authorId: 'user-author-4',
+    authorName: '蘇小涵',
+    authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-22T08:00:00Z',
+    deadline: '2026-12-27',
+    views: 0,
+    answersCount: 4,
+    isFeatured: false,
+    aiAnalysis: {
+      summary: '典型職場新人冷啟動心態調適。關鍵在於建立「30 分鐘卡點法則」與「提問模板（現況+已嘗試+三種猜想+需要的決策支援）」。',
+      structuredNeed: [
+        '建立 30 分鐘自主排查機制與結構化 Slack 提問模板',
+        '每週 1on1 與主管確認「自走砲 vs 尋求協助」的界線期望',
+        '非同步協作環境中營造可靠度（Reliability）的工作紀錄習慣',
+      ],
+      solverProfileAdvice: '資深職場顧問、團隊主管或同業工程與產品前輩。',
+      marketFitRating: '社群互助交流',
+    },
+  },
+  {
+    id: 'q-14',
+    title: '下肢復健外骨骼的日本諧波減速機交期要等 9 個月，台灣有精密度跟壽命撐得住的替代方案嗎？',
+    description: '我們在做第二代醫療用下肢復健外骨骼，最卡脖子的就是髖關節跟膝關節那幾顆諧波減速機，目前全靠日本大廠，但交期動輒 9 個月而且價格硬到不行。\n試過兩家台廠樣品，初期背隙（Backlash）還可以，但跑疲勞測試到第 300 小時精度就掉下來。想問做過精密機械或機器人控制的前輩，能靠控制演算法補償背隙嗎？還是台灣有哪家隱形冠軍齒輪廠推薦去談？',
+    category: '創新創業',
+    subcategory: '機械工業',
+    tags: ['外骨骼', '機器人', '減速機', '扭矩控制', '零組件替代'],
+    level: 'L4',
+    bounty: 5000,
+    status: 'open',
+    authorId: 'user-author-3',
+    authorName: '高宇翔 CTO',
+    authorAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-22T14:00:00Z',
+    deadline: '2026-12-26',
+    views: 0,
+    answersCount: 2,
+    isFeatured: true,
+    aiAnalysis: {
+      summary: '高精密度醫療機器人供應鏈自主化挑戰。核心瓶頸在於回差控制（Backlash）、剛性疲勞測試與力矩即時前饋補償。',
+      structuredNeed: [
+        '台灣精密齒輪廠替代型諧波/行星滾柱模組公差驗證',
+        '高動態行走步態之力矩回授自適應濾波演算法',
+        'ISO 13482 機器人安全性認證測試路徑規劃',
+      ],
+      solverProfileAdvice: '工業機器人機電整合專家、自動控制博士或醫療器材研發總監。',
+      marketFitRating: '高門檻技術攻堅',
+    },
+  },
+  {
+    id: 'q-15',
+    title: '營建鋁門窗廢料回爐重煉耗電又怕雜質超標，徵求「二次鋁低耗能熔煉＋廠區 10MW 儲能削峰」統包規劃',
+    description: '集團答應歐盟客戶 2030 年要交出 100% 再生鋁材碳足跡報告。目前我們桃園廠自己收工地拆下來的舊鋁窗回爐，但舊料表面有烤漆跟膠條，直接熔煉耗電量高、氣孔率也偏高。\n這次開出 98,000 元賞金（採納後直接簽年度顧問約），想找真正懂「雙室熔煉除氣製程 + 廠區 10MW 綠電儲能調度 + ISO 14067 碳盤查」的跨領域團隊或資深技師提出可行架構！',
+    category: '創新創業',
+    subcategory: '資訊科技',
+    tags: ['重磅懸賞', 'ESG', '循環經濟', '再生鋁材', '微電網', '碳足跡'],
+    level: 'L4',
+    bounty: 98000,
+    withheldBounty: 98000,
+    status: 'open',
+    authorId: 'user-author-12',
+    authorName: '沈維新 創辦人',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-23T04:00:00Z',
+    deadline: '2026-12-31',
+    views: 0,
+    answersCount: 6,
+    isFeatured: true,
+    aiAnalysis: {
+      summary: '百萬級別重大永續循環經濟轉型難題。需橫跨冶金化工、儲能電力系統與國際碳盤查法規的三重跨界整合。',
+      structuredNeed: [
+        '低耗損再生鋁雙室反射熔煉爐技術經濟性評估',
+        '廠區光儲直柔（PEDF）微電網調度架構',
+        '歐盟 CBAM 碳邊境關稅申報合規模型',
+      ],
+      solverProfileAdvice: '大型工程統包顧問、綠色冶金領域權威學者或跨國 ESG 碳金融首席分析師。',
+      marketFitRating: '旗艦懸賞（頂級產業難題）',
+    },
+  },
+  {
+    id: 'q-16',
+    title: '共享辦公室的免費會議室常被會員先卡位一整天結果人根本沒來，不裝貴桑桑門禁怎麼解？',
+    description: '我們在台北開了 3 個共享辦公空間，小會議室原本是讓月租會員免費預約。\n結果最近常有幾家團隊禮拜一就把整週下午的黃金時段訂滿，實際上人根本沒出現，害其他臨時要跟客戶開會的會員氣得跑來櫃檯罵。不想花幾十萬去改每間門的電子鎖，有沒有簡單低成本的「10 分鐘沒到自動釋出」做法？',
+    category: '創新創業',
+    subcategory: '服務餐飲',
+    tags: ['空間痛點', '共享經濟', '痛點提出', '物聯網', '營運管理'],
+    postType: 'pain_point',
+    level: 'L1',
+    bounty: 0,
+    status: 'open',
+    authorId: 'user-author-2',
+    authorName: '黃柏翰 Jason',
+    authorAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-09-23T09:00:00Z',
+    deadline: '2026-12-23',
+    views: 0,
+    answersCount: 2,
+    isFeatured: false,
+    aiAnalysis: {
+      summary: '共享空間資源公地悲劇的典型痛點。關鍵在於設計「輕量簽到 QR Code / PIR 微動感測 10 分鐘自動釋出 + 連續爽約違約金點數機制」。',
+      structuredNeed: [
+        '會議室門口低成本 e-Paper 電子紙自動倒數顯示螢幕',
+        '未於預約起始 10 分鐘內掃碼即刻釋出並發送 LINE 提醒',
+        '會員違規信用點數與懲處退租規章條文',
+      ],
+      solverProfileAdvice: '物聯網軟硬整合專家或共享空間營運主管。',
+      marketFitRating: '高實用價值（立即落地）',
+    },
+  },
+];
+
+export const MOCK_ANSWERS: Answer[] = [
+  // Discussions (免費留言討論式) for Question 1
+  {
+    id: 'disc-1-1',
+    questionId: 'q-1',
+    type: 'discussion',
+    solverId: 'user-author-4',
+    solverName: '蘇小涵',
+    solverTitle: '創作者 / 新創運營',
+    solverAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.8,
+    freePreview: '好奇請問你們目前在機台維護上，傘布破損率大約是多少呢？如果是下大雨傘骨被吹斷，學生歸還時機台怎麼判定是人為還是自然耗損？很支持這個構想！',
+    isPaid: false,
+    price: 0,
+    deliveryType: '交流探討',
+    createdAt: '2026-09-18T12:00:00Z',
+    likes: 12,
+  },
+  // Solutions (專業方案：含免費精華摘要與付費解鎖全文) for Question 1
+  {
+    id: 'ans-1-1',
+    questionId: 'q-1',
+    type: 'solution',
+    solverId: 'solver-1',
+    solverName: '柯育任',
+    solverTitle: '前知名外送平台產品總監 / 新創商業策略顧問',
+    solverAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.9,
+    deliveryFormat: 'text',
+    deliveryType: '商業策略架構',
+    isPaid: true,
+    price: 1000,
+    isUnlockedByCurrentUser: false,
+    createdAt: '2026-09-18T16:20:00Z',
+    freePreview: `【精華摘要公開】
+校園共享雨傘的致命傷在於「雨天需求爆發、晴天無人問津」，若僅靠 NT$20 租借費，設備折舊與損壞率將直接拖垮現金流。
+轉型的核心理念是：將雨傘機台定義為「校園門戶的生活流量入口」，把學生借傘的剛需，重塑為「周邊商圈客單價 NT$150+ 的實體引流媒介」。
+建議採行「三方互惠飛輪」：學生『出示校園周邊指定商家折價券，享 2 小時免費借傘』；商家『每月支付 NT$1,200~2,500 贊助費，換取機台螢幕曝光與雨天專屬來客券』；平台方『從每筆成功的門市核銷中抽取 8% 分成』。`,
+    fullContent: `【完整商業落地架構與執行步驟】
+
+一、商業合作模式與定價矩陣：
+1. 商家級別權益規劃：
+   - A 級金牌合作夥伴（每校區限 5 家，如手搖飲、連鎖早餐、影印店）：每月贊助 NT$2,500。
+     權益：機台首頁全版廣告輪播、取傘成功頁面優先推播「加 10 元多一杯／滿百折 20」條碼、傘面角落品牌 Logo 燙印。
+   - B 級常態特約夥伴（每校區限 20 家，周邊小吃、學生餐廳）：每月贊助 NT$900。
+     權益：App 與 LINE 借傘頁面「附近合作特約地圖」高亮標示、優惠券列表展示。
+
+二、借傘與核銷的防作弊技術閉環：
+1. 免押金誘因：綁定 LINE Pay 或校園信箱，提供「信用借傘」。
+2. 借傘流程改造：
+   - 步驟 1：學生在機台掃碼 ➔ 畫面跳出「選擇優惠商家折抵，今日借傘 0 元」。
+   - 步驟 2：學生勾選「XX 早餐店折 15 元券」➔ 雨傘即時彈出。
+   - 步驟 3：手機 LINE 即刻收到數位核銷條碼，限 3 小時內至門市出示。
+   - 步驟 4：商家用 POS 掃描核銷條碼，系統自動記錄該筆引流成功，平台次月結算。
+
+三、損耗與折舊的財務對沖策略：
+1. 雨傘成本控制：客製化高強度玻璃纖維傘骨，批量成本壓至 NT$110/把。
+2. 傘面廣告贊助：傘面印刷由大型品牌（如金融信用卡、英語學習 App）年度包裝，單支雨傘預收 NT$60 廣告費，直接打平硬體採購成本 50% 以上。
+3. 逾期違約金：超過 24 小時未歸還，啟動信用卡扣款 NT$150（直接視為購買，扣除手續費後平台仍有 35% 毛利），化損耗為銷貨收入。`,
+    isAccepted: true,
+    rating: 5,
+    reviewComment: '方案超級務實！尤其是將逾期未還轉為銷貨收入與商家分級定價，幫我們解決了最大的心腹大患，已採納！',
+  },
+  {
+    id: 'ans-1-2',
+    questionId: 'q-1',
+    type: 'solution',
+    solverId: 'solver-4',
+    solverName: '黃雅筑 Alice',
+    solverTitle: 'D2C 品牌增長策略師 / 數位社群操盤手',
+    solverAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.82,
+    deliveryFormat: 'file',
+    deliveryType: '落地實踐路徑',
+    isPaid: true,
+    price: 200,
+    isUnlockedByCurrentUser: false,
+    createdAt: '2026-09-19T09:00:00Z',
+    attachments: [
+      {
+        name: '校園共享雨傘商圈合作話術手冊_v2.pdf',
+        size: '2.4 MB',
+        type: 'application/pdf',
+      },
+      {
+        name: '店家合作意向書與抽成試算表.xlsx',
+        size: '840 KB',
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }
+    ],
+    freePreview: `【精華摘要公開（附檔案交付）】
+校園商家的業務開拓最忌諱「冷啟動打電話給老闆」。學生餐廳和周邊攤商的老闆最在乎的是「中午能不能多賣 30 個便當、下雨天外送員不送時店裡會不會冷清」。
+我的建議是以「雨天救援包」作為商家的推廣話術：把雨天從店家的生意淡季，轉為「借傘順路吃熱湯」的逆勢增長日。
+本方案附帶完整可直接套用的合約 Word 與 Excel 財務試算模版！`,
+    fullContent: `【執行落地方案與話術手冊】
+
+1. 商家推廣三步驟破冰法：
+   - 步驟 1（實體數據佐證）：準備一份 1 頁紙的「本校雨天通勤人流熱點圖」，直接標出距離店家 100 公尺內的 3 座機台，證明每日有 800+ 學生在門口借還傘。
+   - 步驟 2（免費試跑 14 天）：先承諾免費幫店家發送 100 張專屬優惠券，商家只需提供憑券兌換小菜或折 10 元，若 14 天內引流少於 30 人，完全不收費。
+   - 步驟 3（成效見證轉長期簽約）：14 天試跑後出示後台精確核銷數字，並以「同街同品類排他協議（本條街只簽一家便當店）」促成季簽。
+
+2. 學生端的社群傳播彩蛋（增長飛輪）：
+   - 在傘柄內側隨機放置「隱藏驚喜密碼」，如「憑此密碼今日借傘免費，且享對面手搖飲免費加珍珠一次」。
+   - 引起大學生在 Dcard 校園板與 Instagram 限時動態自發拍照打卡，形成零成本自然擴散。`,
+    isAccepted: false,
+  },
+  {
+    id: 'ans-1-3',
+    questionId: 'q-1',
+    type: 'solution',
+    solverId: 'solver-2',
+    solverName: '陳美琪 Maggie',
+    solverTitle: 'B2B SaaS 商業架構師 / 前矽谷增長負責人',
+    solverAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.95,
+    deliveryFormat: 'meeting',
+    deliveryType: '線上諮詢會談',
+    isPaid: true,
+    price: 1500,
+    isUnlockedByCurrentUser: false,
+    createdAt: '2026-09-20T10:00:00Z',
+    meetingDetails: {
+      durationMinutes: 45,
+      platform: 'Google Meet',
+      availableTimeSlots: '每週二、四晚間 19:30 - 21:30 或週六下午（私聊預約）',
+      meetingAgenda: '1. 現有 40 台雨傘機台的點位損益診斷\n2. 商家分潤合約條款走查與談判攻防\n3. 學生留存率與轉介紹漏斗優化建議\n4. 15 分鐘 Q&A 與客製化疑難解答',
+    },
+    freePreview: `【精華摘要公開（含 45 分鐘 1 對 1 線上會談診斷）】
+校園共享雨傘若要從單純租借進化成商業聯盟，最關鍵的是「點位坪效」與「合約保護機制」。
+我將透過 45 分鐘線上 Google Meet 視訊，直接為你們逐一審閱現有 40 個機台的熱點數據，並提供矽谷等級的增長與法務風險防禦策略。`,
+    fullContent: `【線上會談預約權已開通】
+請點擊「立即私聊預約時段」聯繫我，我們將在 Google Meet 上進行 45 分鐘深度諮詢與營運沙盤推演。`,
+    isAccepted: false,
+  },
+  // Answer for Question 2
+  {
+    id: 'ans-2-1',
+    questionId: 'q-2',
+    solverId: 'solver-2',
+    solverName: '陳美琪 Maggie',
+    solverTitle: 'B2B SaaS 商業架構師 / 前矽谷增長負責人',
+    solverAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.95,
+    deliveryType: '財務與數據模型',
+    isPaid: true,
+    price: 600,
+    isUnlockedByCurrentUser: false,
+    createdAt: '2026-09-19T14:30:00Z',
+    freePreview: `【精華摘要公開】
+從客製專案轉型為 Per-seat 訂閱，最常見的失敗是「生搬硬套 Slack 或 Notion 的計費邏輯」。
+傳統中型製造業的老闆心態是：一個工廠只有 10 個核心主管會天天登入，剩下 100 個產線人員每週看一次報告。如果硬算 110 個全價 Seat，客戶會立刻拒簽！
+正確的做法是打造「階梯混合定價（Base Platform + Active Contributor + Free Viewer）」模式。`,
+    fullContent: `【企業級 SaaS 定價架構指南】
+
+一、三層定價結構設計：
+1. 基礎平台費（Base Fee）：NT$ 8,000 / 月。
+   包含伺服器獨立儲存空間、專屬 API 串接、企業級權限控管、每季一次系統健康巡檢。這一筆費用能讓傳產老闆感覺「我買了專屬的系統」，打消租賃的不安全感。
+2. 核心操作席次（Power Seat）：NT$ 650 / 人 / 月。
+   具備工作流程派工、報價審批、供應鏈排程修改權限者才需付費。
+3. 訪客與檢視席次（Viewer Seat）：永久免費。
+   外包協力廠商、現場作業員僅需打勾完成任務或查看圖面者，帳號不收費。這能極大降低採購阻力，並形成內部全域覆蓋。
+
+二、舊客戶 Migration（合約過渡法寶）：
+1. 承諾「維護權益延續」：已簽訂一次性買斷的客戶，目前每年繳納 15% 維護費（約 15~20 萬）。
+2. 提供升級誘因：將現有年維護費直接抵扣第 1 年 SaaS 訂閱費用的 80%，並免費贈送新版行動 App 端與即時推播模組。
+3. 終止舊架構維護公告：預告 18 個月後舊版本停止安全更新與相容性補丁，推動客戶自然移轉。`,
+    isAccepted: true,
+    rating: 5,
+    reviewComment: '雙軌席次與基礎平台費的設計完全切中傳產採購心理！為我們省下了至少 3 個月的彎路。',
+  },
+  // Answer for Question 3
+  {
+    id: 'ans-3-1',
+    questionId: 'q-3',
+    solverId: 'solver-3',
+    solverName: '張維哲 Allen',
+    solverTitle: 'AI 解決方案架構師 / 雲端全端資深工程師',
+    solverAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.88,
+    deliveryType: '技術選型報告',
+    isPaid: true,
+    price: 1200,
+    isUnlockedByCurrentUser: false,
+    createdAt: '2026-09-17T18:00:00Z',
+    freePreview: `【精華摘要公開】
+企業 RAG 內部落地必須遵循「安全第一、快取次之、推理最後」的三層漏斗原則。
+目前你們遇到的「費用過高」與「權限穿透洩密」問題，根本原因在於把所有文件統一切 Chunk（分塊）塞進同一個向量空間，並直接由前端 LLM 裸問。
+這在架構上存在巨大合規漏洞。解決之道在於：在 Embedding 寫入時建立 Multi-tenant Metadata，並在檢索階段強制注入使用者的 JWT 部門角色 Claims 進行 Pre-filter。`,
+    fullContent: `【完整企業級安全降本架構方案】
+
+一、權限防洩漏架構（RBAC + ABAC Metadata Pre-Filtering）：
+1. 向量庫文檔寫入規則：
+   每個 Chunk 必須強制綁定不可篡改的元資料：
+   - department_acl: ['finance_head', 'c_level']
+   - classification_level: 'confidential'
+   - doc_id: 'FIN-2026-Q1'
+2. 查詢階段安全攔截：
+   檢索端不允許使用者自行定義過濾條件，而是由 API Gateway 從 SSO JWT Token 萃取該使用者的組織代碼，自動組合進向量庫的 Query Filter：
+   \`filter: { "department_acl": { "$in": user.roles } }\`
+   如此一來，薪資與採購底價在向量搜尋「物理層面」根本不會被召回，徹底杜絕 Prompt Injection 誘騙洩密。
+
+二、三階降本節流管線（Token 成本降低 75%+）：
+1. 第一層：精確與語意雙快取（Exact + Semantic Cache）
+   - 對於常見問題（例如「特休天數如何計算？」），利用 Redis 先比對 SHA256，若有相近問題（Cosine Similarity > 0.96），直接返回已驗證快取結果，0 Token 消耗。
+2. 第二層：Small Model 重排過濾（Rerank & Pruning）
+   - Top-K 召回 20 個片段後，不要直接餵給 GPT-4 或 Gemini Pro。先用輕量的 Cohere Rerank 或本地 bge-reranker 篩選出最高分的前 3 片段，剔除無關雜訊，將 Prompt Token 長度壓縮 60%。
+3. 第三層：分級模型路由（Model Router）
+   - 簡單事實性問題派發給輕量低成本模型（如 Gemini 3.8 Flash / GPT-4o-mini）；複雜歸納整合才派發旗艦模型。`,
+    isAccepted: true,
+    rating: 5,
+  },
+  // Answer for Question 4
+  {
+    id: 'ans-4-1',
+    questionId: 'q-4',
+    solverId: 'solver-4',
+    solverName: '黃雅筑 Alice',
+    solverTitle: 'D2C 品牌增長策略師 / 數位社群操盤手',
+    solverAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.82,
+    deliveryType: '落地實踐路徑',
+    isPaid: false,
+    price: 0,
+    isUnlockedByCurrentUser: true,
+    createdAt: '2026-09-20T16:00:00Z',
+    freePreview: `【公開免費交流方案】
+健康餐盒做辦公室 D2C，最關鍵的角色是抓出每一棟大樓的「意見領袖（團長）」。
+通常大樓或部門內負責訂午餐的行政助理（Admin）、HR 或健身狂熱者就是最天然的種子團長。
+我們設計的機制是：團長只要湊滿 5 個便當，團長本人當餐直接 5 折；湊滿 10 個便當，團長免費吃，且整單免運。這會讓團長主動在部門 Slack/Teams 甚至隔壁跨樓層呼朋引伴！`,
+    fullContent: `【深入運營落地方案】
+1. 配送點標準化：與大樓一樓管理室或固定自提角落合作，每日固定 11:45 前送達指定保溫提袋，避免外送員逐層爬樓梯耽誤時間。
+2. 週五訂閱制優惠：推出「週一至週四自選，週五送免費無糖燕麥飲」的連續訂餐獎勵，把單日衝動購買轉化為週期性剛需。
+3. 菜單兩週一換：準備 8 種主餐輪替，每季引進聯名醬料（如泰式綠咖哩、日式柚子胡椒），維持回購率。`,
+    isAccepted: false,
+  },
+  // Answer for Question 7
+  {
+    id: 'ans-7-1',
+    questionId: 'q-7',
+    solverId: 'solver-1',
+    solverName: '柯育任',
+    solverTitle: '前知名外送平台產品總監 / 新創商業策略顧問',
+    solverAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.9,
+    deliveryType: '商業策略架構',
+    isPaid: true,
+    price: 300,
+    isUnlockedByCurrentUser: false,
+    createdAt: '2026-09-18T21:00:00Z',
+    freePreview: `【精華摘要公開】
+寵物鮮食第 3 個月的「斷訂懸崖」本質上不是產品不好吃，而是「消費者認知負荷過重」與「冷凍庫物理空間耗盡」。
+當主人打開冰箱看到還有 8 包鮮食沒吃完，下週的箱子又自動送來時，產生的不是期待，而是深深的罪惡感與壓力，於是只能無奈按下【取消訂閱】。
+解法不在於盲目降價，而在於把「主動式靈活暫停（Smart Pause）」做成正向服務！`,
+    fullContent: `【留存優化策略三部曲】
+一、建立「鮮食庫存智慧守護」LINE 預警：
+在預定發貨前 5 天，透過 LINE 傳送可愛互動測驗：「毛孩這個月有把鮮食吃光光嗎？1. 吃得乾乾淨淨 2. 冰箱還剩 3~5 包 3. 換牙挑食中」。
+若選 2 或 3，系統立即建議：「貼心幫您順延一週出貨，不用擔心塞爆冰箱哦！」，化退訂危機為貼心感。
+
+二、包裝革命（平鋪超薄真空包）：
+將原本厚重的立體袋，改為厚度僅 1.2 公分的「書本式平鋪真空包」，可以在冷凍庫像抽屜文件一樣直立排列，收納效率提升 3 倍。
+
+三、第 3 個月「毛孩身形蛻變」里程碑手冊：
+第 80 天隨箱附贈「毛髮光澤與便便狀態」改善對比卡，讓主人具體看見鮮食帶來的健康變化，提升續訂正向反饋。`,
+    isAccepted: false,
+  },
+  // Answer for Question 8
+  {
+    id: 'ans-8-1',
+    questionId: 'q-8',
+    solverId: 'solver-7',
+    solverName: '徐宛婷 Sonia',
+    solverTitle: '早期天使投資機構投資經理 / 財務分析師',
+    solverAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.93,
+    deliveryType: '商業策略架構',
+    isPaid: true,
+    price: 800,
+    isUnlockedByCurrentUser: false,
+    createdAt: '2026-09-16T15:30:00Z',
+    freePreview: `【精華摘要公開】
+矽谷標準 YC SAFE（Simple Agreement for Future Equity）在台灣純境內閉鎖性公司無法「100% 照搬直接登記」，因為台灣公司法並未設立獨立的「未來股權權利憑單」登記類別。
+但實務上有兩大成熟解法，既能滿足外國天使投資人「不佔現有股權比例、等下一輪定價轉股」的需求，又能合法通過投審會審查。`,
+    fullContent: `【台灣落地合規操作指南】
+解法一（最推薦）：以閉鎖性公司發行「可轉換特別股（Convertible Preferred Shares）」：
+- 在特別股條款中寫明轉換條件：當公司完成下一輪（Qualified Financing）募資且估值達到特定門檻時，按該輪價格享 Valuation Cap（估值上限）或 80% Discount（折價）自動轉換為普通股。
+- 此方式在經濟部商業登記處已有成熟核准案例，投審會審批外資特別股出資也相對明確。
+
+解法二：以「無息可轉換公司債（Convertible Note）」替代：
+- 約定 2~3 年到期日，不收取利息。若期間完成新一輪融資則依 SAFE 條款強制轉股；若到期未融資則由投資人選擇展延或平價轉股。
+- 優點是作業最快，但需注意負債計入資產負債表的財報影響。`,
+    isAccepted: true,
+    rating: 5,
+  },
+  // Answer for Question 10
+  {
+    id: 'ans-10-1',
+    questionId: 'q-10',
+    solverId: 'solver-8',
+    solverName: '林志豪 Leo',
+    solverTitle: '資深全端系統架構師 / 微服務與 DevOps 專家',
+    solverAvatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.84,
+    deliveryType: '技術選型報告',
+    isPaid: true,
+    price: 400,
+    isUnlockedByCurrentUser: false,
+    createdAt: '2026-09-17T13:45:00Z',
+    freePreview: `【精華摘要公開】
+不裝三叉機旋轉門的情況下，純靠人臉辨識閘門防尾隨是業界共通難題。
+最佳性價比的做法是「立體雙目頂置深度相機（Overhead 3D ToF Sensor）+ 雙道自動玻璃連鎖門（Mantle Air-lock）+ 聲光微警報」。
+總硬體改造成本可在 NT$ 12 萬內完成，且不破壞空間開闊美感。`,
+    fullContent: `【硬體整合與邏輯實施清單】
+1. 頂置 3D 深度相機人頭計數：
+   安裝在天花板俯視入口玄關（面積約 2x2 米）。當第一道門刷臉開啟時，ToF 鏡頭即時計算通過地面光斑的獨立頭頂數量。
+2. 邏輯判定矩陣：
+   - 情況 A：偵測到剛好 1 個人頭 ➔ 第二道門瞬間滑開，順暢進入（耗時不到 1 秒）。
+   - 情況 B：偵測到 2 個人頭但僅 1 次刷臉 ➔ 第二道門鎖定，室內溫和語音播報：「偵測到多人進場，請第二位貴賓於旁邊機台完成臉部認證以解鎖進場」。
+3. 心理嚇阻機制：
+   若硬闖或破壞，系統自動抓拍兩者全身高畫質截圖，將扣款爭議推播至該會員 App，累計兩次違規直接終止會籍且不退保證金。`,
+    isAccepted: false,
+  },
+  // Answer for Question 12
+  {
+    id: 'ans-12-1',
+    questionId: 'q-12',
+    solverId: 'solver-3',
+    solverName: '張維哲 Allen',
+    solverTitle: 'AI 解決方案架構師 / 雲端全端資深工程師',
+    solverAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    solverRating: 4.88,
+    deliveryType: '技術選型報告',
+    isPaid: true,
+    price: 1500,
+    isUnlockedByCurrentUser: false,
+    createdAt: '2026-09-20T08:30:00Z',
+    freePreview: `【精華摘要公開】
+虛擬陪伴 AI 最嚴重的法律與道德風險在於「未成年使用者將 AI 視為真實情感寄託，並在對話中透露自殘或孤僻意圖」。
+系統在技術架構上絕不可只依賴單一 LLM 的 System Prompt。
+必須建立獨立於生動角色之外的「側邊監督哨兵模型（Sidecar Guardrail Classifier）」與「安全降溫降級模式」。`,
+    fullContent: `【系統安全防護設計規範】
+一、雙流平行檢測（Dual-stream Architecture）：
+1. 串流輸入同時分發給「角色模型」與「輕量安全分類器（Safety Classifier）」。
+2. 當偵測到自傷、自殺或重度偏執行為時，分類器具備「最高硬中斷優先級」，強制熔斷 Vtuber 語音生成。
+3. 立即切換為溫暖平靜的心理急難援助預設模組，提供衛福部安心專線 1925 資訊，並主動提示：「我是一個 AI 朋友，很在乎你，但此刻你需要現實中專業人士的真正擁抱與協助」。
+
+二、情感黏著降溫機制：
+單日對話超過 2 小時，Vtuber 應主動設計情境：「我今天也要去練舞/看書囉，你也該早點休息，明天再來跟我分享你的生活好嗎？」，避免不健康的晝夜顛倒依賴。`,
+    isAccepted: true,
+    rating: 5,
+  },
+];
+
+export const MOCK_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'tx-101',
+    type: '解答採納收入',
+    amount: 1000,
+    platformFee: 50, // 達人方案：服務費 -5%（半價僅 5%）
+    feeRate: 0.05,
+    netAmount: 950,
+    paymentMethod: '信用卡',
+    payoutStatus: '已撥款至銀行帳戶',
+    bankAccountSnapshot: '013 國泰世華 (***8812)',
+    relatedQuestionTitle: '校園共享雨傘如何從租借收入轉向商家合作模式？',
+    relatedQuestionId: 'q-1',
+    fromUserName: '林書豪',
+    toUserName: '柯育任',
+    status: '已完成',
+    createdAt: '2026-09-20T10:15:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-102',
+    type: '方案解鎖',
+    amount: 1000,
+    platformFee: 100, // 一般會員 10%
+    feeRate: 0.10,
+    netAmount: 900,
+    paymentMethod: 'LINE Pay',
+    payoutStatus: '已撥款至銀行帳戶',
+    bankAccountSnapshot: '822 中國信託 (***5821)',
+    relatedQuestionTitle: 'B2B 專案管理 SaaS 如何從一次性買斷轉型為座位席次計費？',
+    relatedQuestionId: 'q-2',
+    fromUserName: '王家衛',
+    toUserName: '陳美琪 Maggie',
+    status: '已完成',
+    createdAt: '2026-09-20T15:30:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-104',
+    type: '解答採納收入',
+    amount: 2000,
+    platformFee: 0, // 權威方案：免服務費 0%
+    feeRate: 0.00,
+    netAmount: 2000,
+    paymentMethod: 'ATM 虛擬帳號',
+    payoutStatus: '已撥款至銀行帳戶',
+    bankAccountSnapshot: '012 台北富邦 (***9900)',
+    relatedQuestionTitle: '生醫感測微流體晶片如何加速臨床前試驗並申請國科會產學計畫？',
+    relatedQuestionId: 'q-4',
+    fromUserName: '林院長',
+    toUserName: '張維哲 Allen',
+    status: '已完成',
+    createdAt: '2026-09-18T19:00:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-105',
+    type: '會員訂閱',
+    amount: 1499,
+    platformFee: 0,
+    netAmount: 1499,
+    paymentMethod: '信用卡',
+    payoutStatus: '已撥款至銀行帳戶',
+    relatedQuestionTitle: '訂閱會員方案「達人方案（6個月 $1,499）」',
+    fromUserName: '柯育任',
+    status: '已完成',
+    createdAt: '2026-09-15T11:00:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-106',
+    type: '階段方案預扣',
+    amount: 1500,
+    platformFee: 0,
+    feeRate: 0,
+    netAmount: 1500,
+    paymentMethod: '信用卡',
+    payoutStatus: '安全託管中',
+    relatedQuestionTitle: '碳權盤查與 ESG 永續報告書實務指引',
+    relatedQuestionId: 'q-5',
+    fromUserName: '王家衛',
+    toUserName: '張維哲 Allen',
+    status: '已完成',
+    createdAt: '2026-09-19T09:30:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-107',
+    type: '階段交付收入',
+    amount: 1500,
+    platformFee: 75,
+    feeRate: 0.05,
+    netAmount: 1425,
+    paymentMethod: '信用卡',
+    payoutStatus: '已撥款至銀行帳戶',
+    bankAccountSnapshot: '012 台北富邦 (***9900)',
+    relatedQuestionTitle: '碳權盤查與 ESG 永續報告書實務指引',
+    relatedQuestionId: 'q-5',
+    fromUserName: '王家衛',
+    toUserName: '張維哲 Allen',
+    status: '已完成',
+    createdAt: '2026-09-22T14:10:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-108',
+    type: '私聊自訂方案交易',
+    amount: 2500,
+    platformFee: 250,
+    feeRate: 0.10,
+    netAmount: 2250,
+    paymentMethod: 'LINE Pay',
+    payoutStatus: '已撥款至銀行帳戶',
+    bankAccountSnapshot: '822 中國信託 (***5821)',
+    relatedQuestionTitle: '一對一商務架構諮詢與財務預測私聊提案',
+    fromUserName: '林書豪',
+    toUserName: '陳美琪 Maggie',
+    status: '已完成',
+    createdAt: '2026-09-21T16:45:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-201',
+    type: '自訂提案支付',
+    amount: 18000,
+    platformFee: 0,
+    feeRate: 0,
+    netAmount: 18000,
+    paymentMethod: '信用卡',
+    payoutStatus: '第三方安全託管中',
+    relatedQuestionTitle: '商業模式策略諮詢與智財專案交付第 1 期',
+    fromUserName: '王家衛',
+    toUserName: '柯育任',
+    status: '已完成',
+    createdAt: '2026-09-26T14:20:00Z',
+    note: '需求方委託客製化自訂專案第 1 期款項全額託管支付',
+  },
+  {
+    id: 'tx-202',
+    type: '自訂提案收入',
+    amount: 18000,
+    platformFee: 900, // 達人 5%
+    feeRate: 0.05,
+    netAmount: 17100,
+    paymentMethod: '銀行電匯',
+    payoutStatus: '排程於每月 5 號撥付',
+    bankAccountSnapshot: '013 國泰世華 (***8812)',
+    relatedQuestionTitle: '商業模式策略諮詢與智財專案交付第 1 期',
+    fromUserName: '王家衛',
+    toUserName: '柯育任',
+    status: '已完成',
+    createdAt: '2026-09-27T10:00:00Z',
+    note: '自訂專案第 1 期驗收完成，扣除 5% 服務費後納入 10 月 5 號撥款排程',
+  },
+  {
+    id: 'tx-203',
+    type: '自訂提案支付',
+    amount: 25000,
+    platformFee: 0,
+    feeRate: 0,
+    netAmount: 25000,
+    paymentMethod: 'ATM 虛擬帳號',
+    payoutStatus: '第三方安全託管中',
+    relatedQuestionTitle: '生醫晶片專利授權策略顧問專案',
+    fromUserName: '林書豪',
+    toUserName: '張維哲 Allen',
+    status: '已完成',
+    createdAt: '2026-09-25T16:00:00Z',
+    note: '需求方自訂提案委託款項預扣託管',
+  },
+  {
+    id: 'tx-204',
+    type: '自訂提案收入',
+    amount: 25000,
+    platformFee: 0, // 權威 0%
+    feeRate: 0.00,
+    netAmount: 25000,
+    paymentMethod: '銀行電匯',
+    payoutStatus: '排程於每月 5 號撥付',
+    bankAccountSnapshot: '012 台北富邦 (***9900)',
+    relatedQuestionTitle: '生醫晶片專利授權策略顧問專案',
+    fromUserName: '林書豪',
+    toUserName: '張維哲 Allen',
+    status: '已完成',
+    createdAt: '2026-09-27T15:30:00Z',
+    note: '自訂專案成果驗收完成，免服務費全額納入 10 月 5 號撥款',
+  },
+  {
+    id: 'tx-109',
+    type: '爭議調解退款',
+    amount: 800,
+    platformFee: 0,
+    feeRate: 0,
+    netAmount: 800,
+    paymentMethod: '信用卡',
+    payoutStatus: '已原路退款',
+    relatedQuestionTitle: '【爭議調解退款】跨國電商物流關稅爭議諮詢 - 仲裁成立原路退回',
+    fromUserName: '創點子 IdeaX 仲裁中心',
+    toUserName: '王家衛',
+    status: '已完成',
+    createdAt: '2026-09-23T11:20:00Z',
+    note: '經平台仲裁確認未獲有效交付，全額退款予委託人',
+  },
+  {
+    id: 'tx-110',
+    type: '懸賞逾期退款',
+    amount: 2000,
+    platformFee: 0,
+    feeRate: 0,
+    netAmount: 2000,
+    payoutStatus: '已原路返還',
+    relatedQuestionTitle: '【懸賞逾期退款】專利佈局與侵權迴避專案諮詢 - 7 日無解答預扣點數全額退還',
+    fromUserName: '創點子 IdeaX 系統服務',
+    toUserName: '林書豪',
+    status: '已完成',
+    createdAt: '2026-09-24T15:00:00Z',
+    note: '懸賞逾期未採納，系統自動返還託管點數',
+  },
+  {
+    id: 'tx-205',
+    type: '階段專案退款',
+    amount: 5000,
+    platformFee: 0,
+    feeRate: 0,
+    netAmount: 5000,
+    paymentMethod: '信用卡',
+    payoutStatus: '已原路退款',
+    relatedQuestionTitle: '【階段專案退款】品牌視覺重塑專案階段二 - 雙方合意中止委託款項返還',
+    fromUserName: '創點子 IdeaX 金流中心',
+    toUserName: '柯育任',
+    status: '已完成',
+    createdAt: '2026-09-25T18:00:00Z',
+    note: '雙方和解終止合約，託管款項原路退回',
+  },
+  {
+    id: 'tx-206',
+    type: '自訂提案退款',
+    amount: 3200,
+    platformFee: 0,
+    feeRate: 0,
+    netAmount: 3200,
+    paymentMethod: 'LINE Pay',
+    payoutStatus: '已原路退款',
+    relatedQuestionTitle: '【自訂提案退款】海外專利代理申請自訂提案 - 專家未如期履約原路退款',
+    fromUserName: '創點子 IdeaX 金流中心',
+    toUserName: '林書豪',
+    status: '已完成',
+    createdAt: '2026-09-26T12:00:00Z',
+    note: '專家逾期未交付，系統自動解除託管並退回付款',
+  },
+  {
+    id: 'tx-207',
+    type: '點數儲值退款',
+    amount: 1500,
+    platformFee: 0,
+    feeRate: 0,
+    netAmount: 1500,
+    paymentMethod: '銀行電匯',
+    payoutStatus: '已退款至銀行',
+    relatedQuestionTitle: '【點數儲值退款】會員帳戶餘額終止退還款項',
+    fromUserName: '創點子 IdeaX 財務中心',
+    toUserName: '王家衛',
+    status: '已完成',
+    createdAt: '2026-09-27T11:00:00Z',
+    note: '會員申請未消耗點數退款，扣除必要行政手續費後電匯返還',
+  },
+  {
+    id: 'tx-111',
+    type: '點數儲值',
+    amount: 5000,
+    platformFee: 0,
+    netAmount: 5000,
+    paymentMethod: 'ATM 虛擬帳號',
+    payoutStatus: '已完成',
+    fromUserName: '林書豪',
+    toUserName: '創點子 IdeaX 點數金流中心',
+    status: '已完成',
+    createdAt: '2026-09-25T08:30:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-112',
+    type: '點數扣抵',
+    amount: 300,
+    platformFee: 0,
+    netAmount: 300,
+    payoutStatus: '已完成',
+    relatedQuestionTitle: 'AI 商業模式架構深度診斷專案報告解鎖',
+    fromUserName: '王家衛',
+    toUserName: '創點子 IdeaX 系統服務',
+    status: '已完成',
+    createdAt: '2026-09-25T14:12:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-113',
+    type: '管理員轉入點數',
+    amount: 1000,
+    platformFee: 0,
+    netAmount: 1000,
+    payoutStatus: '已完成',
+    fromUserName: '官方管理團隊（站長 Admin）',
+    toUserName: '柯育任',
+    status: '已完成',
+    createdAt: '2026-09-26T10:00:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-114',
+    type: '提領申請',
+    amount: 3500,
+    platformFee: 175,
+    feeRate: 0.05,
+    netAmount: 3325,
+    payoutStatus: '已撥款至銀行帳戶',
+    bankAccountSnapshot: '013 國泰世華 (***8812)',
+    fromUserName: '柯育任',
+    toUserName: '013 國泰世華 銀行帳戶',
+    status: '已完成',
+    createdAt: '2026-09-26T16:40:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-115',
+    type: '月底抽成返還',
+    amount: 240,
+    platformFee: 0,
+    netAmount: 240,
+    payoutStatus: '已完成',
+    fromUserName: '創點子 IdeaX 財務結算中心',
+    toUserName: '張維哲 Allen',
+    status: '已完成',
+    createdAt: '2026-09-27T00:00:00Z',
+    note: '',
+  },
+  {
+    id: 'tx-116',
+    type: '付費推播方案',
+    amount: 50,
+    platformFee: 0,
+    netAmount: 50,
+    paymentMethod: '信用卡',
+    payoutStatus: '已完成',
+    relatedQuestionTitle: '校園共享雨傘如何從租借收入轉向商家合作模式？',
+    fromUserName: '林書豪',
+    toUserName: 'IdeaX 平台推播中心',
+    status: '已完成',
+    createdAt: '2026-09-27T10:20:00Z',
+    note: '',
+  },
+];
+
+export const MOCK_CONVERSATIONS: import('../types').ChatConversation[] = [
+  {
+    id: 'conv-1',
+    participantIds: ['user-questioner', 'solver-1'],
+    conversationRole: 'questioner',
+    participantDetails: [
+      {
+        id: 'user-questioner',
+        name: '林書豪',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        title: '',
+      },
+      {
+        id: 'solver-1',
+        name: '柯育任',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        title: '前知名外送平台產品總監 / 策略顧問',
+      },
+    ],
+    relatedQuestionId: 'q-1',
+    relatedQuestionTitle: '校園共享雨傘如何從租借收入轉向商家合作模式？',
+    lastMessage: '已為您制定客製化的「校園商圈特約加盟條款與分潤財務模型」，請直接確認',
+    lastMessageTime: '10 分鐘前',
+    unreadCount: 1,
+    messages: [
+      {
+        id: 'msg-1',
+        senderId: 'user-questioner',
+        senderName: '林書豪',
+        senderAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        text: '柯顧問您好，看了您在「校園共享雨傘」的精華方案深受啟發！我們想進一步請教商家簽約的分潤公式細節。',
+        createdAt: '2026-09-21T10:00:00Z',
+      },
+      {
+        id: 'msg-2',
+        senderId: 'solver-1',
+        senderName: '柯育任',
+        senderAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        text: '沒問題！針對大學周邊餐飲的特性，我為您整理了一份完整的專屬自訂合約與定價方案，包含 3 款 Excel 試算表與商務簡報範本。',
+        createdAt: '2026-09-21T10:15:00Z',
+        offer: {
+          id: 'offer-101',
+          title: '校園商圈特約加盟條款＋分潤模型 Excel 試算包',
+          description: '含 40 家機台損益平衡試算表、商圈業務談判話術錄音指南、兩份正式律師審核特約協議書。',
+          deliveryType: '財務與數據模型',
+          price: 800,
+          status: 'pending',
+          creatorId: 'solver-1',
+          creatorName: '柯育任',
+          deliverables: [
+            '40 家機台點位分潤損益平衡動態 Excel 試算表',
+            '對餐飲店家 5 分鐘商務談判話術腳本 (PDF)',
+            '特約商家雙邊權利義務標準加盟協議書範本 (DOCX)',
+          ],
+          estimatedDays: 1,
+          paywalledContent: '【交付檔案與會議鏈結】\n雲端硬碟下載包：https://ideax.tw/storage/umbrella-model-v2.zip\n線上 30 分鐘簽約輔導行事曆：https://meet.google.com/abc-idea-umbrella',
+        },
+      },
+    ],
+  },
+  {
+    id: 'conv-2',
+    participantIds: ['user-questioner', 'solver-3'],
+    conversationRole: 'questioner',
+    participantDetails: [
+      {
+        id: 'user-questioner',
+        name: '林書豪',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        title: '',
+      },
+      {
+        id: 'solver-3',
+        name: '張維哲 Allen',
+        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+        title: 'AI 解決方案架構師 / 雲端資深工程師',
+      },
+    ],
+    relatedQuestionId: 'q-3',
+    relatedQuestionTitle: '企業導入內部知識庫 RAG 時，如何有效控制 Token 成本並消除跨部門隱私洩漏？',
+    lastMessage: '張架構師：方案已完成交付！混合檢索設定檔與 RBAC 權限架構已發送。',
+    lastMessageTime: '1 小時前',
+    unreadCount: 0,
+    messages: [
+      {
+        id: 'msg-201',
+        senderId: 'user-questioner',
+        senderName: '林書豪',
+        senderAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        text: '張工程師您好！我們團隊目前在評估本地向量資料庫與語意快取的選型，想請您協助進行 1 對 1 架構健檢。',
+        createdAt: '2026-09-22T08:30:00Z',
+      },
+      {
+        id: 'msg-202',
+        senderId: 'solver-3',
+        senderName: '張維哲 Allen',
+        senderAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+        text: '收到！我已為您建立專屬的架構評估方案，包含 45 分鐘視訊會議與 Docker Compose 本地開箱即用環境配置。',
+        createdAt: '2026-09-22T09:00:00Z',
+        offer: {
+          id: 'offer-102',
+          title: '企業級 RAG 成本優化與 RBAC 隱私隔離架構健檢',
+          description: '含混合檢索語意快取設定檔、跨部門資料隔離範例程式碼與 45 分鐘線上架構諮詢。',
+          deliveryType: '技術選型報告',
+          price: 1500,
+          status: 'accepted',
+          creatorId: 'solver-3',
+          creatorName: '張維哲 Allen',
+          deliverables: [
+            'Docker Compose 一鍵啟動之 Qdrant + Redis 語意快取設定',
+            '跨部門權限過濾器 (RBAC Metadata Filter) Python 範例',
+            '線上 45 分鐘 Google Meet 核心瓶頸排查與架構諮詢',
+          ],
+          estimatedDays: 2,
+          paywalledContent: '【方案已解鎖】\nGitHub Repo 私有訪問邀請碼：ideax-rag-privacy-v3\nGoogle Meet 諮詢預約鏈結：https://meet.google.com/rag-enterprise-allen',
+        },
+      },
+    ],
+  },
+  {
+    id: 'conv-3',
+    participantIds: ['user-questioner', 'user-questioner-2'],
+    conversationRole: 'solver',
+    participantDetails: [
+      {
+        id: 'user-questioner',
+        name: '林書豪',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        title: '創新創業與商業架構專家',
+      },
+      {
+        id: 'user-questioner-2',
+        name: '陳雅婷',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+        title: '',
+      },
+    ],
+    relatedQuestionId: 'q-5',
+    relatedQuestionTitle: '文創手作工藝品如何透過「限量盲盒」與「會員訂閱制」提高回購率？',
+    lastMessage: '陳雅婷：老師，請問如果您來操盤，初期盲盒的定價策略區間大概落在哪裡？',
+    lastMessageTime: '30 分鐘前',
+    unreadCount: 2,
+    messages: [
+      {
+        id: 'msg-301',
+        senderId: 'user-questioner-2',
+        senderName: '陳雅婷',
+        senderAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+        text: '老師您好！拜讀了您在商業模式上的深度見解，我們是做手工香氛與陶瓷的品牌，想向您請教盲盒訂閱制的定價與階梯式會員設計。',
+        createdAt: '2026-09-23T14:10:00Z',
+      },
+      {
+        id: 'msg-302',
+        senderId: 'user-questioner-2',
+        senderName: '陳雅婷',
+        senderAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+        text: '請問如果您來操盤，初期盲盒的定價策略區間大概落在哪裡？希望能向您訂製一個完整的操盤規劃。',
+        createdAt: '2026-09-23T14:25:00Z',
+      },
+    ],
+  },
+  {
+    id: 'conv-4',
+    participantIds: ['user-questioner', 'user-questioner-3'],
+    conversationRole: 'solver',
+    participantDetails: [
+      {
+        id: 'user-questioner',
+        name: '林書豪',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        title: '創新創業與商業架構專家',
+      },
+      {
+        id: 'user-questioner-3',
+        name: '李宗翰',
+        avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+        title: '',
+      },
+    ],
+    relatedQuestionId: 'q-2',
+    relatedQuestionTitle: '水電工程行如何進行數位化接單並建立透明報價信任感？',
+    lastMessage: '已發送「水電師傅數位接單與報價透明化實務 SOP」客製方案',
+    lastMessageTime: '昨天',
+    unreadCount: 0,
+    messages: [
+      {
+        id: 'msg-401',
+        senderId: 'user-questioner-3',
+        senderName: '李宗翰',
+        senderAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+        text: '專家您好，我們工程行目前師傅不太會用複雜系統，想請您協助規劃最簡單的 LINE 官方帳號接單流程。',
+        createdAt: '2026-09-23T11:00:00Z',
+      },
+    ],
+  },
+  {
+    id: 'conv-admin-1',
+    participantIds: ['user-admin', 'user-questioner'],
+    conversationRole: 'questioner',
+    participantDetails: [
+      {
+        id: 'user-admin',
+        name: '站長・仲裁管理員',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+        title: '平台總管',
+      },
+      {
+        id: 'user-questioner',
+        name: '林書豪',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        title: '早期新創孵化創辦人',
+      },
+    ],
+    relatedQuestionId: 'q-1',
+    relatedQuestionTitle: '校園共享雨傘如何從租借收入轉向商家合作模式？',
+    lastMessage: '管理員：您好！已為您調閱第三方金流託管進度，隨時可發起 AI 市場顧問仲裁調解。',
+    lastMessageTime: '5 分鐘前',
+    unreadCount: 0,
+    messages: [
+      {
+        id: 'msg-adm-101',
+        senderId: 'user-questioner',
+        senderName: '林書豪',
+        senderAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        text: '管理員您好，我們目前正在與柯顧問進行校園加盟條款的履約驗收，想確認第三方價金保管與三階段驗收撥款的保障機制。',
+        createdAt: '2026-09-24T09:00:00Z',
+      },
+      {
+        id: 'msg-adm-102',
+        senderId: 'user-admin',
+        senderName: '站長・仲裁管理員',
+        senderAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+        text: '林創辦人您好！IdeaX 平台款項一律採用第三方履約保管，未經您點擊驗收通過前絕不擅自撥款。若交付成果有落差，雙方亦可在聊天室點擊「+ → AI 市場顧問調解仲裁」生成具法律衡平性的和解協議。',
+        createdAt: '2026-09-24T09:10:00Z',
+      },
+    ],
+  },
+  {
+    id: 'conv-admin-2',
+    participantIds: ['user-admin', 'solver-1'],
+    conversationRole: 'solver',
+    participantDetails: [
+      {
+        id: 'user-admin',
+        name: '站長・仲裁管理員',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+        title: '平台總管',
+      },
+      {
+        id: 'solver-1',
+        name: '柯育任',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        title: '智慧零售架構師 / 新創策略顧問',
+      },
+    ],
+    relatedQuestionId: 'q-demo-pain-1',
+    relatedQuestionTitle: '大專校園共享空間硬體租借的「押金與違約爭議」如何從制度設計根除？',
+    lastMessage: '管理員：恭喜柯顧問！您的專家實名資格與 5 星解題紀錄已完成官方核驗。',
+    lastMessageTime: '20 分鐘前',
+    unreadCount: 0,
+    messages: [
+      {
+        id: 'msg-adm-201',
+        senderId: 'solver-1',
+        senderName: '柯育任',
+        senderAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        text: '管理團隊好，我已提交近期的專家落地方案與勞務報酬撥付申請，想了解本週四撥款的審核進度。',
+        createdAt: '2026-09-24T14:00:00Z',
+      },
+      {
+        id: 'msg-adm-202',
+        senderId: 'user-admin',
+        senderName: '站長・仲裁管理員',
+        senderAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+        text: '恭喜柯顧問！您的方案採納評價均達 5 顆星，應收帳款已列入本期優先自動劃撥名冊。祝您接案順利！',
+        createdAt: '2026-09-24T14:20:00Z',
+      },
+    ],
+  },
+];
+
+// =========================================================================
+// 純淨模式核心保留資料 (各身分固定測試帳號與單則測試貼文，供測試與正式環境)
+// =========================================================================
+
+/**
+ * 正式模式（營運模式與無金流模式）之純淨核心用戶：
+ * 僅保留唯一的平台超級管理員 (user-admin)，所有點數、餘額、收入、提領與問卷均完全歸零，
+ * 不含任何預留之模擬測試身分。
+ */
+export const CLEAN_CORE_USERS: User[] = [
+  {
+    id: 'a000000001',
+    memberId: 'a000000001',
+    accountType: 'admin',
+    username: 'Admin_001',
+    name: 'IdeaX 管理團隊',
+    title: '平台總管',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+    role: 'admin',
+    isInitialAdmin: true,
+    adminSites: ['site_a', 'site_b'],
+    balance: 50000,
+    pendingEarnings: 0,
+    reputation: 100,
+    joinedDate: '2025-01-01',
+    bio: '創點子 IdeaX 官方管理員，維護第三方支付安全託管、自動拆款撥付及專家認證。',
+    email: 'operations@ideax.io',
+    phone: '0912-345-678',
+    gender: 'undisclosed',
+    ageGroup: '35_44',
+    industry: '資訊科技',
+    jobTitle: '平台總管',
+    company: 'IdeaX 創點子團隊',
+    totalWithdrawn: 0,
+    totalPaidOut: 0,
+    totalRevenue: 0,
+    escrowedEarnings: 0,
+    withheldPoints: 0,
+    reputationPoints: 0,
+    honorTitle: '平台總管',
+    honorLevel: 1,
+    achievementsCount: 0,
+    subscriptionTier: 'master',
+    domain: '專業問題',
+    skills: ['平台運營治理', '資安與風控', '專家實名驗證', '抽成清算'],
+    verifiedExpert: true,
+    rating: 5.0,
+    reviewCount: 0,
+    acceptedSolutionsCount: 0,
+    submittedSolutionsCount: 0,
+    acceptanceRate: 100,
+    avgSolutionBounty: 0,
+    surveyData: undefined,
+  },
+];
+
+/**
+ * 測試環境專用模擬測試帳號（涵蓋三大 ID 類別：管理員 a、企業機構 b、一般用戶 c）：
+ * 1. 一般用戶 - 測試提問者 (c100000001) - 林書豪
+ * 2. 一般用戶 - 測試解答者 (c200000002) - 陳怡君
+ * 3. 企業機構 - 測試企業法人 (b100000001) - 傘動科技
+ * 4. 訪客探索身分 (c000000000)
+ */
+export const DEMO_CORE_TEST_USERS: User[] = [
+  {
+    id: 'c100000001',
+    memberId: 'c100000001',
+    accountType: 'user',
+    username: 'user_questioner',
+    name: '林書豪',
+    title: '新創團隊創始人',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    role: 'questioner',
+    balance: 0,
+    pendingEarnings: 0,
+    reputation: 100,
+    joinedDate: '2025-08-12',
+    bio: '正在孵化大專院校與智慧生活租借專案，用於測試提問發布、懸賞、採納與點數扣繳。',
+    email: 'shuhao.lin@startup.tw',
+    phone: '0988-776-655',
+    gender: 'male',
+    ageGroup: '25_34',
+    industry: '創新創業',
+    jobTitle: '創辦人兼執行長',
+    company: '傘動科技工作室',
+    totalWithdrawn: 0,
+    totalPaidOut: 0,
+    totalRevenue: 0,
+    escrowedEarnings: 0,
+    withheldPoints: 0,
+    reputationPoints: 0,
+    honorTitle: '提問者',
+    honorLevel: 1,
+    achievementsCount: 0,
+    subscriptionTier: 'free',
+    domain: '創新創業',
+    skills: ['新創驗證', '校園商模'],
+    verifiedExpert: false,
+    rating: 5.0,
+    reviewCount: 0,
+    surveyData: undefined,
+  },
+  {
+    id: 'c200000002',
+    memberId: 'c200000002',
+    accountType: 'user',
+    username: 'solver_yichun',
+    name: '陳怡君',
+    title: '資深全端系統架構師 / AI 應用工程顧問',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    role: 'solver',
+    balance: 0,
+    pendingEarnings: 0,
+    reputation: 100,
+    joinedDate: '2025-04-10',
+    bio: '專注微服務、AI 落地整合與大型系統資安評估，用於測試提交解答、解鎖收入與專家私聊。',
+    email: 'yichun.chen.tech@gmail.com',
+    phone: '0933-221-100',
+    gender: 'female',
+    ageGroup: '35_44',
+    industry: '資訊科技',
+    jobTitle: '首席架構顧問',
+    company: '陳怡君科技顧問事務所',
+    totalWithdrawn: 0,
+    totalPaidOut: 0,
+    totalRevenue: 0,
+    escrowedEarnings: 0,
+    withheldPoints: 0,
+    reputationPoints: 0,
+    subscriptionTier: 'free',
+    domain: '專業問題',
+    skills: ['AI Agent 整合', '微服務架構', '系統性能調優', '高併發設計'],
+    verifiedExpert: true,
+    rating: 5.0,
+    reviewCount: 0,
+    acceptedSolutionsCount: 0,
+    submittedSolutionsCount: 0,
+    acceptanceRate: 100,
+    avgSolutionBounty: 0,
+    surveyData: undefined,
+    realNameAuthStatus: 'verified',
+    realNameAuthData: {
+      legalName: '陳怡君',
+      idNumber: 'A223456789',
+      nationality: '中華民國 (台灣)',
+      birthDate: '1988-06-20',
+      phoneNumber: '0933-221-100',
+      email: 'yichun.chen.tech@gmail.com',
+      idAddress: '台北市大安區和平東路二段 134 號 8 樓',
+      address: '台北市大安區和平東路二段 134 號 8 樓',
+      idIssueDate: '2021-03-15',
+      idIssueType: '換發',
+      agreedAmlPolicy: true,
+      appliedAt: '2025-04-10T10:00:00.000Z',
+      verifiedAt: '2025-04-10T14:30:00.000Z',
+      idCardFrontFile: {
+        name: '陳怡君_國民身分證_正面.jpg',
+        size: '235 KB',
+        url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=1000&auto=format&fit=crop&q=80',
+        storagePath: 'id_cards/solver-2/front_id_card.jpg',
+        isStorage: true,
+        uploadedAt: '2025-04-10T10:00:00.000Z',
+      },
+      idCardBackFile: {
+        name: '陳怡君_國民身分證_反面.jpg',
+        size: '228 KB',
+        url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=1000&auto=format&fit=crop&q=80',
+        storagePath: 'id_cards/solver-2/back_id_card.jpg',
+        isStorage: true,
+        uploadedAt: '2025-04-10T10:00:00.000Z',
+      },
+    },
+    expertApplicationStatus: 'approved',
+    expertCertStatus: 'verified',
+    expertApplicationData: {
+      domain: '專業問題',
+      domains: ['專業問題', '創新創業'],
+      subdomain: '軟體架構',
+      subdomains: ['微服務架構', 'AI Agent 整合', '系統性能調優'],
+      professionalTitle: '資深全端系統架構師 / AI 應用工程顧問',
+      yearsOfExperience: '12年',
+      credentialsFiles: [
+        {
+          name: '國際資深雲端與系統架構師資格執照 (TOGAF/AWS-SAP).jpg',
+          size: '280 KB',
+          url: 'https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=1000&auto=format&fit=crop&q=80',
+          storagePath: 'expert_credentials/solver-2/togaf_cert.jpg',
+          isStorage: true,
+          uploadedAt: '2025-04-10T11:00:00.000Z',
+        },
+      ],
+      proofDescription: '專注分散式架構、金融級微服務與 AI 整合，曾輔導 20+ 家企業成功落地商業專案。',
+      proofFiles: [
+        {
+          name: '代表性微服務高併發架構成果報告.pdf',
+          size: '1.8 MB',
+          uploadedAt: '2025-04-10T11:00:00.000Z',
+        },
+      ],
+      portfolioLink: 'https://github.com/yichun-chen',
+      agreedPrivacy: true,
+      appliedAt: '2025-04-10T11:00:00.000Z',
+    },
+  },
+  {
+    id: 'b100000001',
+    memberId: 'b100000001',
+    accountType: 'enterprise',
+    username: 'enterprise_sandong',
+    name: '傘動科技',
+    title: '新創企業法人委託端',
+    avatar: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=150&auto=format&fit=crop&q=80',
+    role: 'questioner',
+    balance: 50000,
+    pendingEarnings: 0,
+    reputation: 100,
+    joinedDate: '2025-06-15',
+    bio: '專注智慧物聯網硬體整合之企業法人機構，測試企業提問委託、大額懸賞與專案驗收。',
+    email: 'contact@sandong.tech',
+    phone: '02-2345-6789',
+    gender: 'undisclosed',
+    ageGroup: '35_44',
+    industry: '資訊科技',
+    jobTitle: '營運研發處',
+    company: '傘動科技股份有限公司',
+    totalWithdrawn: 0,
+    totalPaidOut: 0,
+    totalRevenue: 0,
+    escrowedEarnings: 0,
+    withheldPoints: 0,
+    reputationPoints: 0,
+    honorTitle: '企業夥伴',
+    honorLevel: 1,
+    achievementsCount: 0,
+    subscriptionTier: 'enterprise',
+    domain: '創新創業',
+    skills: ['企業轉型', 'IoT 物聯網'],
+    verifiedExpert: false,
+    rating: 5.0,
+    reviewCount: 0,
+    surveyData: undefined,
+  },
+];
+
+/**
+ * 正式模式（營運模式與無金流模式）所有模擬題目、專家與方案完全歸零
+ */
+export const CLEAN_CORE_QUESTIONS: Question[] = [];
+
+export const CLEAN_CORE_ANSWERS: Answer[] = [];
+
+export const CLEAN_CORE_SOLVERS: Solver[] = [];
+
+/**
+ * 系統固定保留供隨時免註冊切換的 1~3 個核心測試帳號（涵蓋三大 ID 類別：管理員 a、一般用戶 c、企業機構 b）：
+ * 1. 平台管理員 (a000000001) - IdeaX 管理團隊 (a)
+ * 2. 認證專家解答者 (c200000002) - 陳怡君 (c)
+ * 3. 發案提問者 (c100000001) - 林書豪 (c)
+ * 4. 企業機構 (b100000001) - 傘動科技 (b)
+ */
+export const CORE_TEST_ACCOUNTS: User[] = [
+  CLEAN_CORE_USERS[0],
+  DEMO_CORE_TEST_USERS[1],
+  DEMO_CORE_TEST_USERS[0],
+  DEMO_CORE_TEST_USERS[2],
+];
+
+export const CORE_PRESERVED_USER_IDS: string[] = [
+  'a000000001',
+  'c100000001',
+  'c200000002',
+  'b100000001',
+  'c100000003',
+  'user-admin',
+  'solver-2',
+  'user-questioner',
+  'solver-1',
+];
+
+/**
+ * 判定使用者帳號是否為測試或模擬帳號（保留之 1~3 個核心測試身分不列入拋棄式測試帳號）
+ */
+export const isTestAccountUserId = (userId?: string): boolean => {
+  if (!userId) return false;
+  if (CORE_PRESERVED_USER_IDS.includes(userId)) return false; // 官方超級管理員與固定保留之核心測試帳號
+  if (
+    userId === 'user-guest' ||
+    userId === 'c000000000' ||
+    userId.startsWith('user-author-') ||
+    userId.startsWith('solver-') ||
+    userId.startsWith('test-') ||
+    userId.startsWith('test_') ||
+    userId.startsWith('mock-')
+  ) {
+    return true;
+  }
+  return false;
+};
+
+/**
+ * 嚴格判定是否為真實註冊用戶（排扣訪客、測試帳號、一鍵生成之測試帳號與預設模擬測試資料）
+ */
+export const isRealRegisteredUser = (user?: User | null): boolean => {
+  if (!user || !user.id) return false;
+  if (user.id === 'user-guest') return false;
+  if (user.isTestAccount || user.isSimulated) return false;
+
+  const testIds = [
+    'user-guest',
+    'c000000000',
+    'user-questioner',
+    'solver-1',
+    'solver-2',
+    'solver-3',
+    'solver-4',
+    'solver-5',
+    'user-author-1',
+    'user-author-2',
+    'user-author-3',
+  ];
+  if (testIds.includes(user.id)) return false;
+
+  if (
+    user.id.startsWith('test-') ||
+    user.id.startsWith('test_') ||
+    user.id.startsWith('mock-') ||
+    user.id.startsWith('solver-') ||
+    user.id.startsWith('user-author-') ||
+    user.id.startsWith('u-vc-') ||
+    user.id.startsWith('vp-user-') ||
+    user.id.startsWith('user-vibecoder-') ||
+    user.id.startsWith('demo-u-')
+  ) {
+    return false;
+  }
+
+  if (user.email && user.email.endsWith('@ideax.community')) {
+    return false;
+  }
+
+  if (user.bio && (user.bio.includes('【測試環境一鍵生成帳號】') || user.bio.includes('測試帳號'))) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * 判定各類資料是否為模擬/測試預留資料
+ */
+export const isMockQuestionId = (id: string, _authorId?: string): boolean => {
+  if (!id) return false;
+  if (id === 'q-test-1') return true;
+  if (id.startsWith('q-test-') || id.startsWith('q-demo-') || id.startsWith('q-mock-') || id.startsWith('vibe-app-')) return true;
+  // 僅命中模擬預置題目 q-1 ~ q-99，絕不誤判以 Date.now() 生成之真實題目 q-174... 或虛擬提案 q-vp-...
+  if (/^q-[1-9]$|^q-[1-9][0-9]$/.test(id)) return true;
+  return false;
+};
+
+export const isMockAnswerId = (id: string): boolean => {
+  if (!id) return false;
+  if (id === 'ans-test-1') return true;
+  if (id.startsWith('ans-test-') || id.startsWith('ans-mock-') || id.startsWith('ans-demo-')) return true;
+  if (/^ans-[1-9]$|^ans-[1-9][0-9]$/.test(id)) return true;
+  return false;
+};
+
+export const isMockSolverId = (id: string): boolean => {
+  if (!id) return false;
+  if (id.startsWith('solver-mock-') || id.startsWith('solver-demo-') || id.startsWith('solver-test-')) return true;
+  if (/^solver-[1-9]$|^solver-[1-9][0-9]$/.test(id)) return true;
+  return false;
+};
+
+export const isMockTransactionId = (id: string): boolean => {
+  if (!id) return false;
+  if (id.startsWith('tx-mock-') || id.startsWith('tx-demo-') || id.startsWith('tx-test-')) return true;
+  if (/^tx-[1-9][0-9]*$/.test(id)) return true;
+  return false;
+};
+
+export const isMockConversationId = (id: string): boolean => {
+  if (!id) return false;
+  if (id.startsWith('conv-') || id.startsWith('mock-') || id.startsWith('chat-mock-')) return true;
+  return false;
+};
+

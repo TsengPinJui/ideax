@@ -1,0 +1,488 @@
+@import "tailwindcss";
+
+/* 僅在桌面大螢幕保持穩定滾動條，避免行動裝置產生多餘寬度與水平滑動 */
+@media (min-width: 1024px) {
+  html {
+    scrollbar-gutter: stable;
+  }
+}
+
+/* 全域防止水平溢出與左右晃動，鎖定手機版面穩定性 */
+html,
+body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  -webkit-overflow-scrolling: touch;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* 行動版與手機直式觸控防亂滑設定 */
+@media (max-width: 768px) {
+  html, body {
+    touch-action: pan-y;
+  }
+}
+
+/* PWA / 獨立 App 專屬沈浸式體驗優化：徹底固定外層視窗，杜絕空白彈跳與非預期拖曳 */
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  html, body {
+    overscroll-behavior-y: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  /* 允許表單輸入框及文章內文正常進行文字選取與編輯 */
+  input, textarea, [contenteditable="true"], .selectable-text {
+    user-select: text;
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
+  }
+}
+
+@keyframes splash-progress {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(30%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-splash-progress {
+  animation: splash-progress 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes glow-shimmer {
+  0%, 100% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.3));
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.8)) drop-shadow(0 0 14px rgba(251, 191, 36, 0.5));
+    transform: scale(1.03);
+  }
+}
+
+@keyframes sparkle-twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.7) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25) rotate(45deg);
+  }
+}
+
+.animate-glow-shimmer {
+  animation: glow-shimmer 2.2s ease-in-out infinite;
+}
+
+.animate-sparkle-twinkle {
+  animation: sparkle-twinkle 1.8s ease-in-out infinite;
+}
+
+/* 創新點子專屬金芒閃爍與流光特效 (Sparkle & Twinkle Animations) - 柔和亮度、範圍擴大 */
+@keyframes sparkle-burst {
+  0%, 100% {
+    opacity: 0.1;
+    transform: scale(0.65) rotate(0deg);
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.15));
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.15) rotate(25deg);
+    filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.45)) drop-shadow(0 0 24px rgba(245, 158, 11, 0.25));
+  }
+}
+
+@keyframes text-gold-sweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes ambient-glow-pulse {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.15);
+  }
+}
+
+.animate-sparkle-burst-1 {
+  animation: sparkle-burst 2.8s ease-in-out infinite;
+}
+
+.animate-sparkle-burst-2 {
+  animation: sparkle-burst 3.2s ease-in-out 0.8s infinite;
+}
+
+.animate-sparkle-burst-3 {
+  animation: sparkle-burst 2.6s ease-in-out 1.5s infinite;
+}
+
+.animate-sparkle-burst-4 {
+  animation: sparkle-burst 3.0s ease-in-out 0.5s infinite;
+}
+
+.animate-gold-sweep {
+  background-size: 200% auto;
+  animation: text-gold-sweep 3s ease-in-out infinite;
+}
+
+.animate-ambient-glow {
+  animation: ambient-glow-pulse 3.2s ease-in-out infinite;
+}
+
+/* 點擊標語之碎片炸開與物理掉落特效 */
+@keyframes shard-fall {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  20% {
+    opacity: 0.95;
+    transform: translate3d(var(--tx, 0px), var(--pop-y, -35px), 0) rotate(var(--rot-mid, 90deg)) scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--tx, 0px) * 1.4), var(--drop-y, 500px), 0) rotate(var(--rot-end, 360deg)) scale(0.35);
+  }
+}
+
+/* 3D 翻頁轉場特效 (Page Turn / Flip) */
+@keyframes page-turn-flip {
+  0% {
+    transform: perspective(1600px) rotateY(0deg);
+    box-shadow: -10px 0 25px rgba(0, 0, 0, 0.15);
+  }
+  45% {
+    transform: perspective(1600px) rotateY(-40deg) skewY(-3deg);
+    box-shadow: -35px 10px 60px rgba(0, 0, 0, 0.35);
+  }
+  100% {
+    transform: perspective(1600px) rotateY(-95deg) skewY(-8deg);
+    box-shadow: -80px 20px 120px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* ============================================================== */
+/* 黃色液態流動感核心特效 (Yellow Liquid Fluid Flow Animations) */
+/* ============================================================== */
+@keyframes liquid-morph-1 {
+  0%, 100% {
+    border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%;
+    transform: translate3d(40px, -22px, 0) rotate(115deg) scale(1.1);
+  }
+  66% {
+    border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%;
+    transform: translate3d(-30px, 28px, 0) rotate(235deg) scale(0.94);
+  }
+}
+
+@keyframes liquid-morph-2 {
+  0%, 100% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  38% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    transform: translate3d(-45px, 25px, 0) rotate(-110deg) scale(1.14);
+  }
+  72% {
+    border-radius: 50% 50% 20% 80% / 25% 80% 20% 75%;
+    transform: translate3d(30px, -30px, 0) rotate(-230deg) scale(0.96);
+  }
+}
+
+@keyframes liquid-morph-3 {
+  0%, 100% {
+    border-radius: 35% 65% 60% 40% / 55% 45% 55% 45%;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    border-radius: 70% 30% 40% 60% / 35% 65% 35% 65%;
+    transform: translate3d(25px, -35px, 0) rotate(170deg) scale(1.18);
+  }
+}
+
+@keyframes liquid-flow-horizontal {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes liquid-flow-horizontal-slow {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes liquid-flow-horizontal-reverse {
+  0% {
+    transform: translate3d(-50%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes liquid-wave-drift {
+  0% {
+    transform: translate3d(-4%, 0, 0) skewX(-1.5deg);
+  }
+  50% {
+    transform: translate3d(4%, -10px, 0) skewX(1.5deg);
+  }
+  100% {
+    transform: translate3d(-4%, 0, 0) skewX(-1.5deg);
+  }
+}
+
+@keyframes liquid-wave-drift-reverse {
+  0% {
+    transform: translate3d(4%, 0, 0) skewX(1.5deg);
+  }
+  50% {
+    transform: translate3d(-4%, 8px, 0) skewX(-1.5deg);
+  }
+  100% {
+    transform: translate3d(4%, 0, 0) skewX(1.5deg);
+  }
+}
+
+@keyframes liquid-caustic-sweep {
+  0% {
+    transform: translate3d(-120%, -60%, 0) rotate(28deg);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.65;
+  }
+  70% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translate3d(220%, 140%, 0) rotate(28deg);
+    opacity: 0;
+  }
+}
+
+@keyframes liquid-droplet-pulse {
+  0%, 100% {
+    transform: scale(0.9) translate3d(0, 0, 0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.25) translate3d(12px, -18px, 0);
+    opacity: 0.95;
+  }
+}
+
+.animate-liquid-morph-1 {
+  animation: liquid-morph-1 12s ease-in-out infinite;
+  will-change: transform, border-radius;
+}
+
+.animate-liquid-morph-2 {
+  animation: liquid-morph-2 15s ease-in-out infinite;
+  will-change: transform, border-radius;
+}
+
+.animate-liquid-morph-3 {
+  animation: liquid-morph-3 10s ease-in-out infinite;
+  will-change: transform, border-radius;
+}
+
+.animate-liquid-wave {
+  animation: liquid-wave-drift 9s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-liquid-wave-rev {
+  animation: liquid-wave-drift-reverse 11s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-liquid-flow-1 {
+  animation: liquid-flow-horizontal 12s linear infinite;
+  will-change: transform;
+}
+
+.animate-liquid-flow-2 {
+  animation: liquid-flow-horizontal-slow 18s linear infinite;
+  will-change: transform;
+}
+
+.animate-liquid-flow-rev {
+  animation: liquid-flow-horizontal-reverse 15s linear infinite;
+  will-change: transform;
+}
+
+.animate-liquid-caustic {
+  animation: liquid-caustic-sweep 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+
+.animate-liquid-droplet {
+  animation: liquid-droplet-pulse 4.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* ============================================================== */
+/* 黃色彎曲抖動底線動畫 (Yellow Wavy Jiggle / Doodle Wobble Underline) */
+/* ============================================================== */
+@keyframes wavy-jiggle {
+  0%, 100% {
+    transform: translateY(0) scaleY(1) rotate(0deg);
+  }
+  20% {
+    transform: translateY(-1.5px) scaleY(1.12) rotate(-1.2deg);
+  }
+  40% {
+    transform: translateY(1.2px) scaleY(0.9) rotate(1deg);
+  }
+  60% {
+    transform: translateY(-1px) scaleY(1.08) rotate(-0.8deg);
+  }
+  80% {
+    transform: translateY(1.4px) scaleY(0.94) rotate(1.2deg);
+  }
+}
+
+.animate-wavy-jiggle {
+  animation: wavy-jiggle 1.35s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+/* ============================================================== */
+/* 底線點擊旋轉掉落與彈回動畫 (Underline Click Rotate & Fall Animation) */
+/* ============================================================== */
+@keyframes underline-rotate-drop {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  14% {
+    /* 點擊瞬間微向上一翹，開始急遽翻轉 */
+    transform: translateY(-10px) rotate(-22deg) scale(1.1);
+    opacity: 1;
+  }
+  30% {
+    /* 向下重力加速度翻滾墜落 */
+    transform: translateY(35px) rotate(55deg) scale(1.02);
+    opacity: 0.98;
+  }
+  55% {
+    /* 大角度旋轉並快速落下 */
+    transform: translateY(160px) rotate(200deg) scale(0.85);
+    opacity: 0.85;
+  }
+  78% {
+    /* 劇烈翻轉下墜 */
+    transform: translateY(360px) rotate(390deg) scale(0.65);
+    opacity: 0.5;
+  }
+  100% {
+    /* 翻滾掉落穿出視窗外消失 */
+    transform: translateY(680px) rotate(600deg) scale(0.3);
+    opacity: 0;
+  }
+}
+
+.animate-underline-rotate-drop {
+  animation: underline-rotate-drop 1.1s cubic-bezier(0.38, 0, 0.75, 1) forwards !important;
+  pointer-events: none !important;
+  transform-origin: center center;
+}
+
+@keyframes underline-pop-in {
+  0% {
+    transform: translateY(10px) scale(0.2) rotate(-8deg);
+    opacity: 0;
+  }
+  65% {
+    transform: translateY(-2px) scale(1.15) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.animate-underline-pop-in {
+  animation: underline-pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ============================================================== */
+/* 創新起點！驚嘆號活潑跳動抖動動畫 (Exclamation Mark Lively Bounce & Jiggle) */
+/* ============================================================== */
+@keyframes exclamation-action {
+  0%, 100% {
+    transform: translateY(0) rotate(6deg) scale(1);
+  }
+  15% {
+    transform: translateY(2px) rotate(3deg) scale(0.94, 0.9);
+  }
+  30% {
+    transform: translateY(-9px) rotate(16deg) scale(1.22, 1.26);
+  }
+  45% {
+    transform: translateY(-4px) rotate(2deg) scale(1.1);
+  }
+  60% {
+    transform: translateY(1.5px) rotate(9deg) scale(1.05, 0.95);
+  }
+  75% {
+    transform: translateY(-2px) rotate(5deg) scale(1.02);
+  }
+}
+
+.animate-exclamation-action {
+  animation: exclamation-action 1.2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+  transform-origin: center bottom;
+  display: inline-block;
+  will-change: transform;
+}
