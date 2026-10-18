@@ -552,7 +552,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       let finalAiResult: AIAnalysisResult | null = aiAnalysisResult;
       if (!finalAiResult) {
         try {
-          const res = await marketAdvisorAgent.classifyAndTagQuestion(title.trim(), description.trim());
+          // AI 分類最多等 12 秒，逾時就用使用者填的分類直接發布
+          const res = await Promise.race([
+            marketAdvisorAgent.classifyAndTagQuestion(title.trim(), description.trim()),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 12000)),
+          ]);
           if (res) {
             finalAiResult = res;
           }
@@ -688,6 +692,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         recordTermsAgreement('questioner');
       }
 
+      if (!newQuestion) return; // 例如帳號停權：已顯示原因，停留在表單
       onSuccess(newQuestion);
     } finally {
       setIsSubmitting(false);
