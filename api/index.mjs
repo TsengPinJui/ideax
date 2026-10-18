@@ -4,6 +4,11 @@
  */
 let appPromise = null;
 
+// 讓 Vercel 打包函式時附上這個外部套件（只有管理員補齊工具會用到，平常不會執行這段）
+if (process.env.IDEAX_TRACE_ONLY === '1') {
+  import('@google-cloud/firestore');
+}
+
 function loadApp() {
   if (!appPromise) {
     appPromise = import('./_server.mjs').then((m) => m.default);
