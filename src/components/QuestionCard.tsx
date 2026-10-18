@@ -759,17 +759,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent pointer-events-none" />
 
-            {/* 左上角標籤：領域分類 + 版本 */}
+            {/* 左上角標籤：領域分類 */}
             <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap pointer-events-none">
               <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-stone-900 border border-white/40 shadow-xs">
                 {displayCategoryLabel}
                 {question.subcategory ? ` · ${question.subcategory}` : ''}
               </span>
-              {question.currentVersion && (
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-600/95 backdrop-blur-md text-white shadow-xs">
-                  {question.currentVersion}
-                </span>
-              )}
             </div>
 
             {/* 右上角標籤：軟體作品 / 創新提案 / 創星季 */}

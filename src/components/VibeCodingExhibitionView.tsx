@@ -316,11 +316,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                     {displayAppName}
                   </span>
                 )}
-                {app.currentVersion && (
-                  <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded">
-                    {app.currentVersion}
-                  </span>
-                )}
                 <h3 className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
                   {displayCleanTitle || app.title}
                 </h3>
@@ -405,11 +400,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                 {primaryCategory}
               </span>
-              {app.currentVersion && (
-                <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-blue-600/90 text-white shadow-xs">
-                  {app.currentVersion}
-                </span>
-              )}
             </div>
 
             <div className="absolute bottom-2 right-2 flex items-center gap-1">
@@ -497,11 +487,6 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                 {primaryCategory}
               </span>
-              {app.currentVersion && (
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-600/90 backdrop-blur-md text-white shadow-xs">
-                  {app.currentVersion}
-                </span>
-              )}
             </div>
 
             {app.demoUrl ? (
