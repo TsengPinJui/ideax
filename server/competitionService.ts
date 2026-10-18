@@ -597,26 +597,53 @@ export async function verifyAuthToken(authHeader?: string): Promise<{ uid: strin
  * 嚴禁依賴用戶可寫的 /users/{uid}.role == 'admin'！
  * 僅限 Admin SDK 可寫之 /admins/{uid} 標記或 Firebase Auth Custom Claims (admin === true)
  */
+const adminCheckCache = new Map<string, { ok: boolean; at: number }>();
+const ADMIN_CHECK_TTL_MS = 5 * 60 * 1000;
+
+function getAdminEmailAllowlist(): string[] {
+  return String(process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e && e.includes('@') && e !== 'admin@example.com');
+}
+
 export async function isVerifiedAdmin(uid: string): Promise<boolean> {
   if (!uid) return false;
+  const cached = adminCheckCache.get(uid);
+  if (cached && Date.now() - cached.at < ADMIN_CHECK_TTL_MS) return cached.ok;
+
+  const remember = (ok: boolean) => {
+    adminCheckCache.set(uid, { ok, at: Date.now() });
+    return ok;
+  };
+
+  // 1. /admins/{uid}：前端無法寫入。伺服器有服務帳戶時以管理端讀取（不受資料庫規則限制）
   try {
-    // 1. 僅限可信之 /admins/{uid} 獨立集合 (用戶端無權寫入)
-    const adminDoc = await adminDb.collection('admins').doc(uid).get();
-    if (adminDoc.exists) return true;
-
-    // 2. 檢查 Firebase Auth Custom Claims
-    try {
-      const userRecord = await adminAuth.getUser(uid);
-      if (userRecord.customClaims?.admin === true) {
-        return true;
-      }
-    } catch {}
-
-    // 嚴格拒絕依賴 /users/{uid}.role 作為憑證
-    return false;
-  } catch {
-    return false;
+    if (hasAdminCredentials) {
+      const { getFirestore } = await import('firebase-admin/firestore');
+      const dbId = (firebaseConfigJson as any).firestoreDatabaseId;
+      const app = getAdminApps()[0];
+      const fsAdmin = dbId ? getFirestore(app, dbId) : getFirestore(app);
+      const snap = await fsAdmin.collection('admins').doc(uid).get();
+      if (snap.exists) return remember(true);
+    } else {
+      const adminDoc = await adminDb.collection('admins').doc(uid).get();
+      if (adminDoc.exists) return remember(true);
+    }
+  } catch (err: any) {
+    console.warn('[Admin Check] admins 讀取失敗:', err?.code || err?.message);
   }
+
+  // 2. Firebase Auth：Custom Claims admin=true，或 Email 在 ADMIN_EMAILS 白名單且已驗證
+  try {
+    const userRecord = await adminAuth.getUser(uid);
+    if (userRecord.customClaims?.admin === true) return remember(true);
+    const email = (userRecord.email || '').toLowerCase();
+    if (email && userRecord.emailVerified && getAdminEmailAllowlist().includes(email)) return remember(true);
+  } catch {}
+
+  // 嚴格拒絕依賴 /users/{uid}.role 作為憑證
+  return remember(false);
 }
 
 /**
@@ -2109,43 +2136,38 @@ export async function recordRealSiteVisit(sessionId?: string): Promise<RealSiteT
     activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
   }
 
-  const current = await getRealSiteTrafficStats();
   const nowParts = getUtc8PartsServer(Date.now());
 
-  const hourly = { ...current.hourly };
-  const daily = { ...current.daily };
+  // 以資料庫原子遞增計數：Vercel 上同時有多台伺服器處理請求，
+  // 「先讀再寫」會互相覆蓋而漏算，改用 increment 才不會掉數字
+  try {
+    const ref = clientDoc(rawFirestoreDb, 'platform_settings', 'site_traffic_stats');
+    await clientSetDoc(
+      ref,
+      {
+        hourly: { [nowParts.hourKey]: clientIncrement(1) },
+        daily: { [nowParts.dateKey]: clientIncrement(1) },
+        lastUpdatedUtc8: nowParts.fullDateTime,
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    if (!isQuotaError(err)) {
+      console.warn('[SiteTraffic] increment failed:', (err as any)?.message);
+    }
+  }
 
-  hourly[nowParts.hourKey] = (hourly[nowParts.hourKey] || 0) + 1;
-  daily[nowParts.dateKey] = (daily[nowParts.dateKey] || 0) + 1;
-
-  const sortedHours = Object.keys(hourly).sort();
-  const sortedDays = Object.keys(daily).sort();
-  const sumDaily = Object.values(daily).reduce((acc, v) => acc + v, 0);
-  const baseVisits = INITIAL_SITE_VISITS_BASE;
-  const totalVisits = baseVisits + sumDaily;
-
-  const firstRecordedAtUtc8 = current.firstRecordedAtUtc8 || nowParts.fullDateTime;
-  const firstHourKey = sortedHours[0] || nowParts.hourKey;
-  const firstDateKey = sortedDays[0] || nowParts.dateKey;
-  const lastUpdatedUtc8 = nowParts.fullDateTime;
-
-  const payload = {
-    baseVisits,
-    totalVisits,
-    hourly,
-    daily,
-    firstRecordedAtUtc8,
-    firstHourKey,
-    firstDateKey,
-    lastUpdatedUtc8,
-  };
-
-  await upsertMirrorAndFirestoreDoc('platform_settings', 'site_traffic_stats', payload, true);
-
-  return {
-    ...payload,
-    onlineUsersCount: getActiveOnlineCount(),
-  };
+  const current = await getRealSiteTrafficStats();
+  if (!current.firstRecordedAtUtc8) {
+    try {
+      await clientSetDoc(
+        clientDoc(rawFirestoreDb, 'platform_settings', 'site_traffic_stats'),
+        { firstRecordedAtUtc8: nowParts.fullDateTime, firstHourKey: nowParts.hourKey, firstDateKey: nowParts.dateKey },
+        { merge: true }
+      );
+    } catch {}
+  }
+  return current;
 }
 
 export function recordRealPresenceHeartbeat(sessionId?: string): { onlineUsersCount: number } {

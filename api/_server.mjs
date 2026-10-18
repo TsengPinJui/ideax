@@ -93894,10 +93894,10 @@ __export(firestore_exports, {
   DocumentReference: () => DocumentReference2,
   DocumentSnapshot: () => DocumentSnapshot3,
   FieldPath: () => FieldPath3,
-  FieldValue: () => FieldValue3,
+  FieldValue: () => FieldValue2,
   Filter: () => Filter2,
   FirebaseFirestoreError: () => FirebaseFirestoreError,
-  Firestore: () => Firestore4,
+  Firestore: () => Firestore3,
   FirestoreErrorCode: () => FirestoreErrorCode,
   GeoPoint: () => GeoPoint2,
   GrpcStatus: () => GrpcStatus,
@@ -93914,39 +93914,39 @@ __export(firestore_exports, {
   setLogFunction: () => setLogFunction,
   v1: () => v1
 });
-var import_firestore2, AggregateField, AggregateQuery, AggregateQuerySnapshot, BulkWriter, BundleBuilder2, CollectionGroup, CollectionReference2, DocumentReference2, DocumentSnapshot3, FieldPath3, FieldValue3, Filter2, FirebaseFirestoreError, Firestore4, FirestoreErrorCode, GeoPoint2, GrpcStatus, Query2, QueryDocumentSnapshot3, QueryPartition, QuerySnapshot2, Timestamp2, Transaction5, WriteBatch2, WriteResult, getFirestore2, initializeFirestore2, setLogFunction, v1;
+var import_firestore, AggregateField, AggregateQuery, AggregateQuerySnapshot, BulkWriter, BundleBuilder2, CollectionGroup, CollectionReference2, DocumentReference2, DocumentSnapshot3, FieldPath3, FieldValue2, Filter2, FirebaseFirestoreError, Firestore3, FirestoreErrorCode, GeoPoint2, GrpcStatus, Query2, QueryDocumentSnapshot3, QueryPartition, QuerySnapshot2, Timestamp2, Transaction5, WriteBatch2, WriteResult, getFirestore2, initializeFirestore2, setLogFunction, v1;
 var init_firestore = __esm({
   "../ideax-new/node_modules/firebase-admin/lib/esm/firestore/index.js"() {
-    import_firestore2 = __toESM(require_firestore(), 1);
-    AggregateField = import_firestore2.default.AggregateField;
-    AggregateQuery = import_firestore2.default.AggregateQuery;
-    AggregateQuerySnapshot = import_firestore2.default.AggregateQuerySnapshot;
-    BulkWriter = import_firestore2.default.BulkWriter;
-    BundleBuilder2 = import_firestore2.default.BundleBuilder;
-    CollectionGroup = import_firestore2.default.CollectionGroup;
-    CollectionReference2 = import_firestore2.default.CollectionReference;
-    DocumentReference2 = import_firestore2.default.DocumentReference;
-    DocumentSnapshot3 = import_firestore2.default.DocumentSnapshot;
-    FieldPath3 = import_firestore2.default.FieldPath;
-    FieldValue3 = import_firestore2.default.FieldValue;
-    Filter2 = import_firestore2.default.Filter;
-    FirebaseFirestoreError = import_firestore2.default.FirebaseFirestoreError;
-    Firestore4 = import_firestore2.default.Firestore;
-    FirestoreErrorCode = import_firestore2.default.FirestoreErrorCode;
-    GeoPoint2 = import_firestore2.default.GeoPoint;
-    GrpcStatus = import_firestore2.default.GrpcStatus;
-    Query2 = import_firestore2.default.Query;
-    QueryDocumentSnapshot3 = import_firestore2.default.QueryDocumentSnapshot;
-    QueryPartition = import_firestore2.default.QueryPartition;
-    QuerySnapshot2 = import_firestore2.default.QuerySnapshot;
-    Timestamp2 = import_firestore2.default.Timestamp;
-    Transaction5 = import_firestore2.default.Transaction;
-    WriteBatch2 = import_firestore2.default.WriteBatch;
-    WriteResult = import_firestore2.default.WriteResult;
-    getFirestore2 = import_firestore2.default.getFirestore;
-    initializeFirestore2 = import_firestore2.default.initializeFirestore;
-    setLogFunction = import_firestore2.default.setLogFunction;
-    v1 = import_firestore2.default.v1;
+    import_firestore = __toESM(require_firestore(), 1);
+    AggregateField = import_firestore.default.AggregateField;
+    AggregateQuery = import_firestore.default.AggregateQuery;
+    AggregateQuerySnapshot = import_firestore.default.AggregateQuerySnapshot;
+    BulkWriter = import_firestore.default.BulkWriter;
+    BundleBuilder2 = import_firestore.default.BundleBuilder;
+    CollectionGroup = import_firestore.default.CollectionGroup;
+    CollectionReference2 = import_firestore.default.CollectionReference;
+    DocumentReference2 = import_firestore.default.DocumentReference;
+    DocumentSnapshot3 = import_firestore.default.DocumentSnapshot;
+    FieldPath3 = import_firestore.default.FieldPath;
+    FieldValue2 = import_firestore.default.FieldValue;
+    Filter2 = import_firestore.default.Filter;
+    FirebaseFirestoreError = import_firestore.default.FirebaseFirestoreError;
+    Firestore3 = import_firestore.default.Firestore;
+    FirestoreErrorCode = import_firestore.default.FirestoreErrorCode;
+    GeoPoint2 = import_firestore.default.GeoPoint;
+    GrpcStatus = import_firestore.default.GrpcStatus;
+    Query2 = import_firestore.default.Query;
+    QueryDocumentSnapshot3 = import_firestore.default.QueryDocumentSnapshot;
+    QueryPartition = import_firestore.default.QueryPartition;
+    QuerySnapshot2 = import_firestore.default.QuerySnapshot;
+    Timestamp2 = import_firestore.default.Timestamp;
+    Transaction5 = import_firestore.default.Transaction;
+    WriteBatch2 = import_firestore.default.WriteBatch;
+    WriteResult = import_firestore.default.WriteResult;
+    getFirestore2 = import_firestore.default.getFirestore;
+    initializeFirestore2 = import_firestore.default.initializeFirestore;
+    setLogFunction = import_firestore.default.setLogFunction;
+    v1 = import_firestore.default.v1;
   }
 });
 
@@ -156067,7 +156067,7 @@ function isQuotaError(err) {
   const code = err?.code || "";
   return code === "resource-exhausted" || msg.includes("resource-exhausted") || msg.includes("Quota limit exceeded") || msg.includes("Quota exceeded");
 }
-var FieldValue2 = {
+var FieldValue3 = {
   increment: (n) => ({ __op: "increment", value: n, _firestoreOp: increment(n) }),
   arrayUnion: (...elements) => ({ __op: "arrayUnion", elements, _firestoreOp: arrayUnion(...elements) })
 };
@@ -156440,22 +156440,42 @@ async function verifyAuthToken(authHeader) {
     return null;
   }
 }
+var adminCheckCache = /* @__PURE__ */ new Map();
+var ADMIN_CHECK_TTL_MS = 5 * 60 * 1e3;
+function getAdminEmailAllowlist() {
+  return String(process.env.ADMIN_EMAILS || "").split(",").map((e2) => e2.trim().toLowerCase()).filter((e2) => e2 && e2.includes("@") && e2 !== "admin@example.com");
+}
 async function isVerifiedAdmin(uid) {
   if (!uid) return false;
+  const cached = adminCheckCache.get(uid);
+  if (cached && Date.now() - cached.at < ADMIN_CHECK_TTL_MS) return cached.ok;
+  const remember = (ok) => {
+    adminCheckCache.set(uid, { ok, at: Date.now() });
+    return ok;
+  };
   try {
-    const adminDoc = await adminDb.collection("admins").doc(uid).get();
-    if (adminDoc.exists) return true;
-    try {
-      const userRecord = await adminAuth.getUser(uid);
-      if (userRecord.customClaims?.admin === true) {
-        return true;
-      }
-    } catch {
+    if (hasAdminCredentials) {
+      const { getFirestore: getFirestore3 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
+      const dbId = firebase_applet_config_default.firestoreDatabaseId;
+      const app2 = getApps()[0];
+      const fsAdmin = dbId ? getFirestore3(app2, dbId) : getFirestore3(app2);
+      const snap = await fsAdmin.collection("admins").doc(uid).get();
+      if (snap.exists) return remember(true);
+    } else {
+      const adminDoc = await adminDb.collection("admins").doc(uid).get();
+      if (adminDoc.exists) return remember(true);
     }
-    return false;
-  } catch {
-    return false;
+  } catch (err) {
+    console.warn("[Admin Check] admins \u8B80\u53D6\u5931\u6557:", err?.code || err?.message);
   }
+  try {
+    const userRecord = await adminAuth.getUser(uid);
+    if (userRecord.customClaims?.admin === true) return remember(true);
+    const email = (userRecord.email || "").toLowerCase();
+    if (email && userRecord.emailVerified && getAdminEmailAllowlist().includes(email)) return remember(true);
+  } catch {
+  }
+  return remember(false);
 }
 async function getOrCreateCompetitionAccount(userId, userRole = "user") {
   const accountRef = adminDb.collection("competition_accounts").doc(userId);
@@ -156661,7 +156681,7 @@ async function createProposal(params) {
   batch.set(
     userRef,
     {
-      competitionBadges: FieldValue2.arrayUnion("\u5275\u65B0\u76C3"),
+      competitionBadges: FieldValue3.arrayUnion("\u5275\u65B0\u76C3"),
       updatedAt: now
     },
     { merge: true }
@@ -156732,7 +156752,7 @@ ${params.description.trim()}
       batch.set(
         qDocRef,
         {
-          answersCount: FieldValue2.increment(1),
+          answersCount: FieldValue3.increment(1),
           updatedAt: now
         },
         { merge: true }
@@ -156847,7 +156867,7 @@ async function confirmFinalAwardByAdmin(params) {
     batch.set(
       authorUserRef,
       {
-        competitionBadges: FieldValue2.arrayUnion("\u5275\u4E4B\u661F"),
+        competitionBadges: FieldValue3.arrayUnion("\u5275\u4E4B\u661F"),
         updatedAt: now
       },
       { merge: true }
@@ -157060,8 +157080,8 @@ async function incrementProposalView(proposalId) {
       return { success: false, viewsCount: 0 };
     }
     await ref.update({
-      viewsCount: FieldValue2.increment(1),
-      views: FieldValue2.increment(1)
+      viewsCount: FieldValue3.increment(1),
+      views: FieldValue3.increment(1)
     });
     const updated = await ref.get();
     const count = updated.data()?.viewsCount || 1;
@@ -157181,7 +157201,7 @@ async function addProposalComment(params) {
   batch.set(commentRef, newComment);
   const propRef = adminDb.collection("competition_proposals").doc(params.proposalId);
   batch.update(propRef, {
-    commentsCount: FieldValue2.increment(1),
+    commentsCount: FieldValue3.increment(1),
     updatedAt: now
   });
   await batch.commit();
@@ -157214,7 +157234,7 @@ async function registerParticipantTeam(userId, userProfile, data) {
   const userRef = adminDb.collection("users").doc(userId);
   await userRef.set(
     {
-      competitionBadges: FieldValue2.arrayUnion("\u5275\u661F\u5B63"),
+      competitionBadges: FieldValue3.arrayUnion("\u5275\u661F\u5B63"),
       isCompetitionRegistered: true,
       updatedAt: now
     },
@@ -157296,7 +157316,7 @@ async function registerParticipant(userId, userProfile, data) {
   batch.set(
     userRef,
     {
-      competitionBadges: FieldValue2.arrayUnion("\u5275\u661F\u5B63"),
+      competitionBadges: FieldValue3.arrayUnion("\u5275\u661F\u5B63"),
       isCompetitionRegistered: true,
       updatedAt: now
     },
@@ -157335,7 +157355,7 @@ ${(data.description || "").trim()}
     batch.set(
       qDocRef,
       {
-        answersCount: FieldValue2.increment(1),
+        answersCount: FieldValue3.increment(1),
         updatedAt: now
       },
       { merge: true }
@@ -157558,36 +157578,35 @@ async function recordRealSiteVisit(sessionId) {
   if (sessionId && typeof sessionId === "string") {
     activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
   }
-  const current = await getRealSiteTrafficStats();
   const nowParts = getUtc8PartsServer(Date.now());
-  const hourly = { ...current.hourly };
-  const daily = { ...current.daily };
-  hourly[nowParts.hourKey] = (hourly[nowParts.hourKey] || 0) + 1;
-  daily[nowParts.dateKey] = (daily[nowParts.dateKey] || 0) + 1;
-  const sortedHours = Object.keys(hourly).sort();
-  const sortedDays = Object.keys(daily).sort();
-  const sumDaily = Object.values(daily).reduce((acc, v) => acc + v, 0);
-  const baseVisits = INITIAL_SITE_VISITS_BASE;
-  const totalVisits = baseVisits + sumDaily;
-  const firstRecordedAtUtc8 = current.firstRecordedAtUtc8 || nowParts.fullDateTime;
-  const firstHourKey = sortedHours[0] || nowParts.hourKey;
-  const firstDateKey = sortedDays[0] || nowParts.dateKey;
-  const lastUpdatedUtc8 = nowParts.fullDateTime;
-  const payload = {
-    baseVisits,
-    totalVisits,
-    hourly,
-    daily,
-    firstRecordedAtUtc8,
-    firstHourKey,
-    firstDateKey,
-    lastUpdatedUtc8
-  };
-  await upsertMirrorAndFirestoreDoc("platform_settings", "site_traffic_stats", payload, true);
-  return {
-    ...payload,
-    onlineUsersCount: getActiveOnlineCount()
-  };
+  try {
+    const ref = doc(rawFirestoreDb, "platform_settings", "site_traffic_stats");
+    await setDoc(
+      ref,
+      {
+        hourly: { [nowParts.hourKey]: increment(1) },
+        daily: { [nowParts.dateKey]: increment(1) },
+        lastUpdatedUtc8: nowParts.fullDateTime
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    if (!isQuotaError(err)) {
+      console.warn("[SiteTraffic] increment failed:", err?.message);
+    }
+  }
+  const current = await getRealSiteTrafficStats();
+  if (!current.firstRecordedAtUtc8) {
+    try {
+      await setDoc(
+        doc(rawFirestoreDb, "platform_settings", "site_traffic_stats"),
+        { firstRecordedAtUtc8: nowParts.fullDateTime, firstHourKey: nowParts.hourKey, firstDateKey: nowParts.dateKey },
+        { merge: true }
+      );
+    } catch {
+    }
+  }
+  return current;
 }
 function recordRealPresenceHeartbeat(sessionId) {
   if (sessionId && typeof sessionId === "string") {
