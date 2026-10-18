@@ -115,8 +115,8 @@ var require_depd = __commonJS({
       return deprecate3;
     }
     function eehaslisteners(emitter, type) {
-      var count = typeof emitter.listenerCount !== "function" ? emitter.listeners(type).length : emitter.listenerCount(type);
-      return count > 0;
+      var count2 = typeof emitter.listenerCount !== "function" ? emitter.listeners(type).length : emitter.listenerCount(type);
+      return count2 > 0;
     }
     function isignored(namespace) {
       if (process.noDeprecation) {
@@ -17213,16 +17213,16 @@ var require_urlencoded = __commonJS({
       }
     }
     function parameterCount(body, limit2) {
-      var count = 0;
+      var count2 = 0;
       var index = -1;
       do {
-        count++;
-        if (count > limit2) {
+        count2++;
+        if (count2 > limit2) {
           return void 0;
         }
         index = body.indexOf("&", index + 1);
       } while (index !== -1);
-      return count;
+      return count2;
     }
     function parser(name4) {
       var mod4 = parsers[name4];
@@ -19673,8 +19673,8 @@ var require_send = __commonJS({
       return typeof res.getHeaderNames !== "function" ? Object.keys(res._headers || {}) : res.getHeaderNames();
     }
     function hasListeners(emitter, type) {
-      var count = typeof emitter.listenerCount !== "function" ? emitter.listeners(type).length : emitter.listenerCount(type);
-      return count > 0;
+      var count2 = typeof emitter.listenerCount !== "function" ? emitter.listeners(type).length : emitter.listenerCount(type);
+      return count2 > 0;
     }
     function headersSent(res) {
       return typeof res.headersSent !== "boolean" ? Boolean(res._header) : res.headersSent;
@@ -21379,13 +21379,13 @@ var require_mediaType = __commonJS({
       return spec.q > 0;
     }
     function quoteCount(string) {
-      var count = 0;
+      var count2 = 0;
       var index = 0;
       while ((index = string.indexOf('"', index)) !== -1) {
-        count++;
+        count2++;
         index++;
       }
-      return count;
+      return count2;
     }
     function splitKeyValuePair(str) {
       var index = str.indexOf("=");
@@ -23155,11 +23155,11 @@ var require_retry_operation = __commonJS({
       for (var i2 = 0; i2 < this._errors.length; i2++) {
         var error = this._errors[i2];
         var message2 = error.message;
-        var count = (counts[message2] || 0) + 1;
-        counts[message2] = count;
-        if (count >= mainErrorCount) {
+        var count2 = (counts[message2] || 0) + 1;
+        counts[message2] = count2;
+        if (count2 >= mainErrorCount) {
           mainError = error;
-          mainErrorCount = count;
+          mainErrorCount = count2;
         }
       }
       return mainError;
@@ -34610,8 +34610,8 @@ var require_crypto = __commonJS({
         const outputBuffer = await window.crypto.subtle.digest("SHA-256", inputBuffer);
         return base64js.fromByteArray(new Uint8Array(outputBuffer));
       }
-      randomBytesBase64(count) {
-        const array2 = new Uint8Array(count);
+      randomBytesBase64(count2) {
+        const array2 = new Uint8Array(count2);
         window.crypto.getRandomValues(array2);
         return base64js.fromByteArray(array2);
       }
@@ -34698,8 +34698,8 @@ var require_crypto2 = __commonJS({
       async sha256DigestBase64(str) {
         return crypto3.createHash("sha256").update(str).digest("base64");
       }
-      randomBytesBase64(count) {
-        return crypto3.randomBytes(count).toString("base64");
+      randomBytesBase64(count2) {
+        return crypto3.randomBytes(count2).toString("base64");
       }
       async verify(pubkey, data, signature) {
         const verifier = crypto3.createVerify("RSA-SHA256");
@@ -47225,8 +47225,8 @@ var require_crypto4 = __commonJS({
         const outputBuffer = await window.crypto.subtle.digest("SHA-256", inputBuffer);
         return base64js.fromByteArray(new Uint8Array(outputBuffer));
       }
-      randomBytesBase64(count) {
-        const array2 = new Uint8Array(count);
+      randomBytesBase64(count2) {
+        const array2 = new Uint8Array(count2);
         window.crypto.getRandomValues(array2);
         return base64js.fromByteArray(array2);
       }
@@ -47313,8 +47313,8 @@ var require_crypto5 = __commonJS({
       async sha256DigestBase64(str) {
         return crypto3.createHash("sha256").update(str).digest("base64");
       }
-      randomBytesBase64(count) {
-        return crypto3.randomBytes(count).toString("base64");
+      randomBytesBase64(count2) {
+        return crypto3.randomBytes(count2).toString("base64");
       }
       async verify(pubkey, data, signature) {
         const verifier = crypto3.createVerify("RSA-SHA256");
@@ -68630,8 +68630,8 @@ ${newlined}
       }
       return first;
     };
-    skipElement = (state, count = 1) => {
-      for (; count-- > 0; ) {
+    skipElement = (state, count2 = 1) => {
+      for (; count2-- > 0; ) {
         state.pos++;
         const length = parseLength(state);
         state.pos += length;
@@ -71015,38 +71015,38 @@ var require_tokenBucket = __commonJS({
        * @returns {Boolean} True if the callback was fired immediately, otherwise
        *  false.
        */
-      removeTokens: function(count, callback) {
+      removeTokens: function(count2, callback) {
         var self2 = this;
         if (!this.bucketSize) {
-          process.nextTick(callback.bind(null, null, count, Number.POSITIVE_INFINITY));
+          process.nextTick(callback.bind(null, null, count2, Number.POSITIVE_INFINITY));
           return true;
         }
-        if (count > this.bucketSize) {
-          process.nextTick(callback.bind(null, "Requested tokens " + count + " exceeds bucket size " + this.bucketSize, null));
+        if (count2 > this.bucketSize) {
+          process.nextTick(callback.bind(null, "Requested tokens " + count2 + " exceeds bucket size " + this.bucketSize, null));
           return false;
         }
         this.drip();
-        if (count > this.content)
+        if (count2 > this.content)
           return comeBackLater();
         if (this.parentBucket) {
-          return this.parentBucket.removeTokens(count, function(err, remainingTokens) {
+          return this.parentBucket.removeTokens(count2, function(err, remainingTokens) {
             if (err) return callback(err, null);
-            if (count > self2.content)
+            if (count2 > self2.content)
               return comeBackLater();
-            self2.content -= count;
+            self2.content -= count2;
             callback(null, Math.min(remainingTokens, self2.content));
           });
         } else {
-          this.content -= count;
+          this.content -= count2;
           process.nextTick(callback.bind(null, null, this.content));
           return true;
         }
         function comeBackLater() {
           var waitInterval = Math.ceil(
-            (count - self2.content) * (self2.interval / self2.tokensPerInterval)
+            (count2 - self2.content) * (self2.interval / self2.tokensPerInterval)
           );
           setTimeout(function() {
-            self2.removeTokens(count, callback);
+            self2.removeTokens(count2, callback);
           }, waitInterval);
           return false;
         }
@@ -71059,17 +71059,17 @@ var require_tokenBucket = __commonJS({
        * @param {Boolean} True if the tokens were successfully removed, otherwise
        *  false.
        */
-      tryRemoveTokens: function(count) {
+      tryRemoveTokens: function(count2) {
         if (!this.bucketSize)
           return true;
-        if (count > this.bucketSize)
+        if (count2 > this.bucketSize)
           return false;
         this.drip();
-        if (count > this.content)
+        if (count2 > this.content)
           return false;
-        if (this.parentBucket && !this.parentBucket.tryRemoveTokens(count))
+        if (this.parentBucket && !this.parentBucket.tryRemoveTokens(count2))
           return false;
-        this.content -= count;
+        this.content -= count2;
         return true;
       },
       /**
@@ -71140,11 +71140,11 @@ var require_rateLimiter = __commonJS({
        * @returns {Boolean} True if the callback was fired immediately, otherwise
        *  false.
        */
-      removeTokens: function(count, callback) {
-        if (count > this.tokenBucket.bucketSize) {
+      removeTokens: function(count2, callback) {
+        if (count2 > this.tokenBucket.bucketSize) {
           process.nextTick(callback.bind(
             null,
-            "Requested tokens " + count + " exceeds maximum tokens per interval " + this.tokenBucket.bucketSize,
+            "Requested tokens " + count2 + " exceeds maximum tokens per interval " + this.tokenBucket.bucketSize,
             null
           ));
           return false;
@@ -71155,7 +71155,7 @@ var require_rateLimiter = __commonJS({
           this.curIntervalStart = now;
           this.tokensThisInterval = 0;
         }
-        if (count > this.tokenBucket.tokensPerInterval - this.tokensThisInterval) {
+        if (count2 > this.tokenBucket.tokensPerInterval - this.tokensThisInterval) {
           if (this.fireImmediately) {
             process.nextTick(callback.bind(null, null, -1));
           } else {
@@ -71163,15 +71163,15 @@ var require_rateLimiter = __commonJS({
               this.curIntervalStart + this.tokenBucket.interval - now
             );
             setTimeout(function() {
-              self2.tokenBucket.removeTokens(count, afterTokensRemoved);
+              self2.tokenBucket.removeTokens(count2, afterTokensRemoved);
             }, waitInterval);
           }
           return false;
         }
-        return this.tokenBucket.removeTokens(count, afterTokensRemoved);
+        return this.tokenBucket.removeTokens(count2, afterTokensRemoved);
         function afterTokensRemoved(err, tokensRemaining) {
           if (err) return callback(err, null);
-          self2.tokensThisInterval += count;
+          self2.tokensThisInterval += count2;
           callback(null, tokensRemaining);
         }
       },
@@ -71184,19 +71184,19 @@ var require_rateLimiter = __commonJS({
        * @param {Boolean} True if the tokens were successfully removed, otherwise
        *  false.
        */
-      tryRemoveTokens: function(count) {
-        if (count > this.tokenBucket.bucketSize)
+      tryRemoveTokens: function(count2) {
+        if (count2 > this.tokenBucket.bucketSize)
           return false;
         var now = getMilliseconds();
         if (now < this.curIntervalStart || now - this.curIntervalStart >= this.tokenBucket.interval) {
           this.curIntervalStart = now;
           this.tokensThisInterval = 0;
         }
-        if (count > this.tokenBucket.tokensPerInterval - this.tokensThisInterval)
+        if (count2 > this.tokenBucket.tokensPerInterval - this.tokensThisInterval)
           return false;
-        var removed = this.tokenBucket.tryRemoveTokens(count);
+        var removed = this.tokenBucket.tryRemoveTokens(count2);
         if (removed) {
-          this.tokensThisInterval += count;
+          this.tokensThisInterval += count2;
         }
         return removed;
       },
@@ -89794,13 +89794,13 @@ var require_retrying_call = __commonJS({
         }, retryDelayMs);
       }
       countActiveCalls() {
-        let count = 0;
+        let count2 = 0;
         for (const call of this.underlyingCalls) {
           if ((call === null || call === void 0 ? void 0 : call.state) === "ACTIVE") {
-            count += 1;
+            count2 += 1;
           }
         }
-        return count;
+        return count2;
       }
       handleProcessedStatus(status, callIndex, pushback) {
         var _a2, _b, _c;
@@ -91687,10 +91687,10 @@ var require_server = __commonJS({
               });
             });
           })).then((results) => {
-            let count = 0;
+            let count2 = 0;
             for (const result of results) {
               if (typeof result === "number") {
-                count += 1;
+                count2 += 1;
                 if (result !== portNum) {
                   throw new Error("Invalid state: multiple port numbers added from single address");
                 }
@@ -91698,7 +91698,7 @@ var require_server = __commonJS({
             }
             return {
               port: portNum,
-              count: count + previousCount
+              count: count2 + previousCount
             };
           });
         };
@@ -93884,9 +93884,9 @@ var require_firestore = __commonJS({
 // ../ideax-new/node_modules/firebase-admin/lib/esm/firestore/index.js
 var firestore_exports = {};
 __export(firestore_exports, {
-  AggregateField: () => AggregateField,
+  AggregateField: () => AggregateField2,
   AggregateQuery: () => AggregateQuery,
-  AggregateQuerySnapshot: () => AggregateQuerySnapshot,
+  AggregateQuerySnapshot: () => AggregateQuerySnapshot2,
   BulkWriter: () => BulkWriter,
   BundleBuilder: () => BundleBuilder2,
   CollectionGroup: () => CollectionGroup,
@@ -93914,13 +93914,13 @@ __export(firestore_exports, {
   setLogFunction: () => setLogFunction,
   v1: () => v1
 });
-var import_firestore, AggregateField, AggregateQuery, AggregateQuerySnapshot, BulkWriter, BundleBuilder2, CollectionGroup, CollectionReference2, DocumentReference2, DocumentSnapshot3, FieldPath3, FieldValue2, Filter2, FirebaseFirestoreError, Firestore3, FirestoreErrorCode, GeoPoint2, GrpcStatus, Query2, QueryDocumentSnapshot3, QueryPartition, QuerySnapshot2, Timestamp2, Transaction5, WriteBatch2, WriteResult, getFirestore2, initializeFirestore2, setLogFunction, v1;
+var import_firestore, AggregateField2, AggregateQuery, AggregateQuerySnapshot2, BulkWriter, BundleBuilder2, CollectionGroup, CollectionReference2, DocumentReference2, DocumentSnapshot3, FieldPath3, FieldValue2, Filter2, FirebaseFirestoreError, Firestore3, FirestoreErrorCode, GeoPoint2, GrpcStatus, Query2, QueryDocumentSnapshot3, QueryPartition, QuerySnapshot2, Timestamp2, Transaction5, WriteBatch2, WriteResult, getFirestore2, initializeFirestore2, setLogFunction, v1;
 var init_firestore = __esm({
   "../ideax-new/node_modules/firebase-admin/lib/esm/firestore/index.js"() {
     import_firestore = __toESM(require_firestore(), 1);
-    AggregateField = import_firestore.default.AggregateField;
+    AggregateField2 = import_firestore.default.AggregateField;
     AggregateQuery = import_firestore.default.AggregateQuery;
-    AggregateQuerySnapshot = import_firestore.default.AggregateQuerySnapshot;
+    AggregateQuerySnapshot2 = import_firestore.default.AggregateQuerySnapshot;
     BulkWriter = import_firestore.default.BulkWriter;
     BundleBuilder2 = import_firestore.default.BundleBuilder;
     CollectionGroup = import_firestore.default.CollectionGroup;
@@ -127214,13 +127214,13 @@ var FieldMask = class _FieldMask {
   }
 };
 function objectSize(obj) {
-  let count = 0;
+  let count2 = 0;
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      count++;
+      count2++;
     }
   }
-  return count;
+  return count2;
 }
 function forEach(obj, fn) {
   for (const key in obj) {
@@ -129585,6 +129585,13 @@ function queryToTarget(query2) {
   }
   return queryImpl.memoizedTarget;
 }
+function queryToAggregateTarget(query2) {
+  const queryImpl = debugCast(query2);
+  if (!queryImpl.memoizedAggregateTarget) {
+    queryImpl.memoizedAggregateTarget = _queryToTarget(queryImpl, query2.explicitOrderBy);
+  }
+  return queryImpl.memoizedAggregateTarget;
+}
 function _queryToTarget(queryImpl, orderBys) {
   if (queryImpl.limitType === "F") {
     return newTarget(queryImpl.path, queryImpl.collectionGroup, orderBys, queryImpl.filters, queryImpl.limit, queryImpl.startAt, queryImpl.endAt);
@@ -129681,8 +129688,8 @@ function compareDocs(orderBy2, d1, d2) {
   }
 }
 var ExistenceFilter = class {
-  constructor(count, unchangedNames) {
-    this.count = count;
+  constructor(count2, unchangedNames) {
+    this.count = count2;
     this.unchangedNames = unchangedNames;
   }
 };
@@ -130876,8 +130883,8 @@ function fromWatchChange(serializer, change) {
     assertPresent(change.filter);
     const filter = change.filter;
     assertPresent(filter.targetId);
-    const { count = 0, unchangedNames } = filter;
-    const existenceFilter = new ExistenceFilter(count, unchangedNames);
+    const { count: count2 = 0, unchangedNames } = filter;
+    const existenceFilter = new ExistenceFilter(count2, unchangedNames);
     const targetId = filter.targetId;
     watchChange = new ExistenceFilterChange(targetId, existenceFilter);
   } else {
@@ -131050,6 +131057,47 @@ function toQueryTarget(serializer, target) {
     queryTarget.structuredQuery.endAt = toEndAtCursor(target.endAt);
   }
   return { queryTarget, parent };
+}
+function toRunAggregationQueryRequest(serializer, target, aggregates, skipAliasing) {
+  const { queryTarget, parent } = toQueryTarget(serializer, target);
+  const aliasMap = {};
+  const aggregations = [];
+  let aggregationNum = 0;
+  aggregates.forEach((aggregate) => {
+    const serverAlias = skipAliasing ? aggregate.alias : `aggregate_${aggregationNum++}`;
+    aliasMap[serverAlias] = aggregate.alias;
+    if (aggregate.aggregateType === "count") {
+      aggregations.push({
+        alias: serverAlias,
+        count: {}
+      });
+    } else if (aggregate.aggregateType === "avg") {
+      aggregations.push({
+        alias: serverAlias,
+        avg: {
+          field: toFieldPathReference(aggregate.fieldPath)
+        }
+      });
+    } else if (aggregate.aggregateType === "sum") {
+      aggregations.push({
+        alias: serverAlias,
+        sum: {
+          field: toFieldPathReference(aggregate.fieldPath)
+        }
+      });
+    }
+  });
+  return {
+    request: {
+      structuredAggregationQuery: {
+        aggregations,
+        structuredQuery: queryTarget.structuredQuery
+      },
+      parent: queryTarget.parent
+    },
+    aliasMap,
+    parent
+  };
 }
 function convertQueryTargetToQuery(target) {
   let path4 = fromQueryPath(target.parent);
@@ -137276,6 +137324,29 @@ async function invokeBatchGetDocumentsRpc(datastore, keys) {
   });
   return result;
 }
+async function invokeRunAggregationQueryRpc(datastore, query2, aggregates) {
+  const datastoreImpl = debugCast(datastore);
+  const { request, aliasMap, parent } = toRunAggregationQueryRequest(datastoreImpl.serializer, queryToAggregateTarget(query2), aggregates);
+  if (!datastoreImpl.connection.shouldResourcePathBeIncludedInRequest) {
+    delete request.parent;
+  }
+  const response = await datastoreImpl.invokeStreamingRPC(
+    "RunAggregationQuery",
+    datastoreImpl.serializer.databaseId,
+    parent,
+    request,
+    /*expectedResponseCount=*/
+    1
+  );
+  const filteredResult = response.filter((proto) => !!proto.result);
+  hardAssert(filteredResult.length === 1, 64727);
+  const unmappedAggregateFields = filteredResult[0].result?.aggregateFields;
+  const remappedFields = Object.keys(unmappedAggregateFields).reduce((accumulator, key) => {
+    accumulator[aliasMap[key]] = unmappedAggregateFields[key];
+    return accumulator;
+  }, {});
+  return remappedFields;
+}
 function newPersistentWriteStream(datastore, queue, listener) {
   const datastoreImpl = debugCast(datastore);
   datastoreImpl.verifyInitialized();
@@ -142382,7 +142453,7 @@ var CoreReplaceAll = class {
   }
 };
 function getUnicodePointCount(str) {
-  let count = 0;
+  let count2 = 0;
   for (let i2 = 0; i2 < str.length; i2++) {
     const codePoint = str.codePointAt(i2);
     if (codePoint === void 0) {
@@ -142393,25 +142464,25 @@ function getUnicodePointCount(str) {
         if (codePoint <= 56319) {
           const nextCodePoint = str.codePointAt(i2 + 1);
           if (nextCodePoint === void 0 || !(nextCodePoint >= 56320 && nextCodePoint <= 57343)) {
-            count += 1;
+            count2 += 1;
           } else {
-            count += 1;
+            count2 += 1;
             i2++;
           }
         } else {
-          count += 1;
+          count2 += 1;
         }
       } else {
-        count += 1;
+        count2 += 1;
       }
     } else if (codePoint <= 1114111) {
-      count += 1;
+      count2 += 1;
       i2++;
     } else {
       return void 0;
     }
   }
-  return count;
+  return count2;
 }
 var CoreCharLength = class {
   constructor(expr) {
@@ -144447,9 +144518,9 @@ var LocalDocumentsView = class {
    * @param count - The number of documents to return
    * @returns A LocalWriteResult with the documents that follow the provided offset and the last processed batch id.
    */
-  getNextDocuments(transaction, collectionGroup2, offset, count) {
-    return this.remoteDocumentCache.getAllFromCollectionGroup(transaction, collectionGroup2, offset, count).next((originalDocs) => {
-      const overlaysPromise = count - originalDocs.size > 0 ? this.documentOverlayCache.getOverlaysForCollectionGroup(transaction, collectionGroup2, offset.largestBatchId, count - originalDocs.size) : PersistencePromise.resolve(newOverlayMap());
+  getNextDocuments(transaction, collectionGroup2, offset, count2) {
+    return this.remoteDocumentCache.getAllFromCollectionGroup(transaction, collectionGroup2, offset, count2).next((originalDocs) => {
+      const overlaysPromise = count2 - originalDocs.size > 0 ? this.documentOverlayCache.getOverlaysForCollectionGroup(transaction, collectionGroup2, offset.largestBatchId, count2 - originalDocs.size) : PersistencePromise.resolve(newOverlayMap());
       let largestBatchId = INITIAL_LARGEST_BATCH_ID;
       let modifiedDocs = originalDocs;
       return overlaysPromise.next((overlays) => {
@@ -144657,7 +144728,7 @@ var MemoryDocumentOverlayCache = class {
     }
     return PersistencePromise.resolve(result);
   }
-  getOverlaysForCollectionGroup(transaction, collectionGroup2, sinceBatchId, count) {
+  getOverlaysForCollectionGroup(transaction, collectionGroup2, sinceBatchId, count2) {
     let batchIdToOverlays = new SortedMap((key1, key2) => key1 - key2);
     const iter = this.overlays.getIterator();
     while (iter.hasNext()) {
@@ -144682,7 +144753,7 @@ var MemoryDocumentOverlayCache = class {
       const entry = batchIter.getNext();
       const overlays = entry.value;
       overlays.forEach((key, overlay) => result.set(key, overlay));
-      if (result.size() >= count) {
+      if (result.size() >= count2) {
         break;
       }
     }
@@ -145153,16 +145224,16 @@ var MemoryTargetCache = class {
     return PersistencePromise.resolve();
   }
   removeTargets(transaction, upperBound, activeTargetIds) {
-    let count = 0;
+    let count2 = 0;
     const removals = [];
     this.targets.forEach((key, targetData) => {
       if (targetData.sequenceNumber <= upperBound && activeTargetIds.get(targetData.targetId) === null) {
         this.targets.delete(key);
         removals.push(this.removeMatchingKeysForTargetId(transaction, targetData.targetId));
-        count++;
+        count2++;
       }
     });
-    return PersistencePromise.waitFor(removals).next(() => count);
+    return PersistencePromise.waitFor(removals).next(() => count2);
   }
   getTargetCount(transaction) {
     return PersistencePromise.resolve(this.targetCount);
@@ -145408,18 +145479,18 @@ var MemoryLruDelegate = class _MemoryLruDelegate {
     return this.persistence.getTargetCache().removeTargets(txn, upperBound, activeTargetIds);
   }
   removeOrphanedDocuments(txn, upperBound) {
-    let count = 0;
+    let count2 = 0;
     const cache2 = this.persistence.getRemoteDocumentCache();
     const changeBuffer = cache2.newChangeBuffer();
     const p = cache2.forEachDocumentKey(txn, (key) => {
       return this.isPinned(txn, key, upperBound).next((isPinned) => {
         if (!isPinned) {
-          count++;
+          count2++;
           changeBuffer.removeEntry(key, SnapshotVersion.min());
         }
       });
     });
-    return p.next(() => changeBuffer.apply(txn)).next(() => count);
+    return p.next(() => changeBuffer.apply(txn)).next(() => count2);
   }
   markPotentiallyOrphaned(txn, key) {
     this.orphanedSequenceNumbers.set(key, txn.currentSequenceNumber);
@@ -148596,6 +148667,18 @@ function firestoreClientGetDocumentsViaSnapshotListener(client, query2, options2
   });
   return deferred.promise;
 }
+function firestoreClientRunAggregateQuery(client, query2, aggregates) {
+  const deferred = new Deferred2();
+  client.asyncQueue.enqueueAndForget(async () => {
+    try {
+      const datastore = await getDatastore(client);
+      deferred.resolve(invokeRunAggregationQueryRpc(datastore, query2, aggregates));
+    } catch (e2) {
+      deferred.reject(e2);
+    }
+  });
+  return deferred.promise;
+}
 function firestoreClientWrite(client, mutations) {
   const deferred = new Deferred2();
   client.asyncQueue.enqueueAndForget(async () => {
@@ -149039,6 +149122,13 @@ var ExpUserDataWriter = class extends AbstractUserDataWriter {
     );
   }
 };
+var AggregateImpl = class {
+  constructor(alias, aggregateType, fieldPath) {
+    this.alias = alias;
+    this.aggregateType = aggregateType;
+    this.fieldPath = fieldPath;
+  }
+};
 
 // ../ideax-new/node_modules/@firebase/firestore/dist/index.node.mjs
 var import_grpc_js = __toESM(require_src15(), 1);
@@ -149057,6 +149147,56 @@ function registerFirestore(variant, useFetchStreams = true) {
   registerVersion(name$12, version4, variant);
   registerVersion(name$12, version4, "esm2020");
 }
+var AggregateField = class {
+  /**
+   * Create a new AggregateField<T>
+   * @param aggregateType - Specifies the type of aggregation operation to perform.
+   * @param _internalFieldPath - Optionally specifies the field that is aggregated.
+   * @internal
+   */
+  constructor(aggregateType = "count", _internalFieldPath) {
+    this._internalFieldPath = _internalFieldPath;
+    this.type = "AggregateField";
+    this.aggregateType = aggregateType;
+  }
+};
+var AggregateQuerySnapshot = class {
+  /** @hideconstructor */
+  constructor(query2, _userDataWriter, _data) {
+    this._userDataWriter = _userDataWriter;
+    this._data = _data;
+    this.type = "AggregateQuerySnapshot";
+    this.query = query2;
+  }
+  /**
+   * Returns the results of the aggregations performed over the underlying
+   * query.
+   *
+   * The keys of the returned object will be the same as those of the
+   * `AggregateSpec` object specified to the aggregation method, and the values
+   * will be the corresponding aggregation result.
+   *
+   * @returns The results of the aggregations performed over the underlying
+   * query.
+   */
+  data() {
+    return this._userDataWriter.convertObjectMap(this._data);
+  }
+  /**
+   * @internal
+   * @private
+   *
+   * Retrieves all fields in the snapshot as a proto value.
+   *
+   * @returns An `Object` containing all fields in the snapshot.
+   */
+  _fieldsProto() {
+    const dataClone = new ObjectValue({
+      mapValue: { fields: this._data }
+    }).clone();
+    return dataClone.value.mapValue.fields;
+  }
+};
 var DocumentSnapshot$1 = class DocumentSnapshot {
   // Note: This class is stripped down version of the DocumentSnapshot in
   // the legacy SDK. The changes are:
@@ -149451,6 +149591,28 @@ var LiteUserDataWriter = class extends AbstractUserDataWriter {
     );
   }
 };
+function count() {
+  return new AggregateField("count");
+}
+function getCountFromServer(query2) {
+  const countQuerySpec = {
+    count: count()
+  };
+  return getAggregateFromServer(query2, countQuerySpec);
+}
+function getAggregateFromServer(query2, aggregateSpec) {
+  const firestore = cast(query2.firestore, Firestore2);
+  const client = ensureFirestoreConfigured(firestore);
+  const internalAggregates = mapToArray(aggregateSpec, (aggregate, alias) => {
+    return new AggregateImpl(alias, aggregate.aggregateType, aggregate._internalFieldPath);
+  });
+  return firestoreClientRunAggregateQuery(client, query2._query, internalAggregates).then((aggregateResult) => convertToAggregateQuerySnapshot(firestore, query2, aggregateResult));
+}
+function convertToAggregateQuerySnapshot(firestore, query2, aggregateResult) {
+  const userDataWriter = new ExpUserDataWriter(firestore);
+  const querySnapshot = new AggregateQuerySnapshot(query2, userDataWriter, aggregateResult);
+  return querySnapshot;
+}
 var MemoryLocalCacheImpl = class {
   constructor(settings) {
     this.kind = "memory";
@@ -154671,13 +154833,13 @@ function generateSimulatedTipsForQuestion(q) {
     };
   }
   const seed = hashSeedStr(q.id);
-  const count = 1 + seed % 5;
+  const count2 = 1 + seed % 5;
   const postTypeKey = q.postType || "pain_point";
   const msgPool = TIP_MESSAGES_BY_TYPE[postTypeKey] || TIP_MESSAGES_BY_TYPE.pain_point;
   const tipAmountsPoints = [50, 100, 150, 200, 300, 500, 800];
   const tipsHistory = [];
   let totalPoints = 0;
-  for (let i2 = 0; i2 < count; i2++) {
+  for (let i2 = 0; i2 < count2; i2++) {
     const personaIdx = (seed + i2 * 7) % VIRTUAL_PERSONAS.length + 1;
     let tipper = P(personaIdx);
     if (tipper.id === q.authorId) {
@@ -157125,8 +157287,8 @@ async function incrementProposalView(proposalId) {
       views: FieldValue3.increment(1)
     });
     const updated = await ref.get();
-    const count = updated.data()?.viewsCount || 1;
-    return { success: true, viewsCount: count };
+    const count2 = updated.data()?.viewsCount || 1;
+    return { success: true, viewsCount: count2 };
   } catch (err) {
     console.warn("[ProposalView] increment failed:", err?.message);
     return { success: false, viewsCount: 0 };
@@ -157555,6 +157717,7 @@ async function bindAmbassadorReferralCode(userId, referralCode) {
   };
 }
 var INITIAL_SITE_VISITS_BASE = 1700;
+var PAGEVIEW_BASELINE_TARGET = 2500;
 var activePresenceSessions = /* @__PURE__ */ new Map();
 var PRESENCE_TTL_MS = 65 * 1e3;
 function getUtc8PartsServer(timestampMs = Date.now()) {
@@ -157572,6 +157735,45 @@ function getUtc8PartsServer(timestampMs = Date.now()) {
     fullDateTime: `${year}/${month}/${day} ${hour}:${minute}:${second} (UTC+8)`
   };
 }
+var PRESENCE_COLLECTION = "site_presence";
+var PRESENCE_WINDOW_MS = 75 * 1e3;
+var cachedOnline = { count: 1, at: 0 };
+function withTimeout(p, ms) {
+  return Promise.race([p, new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
+}
+async function touchPresence(sessionId) {
+  try {
+    await setDoc(doc(rawFirestoreDb, PRESENCE_COLLECTION, sessionId.slice(0, 64).replace(/\//g, "_")), {
+      lastSeen: Date.now()
+    });
+  } catch {
+  }
+  if (Math.random() < 0.02) {
+    try {
+      const old = await getDocs(
+        query(collection(rawFirestoreDb, PRESENCE_COLLECTION), where("lastSeen", "<", Date.now() - 864e5), limit(100))
+      );
+      await Promise.all(old.docs.map((d) => deleteDoc(d.ref).catch(() => {
+      })));
+    } catch {
+    }
+  }
+}
+async function getOnlineCount() {
+  if (Date.now() - cachedOnline.at < 15e3) return cachedOnline.count;
+  try {
+    const snap = await withTimeout(
+      getCountFromServer(
+        query(collection(rawFirestoreDb, PRESENCE_COLLECTION), where("lastSeen", ">=", Date.now() - PRESENCE_WINDOW_MS))
+      ),
+      4e3
+    );
+    cachedOnline = { count: Math.max(1, snap.data().count), at: Date.now() };
+  } catch {
+    cachedOnline = { count: getActiveOnlineCount(), at: Date.now() };
+  }
+  return cachedOnline.count;
+}
 function getActiveOnlineCount() {
   const now = Date.now();
   for (const [sid, lastSeen] of activePresenceSessions.entries()) {
@@ -157581,27 +157783,38 @@ function getActiveOnlineCount() {
   }
   return Math.max(1, activePresenceSessions.size);
 }
+function readCountMap(raw) {
+  const out = {};
+  if (raw && typeof raw === "object") {
+    for (const [k, v] of Object.entries(raw)) {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) out[k] = n;
+    }
+  }
+  return out;
+}
 async function getRealSiteTrafficStats() {
   const docSnap = await adminDb.collection("platform_settings").doc("site_traffic_stats").get();
   const raw = docSnap.exists ? docSnap.data() : null;
-  const hourly = {};
-  if (raw?.hourly && typeof raw.hourly === "object") {
-    for (const [k, v] of Object.entries(raw.hourly)) {
-      const n = Number(v);
-      if (Number.isFinite(n) && n >= 0) hourly[k] = n;
-    }
-  }
-  const daily = {};
-  if (raw?.daily && typeof raw.daily === "object") {
-    for (const [k, v] of Object.entries(raw.daily)) {
-      const n = Number(v);
-      if (Number.isFinite(n) && n >= 0) daily[k] = n;
-    }
-  }
+  const hourly = readCountMap(raw?.hourly);
+  const daily = readCountMap(raw?.daily);
+  const visitorsDaily = readCountMap(raw?.visitorsDaily);
+  const visitorsHourly = readCountMap(raw?.visitorsHourly);
   const sortedHours = Object.keys(hourly).sort();
   const sortedDays = Object.keys(daily).sort();
   const sumDaily = Object.values(daily).reduce((acc, v) => acc + v, 0);
-  const baseVisits = INITIAL_SITE_VISITS_BASE;
+  let baseVisits = typeof raw?.baseVisits === "number" ? raw.baseVisits : INITIAL_SITE_VISITS_BASE;
+  if (!raw?.pageviewBaselineApplied) {
+    baseVisits = PAGEVIEW_BASELINE_TARGET - sumDaily;
+    try {
+      await setDoc(
+        doc(rawFirestoreDb, "platform_settings", "site_traffic_stats"),
+        { baseVisits, pageviewBaselineApplied: true },
+        { merge: true }
+      );
+    } catch {
+    }
+  }
   const totalVisits = baseVisits + sumDaily;
   return {
     baseVisits,
@@ -157612,12 +157825,16 @@ async function getRealSiteTrafficStats() {
     firstHourKey: raw?.firstHourKey || sortedHours[0] || "",
     firstDateKey: raw?.firstDateKey || sortedDays[0] || "",
     lastUpdatedUtc8: raw?.lastUpdatedUtc8 || "",
-    onlineUsersCount: getActiveOnlineCount()
+    onlineUsersCount: await getOnlineCount(),
+    uniqueVisitorsTotal: Number(raw?.uniqueVisitorsTotal) || 0,
+    visitorsDaily,
+    visitorsHourly
   };
 }
-async function recordRealSiteVisit(sessionId) {
+async function recordRealSiteVisit(sessionId, visitor = {}) {
   if (sessionId && typeof sessionId === "string") {
     activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
+    void touchPresence(sessionId);
   }
   const nowParts = getUtc8PartsServer(Date.now());
   try {
@@ -157627,6 +157844,11 @@ async function recordRealSiteVisit(sessionId) {
       {
         hourly: { [nowParts.hourKey]: increment(1) },
         daily: { [nowParts.dateKey]: increment(1) },
+        ...visitor.newToday ? {
+          visitorsHourly: { [nowParts.hourKey]: increment(1) },
+          visitorsDaily: { [nowParts.dateKey]: increment(1) }
+        } : {},
+        ...visitor.newEver ? { uniqueVisitorsTotal: increment(1) } : {},
         lastUpdatedUtc8: nowParts.fullDateTime
       },
       { merge: true }
@@ -157649,12 +157871,14 @@ async function recordRealSiteVisit(sessionId) {
   }
   return current;
 }
-function recordRealPresenceHeartbeat(sessionId) {
+async function recordRealPresenceHeartbeat(sessionId) {
   if (sessionId && typeof sessionId === "string") {
     activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
+    await withTimeout(touchPresence(sessionId), 4e3).catch(() => {
+    });
   }
   return {
-    onlineUsersCount: getActiveOnlineCount()
+    onlineUsersCount: await getOnlineCount()
   };
 }
 
@@ -158299,16 +158523,19 @@ router.get("/site-traffic", async (_req, res) => {
 router.post("/site-traffic/visit", async (req, res) => {
   try {
     const sessionId = req.body?.sessionId ? String(req.body.sessionId) : void 0;
-    const stats = await recordRealSiteVisit(sessionId);
+    const stats = await recordRealSiteVisit(sessionId, {
+      newToday: req.body?.newVisitorToday === true,
+      newEver: req.body?.newVisitorEver === true
+    });
     res.json({ success: true, stats });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-router.post("/site-traffic/heartbeat", (req, res) => {
+router.post("/site-traffic/heartbeat", async (req, res) => {
   try {
     const sessionId = req.body?.sessionId ? String(req.body.sessionId) : void 0;
-    const result = recordRealPresenceHeartbeat(sessionId);
+    const result = await recordRealPresenceHeartbeat(sessionId);
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -162594,7 +162821,6 @@ long/umd/index.js:
 @firebase/firestore/dist/common-BKJf2lb8.node.mjs:
 @firebase/firestore/dist/common-BKJf2lb8.node.mjs:
 @firebase/firestore/dist/common-BKJf2lb8.node.mjs:
-@firebase/firestore/dist/common-BKJf2lb8.node.mjs:
   (**
    * @license
    * Copyright 2017 Google LLC
@@ -162619,7 +162845,6 @@ long/umd/index.js:
 @firebase/firestore/dist/common-BKJf2lb8.node.mjs:
 @firebase/firestore/dist/common-BKJf2lb8.node.mjs:
 @firebase/firestore/dist/common-BKJf2lb8.node.mjs:
-@firebase/firestore/dist/index.node.mjs:
   (**
    * @license
    * Copyright 2022 Google LLC
@@ -162711,7 +162936,6 @@ firebase/app/dist/index.mjs:
 @firebase/firestore/dist/common-BKJf2lb8.node.mjs:
 @firebase/firestore/dist/common-BKJf2lb8.node.mjs:
 @firebase/firestore/dist/common-BKJf2lb8.node.mjs:
-@firebase/firestore/dist/index.node.mjs:
 @firebase/firestore/dist/index.node.mjs:
   (**
    * @license
@@ -163129,7 +163353,6 @@ re2js/build/index.js:
    *)
 
 @firebase/firestore/dist/common-BKJf2lb8.node.mjs:
-@firebase/firestore/dist/index.node.mjs:
 @firebase/firestore/dist/index.node.mjs:
 @firebase/firestore/dist/index.node.mjs:
   (**
@@ -163780,6 +164003,22 @@ re2js/build/index.js:
    * See the License for the specific language governing permissions and
    * limitations under the License.
    *)
+  (**
+   * @license
+   * Copyright 2017 Google LLC
+   *
+   * Licensed under the Apache License, Version 2.0 (the "License");
+   * you may not use this file except in compliance with the License.
+   * You may obtain a copy of the License at
+   *
+   *   http://www.apache.org/licenses/LICENSE-2.0
+   *
+   * Unless required by applicable law or agreed to in writing, software
+   * distributed under the License is distributed on an "AS IS" BASIS,
+   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   * See the License for the specific language governing permissions and
+   * limitations under the License.
+   *)
 
 @firebase/firestore/dist/index.node.mjs:
 @firebase/firestore/dist/index.node.mjs:
@@ -163802,6 +164041,40 @@ re2js/build/index.js:
   (**
    * @license
    * Copyright 2022 Google LLC
+   *
+   * Licensed under the Apache License, Version 2.0 (the "License");
+   * you may not use this file except in compliance with the License.
+   * You may obtain a copy of the License at
+   *
+   *   http://www.apache.org/licenses/LICENSE-2.0
+   *
+   * Unless required by applicable law or agreed to in writing, software
+   * distributed under the License is distributed on an "AS IS" BASIS,
+   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   * See the License for the specific language governing permissions and
+   * limitations under the License.
+   *)
+
+@firebase/firestore/dist/index.node.mjs:
+  (**
+   * @license
+   * Copyright 2022 Google LLC
+   *
+   * Licensed under the Apache License, Version 2.0 (the "License");
+   * you may not use this file except in compliance with the License.
+   * You may obtain a copy of the License at
+   *
+   *   http://www.apache.org/licenses/LICENSE-2.0
+   *
+   * Unless required by applicable law or agreed to in writing, software
+   * distributed under the License is distributed on an "AS IS" BASIS,
+   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   * See the License for the specific language governing permissions and
+   * limitations under the License.
+   *)
+  (**
+   * @license
+   * Copyright 2023 Google LLC
    *
    * Licensed under the Apache License, Version 2.0 (the "License");
    * you may not use this file except in compliance with the License.

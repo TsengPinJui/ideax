@@ -35,6 +35,9 @@ export interface RealSiteTrafficStatsPayload {
   firstDateKey: string;
   lastUpdatedUtc8: string;
   onlineUsersCount?: number;
+  uniqueVisitorsTotal?: number;
+  visitorsDaily?: Record<string, number>;
+  visitorsHourly?: Record<string, number>;
 }
 
 export const REAL_TRAFFIC_STORAGE_KEY = 'ideax_real_site_traffic_utc8_v3';
@@ -76,9 +79,13 @@ export function getCachedRealTrafficStats(): RealSiteTrafficStatsPayload {
         const sortedHours = Object.keys(hourly).sort();
         const sortedDays = Object.keys(daily).sort();
         const sumDaily = Object.values(daily).reduce((acc: number, v: any) => acc + (Number(v) || 0), 0);
+        const base = typeof parsed.baseVisits === 'number' ? parsed.baseVisits : INITIAL_SITE_VISITS_BASE;
         return {
-          baseVisits: INITIAL_SITE_VISITS_BASE,
-          totalVisits: Math.max(INITIAL_SITE_VISITS_BASE + sumDaily, Number(parsed.totalVisits) || INITIAL_SITE_VISITS_BASE),
+          baseVisits: base,
+          totalVisits: Math.max(base + sumDaily, Number(parsed.totalVisits) || base),
+          uniqueVisitorsTotal: Number(parsed.uniqueVisitorsTotal) || 0,
+          visitorsDaily: parsed.visitorsDaily && typeof parsed.visitorsDaily === 'object' ? parsed.visitorsDaily : {},
+          visitorsHourly: parsed.visitorsHourly && typeof parsed.visitorsHourly === 'object' ? parsed.visitorsHourly : {},
           hourly,
           daily,
           firstRecordedAtUtc8: parsed.firstRecordedAtUtc8 || '',
@@ -124,10 +131,12 @@ export function recordUtc8SiteVisitBucket(): RealSiteTrafficStatsPayload {
   const sortedHours = Object.keys(hourly).sort();
   const sortedDays = Object.keys(daily).sort();
   const sumDaily = Object.values(daily).reduce((acc, v) => acc + v, 0);
-  const totalVisits = INITIAL_SITE_VISITS_BASE + sumDaily;
+  const base = typeof current.baseVisits === 'number' ? current.baseVisits : INITIAL_SITE_VISITS_BASE;
+  const totalVisits = base + sumDaily;
 
   const updated: RealSiteTrafficStatsPayload = {
-    baseVisits: INITIAL_SITE_VISITS_BASE,
+    ...current,
+    baseVisits: base,
     totalVisits,
     hourly,
     daily,
@@ -577,6 +586,28 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
 
   return (
     <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-4">
+      {/* 指標摘要：瀏覽量與造訪用戶數分開呈現 */}
+      {(() => {
+        const todayKey = getUtc8Parts(Date.now()).dateKey;
+        const tiles = [
+          { label: '累計瀏覽量', value: (trafficStats.totalVisits || 0).toLocaleString(), hint: '每次開啟網站算一次' },
+          { label: '今日瀏覽量', value: (trafficStats.daily?.[todayKey] || 0).toLocaleString(), hint: '台灣時間今日' },
+          { label: '累計造訪用戶', value: (trafficStats.uniqueVisitorsTotal || 0).toLocaleString(), hint: '不重複裝置，自 v2.2.21 起算' },
+          { label: '今日造訪用戶', value: (trafficStats.visitorsDaily?.[todayKey] || 0).toLocaleString(), hint: '同一裝置當日只算一次' },
+          { label: '即時在線', value: `${trafficStats.onlineUsersCount || onlineUsersCount}`, hint: '最近 75 秒內在線' },
+        ];
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {tiles.map((t) => (
+              <div key={t.label} className="rounded-xl border border-stone-200 bg-stone-50/70 px-3 py-2.5">
+                <p className="text-[11px] font-bold text-stone-500">{t.label}</p>
+                <p className="text-lg font-black text-stone-900 font-mono leading-tight mt-0.5">{t.value}</p>
+                <p className="text-[10px] text-stone-400 mt-0.5">{t.hint}</p>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-stone-100 pb-3.5">
         <div>
           <div className="flex items-center gap-2 flex-wrap">

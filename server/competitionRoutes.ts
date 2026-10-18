@@ -837,17 +837,20 @@ router.get('/site-traffic', async (_req: Request, res: Response) => {
 router.post('/site-traffic/visit', async (req: Request, res: Response) => {
   try {
     const sessionId = req.body?.sessionId ? String(req.body.sessionId) : undefined;
-    const stats = await recordRealSiteVisit(sessionId);
+    const stats = await recordRealSiteVisit(sessionId, {
+      newToday: req.body?.newVisitorToday === true,
+      newEver: req.body?.newVisitorEver === true,
+    });
     res.json({ success: true, stats });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-router.post('/site-traffic/heartbeat', (req: Request, res: Response) => {
+router.post('/site-traffic/heartbeat', async (req: Request, res: Response) => {
   try {
     const sessionId = req.body?.sessionId ? String(req.body.sessionId) : undefined;
-    const result = recordRealPresenceHeartbeat(sessionId);
+    const result = await recordRealPresenceHeartbeat(sessionId);
     res.json({ success: true, ...result });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

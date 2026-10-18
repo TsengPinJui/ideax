@@ -119,6 +119,7 @@ import {
 } from '../services/firestoreSync';
 import { getStoredTickets } from '../services/customerSupportService';
 import { CenterToastData } from '../components/CenterToast';
+import { getCachedRealTrafficStats } from '../components/AdminSiteTrafficChart';
 import { PwaNotificationService } from '../services/pwaNotificationService';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth as firebaseAuthInstance } from '../services/firebase';
@@ -173,6 +174,7 @@ interface AppContextType {
   availableUsers: User[];
   setAvailableUsers: React.Dispatch<React.SetStateAction<User[]>>;
   siteVisitsCount: number;
+  uniqueVisitorsCount: number;
   onlineUsersCount: number;
   realRegisteredUsers: User[];
   realRegisteredUsersCount: number;
@@ -1074,22 +1076,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const raw = localStorage.getItem('ideax_real_site_traffic_utc8_v3');
       if (raw) {
         const parsed = JSON.parse(raw);
-        return Math.max(1700, Number(parsed?.totalVisits) || 1700);
+        return Number(parsed?.totalVisits) || 2500;
       }
-      return 1700;
+      return 2500;
     } catch {
-      return 1700;
+      return 2500;
     }
   });
   const [onlineUsersCount, setOnlineUsersCount] = useState<number>(1);
+  // 不重複造訪用戶數（每台裝置算一位）
+  const [uniqueVisitorsCount, setUniqueVisitorsCount] = useState<number>(() => getCachedRealTrafficStats().uniqueVisitorsTotal || 0);
 
-  // 1. 記錄進入網站之造訪量 & 實時監聽全站造訪次數
+  // 1. 記錄進入網站之瀏覽量 & 實時監聽全站瀏覽量與造訪用戶數
   useEffect(() => {
+    const refreshVisitors = () => setUniqueVisitorsCount(getCachedRealTrafficStats().uniqueVisitorsTotal || 0);
     recordSiteVisitInFirestore().then((visits) => {
       setSiteVisitsCount(visits);
+      refreshVisitors();
     });
     const unsub = subscribeSiteVisitsFromFirestore((visits) => {
       setSiteVisitsCount(visits);
+      refreshVisitors();
     });
     return () => {
       if (unsub) unsub();
@@ -9090,6 +9097,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         availableUsers,
         setAvailableUsers,
         siteVisitsCount,
+        uniqueVisitorsCount,
         onlineUsersCount,
         realRegisteredUsers,
         realRegisteredUsersCount,
