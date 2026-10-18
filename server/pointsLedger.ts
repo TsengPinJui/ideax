@@ -16,10 +16,10 @@ import { SUBSCRIPTION_PLANS } from '../src/types';
 export type PointsOp =
   | { op: 'spend'; amount: number; purpose: SpendPurpose; refId?: string; toUserId?: string; note?: string }
   | { op: 'escrow_hold'; amount: number; refId: string; note?: string }
-  | { op: 'escrow_release'; amount: number; refId: string; mode: 'refund' | 'payout'; payerUserId?: string; note?: string }
+  | { op: 'escrow_release'; amount: number; refId: string; mode: 'refund' | 'payout'; payerUserId?: string; toAnswerId?: string; note?: string }
   | { op: 'admin_adjust'; userId: string; delta: number; note?: string }
   | { op: 'subscribe'; tier: string; cycle?: string }
-  | { op: 'payout_request'; amount: number; note?: string }
+  | { op: 'payout_request'; amount: number; source?: 'tips' | 'earnings' | 'combined'; note?: string }
   | { op: 'unlock_answer'; answerId: string; useWithheldOffset?: boolean };
 
 export type SpendPurpose = 'tip' | 'unlock' | 'promote' | 'service' | 'chat_offer' | 'subscription' | 'withdraw';
@@ -108,7 +108,8 @@ export async function applyPointsOpWith(
   if (input.op === 'spend') {
     const amount = cleanAmount(input.amount);
     if (!SPEND_PURPOSES.includes(input.purpose)) throw new PointsError('用途不正確');
-    const toRef = input.toUserId && input.purpose === 'tip' ? db.collection('users').doc(String(input.toUserId)) : null;
+    const creditsPayee = input.purpose === 'tip' || input.purpose === 'chat_offer';
+    const toRef = input.toUserId && creditsPayee ? db.collection('users').doc(String(input.toUserId)) : null;
     if (toRef && toRef.id === userRef.id) throw new PointsError('無法打賞給自己');
     return db.runTransaction(async (tx: any) => {
       const snap = await tx.get(userRef);
@@ -118,10 +119,15 @@ export async function applyPointsOpWith(
       const next = balance - amount;
       tx.update(userRef, { balance: next });
       if (toRef && toSnap?.exists) {
-        tx.update(toRef, {
-          tipReceivablesPoints: FieldValue.increment(amount),
-          thisWeekTipPoints: FieldValue.increment(amount),
-        });
+        if (input.purpose === 'tip') {
+          tx.update(toRef, {
+            tipReceivablesPoints: FieldValue.increment(amount),
+            thisWeekTipPoints: FieldValue.increment(amount),
+          });
+        } else {
+          // 聊天室方案付款：計入對方的方案收入（撥款時依其會員方案扣服務費）
+          tx.update(toRef, { bountyReceivablesPoints: FieldValue.increment(amount) });
+        }
       }
       tx.set(db.collection('points_ledger').doc(), {
         userId: userRef.id,
@@ -143,21 +149,44 @@ export async function applyPointsOpWith(
   }
 
   if (input.op === 'payout_request') {
-    // 打賞收入申請撥款：扣減「可撥款打賞點數」並建立撥款申請，由管理員匯款後結案
+    // 收入申請撥款：扣減可撥款點數（打賞／方案與懸賞收入），依會員方案計算服務費，由管理員匯款後結案
     const amount = cleanAmount(input.amount);
     if (amount < 100) throw new PointsError('單次撥款申請最低 100 點');
+    const source = input.source === 'earnings' || input.source === 'combined' ? input.source : 'tips';
+    const feeRateOf = await loadFeeRateResolver(db);
     return db.runTransaction(async (tx: any) => {
       const snap = await tx.get(userRef);
-      const receivable = Number(snap.get('tipReceivablesPoints')) || 0;
-      if (receivable < amount) throw new PointsError(`可撥款點數不足（目前 ${receivable} 點）`, 402);
-      const nextReceivable = receivable - amount;
-      tx.update(userRef, { tipReceivablesPoints: nextReceivable });
+      const tips = Number(snap.get('tipReceivablesPoints')) || 0;
+      const earnings = Number(snap.get('bountyReceivablesPoints')) || 0;
+      let fromEarnings = 0;
+      let fromTips = 0;
+      if (source === 'tips') fromTips = amount;
+      else if (source === 'earnings') fromEarnings = amount;
+      else {
+        fromEarnings = Math.min(earnings, amount);
+        fromTips = amount - fromEarnings;
+      }
+      if (fromTips > tips || fromEarnings > earnings) {
+        throw new PointsError(`可撥款點數不足（打賞 ${tips} 點、方案與懸賞收入 ${earnings} 點）`, 402);
+      }
+      const nextTips = tips - fromTips;
+      const nextEarnings = earnings - fromEarnings;
+      const feeRate = feeRateOf(String(snap.get('subscriptionTier') || 'free'));
+      const fee = feeRate > 0 ? Math.round(amount * feeRate) : 0;
+      const bonus = feeRate < 0 ? Math.round(amount * Math.abs(feeRate)) : 0;
+      const net = amount - fee + bonus;
+      tx.update(userRef, { tipReceivablesPoints: nextTips, bountyReceivablesPoints: nextEarnings });
       const now = new Date().toISOString();
       tx.set(db.collection('payout_requests').doc(), {
         userId: userRef.id,
         byAuthUid: auth.uid,
         amount,
-        source: 'tips',
+        fromTips,
+        fromEarnings,
+        feeRate,
+        fee,
+        bonus,
+        netAmount: net,
         status: 'pending',
         note: String(input.note || '').slice(0, 300),
         createdAt: now,
@@ -167,7 +196,9 @@ export async function applyPointsOpWith(
         op: 'payout_request',
         delta: 0,
         receivableDelta: -amount,
-        receivableAfter: nextReceivable,
+        tipsAfter: nextTips,
+        earningsAfter: nextEarnings,
+        netAmount: net,
         note: String(input.note || '').slice(0, 200),
         createdAt: now,
       });
@@ -175,7 +206,9 @@ export async function applyPointsOpWith(
         userId: userRef.id,
         balance: Number(snap.get('balance')) || 0,
         withheldPoints: Number(snap.get('withheldPoints')) || 0,
-        tipReceivablesPoints: nextReceivable,
+        tipReceivablesPoints: nextTips,
+        bountyReceivablesPoints: nextEarnings,
+        netAmount: net,
       };
     });
   }
@@ -230,9 +263,22 @@ export async function applyPointsOpWith(
     const payerRef = isAdmin && input.payerUserId ? db.collection('users').doc(String(input.payerUserId)) : userRef;
     const escrowRef = db.collection('points_escrow').doc(`${payerRef.id}__${refId}`);
     const questionRef = db.collection('questions').doc(refId);
+    // 撥付給解答者：確認解答屬於這筆預扣（同一題，或該解答的階段預扣），並找到解答者的會員資料
+    let payeeRef: any = null;
+    if (input.mode === 'payout' && input.toAnswerId) {
+      const ansId = String(input.toAnswerId).slice(0, 160);
+      const aSnap = await db.collection('answers').doc(ansId).get();
+      if (!aSnap.exists) throw new PointsError('找不到要撥付的解答', 404);
+      const ans = aSnap.data() || {};
+      if (ans.questionId !== refId && !refId.startsWith(`${ansId}#`)) throw new PointsError('解答與預扣項目不符');
+      payeeRef = await findSolverUserRef(db, ans);
+      if (!payeeRef) throw new PointsError('找不到解答者的會員資料', 404);
+      if (payeeRef.id === payerRef.id) throw new PointsError('不能撥付給自己');
+    }
     return db.runTransaction(async (tx: any) => {
       const snap = await tx.get(payerRef);
       if (!snap.exists) throw new PointsError('找不到付款會員', 404);
+      const payeeSnap = payeeRef ? await tx.get(payeeRef) : null;
       const escrowSnap = await tx.get(escrowRef);
       let available: number;
       if (escrowSnap.exists) {
@@ -251,6 +297,20 @@ export async function applyPointsOpWith(
       const withheld = Math.max(0, (Number(snap.get('withheldPoints')) || 0) - amount);
       const balance = (Number(snap.get('balance')) || 0) + (input.mode === 'refund' ? amount : 0);
       tx.update(payerRef, { withheldPoints: withheld, balance });
+      if (payeeRef && payeeSnap?.exists) {
+        const earned = (Number(payeeSnap.get('bountyReceivablesPoints')) || 0) + amount;
+        tx.update(payeeRef, { bountyReceivablesPoints: earned });
+        tx.set(db.collection('points_ledger').doc(), {
+          userId: payeeRef.id,
+          op: 'earn',
+          source: refId.includes('#phase') ? 'phase' : 'bounty',
+          receivableDelta: amount,
+          receivableAfter: earned,
+          refId,
+          fromUserId: payerRef.id,
+          createdAt: new Date().toISOString(),
+        });
+      }
       tx.set(
         escrowRef,
         {
@@ -274,7 +334,7 @@ export async function applyPointsOpWith(
         note: String(input.note || '').slice(0, 200),
         createdAt: new Date().toISOString(),
       });
-      return { userId: payerRef.id, balance, withheldPoints: withheld };
+      return { userId: payerRef.id, balance, withheldPoints: withheld, paidToUserId: payeeRef?.id || null };
     });
   }
 
@@ -404,6 +464,8 @@ async function unlockAnswerTx(db: any, userRef: any, auth: { uid: string }, inpu
     const isSolver = ans.solverAuthUid === auth.uid || ids.includes(ans.solverId);
     const done = { userId: userRef.id, balance: balance0, withheldPoints: withheld0, unlocked: true };
     if (isSolver || ids.some((id) => already.includes(id))) return done;
+    const solverRef = paidMode ? await findSolverUserRef(db, ans, tx) : null;
+    const solverSnap = solverRef ? await tx.get(solverRef) : null;
 
     const price = Math.max(0, Math.floor(Number(ans.price) || 0));
     let pay = 0;
@@ -449,6 +511,22 @@ async function unlockAnswerTx(db: any, userRef: any, auth: { uid: string }, inpu
       );
     }
     tx.update(answerRef, { unlockedByUserIds: Array.from(new Set([...already, userRef.id])) });
+    // 解鎖收入計入解答者（含提問者以懸賞折抵的部分）
+    const earned = pay + offset;
+    if (earned > 0 && solverRef && solverSnap?.exists && solverRef.id !== userRef.id) {
+      const after = (Number(solverSnap.get('bountyReceivablesPoints')) || 0) + earned;
+      tx.update(solverRef, { bountyReceivablesPoints: after });
+      tx.set(db.collection('points_ledger').doc(), {
+        userId: solverRef.id,
+        op: 'earn',
+        source: 'unlock',
+        receivableDelta: earned,
+        receivableAfter: after,
+        refId: answerId,
+        fromUserId: userRef.id,
+        createdAt: now,
+      });
+    }
     tx.set(db.collection('points_ledger').doc(), {
       userId: userRef.id,
       op: 'unlock_answer',
@@ -463,4 +541,38 @@ async function unlockAnswerTx(db: any, userRef: any, auth: { uid: string }, inpu
     });
     return { userId: userRef.id, balance, withheldPoints: withheld, unlocked: true };
   });
+}
+
+
+/** 解答者的會員資料：answers.solverId 對應的會員文件，或以 solverAuthUid 查找 */
+async function findSolverUserRef(db: any, ans: any, tx?: any): Promise<any> {
+  const getDoc = (ref: any) => (tx ? tx.get(ref) : ref.get());
+  if (ans?.solverId && !String(ans.solverId).includes('/')) {
+    const ref = db.collection('users').doc(String(ans.solverId));
+    const snap = await getDoc(ref);
+    if (snap.exists) return ref;
+  }
+  if (ans?.solverAuthUid) {
+    const direct = db.collection('users').doc(String(ans.solverAuthUid));
+    const snap = await getDoc(direct);
+    if (snap.exists) return direct;
+    const q = await db.collection('users').where('authUid', '==', String(ans.solverAuthUid)).limit(1).get();
+    if (!q.empty) return q.docs[0].ref;
+  }
+  return null;
+}
+
+/** 依會員方案取得撥款服務費率（管理員自訂方案優先，否則用預設方案） */
+async function loadFeeRateResolver(db: any): Promise<(tier: string) => number> {
+  let custom: any = null;
+  try {
+    const g = await db.collection('platform_settings').doc('global').get();
+    custom = g.exists ? (g.data() || {}).plans : null;
+  } catch {}
+  return (tier: string) => {
+    const fromCustom = custom && !Array.isArray(custom) ? custom[tier]?.platformFeeRate : Array.isArray(custom) ? custom.find((p: any) => p?.id === tier)?.platformFeeRate : undefined;
+    const base = (SUBSCRIPTION_PLANS as any)[tier]?.platformFeeRate ?? (SUBSCRIPTION_PLANS as any).free.platformFeeRate;
+    const r = typeof fromCustom === 'number' ? fromCustom : base;
+    return Math.max(-0.2, Math.min(0.5, Number(r) || 0));
+  };
 }
