@@ -10,6 +10,7 @@ import { runAuthUidBackfill } from './server/backfillAuthUids';
 import { accountNoticeEmail, sendMail } from './server/mailer';
 import { runAssistantTick } from './server/assistantCron';
 import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/pointsLedger';
+import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { verifyAuthToken } from './server/competitionService';
 
 dotenv.config();
@@ -37,6 +38,7 @@ app.use(express.json());
 app.use(['/api/ai', '/api/agent'], rateLimit({ windowMs: 10 * 60 * 1000, max: 40, name: 'ai' }));
 app.use(['/api/auth/send-email-code', '/api/auth/send-sms-code', '/api/auth/send-welcome-email'], rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'send-code' }));
 app.use('/api/points', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'points' }));
+app.use('/api/answers', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'answers' }));
 app.use(['/api/auth/verify-email-code', '/api/auth/verify-sms-code', '/api/auth/reset-password-with-code'], rateLimit({ windowMs: 10 * 60 * 1000, max: 20, name: 'verify-code' }));
 
 // 安全性：所有 /api/admin/* 端點僅限認證管理員
@@ -3153,6 +3155,31 @@ app.post('/api/points/op', async (req: Request, res: Response) => {
     const status = err instanceof PointsError ? err.status : 500;
     if (status >= 500) console.error('[Points]', err?.message || err);
     res.status(status).json({ success: false, error: err?.message || '點數處理失敗' });
+  }
+});
+
+// 付費解答完整內容：依權限由伺服器提供（回答者、已解鎖會員、管理員）
+app.post('/api/answers/contents', async (req: Request, res: Response) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: '請重新登入後再試' });
+    const ids = Array.isArray(req.body?.answerIds) ? req.body.answerIds : [];
+    const contents = await getEntitledAnswerContents(authUser, ids);
+    res.json({ success: true, contents });
+  } catch (err: any) {
+    console.error('[Answer Contents]', err?.message || err);
+    res.status(500).json({ success: false, error: '讀取方案內容失敗' });
+  }
+});
+
+// 管理員：把舊解答的完整內容搬到受保護區（apply=false 只統計）
+app.post('/api/admin/migrate-answer-secrets', async (req: Request, res: Response) => {
+  try {
+    const result = await migrateAnswerSecrets(req.body?.apply === true);
+    res.json({ success: true, result });
+  } catch (err: any) {
+    console.error('[Migrate Answer Secrets]', err?.message || err);
+    res.status(500).json({ success: false, error: err?.message || '執行失敗' });
   }
 });
 

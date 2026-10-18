@@ -52,6 +52,7 @@ import {
   ProposalComment,
 } from '../src/types/competition';
 import { DEFAULT_DEMO_PROPOSALS } from '../src/data/competitionProposals';
+import { splitAnswerForStorage } from '../src/utils/answerSecrets';
 import {
   ALL_VIRTUAL_PROPOSALS_SEED,
   SEED_INNOVATION_PROPOSALS,
@@ -791,7 +792,7 @@ export { adminDb, adminAuth };
 /**
  * 驗證請求者身分 Token (可信 Auth 驗證)
  */
-export async function verifyAuthToken(authHeader?: string): Promise<{ uid: string; email?: string } | null> {
+export async function verifyAuthToken(authHeader?: string): Promise<{ uid: string; email?: string; emailVerified?: boolean } | null> {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
@@ -800,7 +801,7 @@ export async function verifyAuthToken(authHeader?: string): Promise<{ uid: strin
 
   try {
     const decoded = await adminAuth.verifyIdToken(idToken);
-    return { uid: decoded.uid, email: decoded.email };
+    return { uid: decoded.uid, email: decoded.email, emailVerified: decoded.email_verified === true };
   } catch (err: any) {
     // 支援以 Google Identity Toolkit API 查核備援 (相容無金鑰時的公開 JWT 驗證)
     try {
@@ -812,7 +813,7 @@ export async function verifyAuthToken(authHeader?: string): Promise<{ uid: strin
       });
       const data = (await resp.json()) as any;
       if (data.users && data.users[0]) {
-        return { uid: data.users[0].localId, email: data.users[0].email };
+        return { uid: data.users[0].localId, email: data.users[0].email, emailVerified: data.users[0].emailVerified === true };
       }
     } catch {}
     console.warn('[Competition Auth] Token verification failed:', err.message);
@@ -1609,7 +1610,16 @@ export async function ensureProposalsSyncedToFirestore(force = false): Promise<v
       const batch = adminDb.batch();
       chunk.forEach((a) => {
         const ref = adminDb.collection('answers').doc(a.id);
-        batch.set(ref, { ...a, updatedAt: new Date().toISOString() }, { merge: true });
+        // 付費內容另存受保護區，公開文件不放完整內容
+        const { publicAnswer, secret } = splitAnswerForStorage(a);
+        batch.set(ref, { ...publicAnswer, updatedAt: new Date().toISOString() }, { merge: true });
+        if (secret) {
+          batch.set(
+            adminDb.collection('answer_secrets').doc(a.id),
+            { ...JSON.parse(JSON.stringify(secret)), solverId: a.solverId || null, updatedAt: new Date().toISOString() },
+            { merge: true }
+          );
+        }
       });
       await batch.commit();
     }

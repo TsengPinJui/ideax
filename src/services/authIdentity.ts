@@ -40,6 +40,9 @@ let myAppUserIdRef: string | null = null;
 export function setMyAppUserId(id: string | null) {
   myAppUserIdRef = id;
 }
+export function getMyAppUserId(): string | null {
+  return myAppUserIdRef;
+}
 
 /** 一組站內帳號 ID → 去重後的 Firebase UID 清單（一定包含自己，讓自己之後還能讀寫） */
 export function resolveAuthUids(appUserIds: Array<string | undefined | null>): string[] {

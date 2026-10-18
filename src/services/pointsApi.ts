@@ -10,7 +10,8 @@ export type PointsOpPayload =
   | { op: 'escrow_release'; amount: number; refId: string; mode: 'refund' | 'payout'; payerUserId?: string; note?: string }
   | { op: 'admin_adjust'; userId: string; delta: number; note?: string }
   | { op: 'subscribe'; tier: string; cycle?: string }
-  | { op: 'payout_request'; amount: number; note?: string };
+  | { op: 'payout_request'; amount: number; note?: string }
+  | { op: 'unlock_answer'; answerId: string; useWithheldOffset?: boolean };
 
 export type PointsOpResult =
   | {
@@ -70,3 +71,21 @@ export const PROTECTED_USER_FIELDS = [
   'subscriptionTier',
   'subscriptionExpiresAt',
 ] as const;
+
+/** 取得自己有權限的付費解答完整內容（回答者、已解鎖、管理員） */
+export async function fetchAnswerContents(
+  answerIds: string[]
+): Promise<Record<string, { fullContent?: string; attachments?: any[]; meetingDetails?: any }>> {
+  if (!answerIds || answerIds.length === 0) return {};
+  try {
+    const res = await fetch('/api/answers/contents', {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ answerIds: answerIds.slice(0, 60) }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return res.ok && data.success && data.contents ? data.contents : {};
+  } catch {
+    return {};
+  }
+}

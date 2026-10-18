@@ -48,6 +48,7 @@ import {
 import { AdminUserProfileModal } from './AdminUserProfileModal';
 import { AdminUserImpersonationModal } from './AdminUserImpersonationModal';
 import { AdminAuthBackfillCard } from './AdminAuthBackfillCard';
+import { AdminAnswerSecretsCard } from './AdminAnswerSecretsCard';
 
 interface AdminUserManagementTabProps {
   onNavigateToCertifications?: (userId?: string) => void;
@@ -427,6 +428,7 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* 資料維護：補齊帳號對照（資料庫權限） */}
       <AdminAuthBackfillCard />
+      <AdminAnswerSecretsCard />
 
       {/* 頂部訊息反饋 */}
       {feedbackMsg && (

@@ -151001,6 +151001,38 @@ var DEFAULT_DEMO_PROPOSALS = [
   }
 ];
 
+// src/utils/answerSecrets.ts
+function isProtectedAnswer(a) {
+  if (!a) return false;
+  if (a.type === "discussion") return false;
+  return a.isPaid !== false && Number(a.price || 0) > 0;
+}
+function sanitizeAttachment(att) {
+  const { url, dataUrl, ...meta2 } = att || {};
+  return meta2;
+}
+function sanitizeMeeting(m2) {
+  return { durationMinutes: m2?.durationMinutes, platform: m2?.platform };
+}
+function splitAnswerForStorage(a) {
+  const { isUnlockedByCurrentUser, ...rest } = a;
+  if (!isProtectedAnswer(a)) return { publicAnswer: rest, secret: null };
+  const secret = {};
+  const pub = { ...rest };
+  if (typeof a.fullContent === "string" && a.fullContent) secret.fullContent = a.fullContent;
+  delete pub.fullContent;
+  if (Array.isArray(a.attachments) && a.attachments.length > 0) {
+    secret.attachments = a.attachments;
+    pub.attachments = a.attachments.map(sanitizeAttachment);
+  }
+  if (a.meetingDetails) {
+    secret.meetingDetails = a.meetingDetails;
+    pub.meetingDetails = sanitizeMeeting(a.meetingDetails);
+  }
+  pub.hasProtectedContent = Boolean(secret.fullContent || secret.attachments || secret.meetingDetails);
+  return { publicAnswer: pub, secret: pub.hasProtectedContent ? secret : null };
+}
+
 // src/data/vibeCodingData.ts
 var DEFAULT_VIBECODING_APPS = [
   {
@@ -157074,7 +157106,7 @@ async function verifyAuthToken(authHeader) {
   if (!idToken) return null;
   try {
     const decoded = await adminAuth.verifyIdToken(idToken);
-    return { uid: decoded.uid, email: decoded.email };
+    return { uid: decoded.uid, email: decoded.email, emailVerified: decoded.email_verified === true };
   } catch (err) {
     try {
       const apiKey = process.env.VITE_FIREBASE_API_KEY || "AIzaSyCZYTHffdGT1AYwNDk_RRZ1mMMWLfoQocE";
@@ -157085,7 +157117,7 @@ async function verifyAuthToken(authHeader) {
       });
       const data = await resp.json();
       if (data.users && data.users[0]) {
-        return { uid: data.users[0].localId, email: data.users[0].email };
+        return { uid: data.users[0].localId, email: data.users[0].email, emailVerified: data.users[0].emailVerified === true };
       }
     } catch {
     }
@@ -157662,7 +157694,15 @@ async function ensureProposalsSyncedToFirestore(force = false) {
       const batch = adminDb.batch();
       chunk.forEach((a) => {
         const ref = adminDb.collection("answers").doc(a.id);
-        batch.set(ref, { ...a, updatedAt: (/* @__PURE__ */ new Date()).toISOString() }, { merge: true });
+        const { publicAnswer, secret } = splitAnswerForStorage(a);
+        batch.set(ref, { ...publicAnswer, updatedAt: (/* @__PURE__ */ new Date()).toISOString() }, { merge: true });
+        if (secret) {
+          batch.set(
+            adminDb.collection("answer_secrets").doc(a.id),
+            { ...JSON.parse(JSON.stringify(secret)), solverId: a.solverId || null, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+            { merge: true }
+          );
+        }
       });
       await batch.commit();
     }
@@ -159770,7 +159810,7 @@ async function findUserDocByAuth(auth, injected) {
   if (direct.exists) return direct.ref;
   const byAuth = await db.collection("users").where("authUid", "==", auth.uid).limit(1).get();
   if (!byAuth.empty) return byAuth.docs[0].ref;
-  if (auth.email) {
+  if (auth.email && auth.emailVerified) {
     const byEmail = await db.collection("users").where("email", "==", auth.email.toLowerCase()).limit(1).get();
     if (!byEmail.empty) return byEmail.docs[0].ref;
   }
@@ -159840,6 +159880,9 @@ async function applyPointsOpWith(deps, auth, input) {
       });
       return { userId: userRef.id, balance: next, withheldPoints: Number(snap.get("withheldPoints")) || 0 };
     });
+  }
+  if (input.op === "unlock_answer") {
+    return unlockAnswerTx(db, userRef, auth, input);
   }
   if (input.op === "payout_request") {
     const amount = cleanAmount(input.amount);
@@ -160055,6 +160098,173 @@ async function processSubscriptionExpiry() {
   }
   return { renewed, downgraded };
 }
+async function isPaidPlatformMode(db) {
+  try {
+    const snap = await db.collection("platform_settings").doc("global").get();
+    if (!snap.exists) return false;
+    const d = snap.data() || {};
+    return d.isRaceMode === false && d.isNoPaymentMode !== true && d.isDemoMode !== true;
+  } catch {
+    return false;
+  }
+}
+function memberIdsOf(userRef, auth) {
+  return Array.from(new Set([userRef?.id, auth.uid].filter(Boolean)));
+}
+async function unlockAnswerTx(db, userRef, auth, input) {
+  const answerId = String(input.answerId || "").slice(0, 160);
+  if (!answerId || answerId.includes("/")) throw new PointsError("\u7F3A\u5C11\u89E3\u7B54\u7DE8\u865F");
+  const paidMode = await isPaidPlatformMode(db);
+  const answerRef = db.collection("answers").doc(answerId);
+  return db.runTransaction(async (tx) => {
+    const aSnap = await tx.get(answerRef);
+    if (!aSnap.exists) throw new PointsError("\u627E\u4E0D\u5230\u9019\u5247\u89E3\u7B54", 404);
+    const ans = aSnap.data() || {};
+    const userSnap = await tx.get(userRef);
+    const balance0 = Number(userSnap.get("balance")) || 0;
+    const withheld0 = Number(userSnap.get("withheldPoints")) || 0;
+    const ids = memberIdsOf(userRef, auth);
+    const already = Array.isArray(ans.unlockedByUserIds) ? ans.unlockedByUserIds : [];
+    const isSolver = ans.solverAuthUid === auth.uid || ids.includes(ans.solverId);
+    const done = { userId: userRef.id, balance: balance0, withheldPoints: withheld0, unlocked: true };
+    if (isSolver || ids.some((id) => already.includes(id))) return done;
+    const price = Math.max(0, Math.floor(Number(ans.price) || 0));
+    let pay = 0;
+    let offset = 0;
+    let questionRef = null;
+    let qSnap = null;
+    let escrowRef = null;
+    let escrowAvailable = 0;
+    if (paidMode && ans.isPaid !== false && ans.type !== "discussion" && price > 0) {
+      if (input.useWithheldOffset !== false && ans.questionId) {
+        questionRef = db.collection("questions").doc(String(ans.questionId));
+        qSnap = await tx.get(questionRef);
+        const q = qSnap.exists ? qSnap.data() || {} : {};
+        const isAuthor = q.authorAuthUid === auth.uid || ids.includes(q.authorId);
+        if (isAuthor) {
+          escrowRef = db.collection("points_escrow").doc(`${userRef.id}__${ans.questionId}`);
+          const escrowSnap = await tx.get(escrowRef);
+          const qWithheld = Number(q.withheldBounty ?? q.bounty) || 0;
+          escrowAvailable = escrowSnap.exists ? Number(escrowSnap.get("remaining")) || 0 : Math.min(qWithheld, withheld0);
+          offset = Math.min(price, qWithheld, withheld0, escrowAvailable);
+        }
+      }
+      pay = price - offset;
+      if (balance0 < pay) throw new PointsError(`\u9EDE\u6578\u9918\u984D\u4E0D\u8DB3\uFF08\u76EE\u524D ${balance0} \u9EDE\uFF0C\u9700 ${pay} \u9EDE\uFF09`, 402);
+    }
+    const balance = balance0 - pay;
+    const withheld = withheld0 - offset;
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    if (pay > 0 || offset > 0) tx.update(userRef, { balance, withheldPoints: withheld });
+    if (offset > 0 && questionRef && qSnap?.exists) {
+      const q = qSnap.data() || {};
+      tx.update(questionRef, { withheldBounty: Math.max(0, (Number(q.withheldBounty ?? q.bounty) || 0) - offset) });
+      tx.set(
+        escrowRef,
+        {
+          payerId: userRef.id,
+          refId: ans.questionId,
+          remaining: escrowAvailable - offset,
+          status: escrowAvailable - offset <= 0 ? "released" : "held",
+          updatedAt: now
+        },
+        { merge: true }
+      );
+    }
+    tx.update(answerRef, { unlockedByUserIds: Array.from(/* @__PURE__ */ new Set([...already, userRef.id])) });
+    tx.set(db.collection("points_ledger").doc(), {
+      userId: userRef.id,
+      op: "unlock_answer",
+      refId: answerId,
+      paidMode,
+      price,
+      delta: -pay,
+      withheldDelta: -offset,
+      balanceAfter: balance,
+      withheldAfter: withheld,
+      createdAt: now
+    });
+    return { userId: userRef.id, balance, withheldPoints: withheld, unlocked: true };
+  });
+}
+
+// server/answerContent.ts
+async function getDb() {
+  if (!hasAdminCredentials) throw new Error("\u4F3A\u670D\u5668\u5C1A\u672A\u8A2D\u5B9A FIREBASE_SERVICE_ACCOUNT");
+  const { getFirestore: getFirestore3, FieldValue: FieldValue4 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
+  const app2 = getApps()[0];
+  const dbId = firebase_applet_config_default.firestoreDatabaseId;
+  return { db: dbId ? getFirestore3(app2, dbId) : getFirestore3(app2), FieldValue: FieldValue4 };
+}
+async function getEntitledAnswerContents(auth, answerIds) {
+  const { db } = await getDb();
+  const ids = Array.from(new Set((answerIds || []).map((x2) => String(x2 || "")).filter((x2) => x2 && !x2.includes("/")))).slice(0, 60);
+  if (ids.length === 0) return {};
+  const isAdmin = await isVerifiedAdmin(auth.uid);
+  const userRef = await findUserDocByAuth(auth, { db });
+  const myIds = memberIdsOf(userRef, auth);
+  const out = {};
+  const answerSnaps = await db.getAll(...ids.map((id) => db.collection("answers").doc(id)));
+  const allowedIds = [];
+  for (const snap of answerSnaps) {
+    if (!snap.exists) continue;
+    const a = snap.data() || {};
+    const unlocked = Array.isArray(a.unlockedByUserIds) ? a.unlockedByUserIds : [];
+    const allowed = isAdmin || !isProtectedAnswer(a) || a.solverAuthUid === auth.uid || myIds.includes(a.solverId) || myIds.some((id) => unlocked.includes(id));
+    if (!allowed) continue;
+    allowedIds.push(snap.id);
+    if (a.fullContent || Array.isArray(a.attachments) && a.attachments.some((x2) => x2?.url || x2?.dataUrl)) {
+      out[snap.id] = { fullContent: a.fullContent, attachments: a.attachments, meetingDetails: a.meetingDetails };
+    }
+  }
+  if (allowedIds.length > 0) {
+    const secretSnaps = await db.getAll(...allowedIds.map((id) => db.collection("answer_secrets").doc(id)));
+    for (const s2 of secretSnaps) {
+      if (!s2.exists) continue;
+      const d = s2.data() || {};
+      out[s2.id] = { ...out[s2.id] || {}, fullContent: d.fullContent, attachments: d.attachments, meetingDetails: d.meetingDetails };
+    }
+  }
+  return out;
+}
+async function migrateAnswerSecrets(apply) {
+  const { db, FieldValue: FieldValue4 } = await getDb();
+  const snap = await db.collection("answers").get();
+  let toMigrate = 0;
+  let migrated = 0;
+  let batch = db.batch();
+  let ops = 0;
+  for (const d of snap.docs) {
+    const a = d.data() || {};
+    if (!isProtectedAnswer(a)) continue;
+    const hasSecretInPublic = Boolean(a.fullContent) || Array.isArray(a.attachments) && a.attachments.some((x2) => x2?.url || x2?.dataUrl) || Boolean(a.meetingDetails && (a.meetingDetails.availableTimeSlots || a.meetingDetails.meetingAgenda));
+    if (!hasSecretInPublic) continue;
+    toMigrate++;
+    if (!apply) continue;
+    const { publicAnswer, secret } = splitAnswerForStorage({ ...a, id: d.id });
+    if (secret) {
+      batch.set(
+        db.collection("answer_secrets").doc(d.id),
+        { ...JSON.parse(JSON.stringify(secret)), solverAuthUid: a.solverAuthUid || null, solverId: a.solverId || null, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+        { merge: true }
+      );
+      ops++;
+    }
+    const patch = { fullContent: FieldValue4.delete(), hasProtectedContent: true };
+    if (publicAnswer.attachments) patch.attachments = JSON.parse(JSON.stringify(publicAnswer.attachments));
+    if (publicAnswer.meetingDetails) patch.meetingDetails = JSON.parse(JSON.stringify(publicAnswer.meetingDetails));
+    batch.update(d.ref, patch);
+    ops++;
+    migrated++;
+    if (ops >= 400) {
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    }
+  }
+  if (ops > 0) await batch.commit();
+  return { scanned: snap.size, toMigrate, migrated };
+}
 
 // server.ts
 import_dotenv.default.config();
@@ -160073,6 +160283,7 @@ app.use(import_express3.default.json());
 app.use(["/api/ai", "/api/agent"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 40, name: "ai" }));
 app.use(["/api/auth/send-email-code", "/api/auth/send-sms-code", "/api/auth/send-welcome-email"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 5, name: "send-code" }));
 app.use("/api/points", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "points" }));
+app.use("/api/answers", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "answers" }));
 app.use(["/api/auth/verify-email-code", "/api/auth/verify-sms-code", "/api/auth/reset-password-with-code"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 20, name: "verify-code" }));
 app.use("/api/admin", requireAdminMiddleware);
 app.use("/api/competition", competitionRoutes_default);
@@ -162684,6 +162895,27 @@ app.post("/api/points/op", async (req, res) => {
     const status = err instanceof PointsError ? err.status : 500;
     if (status >= 500) console.error("[Points]", err?.message || err);
     res.status(status).json({ success: false, error: err?.message || "\u9EDE\u6578\u8655\u7406\u5931\u6557" });
+  }
+});
+app.post("/api/answers/contents", async (req, res) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: "\u8ACB\u91CD\u65B0\u767B\u5165\u5F8C\u518D\u8A66" });
+    const ids = Array.isArray(req.body?.answerIds) ? req.body.answerIds : [];
+    const contents = await getEntitledAnswerContents(authUser, ids);
+    res.json({ success: true, contents });
+  } catch (err) {
+    console.error("[Answer Contents]", err?.message || err);
+    res.status(500).json({ success: false, error: "\u8B80\u53D6\u65B9\u6848\u5167\u5BB9\u5931\u6557" });
+  }
+});
+app.post("/api/admin/migrate-answer-secrets", async (req, res) => {
+  try {
+    const result = await migrateAnswerSecrets(req.body?.apply === true);
+    res.json({ success: true, result });
+  } catch (err) {
+    console.error("[Migrate Answer Secrets]", err?.message || err);
+    res.status(500).json({ success: false, error: err?.message || "\u57F7\u884C\u5931\u6557" });
   }
 });
 app.get("/api/cron/assistant", async (req, res) => {

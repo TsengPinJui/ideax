@@ -19,7 +19,8 @@ export type PointsOp =
   | { op: 'escrow_release'; amount: number; refId: string; mode: 'refund' | 'payout'; payerUserId?: string; note?: string }
   | { op: 'admin_adjust'; userId: string; delta: number; note?: string }
   | { op: 'subscribe'; tier: string; cycle?: string }
-  | { op: 'payout_request'; amount: number; note?: string };
+  | { op: 'payout_request'; amount: number; note?: string }
+  | { op: 'unlock_answer'; answerId: string; useWithheldOffset?: boolean };
 
 export type SpendPurpose = 'tip' | 'unlock' | 'promote' | 'service' | 'chat_offer' | 'subscription' | 'withdraw';
 const SPEND_PURPOSES: SpendPurpose[] = ['tip', 'unlock', 'promote', 'service', 'chat_offer', 'subscription', 'withdraw'];
@@ -48,20 +49,21 @@ function cleanAmount(n: unknown): number {
 }
 
 /** 依 Firebase 帳號找到對應的會員文件 */
-export async function findUserDocByAuth(auth: { uid: string; email?: string }, injected?: { db: any }) {
+export async function findUserDocByAuth(auth: { uid: string; email?: string; emailVerified?: boolean }, injected?: { db: any }) {
   const { db } = injected || (await getAdminDb());
   const direct = await db.collection('users').doc(auth.uid).get();
   if (direct.exists) return direct.ref;
   const byAuth = await db.collection('users').where('authUid', '==', auth.uid).limit(1).get();
   if (!byAuth.empty) return byAuth.docs[0].ref;
-  if (auth.email) {
+  // 只有已驗證的 Email 才能用來對應會員資料（避免他人以未驗證的同名 Email 冒用）
+  if (auth.email && auth.emailVerified) {
     const byEmail = await db.collection('users').where('email', '==', auth.email.toLowerCase()).limit(1).get();
     if (!byEmail.empty) return byEmail.docs[0].ref;
   }
   return null;
 }
 
-export async function applyPointsOp(auth: { uid: string; email?: string }, input: PointsOp) {
+export async function applyPointsOp(auth: { uid: string; email?: string; emailVerified?: boolean }, input: PointsOp) {
   const { db, FieldValue } = await getAdminDb();
   const isAdmin = await isVerifiedAdmin(auth.uid);
   return applyPointsOpWith({ db, FieldValue, isAdmin }, auth, input);
@@ -70,7 +72,7 @@ export async function applyPointsOp(auth: { uid: string; email?: string }, input
 /** 可注入資料庫的實作（方便測試） */
 export async function applyPointsOpWith(
   deps: { db: any; FieldValue: any; isAdmin: boolean },
-  auth: { uid: string; email?: string },
+  auth: { uid: string; email?: string; emailVerified?: boolean },
   input: PointsOp
 ) {
   const { db, FieldValue, isAdmin } = deps;
@@ -134,6 +136,10 @@ export async function applyPointsOpWith(
       });
       return { userId: userRef.id, balance: next, withheldPoints: Number(snap.get('withheldPoints')) || 0 };
     });
+  }
+
+  if (input.op === 'unlock_answer') {
+    return unlockAnswerTx(db, userRef, auth, input);
   }
 
   if (input.op === 'payout_request') {
@@ -356,4 +362,105 @@ export async function processSubscriptionExpiry(): Promise<{ renewed: number; do
     });
   }
   return { renewed, downgraded };
+}
+
+
+/** 全站是否為正式收費模式（platform_settings/global；非創星季、非免費、非測試） */
+export async function isPaidPlatformMode(db: any): Promise<boolean> {
+  try {
+    const snap = await db.collection('platform_settings').doc('global').get();
+    if (!snap.exists) return false;
+    const d = snap.data() || {};
+    return d.isRaceMode === false && d.isNoPaymentMode !== true && d.isDemoMode !== true;
+  } catch {
+    return false;
+  }
+}
+
+/** 會員在 unlockedByUserIds 裡可能出現的身分編號 */
+export function memberIdsOf(userRef: any, auth: { uid: string }): string[] {
+  return Array.from(new Set([userRef?.id, auth.uid].filter(Boolean)));
+}
+
+/**
+ * 解鎖付費解答：正式模式下由伺服器扣點（提問者可用懸賞預扣折抵），其他模式免費；
+ * 成功後把會員加入 unlockedByUserIds（只有伺服器能寫），之後才能取得完整內容。
+ * 已解鎖過不會重複扣點。
+ */
+async function unlockAnswerTx(db: any, userRef: any, auth: { uid: string }, input: { answerId: string; useWithheldOffset?: boolean }) {
+  const answerId = String(input.answerId || '').slice(0, 160);
+  if (!answerId || answerId.includes('/')) throw new PointsError('缺少解答編號');
+  const paidMode = await isPaidPlatformMode(db);
+  const answerRef = db.collection('answers').doc(answerId);
+  return db.runTransaction(async (tx: any) => {
+    const aSnap = await tx.get(answerRef);
+    if (!aSnap.exists) throw new PointsError('找不到這則解答', 404);
+    const ans = aSnap.data() || {};
+    const userSnap = await tx.get(userRef);
+    const balance0 = Number(userSnap.get('balance')) || 0;
+    const withheld0 = Number(userSnap.get('withheldPoints')) || 0;
+    const ids = memberIdsOf(userRef, auth);
+    const already: string[] = Array.isArray(ans.unlockedByUserIds) ? ans.unlockedByUserIds : [];
+    const isSolver = ans.solverAuthUid === auth.uid || ids.includes(ans.solverId);
+    const done = { userId: userRef.id, balance: balance0, withheldPoints: withheld0, unlocked: true };
+    if (isSolver || ids.some((id) => already.includes(id))) return done;
+
+    const price = Math.max(0, Math.floor(Number(ans.price) || 0));
+    let pay = 0;
+    let offset = 0;
+    let questionRef: any = null;
+    let qSnap: any = null;
+    let escrowRef: any = null;
+    let escrowAvailable = 0;
+    if (paidMode && ans.isPaid !== false && ans.type !== 'discussion' && price > 0) {
+      if (input.useWithheldOffset !== false && ans.questionId) {
+        questionRef = db.collection('questions').doc(String(ans.questionId));
+        qSnap = await tx.get(questionRef);
+        const q = qSnap.exists ? qSnap.data() || {} : {};
+        const isAuthor = q.authorAuthUid === auth.uid || ids.includes(q.authorId);
+        if (isAuthor) {
+          escrowRef = db.collection('points_escrow').doc(`${userRef.id}__${ans.questionId}`);
+          const escrowSnap = await tx.get(escrowRef);
+          const qWithheld = Number(q.withheldBounty ?? q.bounty) || 0;
+          escrowAvailable = escrowSnap.exists ? Number(escrowSnap.get('remaining')) || 0 : Math.min(qWithheld, withheld0);
+          offset = Math.min(price, qWithheld, withheld0, escrowAvailable);
+        }
+      }
+      pay = price - offset;
+      if (balance0 < pay) throw new PointsError(`點數餘額不足（目前 ${balance0} 點，需 ${pay} 點）`, 402);
+    }
+    const balance = balance0 - pay;
+    const withheld = withheld0 - offset;
+    const now = new Date().toISOString();
+    if (pay > 0 || offset > 0) tx.update(userRef, { balance, withheldPoints: withheld });
+    if (offset > 0 && questionRef && qSnap?.exists) {
+      const q = qSnap.data() || {};
+      tx.update(questionRef, { withheldBounty: Math.max(0, (Number(q.withheldBounty ?? q.bounty) || 0) - offset) });
+      tx.set(
+        escrowRef,
+        {
+          payerId: userRef.id,
+          refId: ans.questionId,
+          remaining: escrowAvailable - offset,
+          status: escrowAvailable - offset <= 0 ? 'released' : 'held',
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+    }
+    tx.update(answerRef, { unlockedByUserIds: Array.from(new Set([...already, userRef.id])) });
+    tx.set(db.collection('points_ledger').doc(), {
+      userId: userRef.id,
+      op: 'unlock_answer',
+      refId: answerId,
+      paidMode,
+      price,
+      delta: -pay,
+      withheldDelta: -offset,
+      balanceAfter: balance,
+      withheldAfter: withheld,
+      createdAt: now,
+    });
+    return { userId: userRef.id, balance, withheldPoints: withheld, unlocked: true };
+  });
 }
