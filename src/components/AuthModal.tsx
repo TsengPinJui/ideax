@@ -442,46 +442,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      // 1. 管理員快速直通登入：支援 Admin_001, a000000001, admin, user-admin, operations@ideax.io, john25893619@gmail.com
+      // 1. 管理員登入（安全性）：前端不得寫死任何管理員密碼。
+      //    管理員必須使用「已列入 ADMIN_EMAILS 白名單且已完成 Email 驗證」的 Firebase 帳號登入，
+      //    伺服器才能確認身分（後台工具、補齊帳號對照、AI 特助值班都需要）。
       const idLower = identifier.toLowerCase().trim();
       const isLegacyAdminIdentifier =
         idLower === 'admin_001' ||
         idLower === 'admin' ||
         idLower === 'user-admin' ||
         idLower === 'a000000001' ||
-        idLower === 'admin001' ||
-        idLower === 'operations@ideax.io' ||
-        idLower === 'john25893619@gmail.com' ||
-        isAllowlistedAdminEmail(identifier);
-
-      // 密碼嚴格區分大小寫，不可忽視大小寫
-      const isAdminPassword = password === 'Ideax_0922';
-
+        idLower === 'admin001';
       if (isLegacyAdminIdentifier) {
-        if (isAdminPassword) {
-          let adminUser = availableUsers.find(
-            (u) => u.role === 'admin' && (u.isInitialAdmin || u.id === 'a000000001' || u.id === 'user-admin')
-          );
-          if (!adminUser) {
-            adminUser = CORE_TEST_ACCOUNTS[0];
-          }
-          if (adminUser) {
-            switchAccount(adminUser.id);
-            if (rememberMe) {
-              localStorage.setItem(
-                STORAGE_REMEMBER_LOGIN_KEY,
-                JSON.stringify({ identifier: 'Admin_001', rememberMe: true, lastLoginAt: new Date().toISOString() })
-              );
-            }
-            setSuccessMsg('管理員登入成功。');
-            setTimeout(() => onClose(), 400);
-            return;
-          }
-        } else if (!identifier.includes('@')) {
-          setErrorMsg('密碼錯誤（需為 6 ~ 20 位英數組合，請注意英文字母大小寫）');
-          setIsLoading(false);
-          return;
-        }
+        setErrorMsg('管理員請改用已授權的管理員 Email 與密碼登入。');
+        setIsLoading(false);
+        return;
       }
 
       // 2. 本地現有用戶比對
@@ -503,8 +477,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           const fbUser = await loginWithFirebaseEmail(identifier, password);
           firebaseAuthSuccess = true;
 
-          // 管理員：Email 在白名單內，切換為管理員身分
+          // 管理員：Email 在白名單內且已完成 Email 驗證，才切換為管理員身分
           if (isAllowlistedAdminEmail(identifier)) {
+            if (!fbUser.emailVerified) {
+              try {
+                await sendFirebaseEmailVerification(fbUser as any);
+              } catch {}
+              setErrorMsg('管理員帳號需先完成 Email 驗證：驗證信已重新寄出，點信中連結後再登入一次。');
+              setIsLoading(false);
+              return;
+            }
             let adminUser = availableUsers.find((u) => u.role === 'admin' && (u.isInitialAdmin || u.id === 'a000000001' || u.id === 'user-admin'));
             if (!adminUser) adminUser = CORE_TEST_ACCOUNTS[0];
             if (adminUser) {
@@ -631,16 +613,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             return;
           }
         } else if (localMatched.role === 'admin') {
-          if (isAdminPassword) {
-            switchAccount(localMatched.id);
-            setSuccessMsg('管理員登入成功。');
-            setTimeout(() => onClose(), 400);
-            return;
-          } else {
-            setErrorMsg('密碼錯誤（需為 6 ~ 20 位英數組合，請注意英文字母大小寫）');
-            setIsLoading(false);
-            return;
-          }
+          setErrorMsg('管理員請改用已授權的管理員 Email 與密碼登入。');
+          setIsLoading(false);
+          return;
         } else if (localMatched.email) {
           // 本地無密碼但有 Email，嘗試以 Firebase 驗證密碼
           try {
