@@ -307,7 +307,6 @@ interface AppContextType {
     paymentMethod?: string
   ) => { success: boolean; message: string };
   cancelPendingPlanChange: () => { success: boolean; message: string };
-  triggerMonthEndRebate: () => { success: boolean; amount: number; message: string };
   updateBankAccount: (bankInfo: import('../types').BankAccountInfo) => void;
   updateTransactionNote: (transactionId: string, note: string) => void;
   calculateSplitPayout: (amount: number, solverId?: string) => {
@@ -6836,70 +6835,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  // Action: trigger month-end rebate simulation
-  const triggerMonthEndRebate = (): { success: boolean; amount: number; message: string } => {
-    const tier = currentUser.subscriptionTier || 'free';
-    const plan = SUBSCRIPTION_PLANS[tier];
-
-    if (tier === 'free' || plan.rebatePercent <= 0) {
-      return {
-        success: false,
-        amount: 0,
-        message: '目前為一般會員方案，暫無月底返還抽成優惠。升級達人級以上方案即可享有最高 20% 返還！',
-      };
-    }
-
-    // Calculate this user's total solver earnings or paid solutions fees this month
-    const userEarnedTxs = transactions.filter(
-      (t) =>
-        (t.toUserName === currentUser.name || t.fromUserName === currentUser.name) &&
-        (t.type === '解答者收益' || t.type === '解答者收益發放' || t.type === '解答採納撥付' || t.type === '自訂提案收入' || t.type === '付費解鎖方案' || t.type === '私聊自訂方案交易')
-    );
-
-    // Sum of amounts received by this solver
-    const totalEarningsVolume = userEarnedTxs.reduce((sum, t) => sum + t.amount, 0);
-    // Baseline rebate = amount * (rebatePercent / 100)
-    // If user hasn't made earnings yet in simulation, calculate at least a representative mock rebate
-    const simulatedBase = totalEarningsVolume > 0 ? totalEarningsVolume : 12000;
-    const rebateAmount = Math.round(simulatedBase * (plan.rebatePercent / 100));
-
-    // Credit back to balance
-    setCurrentUser((prev) => ({
-      ...prev,
-      balance: prev.balance + rebateAmount,
-    }));
-
-    const tx: Transaction = {
-      id: `tx-${Date.now()}`,
-      type: '月底抽成返還',
-      amount: rebateAmount,
-      platformFee: 0,
-      netAmount: rebateAmount,
-      fromUserName: '創點子 IdeaX 財務結算中心',
-      toUserName: currentUser.name,
-      status: '已完成',
-      createdAt: new Date().toISOString(),
-    };
-    setTransactions((prev) => [tx, ...prev]);
-
-    setNotifications((prev) => [
-      {
-        id: `notif-${Date.now()}`,
-        title: `【月底結算】${plan.name} 抽成返還 NT$ ${rebateAmount.toLocaleString()} 已入帳`,
-        message: `依據您的 ${plan.name}（月底返還 ${plan.rebatePercent}%，實質僅抽取 ${plan.effectiveRateText}），本月結算已自動將 NT$ ${rebateAmount.toLocaleString()} 返還至您的錢包餘額！`,
-        type: 'system',
-        createdAt: '剛剛',
-        read: false,
-      },
-      ...prev,
-    ]);
-
-    return {
-      success: true,
-      amount: rebateAmount,
-      message: `月底抽成結算完成！已自動將 ${plan.name} 返還金 NT$ ${rebateAmount.toLocaleString()} 匯入您的帳戶餘額。`,
-    };
-  };
 
   // Action: toggle privacy settings (是否隱藏提問數據)
   const togglePrivacySettings = (hideStats: boolean) => {
@@ -9213,7 +9148,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         togglePrivacySettings,
         subscribePlan,
         cancelPendingPlanChange,
-        triggerMonthEndRebate,
         updateBankAccount,
         updateTransactionNote,
         calculateSplitPayout,
