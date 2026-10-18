@@ -931,6 +931,9 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-18] 獨立軟體接案團隊與業主反覆確認需求變更，LINE 對話紀錄散落導致驗收糾紛與尾款難收',
     targetGoal: '希望串連全台大專院校、新創團隊與產業專家，達成每年 10,000 件真實痛點轉化與 1,000 組創新解方及軟體專案落地孵化',
+    youtubeUrl: 'https://youtube.com/shorts/QIHERRNPJnA?si=0bbtIipOI4Dc9Bxa',
+    coverMode: 'youtube_video',
+    cardHoverMode: 'video_autoplay',
     coverImage: '/ideax-thumbnail.png',
     galleryImages: [
       '/ideax-thumbnail.png',
@@ -965,6 +968,9 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-11] 社區團購主每週處理上百筆 LINE 喊單與轉帳末五碼核對，人工對帳耗時且常漏貨',
     targetGoal: '希望 6 個月內於雙北及六都重點商圈部署 500 座智慧晴享傘站點，串連 1,200 家在地合作商家達成每月 10 萬人次導流轉換',
+    youtubeUrl: 'https://youtu.be/0fVaQ4GKoto',
+    coverMode: 'youtube_video',
+    cardHoverMode: 'video_autoplay',
     coverImage: '/gosun-comic-borrow.png',
     galleryImages: [
       '/gosun-comic-borrow.png',
@@ -1811,6 +1817,9 @@ export const SEED_VIBECODING_APPS: Question[] = [
     currentVersion: 'v6.2.0',
     referencedPainPoint: '[q-vp-pain-18] 獨立軟體接案團隊與業主反覆確認需求變更，LINE 對話紀錄散落導致驗收糾紛與尾款難收',
     targetGoal: '持續迭代全站 AI 智庫媒合與創星季共創機制，服務超過 100,000 名創作者、接案專家與企業發案方',
+    youtubeUrl: 'https://youtube.com/shorts/9aQE73bVAiU?si=I1vpUWqcJzcCO8xX',
+    coverMode: 'youtube_video',
+    cardHoverMode: 'video_autoplay',
     coverImage: '/ideax-thumbnail.png',
     galleryImages: [
       '/ideax-thumbnail.png',
@@ -1824,6 +1833,9 @@ export const SEED_VIBECODING_APPS: Question[] = [
     vibeCodingData: {
       appName: 'IdeaX 創點子',
       demoUrl: 'https://ideax.tw',
+      youtubeUrl: 'https://youtube.com/shorts/9aQE73bVAiU?si=I1vpUWqcJzcCO8xX',
+      coverMode: 'youtube_video',
+      cardHoverMode: 'video_autoplay',
       coverImageUrl: '/ideax-thumbnail.png',
       screenshots: [
         '/ideax-thumbnail.png',
@@ -1931,6 +1943,9 @@ export const SEED_VIBECODING_APPS: Question[] = [
     currentVersion: 'v1.8.0',
     referencedPainPoint: '[q-vp-pain-11] 社區團購主每週處理上百筆 LINE 喊單與轉帳末五碼核對，人工對帳耗時且常漏貨',
     targetGoal: '希望 6 個月內達成 80,000 次 App 下載與會員註冊，串連 1,200 間在地商家創造每月 10 萬筆到店導流核銷',
+    youtubeUrl: 'https://youtu.be/0fVaQ4GKoto',
+    coverMode: 'youtube_video',
+    cardHoverMode: 'video_autoplay',
     coverImage: '/gosun-comic-borrow.png',
     galleryImages: [
       '/gosun-comic-borrow.png',
@@ -1951,6 +1966,9 @@ export const SEED_VIBECODING_APPS: Question[] = [
     vibeCodingData: {
       appName: 'GoSun 晴享傘',
       demoUrl: 'https://gosun-umbrella.demo.ideax.tw',
+      youtubeUrl: 'https://youtu.be/0fVaQ4GKoto',
+      coverMode: 'youtube_video',
+      cardHoverMode: 'video_autoplay',
       coverImageUrl: '/gosun-comic-borrow.png',
       screenshots: [
         '/gosun-comic-borrow.png',
