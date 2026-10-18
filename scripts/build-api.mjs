@@ -13,7 +13,21 @@ await build({
   platform: 'node',
   format: 'esm',
   target: 'node20',
-  packages: 'external',
+  // 套件大多不打包（由 Vercel 依 node_modules 載入），但 firebase-admin → jwks-rsa → jose 這條要一起打包：
+  // jose 只提供 ES Module，Vercel 的執行環境不允許用 require 載入它，打包後由 esbuild 轉換即可正常運作
+  plugins: [
+    {
+      name: 'externalize-most-packages',
+      setup(b) {
+        const BUNDLED = ['firebase-admin', 'jwks-rsa', 'jose'];
+        b.onResolve({ filter: /^[^./]/ }, (args) => {
+          const name = args.path.startsWith('@') ? args.path.split('/').slice(0, 2).join('/') : args.path.split('/')[0];
+          if (BUNDLED.includes(name)) return undefined; // 交給 esbuild 打包
+          return { path: args.path, external: true };
+        });
+      },
+    },
+  ],
   outfile: 'api/_server.mjs',
   banner: {
     js: [
