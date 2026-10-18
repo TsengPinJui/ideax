@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { AdminAssistantTickCard } from './AdminAssistantTickCard';
 import {
   AiCrmSystemConfig,
   AiCrmLead,
@@ -184,7 +185,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
   // Agent Test Bench Sub-Tab: 1:客服特助, 2:拓客代操, 3:爭議調解, 4:專家媒合, 5:隱私防火牆, 6:Dify直連即時實測
   const [activeTesterId, setActiveTesterId] = useState<
-    'dify_direct_console' | 'support_agent' | 'crm_agent' | 'mediation_agent' | 'matching_agent' | 'safety_shield'
+    'dify_direct_console' | 'support_agent' | 'crm_agent' | 'mediation_agent' | 'matching_agent' | 'safety_shield' | 'assistant_tick'
   >('dify_direct_console');
 
   // 0. Dify 全功能直連實測台狀態
@@ -934,7 +935,23 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               <ShieldAlert className="w-4 h-4 text-rose-600" />
               <span>2. 隱私與安全防火牆</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTesterId('assistant_tick')}
+              className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                activeTesterId === 'assistant_tick'
+                  ? 'bg-violet-100 text-violet-950 border border-violet-300 font-black shadow-2xs'
+                  : 'text-stone-600 hover:bg-stone-50'
+              }`}
+            >
+              <Bot className="w-4 h-4 text-violet-600" />
+              <span>3. AI 特助伺服器值班</span>
+            </button>
           </div>
+
+          {/* 測試器 3: AI 特助伺服器值班（手動執行一次） */}
+          {activeTesterId === 'assistant_tick' && <AdminAssistantTickCard />}
 
           {/* 測試器 0: ⚡ Dify API 直連即時實測台 */}
           {activeTesterId === 'dify_direct_console' && (
