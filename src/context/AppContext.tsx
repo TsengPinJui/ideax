@@ -1611,7 +1611,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
-        const fromUrl = urlParams.get('conv') || urlParams.get('cid') || urlParams.get('chatId') || urlParams.get('id');
+        const fromUrl = urlParams.get('conv') || urlParams.get('cid') || urlParams.get('chatId');
         if (fromUrl) return fromUrl;
         return localStorage.getItem(`${STORAGE_KEY_PREFIX}active_conversation_id`) || null;
       }
@@ -4622,6 +4622,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const createQuestion = (newQ: Partial<Question>): Question => {
     if (currentUser.isBlocked) {
       addNotification('帳號停權警告', `⚠️ 您的帳號已被管理員停權處分（原因：${currentUser.blockedReason || '違反平台規範'}），在解封前無法發布新問題或痛點！如有疑問請聯繫客服。`, 'system');
+      showCenterToast('帳號停權中，暫時無法發布', currentUser.blockedReason || '如有疑問請聯繫客服', { type: 'warning', duration: 4000 });
       return null as any;
     }
     if (currentUser.role !== 'admin' && currentUser.role !== 'questioner') {
@@ -4632,7 +4633,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const qId = `q-${Date.now()}`;
-    const isPainPoint = newQ.postType === 'pain_point' || newQ.tags?.some((t) => t.includes('痛點') || t.includes('創點子'));
+    // 只依使用者選的發布類型判斷，避免標籤裡剛好有「痛點」字樣而被誤判
+    const isPainPoint = newQ.postType === 'pain_point';
     const isRaceModeActive = isRaceMode && isPainPoint;
 
     // 關鍵規則：在創點子、痛點提出的內容同步出現於「創新創業」看板，依細分領域分類
@@ -4698,7 +4700,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       views: newQ.views ?? 0,
       viewsCount: newQ.viewsCount ?? 0,
       answersCount: 0,
-      likes: newQ.likes ?? (isRaceModeActive ? 16 : 8),
+      likes: newQ.likes ?? 0,
       aiAnalysis: newQ.aiAnalysis,
       aiPreliminaryReport: newQ.aiPreliminaryReport,
       withheldBounty: finalBounty,
@@ -4761,16 +4763,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 成功提示 Toast (依痛點、懸賞提問/問題、貼文/討論交流顯示相應精準提示文案)
     const isChatDiscussion = newQ.postType === 'chat_discussion';
-    const toastTitle = isPainPoint
-      ? '痛點發布成功！'
-      : isChatDiscussion
-      ? '貼文發布成功！'
-      : '提問發布成功！';
-    const toastSubtitle = isPainPoint
-      ? `已成功將痛點「${q.title.slice(0, 24)}」上架至痛點專區！`
-      : isChatDiscussion
-      ? `已成功將貼文「${q.title.slice(0, 24)}」發布至社群交流區！`
-      : `已成功發布提問「${q.title.slice(0, 24)}」${q.bounty > 0 ? `（懸賞 NT$ ${q.bounty.toLocaleString()} 元）` : ''}！`;
+    const kindLabel =
+      isPainPoint
+        ? '痛點'
+        : isChatDiscussion
+        ? '貼文'
+        : newQ.postType === 'vibecoding_app'
+        ? '作品'
+        : newQ.postType === 'innovation_proposal'
+        ? '提案'
+        : '提問';
+    const toastTitle = `${kindLabel}發布成功！`;
+    const toastSubtitle = `已成功發布${kindLabel}「${q.title.slice(0, 24)}」${q.bounty > 0 ? `（懸賞 ${q.bounty.toLocaleString()} 點）` : ''}！`;
     showCenterToast(toastTitle, toastSubtitle, { type: 'success', duration: 2500 });
 
     // 發布後是詢問通知權限的好時機（「有人回覆時要通知你嗎？」），等成功提示消失後再顯示
@@ -4782,8 +4786,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications((prev) => [
       {
         id: `notif-${Date.now()}`,
-        title: isPainPoint ? '痛點發布成功' : isChatDiscussion ? '貼文發布成功' : '提問發布成功',
-        message: `您的${isPainPoint ? '痛點' : isChatDiscussion ? '貼文' : '提問'}「${q.title}」已成功上架！${q.bounty > 0 ? `（懸賞金額 NT$ ${q.bounty.toLocaleString()} 元）` : ''}`,
+        title: `${kindLabel}發布成功`,
+        message: `您的${kindLabel}「${q.title}」已成功上架！${q.bounty > 0 ? `（懸賞 ${q.bounty.toLocaleString()} 點）` : ''}`,
         type: 'system',
         createdAt: '剛剛',
         read: false,

@@ -617,7 +617,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
       let savedId: string | null = null;
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
-        savedId = urlParams.get('conv') || urlParams.get('cid') || urlParams.get('chatId') || urlParams.get('id');
+        savedId = urlParams.get('conv') || urlParams.get('cid') || urlParams.get('chatId');
         if (!savedId) {
           savedId = localStorage.getItem('ideax_mvp_v3_active_conversation_id') || localStorage.getItem('ideax_active_conversation_id');
         }
