@@ -36,7 +36,8 @@ import {
 } from '../components/AdminSiteTrafficChart';
 import { getAuthHeaders } from './authHeader';
 import { auth } from './firebase';
-import { getMyAuthUid, resolveAuthUid, resolveAuthUids } from './authIdentity';
+import { getMyAppUserId, getMyAuthUid, resolveAuthUid, resolveAuthUids } from './authIdentity';
+import { splitAnswerForStorage, type AnswerSecret } from '../utils/answerSecrets';
 import { PROTECTED_USER_FIELDS } from './pointsApi';
 
 const QUOTA_STORAGE_KEY = 'ideax_firestore_quota_exhausted_date';
@@ -436,12 +437,31 @@ export async function syncQuestionsToFirestore(questions: Question[]): Promise<v
   }
 }
 
+/** 回答者本人才寫入受保護的完整內容（answer_secrets）；其他人只寫公開欄位 */
+async function writeAnswerSecretIfOwner(answer: Answer, secret: AnswerSecret | null): Promise<void> {
+  if (!secret) return;
+  const myUid = getMyAuthUid();
+  if (!myUid) return;
+  const isOwner = answer.solverAuthUid === myUid || (!!answer.solverId && answer.solverId === getMyAppUserId());
+  if (!isOwner) return;
+  await setDoc(
+    doc(db, 'answer_secrets', answer.id),
+    { ...JSON.parse(JSON.stringify(secret)), solverAuthUid: myUid, solverId: answer.solverId, updatedAt: new Date().toISOString() },
+    { merge: true }
+  );
+}
+
 export async function syncAnswerToFirestore(answer: Answer): Promise<void> {
   if (!answer || !answer.id || isQuotaExhausted) return;
   try {
+    const { publicAnswer, secret } = splitAnswerForStorage(answer);
     const aRef = doc(db, 'answers', answer.id);
-    const cleanA = JSON.parse(JSON.stringify(answer));
+    const cleanA = JSON.parse(JSON.stringify(publicAnswer));
+    // 付款解鎖名單只能由伺服器寫入
+    delete cleanA.unlockedByUserIds;
+    // 先寫公開文件（資料庫規則要先確認解答屬於自己），再寫受保護內容
     await setDoc(aRef, { ...cleanA, updatedAt: new Date().toISOString() }, { merge: true });
+    await writeAnswerSecretIfOwner(answer, secret).catch((err) => handleFirestoreError(`Failed to save answer content ${answer.id}`, err));
   } catch (err) {
     handleFirestoreError(`Failed to sync answer ${answer.id}`, err);
   }
@@ -457,7 +477,9 @@ export async function syncAnswersToFirestore(answers: Answer[]): Promise<void> {
       chunk.forEach((ans) => {
         if (!ans.id) return;
         const aRef = doc(db, 'answers', ans.id);
-        const cleanA = JSON.parse(JSON.stringify(ans));
+        const { publicAnswer } = splitAnswerForStorage(ans);
+        const cleanA = JSON.parse(JSON.stringify(publicAnswer));
+        delete cleanA.unlockedByUserIds;
         batch.set(aRef, { ...cleanA, updatedAt: new Date().toISOString() }, { merge: true });
       });
       await batch.commit();

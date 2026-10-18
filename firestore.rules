@@ -70,7 +70,12 @@ service cloud.firestore {
     // 提問者可採納、評分、驗收階段；其他會員只能改互動欄位
     function answerContentFields() {
       return ['solverId', 'solverAuthUid', 'solverName', 'questionId', 'freePreview', 'fullContent',
-              'attachments', 'meetingDetails', 'price', 'isPaid', 'type'];
+              'attachments', 'meetingDetails', 'price', 'isPaid', 'type', 'unlockedByUserIds', 'hasProtectedContent'];
+    }
+    // 付費解答的完整內容不可放在公開文件（應存於 answer_secrets）
+    function noPublicPaidContent(d) {
+      return d.get('type', 'solution') == 'discussion' || d.get('isPaid', true) == false ||
+        d.get('price', 0) <= 0 || d.get('fullContent', '') == '';
     }
     function isQuestionOwnerOf(questionId) {
       return exists(/databases/$(database)/documents/questions/$(questionId)) &&
@@ -79,10 +84,13 @@ service cloud.firestore {
     match /answers/{answerId} {
       allow read: if true;
       allow create: if isAdmin() || (
-        isSignedIn() && request.resource.data.get('solverAuthUid', '') == request.auth.uid
+        isSignedIn() && request.resource.data.get('solverAuthUid', '') == request.auth.uid &&
+        noPublicPaidContent(request.resource.data) &&
+        request.resource.data.get('unlockedByUserIds', []).size() == 0
       );
       allow update: if isAdmin() || (
         ownsVia(resource.data, 'solverAuthUid', 'solverId') &&
+        noPublicPaidContent(request.resource.data) &&
         (!('solverAuthUid' in changedKeys()) || request.resource.data.solverAuthUid == request.auth.uid) &&
         !('solverId' in changedKeys())
       ) || (
@@ -91,6 +99,25 @@ service cloud.firestore {
         isSignedIn() && !changedKeys().hasAny(answerContentFields().concat(['isAccepted', 'phases', 'rating', 'reviewComment']))
       );
       allow delete: if isAdmin() || ownsVia(resource.data, 'solverAuthUid', 'solverId');
+    }
+
+    // 付費解答的完整內容：回答者本人可讀寫；其他人一律經由伺服器依付款／解鎖紀錄取得
+    function ownsAnswer(answerId) {
+      return exists(/databases/$(database)/documents/answers/$(answerId)) &&
+        ownsVia(get(/databases/$(database)/documents/answers/$(answerId)).data, 'solverAuthUid', 'solverId');
+    }
+    match /answer_secrets/{answerId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.get('solverAuthUid', '') == request.auth.uid);
+      allow create: if isAdmin() || (
+        isSignedIn() && request.resource.data.get('solverAuthUid', '') == request.auth.uid && ownsAnswer(answerId)
+      );
+      allow update: if isAdmin() || (
+        isSignedIn() && request.resource.data.get('solverAuthUid', '') == request.auth.uid &&
+        (resource.data.get('solverAuthUid', '') == null || resource.data.get('solverAuthUid', '') == '' ||
+          resource.data.get('solverAuthUid', '') == request.auth.uid) &&
+        ownsAnswer(answerId)
+      );
+      allow delete: if isAdmin();
     }
 
     // 撥款申請：只有伺服器能寫；管理員可讀
@@ -233,15 +260,17 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // 平台設定：所有人可讀；全站營運模式與設定（global）只有管理員能改
     match /platform_settings/{settingId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin() || settingId != 'global';
     }
 
     // Default fallback
     // 注意：Firestore 規則是「任一條允許即放行」，因此萬用規則必須排除上方受保護的集合
     match /{collectionId}/{document=**} {
       allow read, write: if !(collectionId in ['admins', 'user_private', 'transactions', 'conversations', 'notifications',
-        'points_ledger', 'points_escrow', 'questions', 'answers', 'users', 'payout_requests',
+        'points_ledger', 'points_escrow', 'questions', 'answers', 'users', 'payout_requests', 'answer_secrets', 'platform_settings',
         'competition_private_submissions', 'competition_accounts', 'competition_participant_registrations',
         'competition_judge_applications', 'competition_support_records', 'competition_audit_logs']);
     }

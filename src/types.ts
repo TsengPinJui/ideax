@@ -1106,6 +1106,7 @@ export interface Answer {
   price: number; // 解鎖費用 NT$（若為方案默認該題懸賞金，亦可由回答者自訂金額；任何人皆可付費解鎖）
   unlockedByUserIds?: string[]; // 已解鎖此方案的用戶 ID 清單
   isUnlockedByCurrentUser?: boolean;
+  hasProtectedContent?: boolean; // 完整內容存放於受保護區（answer_secrets），需解鎖後由伺服器取得
   isAccepted?: boolean;
   createdAt: string;
   rating?: number;

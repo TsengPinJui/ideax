@@ -125,7 +125,8 @@ import { PwaNotificationService } from '../services/pwaNotificationService';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth as firebaseAuthInstance } from '../services/firebase';
 import { getMyAuthUid, setMyAppUserId, updateAuthUidDirectory } from '../services/authIdentity';
-import { pointsOp, PointsOpPayload } from '../services/pointsApi';
+import { fetchAnswerContents, pointsOp, PointsOpPayload } from '../services/pointsApi';
+import type { AnswerSecret } from '../utils/answerSecrets';
 import {
   conversationSignature,
   deliverNotificationToCloud,
@@ -2146,7 +2147,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableUsers, isRealPointsEconomy]);
-  const runPointsOp = (payload: PointsOpPayload, failTitle = '點數處理失敗', onFail?: () => void) => {
+  const runPointsOp = (payload: PointsOpPayload, failTitle = '點數處理失敗', onFail?: () => void, onSuccess?: () => void) => {
     if (!isRealPointsEconomy) return;
     const myId = currentUser.id;
     void pointsOp(payload).then(async (r) => {
@@ -2161,6 +2162,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (r.userId === myId) {
           setCurrentUser((prev) => (prev.id === myId ? { ...prev, ...patch } : prev));
         }
+        try {
+          onSuccess?.();
+        } catch {}
         return;
       }
       // 伺服器拒絕：還原畫面上已先套用的變更（例如已解鎖的內容、已開通的方案）
@@ -5075,6 +5079,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Action: Unlock Paywall Answer via Platform Points & Automatic Split
+  // ── 付費解答完整內容：由伺服器依權限提供，取得後合併進本機解答 ──
+  const answerSecretsRef = useRef<Record<string, AnswerSecret>>({});
+  const fetchedAnswerIdsRef = useRef<Set<string>>(new Set());
+  const [answerSecretsVersion, setAnswerSecretsVersion] = useState(0);
+
+  const loadAnswerContents = async (ids: string[], force = false) => {
+    const todo = Array.from(new Set(ids)).filter((id) => force || !fetchedAnswerIdsRef.current.has(id));
+    if (todo.length === 0 || !getMyAuthUid()) return;
+    todo.forEach((id) => fetchedAnswerIdsRef.current.add(id));
+    for (let i = 0; i < todo.length; i += 60) {
+      const contents = await fetchAnswerContents(todo.slice(i, i + 60));
+      if (Object.keys(contents).length > 0) {
+        Object.assign(answerSecretsRef.current, contents);
+        setAnswerSecretsVersion((v) => v + 1);
+      }
+    }
+  };
+
+  // 換帳號時清掉上一位的內容快取
+  useEffect(() => {
+    answerSecretsRef.current = {};
+    fetchedAnswerIdsRef.current = new Set();
+  }, [currentUser.id]);
+
+  // 自動取得「自己有權限、但本機還沒有完整內容」的解答
+  useEffect(() => {
+    if (!currentUser?.id || currentUser.id === 'user-guest' || !getMyAuthUid()) return;
+    const myUid = getMyAuthUid();
+    const isAdminUser = currentUser.role === 'admin';
+    const ids = answers
+      .filter(
+        (a) =>
+          a.hasProtectedContent &&
+          !a.fullContent &&
+          !answerSecretsRef.current[a.id] &&
+          (isAdminUser ||
+            a.solverId === currentUser.id ||
+            (myUid && a.solverAuthUid === myUid) ||
+            (a.unlockedByUserIds || []).includes(currentUser.id))
+      )
+      .map((a) => a.id);
+    if (ids.length > 0) void loadAnswerContents(ids);
+  }, [answers, currentUser.id, currentUser.role]);
+
+  // 把取得的內容合併回解答（雲端重新載入後也會再補上）
+  useEffect(() => {
+    const cache = answerSecretsRef.current;
+    if (Object.keys(cache).length === 0) return;
+    setAnswers((prev) => {
+      let changed = false;
+      const next = prev.map((a) => {
+        const sec = cache[a.id];
+        if (!sec) return a;
+        // 只補「缺少」的內容，不覆蓋本機已有的（例如回答者剛編輯過）
+        const fillText = Boolean(sec.fullContent) && !a.fullContent;
+        const fillFiles =
+          Array.isArray(sec.attachments) &&
+          sec.attachments.length > 0 &&
+          a.attachments !== sec.attachments &&
+          (!a.attachments || a.attachments.every((x) => !x?.url && !x?.dataUrl));
+        const fillMeeting =
+          Boolean(sec.meetingDetails) &&
+          a.meetingDetails !== sec.meetingDetails &&
+          (!a.meetingDetails || (!a.meetingDetails.meetingAgenda && !a.meetingDetails.availableTimeSlots));
+        if (!fillText && !fillFiles && !fillMeeting) return a;
+        changed = true;
+        return {
+          ...a,
+          ...(fillText ? { fullContent: sec.fullContent } : {}),
+          ...(fillFiles ? { attachments: sec.attachments } : {}),
+          ...(fillMeeting ? { meetingDetails: sec.meetingDetails } : {}),
+        };
+      });
+      return changed ? next : prev;
+    });
+  }, [answers, answerSecretsVersion]);
+
   const unlockAnswer = (
     answerId: string,
     useWithheldOffset: boolean = true,
@@ -5094,25 +5175,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    if (balanceToPay > 0) {
-      const buyerId = currentUser.id;
-      runPointsOp({ op: 'spend', amount: balanceToPay, purpose: 'unlock', refId: answerId }, '方案解鎖未完成', () => {
-        // 扣點失敗：收回解鎖
-        setAnswers((prev) =>
-          prev.map((a) =>
-            a.id === answerId
-              ? {
-                  ...a,
-                  unlockedByUserIds: (a.unlockedByUserIds || []).filter((id) => id !== buyerId),
-                  isUnlockedByCurrentUser: false,
-                }
-              : a
-          )
-        );
+    // 由伺服器記錄解鎖（正式模式下同時扣點與懸賞折抵），成功後才取得完整內容
+    const buyerId = currentUser.id;
+    const revertUnlock = () => {
+      setAnswers((prev) =>
+        prev.map((a) =>
+          a.id === answerId
+            ? {
+                ...a,
+                unlockedByUserIds: (a.unlockedByUserIds || []).filter((id) => id !== buyerId),
+                isUnlockedByCurrentUser: false,
+              }
+            : a
+        )
+      );
+    };
+    const unlockPayload: PointsOpPayload = { op: 'unlock_answer', answerId, useWithheldOffset };
+    if (isRealPointsEconomy) {
+      runPointsOp(unlockPayload, '方案解鎖未完成', revertUnlock, () => void loadAnswerContents([answerId], true));
+    } else {
+      void pointsOp(unlockPayload).then((r) => {
+        if (r.ok) void loadAnswerContents([answerId], true);
+        else console.warn('[Unlock] 伺服器未記錄解鎖：', r.error);
       });
-    }
-    if (offsetAmount > 0 && targetQ) {
-      runPointsOp({ op: 'escrow_release', amount: offsetAmount, refId: targetQ.id, mode: 'payout', note: '以懸賞預扣折抵解鎖' });
     }
 
     // Deduct points from buyer if balanceToPay > 0
