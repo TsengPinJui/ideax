@@ -6,12 +6,14 @@ interface AdminUserManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigateToCertifications?: (userId?: string) => void;
+  onOpenChat?: () => void;
 }
 
 export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> = ({
   isOpen,
   onClose,
   onNavigateToCertifications,
+  onOpenChat,
 }) => {
   if (!isOpen) return null;
 
@@ -57,6 +59,8 @@ export const AdminUserManagementModal: React.FC<AdminUserManagementModalProps> =
                 onNavigateToCertifications(userId);
               }
             }}
+            onOpenChat={onOpenChat}
+            onCloseParentModal={onClose}
           />
         </div>
       </div>

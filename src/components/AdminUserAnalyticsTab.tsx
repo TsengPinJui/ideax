@@ -1239,7 +1239,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
                                 : 'bg-stone-100 text-stone-700'
                             }`}
                           >
-                            {u.role === 'admin' ? '管理員' : u.role === 'solver' ? '解答者' : '提問者'}
+                            {u.role === 'admin' ? '管理員' : u.accountType === 'enterprise' || (u.role as string) === 'enterprise' ? '企業機構' : '一般用戶'}
                           </span>
                         </div>
                       </div>

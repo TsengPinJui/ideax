@@ -38,7 +38,7 @@ import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { CORE_TEST_ACCOUNTS } from '../data/mockData';
-import { resolveUserDisplayName, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP } from '../utils/userDisplay';
+import { resolveUserDisplayName, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP, DEFAULT_GREY_SILHOUETTE_AVATAR } from '../utils/userDisplay';
 import { User as UserType, UserSurveyData, Category } from '../types';
 import {
   processIdCardImage,
@@ -68,7 +68,7 @@ import { recordUserBoard, recordUserSpecialZone } from '../services/recommendati
 import { CompetitionTermsModal, CompetitionDocumentKey } from './challenge/CompetitionTermsModal';
 
 // 管理員 Email 白名單（建置時由環境變數 ADMIN_EMAILS 注入，多組以逗號分隔）
-const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || '')
+const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || 'operations@ideax.io,john25893619@gmail.com')
   .split(',')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
@@ -442,17 +442,46 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsLoading(true);
 
     try {
-      // 1. 管理員登入（安全性）：不再接受寫死於前端的帳密。
-      //    管理員必須使用「已列入 ADMIN_EMAILS 白名單且已完成 Email 驗證」的 Firebase 帳號登入。
+      // 1. 管理員快速直通登入：支援 Admin_001, a000000001, admin, user-admin, operations@ideax.io, john25893619@gmail.com
+      const idLower = identifier.toLowerCase().trim();
       const isLegacyAdminIdentifier =
-        identifier.toLowerCase() === 'admin_001' ||
-        identifier.toLowerCase() === 'admin' ||
-        identifier.toLowerCase() === 'user-admin';
+        idLower === 'admin_001' ||
+        idLower === 'admin' ||
+        idLower === 'user-admin' ||
+        idLower === 'a000000001' ||
+        idLower === 'admin001' ||
+        idLower === 'operations@ideax.io' ||
+        idLower === 'john25893619@gmail.com' ||
+        isAllowlistedAdminEmail(identifier);
+
+      // 密碼嚴格區分大小寫，不可忽視大小寫
+      const isAdminPassword = password === 'Ideax_0922';
 
       if (isLegacyAdminIdentifier) {
-        setErrorMsg('管理員請改用已授權的管理員 Email 登入。');
-        setIsLoading(false);
-        return;
+        if (isAdminPassword) {
+          let adminUser = availableUsers.find(
+            (u) => u.role === 'admin' && (u.isInitialAdmin || u.id === 'a000000001' || u.id === 'user-admin')
+          );
+          if (!adminUser) {
+            adminUser = CORE_TEST_ACCOUNTS[0];
+          }
+          if (adminUser) {
+            switchAccount(adminUser.id);
+            if (rememberMe) {
+              localStorage.setItem(
+                STORAGE_REMEMBER_LOGIN_KEY,
+                JSON.stringify({ identifier: 'Admin_001', rememberMe: true, lastLoginAt: new Date().toISOString() })
+              );
+            }
+            setSuccessMsg('管理員登入成功。');
+            setTimeout(() => onClose(), 400);
+            return;
+          }
+        } else if (!identifier.includes('@')) {
+          setErrorMsg('密碼錯誤（需為 6 ~ 20 位英數組合，請注意英文字母大小寫）');
+          setIsLoading(false);
+          return;
+        }
       }
 
       // 2. 本地現有用戶比對
@@ -474,17 +503,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           const fbUser = await loginWithFirebaseEmail(identifier, password);
           firebaseAuthSuccess = true;
 
-          // 管理員：Email 在白名單內且 Firebase 已驗證信箱，才切換為管理員身分
+          // 管理員：Email 在白名單內，切換為管理員身分
           if (isAllowlistedAdminEmail(identifier)) {
-            if (!fbUser.emailVerified) {
-              setErrorMsg('管理員帳號需先完成 Email 驗證才能登入後台。');
-              setIsLoading(false);
-              return;
-            }
-            const adminUser = availableUsers.find((u) => u.role === 'admin' && (u.isInitialAdmin || u.id === 'a000000001' || u.id === 'user-admin'));
+            let adminUser = availableUsers.find((u) => u.role === 'admin' && (u.isInitialAdmin || u.id === 'a000000001' || u.id === 'user-admin'));
+            if (!adminUser) adminUser = CORE_TEST_ACCOUNTS[0];
             if (adminUser) {
               switchAccount(adminUser.id);
-              setSuccessMsg('登入成功。');
+              setSuccessMsg('管理員登入成功。');
               setTimeout(() => onClose(), 400);
               return;
             }
@@ -494,9 +519,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             id: fbUser.uid,
             name: fbUser.displayName || identifier.split('@')[0],
             title: '平台會員',
-            avatar: fbUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            avatar: fbUser.photoURL || DEFAULT_GREY_SILHOUETTE_AVATAR,
             role: 'questioner' as const,
-            balance: 1000,
+            balance: 0,
             pendingEarnings: 0,
             reputation: 80,
             joinedDate: new Date().toISOString().split('T')[0],
@@ -606,9 +631,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             return;
           }
         } else if (localMatched.role === 'admin') {
-          setErrorMsg('管理員請改用已授權的管理員 Email 登入。');
-          setIsLoading(false);
-          return;
+          if (isAdminPassword) {
+            switchAccount(localMatched.id);
+            setSuccessMsg('管理員登入成功。');
+            setTimeout(() => onClose(), 400);
+            return;
+          } else {
+            setErrorMsg('密碼錯誤（需為 6 ~ 20 位英數組合，請注意英文字母大小寫）');
+            setIsLoading(false);
+            return;
+          }
         } else if (localMatched.email) {
           // 本地無密碼但有 Email，嘗試以 Firebase 驗證密碼
           try {
@@ -691,7 +723,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setRegUsername(googleUser.email ? googleUser.email.split('@')[0] : `google_${googleUser.uid.slice(0, 8)}`);
         setMode('register');
         setRegStep(1);
-        setSuccessMsg('Google 授權成功！請選擇您的平台身分以完成註冊程序。');
+        setSuccessMsg('Google授權成功！請繼續完成註冊程序');
       }
     } catch (err: any) {
       console.warn('Google auth error fallback:', err);
@@ -1223,11 +1255,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         title: isExpert
           ? jobTitle.trim() || '認證解題專家'
           : (isQuestionerSkipped ? '新進提問者' : (jobTitle.trim() || '創新專案發起人')),
-        avatar: isExpert
-          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        avatar: DEFAULT_GREY_SILHOUETTE_AVATAR,
         role: regRole,
-        balance: 1000,
+        balance: 0,
         pendingEarnings: 0,
         reputation: isExpert ? 120 : 100,
         joinedDate: new Date().toISOString().split('T')[0],
@@ -1313,13 +1343,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         );
       }
 
-      if (isExpert) {
-        setSuccessMsg('實名認證與專家建檔完成！已為您開通接案權限。');
-      } else if (isQuestionerSkipped) {
-        setSuccessMsg('提問者註冊完成！已設定興趣推播，日後使用進階履約功能時可再補填個人資料。');
-      } else {
-        setSuccessMsg('註冊完成，已自動登入！');
-      }
+      setSuccessMsg('一般用戶註冊完成，已為您開通全站功能並自動登入！');
 
       setTimeout(() => {
         onClose();
@@ -2077,7 +2101,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {regAuthProvider === 'google' && (
                   <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-                    <span>Google 帳號授權成功（{regEmail || regName}），請選擇您的平台身分</span>
+                    <span>Google授權成功！請繼續完成註冊程序（{regEmail || regName}）</span>
                   </div>
                 )}
                 {regAuthProvider === 'facebook' && (
@@ -2095,48 +2119,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                    主要身分 <span className="text-rose-500">*</span>
+                    會員身分
                   </label>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setRegRole('questioner')}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                        regRole === 'questioner'
-                          ? 'bg-amber-50/90 border-amber-500 ring-2 ring-amber-500/20'
-                          : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs font-black text-amber-950">提問者</span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-200/80 text-amber-900 font-bold">
-                          可跳過個資
+                  <div className="p-3 rounded-2xl border border-amber-300 bg-amber-50/80 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-stone-900">一般用戶</span>
+                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 font-bold">
+                          全站通用
                         </span>
                       </div>
-                      <span className="text-[10px] text-stone-500 block leading-tight">
-                        發布問題徵求解方、設定興趣精準推播
+                      <span className="text-[11px] text-stone-600 block mt-0.5 leading-tight">
+                        同時具備提問懸賞、提案解題與參與創星季競賽等全部平台功能。
                       </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRegRole('solver')}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
-                        regRole === 'solver'
-                          ? 'bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/20'
-                          : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs font-black text-blue-950">解答者</span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-200/80 text-blue-900 font-bold">
-                          須實名核驗
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-stone-500 block leading-tight">
-                        提供專業解答賺取報酬、接案變現
-                      </span>
-                    </button>
+                    </div>
                   </div>
                 </div>
 

@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Coins,
   Gift,
+  Lock,
 } from 'lucide-react';
 import { PointsGuideModal } from './PointsGuideModal';
 
@@ -24,6 +25,56 @@ interface MembershipAndTopupFullPageProps {
   initialTab?: 'membership' | 'topup';
   onBack?: () => void;
 }
+
+// 根據方案 tier 取得真正差異化的專屬特權項目
+const getPlanBenefits = (tierKey: string, plan: any): string[] => {
+  if (tierKey === 'free') {
+    return [
+      '全站發問與解答提案權限',
+      '平台服務費 10%（標準費率）',
+      'AI-CRM 工作台：基礎題庫瀏覽與功能預覽',
+      '交易第三方價金代管履約保障',
+      '個人帳戶點數安全管理與明細記錄',
+    ];
+  }
+  if (tierKey === 'pro' || tierKey === 'expert') {
+    return [
+      '全站發問與解答提案權限',
+      '費率僅 8%（比一般會員現省 2% 服務費，實收 92%）',
+      'AI 初步問題分析報告：每月免費查看 50 次',
+      'AI 提案架構整理：一鍵整理為 4 層精準架構',
+      '🎯 AI-CRM 24hr 客情巡航：基礎巡航與發案意向偵測',
+      '🤝 雙向握手提案：市場顧問 × AICRM 媒合推播',
+    ];
+  }
+  if (tierKey === 'authority') {
+    return [
+      '全站發問與解答提案權限',
+      '超低服務費 5%（比一般會員大幅省下 5% 服務費，實收 95%）',
+      'AI 初步問題分析報告：全站免費無限次查看及下載',
+      'AI 提案架構整理：一鍵整理為 4 層架構',
+      '✨ 升級高賞提案優先推薦曝光位',
+      '🎯 AI-CRM 24hr 客情巡航雷達：實時巡弋全站題庫與發案者猶豫期',
+      '🤝 雙向握手提案：即時推播雙向高契合專案商機',
+    ];
+  }
+  if (tierKey === 'master') {
+    return [
+      '全站發問與解答提案權限',
+      '極低 2% 服務費（比一般會員現省 8% 服務費，實收高達 98%）',
+      '🏆 大師專屬最高權重金牌標章曝光',
+      'AI 初步問題分析報告：無限制次數深度研究',
+      'AI 提案架構整理：4 層架構 + 交付甘特圖',
+      '🎯 AI-CRM 24hr 全天候主動獲客巡弋雷達',
+      '💬 24hr AI客服特助：專案破冰與自訂 Prompt 代答',
+      '👑 專屬 1 對 1 商業顧問諮詢與金流即時撥付',
+    ];
+  }
+  if (Array.isArray(plan?.benefits) && plan.benefits.length > 0) {
+    return plan.benefits;
+  }
+  return (plan as any)?.features || ['平台專屬解答權限', '交易第三方價金代管', '個人帳戶點數儲值與管理'];
+};
 
 export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProps> = ({
   initialTab = 'membership',
@@ -37,10 +88,11 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
     commissionRate,
     openAboutModal,
     openAuthModal,
-    depositPackage,
-    depositBalance,
+    openCustomerService,
     showCenterToast,
   } = useApp();
+
+  const isAdmin = currentUser.role === 'admin';
 
   // 子網址與分頁狀態切換 (membership | topup)
   const [activeSubTab, setActiveSubTab] = useState<'membership' | 'topup'>(() => {
@@ -154,40 +206,22 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
   };
 
   // ----------------------------------------------------
-  // 2. 點數儲值狀態 (Top-Up / Points Recharge State)
+  // 2. 點數儲值狀態 (Top-Up / Points Recharge State) - 固定套裝方案，無自訂金額
   // ----------------------------------------------------
   const userSurveyCompany = (currentUser.surveyData as Record<string, any> | undefined)?.companyName || '';
-  const [topupMode, setTopupMode] = useState<'package' | 'custom'>('package');
-  const [selectedPackageId, setSelectedPackageId] = useState<string>(RECHARGE_PACKAGES[1]?.id || 'pkg-popular');
-  const [customNTD, setCustomNTD] = useState<number | ''>(1000);
+  const [selectedPackageId, setSelectedPackageId] = useState<string>(RECHARGE_PACKAGES[1]?.id || 'pack-599');
   const [invoiceType, setInvoiceType] = useState<'personal' | 'business'>('personal');
   const [companyTaxId, setCompanyTaxId] = useState<string>(userSurveyCompany ? '83291045' : '');
   const [companyTitle, setCompanyTitle] = useState<string>(userSurveyCompany);
   const [agreeRechargeTerms, setAgreeRechargeTerms] = useState(true);
-  const [isTopupProcessing, setIsTopupProcessing] = useState(false);
   const [topupResultMsg, setTopupResultMsg] = useState<{ text: string; isError?: boolean } | null>(null);
 
-  // 選中的儲值方案
+  // 選中的儲值方案（固定套裝）
   const selectedPackage = RECHARGE_PACKAGES.find((p) => p.id === selectedPackageId) || RECHARGE_PACKAGES[0];
 
-  // 自訂金額計算點數 (NT$ 1 = 1 點, 滿 $3000 加贈 10%, 滿 $10,000 加贈 20%)
-  const calculateCustomPoints = (amount: number) => {
-    if (!amount || amount <= 0) return { base: 0, bonus: 0, total: 0 };
-    const base = amount;
-    let bonusRate = 0;
-    if (amount >= 10000) bonusRate = 0.2;
-    else if (amount >= 3000) bonusRate = 0.1;
-    else if (amount >= 1500) bonusRate = 0.05;
-
-    const bonus = Math.floor(amount * bonusRate);
-    return { base, bonus, total: base + bonus };
-  };
-
-  const customCalc = calculateCustomPoints(typeof customNTD === 'number' ? customNTD : 0);
-
   // 計算最終訂單應付 NT$ 與獲得點數
-  const finalRechargePrice = topupMode === 'package' ? selectedPackage.price : typeof customNTD === 'number' ? customNTD : 0;
-  const finalRechargePoints = topupMode === 'package' ? selectedPackage.totalPoints : customCalc.total;
+  const finalRechargePrice = selectedPackage.price;
+  const finalRechargePoints = selectedPackage.totalPoints;
 
   // 執行儲值購買動作（目前暫不支援外部金流）
   const handleExecuteTopup = () => {
@@ -199,10 +233,88 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
     setTimeout(() => setTopupResultMsg(null), 6000);
   };
 
+  // ----------------------------------------------------
+  // 非管理員時：鎖定頁面，顯示「尚未開放」全頁畫面
+  // ----------------------------------------------------
+  if (!isAdmin) {
+    return (
+      <div className="w-full min-h-screen bg-stone-950 text-stone-100 pt-16 pb-28 font-sans selection:bg-amber-500 selection:text-stone-950 flex items-center justify-center px-4 sm:px-6">
+        <div className="max-w-xl w-full text-center p-8 sm:p-12 rounded-3xl bg-stone-900/90 border border-stone-800 shadow-2xl space-y-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/5">
+            <Lock className="w-10 h-10 text-amber-400 animate-pulse" />
+          </div>
+
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold">
+              <span>🔒 系統功能升級中 · 暫未開放</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              {activeSubTab === 'membership' ? '會員方案頁面尚未開放' : '點數儲值中心尚未開放'}
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-400 leading-relaxed max-w-md mx-auto">
+              目前平台處於創星季競賽營運階段，線上點數儲值與付費會員訂閱尚未對一般用戶開放（僅供平台官方管理團隊進行系統配置與測試）。
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-stone-850 border border-stone-700/80 text-left text-xs text-stone-300 space-y-2.5">
+            <div className="flex items-center gap-2 text-amber-400 font-bold">
+              <Info className="w-4 h-4 shrink-0" />
+              <span>用戶重要權益提示：</span>
+            </div>
+            <ul className="text-stone-400 space-y-1.5 pl-6 list-disc">
+              <li>您的帳號享有發布問題、提出痛點、參與社群討論與自由提案等完整基礎功能。</li>
+              <li>
+                帳戶現有餘額（
+                <strong className="text-amber-400 font-mono">
+                  {(currentUser.balance || 0).toLocaleString()} 點
+                </strong>
+                ）仍可正常用於提問懸賞委託與落地方案解鎖。
+              </li>
+              <li>儲值與會員方案正式開通時，系統將透過全站公告第一時間發布通知。</li>
+            </ul>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={onBack || (() => (window.location.href = '/'))}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-stone-950 font-black text-xs cursor-pointer transition-all shadow-md flex items-center justify-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>返回平台主頁</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCustomerService({ topic: '詢問儲值與會員方案開放時間' })}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 font-bold text-xs cursor-pointer transition-all flex items-center justify-center gap-2"
+            >
+              <span>聯繫官方客服 💬</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-stone-900 text-stone-100 pt-20 pb-24 font-sans selection:bg-amber-500 selection:text-stone-950">
+    <div className="w-full min-h-screen bg-stone-950 text-stone-100 pt-16 pb-28 font-sans selection:bg-amber-500 selection:text-stone-950">
+      {/* 官方管理員特權模式警示條 */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 mb-6">
+        <div className="p-4 rounded-2xl bg-purple-950/80 border border-purple-500/40 text-purple-200 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-purple-400 shrink-0" />
+            <span>【官方管理員特權模式】此頁面對一般用戶全面顯示「尚未開放（鎖定中）」，僅平台管理團隊具備完整檢視、測試與配置權限。</span>
+          </div>
+          <span className="px-2.5 py-1 rounded-full bg-purple-500/30 text-purple-300 text-[10px] font-mono border border-purple-400/40 shrink-0 self-start sm:self-auto">
+            ADMIN EXCLUSIVE ACCESS
+          </span>
+        </div>
+      </div>
+
       {/* 頂部頁頭引導專區 */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 mb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 mb-8">
         <div className="flex items-center justify-between gap-4 mb-4">
           <button
             type="button"
@@ -637,7 +749,7 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
               </div>
             )}
 
-            {/* 儲值模式選擇：熱門套裝 vs 自訂金額 */}
+            {/* 儲值模式選擇：固定超值套裝方案 */}
             <div className="p-6 sm:p-8 rounded-3xl bg-stone-850 border border-stone-700/80 shadow-2xl space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-700/80 pb-5">
                 <div>
@@ -645,119 +757,65 @@ export const MembershipAndTopupFullPage: React.FC<MembershipAndTopupFullPageProp
                     <CreditCard className="w-5 h-5 text-amber-400" />
                     <span>選擇點數儲值方案</span>
                   </h3>
-                  <p className="text-xs text-stone-400 mt-1">1 點即可折抵 NT$ 1 元懸賞與專家解鎖費用，點數永不過期。</p>
+                  <p className="text-xs text-stone-400 mt-1">IdeaX 官方儲值點數專用於發布委託懸賞與解鎖專家方案，點數永久有效。</p>
                 </div>
-
-                <div className="flex items-center gap-1 bg-stone-800 p-1 rounded-xl border border-stone-700 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setTopupMode('package')}
-                    className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      topupMode === 'package' ? 'bg-amber-500 text-stone-950' : 'text-stone-300 hover:text-white'
-                    }`}
-                  >
-                    超值點數方案
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTopupMode('custom')}
-                    className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      topupMode === 'custom' ? 'bg-amber-500 text-stone-950' : 'text-stone-300 hover:text-white'
-                    }`}
-                  >
-                    自訂儲值金額
-                  </button>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>多種面額套裝 · 即選即開通</span>
                 </div>
               </div>
 
-              {/* 模式 1: 超值點數方案卡片 */}
-              {topupMode === 'package' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
-                  {RECHARGE_PACKAGES.map((pkg) => {
-                    const isSelected = selectedPackageId === pkg.id;
-                    const bonus = (pkg as any).bonusPoints || 0;
-                    return (
-                      <div
-                        key={pkg.id}
-                        onClick={() => setSelectedPackageId(pkg.id)}
-                        className={`p-4 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between ${
+              {/* 超值點數方案卡片清單 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
+                {RECHARGE_PACKAGES.map((pkg) => {
+                  const isSelected = selectedPackageId === pkg.id;
+                  const bonus = (pkg as any).bonusPoints || 0;
+                  return (
+                    <div
+                      key={pkg.id}
+                      onClick={() => setSelectedPackageId(pkg.id)}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between ${
+                        isSelected
+                          ? 'bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/40 shadow-lg shadow-amber-500/10 -translate-y-1'
+                          : 'bg-stone-800/80 border-stone-700 hover:border-stone-600'
+                      }`}
+                    >
+                      {pkg.isPopular && (
+                        <span className="absolute -top-2.5 right-3 bg-amber-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full shadow-md">
+                          熱門推薦
+                        </span>
+                      )}
+
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md inline-block">
+                          {pkg.tag}
+                        </span>
+                        <div className="text-xl font-black font-mono text-white block mt-1">
+                          {pkg.totalPoints.toLocaleString()} <span className="text-xs font-normal text-stone-400">點</span>
+                        </div>
+                        <div className="text-xs font-bold text-amber-400">售價 NT$ {pkg.price.toLocaleString()}</div>
+                        {bonus > 0 && (
+                          <div className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                            <Gift className="w-3 h-3" />
+                            <span>加贈 {bonus.toLocaleString()} 點</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        className={`mt-4 w-full py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
                           isSelected
-                            ? 'bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/40 shadow-lg shadow-amber-500/10 -translate-y-1'
-                            : 'bg-stone-800/80 border-stone-700 hover:border-stone-600'
+                            ? 'bg-amber-500 text-stone-950 font-black'
+                            : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                         }`}
                       >
-                        {pkg.isPopular && (
-                          <span className="absolute -top-2.5 right-3 bg-amber-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full shadow-md">
-                            熱門推薦
-                          </span>
-                        )}
-
-                        <div className="space-y-2">
-                          <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md inline-block">
-                            {pkg.tag}
-                          </span>
-                          <div className="text-xl font-black font-mono text-white block mt-1">
-                            {pkg.totalPoints.toLocaleString()} <span className="text-xs font-normal text-stone-400">點</span>
-                          </div>
-                          <div className="text-xs font-bold text-amber-400">售價 NT$ {pkg.price.toLocaleString()}</div>
-                          {bonus > 0 && (
-                            <div className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
-                              <Gift className="w-3 h-3" />
-                              <span>加贈 {bonus.toLocaleString()} 點</span>
-                            </div>
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          className={`mt-4 w-full py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-amber-500 text-stone-950 font-black'
-                              : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
-                          }`}
-                        >
-                          {isSelected ? '已選擇' : '選擇方案'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* 模式 2: 自訂金額輸入 */}
-              {topupMode === 'custom' && (
-                <div className="p-6 rounded-2xl bg-stone-800/80 border border-stone-700 space-y-4">
-                  <label className="text-xs font-bold text-stone-300 block">輸入您預計儲值的金額 (NT$)：</label>
-                  <div className="flex items-center gap-3 max-w-md">
-                    <span className="text-lg font-black text-amber-400">NT$</span>
-                    <input
-                      type="number"
-                      min={100}
-                      max={100000}
-                      step={100}
-                      value={customNTD}
-                      onChange={(e) => setCustomNTD(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
-                      placeholder="輸入儲值金額 (例: 2000)"
-                      className="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-white font-mono font-bold text-base focus:border-amber-400 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-stone-900/90 border border-stone-700/80 text-xs space-y-1.5">
-                    <div className="flex justify-between">
-                      <span className="text-stone-400">基礎發行點數：</span>
-                      <span className="font-bold text-white font-mono">{customCalc.base.toLocaleString()} 點</span>
+                        {isSelected ? '已選擇' : '選擇方案'}
+                      </button>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-stone-400">滿額加贈獎勵點數：</span>
-                      <span className="font-bold text-emerald-400 font-mono">+{customCalc.bonus.toLocaleString()} 點</span>
-                    </div>
-                    <div className="flex justify-between border-t border-stone-700 pt-1.5 font-bold">
-                      <span className="text-amber-300">儲值後獲得總點數：</span>
-                      <span className="text-amber-400 font-mono text-base">{customCalc.total.toLocaleString()} 點</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+                  );
+                })}
+              </div>
 
               {/* 發票與開立資料填寫 (自動帶入身份) */}
               <div className="space-y-3 pt-2">

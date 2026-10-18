@@ -7,7 +7,8 @@ import { AuthModal } from './AuthModal';
 import { AppTab, Category, QuestionSortOption, PostType, SpecialZone, User as UserType, SUBSCRIPTION_PLANS, UserDashboardTab } from '../types';
 import { isTestAccountUserId } from '../data/mockData';
 import { resetSEOToDefault } from '../services/seoService';
-import { resolveUserDisplayName, getUserNameColorClass } from '../utils/userDisplay';
+import { resolveUserDisplayName, getUserNameColorClass, USER_ALIAS_MAP } from '../utils/userDisplay';
+import { AdminUserProfileModal } from './AdminUserProfileModal';
 import {
   Lightbulb,
   PlusCircle,
@@ -153,6 +154,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
+  const [inspectingUser, setInspectingUser] = useState<UserType | null>(null);
 
   const createMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -200,9 +202,11 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 搜尋專用：匹配全站會員帳號與專家智庫名冊
+  // 搜尋專用：精準匹配全站會員帳號（支援 ID, @ID, 姓名, 會員編號, Email, 帳號名稱, 實名與別名）與專家智庫名冊
   const matchingUsersAndSolvers = React.useMemo(() => {
-    const term = (searchQuery || '').trim().toLowerCase();
+    const rawTerm = (searchQuery || '').trim();
+    const term = rawTerm.toLowerCase();
+    const cleanTerm = term.replace(/^@/, '');
     
     const userMap = new Map<string, {
       id: string;
@@ -225,7 +229,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         id: u.id,
         name: u.name,
         avatar: u.avatar,
-        title: u.title || (u.role === 'admin' ? '平台管理員' : u.role === 'solver' ? '解答專家' : '提問者'),
+        title: u.title || (u.role === 'admin' ? '平台管理員' : u.accountType === 'enterprise' || (u.role as string) === 'enterprise' ? '企業機構' : '一般用戶'),
         role: u.role,
         isExpert: u.verifiedExpert || !!u.verifiedBadge,
         isVerified: u.realNameAuthStatus === 'verified',
@@ -265,14 +269,60 @@ export const Navbar: React.FC<NavbarProps> = ({
     if (!term) return list.slice(0, 6);
 
     return list.filter((u) => {
-      const matchId = (u.id || '').toLowerCase().includes(term);
-      const matchName = (u.name || '').toLowerCase().includes(term);
+      const matchId =
+        (u.id || '').toLowerCase().includes(term) ||
+        (cleanTerm && (u.id || '').toLowerCase().includes(cleanTerm));
+      const matchMemberId =
+        (u.userObj?.memberId || '').toLowerCase().includes(term) ||
+        (cleanTerm && (u.userObj?.memberId || '').toLowerCase().includes(cleanTerm));
+      const matchUsername =
+        (u.userObj?.username || '').toLowerCase().includes(term) ||
+        (cleanTerm && (u.userObj?.username || '').toLowerCase().includes(cleanTerm));
+      const matchEmail =
+        (u.userObj?.email || '').toLowerCase().includes(term) ||
+        (cleanTerm && (u.userObj?.email || '').toLowerCase().includes(cleanTerm));
+      const matchName =
+        (u.name || '').toLowerCase().includes(term) ||
+        (cleanTerm && (u.name || '').toLowerCase().includes(cleanTerm));
+      const matchDisplayName = resolveUserDisplayName(u.id, u.name, availableUsers)
+        .toLowerCase()
+        .includes(term);
+      const userRealName = (
+        (u.userObj?.realNameAuthData as any)?.legalName ||
+        (u.userObj?.realNameAuthData as any)?.realName ||
+        ''
+      ).toLowerCase();
+      const matchRealName = Boolean(
+        userRealName &&
+          (userRealName.includes(term) || (cleanTerm && userRealName.includes(cleanTerm)))
+      );
       const matchTitle = (u.title || '').toLowerCase().includes(term);
       const matchDomain = u.domain && u.domain.toLowerCase().includes(term);
       const matchBio = u.bio && u.bio.toLowerCase().includes(term);
-      const matchSkills = Array.isArray(u.skills) && u.skills.some((sk) => (sk || '').toLowerCase().includes(term));
-      return matchId || matchName || matchTitle || matchDomain || matchBio || matchSkills;
-    }).slice(0, 10);
+      const matchSkills =
+        Array.isArray(u.skills) && u.skills.some((sk) => (sk || '').toLowerCase().includes(term));
+      const aliasId = USER_ALIAS_MAP[u.id];
+      const matchAlias = Boolean(
+        aliasId &&
+          (aliasId.toLowerCase().includes(term) ||
+            (cleanTerm && aliasId.toLowerCase().includes(cleanTerm)))
+      );
+
+      return (
+        matchId ||
+        matchMemberId ||
+        matchUsername ||
+        matchEmail ||
+        matchName ||
+        matchDisplayName ||
+        matchRealName ||
+        matchTitle ||
+        matchDomain ||
+        matchBio ||
+        matchSkills ||
+        matchAlias
+      );
+    }).slice(0, 12);
   }, [availableUsers, solvers, searchQuery]);
 
   // 搜尋專用：匹配問題預覽
@@ -344,9 +394,17 @@ export const Navbar: React.FC<NavbarProps> = ({
     if (target.solverObj) {
       setSelectedSolver(target.solverObj);
       setActiveTab('solver_profile');
+    } else if (target.userObj) {
+      setInspectingUser(target.userObj);
     } else {
-      if (setSearchQuery) setSearchQuery(target.id);
-      setActiveTab('explore');
+      const found = availableUsers.find(
+        (u) => u.id === target.id || (USER_ALIAS_MAP[target.id] && u.id === USER_ALIAS_MAP[target.id])
+      );
+      if (found) {
+        setInspectingUser(found);
+      } else {
+        handleStartChatWithUser(target);
+      }
     }
   };
 
@@ -591,8 +649,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   setIsSearchDropdownOpen(false);
-                  if (searchMode === 'users') {
-                    setActiveTab('solvers');
+                  if (searchMode === 'users' || (searchQuery?.trim() && matchingUsersAndSolvers.length > 0 && (searchQuery.trim().startsWith('@') || matchingQuestionsPreview.length === 0))) {
+                    if (matchingUsersAndSolvers.length > 0) {
+                      handleViewUserProfile(matchingUsersAndSolvers[0]);
+                    } else {
+                      setActiveTab('solvers');
+                    }
                   } else {
                     setActiveTab('explore');
                     setSelectedCategory?.('全部');
@@ -743,17 +805,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                                     </span>
                                   )}
                                   {user.role === 'admin' && (
-                                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 border border-stone-200">
+                                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-200">
                                       平台管理員
                                     </span>
                                   )}
-                                  {user.role === 'questioner' && !user.isExpert && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
-                                      提問者
+                                  {user.userObj?.accountType === 'enterprise' || (user.userObj?.role as string) === 'enterprise' ? (
+                                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-blue-100 text-blue-900 border border-blue-200">
+                                      企業機構
                                     </span>
-                                  )}
+                                  ) : user.role !== 'admin' ? (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
+                                      一般用戶
+                                    </span>
+                                  ) : null}
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] text-stone-500 mt-0.5">
+                                <div className="flex items-center gap-2 text-[10px] text-stone-500 mt-0.5 flex-wrap">
                                   <button
                                     type="button"
                                     onClick={(e) => handleCopyId(e, user.id)}
@@ -766,6 +832,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                                       <span className="text-[9px] text-emerald-600 font-bold">已複製!</span>
                                     )}
                                   </button>
+                                  {user.userObj?.memberId && (
+                                    <span className="font-mono text-purple-700 font-semibold">({user.userObj.memberId})</span>
+                                  )}
                                   {user.title && (
                                     <span className="truncate max-w-[140px] text-stone-600">
                                       · {user.title}
@@ -794,7 +863,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="p-4 rounded-xl bg-stone-50 text-center text-xs text-stone-500 space-y-1">
                         <p className="font-bold text-stone-700">找不到相符的用戶或專家</p>
                         <p className="text-[11px] text-stone-400">
-                          請確認 ID 是否正確（例如 <code className="text-stone-700 font-mono">user-chen</code>、<code className="text-stone-700 font-mono">user-1</code>）或輸入用戶姓名。
+                          請確認 ID 是否正確（例如 <code className="text-stone-700 font-mono">user-chen</code>、<code className="text-stone-700 font-mono">c100000001</code>）或輸入用戶姓名。
                         </p>
                       </div>
                     )}
@@ -817,6 +886,69 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ) : (
                   /* 模式 B：搜尋關鍵字 (問題、方案、討論、內文) */
                   <div className="space-y-3">
+                    {/* 若有關鍵字搜尋且同時匹配到相符用戶或專家：置頂提示 */}
+                    {searchQuery?.trim() && matchingUsersAndSolvers.length > 0 && (
+                      <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/80 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-black text-purple-900">
+                          <div className="flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-purple-600" />
+                            <span>相符會員與專家 ({matchingUsersAndSolvers.length})</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSearchMode('users')}
+                            className="text-[10px] text-purple-700 hover:text-purple-950 font-bold underline cursor-pointer"
+                          >
+                            切換為用戶搜尋 ↗
+                          </button>
+                        </div>
+                        <div className="space-y-1">
+                          {matchingUsersAndSolvers.slice(0, 3).map((user, idx) => (
+                            <div
+                              key={`kw-user-${user.id}-${idx}`}
+                              className="p-2 rounded-lg bg-white border border-purple-100 hover:border-purple-300 transition-all flex items-center justify-between gap-2 shadow-2xs"
+                            >
+                              <div
+                                onClick={() => handleViewUserProfile(user)}
+                                className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
+                              >
+                                <img
+                                  src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                                  alt={user.name}
+                                  className="w-7 h-7 rounded-full object-cover border border-stone-200 shrink-0"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-black text-xs text-stone-900 truncate">
+                                      {user.name}
+                                    </span>
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-900">
+                                      {user.role === 'admin' ? '管理員' : user.userObj?.accountType === 'enterprise' || (user.userObj?.role as string) === 'enterprise' ? '企業機構' : '一般用戶'}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-stone-400">@{user.id}</span>
+                                    {user.userObj?.memberId && (
+                                      <span className="text-[10px] font-mono text-purple-700">({user.userObj.memberId})</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartChatWithUser(user)}
+                                  className="px-2 py-0.5 rounded-md border border-stone-200 hover:border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-[10px] font-bold flex items-center gap-1 cursor-pointer active:scale-95"
+                                  title="與此用戶發起私聊"
+                                >
+                                  <MessageCircle className="w-3 h-3 text-stone-500" />
+                                  <span>私聊</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* 熱門話題標籤 */}
                     <div>
                       <div className="text-[11px] font-bold text-stone-500 mb-1.5 flex items-center gap-1">
@@ -1063,48 +1195,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* 3.5 點數 / 應收帳款快捷膠囊 (僅登入用戶顯示，精簡無多餘外框) */}
+          {/* 3.5 點數快捷膠囊 (僅登入用戶顯示，右上角統一顯示點數不再顯示應收帳款) */}
           {!isGuest && (
             <button
               type="button"
               onClick={() => {
-                if (currentUser.role === 'solver') {
-                  handleOpenDashboard('points_receivables');
-                } else {
-                  handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
-                }
+                handleOpenDashboard('points_receivables', 'points-balance-and-records-section');
               }}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-xs transition-all cursor-pointer active:scale-95 shrink-0 ${
-                currentUser.role === 'solver'
-                  ? 'bg-blue-50/90 hover:bg-blue-100 text-blue-900'
-                  : currentUser.role === 'admin'
+                currentUser.role === 'admin'
                   ? 'bg-purple-50/90 hover:bg-purple-100 text-purple-900'
                   : 'bg-amber-50/90 hover:bg-amber-100 text-amber-950'
               }`}
-              title={currentUser.role === 'solver' ? '應收帳款' : currentUser.role === 'admin' ? '管理員配額' : '點數中心'}
+              title={currentUser.role === 'admin' ? '管理員點數配額' : '點數中心'}
             >
-              {currentUser.role === 'solver' ? (
-                <>
-                  <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span className="font-mono text-[11px] sm:text-xs font-extrabold">
-                    {isNoPaymentMode ? '應收' : `${(currentUser.withheldPoints || 0).toLocaleString()} 點`}
-                  </span>
-                </>
-              ) : currentUser.role === 'admin' ? (
-                <>
-                  <Coins className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                  <span className="font-mono text-[11px] sm:text-xs font-extrabold">
-                    {(getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Coins className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span className="font-mono text-[11px] sm:text-xs font-extrabold">
-                    {(currentUser?.balance || 0).toLocaleString()}
-                  </span>
-                </>
-              )}
+              <Coins className={`w-3.5 h-3.5 shrink-0 ${currentUser.role === 'admin' ? 'text-purple-600' : 'text-amber-600'}`} />
+              <span className="font-mono text-[11px] sm:text-xs font-extrabold">
+                {currentUser.role === 'admin'
+                  ? (getAdminRemainingDailyQuota ? getAdminRemainingDailyQuota(currentUser.id) : (currentUser?.balance || 50000)).toLocaleString()
+                  : (currentUser?.points ?? currentUser?.balance ?? 0).toLocaleString()} 點
+              </span>
             </button>
           )}
 
@@ -1115,9 +1225,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => {
                 openAuthModal('login', 'email');
               }}
-              className="px-3.5 py-1.5 rounded-full bg-stone-900 hover:bg-stone-800 active:scale-95 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+              className="px-3.5 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 border border-stone-300 active:scale-95 text-stone-900 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
             >
-              <LogIn className="w-3.5 h-3.5 text-amber-400" />
+              <LogIn className="w-3.5 h-3.5 text-amber-600" />
               <span>登入</span>
             </button>
           ) : (
@@ -1178,29 +1288,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                           >
                             {currentUser.role === 'admin'
                               ? '管理員'
-                              : currentUser.role === 'solver'
-                              ? '解答者'
-                              : '提問者'}
+                              : currentUser.accountType === 'enterprise' || (currentUser.role as string) === 'enterprise'
+                              ? '企業機構'
+                              : '一般用戶'}
                           </span>
                         </div>
-                        {(currentUser.role !== 'questioner' || currentUser.showQuestionerTitle) && currentUser.title && (
+                        {currentUser.title && (
                           <p className="text-[10px] text-stone-500 truncate">{currentUser.title}</p>
                         )}
                       </div>
                     </button>
-
-                    {/* 用戶名稱右方切換鍵 */}
-                    {currentUser.role !== 'admin' && (
-                      <button
-                        type="button"
-                        onClick={() => switchRole(currentUser.role === 'solver' ? 'questioner' : 'solver')}
-                        className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer shadow-2xs shrink-0"
-                        title="切換提問者 / 解答者身份"
-                      >
-                        <RefreshCw className="w-3 h-3 text-stone-950" />
-                        <span>切換{currentUser.role === 'solver' ? '提問' : '解答'}</span>
-                      </button>
-                    )}
                   </div>
 
                   {currentUser.role === 'solver' && (
@@ -1935,6 +2032,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           setSelectedSolver(null);
         }}
       />
+
+      {/* 搜尋點選用戶之詳細資訊彈窗 (支援全平台所有註冊會員與專家) */}
+      {inspectingUser && (
+        <AdminUserProfileModal
+          user={inspectingUser}
+          onClose={() => setInspectingUser(null)}
+          onOpenChat={(targetUser) => {
+            setInspectingUser(null);
+            handleStartChatWithUser(targetUser);
+          }}
+        />
+      )}
     </header>
   );
 };

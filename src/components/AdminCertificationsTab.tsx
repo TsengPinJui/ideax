@@ -425,7 +425,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                             : 'bg-blue-100 text-blue-900 border-blue-200'
                         }`}
                       >
-                        {user.role === 'admin' ? '管理員' : user.role === 'solver' ? '解答者' : '提問者'}
+                        {user.role === 'admin' ? '管理員' : user.accountType === 'enterprise' || (user.role as string) === 'enterprise' ? '企業機構' : '一般用戶'}
                       </span>
                       {user.isBlocked && (
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
@@ -647,7 +647,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                   </h4>
                   <p className="text-xs text-stone-500">
                     對象用戶：<strong>{actionModal.targetUser.name}</strong>（
-                    {actionModal.targetUser.role === 'solver' ? '解答者' : '提問者'}）
+                    {actionModal.targetUser.accountType === 'enterprise' || (actionModal.targetUser.role as string) === 'enterprise' ? '企業機構' : '一般用戶'}）
                   </p>
                 </div>
               </div>
@@ -740,7 +740,7 @@ export const AdminCertificationsTab: React.FC<AdminCertificationsTabProps> = ({
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-black text-base text-stone-900">{inspectUser.name}</h4>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
-                      {inspectUser.role === 'solver' ? '解答專家' : '提問者'}
+                      {inspectUser.role === 'admin' ? '管理員' : inspectUser.accountType === 'enterprise' || (inspectUser.role as string) === 'enterprise' ? '企業機構' : '一般用戶'}
                     </span>
                     <span className="text-[10px] font-mono text-stone-400">ID: {inspectUser.id}</span>
                   </div>

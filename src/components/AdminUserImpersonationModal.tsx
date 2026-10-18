@@ -55,8 +55,8 @@ export const AdminUserImpersonationModal: React.FC<AdminUserImpersonationModalPr
   const solverInfo = solvers.find((s) => s.id === user.id || s.name === user.name);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="max-w-5xl w-full h-[94vh] flex flex-col bg-stone-50 rounded-3xl shadow-2xl border-2 border-amber-400 overflow-hidden relative my-2">
+    <div className="fixed inset-0 z-[120] w-full h-full min-h-screen bg-stone-50 flex flex-col overflow-hidden animate-in fade-in duration-150">
+      <div className="w-full h-full flex flex-col bg-stone-50 overflow-hidden">
         {/* ========================================================================= */}
         {/* 頂部管理員「唯讀視角」警示橫幅 */}
         {/* ========================================================================= */}
@@ -285,9 +285,8 @@ export const AdminUserImpersonationModal: React.FC<AdminUserImpersonationModalPr
                   <div className="text-2xl font-black text-stone-900 font-mono">
                     {(user.balance || 0).toLocaleString()} <span className="text-xs font-normal text-stone-500">點</span>
                   </div>
-                  <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between text-[11px] text-stone-400">
-                    <span>折合台幣約</span>
-                    <span className="font-mono font-bold text-stone-700">NT$ {((user.balance || 0) * 1).toLocaleString()}</span>
+                  <div className="pt-2 border-t border-stone-200/60 text-[11px] text-stone-400">
+                    可用於平台提問發布、懸賞、預約諮詢與方案解鎖
                   </div>
                 </div>
 
@@ -297,7 +296,7 @@ export const AdminUserImpersonationModal: React.FC<AdminUserImpersonationModalPr
                     <Lock className="w-4 h-4 text-amber-600" />
                   </div>
                   <div className="text-2xl font-black text-amber-900 font-mono">
-                    NT$ {(user.withheldPoints || 0).toLocaleString()}
+                    {(user.withheldPoints || 0).toLocaleString()} <span className="text-xs font-normal text-amber-800">點</span>
                   </div>
                   <div className="pt-2 border-t border-amber-200/60 text-[11px] text-amber-700">
                     等待解答確認驗收後撥付

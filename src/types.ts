@@ -2,7 +2,7 @@
  * 創點子 IdeaX - 型別系統定義
  */
 
-export type UserRole = 'questioner' | 'solver' | 'admin';
+export type UserRole = 'questioner' | 'solver' | 'admin' | 'user' | 'enterprise';
 
 export interface DeviceAccount {
   userId: string;

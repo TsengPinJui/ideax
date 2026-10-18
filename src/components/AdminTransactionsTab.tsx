@@ -658,7 +658,7 @@ export const AdminTransactionsTab: React.FC = () => {
               <option value="all">全站所有用戶交易</option>
               {availableUsers.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.name} ({u.role === 'admin' ? '管理員' : u.role === 'solver' ? '解答者' : '提問者'})
+                  {u.name} ({u.role === 'admin' ? '管理員' : u.accountType === 'enterprise' || (u.role as string) === 'enterprise' ? '企業機構' : '一般用戶'})
                 </option>
               ))}
             </select>

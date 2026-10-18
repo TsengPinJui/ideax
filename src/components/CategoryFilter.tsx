@@ -151,7 +151,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             }}
             className={`px-3.5 py-1.5 md:px-4 md:py-2 lg:px-5 lg:py-2 rounded-full text-xs sm:text-sm md:text-base font-bold whitespace-nowrap transition-all cursor-pointer border ${
               selectedCategory === '全部' && (!specialZone || specialZone === 'all')
-                ? 'bg-stone-300 text-stone-950 border-stone-400 shadow-2xs font-black'
+                ? 'bg-stone-200 text-stone-950 border-stone-300 shadow-2xs font-black'
                 : 'bg-transparent text-stone-600 hover:text-stone-950 hover:bg-stone-100 border-transparent'
             }`}
           >
@@ -159,7 +159,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             <span
               className={`text-[11px] md:text-xs font-mono ml-0.5 ${
                 selectedCategory === '全部' && (!specialZone || specialZone === 'all')
-                  ? 'text-stone-900 font-black'
+                  ? 'text-stone-800 font-black'
                   : 'text-stone-400'
               }`}
             >

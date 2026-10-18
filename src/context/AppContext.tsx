@@ -1567,7 +1567,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return MOCK_CONVERSATIONS;
   });
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const fromUrl = urlParams.get('conv') || urlParams.get('cid') || urlParams.get('chatId') || urlParams.get('id');
+        if (fromUrl) return fromUrl;
+        return localStorage.getItem(`${STORAGE_KEY_PREFIX}active_conversation_id`) || null;
+      }
+    } catch {}
+    return null;
+  });
   const [isNotificationsSidebarOpen, setIsNotificationsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>('keywords');
@@ -2034,6 +2045,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}conversations`, JSON.stringify(conversations));
   }, [conversations]);
+
+  useEffect(() => {
+    if (activeConversationId) {
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}active_conversation_id`, activeConversationId);
+      } catch {}
+    } else {
+      try {
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}active_conversation_id`);
+      } catch {}
+    }
+  }, [activeConversationId]);
 
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY_PREFIX}bookmarks`, JSON.stringify(bookmarkedQuestionIds));
@@ -6798,43 +6821,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Action: Start or open direct chat
   const startDirectChat = (
-    targetUser: { id: string; name: string; avatar: string; title: string },
+    targetUser: { id: string; name: string; avatar: string; title: string; accountType?: string; role?: string },
     question?: Question
   ): string => {
     if (currentUser.id === 'user-guest') {
       promptLogin('訪客請先登入帳號以開始私訊交流');
       return '';
     }
+
+    const isMe = (id?: string) =>
+      id === currentUser.id ||
+      (currentUser.role === 'admin' && (id === 'user-admin' || id === 'a000000001'));
+
     // Check if conversation already exists between currentUser and targetUser
     const existing = conversations.find(
-      (c) => !c.isGroup && c.participantIds.includes(currentUser.id) && c.participantIds.includes(targetUser.id)
+      (c) =>
+        !c.isGroup &&
+        c.participantIds &&
+        c.participantIds.some((id) => isMe(id)) &&
+        c.participantIds.includes(targetUser.id)
     );
 
     if (existing) {
       setActiveConversationId(existing.id);
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}active_conversation_id`, existing.id);
+      } catch {}
       setConversations((prev) =>
         prev.map((c) => (c.id === existing.id ? { ...c, unreadCount: 0 } : c))
       );
       return existing.id;
     }
 
-    const targetIsSolver = targetUser.title?.includes('顧問') || targetUser.title?.includes('專家') || targetUser.title?.includes('總監');
-    const convRole: 'questioner' | 'solver' = currentUser.role === 'solver' && !targetIsSolver
-      ? 'solver'
-      : 'questioner';
+    const targetRole = targetUser.accountType === 'enterprise' || targetUser.role === 'enterprise' ? '企業機構' : '一般用戶';
+    const myRoleTitle = currentUser.role === 'admin' ? (currentUser.title || '平台管理員') : (currentUser.title || '一般用戶');
 
     const newConv: ChatConversation = {
       id: `conv-${Date.now()}`,
       participantIds: [currentUser.id, targetUser.id],
-      conversationRole: convRole,
+      conversationRole: 'questioner',
       participantDetails: [
         {
           id: currentUser.id,
           name: currentUser.name,
           avatar: currentUser.avatar,
-          title: convRole === 'solver' ? (currentUser.title || '領域顧問') : '',
+          title: myRoleTitle,
         },
-        targetUser,
+        {
+          id: targetUser.id,
+          name: targetUser.name,
+          avatar: targetUser.avatar,
+          title: targetUser.title || targetRole,
+        },
       ],
       relatedQuestionId: question?.id,
       relatedQuestionTitle: question?.title,
@@ -6857,6 +6895,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setConversations((prev) => [newConv, ...prev]);
     setActiveConversationId(newConv.id);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}active_conversation_id`, newConv.id);
+      const savedConvs = localStorage.getItem(`${STORAGE_KEY_PREFIX}conversations`);
+      const parsedConvs = savedConvs ? JSON.parse(savedConvs) : [];
+      localStorage.setItem(
+        `${STORAGE_KEY_PREFIX}conversations`,
+        JSON.stringify([newConv, ...parsedConvs.filter((c: any) => c.id !== newConv.id)])
+      );
+    } catch {}
+    void pushConversationToCloud(newConv, currentUser.id);
     return newConv.id;
   };
 
@@ -6891,6 +6939,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       targetParticipantIds = participantIds.filter((id) => {
         const u = availableUsers.find((user) => user.id === id) || (id === currentUser.id ? currentUser : null);
         return isQualifiedForCoreAdminGroup(u);
+      });
+    }
+
+    // 嚴格規則：一般用戶建立群組時，不可拉非私聊對象、管理員或測試帳號
+    if (currentUser.role !== 'admin') {
+      const allowedPartnerIds = new Set<string>();
+      conversations.forEach((conv) => {
+        if (!conv.isGroup && Array.isArray(conv.participantIds)) {
+          conv.participantIds.forEach((pid) => {
+            if (pid && pid !== currentUser.id) allowedPartnerIds.add(pid);
+          });
+        }
+      });
+
+      targetParticipantIds = targetParticipantIds.filter((id) => {
+        if (!allowedPartnerIds.has(id)) return false;
+        const u = availableUsers.find((user) => user.id === id);
+        if (!u) return false;
+        const isAdmin =
+          u.role === 'admin' ||
+          u.accountType === 'admin' ||
+          u.id === 'user-admin' ||
+          u.id === 'a000000001' ||
+          u.id.startsWith('a') ||
+          u.email === 'operations@ideax.io';
+        if (isAdmin) return false;
+        const isTest =
+          u.isTestAccount === true ||
+          u.isSimulated === true ||
+          u.id.startsWith('test-') ||
+          u.id.startsWith('solver-') ||
+          u.id.startsWith('user-author-') ||
+          u.id === 'user-guest' ||
+          u.id === 'c000000000' ||
+          u.name?.includes('測試') ||
+          u.username?.includes('test') ||
+          isTestAccountUserId(u.id);
+        if (isTest) return false;
+        return true;
       });
     }
 

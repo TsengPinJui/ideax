@@ -91,11 +91,11 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
             subLabel: '綜合市場大廳',
             icon: '🌐',
             count: zoneCounts.all,
-            activeClasses: 'bg-stone-300 text-stone-950 border-stone-400 ring-2 ring-stone-400/60 shadow-sm font-black',
+            activeClasses: 'bg-stone-200 text-stone-950 border-stone-300 ring-2 ring-stone-300/60 shadow-sm font-black',
             badgeActiveClasses: 'bg-white text-stone-900 font-bold shadow-2xs',
             idleClasses: 'bg-stone-100/70 hover:bg-stone-100 text-stone-700 border-stone-200/90 hover:border-stone-300 shadow-2xs',
             badgeIdleClasses: 'bg-stone-200/70 text-stone-600',
-            accentDot: 'bg-stone-400',
+            accentDot: 'bg-stone-300',
             title: '回到全部問題市場看板大廳',
           },
         ]

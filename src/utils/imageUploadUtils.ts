@@ -6,6 +6,9 @@
 
 export const MAX_IMAGE_FILE_SIZE_MB = 2;
 export const MAX_IMAGE_FILE_SIZE_BYTES = MAX_IMAGE_FILE_SIZE_MB * 1024 * 1024;
+
+export const MAX_AVATAR_FILE_SIZE_MB = 6;
+export const MAX_AVATAR_FILE_SIZE_BYTES = MAX_AVATAR_FILE_SIZE_MB * 1024 * 1024;
 export const ACCEPTED_IMAGE_TYPES = 'image/jpeg,image/png,image/webp,image/gif';
 
 export function formatFileSize(bytes: number): string {

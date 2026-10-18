@@ -7,6 +7,10 @@ export const DEACTIVATED_USER_NAME = '此帳號已註銷';
 export const DEACTIVATED_USER_AVATAR =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239ca3af"%3E%3Cpath d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/%3E%3C/svg%3E';
 
+// 新用戶預設灰色人形頭像（深灰色圓形頭部與平滑圓弧肩部人形剪影）
+export const DEFAULT_GREY_SILHOUETTE_AVATAR =
+  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"%3E%3Ccircle cx="120" cy="74" r="46" fill="%232b2c3a"/%3E%3Cpath d="M28 214 C28 152, 68 136, 120 136 C172 136, 212 152, 212 214 Z" fill="%232b2c3a"/%3E%3C/svg%3E';
+
 export const isGuestUser = (u: any): boolean => {
   if (!u || !u.id) return true;
   if (u.isGuest === true) return true;
@@ -528,8 +532,12 @@ export function deduplicateUsersList(
     if (existingIdx === undefined && normUsername) {
       existingIdx = byUsername.get(normUsername);
     }
-    if (existingIdx === undefined && canMatchByName) {
-      existingIdx = byName.get(normName);
+    // 絕不可僅因姓名相同就誤把兩位不同會員合併與刪除（真實註冊會員必須依明確的 id, memberId, email, username 判定）
+    if (existingIdx === undefined && canMatchByName && Boolean(CANONICAL_CORE_PROFILES[u.id])) {
+      const candidateIdx = byName.get(normName);
+      if (candidateIdx !== undefined && Boolean(CANONICAL_CORE_PROFILES[uniqueUsers[candidateIdx].id])) {
+        existingIdx = candidateIdx;
+      }
     }
 
     if (existingIdx !== undefined) {
@@ -767,7 +775,7 @@ export function getUserNameColorClass(
  */
 export function getDefaultAvatarForUser(userId?: string, role?: string, accountType?: string): string {
   if (!userId) {
-    return 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
+    return DEFAULT_GREY_SILHOUETTE_AVATAR;
   }
   const aliasId = USER_ALIAS_MAP[userId];
   const canon = CANONICAL_CORE_PROFILES[userId] || (aliasId ? CANONICAL_CORE_PROFILES[aliasId] : undefined);
@@ -784,8 +792,8 @@ export function getDefaultAvatarForUser(userId?: string, role?: string, accountT
     'solver-8': 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
     'user-author-2': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
     'user-author-3': 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
-    c000000000: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    'user-guest': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    c000000000: DEFAULT_GREY_SILHOUETTE_AVATAR,
+    'user-guest': DEFAULT_GREY_SILHOUETTE_AVATAR,
   };
   if (mockAvatars[userId]) {
     return mockAvatars[userId];
@@ -798,10 +806,7 @@ export function getDefaultAvatarForUser(userId?: string, role?: string, accountT
   if (userId.startsWith('b') || role === 'enterprise' || accountType === 'enterprise') {
     return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=150&auto=format&fit=crop&q=80';
   }
-  if (role === 'solver') {
-    return 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80';
-  }
-  return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+  return DEFAULT_GREY_SILHOUETTE_AVATAR;
 }
 
 /**

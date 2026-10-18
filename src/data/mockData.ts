@@ -2244,21 +2244,38 @@ export const isRealRegisteredUser = (user?: User | null): boolean => {
   if (user.id === 'user-guest') return false;
   if (user.isTestAccount || user.isSimulated) return false;
 
-  const testIds = [
+  // 1. 若具有 Firebase Auth UID 或明確標記為真實註冊會員，且非模擬帳號，即為真實會員
+  if (user.authUid && !user.id.startsWith('test-') && !user.id.startsWith('mock-')) {
+    return true;
+  }
+  if ((user as any).isReal || (user as any).isRealAccount) {
+    return true;
+  }
+
+  // 2. 徹底排除所有預置展示與模擬帳號（包含林宏遠、陳志豪、張美玲、智動未來等假帳號）
+  const mockSeedIds = [
     'user-guest',
     'c000000000',
+    'c100000001',
+    'c100000003',
+    'c200000002',
+    'b100000001',
     'user-questioner',
     'solver-1',
     'solver-2',
     'solver-3',
     'solver-4',
     'solver-5',
+    'solver-6',
+    'solver-7',
+    'solver-8',
     'user-author-1',
     'user-author-2',
     'user-author-3',
   ];
-  if (testIds.includes(user.id)) return false;
+  if (mockSeedIds.includes(user.id)) return false;
 
+  // 3. 排除測試前綴與虛擬創作者前綴
   if (
     user.id.startsWith('test-') ||
     user.id.startsWith('test_') ||
@@ -2273,6 +2290,7 @@ export const isRealRegisteredUser = (user?: User | null): boolean => {
     return false;
   }
 
+  // 4. 排除官方預設展示 seed 信箱
   if (user.email && user.email.endsWith('@ideax.community')) {
     return false;
   }
@@ -2320,7 +2338,8 @@ export const isMockTransactionId = (id: string): boolean => {
 
 export const isMockConversationId = (id: string): boolean => {
   if (!id) return false;
-  if (id.startsWith('conv-') || id.startsWith('mock-') || id.startsWith('chat-mock-')) return true;
+  if (id.startsWith('mock-') || id.startsWith('chat-mock-')) return true;
+  if (/^conv-[1-9]$/.test(id) || id === 'conv-admin-1' || id === 'conv-admin-2') return true;
   return false;
 };
 

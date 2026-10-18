@@ -18,8 +18,7 @@ export default defineConfig(() => {
       'process.env.DIFY_AICRM_API_KEY': JSON.stringify(''),
       'process.env.DIFY_CS_API_KEY': JSON.stringify(''),
       'process.env.DIFY_MARKET_ADVISOR_API_KEY': JSON.stringify(''),
-      // 管理員 Email 白名單（逗號分隔）。只有列在這裡、且在 Firebase 完成 Email 驗證的帳號可登入後台
-      'process.env.ADMIN_EMAILS': JSON.stringify(process.env.ADMIN_EMAILS || ''),
+      'process.env.ADMIN_EMAILS': JSON.stringify(process.env.ADMIN_EMAILS || 'operations@ideax.io,john25893619@gmail.com'),
       'process.env.DIFY_AICRM_WEB_URL': JSON.stringify(process.env.DIFY_AICRM_WEB_URL || 'https://udify.app/agent/BnAiF81AGw454x0u'),
     },
     server: {

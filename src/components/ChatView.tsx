@@ -15,6 +15,7 @@ import {
   downloadContractFile 
 } from '../utils/contractGenerator';
 import { resolveUserDisplayName, getUserNameColorClass } from '../utils/userDisplay';
+import { isTestAccountUserId } from '../data/mockData';
 import {
   MessageSquare,
   Send,
@@ -404,69 +405,187 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
   const isQualifiedForCore = currentUser.role === 'admin' || isBella(currentUser);
 
-  // 分離兩種身份各自面對的對話清單（除了管理員身份或貝拉入群組外，其餘用戶不會加入或看到平台核心管理群）
-  const questionerConversations = conversations
-    .filter((c) => (c.conversationRole || 'questioner') === 'questioner')
-    .filter((c) => !isCoreAdminGroup(c) || isQualifiedForCore);
+  // 判定是否為當前用戶自身的 ID (相容 a000000001 與 user-admin)
+  const isMe = useCallback(
+    (userId?: string) => {
+      if (!userId) return false;
+      if (userId === currentUser.id) return true;
+      if (currentUser.role === 'admin' && (userId === 'user-admin' || userId === 'a000000001')) return true;
+      return false;
+    },
+    [currentUser.id, currentUser.role]
+  );
 
-  const solverConversations = conversations
-    .filter((c) => c.conversationRole === 'solver')
-    .filter((c) => !isCoreAdminGroup(c) || isQualifiedForCore);
+  // 取得對話中另一方的詳細資料
+  const getOtherParticipant = useCallback(
+    (conv: ChatConversation) => {
+      if (conv.isGroup) return null;
+      if (Array.isArray(conv.participantDetails) && conv.participantDetails.length > 0) {
+        const found = conv.participantDetails.find((p) => !isMe(p.id));
+        if (found) return found;
+      }
+      if (Array.isArray(conv.participantIds)) {
+        const otherId = conv.participantIds.find((id) => !isMe(id));
+        if (otherId) {
+          const u = availableUsers.find((user) => user.id === otherId);
+          if (u) {
+            return {
+              id: u.id,
+              name: u.name,
+              avatar: u.avatar,
+              title: u.title || (u.accountType === 'enterprise' || (u.role as string) === 'enterprise' ? '企業機構' : '一般用戶'),
+            };
+          }
+          return { id: otherId, name: '對話用戶', avatar: '', title: '一般用戶' };
+        }
+      }
+      return null;
+    },
+    [isMe, availableUsers]
+  );
 
   // Admin chat categories & Vendor group logic
   const isAdmin = currentUser.role === 'admin';
-  const [adminChatTab, setAdminChatTab] = useState<'general' | 'vendors' | 'admins'>('general');
+  const [adminChatTab, setAdminChatTab] = useState<'all' | 'general' | 'vendors' | 'admins'>('all');
 
-  const isVendorUser = (userOrDetail: { title?: string; id?: string }) => {
-    const title = userOrDetail.title || '';
-    return title.includes('廠商') || title.includes('企業') || title.includes('供應商') || title.includes('品牌') || title.includes('科技') || title.includes('合作');
-  };
+  const adminAllConversations = React.useMemo(() => {
+    return conversations.filter((c) => {
+      if (isCoreAdminGroup(c)) return isQualifiedForCore;
+      if (c.isGroup) return true;
+      if (c.participantIds?.some((id) => isMe(id))) return true;
+      if (c.participantDetails?.some((p) => isMe(p.id))) return true;
+      return false;
+    });
+  }, [conversations, isQualifiedForCore, isMe]);
 
-  const adminGeneralConversations = conversations.filter((c) => {
-    if (c.isGroup) return false;
-    const other = c.participantDetails.find((p) => p.id !== currentUser.id);
-    if (!other) return false;
-    const isOtherAdmin = availableUsers.find((u) => u.id === other.id)?.role === 'admin';
-    return !isOtherAdmin && !isVendorUser(other);
-  });
+  const adminGeneralConversations = React.useMemo(() => {
+    return adminAllConversations.filter((c) => {
+      if (c.isGroup) return false;
+      const other = getOtherParticipant(c);
+      if (!other) return false;
+      const isOtherAdmin = availableUsers.find((u) => u.id === other.id)?.role === 'admin' || other.id.startsWith('a') || other.id === 'user-admin';
+      const isOtherVendor = other.title?.includes('廠商') || other.title?.includes('企業') || other.id.startsWith('b');
+      return !isOtherAdmin && !isOtherVendor;
+    });
+  }, [adminAllConversations, getOtherParticipant, availableUsers]);
 
-  const adminVendorConversations = conversations.filter((c) => {
-    if (c.isGroup) return c.groupName?.includes('廠商') || c.groupName?.includes('企業') || c.participantDetails.some((p) => isVendorUser(p));
-    const other = c.participantDetails.find((p) => p.id !== currentUser.id);
-    return other ? isVendorUser(other) : false;
-  });
+  const adminVendorConversations = React.useMemo(() => {
+    return adminAllConversations.filter((c) => {
+      if (c.isGroup) return c.groupName?.includes('廠商') || c.groupName?.includes('企業') || c.participantDetails?.some((p) => p.title?.includes('企業') || p.title?.includes('廠商'));
+      const other = getOtherParticipant(c);
+      if (!other) return false;
+      return other.title?.includes('廠商') || other.title?.includes('企業') || other.id.startsWith('b');
+    });
+  }, [adminAllConversations, getOtherParticipant]);
 
-  const adminAdminsConversations = conversations.filter((c) => {
-    if (isCoreAdminGroup(c)) return isQualifiedForCore;
-    if (c.isGroup) return true;
-    const other = c.participantDetails.find((p) => p.id !== currentUser.id);
-    if (!other) return false;
-    const isOtherAdmin = availableUsers.find((u) => u.id === other.id)?.role === 'admin';
-    return isOtherAdmin || isBella(other);
-  });
+  const adminAdminsConversations = React.useMemo(() => {
+    return adminAllConversations.filter((c) => {
+      if (isCoreAdminGroup(c)) return isQualifiedForCore;
+      if (c.isGroup) return true;
+      const other = getOtherParticipant(c);
+      if (!other) return false;
+      const isOtherAdmin = availableUsers.find((u) => u.id === other.id)?.role === 'admin' || other.id.startsWith('a') || other.id === 'user-admin';
+      return isOtherAdmin || isBella(other);
+    });
+  }, [adminAllConversations, getOtherParticipant, isQualifiedForCore, availableUsers, isBella]);
 
-  const activeAdminList = adminChatTab === 'general'
-    ? adminGeneralConversations
-    : adminChatTab === 'vendors'
-    ? adminVendorConversations
-    : adminAdminsConversations;
+  const activeAdminList = React.useMemo(() => {
+    switch (adminChatTab) {
+      case 'general': return adminGeneralConversations;
+      case 'vendors': return adminVendorConversations;
+      case 'admins': return adminAdminsConversations;
+      case 'all':
+      default:
+        return adminAllConversations;
+    }
+  }, [adminChatTab, adminGeneralConversations, adminVendorConversations, adminAdminsConversations, adminAllConversations]);
 
-  // 當前身份下的對話列表（支援搜尋）
-  const currentRoleConversations = listRoleMode === 'questioner' ? questionerConversations : solverConversations;
-  const currentConversationsToDisplay = isAdmin ? activeAdminList : currentRoleConversations;
+  // 一般用戶：全量對話清單（不再區分提問者與解答者）
+  const generalUserConversations = React.useMemo(() => {
+    return conversations.filter((c) => {
+      if (isCoreAdminGroup(c)) return isQualifiedForCore;
+      if (c.participantIds?.some((id) => isMe(id))) return true;
+      if (c.participantDetails?.some((p) => isMe(p.id))) return true;
+      return false;
+    });
+  }, [conversations, isQualifiedForCore, isMe]);
+
+  const currentConversationsToDisplay = isAdmin ? activeAdminList : generalUserConversations;
+
+  // 當管理員開啟某個私聊時，若當前分類找不到該對話，自動切換至「全部」標籤確保立即可見
+  useEffect(() => {
+    if (!activeConversationId || !isAdmin) return;
+    const isVisibleInCurrent = activeAdminList.some((c) => c.id === activeConversationId);
+    if (!isVisibleInCurrent) {
+      setAdminChatTab('all');
+    }
+  }, [activeConversationId, isAdmin, activeAdminList]);
 
   const filteredConversations = currentConversationsToDisplay.filter((conv) => {
-    const nameStr = conv.isGroup ? conv.groupName : conv.participantDetails.find((p) => p.id !== currentUser.id)?.name;
+    const other = getOtherParticipant(conv);
+    const nameStr = conv.isGroup ? conv.groupName : (other?.name || conv.participantDetails?.find((p) => !isMe(p.id))?.name);
     const matchName = nameStr?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchQuestion = conv.relatedQuestionTitle?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchLast = conv.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase());
     return !searchQuery.trim() || matchName || matchQuestion || matchLast;
   });
 
-  // Group creation modal state
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
+  // 取得當前用戶所有 1 對 1 私聊對象的 ID 清單（排除群組）
+  const privateChatPartnerIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    conversations.forEach((conv) => {
+      if (!conv.isGroup && Array.isArray(conv.participantIds)) {
+        conv.participantIds.forEach((pid) => {
+          if (pid && pid !== currentUser.id) {
+            ids.add(pid);
+          }
+        });
+      }
+    });
+    return ids;
+  }, [conversations, currentUser.id]);
+
+  // 群組成員挑選名單：一般用戶僅能挑選曾私聊過的對象，且不可拉管理員與測試帳號
+  const eligibleGroupMembers = React.useMemo(() => {
+    return availableUsers.filter((u) => {
+      if (!u || u.id === currentUser.id) return false;
+      if (currentUser.role !== 'admin') {
+        // 1. 嚴格阻擋管理員
+        const isAdmin =
+          u.role === 'admin' ||
+          u.accountType === 'admin' ||
+          u.id === 'user-admin' ||
+          u.id === 'a000000001' ||
+          u.id.startsWith('a') ||
+          u.email === 'operations@ideax.io';
+        if (isAdmin) return false;
+
+        // 2. 嚴格阻擋測試帳號與模擬創作者
+        const isTest =
+          u.isTestAccount === true ||
+          u.isSimulated === true ||
+          u.id.startsWith('test-') ||
+          u.id.startsWith('solver-') ||
+          u.id.startsWith('user-author-') ||
+          u.id === 'user-guest' ||
+          u.id === 'c000000000' ||
+          u.name?.includes('測試') ||
+          u.username?.includes('test') ||
+          isTestAccountUserId(u.id);
+        if (isTest) return false;
+
+        // 3. 必須是「與自己已有 1 對 1 私聊紀錄」的對象（其他人不可拉）
+        if (!privateChatPartnerIds.has(u.id)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [availableUsers, currentUser.id, currentUser.role, privateChatPartnerIds]);
 
   // 當前選中的對話 (若無選中，則為 null)
   const activeConversation = activeConversationId
@@ -477,7 +596,25 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
   const lockedConversationRole: 'questioner' | 'solver' =
     activeConversation?.conversationRole || 'questioner';
 
-  // 已移除：自動同步 activeConversationId 於首次進入，以確保先進列表而非直達某個對話。
+  // 重新整理時自動還原或保持選中的對話對象，避免對象消失或空白
+  useEffect(() => {
+    if (!activeConversationId && currentConversationsToDisplay.length > 0) {
+      let savedId: string | null = null;
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        savedId = urlParams.get('conv') || urlParams.get('cid') || urlParams.get('chatId') || urlParams.get('id');
+        if (!savedId) {
+          savedId = localStorage.getItem('ideax_mvp_v3_active_conversation_id') || localStorage.getItem('ideax_active_conversation_id');
+        }
+      }
+      const matched = savedId ? currentConversationsToDisplay.find((c) => c.id === savedId) : null;
+      if (matched) {
+        setActiveConversationId(matched.id);
+      } else if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+        setActiveConversationId(currentConversationsToDisplay[0].id);
+      }
+    }
+  }, [activeConversationId, currentConversationsToDisplay, setActiveConversationId]);
 
   // 切換對話時，在手機端直達聊天室並平滑捲到底部
   useEffect(() => {
@@ -578,17 +715,28 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
     }
   };
 
-  const otherParticipant = activeConversation?.participantDetails.find(
-    (p) => p.id !== currentUser.id
-  ) || {
-    id: 'unknown',
-    name: '諮詢夥伴',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-    title: lockedConversationRole === 'questioner' ? '平台認證解答專家' : '',
-  };
+  const otherParticipant = activeConversation
+    ? getOtherParticipant(activeConversation) ||
+      activeConversation.participantDetails?.find((p) => !isMe(p.id)) ||
+      activeConversation.participantDetails?.find((p) => p.id !== currentUser.id) || {
+        id: 'partner',
+        name: '諮詢夥伴',
+        avatar: '',
+        title: lockedConversationRole === 'questioner' ? '平台認證解答專家' : '',
+      }
+    : null;
 
   const handleSelectConversation = (id: string) => {
     setActiveConversationId(id);
+    try {
+      localStorage.setItem('ideax_mvp_v3_active_conversation_id', id);
+      localStorage.setItem('ideax_active_conversation_id', id);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('conv', id);
+        window.history.replaceState(null, '', url.toString());
+      }
+    } catch {}
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
     );
@@ -611,11 +759,10 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
 
   const handleSwitchListRole = (newRole: 'questioner' | 'solver') => {
     setListRoleMode(newRole);
-    const targetList = newRole === 'questioner' ? questionerConversations : solverConversations;
-    if (targetList.length > 0) {
-      const match = targetList.find((c) => c.id === activeConversationId);
+    if (generalUserConversations.length > 0) {
+      const match = generalUserConversations.find((c: ChatConversation) => c.id === activeConversationId);
       if (!match) {
-        setActiveConversationId(targetList[0].id);
+        setActiveConversationId(generalUserConversations[0].id);
       }
     }
   };
@@ -1211,67 +1358,56 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   {isAdmin ? (
-                    <div className="grid grid-cols-3 p-1 bg-stone-100 rounded-xl gap-1 w-full">
+                    <div className="grid grid-cols-4 p-1 bg-stone-100 rounded-xl gap-1 w-full text-center">
+                      <button
+                        type="button"
+                        onClick={() => setAdminChatTab('all')}
+                        className={`py-1.5 px-0.5 rounded-lg text-[10.5px] font-bold transition-all flex items-center justify-center cursor-pointer ${
+                          adminChatTab === 'all'
+                            ? 'bg-white text-stone-950 shadow-xs ring-1 ring-stone-950/5 font-black'
+                            : 'text-stone-500 hover:text-stone-900'
+                        }`}
+                      >
+                        <span>全部 ({adminAllConversations.length})</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => setAdminChatTab('general')}
-                        className={`py-1.5 px-1 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        className={`py-1.5 px-0.5 rounded-lg text-[10.5px] font-bold transition-all flex items-center justify-center cursor-pointer ${
                           adminChatTab === 'general'
                             ? 'bg-white text-stone-950 shadow-xs ring-1 ring-stone-950/5 font-black'
                             : 'text-stone-500 hover:text-stone-900'
                         }`}
                       >
-                        <span>一般用戶 ({adminGeneralConversations.length})</span>
+                        <span>一般 ({adminGeneralConversations.length})</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setAdminChatTab('vendors')}
-                        className={`py-1.5 px-1 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        className={`py-1.5 px-0.5 rounded-lg text-[10.5px] font-bold transition-all flex items-center justify-center cursor-pointer ${
                           adminChatTab === 'vendors'
                             ? 'bg-white text-stone-950 shadow-xs ring-1 ring-stone-950/5 font-black'
                             : 'text-stone-500 hover:text-stone-900'
                         }`}
                       >
-                        <span>廠商 ({adminVendorConversations.length})</span>
+                        <span>企業 ({adminVendorConversations.length})</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setAdminChatTab('admins')}
-                        className={`py-1.5 px-1 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        className={`py-1.5 px-0.5 rounded-lg text-[10.5px] font-bold transition-all flex items-center justify-center cursor-pointer ${
                           adminChatTab === 'admins'
                             ? 'bg-white text-stone-950 shadow-xs ring-1 ring-stone-950/5 font-black'
                             : 'text-stone-500 hover:text-stone-900'
                         }`}
                       >
-                        <span>管理員 ({adminAdminsConversations.length})</span>
+                        <span>團隊 ({adminAdminsConversations.length})</span>
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 p-1 bg-stone-100 rounded-xl gap-1 w-full">
-                      <button
-                        type="button"
-                        onClick={() => handleSwitchListRole('questioner')}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          listRoleMode === 'questioner'
-                            ? 'bg-white text-stone-950 shadow-xs ring-1 ring-stone-950/5 font-black'
-                            : 'text-stone-500 hover:text-stone-900'
-                        }`}
-                      >
-                        <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
-                        <span>提問者 ({questionerConversations.length})</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSwitchListRole('solver')}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          listRoleMode === 'solver'
-                            ? 'bg-white text-stone-950 shadow-xs ring-1 ring-stone-950/5 font-black'
-                            : 'text-stone-500 hover:text-stone-900'
-                        }`}
-                      >
-                        <Briefcase className="w-3.5 h-3.5 text-blue-600" />
-                        <span>解答者 ({solverConversations.length})</span>
-                      </button>
+                    <div className="flex items-center justify-between px-2 py-1 bg-stone-100/70 rounded-xl w-full">
+                      <span className="text-xs font-black text-stone-800">全部對話 ({generalUserConversations.length})</span>
+                      <span className="text-[10px] text-stone-500 font-medium">即時端到端傳訊</span>
                     </div>
                   )}
                 </div>
@@ -1301,22 +1437,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
             ) : (
               <div className="flex flex-col items-center gap-1">
                 <button
-                  onClick={() => handleSwitchListRole('questioner')}
-                  className={`p-2 rounded-lg text-xs font-bold cursor-pointer ${
-                    listRoleMode === 'questioner' ? 'bg-amber-100 text-amber-900' : 'text-stone-400 hover:bg-stone-100'
-                  }`}
-                  title={`切換提問者身份 (${questionerConversations.length})`}
+                  type="button"
+                  onClick={() => setIsSidebarCollapsed(false)}
+                  className="p-2 rounded-lg text-xs font-bold cursor-pointer text-stone-500 hover:bg-stone-100"
+                  title={`展開對話列表 (${currentConversationsToDisplay.length})`}
                 >
-                  <HelpCircle className="w-4 h-4 text-amber-600" />
-                </button>
-                <button
-                  onClick={() => handleSwitchListRole('solver')}
-                  className={`p-2 rounded-lg text-xs font-bold cursor-pointer ${
-                    listRoleMode === 'solver' ? 'bg-blue-100 text-blue-900' : 'text-stone-400 hover:bg-stone-100'
-                  }`}
-                  title={`切換解答者身份 (${solverConversations.length})`}
-                >
-                  <Briefcase className="w-4 h-4 text-blue-600" />
+                  <MessageSquare className="w-4 h-4 text-amber-600" />
                 </button>
               </div>
             )}
@@ -1326,7 +1452,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
           <div className="flex-1 overflow-y-auto divide-y divide-stone-100">
             {filteredConversations.length === 0 ? (
               <div className="p-8 text-center text-xs text-stone-400">
-                尚無{listRoleMode === 'questioner' ? '提問者' : '解答者'}相關的對話紀錄
+                {isAdmin ? '此分類目前尚無對話紀錄' : '目前尚無對話紀錄'}
               </div>
             ) : (
               filteredConversations.map((conv, idx) => {
@@ -1334,9 +1460,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                   ? {
                       name: conv.groupName || '協作群組',
                       avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=150&auto=format&fit=crop&q=80',
-                      title: `群組・${conv.participantDetails.length} 位成員`,
+                      title: `群組・${conv.participantDetails?.length || 2} 位成員`,
                     }
-                  : conv.participantDetails.find((p) => p.id !== currentUser.id) || {
+                  : getOtherParticipant(conv) || {
                       name: '諮詢對象',
                       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
                       title: '',
@@ -1425,15 +1551,15 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                   </button>
 
                   <img
-                    src={otherParticipant.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                    alt={otherParticipant.name}
+                    src={otherParticipant?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                    alt={otherParticipant?.name || '夥伴'}
                     className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-1 ring-stone-200 shrink-0"
                   />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      <h3 className="font-bold text-xs sm:text-sm text-stone-900 truncate">{otherParticipant.name}</h3>
+                      <h3 className="font-bold text-xs sm:text-sm text-stone-900 truncate">{otherParticipant?.name || '諮詢夥伴'}</h3>
 
-                      {lockedConversationRole === 'questioner' && otherParticipant.title && (
+                      {lockedConversationRole === 'questioner' && otherParticipant?.title && (
                         <span className="text-[10px] font-semibold text-stone-600 px-1.5 py-0.5 rounded bg-stone-100 truncate max-w-[120px] sm:max-w-none">
                           {otherParticipant.title}
                         </span>
@@ -2691,8 +2817,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                   onChange={(e) => setInputMessage(e.target.value)}
                   placeholder={
                     lockedConversationRole === 'questioner'
-                      ? `以提問者身份發送訊息給 ${otherParticipant.name}...`
-                      : `以解答者身份發送訊息給 ${otherParticipant.name}...`
+                      ? `以提問者身份發送訊息給 ${otherParticipant?.name || '夥伴'}...`
+                      : `以解答者身份發送訊息給 ${otherParticipant?.name || '夥伴'}...`
                   }
                   className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-stone-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-200 text-xs sm:text-sm outline-none bg-white"
                 />
@@ -3236,9 +3362,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
               bounty: 1500,
               createdAt: new Date().toISOString(),
               deadline: new Date(Date.now() + 7 * 86400000).toISOString(),
-              authorId: otherParticipant.id,
-              authorName: otherParticipant.name,
-              authorAvatar: otherParticipant.avatar,
+              authorId: otherParticipant?.id || 'partner',
+              authorName: otherParticipant?.name || '諮詢夥伴',
+              authorAvatar: otherParticipant?.avatar || '',
               views: 0,
               viewsCount: 0,
               answersCount: 0,
@@ -3553,13 +3679,24 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
               </div>
 
               <div>
-                <label className="text-xs font-bold text-stone-800 block mb-1.5">
-                  選擇群組成員 ({selectedMemberIds.length} 位已選)
+                <label className="text-xs font-bold text-stone-800 block mb-1.5 flex items-center justify-between">
+                  <span>選擇群組成員 ({selectedMemberIds.length} 位已選)</span>
+                  {currentUser.role !== 'admin' && (
+                    <span className="text-[10px] text-amber-700 font-normal">
+                      僅限曾私聊過的對象（無法拉管理員與測試帳號）
+                    </span>
+                  )}
                 </label>
                 <div className="max-h-60 overflow-y-auto space-y-1.5 p-2 rounded-2xl border border-stone-200 bg-stone-50">
-                  {availableUsers
-                    .filter((u) => u.id !== currentUser.id)
-                    .map((u) => {
+                  {eligibleGroupMembers.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-stone-500 space-y-1">
+                      <p className="font-bold text-stone-700">目前尚無可加入群組的私聊夥伴</p>
+                      <p className="text-[11px] text-stone-400 leading-relaxed">
+                        為維護社群隱私，一般用戶僅能邀請曾進行過 1 對 1 私聊的夥伴加入群組，無法拉入管理員與測試帳號。
+                      </p>
+                    </div>
+                  ) : (
+                    eligibleGroupMembers.map((u) => {
                       const isChecked = selectedMemberIds.includes(u.id);
                       return (
                         <div
@@ -3581,7 +3718,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                             />
                             <div>
                               <span className="text-xs font-bold text-stone-900 block">{u.name}</span>
-                              <span className="text-[10px] text-stone-500 block">{u.title || u.role}</span>
+                              <span className="text-[10px] text-stone-500 block">
+                                {u.accountType === 'enterprise' || (u.role as string) === 'enterprise' ? '企業機構' : '一般用戶'}
+                              </span>
                             </div>
                           </div>
                           <input
@@ -3592,7 +3731,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                           />
                         </div>
                       );
-                    })}
+                    })
+                  )}
                 </div>
               </div>
             </div>

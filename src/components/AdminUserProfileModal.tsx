@@ -31,6 +31,8 @@ import {
   AlertTriangle,
   FileText,
   HelpCircle,
+  MessageSquare,
+  Edit3,
 } from 'lucide-react';
 import { User, ProblemLevel } from '../types';
 import { LEVEL_CONFIGS } from '../data/mockData';
@@ -43,6 +45,8 @@ interface AdminUserProfileModalProps {
   onClose: () => void;
   onImpersonate?: (user: User) => void;
   onNavigateToCertifications?: (userId?: string) => void;
+  onOpenChat?: (user: User) => void;
+  onEditUser?: (user: User) => void;
 }
 
 export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
@@ -50,8 +54,10 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
   onClose,
   onImpersonate,
   onNavigateToCertifications,
+  onOpenChat,
+  onEditUser,
 }) => {
-  const { questions, answers, transactions, solvers } = useApp();
+  const { questions, answers, transactions, solvers, currentUser } = useApp();
   const [activeTab, setActiveTab] = useState<'bio' | 'questions' | 'answers' | 'finance' | 'security'>('bio');
 
   // 關聯的提問、方案與交易
@@ -141,7 +147,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                       : 'bg-amber-400 text-stone-950'
                   }`}
                 >
-                  {user.role === 'admin' ? '👑 管理員' : user.role === 'solver' ? '💼 解答者' : '🙋 提問者'}
+                  {user.role === 'admin' ? '👑 管理員' : user.accountType === 'enterprise' || (user.role as string) === 'enterprise' ? '🏢 企業機構' : '👤 一般用戶'}
                 </span>
 
                 {/* 站點管理員徽章 */}
@@ -219,6 +225,22 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
 
           {/* 頂部操作鈕 */}
           <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+            {/* 直接發起私聊按鈕 */}
+            {onOpenChat && user.id !== currentUser?.id && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenChat(user);
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                title={`直接以官方管理員身分與「${user.name}」開啟 1 對 1 私聊對話`}
+              >
+                <MessageSquare className="w-4 h-4 text-white" />
+                <span>與之私聊 💬</span>
+              </button>
+            )}
+
             {/* 進入該用戶視角（唯讀）按鈕 */}
             {onImpersonate && (
               <button
@@ -244,6 +266,20 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
               >
                 <ShieldCheck className="w-4 h-4 text-purple-300" />
                 <span className="hidden sm:inline">受理認證</span>
+              </button>
+            )}
+
+            {onEditUser && (
+              <button
+                type="button"
+                onClick={() => {
+                  onEditUser(user);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-purple-600/70 hover:bg-purple-600 text-white font-bold text-xs border border-purple-400/50 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title={`修改「${user.name}」姓名或更換頭像照片 (限 6MB)`}
+              >
+                <Edit3 className="w-4 h-4 text-amber-300" />
+                <span>改名/換頭像</span>
               </button>
             )}
 

@@ -737,6 +737,11 @@ function MainContent() {
             window.history.pushState({ tab: 'solvers' }, '', '/solvers');
             updateSEOForSubpage('solvers');
           }
+        } else if (activeTab === 'chat') {
+          if (curPath !== '/chat') {
+            window.history.pushState({ tab: 'chat' }, '', '/chat');
+          }
+          updateSEOForSubpage('chat');
         } else if (activeTab === 'my_projects') {
           if (curPath !== '/my-projects' && curPath !== '/my-cases' && curPath !== '/my_projects' && curPath !== '/my_cases') {
             window.history.pushState({ tab: 'my_projects' }, '', '/my-projects');

@@ -8,7 +8,10 @@ import {
   getAdminSiteLabel,
   getAdminSiteBadgeClass,
 } from '../utils/adminPermissions';
-import { resolveUserDisplayName, getUserNameColorClass } from '../utils/userDisplay';
+import { resolveUserDisplayName, resolveUserAvatar, getUserNameColorClass, USER_ALIAS_MAP, saveCustomUserProfile } from '../utils/userDisplay';
+import { syncUserToFirestore } from '../services/firestoreSync';
+import { isRealRegisteredUser, isTestAccountUserId } from '../data/mockData';
+import { isSimulatedUser } from '../data/virtualProposalsSeed';
 import {
   UserCheck,
   ShieldAlert,
@@ -36,22 +39,33 @@ import {
   Eye,
   ExternalLink,
   Trash2,
+  MessageSquare,
+  Edit3,
+  Camera,
+  Upload,
+  Save,
 } from 'lucide-react';
 import { AdminUserProfileModal } from './AdminUserProfileModal';
 import { AdminUserImpersonationModal } from './AdminUserImpersonationModal';
 
 interface AdminUserManagementTabProps {
   onNavigateToCertifications?: (userId?: string) => void;
+  onOpenChat?: () => void;
+  onCloseParentModal?: () => void;
 }
 
 export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
   onNavigateToCertifications,
+  onOpenChat,
+  onCloseParentModal,
 }) => {
   const {
     availableUsers,
+    setAvailableUsers,
+    currentUser,
+    setCurrentUser,
     blockUser,
     unblockUser,
-    currentUser,
     addTestAccount,
     purgeExpiredDeactivatedAccounts,
     requestAccountDeactivation,
@@ -61,18 +75,152 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
     deleteUserAccountPermanently,
     pullAllDataFromFirestore,
     grantUserAdminRole,
+    startDirectChat,
+    addNotification,
+    purgeAllSimulatedData,
   } = useApp();
 
-  const [activeFilter, setActiveFilter] = useState<'all' | 'normal' | 'blocked' | 'deactivated'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'real' | 'normal' | 'enterprise' | 'admin' | 'simulated' | 'blocked' | 'deactivated'>('real');
   const [searchQuery, setSearchQuery] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
   const [isRemovingDuplicates, setIsRemovingDuplicates] = useState(false);
+  const [isPurgingSimulated, setIsPurgingSimulated] = useState(false);
   const [deletingTargetUser, setDeletingTargetUser] = useState<User | null>(null);
+
+  // 掛載時自動連線雲端資料庫更新最新真實註冊名單
+  React.useEffect(() => {
+    void pullAllDataFromFirestore();
+  }, [pullAllDataFromFirestore]);
 
   // 用戶個人資訊頁與用戶視角檢視彈窗狀態
   const [viewingProfileUser, setViewingProfileUser] = useState<User | null>(null);
   const [impersonatingUser, setImpersonatingUser] = useState<User | null>(null);
+
+  // 管理員編輯用戶（改名、換頭像）狀態
+  const [editingUserProfileUser, setEditingUserProfileUser] = useState<User | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
+  const [editAvatarError, setEditAvatarError] = useState<string | null>(null);
+  const editAvatarInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleOpenEditUser = (target: User) => {
+    setEditingUserProfileUser(target);
+    setEditName(resolveUserDisplayName(target.id, target.name, availableUsers));
+    setEditTitle(target.title || '');
+    setEditAvatar(resolveUserAvatar(target.id, target.avatar, availableUsers));
+    setEditAvatarError(null);
+  };
+
+  const handleEditUserAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 6 * 1024 * 1024) {
+      setEditAvatarError(`頭像照片檔案過大（${(file.size / (1024 * 1024)).toFixed(1)}MB）。系統限制 6MB 內！`);
+      e.target.value = '';
+      return;
+    }
+
+    setEditAvatarError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const size = 320;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            const minDim = Math.min(img.width, img.height);
+            const sx = (img.width - minDim) / 2;
+            const sy = (img.height - minDim) / 2;
+            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+            const compressed = canvas.toDataURL('image/jpeg', 0.85);
+            setEditAvatar(compressed);
+          }
+        } catch {
+          setEditAvatar(event.target?.result as string);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleSaveUserEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUserProfileUser) return;
+    const newName = editName.trim() || editingUserProfileUser.name;
+    const newAvatar = editAvatar || editingUserProfileUser.avatar;
+    const newTitle = editTitle.trim();
+
+    saveCustomUserProfile(editingUserProfileUser.id, {
+      name: newName,
+      avatar: newAvatar,
+      title: newTitle,
+    });
+
+    const aliasId = USER_ALIAS_MAP[editingUserProfileUser.id];
+    setAvailableUsers((users) =>
+      users.map((u) =>
+        u.id === editingUserProfileUser.id || (aliasId && u.id === aliasId)
+          ? { ...u, name: newName, avatar: newAvatar, title: newTitle }
+          : u
+      )
+    );
+
+    if (currentUser.id === editingUserProfileUser.id || (aliasId && currentUser.id === aliasId)) {
+      setCurrentUser((prev) => ({
+        ...prev,
+        name: newName,
+        avatar: newAvatar,
+        title: newTitle,
+      }));
+    }
+
+    const updatedTarget: User = {
+      ...editingUserProfileUser,
+      name: newName,
+      avatar: newAvatar,
+      title: newTitle,
+    };
+    syncUserToFirestore(updatedTarget).catch(() => {});
+
+    setFeedbackMsg({
+      text: `已成功更新「${newName}」的姓名與頭像！`,
+      isError: false,
+    });
+    setTimeout(() => setFeedbackMsg(null), 4000);
+    setEditingUserProfileUser(null);
+  };
+
+  // 管理員直接與用戶發起 1 對 1 私聊
+  const handleStartChatWithUser = (target: User) => {
+    if (target.id === currentUser.id) {
+      if (addNotification) {
+        addNotification({ title: '提醒', message: '您無法與自己發起私聊！', type: 'system' });
+      }
+      return;
+    }
+
+    startDirectChat({
+      id: target.id,
+      name: target.name,
+      avatar: target.avatar,
+      title: target.title || (target.accountType === 'enterprise' || (target.role as string) === 'enterprise' ? '企業機構' : '一般用戶'),
+    });
+
+    if (onOpenChat) {
+      onOpenChat();
+    } else if (onCloseParentModal) {
+      onCloseParentModal();
+    }
+  };
 
   // 一鍵生成測試帳號彈窗狀態
   const [isTestUserModalOpen, setIsTestUserModalOpen] = useState(false);
@@ -131,22 +279,105 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
     );
   };
 
+  const realUsers = availableUsers.filter((u) => isRealRegisteredUser(u));
+  const enterpriseUsers = availableUsers.filter(
+    (u) => u.accountType === 'enterprise' || (u.role as string) === 'enterprise'
+  );
+  const adminUsers = availableUsers.filter((u) => u.role === 'admin' || u.accountType === 'admin');
+  const simulatedUsers = availableUsers.filter(
+    (u) => isSimulatedUser(u) || isTestAccountUserId(u.id) || !isRealRegisteredUser(u)
+  );
   const blockedUsers = availableUsers.filter((u) => u.isBlocked);
   const deactivatedUsers = availableUsers.filter((u) => !u.isBlocked && isUserDeactivated(u));
   const normalUsers = availableUsers.filter((u) => !u.isBlocked && !isUserDeactivated(u));
 
-  const filteredUsers = availableUsers.filter((u) => {
-    if (activeFilter === 'normal' && (u.isBlocked || isUserDeactivated(u))) return false;
-    if (activeFilter === 'blocked' && !u.isBlocked) return false;
-    if (activeFilter === 'deactivated' && !isUserDeactivated(u)) return false;
+  // 一鍵徹底清除所有模擬與展示帳號
+  const handlePurgeSimulated = async () => {
+    if (!window.confirm('確定要徹底清除所有 42 位模擬創作者與預設展示帳號嗎？\n此動作將同步從雲端資料庫與本地儲存清除，名單將 100% 僅保留真實註冊會員與平台管理員！')) {
+      return;
+    }
+    setIsPurgingSimulated(true);
+    try {
+      const res = await purgeAllSimulatedData();
+      setFeedbackMsg({
+        text: `已成功清除 ${res.purgedUsers || 42} 個模擬展示帳號！目前名單僅保留真實註冊會員與管理員。`,
+        isError: false,
+      });
+      setActiveFilter('real');
+    } catch {
+      setFeedbackMsg({ text: '清理模擬帳號時發生錯誤，請稍後重試。', isError: true });
+    } finally {
+      setIsPurgingSimulated(false);
+      setTimeout(() => setFeedbackMsg(null), 5000);
+    }
+  };
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchName = (u.name || '').toLowerCase().includes(q);
+  const filteredUsers = availableUsers.filter((u) => {
+    const hasSearch = Boolean(searchQuery.trim());
+    const q = searchQuery.toLowerCase().trim();
+    const cleanQ = q.replace(/^@/, '');
+
+    // 狀態篩選
+    if (!hasSearch) {
+      if (activeFilter === 'real' && !isRealRegisteredUser(u)) return false;
+      if (activeFilter === 'normal' && (u.isBlocked || isUserDeactivated(u))) return false;
+      if (activeFilter === 'enterprise' && !(u.accountType === 'enterprise' || (u.role as string) === 'enterprise')) return false;
+      if (activeFilter === 'admin' && u.role !== 'admin' && u.accountType !== 'admin') return false;
+      if (activeFilter === 'simulated' && isRealRegisteredUser(u)) return false;
+      if (activeFilter === 'blocked' && !u.isBlocked) return false;
+      if (activeFilter === 'deactivated' && !isUserDeactivated(u)) return false;
+    } else {
+      // 搜尋中時：若用戶停留在特定分頁（如真實、企業、管理員、封鎖、註銷），依舊遵循該分頁；在全部時則全局檢索
+      if (activeFilter === 'real' && !isRealRegisteredUser(u)) return false;
+      if (activeFilter === 'enterprise' && !(u.accountType === 'enterprise' || (u.role as string) === 'enterprise')) return false;
+      if (activeFilter === 'admin' && u.role !== 'admin' && u.accountType !== 'admin') return false;
+      if (activeFilter === 'simulated' && isRealRegisteredUser(u)) return false;
+      if (activeFilter === 'blocked' && !u.isBlocked) return false;
+      if (activeFilter === 'deactivated' && !isUserDeactivated(u)) return false;
+    }
+    if (hasSearch) {
+      const displayName = resolveUserDisplayName(u.id, u.name, availableUsers).toLowerCase();
+      const rawName = (u.name || '').toLowerCase();
+      const realName = ((u.realNameAuthData as any)?.legalName || (u.realNameAuthData as any)?.realName || '').toLowerCase();
+      const matchName = displayName.includes(q) || rawName.includes(q) || (realName && realName.includes(q));
+
+      const matchId =
+        (u.id || '').toLowerCase().includes(q) ||
+        (cleanQ && (u.id || '').toLowerCase().includes(cleanQ));
+      const matchMemberId =
+        (u.memberId || '').toLowerCase().includes(q) ||
+        (cleanQ && (u.memberId || '').toLowerCase().includes(cleanQ));
+      const matchUsername =
+        (u.username || '').toLowerCase().includes(q) ||
+        (cleanQ && (u.username || '').toLowerCase().includes(cleanQ));
+      const matchEmail =
+        (u.email || '').toLowerCase().includes(q) ||
+        (cleanQ && (u.email || '').toLowerCase().includes(cleanQ));
+      const matchPhone =
+        (u.phone || '').toLowerCase().includes(q) ||
+        (cleanQ && (u.phone || '').replace(/[\s-]/g, '').includes(cleanQ.replace(/[\s-]/g, '')));
       const matchTitle = (u.title || '').toLowerCase().includes(q);
+      const matchCompany = (u.company || '').toLowerCase().includes(q);
       const matchRole = (u.role || '').toLowerCase().includes(q);
-      const matchId = (u.id || '').toLowerCase().includes(q);
-      return matchName || matchTitle || matchRole || matchId;
+      const matchAccountType = (u.accountType || '').toLowerCase().includes(q);
+      const aliasId = USER_ALIAS_MAP[u.id];
+      const matchAlias =
+        aliasId &&
+        (aliasId.toLowerCase().includes(q) || (cleanQ && aliasId.toLowerCase().includes(cleanQ)));
+
+      return (
+        matchName ||
+        matchId ||
+        matchMemberId ||
+        matchUsername ||
+        matchEmail ||
+        matchPhone ||
+        matchTitle ||
+        matchCompany ||
+        matchRole ||
+        matchAccountType ||
+        Boolean(matchAlias)
+      );
     }
     return true;
   });
@@ -214,20 +445,42 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
       {/* 標題與說明 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3.5">
         <div>
-          <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2">
+          <h3 className="text-base sm:text-lg font-black text-stone-900 flex items-center gap-2 flex-wrap">
             <UserCheck className="w-5 h-5 text-purple-600" />
             <span>用戶管理</span>
+            <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-2xs">
+              🌟 真實註冊會員 {realUsers.length} 位
+            </span>
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900">
               全站共 {availableUsers.length} 位用戶
             </span>
+            {simulatedUsers.length > 0 && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
+                🤖 模擬展示 {simulatedUsers.length} 位
+              </span>
+            )}
           </h3>
           <p className="text-xs text-stone-500 mt-1">
-            管理員可執行帳號停權封鎖（設定封鎖時間與理由說明，系統自動發送平台通知），或為違規名單進行解封與審計。
+            管理員可直接對任何真實或系統用戶發起 1 對 1 私聊輔導、查閱完整個人檔案與交易紀錄、指派管理員站點、或進行停權封鎖與審計。
           </p>
         </div>
 
         {/* 操作與統計群組 */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* 一鍵清除所有模擬展示帳號 */}
+          {simulatedUsers.length > 0 && (
+            <button
+              type="button"
+              disabled={isPurgingSimulated}
+              onClick={handlePurgeSimulated}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-950 font-black text-xs border border-amber-300 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="徹底從雲端與本地清除所有預設模擬創作者帳號，讓名單 100% 呈現真實用戶"
+            >
+              <Trash2 className={`w-3.5 h-3.5 text-amber-700 ${isPurgingSimulated ? 'animate-spin' : ''}`} />
+              <span>{isPurgingSimulated ? '清理模擬中...' : '🧹 清除所有模擬帳號'}</span>
+            </button>
+          )}
+
           {/* 測試模式一鍵生成測試帳號按鈕 */}
           <button
             type="button"
@@ -373,15 +626,62 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
           </button>
           <button
             type="button"
+            onClick={() => setActiveFilter('real')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+              activeFilter === 'real'
+                ? 'bg-emerald-600 text-white shadow-2xs'
+                : 'text-emerald-800 hover:bg-emerald-50'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>🌟 真實會員 ({realUsers.length})</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveFilter('normal')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeFilter === 'normal'
-                ? 'bg-emerald-600 text-white shadow-2xs'
+                ? 'bg-stone-800 text-white shadow-2xs'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            正常狀態 ({normalUsers.length})
+            正常使用 ({normalUsers.length})
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter('enterprise')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeFilter === 'enterprise'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-blue-800 hover:bg-blue-50'
+            }`}
+          >
+            🏢 企業機構 ({enterpriseUsers.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter('admin')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeFilter === 'admin'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'text-amber-800 hover:bg-amber-50'
+            }`}
+          >
+            👑 管理團隊 ({adminUsers.length})
+          </button>
+          {simulatedUsers.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveFilter('simulated')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeFilter === 'simulated'
+                  ? 'bg-stone-600 text-white shadow-2xs'
+                  : 'text-stone-500 hover:bg-stone-200'
+              }`}
+            >
+              🤖 模擬展示 ({simulatedUsers.length})
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setActiveFilter('blocked')}
@@ -399,8 +699,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
             onClick={() => setActiveFilter('deactivated')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
               activeFilter === 'deactivated'
-                ? 'bg-amber-600 text-white shadow-2xs'
-                : 'text-amber-800 hover:bg-amber-50'
+                ? 'bg-stone-500 text-white shadow-2xs'
+                : 'text-stone-700 hover:bg-stone-200'
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -409,15 +709,25 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
         </div>
 
         {/* 搜尋框 */}
-        <div className="relative sm:w-64">
+        <div className="relative sm:w-72">
           <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="搜尋用戶姓名、頭銜或身分..."
+            placeholder="搜尋用戶姓名、ID、Email、手機或身分..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-purple-500 outline-none"
+            className="w-full pl-9 pr-8 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-purple-500 outline-none"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer"
+              title="清除搜尋"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -471,13 +781,24 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                             u.role === 'admin'
                               ? getAdminSiteBadgeClass(u) || 'bg-purple-100 text-purple-900 border border-purple-300'
-                              : u.role === 'solver'
+                              : u.accountType === 'enterprise' || (u.role as string) === 'enterprise'
                               ? 'bg-blue-100 text-blue-900 border border-blue-200'
                               : 'bg-amber-100 text-amber-900 border border-amber-200'
                           }`}
                         >
-                          {u.role === 'admin' ? (getAdminSiteLabel(u) || '👑 管理員') : u.role === 'solver' ? '💼 解答者' : '🙋 提問者'}
+                          {u.role === 'admin' ? (getAdminSiteLabel(u) || '👑 管理員') : u.accountType === 'enterprise' || (u.role as string) === 'enterprise' ? '🏢 企業機構' : '👤 一般用戶'}
                         </span>
+
+                        {isRealRegisteredUser(u) ? (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1 shadow-2xs" title="此帳號為真實註冊會員 (已在 Firebase / 資料庫建立)">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                            <span>真實會員</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-500 border border-stone-200 flex items-center gap-1" title="此帳號為系統預設模擬展示或測試環境帳號">
+                            <span>🤖 系統模擬/展示</span>
+                          </span>
+                        )}
 
                         {isBlocked ? (
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-600 text-white flex items-center gap-1 shadow-2xs">
@@ -527,9 +848,20 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                         )}
                       </div>
 
-                      <p className="text-xs text-stone-500 truncate mt-0.5">
-                        {u.title || '一般領域用戶'} · 帳號代碼：<span className="font-mono">{u.id}</span>
-                        {u.memberId && <span className="ml-1.5 font-mono text-purple-700 font-bold">({u.memberId})</span>}
+                      <p className="text-xs text-stone-500 truncate mt-0.5 flex items-center gap-2 flex-wrap">
+                        <span>{u.title || '一般領域用戶'}</span>
+                        <span>· 帳號代碼：<span className="font-mono text-stone-800 font-semibold">{u.id}</span></span>
+                        {u.memberId && <span className="font-mono text-purple-700 font-bold">({u.memberId})</span>}
+                        {u.email && (
+                          <span className="font-mono text-stone-700 bg-stone-100 px-1.5 py-0.2 rounded text-[11px] border border-stone-200">
+                            {u.email}
+                          </span>
+                        )}
+                        {u.phone && (
+                          <span className="font-mono text-stone-500 text-[11px]">
+                            📞 {u.phone}
+                          </span>
+                        )}
                       </p>
 
                       <div className="flex items-center gap-3 text-[11px] text-stone-400 mt-1">
@@ -541,6 +873,19 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
                   {/* 動作按鈕 */}
                   <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+                    {/* 與之私聊按鈕 (管理員可直接對任何用戶發起私聊交流與輔導) */}
+                    {!isSelf && (
+                      <button
+                        type="button"
+                        onClick={() => handleStartChatWithUser(u)}
+                        className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-900 border border-blue-300 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        title={`直接以官方管理員身分與「${u.name}」開啟 1 對 1 私聊對話`}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-blue-700" />
+                        <span>與之私聊 💬</span>
+                      </button>
+                    )}
+
                     {/* 連結至個人頁：包含所有他的資訊 */}
                     <button
                       type="button"
@@ -550,6 +895,17 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                     >
                       <UserIcon className="w-3.5 h-3.5 text-purple-700" />
                       <span>個人資訊頁 ↗</span>
+                    </button>
+
+                    {/* 改名與換頭像按鈕 */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditUser(u)}
+                      className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-purple-200 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      title={`修改「${u.name}」姓名或更換頭像照片 (限 6MB)`}
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-purple-700" />
+                      <span>改名/換頭像</span>
                     </button>
 
                     {/* 直接開一個檢視頁面進入該用戶的視角，瀏覽她的帳戶但是不能操作 */}
@@ -1199,7 +1555,153 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
             setImpersonatingUser(targetUser);
           }}
           onNavigateToCertifications={onNavigateToCertifications}
+          onOpenChat={(targetUser) => {
+            setViewingProfileUser(null);
+            handleStartChatWithUser(targetUser);
+          }}
+          onEditUser={(targetUser) => {
+            handleOpenEditUser(targetUser);
+          }}
         />
+      )}
+
+      {/* 管理員編輯用戶（改名與換頭像）彈窗 */}
+      {editingUserProfileUser && (
+        <div
+          className="fixed inset-0 z-[140] bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setEditingUserProfileUser(null)}
+        >
+          <div
+            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 隱藏的頭像 input */}
+            <input
+              type="file"
+              ref={editAvatarInputRef}
+              accept="image/*"
+              onChange={handleEditUserAvatarUpload}
+              className="hidden"
+            />
+
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-stone-900 via-stone-850 to-purple-950 text-white flex items-center justify-between border-b border-purple-900/40">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-600/40 border border-purple-400/40 flex items-center justify-center text-purple-200">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-white">
+                    管理員改名與更換頭像
+                  </h3>
+                  <p className="text-[11px] text-purple-200/80">
+                    目標用戶：{editingUserProfileUser.name} ({editingUserProfileUser.id})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingUserProfileUser(null)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveUserEdit} className="p-5 sm:p-6 space-y-4">
+              {editAvatarError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-bold flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{editAvatarError}</span>
+                </div>
+              )}
+
+              {/* 頭像更換預覽 */}
+              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative group shrink-0">
+                    <img
+                      src={editAvatar || editingUserProfileUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                      alt={editName}
+                      className="w-14 h-14 rounded-2xl object-cover ring-2 ring-purple-300 shadow-2xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => editAvatarInputRef.current?.click()}
+                      className="absolute inset-0 bg-stone-900/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white"
+                      title="點擊選取新頭像照片 (限 6MB)"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-stone-900">頭像照片</h5>
+                    <p className="text-[11px] text-stone-500">
+                      支援常見圖檔（單檔 6MB 內），裁切壓縮為正方形儲存。
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => editAvatarInputRef.current?.click()}
+                  className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-stone-100 border border-stone-300 text-stone-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+                >
+                  <Upload className="w-3.5 h-3.5 text-purple-700" />
+                  <span>上傳新頭像 (限 6MB)</span>
+                </button>
+              </div>
+
+              {/* 姓名輸入 */}
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                  顯示姓名 <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="請輸入欲變更之姓名"
+                  required
+                  className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-bold text-stone-900 focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
+                />
+              </div>
+
+              {/* 職稱輸入 */}
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                  專業職稱 / 簡述
+                </label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="例如：資深架構師 / 平台總管"
+                  className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-bold text-stone-900 focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingUserProfileUser(null)}
+                  className="px-4 py-2 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-50 text-xs font-bold cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>確認儲存變更</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* 進入該用戶視角（唯讀檢視模式）彈窗（以該用戶視角瀏覽帳戶，但無法操作） */}

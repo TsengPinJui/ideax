@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Solver, Category, ProblemLevel, isCertifiedExpert } from '../types';
 import { useApp } from '../context/AppContext';
 import { HelpTooltip } from './HelpTooltip';
@@ -42,10 +42,16 @@ export const SolversView: React.FC<SolversViewProps> = ({
   onPostQuestion,
   onOpenExpertCertification,
 }) => {
-  const { solvers, startDirectChat, currentUser, openAuthModal } = useApp();
+  const { solvers, startDirectChat, currentUser, openAuthModal, searchQuery: appSearchQuery } = useApp();
   const [selectedDomain, setSelectedDomain] = useState<string>('全部');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(appSearchQuery || '');
   const [isHeadhunterOpen, setIsHeadhunterOpen] = useState(false);
+
+  useEffect(() => {
+    if (appSearchQuery !== undefined) {
+      setSearchQuery(appSearchQuery);
+    }
+  }, [appSearchQuery]);
 
   const handleOpenCertification = () => {
     if (currentUser.id === 'user-guest') {
@@ -75,13 +81,16 @@ export const SolversView: React.FC<SolversViewProps> = ({
   const filtered = solvers.filter((s) => {
     const matchesDomain = selectedDomain === '全部' || s.domain === selectedDomain;
     const q = searchQuery.toLowerCase().trim();
+    const cleanQ = q.replace(/^@/, '');
     const matchesSearch =
       !q ||
       s.name.toLowerCase().includes(q) ||
+      (cleanQ && s.name.toLowerCase().includes(cleanQ)) ||
       s.id.toLowerCase().includes(q) ||
+      (cleanQ && s.id.toLowerCase().includes(cleanQ)) ||
       s.title.toLowerCase().includes(q) ||
       (s.bio && s.bio.toLowerCase().includes(q)) ||
-      s.skills.some((sk) => sk.toLowerCase().includes(q)) ||
+      s.skills.some((sk) => sk.toLowerCase().includes(q) || (cleanQ && sk.toLowerCase().includes(cleanQ))) ||
       (s.subcategory && s.subcategory.toLowerCase().includes(q)) ||
       s.domain.toLowerCase().includes(q) ||
       (s.featuredCase && (
