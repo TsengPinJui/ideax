@@ -234,3 +234,31 @@ export function expertReviewEmail(params: {
   }\n\n${params.approved ? '審核備註' : '審核說明'}：${params.note}\n\nIdeaX 創點子團隊\n${getSiteUrl()}`;
   return { subject, html, text };
 }
+
+export function accountNoticeEmail(params: { name?: string; kind: 'blocked' | 'unblocked'; reason?: string; untilText?: string }) {
+  const hello = params.name ? `${escapeHtml(params.name)} 您好，` : '您好，';
+  if (params.kind === 'unblocked') {
+    const subject = '您的 IdeaX 創點子帳號已恢復使用';
+    const html = renderLayout({
+      preheader: '帳號已解除停權，可以正常登入使用',
+      heading: '帳號已恢復使用',
+      bodyHtml: `<p style="margin:0;">${hello}您的帳號已解除停權，現在可以正常登入並使用所有功能。</p>`,
+      button: { label: '前往登入', url: getSiteUrl() },
+    });
+    const text = `${params.name ? params.name + ' 您好，' : '您好，'}\n\n您的 IdeaX 創點子帳號已解除停權，現在可以正常登入使用。\n\nIdeaX 創點子團隊\n${getSiteUrl()}`;
+    return { subject, html, text };
+  }
+  const subject = '您的 IdeaX 創點子帳號已被停權';
+  const html = renderLayout({
+    preheader: '帳號停權通知',
+    heading: '帳號停權通知',
+    bodyHtml: `<p style="margin:0 0 12px 0;">${hello}您的帳號因違反平台規範已被停權，停權期間無法登入使用。</p>
+      <div style="margin:12px 0;padding:14px 16px;border-radius:14px;background:#FFF1F2;border:1px solid #FECDD3;">
+        <p style="margin:0 0 4px 0;color:#9F1239;"><b>停權期限：</b>${escapeHtml(params.untilText || '依平台通知')}</p>
+        <p style="margin:0;color:#BE123C;"><b>停權理由：</b>${escapeHtml(params.reason || '違反平台規範')}</p>
+      </div>
+      <p style="margin:0;">如果您認為這是誤會，請直接回覆這封信說明，我們會盡快處理。</p>`,
+  });
+  const text = `${params.name ? params.name + ' 您好，' : '您好，'}\n\n您的 IdeaX 創點子帳號已被停權，停權期間無法登入使用。\n停權期限：${params.untilText || '依平台通知'}\n停權理由：${params.reason || '違反平台規範'}\n\n如有疑問請直接回覆這封信。\n\nIdeaX 創點子團隊\n${getSiteUrl()}`;
+  return { subject, html, text };
+}

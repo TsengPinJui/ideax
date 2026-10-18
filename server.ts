@@ -7,6 +7,7 @@ import competitionRouter from './server/competitionRoutes';
 import authVerificationRouter from './server/authVerificationRoutes';
 import { rateLimit, requireAdminMiddleware } from './server/security';
 import { runAuthUidBackfill } from './server/backfillAuthUids';
+import { accountNoticeEmail, sendMail } from './server/mailer';
 
 dotenv.config();
 
@@ -3139,6 +3140,31 @@ app.post('/api/ai/faq-agent-consult', async (req: Request, res: Response) => {
 });
 
 // Admin Endpoint: AI Agent One-Click Aggregate Collected Questions into FAQs (實體 Dify Agent 驅動)
+// 管理員：寄送帳號停權／解除停權通知信
+app.post('/api/admin/account-notice', async (req: Request, res: Response) => {
+  try {
+    const { email, name, kind, reason, untilText } = req.body || {};
+    const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ success: false, error: '缺少有效的 Email' });
+    }
+    if (kind !== 'blocked' && kind !== 'unblocked') {
+      return res.status(400).json({ success: false, error: '通知類型不正確' });
+    }
+    const mail = accountNoticeEmail({
+      name: typeof name === 'string' ? name.slice(0, 40) : undefined,
+      kind,
+      reason: typeof reason === 'string' ? reason.slice(0, 500) : undefined,
+      untilText: typeof untilText === 'string' ? untilText.slice(0, 80) : undefined,
+    });
+    const result = await sendMail({ to: cleanEmail, ...mail, tag: `account_${kind}` });
+    if (!result.ok) return res.status(502).json({ success: false, error: '通知信寄送失敗' });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '寄送失敗' });
+  }
+});
+
 // 管理員：替舊資料補上 Firebase 帳號對照（apply=false 只試算不寫入）
 app.post('/api/admin/backfill-auth-uids', async (req: Request, res: Response) => {
   try {

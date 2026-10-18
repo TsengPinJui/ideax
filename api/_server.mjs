@@ -117535,6 +117535,47 @@ IdeaX \u5275\u9EDE\u5B50\u5718\u968A
 ${getSiteUrl()}`;
   return { subject, html, text };
 }
+function accountNoticeEmail(params) {
+  const hello = params.name ? `${escapeHtml(params.name)} \u60A8\u597D\uFF0C` : "\u60A8\u597D\uFF0C";
+  if (params.kind === "unblocked") {
+    const subject2 = "\u60A8\u7684 IdeaX \u5275\u9EDE\u5B50\u5E33\u865F\u5DF2\u6062\u5FA9\u4F7F\u7528";
+    const html2 = renderLayout({
+      preheader: "\u5E33\u865F\u5DF2\u89E3\u9664\u505C\u6B0A\uFF0C\u53EF\u4EE5\u6B63\u5E38\u767B\u5165\u4F7F\u7528",
+      heading: "\u5E33\u865F\u5DF2\u6062\u5FA9\u4F7F\u7528",
+      bodyHtml: `<p style="margin:0;">${hello}\u60A8\u7684\u5E33\u865F\u5DF2\u89E3\u9664\u505C\u6B0A\uFF0C\u73FE\u5728\u53EF\u4EE5\u6B63\u5E38\u767B\u5165\u4E26\u4F7F\u7528\u6240\u6709\u529F\u80FD\u3002</p>`,
+      button: { label: "\u524D\u5F80\u767B\u5165", url: getSiteUrl() }
+    });
+    const text2 = `${params.name ? params.name + " \u60A8\u597D\uFF0C" : "\u60A8\u597D\uFF0C"}
+
+\u60A8\u7684 IdeaX \u5275\u9EDE\u5B50\u5E33\u865F\u5DF2\u89E3\u9664\u505C\u6B0A\uFF0C\u73FE\u5728\u53EF\u4EE5\u6B63\u5E38\u767B\u5165\u4F7F\u7528\u3002
+
+IdeaX \u5275\u9EDE\u5B50\u5718\u968A
+${getSiteUrl()}`;
+    return { subject: subject2, html: html2, text: text2 };
+  }
+  const subject = "\u60A8\u7684 IdeaX \u5275\u9EDE\u5B50\u5E33\u865F\u5DF2\u88AB\u505C\u6B0A";
+  const html = renderLayout({
+    preheader: "\u5E33\u865F\u505C\u6B0A\u901A\u77E5",
+    heading: "\u5E33\u865F\u505C\u6B0A\u901A\u77E5",
+    bodyHtml: `<p style="margin:0 0 12px 0;">${hello}\u60A8\u7684\u5E33\u865F\u56E0\u9055\u53CD\u5E73\u53F0\u898F\u7BC4\u5DF2\u88AB\u505C\u6B0A\uFF0C\u505C\u6B0A\u671F\u9593\u7121\u6CD5\u767B\u5165\u4F7F\u7528\u3002</p>
+      <div style="margin:12px 0;padding:14px 16px;border-radius:14px;background:#FFF1F2;border:1px solid #FECDD3;">
+        <p style="margin:0 0 4px 0;color:#9F1239;"><b>\u505C\u6B0A\u671F\u9650\uFF1A</b>${escapeHtml(params.untilText || "\u4F9D\u5E73\u53F0\u901A\u77E5")}</p>
+        <p style="margin:0;color:#BE123C;"><b>\u505C\u6B0A\u7406\u7531\uFF1A</b>${escapeHtml(params.reason || "\u9055\u53CD\u5E73\u53F0\u898F\u7BC4")}</p>
+      </div>
+      <p style="margin:0;">\u5982\u679C\u60A8\u8A8D\u70BA\u9019\u662F\u8AA4\u6703\uFF0C\u8ACB\u76F4\u63A5\u56DE\u8986\u9019\u5C01\u4FE1\u8AAA\u660E\uFF0C\u6211\u5011\u6703\u76E1\u5FEB\u8655\u7406\u3002</p>`
+  });
+  const text = `${params.name ? params.name + " \u60A8\u597D\uFF0C" : "\u60A8\u597D\uFF0C"}
+
+\u60A8\u7684 IdeaX \u5275\u9EDE\u5B50\u5E33\u865F\u5DF2\u88AB\u505C\u6B0A\uFF0C\u505C\u6B0A\u671F\u9593\u7121\u6CD5\u767B\u5165\u4F7F\u7528\u3002
+\u505C\u6B0A\u671F\u9650\uFF1A${params.untilText || "\u4F9D\u5E73\u53F0\u901A\u77E5"}
+\u505C\u6B0A\u7406\u7531\uFF1A${params.reason || "\u9055\u53CD\u5E73\u53F0\u898F\u7BC4"}
+
+\u5982\u6709\u7591\u554F\u8ACB\u76F4\u63A5\u56DE\u8986\u9019\u5C01\u4FE1\u3002
+
+IdeaX \u5275\u9EDE\u5B50\u5718\u968A
+${getSiteUrl()}`;
+  return { subject, html, text };
+}
 
 // server/competitionService.ts
 import fs3 from "fs";
@@ -161297,6 +161338,29 @@ ${answer}
     explanation,
     quickOptions: ["\u8F49\u5165 24hr AI \u667A\u80FD\u5BA2\u670D\u6DF1\u5EA6\u5C0D\u8A71", "\u958B\u7ACB\u5C08\u5C6C\u5BA2\u670D\u5DE5\u55AE"]
   });
+});
+app.post("/api/admin/account-notice", async (req, res) => {
+  try {
+    const { email, name: name4, kind, reason, untilText } = req.body || {};
+    const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ success: false, error: "\u7F3A\u5C11\u6709\u6548\u7684 Email" });
+    }
+    if (kind !== "blocked" && kind !== "unblocked") {
+      return res.status(400).json({ success: false, error: "\u901A\u77E5\u985E\u578B\u4E0D\u6B63\u78BA" });
+    }
+    const mail = accountNoticeEmail({
+      name: typeof name4 === "string" ? name4.slice(0, 40) : void 0,
+      kind,
+      reason: typeof reason === "string" ? reason.slice(0, 500) : void 0,
+      untilText: typeof untilText === "string" ? untilText.slice(0, 80) : void 0
+    });
+    const result = await sendMail({ to: cleanEmail, ...mail, tag: `account_${kind}` });
+    if (!result.ok) return res.status(502).json({ success: false, error: "\u901A\u77E5\u4FE1\u5BC4\u9001\u5931\u6557" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err?.message || "\u5BC4\u9001\u5931\u6557" });
+  }
 });
 app.post("/api/admin/backfill-auth-uids", async (req, res) => {
   try {

@@ -142,6 +142,30 @@ function mergeServerIntoLocal<T extends { id: string }>(local: T[], server: T[])
   return Array.from(map.values());
 }
 
+/** 停權是否仍在有效期間（blockedUntil 為 'permanent' 或未來時間） */
+function isBlockActive(u?: Partial<User> | null): boolean {
+  if (!u || !u.isBlocked) return false;
+  const until = u.blockedUntil;
+  if (!until || until === 'permanent') return true;
+  const t = Date.parse(until);
+  return Number.isNaN(t) ? true : t > Date.now();
+}
+
+function describeBlockUntil(until?: string): string {
+  if (!until || until === 'permanent') return '永久停權';
+  const t = Date.parse(until);
+  return Number.isNaN(t) ? until : `至 ${new Date(t).toLocaleDateString('zh-TW')}`;
+}
+
+/** 寄送帳號停權／解除停權通知信（管理員限定，背景執行） */
+async function sendAccountNoticeEmail(payload: { email?: string; name?: string; kind: 'blocked' | 'unblocked'; reason?: string; untilText?: string }) {
+  if (!payload.email) return;
+  try {
+    const { getAuthHeaders } = await import('../services/authHeader');
+    await fetch('/api/admin/account-notice', { method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload) });
+  } catch {}
+}
+
 interface AppContextType {
   currentUser: User;
   setCurrentUser: (user: User | ((prev: User) => User)) => void;
@@ -2113,6 +2137,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id]);
 
+  // 正在使用中的帳號被管理員停權：雲端會員資料更新後立即登出
+  useEffect(() => {
+    if (isScopeGuest || currentUser.role === 'admin') return;
+    const latest = availableUsers.find((u) => u.id === currentUser.id);
+    if (!latest || !isBlockActive(latest)) return;
+    const reason = latest.blockedReason || '違反平台規範';
+    const untilText = describeBlockUntil(latest.blockedUntil);
+    logoutAccount();
+    setTimeout(() => {
+      try {
+        window.alert(`您的帳號已被停權（${untilText}），已自動登出。\n理由：${reason}\n如有疑問請聯絡客服。`);
+      } catch {}
+    }, 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableUsers, currentUser.id, currentUser.role, isScopeGuest]);
+
   // 登入、登出或切換帳號後，重新載入「這位會員自己的」私人資料
   const lastScopedUserKeyRef = useRef<string | null>(null);
   useEffect(() => {
@@ -2887,6 +2927,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     deactivationRequestedAt: finalDeact ? cu.deactivationRequestedAt : undefined,
                     deactivationScheduledPurgeAt: finalDeact ? cu.deactivationScheduledPurgeAt : undefined,
                     deactivationReason: finalDeact ? cu.deactivationReason : undefined,
+                    // 停權狀態以雲端為準（管理員在其他裝置停權／解除停權時要即時生效）
+                    ...('isBlocked' in (rawCu as any)
+                      ? {
+                          isBlocked: Boolean(cu.isBlocked),
+                          blockedReason: cu.blockedReason,
+                          blockedUntil: cu.blockedUntil,
+                          blockedAt: cu.blockedAt,
+                          blockedByAdminName: cu.blockedByAdminName,
+                        }
+                      : {}),
                   })
                 );
               } else {
@@ -3237,10 +3287,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser.id === userId) {
       setCurrentUser(updatedUser);
     }
+    // 寫入雲端：對方的裝置會即時收到並被登出，之後也無法登入
+    void syncUserToFirestore(updatedUser);
+    void sendAccountNoticeEmail({
+      email: userToBlock.email,
+      name: userToBlock.name,
+      kind: 'blocked',
+      reason,
+      untilText: describeBlockUntil(untilIso),
+    });
 
-    // 發送平台通知 (系統通知)
+    // 發送平台通知 (系統通知，送到被封鎖的用戶)
     const blockNotification: NotificationItem = {
       id: `notif-block-${Date.now()}`,
+      userId,
+      category: 'system',
       title: '⚠️ 帳號封鎖通知',
       message: `您的帳號已被管理員【${currentUser.name || '平台管理員'}】執行停權封鎖。封鎖期限：【${durationText}】，封鎖理由：【${reason}】。在封鎖期間內您將無法發布問題、提交方案、發送私聊或進行交易。如有疑問請聯絡客服。`,
       type: 'system',
@@ -3252,7 +3313,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return {
       success: true,
-      message: `已成功封鎖用戶「${userToBlock.name}」，期限：${durationText}。系統已發送平台通知通知該用戶！`,
+      message: `已成功封鎖用戶「${userToBlock.name}」，期限：${durationText}。對方會被登出且無法再登入，並會收到平台通知與 Email。`,
     };
   };
 
@@ -3281,9 +3342,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser.id === userId) {
       setCurrentUser(updatedUser);
     }
+    void syncUserToFirestore(updatedUser);
+    void sendAccountNoticeEmail({ email: userToUnblock.email, name: userToUnblock.name, kind: 'unblocked' });
 
     const unblockNotification: NotificationItem = {
       id: `notif-unblock-${Date.now()}`,
+      userId,
+      category: 'system',
       title: '🎉 帳號已解除封鎖',
       message: `您的帳號已被管理員【${currentUser.name || '平台管理員'}】解除封鎖，已恢復所有平台正常操作功能。`,
       type: 'system',
@@ -5803,6 +5868,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     wasInGracePeriod: boolean;
     errorReason?: string;
   } => {
+    // 停權期限已過：自動解除
+    if (target.isBlocked && !isBlockActive(target)) {
+      target = { ...target, isBlocked: false, blockedReason: undefined, blockedUntil: undefined, blockedAt: undefined };
+    }
+    // 停權中：不可登入
+    if (isBlockActive(target)) {
+      return {
+        canLogin: false,
+        wasInGracePeriod: false,
+        errorReason: `此帳號已被停權（${describeBlockUntil(target.blockedUntil)}）。理由：${target.blockedReason || '違反平台規範'}。如有疑問請聯絡客服。`,
+      };
+    }
     if (target.deactivationStatus === 'deactivated') {
       return {
         canLogin: false,
