@@ -63,9 +63,34 @@ async function requireAdmin(req: Request, res: Response): Promise<{ uid: string 
 // 前端可透過 db-mirror 寫入的集合白名單（其餘集合一律拒絕）
 const MIRROR_WRITABLE_COLLECTIONS = new Set(['questions']);
 
+// 與 firestore.rules 的 protectedQuestionFields 保持一致
+const PROTECTED_QUESTION_FIELDS = new Set([
+  'authorId', 'authorAuthUid', 'authorName', 'authorAvatar', 'title', 'description', 'bounty',
+  'withheldBounty', 'postType', 'level', 'deadline', 'phases', 'isOfficial', 'publishIdentity',
+  'status', 'isFeatured', 'disputeStatus', 'appName', 'youtubeUrl', 'coverImage', 'galleryImages',
+  'demoUrl', 'fileUrl', 'updateLogs', 'specialZone', 'isStarSeason', 'isDelisted',
+]);
+
+/** 是否為內容發布者：比對 authorAuthUid、authorId，或透過會員資料的 authUid 對照 */
+async function isContentOwner(docData: any, uid: string): Promise<boolean> {
+  if (!docData || !uid) return false;
+  if (docData.authorAuthUid === uid || docData.authorId === uid) return true;
+  if (typeof docData.authorId === 'string' && docData.authorId && !docData.authorId.includes('/')) {
+    try {
+      const u = await adminDb.collection('users').doc(docData.authorId).get();
+      const ud: any = u.exists ? u.data() : null;
+      return Boolean(ud && ud.authUid === uid);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 function stripUserSecretsForPublic(u: any) {
   if (!u || typeof u !== 'object') return u;
-  const { password, realNameAuthData, realNameData, ...rest } = u;
+  // 公開端點不回傳密碼、實名、聯絡方式與銀行資料
+  const { password, realNameAuthData, realNameData, phone, email, bankAccount, idNumber, address, ...rest } = u;
   return rest;
 }
 
@@ -779,13 +804,21 @@ router.post('/db-mirror/:collection/:docId', async (req: Request, res: Response)
     if (!MIRROR_WRITABLE_COLLECTIONS.has(colName) && !(await isVerifiedAdmin(authUser.uid))) {
       return res.status(403).json({ success: false, error: '未授權：不可寫入此集合' });
     }
-    // 非管理員只能修改自己發布的問題
-    const existingDoc = getMirrorCollectionMap(colName)?.[docId];
-    if (existingDoc && existingDoc.authorId && existingDoc.authorId !== authUser.uid && !(await isVerifiedAdmin(authUser.uid))) {
-      const allowedKeys = new Set(['views', 'likes', 'answersCount', 'secondedCount', 'sameQuestionCount', 'updatedAt', 'commentsCount', 'tipTotal']);
-      const keys = Object.keys(data || {});
-      if (keys.some((k) => !allowedKeys.has(k) && JSON.stringify(data[k]) !== JSON.stringify(existingDoc[k]))) {
-        return res.status(403).json({ success: false, error: '未授權：只能修改自己發布的內容' });
+    // 非管理員：只能改自己發布的內容；別人的問題只能改互動欄位（與資料庫規則一致）
+    if (!(await isVerifiedAdmin(authUser.uid))) {
+      const snap = await adminDb.collection(colName).doc(docId).get();
+      const existingDoc: any = snap.exists ? snap.data() : null;
+      if (!existingDoc) {
+        if (String(data.authorAuthUid || '') !== authUser.uid) {
+          return res.status(403).json({ success: false, error: '未授權：發布者身分不符' });
+        }
+      } else if (!(await isContentOwner(existingDoc, authUser.uid))) {
+        const changed = Object.keys(data || {}).filter((k) => JSON.stringify(data[k]) !== JSON.stringify(existingDoc[k]));
+        if (changed.some((k) => PROTECTED_QUESTION_FIELDS.has(k))) {
+          return res.status(403).json({ success: false, error: '未授權：只能修改自己發布的內容' });
+        }
+      } else if (data.authorId !== undefined && data.authorId !== existingDoc.authorId) {
+        return res.status(403).json({ success: false, error: '未授權：不可變更發布者' });
       }
     }
     await upsertMirrorAndFirestoreDoc(colName, docId, data, Boolean(merge));
@@ -809,8 +842,12 @@ router.delete('/db-mirror/:collection/:docId', async (req: Request, res: Respons
     }
     const isAdminUser = await isVerifiedAdmin(authUser.uid);
     if (!isAdminUser) {
-      const existingDoc = getMirrorCollectionMap(colName)?.[docId];
-      if (!MIRROR_WRITABLE_COLLECTIONS.has(colName) || (existingDoc && existingDoc.authorId !== authUser.uid)) {
+      if (!MIRROR_WRITABLE_COLLECTIONS.has(colName)) {
+        return res.status(403).json({ success: false, error: '未授權：只能刪除自己發布的內容' });
+      }
+      const snap = await adminDb.collection(colName).doc(docId).get();
+      const existingDoc: any = snap.exists ? snap.data() : null;
+      if (existingDoc && !(await isContentOwner(existingDoc, authUser.uid))) {
         return res.status(403).json({ success: false, error: '未授權：只能刪除自己發布的內容' });
       }
     }

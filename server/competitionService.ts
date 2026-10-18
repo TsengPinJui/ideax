@@ -11,6 +11,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { randomBytes } from 'crypto';
 import { initializeApp as initAdminApp, getApps as getAdminApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeApp as initClientApp, getApps as getClientApps, getApp as getClientApp } from 'firebase/app';
@@ -253,6 +254,11 @@ export function getMirrorCollectionMap(colName: string): Record<string, any> {
 export async function upsertMirrorAndFirestoreDoc(colName: string, docId: string, data: any, merge = true): Promise<void> {
   applyPayloadToLocalDoc(colName, docId, data, merge);
   try {
+    if (hasAdminCredentials) {
+      const { fs, FV } = await loadServerFs();
+      await fs.collection(colName).doc(docId).set(toAdminPayload(data, FV), merge ? { merge: true } : {});
+      return;
+    }
     const ref = clientDoc(rawFirestoreDb, colName, docId);
     await clientSetDoc(ref, toFirestoreNativePayload(data), { merge });
   } catch (err) {
@@ -265,6 +271,11 @@ export async function upsertMirrorAndFirestoreDoc(colName: string, docId: string
 export async function deleteMirrorAndFirestoreDoc(colName: string, docId: string): Promise<void> {
   deleteLocalDoc(colName, docId);
   try {
+    if (hasAdminCredentials) {
+      const { fs } = await loadServerFs();
+      await fs.collection(colName).doc(docId).delete();
+      return;
+    }
     const ref = clientDoc(rawFirestoreDb, colName, docId);
     await clientDeleteDoc(ref);
   } catch (err) {
@@ -436,7 +447,7 @@ function createQueryWrapper(colName: string, constraints: any[] = [], filterSpec
   };
 }
 
-const adminDb = {
+const clientWrappedDb = {
   collection(colName: string) {
     const queryWrapper = createQueryWrapper(colName, []);
     return {
@@ -556,6 +567,222 @@ const adminDb = {
     return res;
   },
 };
+
+// ─────────────────────────────────────────────────────────────
+// 伺服器有服務帳戶時，改用 Firebase 管理端寫入（不受資料庫規則限制）。
+// 介面與 clientWrappedDb 相同，並同步更新本機鏡像。
+// ─────────────────────────────────────────────────────────────
+let serverFsPromise: Promise<{ fs: any; FV: any }> | null = null;
+function loadServerFs(): Promise<{ fs: any; FV: any }> {
+  if (!serverFsPromise) {
+    serverFsPromise = import('firebase-admin/firestore').then((m) => {
+      const app = getAdminApps()[0];
+      const dbId = (firebaseConfigJson as any).firestoreDatabaseId;
+      const fs = dbId ? m.getFirestore(app, dbId) : m.getFirestore(app);
+      return { fs, FV: m.FieldValue };
+    });
+  }
+  return serverFsPromise;
+}
+
+function toAdminPayload(val: any, FV: any): any {
+  if (val === undefined) return null;
+  if (val === null || typeof val !== 'object') return val;
+  if (val.__op === 'increment') return FV.increment(val.value);
+  if (val.__op === 'arrayUnion') return FV.arrayUnion(...(val.elements || []));
+  if (val instanceof Date) return val.toISOString();
+  if (Array.isArray(val)) return val.filter((v) => v !== undefined).map((v) => toAdminPayload(v, FV));
+  if (val.constructor && val.constructor.name !== 'Object') return val;
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(val)) {
+    if (v !== undefined) out[k] = toAdminPayload(v, FV);
+  }
+  return out;
+}
+
+const AUTO_ID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+function autoDocId(): string {
+  const bytes = randomBytes(20);
+  let id = '';
+  for (let i = 0; i < 20; i++) id += AUTO_ID_CHARS[bytes[i] % AUTO_ID_CHARS.length];
+  return id;
+}
+
+function refTarget(r: any): { col: string; id: string } {
+  return { col: r?._colName || r?.parent?.id, id: r?.id };
+}
+
+function serverDocWrapper(colName: string, docId?: string): any {
+  const id = docId || autoDocId();
+  const wrapper: any = {
+    id,
+    _colName: colName,
+    parent: { id: colName },
+    async get() {
+      const { fs } = await loadServerFs();
+      const snap = await fs.collection(colName).doc(id).get();
+      const d = snap.exists ? snap.data() : undefined;
+      if (d) applyPayloadToLocalDoc(colName, id, d, true);
+      return { exists: snap.exists, id, data: () => d, ref: wrapper };
+    },
+    async set(data: any, options?: any) {
+      applyPayloadToLocalDoc(colName, id, data, Boolean(options?.merge));
+      const { fs, FV } = await loadServerFs();
+      await fs.collection(colName).doc(id).set(toAdminPayload(data, FV), options?.merge ? { merge: true } : {});
+    },
+    async update(data: any) {
+      applyPayloadToLocalDoc(colName, id, data, true);
+      const { fs, FV } = await loadServerFs();
+      await fs.collection(colName).doc(id).update(toAdminPayload(data, FV));
+    },
+    async delete() {
+      deleteLocalDoc(colName, id);
+      const { fs } = await loadServerFs();
+      await fs.collection(colName).doc(id).delete();
+    },
+  };
+  wrapper._ref = wrapper;
+  return wrapper;
+}
+
+type ServerQuerySpec = { kind: 'where'; field: string; op: any; value: any } | { kind: 'orderBy'; field: string; dir: 'asc' | 'desc' } | { kind: 'limit'; n: number };
+
+function buildServerQuery(fs: any, colName: string, specs: ServerQuerySpec[]) {
+  let q: any = fs.collection(colName);
+  for (const sp of specs) {
+    if (sp.kind === 'where') q = q.where(sp.field, sp.op, sp.value);
+    else if (sp.kind === 'orderBy') q = q.orderBy(sp.field, sp.dir);
+    else q = q.limit(sp.n);
+  }
+  return q;
+}
+
+function wrapServerQuerySnap(colName: string, snap: any) {
+  const docs = snap.docs.map((d: any) => {
+    const data = d.data();
+    applyPayloadToLocalDoc(colName, d.id, data, true);
+    return { exists: true, id: d.id, data: () => data, ref: serverDocWrapper(colName, d.id) };
+  });
+  return {
+    empty: docs.length === 0,
+    size: docs.length,
+    docs,
+    forEach(cb: (doc: any) => void) {
+      docs.forEach(cb);
+    },
+  };
+}
+
+function serverQueryWrapper(colName: string, specs: ServerQuerySpec[] = []): any {
+  return {
+    _isQuery: true,
+    _queryCol: colName,
+    _specs: specs,
+    where(field: string, op: any, value: any) {
+      return serverQueryWrapper(colName, [...specs, { kind: 'where', field, op, value }]);
+    },
+    orderBy(field: string, dir: 'asc' | 'desc' = 'asc') {
+      return serverQueryWrapper(colName, [...specs, { kind: 'orderBy', field, dir }]);
+    },
+    limit(n: number) {
+      return serverQueryWrapper(colName, [...specs, { kind: 'limit', n }]);
+    },
+    async get() {
+      const { fs } = await loadServerFs();
+      const snap = await buildServerQuery(fs, colName, specs).get();
+      return wrapServerQuerySnap(colName, snap);
+    },
+  };
+}
+
+const serverBackedDb = {
+  collection(colName: string) {
+    const queryWrapper = serverQueryWrapper(colName, []);
+    return {
+      ...queryWrapper,
+      doc(docId?: string) {
+        return serverDocWrapper(colName, docId);
+      },
+      async add(data: any) {
+        const wrapper = serverDocWrapper(colName);
+        await wrapper.set(data, { merge: false });
+        return wrapper;
+      },
+    };
+  },
+  batch() {
+    const ops: Array<{ kind: 'set' | 'update' | 'delete'; col: string; id: string; data?: any; options?: any }> = [];
+    return {
+      set(docWrapper: any, data: any, options?: any) {
+        const t = refTarget(docWrapper);
+        ops.push({ kind: 'set', ...t, data, options });
+      },
+      update(docWrapper: any, data: any) {
+        const t = refTarget(docWrapper);
+        ops.push({ kind: 'update', ...t, data });
+      },
+      delete(docWrapper: any) {
+        const t = refTarget(docWrapper);
+        ops.push({ kind: 'delete', ...t });
+      },
+      async commit() {
+        if (ops.length === 0) return;
+        const { fs, FV } = await loadServerFs();
+        const b = fs.batch();
+        for (const op of ops) {
+          const ref = fs.collection(op.col).doc(op.id);
+          if (op.kind === 'set') b.set(ref, toAdminPayload(op.data, FV), op.options?.merge ? { merge: true } : {});
+          else if (op.kind === 'update') b.update(ref, toAdminPayload(op.data, FV));
+          else b.delete(ref);
+        }
+        await b.commit();
+        for (const op of ops) {
+          if (op.kind === 'delete') deleteLocalDoc(op.col, op.id);
+          else applyPayloadToLocalDoc(op.col, op.id, op.data, op.kind === 'update' || Boolean(op.options?.merge));
+        }
+      },
+    };
+  },
+  async runTransaction<T>(updateFn: (transaction: any) => Promise<T>): Promise<T> {
+    const { fs, FV } = await loadServerFs();
+    const localOps: Array<() => void> = [];
+    const res = await fs.runTransaction(async (tx: any) => {
+      localOps.length = 0;
+      const txWrapper = {
+        async get(docWrapper: any) {
+          if (docWrapper?._isQuery) {
+            const qs = await tx.get(buildServerQuery(fs, docWrapper._queryCol, docWrapper._specs));
+            return wrapServerQuerySnap(docWrapper._queryCol, qs);
+          }
+          const t = refTarget(docWrapper);
+          const snap = await tx.get(fs.collection(t.col).doc(t.id));
+          const d = snap.exists ? snap.data() : undefined;
+          return { exists: snap.exists, id: snap.id, data: () => d };
+        },
+        set(docWrapper: any, data: any, options?: any) {
+          const t = refTarget(docWrapper);
+          localOps.push(() => applyPayloadToLocalDoc(t.col, t.id, data, Boolean(options?.merge)));
+          tx.set(fs.collection(t.col).doc(t.id), toAdminPayload(data, FV), options?.merge ? { merge: true } : {});
+        },
+        update(docWrapper: any, data: any) {
+          const t = refTarget(docWrapper);
+          localOps.push(() => applyPayloadToLocalDoc(t.col, t.id, data, true));
+          tx.update(fs.collection(t.col).doc(t.id), toAdminPayload(data, FV));
+        },
+        delete(docWrapper: any) {
+          const t = refTarget(docWrapper);
+          localOps.push(() => deleteLocalDoc(t.col, t.id));
+          tx.delete(fs.collection(t.col).doc(t.id));
+        },
+      };
+      return updateFn(txWrapper);
+    });
+    localOps.forEach((fn) => fn());
+    return res as T;
+  },
+};
+
+const adminDb: typeof clientWrappedDb = (hasAdminCredentials ? serverBackedDb : clientWrappedDb) as any;
 
 const adminAuth = getAuth();
 
@@ -1387,7 +1614,7 @@ export async function ensureProposalsSyncedToFirestore(force = false): Promise<v
       await batch.commit();
     }
 
-    // 4. 同步提案作者帳號至 users 集合，並自動修復已補齊資料用戶（含 #c668940663 Henry）的 hasCompletedProfile 狀態
+    // 4. 同步提案作者帳號至 users 集合，並自動修復已補齊電話與職稱/產業的用戶 hasCompletedProfile 狀態
     const existingUSnap = await adminDb.collection('users').get();
     const usersToWrite = VIRTUAL_PERSONA_USERS.filter((u) => u && u.id);
 
@@ -1405,19 +1632,11 @@ export async function ensureProposalsSyncedToFirestore(force = false): Promise<v
     let profileFixCount = 0;
     existingUSnap.docs.forEach((d) => {
       const data = d.data() || {};
-      const isHenryAccount =
-        d.id === 'c668940663' ||
-        d.id === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
-        data.memberId === 'c668940663' ||
-        data.memberId === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
-        data.id === 'c668940663' ||
-        data.id === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
-        (typeof data.name === 'string' && data.name.includes('Henry'));
       const hasFilledContactAndRole =
         data.hasCompletedProfile === false &&
-        (Boolean(data.phone && String(data.phone).trim()) || Boolean(data.bio && String(data.bio).trim())) &&
+        Boolean(data.phone && String(data.phone).trim()) &&
         Boolean(data.industry || data.jobTitle || data.title);
-      if ((isHenryAccount && data.hasCompletedProfile !== true) || hasFilledContactAndRole) {
+      if (hasFilledContactAndRole) {
         profileFixBatch.set(
           adminDb.collection('users').doc(d.id),
           { hasCompletedProfile: true, updatedAt: new Date().toISOString() },

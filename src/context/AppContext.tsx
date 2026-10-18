@@ -124,7 +124,7 @@ import { getCachedRealTrafficStats } from '../components/AdminSiteTrafficChart';
 import { PwaNotificationService } from '../services/pwaNotificationService';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth as firebaseAuthInstance } from '../services/firebase';
-import { setMyAppUserId, updateAuthUidDirectory } from '../services/authIdentity';
+import { getMyAuthUid, setMyAppUserId, updateAuthUidDirectory } from '../services/authIdentity';
 import { pointsOp, PointsOpPayload } from '../services/pointsApi';
 import {
   conversationSignature,
@@ -335,6 +335,8 @@ interface AppContextType {
   toggleBookmarkQuestion: (questionId: string) => boolean;
   isQuestionBookmarked: (questionId: string) => boolean;
   promoteQuestion: (questionId: string) => boolean;
+  /** 正式點數模式：送出打賞撥款申請到伺服器（回傳 false 表示非正式模式，由畫面自行處理） */
+  submitTipPayoutRequest: (amount: number, note: string, onFail?: () => void) => boolean;
   incrementQuestionViews: (questionId: string, amount?: number) => void;
 
   // 痛點附議 (+1) 與 提問同問 (舉手) 與 討論按讚 (大拇指)
@@ -2154,6 +2156,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           patch.subscriptionTier = r.subscriptionTier as SubscriptionTier;
           patch.subscriptionExpiresAt = r.subscriptionExpiresAt;
         }
+        if (typeof r.tipReceivablesPoints === 'number') patch.tipReceivablesPoints = r.tipReceivablesPoints;
         setAvailableUsers((prev) => prev.map((u) => (u.id === r.userId ? { ...u, ...patch } : u)));
         if (r.userId === myId) {
           setCurrentUser((prev) => (prev.id === myId ? { ...prev, ...patch } : prev));
@@ -2176,6 +2179,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   withheldPoints: fresh.withheldPoints ?? prev.withheldPoints,
                   subscriptionTier: fresh.subscriptionTier ?? prev.subscriptionTier,
                   subscriptionExpiresAt: fresh.subscriptionExpiresAt ?? prev.subscriptionExpiresAt,
+                  tipReceivablesPoints: fresh.tipReceivablesPoints ?? prev.tipReceivablesPoints,
                 }
               : prev
           );
@@ -4688,6 +4692,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       vibeCodingData: newQ.vibeCodingData,
       status: 'open',
       authorId: newQ.authorId || currentUser.id,
+      authorAuthUid: getMyAuthUid() || undefined,
       authorName: newQ.authorName || currentUser.name,
       authorAvatar: newQ.authorAvatar || currentUser.avatar,
       authorTitle: newQ.authorTitle || currentUser.title,
@@ -4712,7 +4717,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // If bounty > 0, questioner pays via supported third-party payment gateway or points into safe escrow
     if (q.bounty > 0) {
-      runPointsOp({ op: 'escrow_hold', amount: q.bounty, refId: qId, note: '提問懸賞預扣' }, '懸賞預扣未完成');
+      runPointsOp({ op: 'escrow_hold', amount: q.bounty, refId: qId, note: '提問懸賞預扣' }, '懸賞預扣未完成', () => {
+        // 伺服器預扣失敗：問題改為無懸賞，避免顯示沒有實際預扣的懸賞
+        const fixed = { ...q, bounty: 0, withheldBounty: 0 };
+        setQuestions((prev) => prev.map((item) => (item.id === qId ? { ...item, bounty: 0, withheldBounty: 0 } : item)));
+        syncQuestionToFirestore(fixed);
+        setNotifications((prev) => [
+          {
+            id: `notif-${Date.now()}`,
+            title: '懸賞預扣未成功',
+            message: `「${q.title}」的懸賞點數未能預扣，已改為無懸賞發布。請確認點數餘額後再編輯懸賞。`,
+            type: 'system',
+            createdAt: new Date().toISOString(),
+            read: false,
+            linkQuestionId: qId,
+          },
+          ...prev,
+        ]);
+      });
       setCurrentUser((prev) => ({
         ...prev,
         balance: Math.max(0, (prev.balance || 0) - q.bounty),
@@ -4748,6 +4770,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           [q.level]: ((prev.levelQuestionCounts?.[q.level]) || 0) + 1,
         },
       }));
+    }
+
+    // 擴音器置頂：50 點（管理員發布不收費）
+    if (q.isFeatured && currentUser.role !== 'admin') {
+      runPointsOp({ op: 'spend', amount: 50, purpose: 'promote', refId: qId }, '置頂推播扣點未完成', () => {
+        setQuestions((prev) => prev.map((item) => (item.id === qId ? { ...item, isFeatured: false } : item)));
+        syncQuestionToFirestore({ ...q, isFeatured: false });
+      });
+      if (!isNoPaymentMode && !isRaceMode) {
+        setCurrentUser((prev) => ({ ...prev, balance: Math.max(0, (prev.balance || 0) - 50) }));
+      }
     }
 
     setQuestions((prev) => {
@@ -4965,6 +4998,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       questionId: newAns.questionId || selectedQuestion?.id || 'q-1',
       type: newAns.type || 'solution',
       solverId: currentUser.id,
+      solverAuthUid: getMyAuthUid() || undefined,
       solverName: currentUser.name,
       solverTitle: currentUser.title || `${currentUser.domain || '創新創業'}專家`,
       solverAvatar: currentUser.avatar,
@@ -8184,6 +8218,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return q?.likes ?? 0;
   };
 
+  const submitTipPayoutRequest = (amount: number, note: string, onFail?: () => void): boolean => {
+    if (!isRealPointsEconomy) return false;
+    runPointsOp({ op: 'payout_request', amount, note }, '撥款申請未完成', onFail);
+    return true;
+  };
+
   // Action: Promote question to top of recruiting list (50 點)
   const promoteQuestion = (questionId: string): boolean => {
     const q = questions.find((item) => item.id === questionId);
@@ -9335,6 +9375,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleBookmarkQuestion,
         isQuestionBookmarked,
         promoteQuestion,
+        submitTipPayoutRequest,
         incrementQuestionViews,
         secondedQuestionIds,
         toggleSecondQuestion,

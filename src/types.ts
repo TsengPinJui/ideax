@@ -892,6 +892,7 @@ export interface Question {
   delistedFeedback?: string; // 管理員給予提問者之處置說明與改善指引
   delistedAt?: string; // 下架時間
   authorId: string;
+  authorAuthUid?: string; // 發布者的 Firebase 帳號（資料庫權限用）
   authorName: string;
   authorAvatar: string;
   createdAt: string;
@@ -1088,6 +1089,7 @@ export interface Answer {
   questionId: string;
   type?: AnswerType; // 預設 'solution'
   solverId: string;
+  solverAuthUid?: string; // 回答者的 Firebase 帳號（資料庫權限用）
   solverName: string;
   solverTitle: string;
   solverAvatar: string;
