@@ -25,6 +25,7 @@ export default async function handler(req, res) {
         error: 'backend_load_failed',
         message: String(err?.message || err).slice(0, 500),
         code: err?.code || null,
+        node: process.version,
       })
     );
   }
