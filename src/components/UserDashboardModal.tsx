@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AdminAuthBackfillCard } from './AdminAuthBackfillCard';
+import { AdminAssistantTickCard } from './AdminAssistantTickCard';
 import { useApp } from '../context/AppContext';
 import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData, Transaction, Question } from '../types';
 import { LEVEL_CONFIGS, isMockTransactionId, isRealRegisteredUser } from '../data/mockData';
@@ -3967,6 +3968,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 {isCloudDbExpanded && (
                   <div className="space-y-3.5 pt-3 border-t border-purple-100/90 animate-fadeIn">
                     {currentUser.role === 'admin' && <AdminAuthBackfillCard />}
+                    {currentUser.role === 'admin' && <AdminAssistantTickCard />}
                     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between">
                       <p className="text-xs text-stone-500">
                         全站核心交易、身分治理與通知評價三大範疇雲端持久化管理

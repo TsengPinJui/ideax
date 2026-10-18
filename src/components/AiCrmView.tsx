@@ -681,7 +681,12 @@ export const AiCrmView: React.FC<AiCrmViewProps> = ({
               <span>當前時段：{timeSlotInfo.slotName} ({timeSlotInfo.slotRange})</span>
             </span>
             <span className="text-stone-600">•</span>
-            <span>最後巡檢：{lastScanTime}</span>
+            <span>
+              最後巡檢：
+              {currentUser?.aiCrmLastScanAt
+                ? `${new Date(currentUser.aiCrmLastScanAt).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}（找到 ${currentUser.aiCrmLastScanMatches ?? 0} 件）`
+                : '等待伺服器第一次巡檢'}
+            </span>
           </div>
         </div>
       </div>
