@@ -2714,8 +2714,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (cloudData.users && cloudData.users.length > 0) {
             const repairedCloudUsers = cloudData.users.map((cu) => {
               const repaired = restoreCanonicalUserIdentity(cu);
-              if (cu.hasCompletedProfile === false && repaired.hasCompletedProfile === true && connected) {
-                syncUserToFirestore(repaired);
+              // 只修自己的帳號（資料庫規則不允許改別人的資料）
+              if (cu.hasCompletedProfile === false && repaired.hasCompletedProfile === true && connected && cu.id === currentUser?.id) {
+                syncUserToFirestore(repaired).catch(() => {});
               }
               return repaired;
             });
