@@ -3,7 +3,6 @@ import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
-import { createServer as createViteServer } from 'vite';
 import competitionRouter from './server/competitionRoutes';
 import authVerificationRouter from './server/authVerificationRoutes';
 import { rateLimit, requireAdminMiddleware } from './server/security';
@@ -3425,6 +3424,9 @@ app.get('/robots.txt', (req: Request, res: Response) => {
 // Vite Middleware & Production static serve
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    // 開發環境才載入 Vite（動態載入，避免正式環境的伺服器函式把 Vite 一起打包）
+    const viteModuleName = 'vite';
+    const { createServer: createViteServer } = await import(viteModuleName);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -3531,6 +3533,11 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-});
+// Vercel：以 api/index.mjs 匯出 app 作為伺服器函式（不自行 listen）；其他環境（本機、AI Studio）照常啟動
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+  });
+}
+
+export default app;
