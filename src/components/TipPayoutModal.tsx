@@ -33,7 +33,7 @@ export const TipPayoutModal: React.FC<TipPayoutModalProps> = ({
   onNavigateToBank,
   onSuccess,
 }) => {
-  const { currentUser, setCurrentUser, setAvailableUsers, setTransactions, addNotification, subscriptionPlans } = useApp();
+  const { currentUser, setCurrentUser, setAvailableUsers, setTransactions, addNotification, subscriptionPlans, submitTipPayoutRequest } = useApp();
 
   const [payoutMode, setPayoutMode] = useState<PayoutMode>(initialMode);
 
@@ -43,7 +43,9 @@ export const TipPayoutModal: React.FC<TipPayoutModalProps> = ({
     }
   }, [initialMode, isOpen]);
 
-  const bountyReceivables = Math.max(0, currentUser?.withheldPoints || 0);
+  // 懸賞採納後由平台直接結算撥付給解答者，不在此申請。
+  // （withheldPoints 是「提問者自己被預扣的懸賞」，不能當成可領收入）
+  const bountyReceivables = 0;
   const tipReceivables = Math.max(0, currentUser?.tipReceivablesPoints || 0);
 
   // 當前模式下可提領總點數
@@ -139,6 +141,13 @@ export const TipPayoutModal: React.FC<TipPayoutModalProps> = ({
         localStorage.setItem('ideax_user', JSON.stringify(updatedUser));
       } catch {}
       setAvailableUsers((prev) => prev.map((u) => (u.id === currentUser.id ? updatedUser : u)));
+
+      // 正式點數模式：由伺服器扣減可撥款點數並建立撥款申請；失敗時還原
+      const beforeTips = tipReceivables;
+      const beforePaidOut = currentUser.totalPaidOut || 0;
+      submitTipPayoutRequest(pointsToWithdraw, `${modeTitle}申請 → ${bankSnapshot}`, () => {
+        setCurrentUser((prev) => ({ ...prev, tipReceivablesPoints: beforeTips, totalPaidOut: beforePaidOut }));
+      });
 
       // 建立撥款交易紀錄 (項目明確歸類為：打賞撥款 / 懸賞撥款 / 合併撥款)
       const payoutTxType =

@@ -29,13 +29,83 @@ service cloud.firestore {
     }
 
     // 1. 業務核心與交易類 (Core Business & Transactions)
-    match /questions/{questionId} {
-      allow read, write: if true;
+
+    // 是否為某份資料的擁有者：比對 Firebase 帳號欄位，或透過會員資料的 authUid 對照
+    function ownsVia(data, authField, appIdField) {
+      return isSignedIn() && (
+        data.get(authField, '') == request.auth.uid ||
+        data.get(appIdField, '') == request.auth.uid ||
+        (data.get(appIdField, '') is string && data.get(appIdField, '') != '' &&
+          exists(/databases/$(database)/documents/users/$(data.get(appIdField, ''))) &&
+          get(/databases/$(database)/documents/users/$(data.get(appIdField, ''))).data.get('authUid', '') == request.auth.uid)
+      );
+    }
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
     }
 
-    match /answers/{answerId} {
-      allow read, write: if true;
+    // 問題／提案／作品：所有人可讀；只有發布者能改內容；其他會員只能改互動欄位（按讚、瀏覽、打賞等）
+    function protectedQuestionFields() {
+      return ['authorId', 'authorAuthUid', 'authorName', 'authorAvatar', 'title', 'description', 'bounty',
+              'withheldBounty', 'postType', 'level', 'deadline', 'phases', 'isOfficial', 'publishIdentity',
+              'status', 'isFeatured', 'disputeStatus', 'appName', 'youtubeUrl', 'coverImage', 'galleryImages',
+              'demoUrl', 'fileUrl', 'updateLogs', 'specialZone', 'isStarSeason', 'isDelisted'];
     }
+    match /questions/{questionId} {
+      allow read: if true;
+      allow create: if isAdmin() || (
+        isSignedIn() && request.resource.data.get('authorAuthUid', '') == request.auth.uid
+      );
+      allow update: if isAdmin() || (
+        ownsVia(resource.data, 'authorAuthUid', 'authorId') &&
+        (!('authorAuthUid' in changedKeys()) || request.resource.data.authorAuthUid == request.auth.uid) &&
+        !('authorId' in changedKeys())
+      ) || (
+        isSignedIn() && !changedKeys().hasAny(protectedQuestionFields())
+      );
+      allow delete: if isAdmin() || ownsVia(resource.data, 'authorAuthUid', 'authorId');
+    }
+
+    // 解答：所有人可讀（付費內容保護另案處理）；只有回答者能改內容；
+    // 提問者可採納、評分、驗收階段；其他會員只能改互動欄位
+    function answerContentFields() {
+      return ['solverId', 'solverAuthUid', 'solverName', 'questionId', 'freePreview', 'fullContent',
+              'attachments', 'meetingDetails', 'price', 'isPaid', 'type'];
+    }
+    function isQuestionOwnerOf(questionId) {
+      return exists(/databases/$(database)/documents/questions/$(questionId)) &&
+        ownsVia(get(/databases/$(database)/documents/questions/$(questionId)).data, 'authorAuthUid', 'authorId');
+    }
+    match /answers/{answerId} {
+      allow read: if true;
+      allow create: if isAdmin() || (
+        isSignedIn() && request.resource.data.get('solverAuthUid', '') == request.auth.uid
+      );
+      allow update: if isAdmin() || (
+        ownsVia(resource.data, 'solverAuthUid', 'solverId') &&
+        (!('solverAuthUid' in changedKeys()) || request.resource.data.solverAuthUid == request.auth.uid) &&
+        !('solverId' in changedKeys())
+      ) || (
+        isSignedIn() && !changedKeys().hasAny(answerContentFields()) && isQuestionOwnerOf(resource.data.questionId)
+      ) || (
+        isSignedIn() && !changedKeys().hasAny(answerContentFields().concat(['isAccepted', 'phases', 'rating', 'reviewComment']))
+      );
+      allow delete: if isAdmin() || ownsVia(resource.data, 'solverAuthUid', 'solverId');
+    }
+
+    // 撥款申請：只有伺服器能寫；管理員可讀
+    match /payout_requests/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // 創星季私密資料（聯絡電話、身分證字號、銀行帳號、帳戶點數、報名資料等）：只有伺服器能寫；管理員可讀
+    match /competition_private_submissions/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /competition_accounts/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /competition_participant_registrations/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /competition_judge_applications/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /competition_support_records/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /competition_audit_logs/{id} { allow read: if isAdmin(); allow write: if false; }
 
     // 交易紀錄：只有交易相關人（partyAuthUids）與管理員能讀
     match /transactions/{txId} {
@@ -170,7 +240,10 @@ service cloud.firestore {
     // Default fallback
     // 注意：Firestore 規則是「任一條允許即放行」，因此萬用規則必須排除上方受保護的集合
     match /{collectionId}/{document=**} {
-      allow read, write: if !(collectionId in ['admins', 'user_private', 'transactions', 'conversations', 'notifications', 'points_ledger', 'points_escrow']);
+      allow read, write: if !(collectionId in ['admins', 'user_private', 'transactions', 'conversations', 'notifications',
+        'points_ledger', 'points_escrow', 'questions', 'answers', 'users', 'payout_requests',
+        'competition_private_submissions', 'competition_accounts', 'competition_participant_registrations',
+        'competition_judge_applications', 'competition_support_records', 'competition_audit_logs']);
     }
   }
 }

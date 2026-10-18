@@ -18,7 +18,8 @@ export type PointsOp =
   | { op: 'escrow_hold'; amount: number; refId: string; note?: string }
   | { op: 'escrow_release'; amount: number; refId: string; mode: 'refund' | 'payout'; payerUserId?: string; note?: string }
   | { op: 'admin_adjust'; userId: string; delta: number; note?: string }
-  | { op: 'subscribe'; tier: string; cycle?: string };
+  | { op: 'subscribe'; tier: string; cycle?: string }
+  | { op: 'payout_request'; amount: number; note?: string };
 
 export type SpendPurpose = 'tip' | 'unlock' | 'promote' | 'service' | 'chat_offer' | 'subscription' | 'withdraw';
 const SPEND_PURPOSES: SpendPurpose[] = ['tip', 'unlock', 'promote', 'service', 'chat_offer', 'subscription', 'withdraw'];
@@ -132,6 +133,44 @@ export async function applyPointsOpWith(
         createdAt: new Date().toISOString(),
       });
       return { userId: userRef.id, balance: next, withheldPoints: Number(snap.get('withheldPoints')) || 0 };
+    });
+  }
+
+  if (input.op === 'payout_request') {
+    // 打賞收入申請撥款：扣減「可撥款打賞點數」並建立撥款申請，由管理員匯款後結案
+    const amount = cleanAmount(input.amount);
+    if (amount < 100) throw new PointsError('單次撥款申請最低 100 點');
+    return db.runTransaction(async (tx: any) => {
+      const snap = await tx.get(userRef);
+      const receivable = Number(snap.get('tipReceivablesPoints')) || 0;
+      if (receivable < amount) throw new PointsError(`可撥款點數不足（目前 ${receivable} 點）`, 402);
+      const nextReceivable = receivable - amount;
+      tx.update(userRef, { tipReceivablesPoints: nextReceivable });
+      const now = new Date().toISOString();
+      tx.set(db.collection('payout_requests').doc(), {
+        userId: userRef.id,
+        byAuthUid: auth.uid,
+        amount,
+        source: 'tips',
+        status: 'pending',
+        note: String(input.note || '').slice(0, 300),
+        createdAt: now,
+      });
+      tx.set(db.collection('points_ledger').doc(), {
+        userId: userRef.id,
+        op: 'payout_request',
+        delta: 0,
+        receivableDelta: -amount,
+        receivableAfter: nextReceivable,
+        note: String(input.note || '').slice(0, 200),
+        createdAt: now,
+      });
+      return {
+        userId: userRef.id,
+        balance: Number(snap.get('balance')) || 0,
+        withheldPoints: Number(snap.get('withheldPoints')) || 0,
+        tipReceivablesPoints: nextReceivable,
+      };
     });
   }
 

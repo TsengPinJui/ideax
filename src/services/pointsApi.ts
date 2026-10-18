@@ -9,10 +9,19 @@ export type PointsOpPayload =
   | { op: 'escrow_hold'; amount: number; refId: string; note?: string }
   | { op: 'escrow_release'; amount: number; refId: string; mode: 'refund' | 'payout'; payerUserId?: string; note?: string }
   | { op: 'admin_adjust'; userId: string; delta: number; note?: string }
-  | { op: 'subscribe'; tier: string; cycle?: string };
+  | { op: 'subscribe'; tier: string; cycle?: string }
+  | { op: 'payout_request'; amount: number; note?: string };
 
 export type PointsOpResult =
-  | { ok: true; userId: string; balance: number; withheldPoints: number; subscriptionTier?: string; subscriptionExpiresAt?: string }
+  | {
+      ok: true;
+      userId: string;
+      balance: number;
+      withheldPoints: number;
+      subscriptionTier?: string;
+      subscriptionExpiresAt?: string;
+      tipReceivablesPoints?: number;
+    }
   | { ok: false; error: string; status: number };
 
 export async function pointsOp(payload: PointsOpPayload): Promise<PointsOpResult> {
@@ -33,6 +42,7 @@ export async function pointsOp(payload: PointsOpPayload): Promise<PointsOpResult
       withheldPoints: Number(data.withheldPoints) || 0,
       subscriptionTier: data.subscriptionTier,
       subscriptionExpiresAt: data.subscriptionExpiresAt,
+      tipReceivablesPoints: typeof data.tipReceivablesPoints === 'number' ? data.tipReceivablesPoints : undefined,
     };
   } catch {
     return { ok: false, error: '無法連線到伺服器，點數未異動', status: 0 };

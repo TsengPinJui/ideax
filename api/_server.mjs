@@ -43890,7 +43890,7 @@ var require_websocket = __commonJS({
     var http3 = __require("http");
     var net = __require("net");
     var tls = __require("tls");
-    var { randomBytes: randomBytes2, createHash } = __require("crypto");
+    var { randomBytes: randomBytes3, createHash } = __require("crypto");
     var { Duplex, Readable: Readable2 } = __require("stream");
     var { URL: URL2 } = __require("url");
     var PerMessageDeflate2 = require_permessage_deflate();
@@ -44428,7 +44428,7 @@ var require_websocket = __commonJS({
         }
       }
       const defaultPort = isSecure ? 443 : 80;
-      const key = randomBytes2(16).toString("base64");
+      const key = randomBytes3(16).toString("base64");
       const request = isSecure ? https2.request : http3.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
@@ -117580,6 +117580,7 @@ ${getSiteUrl()}`;
 // server/competitionService.ts
 import fs3 from "fs";
 import path2 from "path";
+import { randomBytes as randomBytes2 } from "crypto";
 
 // ../ideax-new/node_modules/firebase-admin/lib/esm/app/index.js
 var import_app = __toESM(require_app(), 1);
@@ -156564,6 +156565,11 @@ function getMirrorCollectionMap(colName) {
 async function upsertMirrorAndFirestoreDoc(colName, docId, data, merge = true) {
   applyPayloadToLocalDoc(colName, docId, data, merge);
   try {
+    if (hasAdminCredentials) {
+      const { fs: fs5, FV } = await loadServerFs();
+      await fs5.collection(colName).doc(docId).set(toAdminPayload(data, FV), merge ? { merge: true } : {});
+      return;
+    }
     const ref = doc(rawFirestoreDb, colName, docId);
     await setDoc(ref, toFirestoreNativePayload(data), { merge });
   } catch (err) {
@@ -156575,6 +156581,11 @@ async function upsertMirrorAndFirestoreDoc(colName, docId, data, merge = true) {
 async function deleteMirrorAndFirestoreDoc(colName, docId) {
   deleteLocalDoc(colName, docId);
   try {
+    if (hasAdminCredentials) {
+      const { fs: fs5 } = await loadServerFs();
+      await fs5.collection(colName).doc(docId).delete();
+      return;
+    }
     const ref = doc(rawFirestoreDb, colName, docId);
     await deleteDoc(ref);
   } catch (err) {
@@ -156736,7 +156747,7 @@ function createQueryWrapper(colName, constraints = [], filterSpecs = [], limitCo
     }
   };
 }
-var adminDb = {
+var clientWrappedDb = {
   collection(colName) {
     const queryWrapper = createQueryWrapper(colName, []);
     return {
@@ -156854,6 +156865,206 @@ var adminDb = {
     return res;
   }
 };
+var serverFsPromise = null;
+function loadServerFs() {
+  if (!serverFsPromise) {
+    serverFsPromise = Promise.resolve().then(() => (init_firestore(), firestore_exports)).then((m2) => {
+      const app2 = getApps()[0];
+      const dbId = firebase_applet_config_default.firestoreDatabaseId;
+      const fs5 = dbId ? m2.getFirestore(app2, dbId) : m2.getFirestore(app2);
+      return { fs: fs5, FV: m2.FieldValue };
+    });
+  }
+  return serverFsPromise;
+}
+function toAdminPayload(val, FV) {
+  if (val === void 0) return null;
+  if (val === null || typeof val !== "object") return val;
+  if (val.__op === "increment") return FV.increment(val.value);
+  if (val.__op === "arrayUnion") return FV.arrayUnion(...val.elements || []);
+  if (val instanceof Date) return val.toISOString();
+  if (Array.isArray(val)) return val.filter((v) => v !== void 0).map((v) => toAdminPayload(v, FV));
+  if (val.constructor && val.constructor.name !== "Object") return val;
+  const out = {};
+  for (const [k, v] of Object.entries(val)) {
+    if (v !== void 0) out[k] = toAdminPayload(v, FV);
+  }
+  return out;
+}
+var AUTO_ID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+function autoDocId() {
+  const bytes = randomBytes2(20);
+  let id = "";
+  for (let i2 = 0; i2 < 20; i2++) id += AUTO_ID_CHARS[bytes[i2] % AUTO_ID_CHARS.length];
+  return id;
+}
+function refTarget(r2) {
+  return { col: r2?._colName || r2?.parent?.id, id: r2?.id };
+}
+function serverDocWrapper(colName, docId) {
+  const id = docId || autoDocId();
+  const wrapper = {
+    id,
+    _colName: colName,
+    parent: { id: colName },
+    async get() {
+      const { fs: fs5 } = await loadServerFs();
+      const snap = await fs5.collection(colName).doc(id).get();
+      const d = snap.exists ? snap.data() : void 0;
+      if (d) applyPayloadToLocalDoc(colName, id, d, true);
+      return { exists: snap.exists, id, data: () => d, ref: wrapper };
+    },
+    async set(data, options2) {
+      applyPayloadToLocalDoc(colName, id, data, Boolean(options2?.merge));
+      const { fs: fs5, FV } = await loadServerFs();
+      await fs5.collection(colName).doc(id).set(toAdminPayload(data, FV), options2?.merge ? { merge: true } : {});
+    },
+    async update(data) {
+      applyPayloadToLocalDoc(colName, id, data, true);
+      const { fs: fs5, FV } = await loadServerFs();
+      await fs5.collection(colName).doc(id).update(toAdminPayload(data, FV));
+    },
+    async delete() {
+      deleteLocalDoc(colName, id);
+      const { fs: fs5 } = await loadServerFs();
+      await fs5.collection(colName).doc(id).delete();
+    }
+  };
+  wrapper._ref = wrapper;
+  return wrapper;
+}
+function buildServerQuery(fs5, colName, specs) {
+  let q = fs5.collection(colName);
+  for (const sp of specs) {
+    if (sp.kind === "where") q = q.where(sp.field, sp.op, sp.value);
+    else if (sp.kind === "orderBy") q = q.orderBy(sp.field, sp.dir);
+    else q = q.limit(sp.n);
+  }
+  return q;
+}
+function wrapServerQuerySnap(colName, snap) {
+  const docs = snap.docs.map((d) => {
+    const data = d.data();
+    applyPayloadToLocalDoc(colName, d.id, data, true);
+    return { exists: true, id: d.id, data: () => data, ref: serverDocWrapper(colName, d.id) };
+  });
+  return {
+    empty: docs.length === 0,
+    size: docs.length,
+    docs,
+    forEach(cb) {
+      docs.forEach(cb);
+    }
+  };
+}
+function serverQueryWrapper(colName, specs = []) {
+  return {
+    _isQuery: true,
+    _queryCol: colName,
+    _specs: specs,
+    where(field2, op, value) {
+      return serverQueryWrapper(colName, [...specs, { kind: "where", field: field2, op, value }]);
+    },
+    orderBy(field2, dir = "asc") {
+      return serverQueryWrapper(colName, [...specs, { kind: "orderBy", field: field2, dir }]);
+    },
+    limit(n) {
+      return serverQueryWrapper(colName, [...specs, { kind: "limit", n }]);
+    },
+    async get() {
+      const { fs: fs5 } = await loadServerFs();
+      const snap = await buildServerQuery(fs5, colName, specs).get();
+      return wrapServerQuerySnap(colName, snap);
+    }
+  };
+}
+var serverBackedDb = {
+  collection(colName) {
+    const queryWrapper = serverQueryWrapper(colName, []);
+    return {
+      ...queryWrapper,
+      doc(docId) {
+        return serverDocWrapper(colName, docId);
+      },
+      async add(data) {
+        const wrapper = serverDocWrapper(colName);
+        await wrapper.set(data, { merge: false });
+        return wrapper;
+      }
+    };
+  },
+  batch() {
+    const ops = [];
+    return {
+      set(docWrapper, data, options2) {
+        const t2 = refTarget(docWrapper);
+        ops.push({ kind: "set", ...t2, data, options: options2 });
+      },
+      update(docWrapper, data) {
+        const t2 = refTarget(docWrapper);
+        ops.push({ kind: "update", ...t2, data });
+      },
+      delete(docWrapper) {
+        const t2 = refTarget(docWrapper);
+        ops.push({ kind: "delete", ...t2 });
+      },
+      async commit() {
+        if (ops.length === 0) return;
+        const { fs: fs5, FV } = await loadServerFs();
+        const b = fs5.batch();
+        for (const op of ops) {
+          const ref = fs5.collection(op.col).doc(op.id);
+          if (op.kind === "set") b.set(ref, toAdminPayload(op.data, FV), op.options?.merge ? { merge: true } : {});
+          else if (op.kind === "update") b.update(ref, toAdminPayload(op.data, FV));
+          else b.delete(ref);
+        }
+        await b.commit();
+        for (const op of ops) {
+          if (op.kind === "delete") deleteLocalDoc(op.col, op.id);
+          else applyPayloadToLocalDoc(op.col, op.id, op.data, op.kind === "update" || Boolean(op.options?.merge));
+        }
+      }
+    };
+  },
+  async runTransaction(updateFn) {
+    const { fs: fs5, FV } = await loadServerFs();
+    const localOps = [];
+    const res = await fs5.runTransaction(async (tx) => {
+      localOps.length = 0;
+      const txWrapper = {
+        async get(docWrapper) {
+          if (docWrapper?._isQuery) {
+            const qs = await tx.get(buildServerQuery(fs5, docWrapper._queryCol, docWrapper._specs));
+            return wrapServerQuerySnap(docWrapper._queryCol, qs);
+          }
+          const t2 = refTarget(docWrapper);
+          const snap = await tx.get(fs5.collection(t2.col).doc(t2.id));
+          const d = snap.exists ? snap.data() : void 0;
+          return { exists: snap.exists, id: snap.id, data: () => d };
+        },
+        set(docWrapper, data, options2) {
+          const t2 = refTarget(docWrapper);
+          localOps.push(() => applyPayloadToLocalDoc(t2.col, t2.id, data, Boolean(options2?.merge)));
+          tx.set(fs5.collection(t2.col).doc(t2.id), toAdminPayload(data, FV), options2?.merge ? { merge: true } : {});
+        },
+        update(docWrapper, data) {
+          const t2 = refTarget(docWrapper);
+          localOps.push(() => applyPayloadToLocalDoc(t2.col, t2.id, data, true));
+          tx.update(fs5.collection(t2.col).doc(t2.id), toAdminPayload(data, FV));
+        },
+        delete(docWrapper) {
+          const t2 = refTarget(docWrapper);
+          localOps.push(() => deleteLocalDoc(t2.col, t2.id));
+          tx.delete(fs5.collection(t2.col).doc(t2.id));
+        }
+      };
+      return updateFn(txWrapper);
+    });
+    localOps.forEach((fn) => fn());
+    return res;
+  }
+};
+var adminDb = hasAdminCredentials ? serverBackedDb : clientWrappedDb;
 var adminAuth = getAuth();
 async function verifyAuthToken(authHeader) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -157470,9 +157681,8 @@ async function ensureProposalsSyncedToFirestore(force = false) {
     let profileFixCount = 0;
     existingUSnap.docs.forEach((d) => {
       const data = d.data() || {};
-      const isHenryAccount = d.id === "c668940663" || d.id === "khQfTsoBdMM9ksz3XM2SEr5ThA02" || data.memberId === "c668940663" || data.memberId === "khQfTsoBdMM9ksz3XM2SEr5ThA02" || data.id === "c668940663" || data.id === "khQfTsoBdMM9ksz3XM2SEr5ThA02" || typeof data.name === "string" && data.name.includes("Henry");
-      const hasFilledContactAndRole = data.hasCompletedProfile === false && (Boolean(data.phone && String(data.phone).trim()) || Boolean(data.bio && String(data.bio).trim())) && Boolean(data.industry || data.jobTitle || data.title);
-      if (isHenryAccount && data.hasCompletedProfile !== true || hasFilledContactAndRole) {
+      const hasFilledContactAndRole = data.hasCompletedProfile === false && Boolean(data.phone && String(data.phone).trim()) && Boolean(data.industry || data.jobTitle || data.title);
+      if (hasFilledContactAndRole) {
         profileFixBatch.set(
           adminDb.collection("users").doc(d.id),
           { hasCompletedProfile: true, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
@@ -158150,9 +158360,52 @@ async function requireAdmin(req, res) {
   return authUser;
 }
 var MIRROR_WRITABLE_COLLECTIONS = /* @__PURE__ */ new Set(["questions"]);
+var PROTECTED_QUESTION_FIELDS = /* @__PURE__ */ new Set([
+  "authorId",
+  "authorAuthUid",
+  "authorName",
+  "authorAvatar",
+  "title",
+  "description",
+  "bounty",
+  "withheldBounty",
+  "postType",
+  "level",
+  "deadline",
+  "phases",
+  "isOfficial",
+  "publishIdentity",
+  "status",
+  "isFeatured",
+  "disputeStatus",
+  "appName",
+  "youtubeUrl",
+  "coverImage",
+  "galleryImages",
+  "demoUrl",
+  "fileUrl",
+  "updateLogs",
+  "specialZone",
+  "isStarSeason",
+  "isDelisted"
+]);
+async function isContentOwner(docData, uid) {
+  if (!docData || !uid) return false;
+  if (docData.authorAuthUid === uid || docData.authorId === uid) return true;
+  if (typeof docData.authorId === "string" && docData.authorId && !docData.authorId.includes("/")) {
+    try {
+      const u = await adminDb.collection("users").doc(docData.authorId).get();
+      const ud = u.exists ? u.data() : null;
+      return Boolean(ud && ud.authUid === uid);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
 function stripUserSecretsForPublic(u) {
   if (!u || typeof u !== "object") return u;
-  const { password, realNameAuthData, realNameData, ...rest } = u;
+  const { password, realNameAuthData, realNameData, phone, email, bankAccount, idNumber, address, ...rest } = u;
   return rest;
 }
 router.get("/config", (req, res) => {
@@ -158728,12 +158981,20 @@ router.post("/db-mirror/:collection/:docId", async (req, res) => {
     if (!MIRROR_WRITABLE_COLLECTIONS.has(colName) && !await isVerifiedAdmin(authUser.uid)) {
       return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u4E0D\u53EF\u5BEB\u5165\u6B64\u96C6\u5408" });
     }
-    const existingDoc = getMirrorCollectionMap(colName)?.[docId];
-    if (existingDoc && existingDoc.authorId && existingDoc.authorId !== authUser.uid && !await isVerifiedAdmin(authUser.uid)) {
-      const allowedKeys = /* @__PURE__ */ new Set(["views", "likes", "answersCount", "secondedCount", "sameQuestionCount", "updatedAt", "commentsCount", "tipTotal"]);
-      const keys = Object.keys(data || {});
-      if (keys.some((k) => !allowedKeys.has(k) && JSON.stringify(data[k]) !== JSON.stringify(existingDoc[k]))) {
-        return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u53EA\u80FD\u4FEE\u6539\u81EA\u5DF1\u767C\u5E03\u7684\u5167\u5BB9" });
+    if (!await isVerifiedAdmin(authUser.uid)) {
+      const snap = await adminDb.collection(colName).doc(docId).get();
+      const existingDoc = snap.exists ? snap.data() : null;
+      if (!existingDoc) {
+        if (String(data.authorAuthUid || "") !== authUser.uid) {
+          return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u767C\u5E03\u8005\u8EAB\u5206\u4E0D\u7B26" });
+        }
+      } else if (!await isContentOwner(existingDoc, authUser.uid)) {
+        const changed = Object.keys(data || {}).filter((k) => JSON.stringify(data[k]) !== JSON.stringify(existingDoc[k]));
+        if (changed.some((k) => PROTECTED_QUESTION_FIELDS.has(k))) {
+          return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u53EA\u80FD\u4FEE\u6539\u81EA\u5DF1\u767C\u5E03\u7684\u5167\u5BB9" });
+        }
+      } else if (data.authorId !== void 0 && data.authorId !== existingDoc.authorId) {
+        return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u4E0D\u53EF\u8B8A\u66F4\u767C\u5E03\u8005" });
       }
     }
     await upsertMirrorAndFirestoreDoc(colName, docId, data, Boolean(merge));
@@ -158755,8 +159016,12 @@ router.delete("/db-mirror/:collection/:docId", async (req, res) => {
     }
     const isAdminUser = await isVerifiedAdmin(authUser.uid);
     if (!isAdminUser) {
-      const existingDoc = getMirrorCollectionMap(colName)?.[docId];
-      if (!MIRROR_WRITABLE_COLLECTIONS.has(colName) || existingDoc && existingDoc.authorId !== authUser.uid) {
+      if (!MIRROR_WRITABLE_COLLECTIONS.has(colName)) {
+        return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u53EA\u80FD\u522A\u9664\u81EA\u5DF1\u767C\u5E03\u7684\u5167\u5BB9" });
+      }
+      const snap = await adminDb.collection(colName).doc(docId).get();
+      const existingDoc = snap.exists ? snap.data() : null;
+      if (existingDoc && !await isContentOwner(existingDoc, authUser.uid)) {
         return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u53EA\u80FD\u522A\u9664\u81EA\u5DF1\u767C\u5E03\u7684\u5167\u5BB9" });
       }
     }
@@ -159574,6 +159839,42 @@ async function applyPointsOpWith(deps, auth, input) {
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       });
       return { userId: userRef.id, balance: next, withheldPoints: Number(snap.get("withheldPoints")) || 0 };
+    });
+  }
+  if (input.op === "payout_request") {
+    const amount = cleanAmount(input.amount);
+    if (amount < 100) throw new PointsError("\u55AE\u6B21\u64A5\u6B3E\u7533\u8ACB\u6700\u4F4E 100 \u9EDE");
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      const receivable = Number(snap.get("tipReceivablesPoints")) || 0;
+      if (receivable < amount) throw new PointsError(`\u53EF\u64A5\u6B3E\u9EDE\u6578\u4E0D\u8DB3\uFF08\u76EE\u524D ${receivable} \u9EDE\uFF09`, 402);
+      const nextReceivable = receivable - amount;
+      tx.update(userRef, { tipReceivablesPoints: nextReceivable });
+      const now = (/* @__PURE__ */ new Date()).toISOString();
+      tx.set(db.collection("payout_requests").doc(), {
+        userId: userRef.id,
+        byAuthUid: auth.uid,
+        amount,
+        source: "tips",
+        status: "pending",
+        note: String(input.note || "").slice(0, 300),
+        createdAt: now
+      });
+      tx.set(db.collection("points_ledger").doc(), {
+        userId: userRef.id,
+        op: "payout_request",
+        delta: 0,
+        receivableDelta: -amount,
+        receivableAfter: nextReceivable,
+        note: String(input.note || "").slice(0, 200),
+        createdAt: now
+      });
+      return {
+        userId: userRef.id,
+        balance: Number(snap.get("balance")) || 0,
+        withheldPoints: Number(snap.get("withheldPoints")) || 0,
+        tipReceivablesPoints: nextReceivable
+      };
     });
   }
   if (input.op === "escrow_hold") {
