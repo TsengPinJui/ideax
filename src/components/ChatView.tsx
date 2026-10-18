@@ -416,13 +416,28 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
     [currentUser.id, currentUser.role]
   );
 
+  // 訊息頭像：使用寄件人「目前」的頭像（訊息內存的是傳送當下的頭像，換頭像後會不一致）
+  const resolveLiveAvatar = useCallback(
+    (senderId?: string, fallback?: string) => {
+      if (!senderId) return fallback;
+      if (senderId === currentUser.id) return currentUser.avatar || fallback;
+      const u = availableUsers.find((user) => user.id === senderId);
+      return u?.avatar || fallback;
+    },
+    [currentUser.id, currentUser.avatar, availableUsers]
+  );
+
   // 取得對話中另一方的詳細資料
   const getOtherParticipant = useCallback(
     (conv: ChatConversation) => {
       if (conv.isGroup) return null;
       if (Array.isArray(conv.participantDetails) && conv.participantDetails.length > 0) {
         const found = conv.participantDetails.find((p) => !isMe(p.id));
-        if (found) return found;
+        if (found) {
+          // 對話裡存的是建立當下的名稱與頭像，改用對方目前的資料
+          const live = availableUsers.find((u) => u.id === found.id);
+          return live ? { ...found, name: live.name || found.name, avatar: live.avatar || found.avatar } : found;
+        }
       }
       if (Array.isArray(conv.participantIds)) {
         const otherId = conv.participantIds.find((id) => !isMe(id));
@@ -1642,7 +1657,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                       className={`flex gap-2.5 sm:gap-3 max-w-2xl ${isMe ? 'ml-auto flex-row-reverse' : ''}`}
                     >
                       <img
-                        src={msg.senderAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                        src={resolveLiveAvatar(msg.senderId, msg.senderAvatar) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                         alt={msg.senderName}
                         className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover ring-1 ring-stone-200 shrink-0 self-end"
                       />
