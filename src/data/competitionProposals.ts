@@ -32,7 +32,7 @@ export const DEFAULT_DEMO_PROPOSALS: StarSeasonProposal[] = [
     targetFundingAmount: 200000,
     likeCount: 256,
     commentsCount: 10,
-    youtubeUrl: 'https://youtube.com/shorts/QIHERRNPJnA?si=0bbtIipOI4Dc9Bxa',
+    youtubeUrl: 'https://youtube.com/shorts/9aQE73bVAiU?si=I1vpUWqcJzcCO8xX',
     coverMode: 'youtube_video',
     cardHoverMode: 'video_autoplay',
     status: 'approved',
