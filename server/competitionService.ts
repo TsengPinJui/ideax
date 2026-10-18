@@ -597,26 +597,53 @@ export async function verifyAuthToken(authHeader?: string): Promise<{ uid: strin
  * 嚴禁依賴用戶可寫的 /users/{uid}.role == 'admin'！
  * 僅限 Admin SDK 可寫之 /admins/{uid} 標記或 Firebase Auth Custom Claims (admin === true)
  */
+const adminCheckCache = new Map<string, { ok: boolean; at: number }>();
+const ADMIN_CHECK_TTL_MS = 5 * 60 * 1000;
+
+function getAdminEmailAllowlist(): string[] {
+  return String(process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e && e.includes('@') && e !== 'admin@example.com');
+}
+
 export async function isVerifiedAdmin(uid: string): Promise<boolean> {
   if (!uid) return false;
+  const cached = adminCheckCache.get(uid);
+  if (cached && Date.now() - cached.at < ADMIN_CHECK_TTL_MS) return cached.ok;
+
+  const remember = (ok: boolean) => {
+    adminCheckCache.set(uid, { ok, at: Date.now() });
+    return ok;
+  };
+
+  // 1. /admins/{uid}：前端無法寫入。伺服器有服務帳戶時以管理端讀取（不受資料庫規則限制）
   try {
-    // 1. 僅限可信之 /admins/{uid} 獨立集合 (用戶端無權寫入)
-    const adminDoc = await adminDb.collection('admins').doc(uid).get();
-    if (adminDoc.exists) return true;
-
-    // 2. 檢查 Firebase Auth Custom Claims
-    try {
-      const userRecord = await adminAuth.getUser(uid);
-      if (userRecord.customClaims?.admin === true) {
-        return true;
-      }
-    } catch {}
-
-    // 嚴格拒絕依賴 /users/{uid}.role 作為憑證
-    return false;
-  } catch {
-    return false;
+    if (hasAdminCredentials) {
+      const { getFirestore } = await import('firebase-admin/firestore');
+      const dbId = (firebaseConfigJson as any).firestoreDatabaseId;
+      const app = getAdminApps()[0];
+      const fsAdmin = dbId ? getFirestore(app, dbId) : getFirestore(app);
+      const snap = await fsAdmin.collection('admins').doc(uid).get();
+      if (snap.exists) return remember(true);
+    } else {
+      const adminDoc = await adminDb.collection('admins').doc(uid).get();
+      if (adminDoc.exists) return remember(true);
+    }
+  } catch (err: any) {
+    console.warn('[Admin Check] admins 讀取失敗:', err?.code || err?.message);
   }
+
+  // 2. Firebase Auth：Custom Claims admin=true，或 Email 在 ADMIN_EMAILS 白名單且已驗證
+  try {
+    const userRecord = await adminAuth.getUser(uid);
+    if (userRecord.customClaims?.admin === true) return remember(true);
+    const email = (userRecord.email || '').toLowerCase();
+    if (email && userRecord.emailVerified && getAdminEmailAllowlist().includes(email)) return remember(true);
+  } catch {}
+
+  // 嚴格拒絕依賴 /users/{uid}.role 作為憑證
+  return remember(false);
 }
 
 /**
