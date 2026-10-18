@@ -2138,26 +2138,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableUsers, isRealPointsEconomy]);
-  const runPointsOp = (payload: PointsOpPayload, failTitle = '點數處理失敗') => {
+  const runPointsOp = (payload: PointsOpPayload, failTitle = '點數處理失敗', onFail?: () => void) => {
     if (!isRealPointsEconomy) return;
     const myId = currentUser.id;
     void pointsOp(payload).then(async (r) => {
       if (r.ok) {
-        setAvailableUsers((prev) =>
-          prev.map((u) => (u.id === r.userId ? { ...u, balance: r.balance, withheldPoints: r.withheldPoints } : u))
-        );
+        const patch: Partial<User> = { balance: r.balance, withheldPoints: r.withheldPoints };
+        if (r.subscriptionTier) {
+          patch.subscriptionTier = r.subscriptionTier as SubscriptionTier;
+          patch.subscriptionExpiresAt = r.subscriptionExpiresAt;
+        }
+        setAvailableUsers((prev) => prev.map((u) => (u.id === r.userId ? { ...u, ...patch } : u)));
         if (r.userId === myId) {
-          setCurrentUser((prev) => (prev.id === myId ? { ...prev, balance: r.balance, withheldPoints: r.withheldPoints } : prev));
+          setCurrentUser((prev) => (prev.id === myId ? { ...prev, ...patch } : prev));
         }
         return;
       }
+      // 伺服器拒絕：還原畫面上已先套用的變更（例如已解鎖的內容、已開通的方案）
+      try {
+        onFail?.();
+      } catch {}
       showCenterToast(failTitle, `${r.error}。點數已恢復為伺服器上的紀錄。`, { type: 'warning', duration: 4500 } as any);
       try {
         const fresh = await getUserFromFirestore(myId);
         if (fresh) {
           setCurrentUser((prev) =>
             prev.id === myId
-              ? { ...prev, balance: fresh.balance ?? prev.balance, withheldPoints: fresh.withheldPoints ?? prev.withheldPoints }
+              ? {
+                  ...prev,
+                  balance: fresh.balance ?? prev.balance,
+                  withheldPoints: fresh.withheldPoints ?? prev.withheldPoints,
+                  subscriptionTier: fresh.subscriptionTier ?? prev.subscriptionTier,
+                  subscriptionExpiresAt: fresh.subscriptionExpiresAt ?? prev.subscriptionExpiresAt,
+                }
               : prev
           );
         }
@@ -5000,7 +5013,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (balanceToPay > 0) {
-      runPointsOp({ op: 'spend', amount: balanceToPay, purpose: 'unlock', refId: answerId }, '方案解鎖扣點未完成');
+      const buyerId = currentUser.id;
+      runPointsOp({ op: 'spend', amount: balanceToPay, purpose: 'unlock', refId: answerId }, '方案解鎖未完成', () => {
+        // 扣點失敗：收回解鎖
+        setAnswers((prev) =>
+          prev.map((a) =>
+            a.id === answerId
+              ? {
+                  ...a,
+                  unlockedByUserIds: (a.unlockedByUserIds || []).filter((id) => id !== buyerId),
+                  isUnlockedByCurrentUser: false,
+                }
+              : a
+          )
+        );
+      });
     }
     if (offsetAmount > 0 && targetQ) {
       runPointsOp({ op: 'escrow_release', amount: offsetAmount, refId: targetQ.id, mode: 'payout', note: '以懸賞預扣折抵解鎖' });
@@ -6835,9 +6862,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     expiry.setMonth(expiry.getMonth() + durationMonths);
     const expiryStr = expiry.toISOString().split('T')[0];
 
-    if (price > 0) {
-      runPointsOp({ op: 'spend', amount: price, purpose: 'subscription', refId: String(tier), note: `訂閱 ${tier}` }, '方案訂閱扣點未完成');
-    }
+    // 正式模式：由伺服器扣點並開通方案（方案等級只能由伺服器設定）
+    runPointsOp({ op: 'subscribe', tier, cycle }, '方案訂閱未完成', () => {
+      setCurrentUser((prev) => ({ ...prev, subscriptionTier: currentTier, subscriptionExpiresAt: currentUser.subscriptionExpiresAt }));
+    });
     setCurrentUser((prev) => ({
       ...prev,
       balance: !isNoPaymentMode && !isRaceMode ? Math.max(0, (prev.balance || 0) - price) : prev.balance,
@@ -8117,7 +8145,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    runPointsOp({ op: 'spend', amount: 50, purpose: 'promote', refId: questionId }, '推播扣點未完成');
+    runPointsOp({ op: 'spend', amount: 50, purpose: 'promote', refId: questionId }, '推播扣點未完成', () => {
+      // 扣點失敗：取消置頂推播
+      setQuestions((prev) => prev.map((item) => (item.id === questionId ? { ...item, isFeatured: q.isFeatured } : item)));
+    });
     if (!isNoPaymentMode && !isRaceMode) {
       setCurrentUser((prev) => ({
         ...prev,

@@ -8,10 +8,11 @@ export type PointsOpPayload =
   | { op: 'spend'; amount: number; purpose: 'tip' | 'unlock' | 'promote' | 'service' | 'chat_offer' | 'subscription' | 'withdraw'; refId?: string; toUserId?: string; note?: string }
   | { op: 'escrow_hold'; amount: number; refId: string; note?: string }
   | { op: 'escrow_release'; amount: number; refId: string; mode: 'refund' | 'payout'; payerUserId?: string; note?: string }
-  | { op: 'admin_adjust'; userId: string; delta: number; note?: string };
+  | { op: 'admin_adjust'; userId: string; delta: number; note?: string }
+  | { op: 'subscribe'; tier: string; cycle?: string };
 
 export type PointsOpResult =
-  | { ok: true; userId: string; balance: number; withheldPoints: number }
+  | { ok: true; userId: string; balance: number; withheldPoints: number; subscriptionTier?: string; subscriptionExpiresAt?: string }
   | { ok: false; error: string; status: number };
 
 export async function pointsOp(payload: PointsOpPayload): Promise<PointsOpResult> {
@@ -25,7 +26,14 @@ export async function pointsOp(payload: PointsOpPayload): Promise<PointsOpResult
     if (!res.ok || !data.success) {
       return { ok: false, error: data.error || `點數處理失敗（${res.status}）`, status: res.status };
     }
-    return { ok: true, userId: data.userId, balance: Number(data.balance) || 0, withheldPoints: Number(data.withheldPoints) || 0 };
+    return {
+      ok: true,
+      userId: data.userId,
+      balance: Number(data.balance) || 0,
+      withheldPoints: Number(data.withheldPoints) || 0,
+      subscriptionTier: data.subscriptionTier,
+      subscriptionExpiresAt: data.subscriptionExpiresAt,
+    };
   } catch {
     return { ok: false, error: '無法連線到伺服器，點數未異動', status: 0 };
   }
@@ -49,4 +57,6 @@ export const PROTECTED_USER_FIELDS = [
   'isSiteBAdmin',
   'adminIdentityBadge',
   'isInitialAdmin',
+  'subscriptionTier',
+  'subscriptionExpiresAt',
 ] as const;
