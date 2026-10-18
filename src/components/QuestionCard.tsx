@@ -250,7 +250,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   // 3. 方格式 (Grid Mode - 雙欄緊湊卡片，適合手機與快速瀏覽)
   // =========================================================================
   if (viewMode === 'grid') {
+    const isPainPointPost = isPainPoint || question.postType === 'seek_solution';
     const showGridCover =
+      !isPainPointPost &&
       allowCardImage &&
       (isVibeCoding ||
         isInnovationProposal ||
@@ -814,7 +816,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   // =========================================================================
   // 1. 大視窗 (Large Mode - FlyingV / 嘖嘖 / Apple 卡片式簡約美學，含大圖展示)
   // =========================================================================
+  const isPainPointPost = isPainPoint || question.postType === 'seek_solution';
   const hasCoverImage =
+    !isPainPointPost &&
     allowCardImage &&
     (isVibeCoding ||
       isInnovationProposal ||

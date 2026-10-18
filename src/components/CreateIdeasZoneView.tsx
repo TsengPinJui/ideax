@@ -28,6 +28,8 @@ import {
   ChevronUp,
   Square,
   List,
+  Globe,
+  ExternalLink,
   LayoutGrid,
 } from 'lucide-react';
 import { StarSeasonProposal, STAR_SEASON_TRACKS } from '../types/competition';
@@ -140,13 +142,17 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
     const source = baseList && baseList.length > 0 ? baseList : dbCompetitionProposals;
     const mappedFromDbQuestions = mapQuestionsToStarSeasonProposals(questions || []);
     const map = new Map<string, StarSeasonProposal>();
-    source.forEach((p) => {
-      if (isSimulatedDataPurged && p.id.startsWith('demo-')) return;
-      if (!map.has(p.id)) {
-        map.set(p.id, p);
-      }
-    });
+    // 創星季競賽提案於第二階段預先提案 (11/14 10:00, activeStage >= 2) 開跑後才公開
+    if (stageInfo.activeStage >= 2) {
+      source.forEach((p) => {
+        if (p.id.startsWith('demo-') || p.id.startsWith('test-')) return;
+        if (!map.has(p.id)) {
+          map.set(p.id, p);
+        }
+      });
+    }
     mappedFromDbQuestions.forEach((p) => {
+      if (p.id.startsWith('demo-') || p.id.startsWith('test-')) return;
       if (!map.has(p.id)) {
         map.set(p.id, p);
       } else {
@@ -172,7 +178,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
 
   useEffect(() => {
     setProposalsList(buildMergedProposals(initialProposals));
-  }, [initialProposals, dbCompetitionProposals, questions, isSimulatedDataPurged]);
+  }, [initialProposals, dbCompetitionProposals, questions, isSimulatedDataPurged, stageInfo.activeStage]);
 
   // 2. 收藏名單 (Liked Proposal IDs)
   const [likedProposalIds, setLikedProposalIds] = useState<string[]>([]);
@@ -964,10 +970,25 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                       <span className="font-bold text-stone-600 truncate max-w-[80px]">
                         {proposal.authorName}
                       </span>
-                      <span className="font-mono font-black text-amber-700 flex items-center gap-0.5 shrink-0">
-                        <Coins className="w-3 h-3" />
-                        {(proposal.supportPoints || 0).toLocaleString()} 點
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {(proposal.externalLink || (proposal as any).demoUrl) && (
+                          <a
+                            href={proposal.externalLink || (proposal as any).demoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1 px-1.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300/80 font-bold flex items-center gap-0.5 transition-colors cursor-pointer"
+                            title="前往專屬網站或 Demo 連結"
+                          >
+                            <Globe className="w-3 h-3 text-emerald-600" />
+                            <ExternalLink className="w-2.5 h-2.5 text-emerald-600" />
+                          </a>
+                        )}
+                        <span className="font-mono font-black text-amber-700 flex items-center gap-0.5">
+                          <Coins className="w-3 h-3" />
+                          {(proposal.supportPoints || 0).toLocaleString()} 點
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1166,6 +1187,20 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {(proposal.externalLink || (proposal as any).demoUrl) && (
+                        <a
+                          href={proposal.externalLink || (proposal as any).demoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300/80 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                          title="前往專屬網站或 Demo 連結"
+                        >
+                          <Globe className="w-3 h-3 text-emerald-600" />
+                          <span>前往連結</span>
+                          <ExternalLink className="w-2.5 h-2.5 text-emerald-600" />
+                        </a>
+                      )}
                       <button
                         onClick={(e) => handleShare(e, proposal)}
                         className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"

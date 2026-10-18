@@ -183,6 +183,7 @@ export interface StarSeasonProposal {
   
   // 補充資料、引用相關痛點與希望達成目標 (選填)
   externalLink?: string; // 補充資料連結 / 外部連結 (選填)
+  demoUrl?: string; // 網站連結 / Demo URL (選填，與 externalLink 相容)
   referencedPainPoint?: string; // 引用相關痛點 (選填)
   targetGoal?: string; // 希望達成的目標 (選填)
   ambassadorCode?: string; // 校園推廣大使推薦碼 (選填)

@@ -1405,7 +1405,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   <div className="flex items-center justify-between text-xs font-bold text-stone-700 mb-1">
                     <span className="flex items-center gap-1.5">
                       <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>希望達成的目標</span>
+                      <span>{liveQuestion.postType === 'pain_point' ? '期望目標 / 欲達到的改善效果' : '希望達成的目標'}</span>
                     </span>
                     {liveQuestion.currentVersion && (
                       <span className="text-[10px] text-purple-800 font-mono font-black bg-purple-100 border border-purple-200 px-1.5 py-0.2 rounded">

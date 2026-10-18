@@ -14,7 +14,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     bounty: 0,
     status: 'open',
     authorId: 'user-vibecoder-alex',
-    authorName: 'VibeCoder Alex',
+    authorName: '阿凱（獨立開發）',
     authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
     createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
     deadline: new Date(Date.now() + 86400000 * 30).toISOString(),
@@ -36,7 +36,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
         content: '重大升級發布！全面重構表單動態邏輯引擎，渲染速度提升 60%，並新增 5 種全新可視化題型與 CSV 即時導出功能。下載量已突破首批 12,000 次！',
         note: '慶祝下載與使用者突破 1 萬人次里程碑版本！',
         authorId: 'user-vibecoder-alex',
-        authorName: 'VibeCoder Alex',
+        authorName: '阿凱（獨立開發）',
         authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
         updatedFields: ['內容說明', '目標', '成果網址', '技術架構', '版本號'],
       },
@@ -47,7 +47,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
         content: '修復行動端鍵盤彈出遮擋問題，新增多國語系切換支援與 Webhook 整合。',
         note: '社群反饋快速修正版本',
         authorId: 'user-vibecoder-alex',
-        authorName: 'VibeCoder Alex',
+        authorName: '阿凱（獨立開發）',
         authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
         updatedFields: ['技術架構', '版本號'],
       }
@@ -65,7 +65,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     tippersCount: 22,
     tipsHistory: [
       { id: 'tip-1', userId: 'user-1', userName: '小明', amount: 300, message: '介面做得超精緻！非常實用的 Vibe應用', createdAt: new Date(Date.now() - 3600000 * 5).toISOString() },
-      { id: 'tip-2', userId: 'user-2', userName: '創投 Sam', amount: 500, message: '技術架構很清晰，感謝分享成果！', createdAt: new Date(Date.now() - 3600000 * 2).toISOString() }
+      { id: 'tip-2', userId: 'user-2', userName: '高柏翰', amount: 500, message: '技術架構很清晰，感謝分享成果！', createdAt: new Date(Date.now() - 3600000 * 2).toISOString() }
     ]
   },
   {
@@ -81,7 +81,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     bounty: 0,
     status: 'open',
     authorId: 'user-vibecoder-chen',
-    authorName: 'Chen (Vibe Studio)',
+    authorName: '陳冠宇',
     authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
     createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
     deadline: new Date(Date.now() + 86400000 * 30).toISOString(),
@@ -103,7 +103,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
         content: '新增 Markdown 即時渲染畫布節點，支援快捷鍵平移與縮放畫布，並優化觸控板手勢支援。',
         note: '效能優化與手勢支援更新',
         authorId: 'user-vibecoder-chen',
-        authorName: 'Chen (Vibe Studio)',
+        authorName: '陳冠宇',
         authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
         updatedFields: ['內容說明', '技術架構', '版本號'],
       }
@@ -136,7 +136,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     bounty: 0,
     status: 'open',
     authorId: 'user-vibecoder-linda',
-    authorName: 'Linda (AI Creator)',
+    authorName: '小琳（影音自動化）',
     authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
     createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
     deadline: new Date(Date.now() + 86400000 * 30).toISOString(),

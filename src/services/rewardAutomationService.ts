@@ -304,7 +304,7 @@ export function distributeReferralApprovalReward(params: {
       (u.username && normalizedCode.includes(u.username.toUpperCase()))
   ) || {
     id: 'user-ambassador-1',
-    name: '陳品潔 (臺大推廣大使)',
+    name: '陳品潔 (校園推廣大使)',
   };
 
   const POINTS_AWARD = 300;

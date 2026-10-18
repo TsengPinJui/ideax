@@ -1254,7 +1254,7 @@ export async function confirmFinalAwardByAdmin(params: {
   return { success: true, message: `已成功確認名次 (第 ${params.finalRank} 名) 與相關獎勵核准！` };
 }
 
-const DATABASE_PROPOSALS_SEED_VERSION = 'v2026_10_16_db_v5';
+const DATABASE_PROPOSALS_SEED_VERSION = 'v2026_10_18_db_v7';
 let isDatabaseSeedInProgress = false;
 let isDatabaseSeedDone = false;
 
@@ -1387,10 +1387,9 @@ export async function ensureProposalsSyncedToFirestore(force = false): Promise<v
       await batch.commit();
     }
 
-    // 4. 同步提案作者帳號至 users 集合
+    // 4. 同步提案作者帳號至 users 集合，並自動修復已補齊資料用戶（含 #c668940663 Henry）的 hasCompletedProfile 狀態
     const existingUSnap = await adminDb.collection('users').get();
-    const existingUIds = new Set<string>(existingUSnap.docs.map((d) => d.id));
-    const usersToWrite = VIRTUAL_PERSONA_USERS.filter((u) => u && u.id && !existingUIds.has(u.id));
+    const usersToWrite = VIRTUAL_PERSONA_USERS.filter((u) => u && u.id);
 
     for (let i = 0; i < usersToWrite.length; i += 100) {
       const chunk = usersToWrite.slice(i, i + 100);
@@ -1400,6 +1399,36 @@ export async function ensureProposalsSyncedToFirestore(force = false): Promise<v
         batch.set(ref, { ...u, updatedAt: new Date().toISOString() }, { merge: true });
       });
       await batch.commit();
+    }
+
+    const profileFixBatch = adminDb.batch();
+    let profileFixCount = 0;
+    existingUSnap.docs.forEach((d) => {
+      const data = d.data() || {};
+      const isHenryAccount =
+        d.id === 'c668940663' ||
+        d.id === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
+        data.memberId === 'c668940663' ||
+        data.memberId === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
+        data.id === 'c668940663' ||
+        data.id === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
+        (typeof data.name === 'string' && data.name.includes('Henry'));
+      const hasFilledContactAndRole =
+        data.hasCompletedProfile === false &&
+        (Boolean(data.phone && String(data.phone).trim()) || Boolean(data.bio && String(data.bio).trim())) &&
+        Boolean(data.industry || data.jobTitle || data.title);
+      if ((isHenryAccount && data.hasCompletedProfile !== true) || hasFilledContactAndRole) {
+        profileFixBatch.set(
+          adminDb.collection('users').doc(d.id),
+          { hasCompletedProfile: true, updatedAt: new Date().toISOString() },
+          { merge: true }
+        );
+        profileFixCount++;
+      }
+    });
+    if (profileFixCount > 0) {
+      await profileFixBatch.commit();
+      console.log(`[Database Seed] Repaired hasCompletedProfile=true for ${profileFixCount} user(s).`);
     }
 
     await versionRef.set(

@@ -918,6 +918,7 @@ export interface Question {
   proposalProgressStage?: InnovationProgressStage | string; // 創新提案完程度：初步構想(0~2)、正在計畫(3~6)、實行中(7~9)、已完成(10)、成功驗證,持續精進 (11 up)
   techArchitecture?: string; // 技術架構 (VibeCoding展場)
   demoUrl?: string; // 網站網址或檔案連結
+  externalLink?: string; // 外部連結 / 專屬網站連結 (選填)
   fileLink?: string; // 檔案下載連結
   fileUrl?: string; // 檔案下載連結 / 成果檔案
   targetGoal?: string; // 希望達成的目標 (選填)

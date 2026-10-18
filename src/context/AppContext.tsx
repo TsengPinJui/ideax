@@ -2465,6 +2465,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     appName: seedQ.appName || q.appName,
                     title: seedQ.title,
                     description: seedQ.description,
+                    authorName: seedQ.authorName,
+                    tipsHistory: seedQ.tipsHistory || q.tipsHistory,
                     category: seedQ.category,
                     subcategory: seedQ.subcategory,
                     subcategories: seedQ.subcategories,
@@ -2710,7 +2712,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (cloudData && ((cloudData.questions && cloudData.questions.length > 0) || (cloudData.users && cloudData.users.length > 0))) {
           if (cloudData.users && cloudData.users.length > 0) {
-            const repairedCloudUsers = cloudData.users.map((cu) => restoreCanonicalUserIdentity(cu));
+            const repairedCloudUsers = cloudData.users.map((cu) => {
+              const repaired = restoreCanonicalUserIdentity(cu);
+              if (cu.hasCompletedProfile === false && repaired.hasCompletedProfile === true && connected) {
+                syncUserToFirestore(repaired);
+              }
+              return repaired;
+            });
 
             const deletedUsers = getDeletedUserIds();
             setAvailableUsers((prevUsers) => {
@@ -2729,7 +2737,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               setCurrentUser((prev) => {
                 const foundUser = repairedCloudUsers.find((u) => u.id === prev.id || (USER_ALIAS_MAP[prev.id] && u.id === USER_ALIAS_MAP[prev.id]));
                 if (foundUser) {
-                  const restoredFound = restoreCanonicalUserIdentity({ ...foundUser, ...prev, id: prev.id });
+                  const restoredFound = restoreCanonicalUserIdentity({
+                    ...foundUser,
+                    ...prev,
+                    id: prev.id,
+                    hasCompletedProfile: Boolean(foundUser.hasCompletedProfile || prev.hasCompletedProfile),
+                  });
                   return (restoredFound.id === 'user-admin' || restoredFound.id === 'a000000001' || restoredFound.role === 'admin')
                     ? { ...restoredFound, balance: typeof restoredFound.balance === 'number' && restoredFound.balance > 0 ? restoredFound.balance : 50000 }
                     : restoredFound;

@@ -355,7 +355,7 @@ export const MOCK_SOLVERS: Solver[] = [
   },
   {
     id: 'solver-3',
-    name: '張維哲 Allen',
+    name: '張維哲',
     title: 'AI 解決方案架構師 / 雲端全端資深工程師',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     domain: '創新創業',
@@ -377,7 +377,7 @@ export const MOCK_SOLVERS: Solver[] = [
   },
   {
     id: 'solver-4',
-    name: '黃雅筑 Alice',
+    name: '黃雅筑',
     title: 'D2C 品牌增長策略師 / 數位社群操盤手',
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
     domain: '創新創業',
@@ -400,7 +400,7 @@ export const MOCK_SOLVERS: Solver[] = [
   {
     id: 'solver-5',
     name: '李立衡博士',
-    title: '台大創新育成產學顧問 / 科技政策研究員',
+    title: '生醫創新育成產學顧問 / 科技政策研究員',
     avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=150&auto=format&fit=crop&q=80',
     domain: '學術探討',
     subdomain: '生技醫療',
@@ -421,7 +421,7 @@ export const MOCK_SOLVERS: Solver[] = [
   },
   {
     id: 'solver-6',
-    name: '周承翰 Ryan',
+    name: '周承翰',
     title: '科技獵頭總監 / 職涯策略諮詢師',
     avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
     domain: '日常疑難',
@@ -443,7 +443,7 @@ export const MOCK_SOLVERS: Solver[] = [
   },
   {
     id: 'solver-7',
-    name: '徐宛婷 Sonia',
+    name: '徐宛婷',
     title: '早期天使投資機構投資經理 / 財務分析師',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
     domain: '專業問題',

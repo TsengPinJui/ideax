@@ -34,7 +34,7 @@ export const CompetitionFooter: React.FC<CompetitionFooterProps> = ({
               </span>
             </div>
             <p className="text-stone-400 text-xs max-w-xl leading-relaxed">
-              聚焦青年創新思維，連結真實產業痛點與市場驗證。全體會員使用創星幣進行模擬募資注資，打造最高榮譽「創之星」。
+              從真實痛點出發，連結創新構想與市場驗證。全體會員皆可使用創星幣注資支持看好的提案，共創年度最高榮譽「創之星」。
             </p>
           </div>
         </div>

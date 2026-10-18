@@ -183,7 +183,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
     const canonicalUrl = getProposalShareUrl(proposal.id);
     const trackInfo = STAR_SEASON_TRACKS[proposal.track] || STAR_SEASON_TRACKS.ai_applications;
     const shareTitle = `【IdeaX 創星季】${proposal.title}`;
-    const shareText = `【IdeaX 創星季 • 創新提案】${proposal.title}\n✦ 賽道領域：${trackInfo.name}\n✦ 目前注資支持：NT$ ${(proposal.supportPoints || (proposal as any).raisedPoints || 0).toLocaleString()} 創星幣\n✦ 提案摘要：${proposal.summary || '邀請您一同探索青年跨領域創新解方，為高潛力提案投票注資！'}\n`;
+    const shareText = `【IdeaX 創星季 • 創新提案】${proposal.title}\n✦ 賽道領域：${trackInfo.name}\n✦ 目前注資創星幣：${(proposal.supportPoints || (proposal as any).raisedPoints || 0).toLocaleString()} 創星幣\n✦ 提案摘要：${proposal.summary || '邀請您一同探索青年跨領域創新解方，為高潛力提案注資創星幣！'}\n`;
 
     const res = await shareOrCopyUrl({
       title: shareTitle,
@@ -449,7 +449,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             )}
             <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-6 text-center">
               <h3 className="text-base sm:text-lg font-black text-stone-900">登入即可查看完整內容</h3>
-              <p className="mt-1.5 text-xs sm:text-sm text-stone-500">提案內容、點數支持與留言討論需登入後瀏覽。</p>
+              <p className="mt-1.5 text-xs sm:text-sm text-stone-500">提案內容、注資創星幣與留言討論需登入後瀏覽。</p>
               <button
                 type="button"
                 onClick={() => onOpenAuth?.()}
@@ -461,13 +461,13 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           </section>
         ) : (
         <>
-        {/* 2. ［點數支持］橫條 */}
+        {/* 2. ［注資創星幣］橫條 */}
         <section className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 rounded-3xl p-5 sm:p-6 border-2 border-amber-300 shadow-sm space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
               <div className="font-black text-stone-900 text-sm sm:text-base flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>點數支持你認同的創新提案</span>
+                <span>注資創星幣支持你認同的創新提案</span>
               </div>
               <div className="text-xs text-stone-500 mt-0.5">
                 為優質作品表達認同與期待，推升點子排名與人氣指數
@@ -477,14 +477,14 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               <span className="font-mono font-black text-amber-900 text-xl sm:text-2xl">
                 {(proposal.supportPoints || 0).toLocaleString()}
               </span>
-              <span className="text-xs text-amber-950 font-bold ml-1.5">點支持</span>
+              <span className="text-xs text-amber-950 font-bold ml-1.5">創星幣</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between text-xs text-stone-600 bg-white/70 px-3.5 py-2.5 rounded-xl border border-amber-200/60">
             <span className="flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-stone-500" />
-              <span>支持人次：<strong className="text-stone-900 font-mono font-bold">{proposal.supporterCount || 0}</strong> 人</span>
+              <span>注資人次：<strong className="text-stone-900 font-mono font-bold">{proposal.supporterCount || 0}</strong> 人</span>
             </span>
             <span className="text-[11px] text-amber-900 font-bold flex items-center gap-1">
               <span>刊登狀態：</span>
@@ -501,8 +501,8 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                 onClick={() => onSupport(proposal)}
                 className="w-full py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
               >
-                <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
-                <span>給予點數支持</span>
+                <Coins className="w-4 h-4 text-amber-950" />
+                <span>注資創星幣</span>
               </button>
             </div>
           )}
@@ -605,7 +605,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                           {refP.postType === 'vibecoding_app' ? '💻 軟體提案' : '💡 創新提案'}
                         </span>
                         <span className="text-[11px] font-mono font-bold text-amber-700">
-                          🪙 {(refP.supportPoints || 500).toLocaleString()} 點支持
+                          🪙 {(refP.supportPoints || 500).toLocaleString()} 創星幣
                         </span>
                       </div>
                       <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2">
@@ -913,7 +913,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           )}
         </section>
 
-        {/* 5.5 模擬打賞與點數支持紀錄 */}
+        {/* 5.5 模擬注資創星幣紀錄 */}
         <section className="bg-gradient-to-br from-amber-50/90 via-orange-50/60 to-yellow-50/80 rounded-3xl p-5 sm:p-6 border border-amber-200/90 shadow-xs space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2 border-b border-amber-200/70 pb-3">
             <div className="flex items-center gap-2">
@@ -922,10 +922,10 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               </div>
               <div>
                 <h3 className="font-black text-stone-900 text-sm sm:text-base">
-                  近期打賞與點數支持紀錄 ({simulatedTipsList.length})
+                  近期注資創星幣紀錄 ({simulatedTipsList.length})
                 </h3>
                 <p className="text-[11px] text-stone-600">
-                  來自社群專家、投資人與會員的點數打賞與鼓勵留言
+                  來自社群專家、投資人與會員的創星幣注資與鼓勵留言
                 </p>
               </div>
             </div>
@@ -936,7 +936,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                 className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
               >
                 <Coins className="w-3.5 h-3.5" />
-                <span>立即打賞支持</span>
+                <span>注資創星幣</span>
               </button>
             )}
           </div>
@@ -960,7 +960,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                       </span>
                     </div>
                     <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-mono font-black text-[11px] shrink-0">
-                      +🪙 {(tip.amount * 10).toLocaleString()} 點
+                      +🪙 {(tip.amount * 10).toLocaleString()} 創星幣
                     </span>
                   </div>
                   {tip.message && (

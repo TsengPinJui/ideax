@@ -547,8 +547,9 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
               </div>
             )}
 
-            {/* Cover & Gallery Images (統一使用檔案上傳，單張限 2MB) */}
-            <div className="space-y-3 pt-2 border-t border-stone-200">
+            {/* Cover & Gallery Images (僅創新提案與軟體作品支援圖片上傳，痛點不上傳圖片卡片一律文字顯示) */}
+            {question.postType !== 'pain_point' && question.postType !== 'seek_solution' && (
+              <div className="space-y-3 pt-2 border-t border-stone-200">
               <div>
                 <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
                   <label className="text-xs font-bold text-stone-700 flex items-center gap-1">
@@ -699,6 +700,8 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                   )}
                 </div>
               )}
+            </div>
+          )}
 
               {/* YouTube 介紹影片連結與卡片封面/懸停動態展示設定 */}
               <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-3">
@@ -820,10 +823,15 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                 </div>
               </div>
             </div>
-          </div>
 
           {/* Pinned Footer Actions */}
           <div className="px-5 py-3.5 border-t border-stone-200 bg-white shrink-0 space-y-2.5">
+            {isVibeCoding && (
+              <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>刊登前請再次確認網站與程式資料安全並符合法規。</span>
+              </div>
+            )}
             {error && (
               <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />

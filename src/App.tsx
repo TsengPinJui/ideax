@@ -1839,8 +1839,8 @@ function MainContent() {
         {/* 1. Explore Tab: Market Grid & Hero */}
         {activeTab === 'explore' && (
           <div className="relative">
-            {/* Hero Section (探索問題上方區域往下延伸，具備溫潤微金流體光與舒適留白) */}
-            <div className="relative bg-gradient-to-b from-amber-50/70 via-amber-50/30 to-stone-50/40 pb-4 sm:pb-8">
+            {/* Hero Section (探索問題上方區域往下延伸，具備溫潤微金流體光與緊湊銜接) */}
+            <div className="relative bg-gradient-to-b from-amber-50/70 via-amber-50/30 to-stone-50/40 pb-1 sm:pb-2">
               <HeroSection
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -1867,7 +1867,7 @@ function MainContent() {
             </div>
 
             {/* Questions Market Grid Section */}
-            <div id="market-grid" className="scroll-mt-20 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-4 pb-12 sm:pt-6 sm:pb-16">
+            <div id="market-grid" className="scroll-mt-20 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-1.5 pb-12 sm:pt-2 sm:pb-16">
               <div className="space-y-3 sm:space-y-6">
                 {/* 頂部特定主題專區切換列 (常駐置頂，手機版與電腦版皆完美適配無裁切，隨時切換) */}
                 <SpecialZonesTopBar

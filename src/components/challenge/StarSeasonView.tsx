@@ -374,8 +374,11 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [isPainPointCarouselPaused, setIsPainPointCarouselPaused] = useState(false);
   const [isPainPointCarouselTransitionDisabled, setIsPainPointCarouselTransitionDisabled] = useState(false);
 
-  // 提案列表：完全從資料庫讀取，不硬編碼。當進入提案階段 (11/14 起) 後，隱藏預設示範提案
+  // 提案列表：依時程公開，在第二階段預先提案 (11/14 10:00, activeStage >= 2) 開始前先隱藏創星季提案；開跑後亦排除預設示範提案
   const homepageAllProposals = useMemo(() => {
+    if (stageInfo.activeStage < 2) {
+      return [];
+    }
     const liveFiltered = proposals.filter((p) => {
       if (p.id.startsWith('test-')) return false;
       if (isSimulatedDataPurged && p.id.startsWith('demo-')) return false;
@@ -402,7 +405,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       sourcePainPointTitle: p.sourcePainPointTitle,
       referencedPainPoint: p.referencedPainPoint,
     }));
-  }, [proposals, isSimulatedDataPurged, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage]);
+  }, [proposals, isSimulatedDataPurged, stageInfo.activeStage, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage]);
 
   // 每批顯示 3 個提案 (未登入訪客可瀏覽前 10 則：前 6 則完整、後 4 則僅預覽)
   const isGuest = isGuestUser(currentUser);
@@ -1066,8 +1069,12 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return proposals.filter((p) => p.stage === 'pain_point' && p.status === 'approved');
   }, [proposals]);
 
-  // 彙整首頁痛點清單（來自創星季痛點提案與創點子平台痛點提問）
+  // 彙整首頁痛點清單（依時程於 10/24 00:00 第一階段痛點徵件開跑後公開，未到時間前先隱藏）
   const homepagePainPoints = useMemo(() => {
+    if (stageInfo.activeStage < 1) {
+      return [];
+    }
+
     const list: Array<{
       id: string;
       title: string;
@@ -1085,7 +1092,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
     // 1. 創星季徵件之痛點提案
     (proposals || [])
-      .filter((p) => p.stage === 'pain_point')
+      .filter((p) => p.stage === 'pain_point' && !p.id.startsWith('demo-') && !p.id.startsWith('test-'))
       .forEach((p) => {
         const trackMeta = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
         list.push({
@@ -1113,7 +1120,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
             title: q.title,
             category: q.category || '日常疑難',
             subcategory: q.subcategory || '其他',
-            tags: q.tags || ['生活痛點', '校園難題'],
+            tags: q.tags || ['生活痛點', '日常難題'],
             authorName: q.authorName || 'IdeaX 創點子用戶',
             authorAvatar: q.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
             views: q.views || 0,
@@ -1124,95 +1131,8 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
         }
       });
 
-    // 3. 精選示範痛點補齊（確保首頁能順暢進行三張一批輪播，且真實題目優先置頂）
-    const defaultDemoPainPoints = [
-      {
-        id: 'demo-pp-1',
-        title: '大學校園循環包材共享快遞站系統',
-        category: '日常疑難',
-        subcategory: '校園環保',
-        tags: ['痛點', '校園生活', '徵點子'],
-        authorName: '成大淨零綠生活專案組',
-        authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        views: 240,
-        solutionsCount: 3,
-        description: '每年全國大專校園產生數百萬個一次性網購紙箱與氣泡袋。宿舍包裹區堆積如山缺乏回收機制，需建置模組化循環緩衝箱與歸還站。',
-      },
-      {
-        id: 'demo-pp-2',
-        title: '偏鄉弱勢學童遠距自適應微學習平台',
-        category: '日常疑難',
-        subcategory: '偏鄉教育',
-        tags: ['痛點', '教育科技', '徵點子'],
-        authorName: '政大數位教育創生隊',
-        authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-        views: 310,
-        solutionsCount: 4,
-        description: '偏鄉孩童面臨網路頻寬受限與缺乏課後伴讀資源，導致學習進度落後。需要離線快取推論與遊戲化伴讀系統。',
-      },
-      {
-        id: 'demo-pp-3',
-        title: '高齡獨居長者夜間離床跌倒即時毫米波預警',
-        category: '日常疑難',
-        subcategory: '高齡長照',
-        tags: ['痛點', '智慧醫療', '徵點子'],
-        authorName: '陽明交大銀髮智慧生活團隊',
-        authorAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-        views: 450,
-        solutionsCount: 5,
-        description: '長照機構與獨居長者在夜間如廁離床時跌倒風險極高，穿戴式裝置常被長者排斥或忘記配戴，急需無接觸式毫米波雷達監控。',
-      },
-      {
-        id: 'demo-pp-4',
-        title: '在地小農冷鏈斷鏈損耗預防與共享車隊派遣',
-        category: '日常疑難',
-        subcategory: '農產物流',
-        tags: ['痛點', '智慧物流', '徵點子'],
-        authorName: '臺大智慧農創隊',
-        authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-        views: 190,
-        solutionsCount: 2,
-        description: '偏遠產地農產運銷至都會區時，傳統冷鏈車調度成本過高，導致高價值蔬果因溫控失誤損耗率達 18%，需智慧溫控與共享冷鏈派遣。',
-      },
-      {
-        id: 'demo-pp-5',
-        title: '大專院校二手教科書跨校免運循環市集',
-        category: '日常疑難',
-        subcategory: '學生福利',
-        tags: ['痛點', '校園經濟', '徵點子'],
-        authorName: '中央大學微光永續社',
-        authorAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
-        views: 280,
-        solutionsCount: 3,
-        description: '原文書籍昂貴且每學期替換率高，系所二手書交流分散在不同社團且面交不便，急需跨校智慧媒合與無人置物櫃借還機制。',
-      },
-      {
-        id: 'demo-pp-6',
-        title: '社區型智慧微電網動態需量削峰填谷調控',
-        category: '日常疑難',
-        subcategory: '綠色能源',
-        tags: ['痛點', '智慧電網', '徵點子'],
-        authorName: '清華綠能前瞻研究組',
-        authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-        views: 320,
-        solutionsCount: 4,
-        description: '老舊社區與園區因電動車充電樁大量裝設導致變壓器過載，尖峰用電電費高昂，需要結合儲能電池的動態需量反應調控系統。',
-      },
-    ];
-
-    // 3. 精選示範痛點：僅在活動開跑前（籌備/僅報名期）作為預覽示意；
-    // 當 10/24 00:00 第一階段「痛點徵件」正式開跑後，將示範痛點隱藏，完全以真實痛點與問題為準！
-    const isPainPointSubmissionStarted = !stageInfo.isBeforeStart && !stageInfo.isRegistrationOnlyStage;
-    if (!isPainPointSubmissionStarted) {
-      defaultDemoPainPoints.forEach((demo) => {
-        if (!list.some((item) => item.id === demo.id || item.title === demo.title)) {
-          list.push(demo);
-        }
-      });
-    }
-
     return list;
-  }, [proposals, questions, stageInfo.isBeforeStart, stageInfo.isRegistrationOnlyStage]);
+  }, [proposals, questions, stageInfo.activeStage]);
 
   // 痛點問題每批 3 個（三張一批輪播，未登入訪客可瀏覽前 10 則）
   const homepagePainPointBatches = useMemo(() => {
@@ -2937,13 +2857,15 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
       {/* 創星季 主視覺 Banner：主色調黃色，上方淡黃漸層到綠色漸層，白色基底，無黑色 */}
       <div className="relative overflow-hidden bg-gradient-to-b from-amber-100/80 via-amber-50/40 via-emerald-50/60 to-emerald-100/70 border-b border-emerald-200/80 pt-6 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          {/* 右上角空白區塊放上提案上傳的圖片輪播 */}
-          <div className="hidden xl:block absolute right-4 lg:right-6 top-0 z-20">
-            <ProposalHeroCarousel
-              proposals={proposals}
-              onSelectProposal={(p) => navigateToSubView('proposal', p.id)}
-            />
-          </div>
+          {/* 右上角空白區塊放上提案上傳的圖片輪播（僅在提案公開階段顯示） */}
+          {stageInfo.activeStage >= 2 && homepageAllProposals.length > 0 && (
+            <div className="hidden xl:block absolute right-4 lg:right-6 top-0 z-20">
+              <ProposalHeroCarousel
+                proposals={proposals.filter((p) => !p.id.startsWith('demo-') && !p.id.startsWith('test-'))}
+                onSelectProposal={(p) => navigateToSubView('proposal', p.id)}
+              />
+            </div>
+          )}
 
           <div className="text-center max-w-3xl mx-auto space-y-4">
             {/* 3. 大標語：參考原創比賽海報風格（微傾斜動態、三行大字體交錯錯開排版、手繪粉紅與黃綠油漆筆刷、向前運動斜體感） */}
@@ -3571,7 +3493,13 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  目前為示範展示
+                  {homepageSectionTab === 'solution'
+                    ? stageInfo.activeStage < 2
+                      ? '11/14 10:00 開放公開'
+                      : '競賽提案公開中'
+                    : stageInfo.activeStage < 1
+                    ? '10/24 00:00 開放公開'
+                    : '痛點徵件公開中'}
                 </span>
               </div>
               <p className="text-stone-600 text-xs sm:text-sm mt-1 max-w-2xl font-medium leading-relaxed">
@@ -3597,6 +3525,23 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
           </div>
 
           {homepageSectionTab === 'solution' ? (
+            homepageProposalBatches.length === 0 ? (
+              <div className="py-12 px-6 text-center bg-white/90 rounded-3xl border border-amber-200/90 space-y-3 shadow-2xs">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-2xs">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-stone-900">
+                  {stageInfo.activeStage < 2
+                    ? '創星季「解方提案」將於 11/14 10:00 正式開放公開'
+                    : '目前尚無已公開之解方提案'}
+                </h3>
+                <p className="text-xs sm:text-sm text-stone-600 max-w-lg mx-auto leading-relaxed">
+                  {stageInfo.activeStage < 2
+                    ? '目前為賽前報名與第一階段痛點徵集期間，參賽解方提案目前隱藏中，將於第二階段（11/14 10:00 預先提案、11/16 10:00 模擬募資）時間到達時自動公開展示！'
+                    : '歡迎各參賽隊伍點擊上方「我想提案!」投件參賽，審核通過後將於此公開展示。'}
+                </p>
+              </div>
+            ) : (
             <>
               {/* 領域探索標籤（四大領域分類：機電運輸、資通訊、生醫化材、服務文創） */}
               <div id="star-tour-painpoint-filter" className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -3826,11 +3771,25 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                                     e.stopPropagation();
                                     navigateToSubView('proposal', p.id);
                                   }}
-                                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-colors cursor-pointer active:scale-95"
+                                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-colors cursor-pointer active:scale-95 shrink-0"
                                   title="查看提案完整頁面"
                                 >
                                   查看提案
                                 </button>
+                                {((p as any).externalLink || (p as any).demoUrl) && (
+                                  <a
+                                    href={(p as any).externalLink || (p as any).demoUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300/80 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs shrink-0"
+                                    title="前往專屬網站或 Demo 連結"
+                                  >
+                                    <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>連結</span>
+                                    <ExternalLink className="w-3 h-3 text-emerald-600" />
+                                  </a>
+                                )}
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -3881,6 +3840,23 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
                 />
               )}
             </>
+            )
+          ) : homepagePainPoints.length === 0 ? (
+            <div className="py-12 px-6 text-center bg-white/90 rounded-3xl border border-rose-200/90 space-y-3 shadow-2xs">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-2xs">
+                <Clock className="w-6 h-6" />
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-stone-900">
+                {stageInfo.activeStage < 1
+                  ? '創星季第一階段「痛點徵件」將於 10/24 00:00 正式開放公開'
+                  : '目前尚無痛點問題'}
+              </h3>
+              <p className="text-xs sm:text-sm text-stone-600 max-w-lg mx-auto leading-relaxed">
+                {stageInfo.activeStage < 1
+                  ? '目前為賽前報名預熱階段（10/17 開放報名），創星季痛點題庫目前隱藏中，將於 10/24 00:00 第一階段痛點徵件開跑時正式公開！'
+                  : '歡迎提出生活或產業的真實切身痛點，過審即送 200 點獎勵！'}
+              </p>
+            </div>
           ) : (
             /* 痛點問題專區（三張一批輪播展示） */
             <div className="space-y-5">

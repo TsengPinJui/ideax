@@ -24,6 +24,7 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Bot,
+  Globe,
   Save,
   FolderOpen,
   GraduationCap,
@@ -1325,131 +1326,129 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
             showToast={showToast}
           />
 
-          {/* 7. 圖片展示區塊 (下方圖片區：痛點 0~3張，選填；提案 1~3張，必填) */}
-          <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/90 space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <div className="font-bold text-stone-900 flex items-center gap-1.5 text-xs sm:text-sm">
-                  <ImageIcon className="w-4 h-4 text-amber-600" />
-                  <span>
-                    {formStage === 'pain_point' ? '圖片展示 (0~3張，選填，可以不傳)' : '圖片展示 (1~3張，必填)'}
+          {/* 7. 圖片展示區塊 (僅創新提案支援圖片上傳，痛點不傳圖片卡片一律文字顯示) */}
+          {formStage === 'solution' && (
+            <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/90 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <div className="font-bold text-stone-900 flex items-center gap-1.5 text-xs sm:text-sm">
+                    <ImageIcon className="w-4 h-4 text-amber-600" />
+                    <span>圖片展示 (1~3張，必填)</span>
+                  </div>
+                  <p className="text-[11px] text-stone-600 mt-0.5">
+                    會顯示於提案專區圖片展示，展示核心產品、原型、團隊或架構照片；大卡片模式瀏覽時顯示。
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleInsertDemoImages}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 hover:bg-amber-100 text-stone-700 text-[11px] font-bold cursor-pointer transition-colors"
+                  >
+                    帶入展示範例照
+                  </button>
+                  <span className="font-mono text-xs font-black px-2 py-0.5 rounded bg-amber-200 text-amber-950">
+                    {formImages.length}/3 張
                   </span>
                 </div>
-                <p className="text-[11px] text-stone-600 mt-0.5">
-                  {formStage === 'pain_point'
-                    ? '痛點可以不傳圖片；若上傳 0~3 張情境照片，可選擇一張展示於卡片，增加吸引力獲取曝光機會。'
-                    : '會顯示於提案專區圖片展示，展示核心產品、原型、團隊或架構照片；大卡片模式瀏覽時顯示。'}
-                </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleInsertDemoImages}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 hover:bg-amber-100 text-stone-700 text-[11px] font-bold cursor-pointer transition-colors"
-                >
-                  帶入展示範例照
-                </button>
-                <span className="font-mono text-xs font-black px-2 py-0.5 rounded bg-amber-200 text-amber-950">
-                  {formImages.length}/3 張
-                </span>
-              </div>
-            </div>
+              {/* 縮圖預覽列 */}
+              {formImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-3 pt-1">
+                  {formImages.map((img, idx) => (
+                    <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-amber-300 bg-white shadow-2xs group">
+                      <img src={img} alt={`upload-${idx}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-stone-900/80 text-white hover:bg-rose-600 transition-colors cursor-pointer"
+                        title="移除此圖片"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.2 rounded bg-black/70 text-white text-[9px] font-mono">
+                        #{idx + 1}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            {/* 縮圖預覽列 */}
-            {formImages.length > 0 && (
-              <div className="grid grid-cols-3 gap-3 pt-1">
-                {formImages.map((img, idx) => (
-                  <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-amber-300 bg-white shadow-2xs group">
-                    <img src={img} alt={`upload-${idx}`} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(idx)}
-                      className="absolute top-1 right-1 p-1 rounded-full bg-stone-900/80 text-white hover:bg-rose-600 transition-colors cursor-pointer"
-                      title="移除此圖片"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                    <span className="absolute bottom-1 left-1 px-1.5 py-0.2 rounded bg-black/70 text-white text-[9px] font-mono">
-                      #{idx + 1}
+              {formImages.length < 3 && (
+                <div>
+                  <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-amber-300 rounded-xl hover:border-amber-500 bg-white hover:bg-amber-100/50 text-stone-800 font-bold cursor-pointer transition-colors">
+                    <Upload className="w-4 h-4 text-amber-600" />
+                    <span>
+                      {isProcessingImages
+                        ? '圖片處理中...'
+                        : `選擇電腦或手機圖片上傳（還可上傳 ${3 - formImages.length} 張 · 單張上限 ${MAX_IMAGE_FILE_SIZE_MB}MB）`}
+                    </span>
+                    <input
+                      type="file"
+                      accept={ACCEPTED_IMAGE_TYPES}
+                      multiple
+                      onChange={handleImageFilesUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              )}
+
+              {/* 可以選擇是否顯示圖片在卡片，可選擇一張 */}
+              {formImages.length > 0 && (
+                <div className="p-3.5 rounded-xl bg-white/95 border border-amber-200 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <label className="text-xs font-black text-stone-900 flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showCardImage}
+                        onChange={(e) => setShowCardImage(e.target.checked)}
+                        className="rounded border-amber-400 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span>在卡片模式顯示展示照片（勾選啟用）</span>
+                    </label>
+                    <span className="text-[11px] text-stone-500">
+                      {showCardImage ? '已啟用：可於下方點選 1 張作為卡片展示封面' : '已關閉：卡片將以文字詳述/AI摘要/熱門留言呈現'}
                     </span>
                   </div>
-                ))}
-              </div>
-            )}
 
-            {formImages.length < 3 && (
-              <div>
-                <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-amber-300 rounded-xl hover:border-amber-500 bg-white hover:bg-amber-100/50 text-stone-800 font-bold cursor-pointer transition-colors">
-                  <Upload className="w-4 h-4 text-amber-600" />
-                  <span>
-                    {isProcessingImages
-                      ? '圖片處理中...'
-                      : `選擇電腦或手機圖片上傳（${formStage === 'pain_point' ? '選填，可不傳，' : ''}還可上傳 ${3 - formImages.length} 張 · 單張上限 ${MAX_IMAGE_FILE_SIZE_MB}MB）`}
-                  </span>
-                  <input
-                    type="file"
-                    accept={ACCEPTED_IMAGE_TYPES}
-                    multiple
-                    onChange={handleImageFilesUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            )}
-
-            {/* 可以選擇是否顯示圖片在卡片，可選擇一張 */}
-            {formImages.length > 0 && (
-              <div className="p-3.5 rounded-xl bg-white/95 border border-amber-200 shadow-2xs space-y-2.5">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <label className="text-xs font-black text-stone-900 flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showCardImage}
-                      onChange={(e) => setShowCardImage(e.target.checked)}
-                      className="rounded border-amber-400 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
-                    />
-                    <span>在卡片模式顯示展示照片（勾選啟用）</span>
-                  </label>
-                  <span className="text-[11px] text-stone-500">
-                    {showCardImage ? '已啟用：可於下方點選 1 張作為卡片展示封面' : '已關閉：卡片將以文字詳述/AI摘要/熱門留言呈現'}
-                  </span>
-                </div>
-
-                {showCardImage && (
-                  <div>
-                    <p className="text-[11px] text-stone-600 font-medium mb-1.5">
-                      👉 點擊選擇其中 1 張照片展示於卡片：
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {formImages.map((img, idx) => {
-                        const isChosen = (selectedCardImage ? selectedCardImage === img : idx === 0);
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => setSelectedCardImage(img)}
-                            className={`relative aspect-video rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
-                              isChosen
-                                ? 'border-amber-500 ring-2 ring-amber-400/50 shadow-md scale-102'
-                                : 'border-stone-200 opacity-70 hover:opacity-100 hover:border-amber-300'
-                            }`}
-                            title="點擊選定為卡片展示照"
-                          >
-                            <img src={img} alt={`展示圖 ${idx + 1}`} className="w-full h-full object-cover" />
-                            {isChosen && (
-                              <span className="absolute bottom-1 inset-x-1 py-0.5 rounded bg-amber-500 text-stone-950 font-black text-[9px] text-center shadow-xs">
-                                ★ 卡片展示
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
+                  {showCardImage && (
+                    <div>
+                      <p className="text-[11px] text-stone-600 font-medium mb-1.5">
+                        👉 點擊選擇其中 1 張照片展示於卡片：
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {formImages.map((img, idx) => {
+                          const isChosen = (selectedCardImage ? selectedCardImage === img : idx === 0);
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => setSelectedCardImage(img)}
+                              className={`relative aspect-video rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
+                                isChosen
+                                  ? 'border-amber-500 ring-2 ring-amber-400/50 shadow-md scale-102'
+                                  : 'border-stone-200 opacity-70 hover:opacity-100 hover:border-amber-300'
+                              }`}
+                              title="點擊選定為卡片展示照"
+                            >
+                              <img src={img} alt={`展示圖 ${idx + 1}`} className="w-full h-full object-cover" />
+                              {isChosen && (
+                                <span className="absolute bottom-1 inset-x-1 py-0.5 rounded bg-amber-500 text-stone-950 font-black text-[9px] text-center shadow-xs">
+                                  ★ 卡片展示
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 6. 若為提案：補充資料 (技術可行性、市場分析與定位、商業模式與財務預測...) */}
           {formStage === 'solution' && (
@@ -1542,10 +1541,33 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
               />
               <p className="text-[11px] text-stone-500 mt-1">
                 {formStage === 'pain_point'
-                  ? '💡 目標說明：填寫此痛點欲達到的具體改善效果、要徹底解決的地方與預期衡量指標。'
+                  ? '💡 目標說明：提痛點時的期望目標通常是以欲達到的改善效果、要解決的地方與預期衡量指標。'
                   : '💡 目標說明：例如「希望 6 個月達成 ××× 下載次數」或累積活躍用戶數、產品留存率等具體可衡量成果。'}
               </p>
             </div>
+          </div>
+
+          {/* 網站連結 / Demo 網址 / 外部資料 (選填) */}
+          <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/80 space-y-2">
+            <label className="block text-stone-800 font-bold flex items-center justify-between text-xs sm:text-sm">
+              <span className="flex items-center gap-1.5">
+                <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>專屬網站連結 / Demo 體驗網址 / 外部參考資料 (選填)</span>
+              </span>
+              <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100 px-2 py-0.5 rounded">
+                卡片與內頁展示一鍵前往
+              </span>
+            </label>
+            <input
+              type="url"
+              value={formExternalLink}
+              onChange={(e) => setFormExternalLink(e.target.value)}
+              placeholder="例如：https://ideax.tw 或 https://deeperdigger.online/"
+              className="w-full bg-white border border-stone-200 rounded-xl p-2.5 text-stone-900 text-xs sm:text-sm font-medium focus:outline-none focus:border-emerald-500 font-mono"
+            />
+            <p className="text-[11px] text-stone-500">
+              💡 填寫後將於創星季提案總覽卡片與預覽卡片上顯示「前往連結」快捷按鈕，方便評審與讀者直接點擊造訪。
+            </p>
           </div>
 
           {/* 8. 簡報附件與推廣大使推薦碼 */}

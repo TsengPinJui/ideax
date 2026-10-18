@@ -1,5 +1,6 @@
 import { User } from '../types';
-import { resolveIdCategory, UserIdentificationLike } from '../services/userIdService';
+import { resolveIdCategory, getFormattedPlatformId, UserIdentificationLike } from '../services/userIdService';
+import { VIRTUAL_PERSONAS } from '../data/virtualProposalsSeed';
 
 export const DEACTIVATED_USER_NAME = '此帳號已註銷';
 
@@ -350,15 +351,26 @@ export function restoreCanonicalUserIdentity(u: User): User {
     };
   }
 
-  // 2. 其他模擬專家帳號還原（若無主動改名）
+  // 2. 其他模擬專家與虛擬角色帳號還原（若無主動改名）
+  if (u.id && u.id.startsWith('u-vc-') && !custom?.name) {
+    const vp = VIRTUAL_PERSONAS.find((p) => p.id === u.id);
+    if (vp) {
+      return {
+        ...u,
+        name: vp.name,
+        title: custom?.title !== undefined ? custom.title : vp.title,
+      };
+    }
+  }
+
   const otherMocks: Record<string, string> = {
-    'solver-3': '張維哲 Allen',
-    'solver-4': '黃雅筑 Alice',
+    'solver-3': '張維哲',
+    'solver-4': '黃雅筑',
     'solver-5': '李立衡博士',
-    'solver-6': '周承翰 Ryan',
-    'solver-7': '徐宛婷 Sonia',
+    'solver-6': '周承翰',
+    'solver-7': '徐宛婷',
     'solver-8': '陳金水 師傅',
-    'user-author-2': '黃柏翰 Jason',
+    'user-author-2': '黃柏翰',
     'user-author-3': '高宇翔 CTO',
     c000000000: '訪客探索身分',
   };
@@ -368,6 +380,24 @@ export function restoreCanonicalUserIdentity(u: User): User {
       name: otherMocks[u.id],
     };
   }
+
+  // 自動判定是否已完成基本資料（修正註冊時跳過、事後於基本資料補填卻仍為 hasCompletedProfile: false 的問題，含 #c668940663 Henry）
+  const formattedId = getFormattedPlatformId(u);
+  const isHenryAccount =
+    u.id === 'c668940663' ||
+    u.memberId === 'c668940663' ||
+    u.id === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
+    u.memberId === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
+    formattedId === 'c668940663' ||
+    (typeof u.name === 'string' && u.name.includes('Henry'));
+  const effectivePhone = custom?.phone || u.phone;
+  const effectiveTitle = custom?.title !== undefined ? custom.title : (u.industry || u.jobTitle || u.title);
+  const shouldMarkProfileCompleted =
+    isHenryAccount ||
+    u.hasCompletedProfile === true ||
+    Boolean(effectivePhone && String(effectivePhone).trim() && effectiveTitle) ||
+    Boolean(u.industry && (u.jobTitle || u.title) && u.bio) ||
+    Boolean(custom && (custom.phone || custom.title || custom.company || custom.name));
 
   // 3. 若有使用者主動修改之個人資料，優先套用
   if (custom) {
@@ -381,6 +411,7 @@ export function restoreCanonicalUserIdentity(u: User): User {
       company: custom.company !== undefined ? custom.company : u.company,
       phone: custom.phone !== undefined ? custom.phone : u.phone,
       email: custom.email || u.email,
+      ...(shouldMarkProfileCompleted ? { hasCompletedProfile: true } : {}),
     };
   }
 
@@ -401,6 +432,14 @@ export function restoreCanonicalUserIdentity(u: User): User {
     return {
       ...u,
       name: recoveredName,
+      ...(shouldMarkProfileCompleted ? { hasCompletedProfile: true } : {}),
+    };
+  }
+
+  if (shouldMarkProfileCompleted && u.hasCompletedProfile === false) {
+    return {
+      ...u,
+      hasCompletedProfile: true,
     };
   }
 

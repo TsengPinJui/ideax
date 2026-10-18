@@ -28,6 +28,7 @@ import {
   Copy,
   Check,
   ExternalLink,
+  Globe,
   ShieldCheck,
   Flame,
   Image as ImageIcon,
@@ -295,11 +296,15 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     );
   };
 
-  // 篩選提案（依需求：提案總覽裡只會顯示提案/解方，不要顯示痛點，痛點統一於IdeaX創點子平台的創點子/痛點集展示）
-  // 依需求：開始提案(11/14 起)後，隱藏對應示範提案，完全以真實作品為主
+  // 篩選提案（依需求：先把創星季的痛點和提案隱藏起來，時間到再公開；11/14 10:00 起開放提案公開並排除預設示範提案）
   const filteredProposals = proposals.filter((p) => {
     // 嚴格僅顯示提案解方 (stage === 'solution')，排除痛點
     if (p.stage === 'pain_point') return false;
+
+    // 在第二階段預先提案 (11/14 10:00, activeStage >= 2) 時間到達前，隱藏所有創星季提案
+    if (stageInfo.activeStage < 2) {
+      return false;
+    }
 
     // 當提案階段 (11/14 起) 開始時，排除所有示範資料 (demo- 與 test-)
     if (stageInfo.isProposalStage || stageInfo.isExpertReviewStage || stageInfo.isResultsStage) {
@@ -400,8 +405,12 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     return null;
   };
 
-  // 彙整全部痛點問題（來自創星季第一階段痛點徵件與平台痛點提問）
+  // 彙整全部痛點問題（依時程於 10/24 00:00 第一階段痛點徵件開跑後公開，未到時間前先隱藏）
   const allPainPoints = useMemo(() => {
+    if (stageInfo.activeStage < 1) {
+      return [];
+    }
+
     const list: Array<{
       id: string;
       title: string;
@@ -419,7 +428,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
     // 1. 創星季徵件之痛點提案
     (proposals || [])
-      .filter((p) => p.stage === 'pain_point')
+      .filter((p) => p.stage === 'pain_point' && !p.id.startsWith('demo-') && !p.id.startsWith('test-'))
       .forEach((p) => {
         const trackMeta = STAR_SEASON_TRACKS[p.track] || STAR_SEASON_TRACKS.ai_applications;
         list.push({
@@ -447,8 +456,8 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             title: q.title,
             category: q.category || '日常疑難',
             subcategory: q.subcategory || '其他',
-            tags: q.tags || ['測試內容', '無效痛點', '待補充說明', '系統測試'],
-            authorName: q.authorName || 'IdeaX 管理團隊',
+            tags: q.tags || ['生活痛點', '日常難題'],
+            authorName: q.authorName || 'IdeaX 創點子用戶',
             authorAvatar: q.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
             views: q.views || 0,
             solutionsCount: q.answersCount || 0,
@@ -459,7 +468,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
       });
 
     return list;
-  }, [proposals, questions]);
+  }, [proposals, questions, stageInfo.activeStage]);
 
   const filteredPainPoints = useMemo(() => {
     const filtered = allPainPoints.filter((item: any) => {
@@ -694,7 +703,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
       return;
     }
     if (supportAmount <= 0) {
-      showToast('請輸入大於 0 之支持點數');
+      showToast('請輸入大於 0 之注資創星幣額度');
       return;
     }
     setIsSubmittingSupport(true);
@@ -704,15 +713,15 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         points: supportAmount,
       });
       if (res.success) {
-        showToast(`🎉 成功支持 ${supportAmount.toLocaleString()} 點！感謝您的創星注資。`);
+        showToast(`🎉 成功注資 ${supportAmount.toLocaleString()} 創星幣！感謝您的創星注資。`);
         await onRefreshProposals();
         await onRefreshAccount();
         setIsSupportModalOpen(false);
       } else {
-        showToast(res.message || '投點失敗');
+        showToast(res.message || '注資失敗');
       }
     } catch (err: any) {
-      showToast(err.message || '投點失敗');
+      showToast(err.message || '注資失敗');
     } finally {
       setIsSubmittingSupport(false);
     }
@@ -957,11 +966,11 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                 </h1>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  目前為示範
+                  {stageInfo.activeStage < 2 ? '11/14 10:00 開放公開' : '競賽提案公開中'}
                 </span>
               </div>
               <p className="text-stone-700 text-xs sm:text-sm mt-1 max-w-2xl font-bold text-amber-900">
-                使用 創星幣 支持你認同的創新提案，模擬市場關注度（目前展示為示範提案）
+                使用 創星幣 支持你認同的創新提案，模擬市場關注度
               </p>
             </div>
 
@@ -986,7 +995,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs flex items-center justify-between">
               <div>
                 <div className="text-[10px] text-stone-500 font-bold">提案總數</div>
-                <div className="text-lg font-black font-mono text-stone-900">{proposals.length} 件</div>
+                <div className="text-lg font-black font-mono text-stone-900">{filteredProposals.length} 件</div>
               </div>
               <FileText className="w-4 h-4 text-amber-500" />
             </div>
@@ -994,7 +1003,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs flex items-center justify-between">
               <div>
                 <div className="text-[10px] text-stone-500 font-bold">全網已投創星幣</div>
-                <div className="text-lg font-black font-mono text-amber-600">{totalPoints.toLocaleString()} 創星幣</div>
+                <div className="text-lg font-black font-mono text-amber-600">{(stageInfo.activeStage < 2 ? 0 : totalPoints).toLocaleString()} 創星幣</div>
               </div>
               <Coins className="w-4 h-4 text-amber-500" />
             </div>
@@ -1002,7 +1011,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
             <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs flex items-center justify-between">
               <div>
                 <div className="text-[10px] text-stone-500 font-bold">支持總人次</div>
-                <div className="text-lg font-black font-mono text-rose-600">{totalSupporters} 次</div>
+                <div className="text-lg font-black font-mono text-rose-600">{stageInfo.activeStage < 2 ? 0 : totalSupporters} 次</div>
               </div>
               <TrendingUp className="w-4 h-4 text-rose-500" />
             </div>
@@ -1237,24 +1246,32 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         {activeSectionTab === 'solution' ? (
           sortedProposals.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-3xl border border-stone-200 p-8 space-y-4 shadow-xs">
-            <FileText className="w-12 h-12 text-stone-400 mx-auto" />
-            <h3 className="text-base font-bold text-stone-800">目前尚無符合篩選條件的競賽提案</h3>
-            <p className="text-xs text-stone-500 max-w-md mx-auto">
-              成為本屆創星季的開創先行者！點擊上方「我要投稿」提交您的痛點腦洞或落地解法。
+            <Clock className="w-12 h-12 text-amber-500 mx-auto" />
+            <h3 className="text-base font-bold text-stone-800">
+              {stageInfo.activeStage < 2
+                ? '創星季「解方提案」將於 11/14 10:00 正式開放公開'
+                : '目前尚無符合篩選條件的競賽提案'}
+            </h3>
+            <p className="text-xs text-stone-500 max-w-md mx-auto leading-relaxed">
+              {stageInfo.activeStage < 2
+                ? '目前尚未到達解方提案公開時程（11/14 10:00 開放預先提案、11/16 10:00 開放創星幣模擬募資），時間到達後將自動公開展示！'
+                : '成為本屆創星季的開創先行者！點擊上方「我要投稿」提交您的痛點腦洞或落地解法。'}
             </p>
-            <button
-              onClick={() => {
-                if (!auth.currentUser || currentUser.id === 'user-guest') {
-                  onOpenAuth();
-                  return;
-                }
-                onNavigate('submit');
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 text-stone-950 font-black text-xs hover:bg-amber-300 transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>我要投件參賽</span>
-            </button>
+            {stageInfo.activeStage >= 2 && (
+              <button
+                onClick={() => {
+                  if (!auth.currentUser || currentUser.id === 'user-guest') {
+                    onOpenAuth();
+                    return;
+                  }
+                  onNavigate('submit');
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 text-stone-950 font-black text-xs hover:bg-amber-300 transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>我要投件參賽</span>
+              </button>
+            )}
           </div>
         ) : (
           (() => {
@@ -1529,7 +1546,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                         </button>
                       </div>
 
-                      {/* 兩顆主要按鈕：查看提案 & 支持注資 */}
+                      {/* 按鈕組：查看提案 & 注資創星幣 */}
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
@@ -1537,7 +1554,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                             e.stopPropagation();
                             handleOpenProposalDetail(proposal);
                           }}
-                          className="py-1.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs transition-colors cursor-pointer"
+                          className="py-1.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs transition-colors cursor-pointer shrink-0"
                         >
                           查看提案
                         </button>
@@ -1603,24 +1620,32 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
         /* 痛點問題專區（附圖一卡片形式不顯示圖片，3欄展示） */
         filteredPainPoints.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-3xl border border-stone-200 p-8 space-y-4 shadow-xs">
-            <Layers className="w-12 h-12 text-stone-400 mx-auto" />
-            <h3 className="text-base font-bold text-stone-800">目前尚無符合篩選條件的痛點問題</h3>
-            <p className="text-xs text-stone-500 max-w-md mx-auto">
-              成為本屆創星季的開創先行者！提出切身的生活、校園或產業瓶頸痛點，過審即享 200 點獎勵！
+            <Clock className="w-12 h-12 text-rose-500 mx-auto" />
+            <h3 className="text-base font-bold text-stone-800">
+              {stageInfo.activeStage < 1
+                ? '創星季第一階段「痛點徵件」將於 10/24 00:00 正式開放公開'
+                : '目前尚無符合篩選條件的痛點問題'}
+            </h3>
+            <p className="text-xs text-stone-500 max-w-md mx-auto leading-relaxed">
+              {stageInfo.activeStage < 1
+                ? '目前為賽前報名預熱階段，創星季痛點題庫將於 10/24 00:00 第一階段痛點徵件開跑時自動公開展示！'
+                : '成為本屆創星季的開創先行者！提出切身的生活或產業瓶頸痛點，過審即享 200 點獎勵！'}
             </p>
-            <button
-              onClick={() => {
-                if (!auth.currentUser || currentUser.id === 'user-guest') {
-                  onOpenAuth();
-                  return;
-                }
-                onNavigate('submit');
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 text-stone-950 font-black text-xs hover:bg-amber-300 transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>提出生活或產業痛點</span>
-            </button>
+            {stageInfo.activeStage >= 1 && (
+              <button
+                onClick={() => {
+                  if (!auth.currentUser || currentUser.id === 'user-guest') {
+                    onOpenAuth();
+                    return;
+                  }
+                  onNavigate('submit');
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 text-stone-950 font-black text-xs hover:bg-amber-300 transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>提出生活或產業痛點</span>
+              </button>
+            )}
           </div>
         ) : (
           (() => {
@@ -1822,14 +1847,14 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
 
       {/* 提案詳細內容已由獨立完整頁面 ProposalDetailFullPage 呈現 */}
 
-      {/* 支持投點 Modal */}
+      {/* 注資創星幣 Modal */}
       {isSupportModalOpen && selectedProposalForSupport && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-amber-300 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-stone-900">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <h3 className="text-base font-black text-stone-900 flex items-center gap-1.5">
                 <Coins className="w-5 h-5 text-amber-500" />
-                <span>使用創星幣模擬注資支持</span>
+                <span>注資創星幣</span>
               </h3>
               <button
                 onClick={() => setIsSupportModalOpen(false)}
@@ -1882,7 +1907,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               </div>
 
               <div>
-                <label className="block text-stone-800 font-bold mb-1.5">支持額度 (創星幣)</label>
+                <label className="block text-stone-800 font-bold mb-1.5">注資額度 (創星幣)</label>
                 <input
                   type="number"
                   min={100}
@@ -1913,7 +1938,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   disabled={isSubmittingSupport}
                   className="w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs transition-all cursor-pointer shadow-md disabled:opacity-50"
                 >
-                  {isSubmittingSupport ? '處理投點中...' : `確認支持 ${supportAmount.toLocaleString()} 點`}
+                  {isSubmittingSupport ? '處理注資中...' : `確認注資 ${supportAmount.toLocaleString()} 創星幣`}
                 </button>
               </div>
             </div>
@@ -1969,7 +1994,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
                   <Heart className="w-10 h-10 mx-auto text-stone-300 stroke-1" />
                   <p className="text-sm font-bold text-stone-600">目前尚無 Like 的提案</p>
                   <p className="text-[11px] text-stone-400 max-w-xs mx-auto">
-                    在競賽提案列表點擊愛心圖示，即可將優秀的創意作品收錄至此，方便隨時追蹤與投點！
+                    在競賽提案列表點擊愛心圖示，即可將優秀的創意作品收錄至此，方便隨時追蹤與注資創星幣！
                   </p>
                 </div>
               ) : (

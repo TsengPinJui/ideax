@@ -238,12 +238,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const visibleMetrics = isMetricsExpanded ? allMetricItems : allMetricItems.slice(0, 4);
 
   return (
-    <section className="relative pt-4 pb-4 sm:pt-8 sm:pb-8 lg:pt-10 lg:pb-10 overflow-hidden">
+    <section className="relative pt-3 pb-1.5 sm:pt-6 sm:pb-2.5 lg:pt-7 lg:pb-3 overflow-hidden">
       <YellowLiquidHeroBackground className="h-full" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex flex-col items-center text-center max-w-3xl lg:max-w-5xl mx-auto">
           {/* Official IdeaX Brand Display - 手機版精巧緊湊、電腦版大氣通透 */}
-          <div className="relative mb-3 sm:mb-6 group inline-flex max-w-[90%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto justify-center">
+          <div className="relative mb-2 sm:mb-4 group inline-flex max-w-[90%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto justify-center">
             <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
             <div className="relative py-2 px-4 sm:py-3.5 sm:px-6 md:py-4 md:px-8 lg:py-5 lg:px-10 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/85 border border-amber-200/70 shadow-sm flex items-center justify-center gap-2.5 sm:gap-4 md:gap-5 transition-all duration-300">
               <img
@@ -260,53 +260,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-[42px] font-black text-stone-900 tracking-tight leading-snug my-1.5 sm:my-3">
+          <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-[42px] font-black text-stone-900 tracking-tight leading-snug my-1 sm:my-2">
             一個問題，找到<span className="text-amber-500 underline decoration-amber-300 decoration-wavy decoration-2">更多可能</span>。
           </h1>
 
           {/* Subtitle */}
-          <div className="mt-1 sm:mt-2 mb-3 sm:mb-6 flex items-center justify-center gap-1.5 text-xs sm:text-base md:text-lg text-stone-600 font-semibold">
+          <div className="mt-0.5 sm:mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-base md:text-lg text-stone-600 font-semibold">
             <span>痛點許願 · 創新提案 · 專家懸賞</span>
-          </div>
-
-          {/* Primary, Find Experts & Explore Action Buttons */}
-          <div className="mt-1 sm:mt-2 hidden sm:flex sm:flex-wrap items-center justify-center gap-3 md:gap-4 w-full sm:w-auto">
-            {/* 1. 主行動：立即發布! */}
-            <button
-              onClick={onPostClick}
-              className="w-full sm:w-auto px-6 py-2.5 md:px-7 md:py-3 lg:px-8 lg:py-3.5 rounded-xl md:rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 active:from-amber-600 active:to-amber-600 text-stone-950 font-black text-sm sm:text-base md:text-lg shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center leading-tight cursor-pointer group border border-amber-300/80"
-            >
-              <span className="flex items-center justify-center gap-1.5 text-sm sm:text-base md:text-lg font-black">
-                <IdeaXLogo variant="bulb" size="sm" />
-                <span>立即發布!</span>
-              </span>
-              <span className="text-[10px] sm:text-xs font-bold text-stone-900/80 mt-0.5">(問題、痛點、提案、刊登、討論)</span>
-            </button>
-
-            {/* 2. 次行動：找專家 / 徵才 */}
-            <button
-              onClick={onFindExpertsClick}
-              className="w-full sm:w-auto px-6 py-3.5 md:px-7 md:py-4 lg:px-8 lg:py-4 rounded-xl md:rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:from-emerald-700 active:to-teal-700 text-white font-black text-sm sm:text-base md:text-lg shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border border-emerald-400/80"
-            >
-              <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 text-white" />
-              <span>找專家 / 徵才</span>
-            </button>
-
-            {/* 3. 探索行動：最新熱門趨勢 (柔和玫瑰粉紅框與羅盤圖示) */}
-            <button
-              onClick={onExploreClick}
-              className="w-full sm:w-auto px-6 py-3.5 md:px-7 md:py-4 lg:px-8 lg:py-4 rounded-xl md:rounded-2xl bg-white hover:bg-rose-50/50 active:bg-rose-50 text-stone-800 hover:text-rose-950 font-extrabold text-sm sm:text-base md:text-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer border-[1.5px] border-rose-400 hover:border-rose-500 group"
-            >
-              <Compass className="w-4 h-4 md:w-5 md:h-5 text-rose-500 group-hover:rotate-45 transition-transform" />
-              <span>最新熱門趨勢</span>
-              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 text-stone-400 group-hover:text-rose-500 group-hover:translate-x-1 transition-all" />
-            </button>
           </div>
         </div>
 
         {/* Clean Collapsible Metrics Bar (精簡橫條 + 可展開完整指標) */}
         {(allMetricItems.length > 0 || (publicMetricsConfig.showHighestBounty && currentHighestBounty > 0)) && (
-          <div className="mt-4 sm:mt-7 lg:mt-8 pt-3 sm:pt-4 lg:pt-5 border-t border-stone-200/60 max-w-5xl lg:max-w-6xl mx-auto">
+          <div className="mt-2.5 sm:mt-3.5 pt-2 sm:pt-3 border-t border-stone-200/60 max-w-5xl lg:max-w-6xl mx-auto">
             <div className="flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-8 lg:gap-x-10 gap-y-2 text-center">
               {visibleMetrics.map((m) => (
                 <div key={m.key} className="flex items-baseline gap-1.5">

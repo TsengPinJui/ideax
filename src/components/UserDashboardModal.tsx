@@ -242,7 +242,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     isFirestoreConnected,
     lastSyncTime,
     syncAllToCloud,
-    pullAllDataFromFirestore,
     deviceAccounts,
     switchAccount,
     logoutAccount,
@@ -1539,22 +1538,23 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       email: userEmail.trim(),
     });
 
-    setCurrentUser((prev) => ({
-      ...prev,
+    const updatedSelf: User = {
+      ...currentUser,
       name,
-      username: username.trim() || prev.username,
+      username: username.trim() || currentUser.username,
       avatar: newAvatar,
       title,
       bio,
-      domain: (domain || prev.domain) as any,
-      gender: (userGender || prev.gender) as any,
-      ageGroup: (userAgeGroup || prev.ageGroup) as any,
+      domain: (domain || currentUser.domain) as any,
+      gender: (userGender || currentUser.gender) as any,
+      ageGroup: (userAgeGroup || currentUser.ageGroup) as any,
       industry: userIndustry,
       jobTitle: title,
-      annualSalary: (userAnnualSalary || prev.annualSalary) as any,
+      annualSalary: (userAnnualSalary || currentUser.annualSalary) as any,
       company: userCompany.trim() || undefined,
       phone: userPhone.trim(),
       email: userEmail.trim(),
+      hasCompletedProfile: true,
       bankAccount: {
         bankCode,
         bankName,
@@ -1573,12 +1573,18 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       featuredCase: {
         title: featuredCaseTitle,
         description: featuredCaseDescription,
-        outcome: prev.featuredCase?.outcome || '順利降低合作溝通摩擦並達成高效交付',
+        outcome: currentUser.featuredCase?.outcome || '順利降低合作溝通摩擦並達成高效交付',
         files: featuredCaseFiles,
         images: featuredCaseImages,
       },
       showRecentSolutions,
-    }));
+    };
+
+    setCurrentUser(updatedSelf);
+    syncUserToFirestore(updatedSelf);
+    try {
+      localStorage.setItem('ideax_mvp_v3_user', JSON.stringify(updatedSelf));
+    } catch {}
 
     const aliasId = USER_ALIAS_MAP[currentUser.id];
     setAvailableUsers((users) =>
@@ -1601,6 +1607,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               email: userEmail.trim(),
               surveyData: updatedSurveyData,
               skills: parsedSkills.slice(0, 10),
+              hasCompletedProfile: true,
             }
           : u
       )
@@ -1631,23 +1638,24 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       email: userEmail.trim(),
     });
 
-    setCurrentUser((prev) => ({
-      ...prev,
+    const updatedSelf: User = {
+      ...currentUser,
       name,
-      username: username.trim() || prev.username,
+      username: username.trim() || currentUser.username,
       avatar: newAvatar,
       title,
       bio,
-      domain: (domain || prev.domain) as any,
-      gender: (userGender || prev.gender) as any,
-      ageGroup: (userAgeGroup || prev.ageGroup) as any,
+      domain: (domain || currentUser.domain) as any,
+      gender: (userGender || currentUser.gender) as any,
+      ageGroup: (userAgeGroup || currentUser.ageGroup) as any,
       industry: userIndustry,
       jobTitle: title,
-      annualSalary: (userAnnualSalary || prev.annualSalary) as any,
+      annualSalary: (userAnnualSalary || currentUser.annualSalary) as any,
       company: userCompany.trim() || undefined,
       phone: userPhone.trim(),
       email: userEmail.trim(),
       skills: parsedSkills.slice(0, 10),
+      hasCompletedProfile: true,
       showSubmittedCount,
       showAcceptanceRate,
       showAvgSolutionBounty,
@@ -1656,12 +1664,18 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       featuredCase: {
         title: featuredCaseTitle,
         description: featuredCaseDescription,
-        outcome: prev.featuredCase?.outcome || '順利降低合作溝通摩擦並達成高效交付',
+        outcome: currentUser.featuredCase?.outcome || '順利降低合作溝通摩擦並達成高效交付',
         files: featuredCaseFiles,
         images: featuredCaseImages,
       },
       showRecentSolutions,
-    }));
+    };
+
+    setCurrentUser(updatedSelf);
+    syncUserToFirestore(updatedSelf);
+    try {
+      localStorage.setItem('ideax_mvp_v3_user', JSON.stringify(updatedSelf));
+    } catch {}
 
     const aliasId = USER_ALIAS_MAP[currentUser.id];
     setAvailableUsers((users) =>
@@ -1683,6 +1697,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               phone: userPhone.trim(),
               email: userEmail.trim(),
               skills: parsedSkills.slice(0, 10),
+              hasCompletedProfile: true,
             }
           : u
       )
@@ -4021,11 +4036,24 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                             setIsCloudSyncing(true);
                             setCloudSyncReport(null);
                             try {
-                              const ok = await pullAllDataFromFirestore();
-                              if (ok) {
-                                setCloudSyncReport(`✅ 下載拉取成功！已自雲端資料庫獲取最新題庫、用戶名單、對話與帳目數據。`);
+                              const { loadAllDataFromFirestore } = await import('../services/firestoreSync');
+                              const cloudData = await loadAllDataFromFirestore();
+                              if (cloudData) {
+                                if (cloudData.questions && cloudData.questions.length > 0) {
+                                  setQuestions(cloudData.questions);
+                                }
+                                if (cloudData.users && cloudData.users.length > 0) {
+                                  setAvailableUsers(cloudData.users);
+                                }
+                                if (cloudData.answers && cloudData.answers.length > 0) {
+                                  setAnswers(cloudData.answers);
+                                }
+                                if (cloudData.transactions && cloudData.transactions.length > 0) {
+                                  setTransactions(cloudData.transactions);
+                                }
+                                setCloudSyncReport(`✅ 下載拉取成功！已自雲端資料庫獲取最新題庫與帳目資料。`);
                               } else {
-                                setCloudSyncReport(`雲端資料庫已是最新狀態，或網路連線異常。`);
+                                setCloudSyncReport(`雲端尚無新資料或網路連線異常。`);
                               }
                             } catch (e: any) {
                               setCloudSyncReport(`拉取失敗: ${e?.message || '未知錯誤'}`);

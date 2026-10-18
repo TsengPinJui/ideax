@@ -58,6 +58,7 @@ export interface PublishEffectPreviewModalProps {
   // VibeCoding specific
   appName?: string;
   demoUrl?: string;
+  externalLink?: string;
   techArchitecture?: string;
   referencedPainPoint?: string;
   targetGoal?: string;
@@ -91,6 +92,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
   proposalProgressStage,
   appName = '',
   demoUrl,
+  externalLink,
   techArchitecture,
   referencedPainPoint,
   targetGoal,
@@ -99,6 +101,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
   domainTrack = '創新創業',
   milestones = [],
 }) => {
+  const effectiveDemoUrl = (demoUrl || externalLink || '').trim();
   const [activePreviewType, setActivePreviewType] = useState<'vibecoding_app' | 'innovation_proposal'>(postType);
   const [previewTab, setPreviewTab] = useState<'card' | 'detail'>('card');
   const [cardViewMode, setCardViewMode] = useState<MarketViewMode>('large');
@@ -208,7 +211,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
     cardHoverMode,
     proposalProgressStage: proposalProgressStage || undefined,
     techArchitecture: techArchitecture || (isVibeApp ? 'React + TypeScript + Tailwind CSS + Gemini API' : undefined),
-    demoUrl: demoUrl || undefined,
+    demoUrl: effectiveDemoUrl || undefined,
     referencedPainPoint: effectivePainPoint,
     targetGoal: effectiveTargetGoal,
     currentVersion: isVibeApp ? currentVersion || 'v1.0.0' : 'v1.0',
@@ -661,6 +664,20 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                         <span className="absolute bottom-2.5 left-3 text-[11px] font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">
                           💡 創點子 (創新提案)
                         </span>
+                        {effectiveDemoUrl && (
+                          <a
+                            href={effectiveDemoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute bottom-2.5 right-3 text-[11px] font-black px-2.5 py-0.5 rounded-full bg-black/60 hover:bg-black/80 text-emerald-300 border border-emerald-400/40 backdrop-blur-xs shadow-xs flex items-center gap-1 transition-all"
+                            title="開啟外部或 Demo 連結"
+                          >
+                            <Globe className="w-3 h-3 text-emerald-400" />
+                            <span>前往連結</span>
+                            <ExternalLink className="w-2.5 h-2.5 text-emerald-400" />
+                          </a>
+                        )}
                       </div>
                     )}
 
@@ -759,6 +776,24 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                           </span>
                         ))}
                       </div>
+
+                      {/* 專屬網站連結 / 外部資料按鈕 */}
+                      {effectiveDemoUrl && (
+                        <div className="pt-1">
+                          <a
+                            href={effectiveDemoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold transition-all shadow-2xs group/link"
+                            title="前往專屬網站或 Demo 連結"
+                          >
+                            <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="truncate">前往專屬網站 / 體驗連結</span>
+                            <ExternalLink className="w-3 h-3 text-emerald-600 group-hover/link:translate-x-0.5 transition-transform" />
+                          </a>
+                        </div>
+                      )}
 
                       {/* Footer */}
                       <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
@@ -924,9 +959,9 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                         </div>
                       </div>
 
-                      {demoUrl ? (
+                      {effectiveDemoUrl ? (
                         <a
-                          href={demoUrl}
+                          href={effectiveDemoUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg transition-all"
@@ -1315,16 +1350,16 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                       ))}
                     </div>
 
-                    {demoUrl && (
+                    {effectiveDemoUrl && (
                       <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 min-w-0">
                           <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
                           <span className="text-xs font-bold text-stone-800 truncate">
-                            補充參考資料 / 外部連結：{demoUrl}
+                            專屬網站 / 外部連結：{effectiveDemoUrl}
                           </span>
                         </div>
                         <a
-                          href={demoUrl}
+                          href={effectiveDemoUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold shrink-0 flex items-center gap-1"
