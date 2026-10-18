@@ -298,15 +298,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                 {displayCategoryLabel}
               </span>
-              {hasSolutions && (
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-600/90 backdrop-blur-md text-white border border-rose-300 shadow-xs flex items-center gap-1" title="已有落地解決方案">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-200 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
-                  </span>
-                  <span>有解方</span>
-                </span>
-              )}
+
             </div>
 
             <div className="absolute bottom-2 right-2 flex items-center gap-1 z-20">
@@ -356,15 +348,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             </span>
 
             <div className="shrink-0 font-mono text-right flex items-center gap-1">
-              {hasSolutions && !showGridCover && (
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-1 shadow-2xs" title="已有落地解決方案">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-600"></span>
-                  </span>
-                  <span>有解方</span>
-                </span>
-              )}
+
               {(question.isStarSeason || question.tags?.includes('創星季')) && (
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="創星季參賽題目" />
               )}
@@ -549,11 +533,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 <span>已採納</span>
               </span>
             ) : hasSolutions ? (
-              <span className="font-bold font-mono text-rose-600 bg-rose-50 border border-rose-200/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-2xs" title="已有落地解決方案">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
-                </span>
+              <span className="font-bold font-mono text-stone-700 bg-stone-100 border border-stone-200 px-1.5 py-0.5 rounded-md flex items-center shadow-2xs" title="已有落地解決方案">
                 <span>{effectiveSolutionsCount} 方案</span>
               </span>
             ) : (
@@ -817,11 +797,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             {isSolved ? (
               <span className="font-bold text-emerald-600">已採納</span>
             ) : hasSolutions ? (
-              <span className="font-bold font-mono text-rose-600 bg-rose-50 border border-rose-200/90 px-2 py-0.5 rounded-lg flex items-center gap-1.5 shadow-2xs" title="已有落地解決方案">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
-                </span>
+              <span className="font-bold font-mono text-stone-700 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-lg flex items-center shadow-2xs" title="已有落地解決方案">
                 <span>{effectiveSolutionsCount} 方案</span>
               </span>
             ) : (
@@ -894,15 +870,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
             {/* 右上角標籤：軟體作品 / 創新提案 / 創星季 / 有解決方案紅點 */}
             <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 pointer-events-none z-10 flex-wrap">
-              {hasSolutions && (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-600/95 backdrop-blur-md text-white shadow-xs flex items-center gap-1 border border-rose-300" title="已有落地解決方案">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-200 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                  </span>
-                  <span>有解決方案</span>
-                </span>
-              )}
+
               {isSampleContent(question) && (
                 <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-stone-800/80 backdrop-blur-md text-white shadow-xs" title="此為平台示範內容，非真實會員發布">
                   範例
@@ -1293,13 +1261,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             </span>
           ) : hasSolutions ? (
             <span
-              className="flex items-center gap-1.5 font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full transition-colors text-[11px] font-mono shadow-2xs"
+              className="flex items-center gap-1 font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full transition-colors text-[11px] font-mono shadow-2xs"
               title="已有專家提交落地解決方案"
             >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
-              </span>
               <span>{effectiveSolutionsCount} 方案</span>
             </span>
           ) : (
