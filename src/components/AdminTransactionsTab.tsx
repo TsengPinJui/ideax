@@ -373,7 +373,7 @@ export const formatTransactionItem = (tx: Transaction, viewerName?: string): For
     cleanTitle = tx.note || '管理員獎勵點數轉入';
   } else if (type.includes('返還')) {
     categoryLabel = '抽成返還';
-    cleanTitle = tx.note || '平台服務費月底減免返還';
+    cleanTitle = tx.note || '平台服務費減免返還（舊紀錄）';
   }
 
   const amountFormatted = isIncome
