@@ -35,6 +35,7 @@ import {
   runTransaction as clientRunTransaction,
   increment as clientIncrement,
   arrayUnion as clientArrayUnion,
+  getCountFromServer as clientGetCountFromServer,
   Firestore,
 } from 'firebase/firestore';
 import firebaseConfigJson from '../firebase-applet-config.json';
@@ -2061,7 +2062,15 @@ export interface RealSiteTrafficStats {
   firstDateKey: string;
   lastUpdatedUtc8: string;
   onlineUsersCount: number;
+  /** 不重複造訪用戶（每台裝置首次造訪算一位） */
+  uniqueVisitorsTotal: number;
+  /** 每日／每時造訪用戶數（同一裝置當天只算一次） */
+  visitorsDaily: Record<string, number>;
+  visitorsHourly: Record<string, number>;
 }
+
+/** 瀏覽量自此數字起算（2026/10/18 依營運需求調整） */
+const PAGEVIEW_BASELINE_TARGET = 2500;
 
 const activePresenceSessions = new Map<string, number>();
 const PRESENCE_TTL_MS = 65 * 1000;
@@ -2082,6 +2091,48 @@ function getUtc8PartsServer(timestampMs: number = Date.now()) {
   };
 }
 
+// 即時在線：記錄在資料庫（site_presence），所有伺服器共用；計算最近 75 秒內有心跳的人
+const PRESENCE_COLLECTION = 'site_presence';
+const PRESENCE_WINDOW_MS = 75 * 1000;
+let cachedOnline = { count: 1, at: 0 };
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))]);
+}
+
+async function touchPresence(sessionId: string) {
+  try {
+    await clientSetDoc(clientDoc(rawFirestoreDb, PRESENCE_COLLECTION, sessionId.slice(0, 64).replace(/\//g, '_')), {
+      lastSeen: Date.now(),
+    });
+  } catch {}
+  // 偶爾清掉一天前的舊紀錄
+  if (Math.random() < 0.02) {
+    try {
+      const old = await clientGetDocs(
+        clientQuery(clientCollection(rawFirestoreDb, PRESENCE_COLLECTION), clientWhere('lastSeen', '<', Date.now() - 86400000), clientLimit(100))
+      );
+      await Promise.all(old.docs.map((d) => clientDeleteDoc(d.ref).catch(() => {})));
+    } catch {}
+  }
+}
+
+async function getOnlineCount(): Promise<number> {
+  if (Date.now() - cachedOnline.at < 15000) return cachedOnline.count;
+  try {
+    const snap = await withTimeout(
+      clientGetCountFromServer(
+        clientQuery(clientCollection(rawFirestoreDb, PRESENCE_COLLECTION), clientWhere('lastSeen', '>=', Date.now() - PRESENCE_WINDOW_MS))
+      ),
+      4000
+    );
+    cachedOnline = { count: Math.max(1, snap.data().count), at: Date.now() };
+  } catch {
+    cachedOnline = { count: getActiveOnlineCount(), at: Date.now() };
+  }
+  return cachedOnline.count;
+}
+
 function getActiveOnlineCount(): number {
   const now = Date.now();
   for (const [sid, lastSeen] of activePresenceSessions.entries()) {
@@ -2092,30 +2143,42 @@ function getActiveOnlineCount(): number {
   return Math.max(1, activePresenceSessions.size);
 }
 
+function readCountMap(raw: any): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (raw && typeof raw === 'object') {
+    for (const [k, v] of Object.entries(raw)) {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) out[k] = n;
+    }
+  }
+  return out;
+}
+
 export async function getRealSiteTrafficStats(): Promise<RealSiteTrafficStats> {
   const docSnap = await adminDb.collection('platform_settings').doc('site_traffic_stats').get();
   const raw = docSnap.exists ? docSnap.data() : null;
 
-  const hourly: Record<string, number> = {};
-  if (raw?.hourly && typeof raw.hourly === 'object') {
-    for (const [k, v] of Object.entries(raw.hourly)) {
-      const n = Number(v);
-      if (Number.isFinite(n) && n >= 0) hourly[k] = n;
-    }
-  }
-
-  const daily: Record<string, number> = {};
-  if (raw?.daily && typeof raw.daily === 'object') {
-    for (const [k, v] of Object.entries(raw.daily)) {
-      const n = Number(v);
-      if (Number.isFinite(n) && n >= 0) daily[k] = n;
-    }
-  }
+  const hourly = readCountMap(raw?.hourly);
+  const daily = readCountMap(raw?.daily);
+  const visitorsDaily = readCountMap(raw?.visitorsDaily);
+  const visitorsHourly = readCountMap(raw?.visitorsHourly);
 
   const sortedHours = Object.keys(hourly).sort();
   const sortedDays = Object.keys(daily).sort();
   const sumDaily = Object.values(daily).reduce((acc, v) => acc + v, 0);
-  const baseVisits = INITIAL_SITE_VISITS_BASE;
+
+  // 瀏覽量起算點：第一次執行時把「目前累計」調整為 2500，之後照常累加
+  let baseVisits = typeof raw?.baseVisits === 'number' ? raw.baseVisits : INITIAL_SITE_VISITS_BASE;
+  if (!raw?.pageviewBaselineApplied) {
+    baseVisits = PAGEVIEW_BASELINE_TARGET - sumDaily;
+    try {
+      await clientSetDoc(
+        clientDoc(rawFirestoreDb, 'platform_settings', 'site_traffic_stats'),
+        { baseVisits, pageviewBaselineApplied: true },
+        { merge: true }
+      );
+    } catch {}
+  }
   const totalVisits = baseVisits + sumDaily;
 
   return {
@@ -2127,13 +2190,20 @@ export async function getRealSiteTrafficStats(): Promise<RealSiteTrafficStats> {
     firstHourKey: raw?.firstHourKey || sortedHours[0] || '',
     firstDateKey: raw?.firstDateKey || sortedDays[0] || '',
     lastUpdatedUtc8: raw?.lastUpdatedUtc8 || '',
-    onlineUsersCount: getActiveOnlineCount(),
+    onlineUsersCount: await getOnlineCount(),
+    uniqueVisitorsTotal: Number(raw?.uniqueVisitorsTotal) || 0,
+    visitorsDaily,
+    visitorsHourly,
   };
 }
 
-export async function recordRealSiteVisit(sessionId?: string): Promise<RealSiteTrafficStats> {
+export async function recordRealSiteVisit(
+  sessionId?: string,
+  visitor: { newToday?: boolean; newEver?: boolean } = {}
+): Promise<RealSiteTrafficStats> {
   if (sessionId && typeof sessionId === 'string') {
     activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
+    void touchPresence(sessionId);
   }
 
   const nowParts = getUtc8PartsServer(Date.now());
@@ -2147,6 +2217,13 @@ export async function recordRealSiteVisit(sessionId?: string): Promise<RealSiteT
       {
         hourly: { [nowParts.hourKey]: clientIncrement(1) },
         daily: { [nowParts.dateKey]: clientIncrement(1) },
+        ...(visitor.newToday
+          ? {
+              visitorsHourly: { [nowParts.hourKey]: clientIncrement(1) },
+              visitorsDaily: { [nowParts.dateKey]: clientIncrement(1) },
+            }
+          : {}),
+        ...(visitor.newEver ? { uniqueVisitorsTotal: clientIncrement(1) } : {}),
         lastUpdatedUtc8: nowParts.fullDateTime,
       },
       { merge: true }
@@ -2170,12 +2247,13 @@ export async function recordRealSiteVisit(sessionId?: string): Promise<RealSiteT
   return current;
 }
 
-export function recordRealPresenceHeartbeat(sessionId?: string): { onlineUsersCount: number } {
+export async function recordRealPresenceHeartbeat(sessionId?: string): Promise<{ onlineUsersCount: number }> {
   if (sessionId && typeof sessionId === 'string') {
     activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
+    await withTimeout(touchPresence(sessionId), 4000).catch(() => {});
   }
   return {
-    onlineUsersCount: getActiveOnlineCount(),
+    onlineUsersCount: await getOnlineCount(),
   };
 }
 

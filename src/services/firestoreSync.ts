@@ -1545,10 +1545,24 @@ function getClientSessionId(): string {
  */
 export async function recordSiteVisitInFirestore(): Promise<number> {
   try {
+    // 造訪用戶：每台裝置第一次來算一位新用戶；同一裝置每天只算一次當日造訪
+    let newVisitorEver = false;
+    let newVisitorToday = false;
+    try {
+      if (!localStorage.getItem('ideax_visitor_id')) {
+        localStorage.setItem('ideax_visitor_id', `v-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+        newVisitorEver = true;
+      }
+      const todayUtc8 = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+      if (localStorage.getItem('ideax_visitor_last_day') !== todayUtc8) {
+        localStorage.setItem('ideax_visitor_last_day', todayUtc8);
+        newVisitorToday = true;
+      }
+    } catch {}
     const res = await fetch('/api/competition/site-traffic/visit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: getClientSessionId() }),
+      body: JSON.stringify({ sessionId: getClientSessionId(), newVisitorEver, newVisitorToday }),
     });
     if (res.ok) {
       const json = await res.json();
