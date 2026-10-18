@@ -68,7 +68,7 @@ import { recordUserBoard, recordUserSpecialZone } from '../services/recommendati
 import { CompetitionTermsModal, CompetitionDocumentKey } from './challenge/CompetitionTermsModal';
 
 // 管理員 Email 白名單（建置時由環境變數 ADMIN_EMAILS 注入，多組以逗號分隔）
-const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || 'operations@ideax.io,john25893619@gmail.com')
+const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || 'john25893619@gmail.com')
   .split(',')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);

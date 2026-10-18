@@ -13,7 +13,7 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         ('admin' in request.auth.token && request.auth.token.admin == true) ||
         (request.auth.token.email_verified == true &&
-          request.auth.token.email in ['john25893619@gmail.com', 'operations@ideax.io'])
+          request.auth.token.email in ['john25893619@gmail.com'])
       );
     }
 

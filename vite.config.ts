@@ -18,7 +18,7 @@ export default defineConfig(() => {
       'process.env.DIFY_AICRM_API_KEY': JSON.stringify(''),
       'process.env.DIFY_CS_API_KEY': JSON.stringify(''),
       'process.env.DIFY_MARKET_ADVISOR_API_KEY': JSON.stringify(''),
-      'process.env.ADMIN_EMAILS': JSON.stringify(process.env.ADMIN_EMAILS || 'operations@ideax.io,john25893619@gmail.com'),
+      'process.env.ADMIN_EMAILS': JSON.stringify(process.env.ADMIN_EMAILS || 'john25893619@gmail.com'),
       'process.env.DIFY_AICRM_WEB_URL': JSON.stringify(process.env.DIFY_AICRM_WEB_URL || 'https://udify.app/agent/BnAiF81AGw454x0u'),
     },
     server: {
