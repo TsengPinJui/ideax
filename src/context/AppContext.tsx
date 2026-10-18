@@ -2467,7 +2467,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch {}
       }
 
-      // 管理員：以全站資料取代；一般會員：只拿到自己的資料，合併進本機
+      // 雲端資料一律合併進本機（私訊與通知有部分只存在本機，取代會讓聊天室消失）；交易紀錄管理員以全站取代
       const isAdminScope = currentUser.role === 'admin';
       if (Array.isArray(cloudData.transactions) && cloudData.transactions.length > 0) {
         const cleanTx = !isDemo ? cloudData.transactions.filter((t) => !isMockTransactionId(t.id)) : cloudData.transactions;
@@ -2476,12 +2476,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (Array.isArray(cloudData.conversations) && cloudData.conversations.length > 0) {
         const cleanConv = !isDemo ? cloudData.conversations.filter((c) => !isMockConversationId(c.id)) : cloudData.conversations;
-        setConversations((prev) => (isAdminScope ? cleanConv : mergeServerIntoLocal(prev, cleanConv)));
+        setConversations((prev) => mergeServerIntoLocal(prev, cleanConv));
       }
 
       if (Array.isArray(cloudData.notifications) && cloudData.notifications.length > 0) {
         const cleanNotifs = cloudData.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message));
-        setNotifications((prev) => (isAdminScope ? cleanNotifs : mergeServerIntoLocal(prev, cleanNotifs)));
+        setNotifications((prev) => mergeServerIntoLocal(prev, cleanNotifs));
       }
 
       if (cloudData.solvers && cloudData.solvers.length > 0) {
@@ -2776,7 +2776,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               localStorage.setItem(`${STORAGE_KEY_PREFIX}answers`, JSON.stringify(finalAns));
             } catch {}
           }
-          // 管理員：以全站資料取代；一般會員：只拿到自己的資料，合併進本機
+          // 雲端資料一律合併進本機（私訊與通知有部分只存在本機，取代會讓聊天室消失）；交易紀錄管理員以全站取代
           const isAdminBoot = currentUser.role === 'admin';
           if (Array.isArray(cloudData.transactions) && cloudData.transactions.length > 0) {
             const bootTx = !isDemo ? cloudData.transactions.filter((t) => !isMockTransactionId(t.id)) : cloudData.transactions;
@@ -2784,11 +2784,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           if (Array.isArray(cloudData.conversations) && cloudData.conversations.length > 0) {
             const bootConv = !isDemo ? cloudData.conversations.filter((c) => !isMockConversationId(c.id)) : cloudData.conversations;
-            setConversations((prev) => (isAdminBoot ? bootConv : mergeServerIntoLocal(prev, bootConv)));
+            setConversations((prev) => mergeServerIntoLocal(prev, bootConv));
           }
           if (Array.isArray(cloudData.notifications) && cloudData.notifications.length > 0) {
             const bootNotifs = cloudData.notifications.filter((n) => !isModeOrEnvNotification(n.title, n.message));
-            setNotifications((prev) => (isAdminBoot ? bootNotifs : mergeServerIntoLocal(prev, bootNotifs)));
+            setNotifications((prev) => mergeServerIntoLocal(prev, bootNotifs));
           }
           if (cloudData.solvers && cloudData.solvers.length > 0) {
             if (!isDemo) {

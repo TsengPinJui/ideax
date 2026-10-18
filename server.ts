@@ -7,6 +7,7 @@ import { createServer as createViteServer } from 'vite';
 import competitionRouter from './server/competitionRoutes';
 import authVerificationRouter from './server/authVerificationRoutes';
 import { rateLimit, requireAdminMiddleware } from './server/security';
+import { runAuthUidBackfill } from './server/backfillAuthUids';
 
 dotenv.config();
 
@@ -3139,6 +3140,18 @@ app.post('/api/ai/faq-agent-consult', async (req: Request, res: Response) => {
 });
 
 // Admin Endpoint: AI Agent One-Click Aggregate Collected Questions into FAQs (實體 Dify Agent 驅動)
+// 管理員：替舊資料補上 Firebase 帳號對照（apply=false 只試算不寫入）
+app.post('/api/admin/backfill-auth-uids', async (req: Request, res: Response) => {
+  try {
+    const apply = req.body?.apply === true;
+    const result = await runAuthUidBackfill(apply);
+    res.json({ success: true, result });
+  } catch (err: any) {
+    console.error('[Backfill Auth UIDs]', err?.message || err);
+    res.status(500).json({ success: false, error: err?.message || '執行失敗' });
+  }
+});
+
 app.post('/api/admin/aggregate-faqs', async (req: Request, res: Response) => {
   const { questions } = req.body;
   if (!Array.isArray(questions) || questions.length === 0) {
