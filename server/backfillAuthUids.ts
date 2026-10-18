@@ -3,7 +3,6 @@
  * 在伺服器上用服務帳戶執行，管理員可從後台一鍵執行，不必在自己的電腦跑指令。
  */
 import { getApps } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import firebaseConfigJson from '../firebase-applet-config.json';
 import { hasAdminCredentials } from './competitionService';
@@ -21,6 +20,8 @@ export async function runAuthUidBackfill(apply: boolean): Promise<BackfillResult
   if (!hasAdminCredentials) {
     throw new Error('伺服器尚未設定 FIREBASE_SERVICE_ACCOUNT，無法執行');
   }
+  // 需要時才載入（Firestore 管理端套件較大，且只有這個工具用到）
+  const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
   const app = getApps()[0];
   const dbId = (firebaseConfigJson as any).firestoreDatabaseId;
   const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
