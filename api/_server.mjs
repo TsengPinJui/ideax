@@ -150633,6 +150633,11 @@ var DEFAULT_DEMO_PROPOSALS = [
     targetFundingAmount: 2e5,
     likeCount: 256,
     commentsCount: 10,
+    externalLink: "https://ideax.tw",
+    demoUrl: "https://ideax.tw",
+    youtubeUrl: "https://youtube.com/shorts/9aQE73bVAiU?si=I1vpUWqcJzcCO8xX",
+    coverMode: "youtube_video",
+    cardHoverMode: "video_autoplay",
     status: "approved",
     createdAt: new Date(Date.now() - 36e5 * 0.5).toISOString(),
     updatedAt: new Date(Date.now() - 36e5 * 0.5).toISOString()
@@ -150645,7 +150650,7 @@ var DEFAULT_DEMO_PROPOSALS = [
     summary: "\u5229\u7528\u4EBA\u7FA4\u5C0E\u6D41\u6298\u6263\u6A5F\u5236\uFF0C\u4E32\u9023\u7528\u6236\u3001\u5546\u5BB6\u3001\u793E\u5340\u9054\u6210\u771F\u6B63\u7684\u5171\u751F\u5171\u5275\uFF0C\u4E0D\u53EA\u65B9\u4FBF\u6C11\u773E\uFF0C\u66F4\u80FD\u6D3B\u5316\u5730\u65B9\u3001\u70BA\u5546\u5BB6\u5E36\u4F86\u6D41\u91CF\uFF0C\u5BE6\u73FE\u771F\u6B63\u7684\u6C38\u7E8C\u6B63\u5FAA\u74B0\uFF01\uFF08\u5305\u542B\u5C08\u5C6C App\uFF09",
     description: "\u91DD\u5C0D\u50B3\u7D71\u5171\u4EAB\u96E8\u5098\u501F\u9084\u7AD9\u9EDE\u55AE\u4E00\u3001\u7F3A\u4E4F\u5546\u696D\u9020\u8840\u80FD\u529B\uFF0C\u4EE5\u53CA\u5728\u5730\u5546\u5708\u5E97\u5BB6\u7F3A\u4E4F\u7CBE\u6E96\u5BA2\u6D41\u4E4B\u75DB\u9EDE\uFF1A\n1. \u4EBA\u7FA4\u5C0E\u6D41\u6298\u6263\u6A5F\u5236 \xD7 \u4E09\u65B9\u5171\u751F\u5171\u5275\uFF1A\u900F\u904E GoSun \u6674\u4EAB\u5098\u5C08\u5C6C App \u8207\u667A\u6167\u5098\u67B6\u9032\u99D0\u5728\u5730\u5546\u5BB6\u8207\u793E\u5340\u7BC0\u9EDE\uFF0C\u6C11\u773E\u501F\u5098\u6216\u8DE8\u5E97\u9084\u5098\u5373\u53EF\u9818\u53D6\u5408\u4F5C\u5E97\u5BB6\u5373\u6642\u6D88\u8CBB\u6298\u6263\u5238\uFF0C\u5C07\u6BCF\u4E00\u6B21\u6674\u96E8\u6490\u5098\u8F49\u5316\u70BA\u8D70\u9032\u5728\u5730\u5E97\u5BB6\u7684\u771F\u5BE6\u5BA2\u6D41\uFF01\n2. \u6D3B\u5316\u5730\u65B9\u8207\u6C38\u7E8C\u6B63\u5FAA\u74B0\uFF1A\u9AD8\u6297\u98A8\u6297 UV \u6674\u96E8\u5169\u7528\u5098\u7D50\u5408\u592A\u967D\u80FD\u5FAE\u96FB\u5098\u6A01\uFF0C\u4E0D\u53EA\u65B9\u4FBF\u6C11\u773E\u906E\u967D\u907F\u96E8\uFF0C\u66F4\u80FD\u6D3B\u5316\u5730\u65B9\u793E\u5340\u3001\u70BA\u5546\u5BB6\u5E36\u4F86\u7A69\u5B9A\u71DF\u6536\u8F49\u63DB\uFF0C\u5BE6\u73FE\u771F\u6B63\u7684\u6C38\u7E8C\u6B63\u5FAA\u74B0\uFF01",
     authorId: "u-vc-14",
-    authorName: "\u6D2A\u96C5\u7B51 Claire \uFF5C GoSun \u6674\u4EAB\u6C38\u7E8C\u5718\u968A",
+    authorName: "\u6D2A\u96C5\u7B51 \uFF5C GoSun \u6674\u4EAB\u6C38\u7E8C\u5718\u968A",
     teamName: "GoSun \u6674\u4EAB\u6C38\u7E8C\u5718\u968A",
     organizationName: "GoSun \u6674\u4EAB\u5098\u5718\u968A",
     showOrganization: true,
@@ -150671,6 +150676,9 @@ var DEFAULT_DEMO_PROPOSALS = [
     targetFundingAmount: 15e4,
     likeCount: 168,
     commentsCount: 8,
+    youtubeUrl: "https://youtu.be/0fVaQ4GKoto",
+    coverMode: "youtube_video",
+    cardHoverMode: "video_autoplay",
     status: "approved",
     createdAt: new Date(Date.now() - 36e5 * 1).toISOString(),
     updatedAt: new Date(Date.now() - 36e5 * 1).toISOString()
@@ -150683,7 +150691,7 @@ var DEFAULT_DEMO_PROPOSALS = [
     summary: "\u5305\u542B\u591A\u6A21\u5F0F\u77E5\u8B58\u554F\u7B54\u3001\u731C\u8A5E\u89E3\u8B0E\u3001AI\u72FC\u4EBA\u6BBA\u3001\u8FF7\u5BAE\u6230\u722D...\u7B49\u591A\u6B3E\u6392\u968A\u8207\u6D3E\u5C0D\u904A\u6232\uFF0C\u8DE8\u88DD\u7F6E\u958B\u623F\u5373\u73A9\uFF01\uFF08\u7DDA\u4E0A\u9AD4\u9A57\uFF1Ahttps://deeperdigger.online/ \uFF09",
     description: "\u91DD\u5C0D\u7DDA\u4E0A\u805A\u6703\u3001\u4F01\u696D\u7834\u51B0\u8207\u670B\u53CB\u6392\u968A\u7B49\u5F85\u6642\u7F3A\u4E4F\u300C\u517C\u5177\u6DF1\u5EA6\u52D5\u8166\u8207\u6D3E\u5C0D\u8DA3\u5473\u300D\u4E4B\u591A\u4EBA\u4E92\u52D5\u5A1B\u6A02\u75DB\u9EDE\uFF08\u7DDA\u4E0A\u66A2\u73A9\uFF1Ahttps://deeperdigger.online/ \uFF09\uFF1A\n1. \u591A\u6B3E\u539F\u5275\u77E5\u8B58\u6027\u591A\u4EBA\u6392\u968A\u8207\u6D3E\u5C0D\u904A\u6232\uFF1A\u96C6\u7D50\u591A\u6A21\u5F0F\u77E5\u8B58\u554F\u7B54\u3001\u9650\u6642\u731C\u8A5E\u89E3\u8B0E\u3001\u7D50\u5408\u5927\u578B\u8A9E\u8A00\u6A21\u578B\u507D\u88DD\u63A8\u7406\u7684\u300CAI \u72FC\u4EBA\u6BBA\u300D\u3001\u4EE5\u53CA\u7B56\u7565\u535A\u5F08\u7684\u300C\u8FF7\u5BAE\u6230\u722D\u300D\u7B49\u8C50\u5BCC\u73A9\u6CD5\u3002\n2. \u514D\u5B89\u88DD\u8DE8\u88DD\u7F6E\u79D2\u901F\u958B\u623F\uFF1A\u652F\u63F4\u624B\u6A5F\u8207\u96FB\u8166\u700F\u89BD\u5668\u4E00\u9375\u958B\u623F\u9023\u7DDA\uFF0C\u5C07\u788E\u7247\u5316\u6392\u968A\u6642\u9593\u8207\u9060\u8DDD\u805A\u6703\u8F49\u5316\u70BA\u9AD8\u4E92\u52D5\u7684\u8166\u529B\u6FC0\u76EA\u6D3E\u5C0D\uFF01",
     authorId: "u-vc-35",
-    authorName: "\u4EFB\u67CF\u5B87 Simon \uFF5C DeeperDigger \u904A\u6232\u5BE6\u9A57\u5BA4",
+    authorName: "\u4EFB\u67CF\u5B87 \uFF5C DeeperDigger \u904A\u6232\u5BE6\u9A57\u5BA4",
     teamName: "DeeperDigger \u904A\u6232\u5BE6\u9A57\u5BA4",
     organizationName: "DeeperDigger Studio",
     showOrganization: true,
@@ -150720,9 +150728,44 @@ var DEFAULT_DEMO_PROPOSALS = [
     targetFundingAmount: 12e4,
     likeCount: 154,
     commentsCount: 7,
+    externalLink: "https://deeperdigger.online/",
+    demoUrl: "https://deeperdigger.online/",
     status: "approved",
     createdAt: new Date(Date.now() - 36e5 * 2).toISOString(),
     updatedAt: new Date(Date.now() - 36e5 * 2).toISOString()
+  },
+  {
+    id: "q-vp-idea-nexsight",
+    title: "\u3010NexSight \u6D1E\u9451\u3011\u80A1\u5E02\u6B77\u53F2\u8DA8\u52E2\u6BD4\u5C0D\u8207\u591A\u56E0\u7D20\u56DE\u6B78\u9810\u6E2C\u7CFB\u7D71\uFF1A\u7528\u91CF\u5316\u6578\u64DA\u8207\u6B77\u53F2\u56DE\u6E2C\u8F14\u52A9\u6295\u8CC7\u6C7A\u7B56",
+    stage: "solution",
+    track: "ict",
+    summary: "\u7D50\u5408\u80A1\u5E02\u6B77\u53F2\u6578\u64DA\u6BD4\u5C0D\u8207\u591A\u56E0\u7D20\u56DE\u6B78\u9810\u6E2C\uFF08Multi-Factor Regression\uFF09\u7684\u91CF\u5316\u5206\u6790\u7DB2\u7AD9\u3002\u652F\u63F4\u81EA\u8A02\u56E0\u5B50\u6B0A\u91CD\u3001\u4FE1\u8CF4\u5340\u9593\u8D70\u52E2\u63A8\u6F14\u8207\u6B77\u53F2\u56DE\u6E2C\u52DD\u7387\u9A57\u8B49\uFF01\uFF08\u7DDA\u4E0A\u9AD4\u9A57\uFF1Ahttps://www.nexsight.it.com/ \uFF09",
+    description: "\u91DD\u5C0D\u500B\u4EBA\u6295\u8CC7\u8005\u8207\u91CF\u5316\u7814\u7A76\u54E1\u96E3\u4EE5\u5C07\u7E3D\u7D93\u56E0\u5B50\u3001\u6280\u8853\u6307\u6A19\u8207\u57FA\u672C\u9762\u8CA1\u52D9\u6578\u64DA\u6574\u5408\u6210\u591A\u56E0\u7D20\u56DE\u6B78\u6A21\u578B\u4E4B\u75DB\u9EDE\uFF08\u7DDA\u4E0A\u9AD4\u9A57\uFF1Ahttps://www.nexsight.it.com/ \uFF09\uFF1A\n1. \u6B77\u53F2\u8DA8\u52E2\u6BD4\u5C0D \xD7 \u591A\u56E0\u7D20\u56DE\u6B78\u6A21\u578B\uFF1A\u8996\u89BA\u5316\u8ABF\u6574\u7E3D\u7D93\u3001\u7C4C\u78BC\u8207\u6280\u8853\u56E0\u5B50\u6B0A\u91CD\uFF0C\u81EA\u52D5\u63A8\u6F14\u8D70\u52E2\u4FE1\u8CF4\u5340\u9593\u8207\u56DE\u6B78\u65B9\u7A0B\u5F0F\u3002\n2. \u6B77\u53F2\u56DE\u6E2C\u9A57\u8B49\uFF1A\u5373\u6642\u8A08\u7B97\u6B77\u53F2\u52DD\u7387\u3001\u5E74\u5316\u5831\u916C\u7387\u8207\u6700\u5927\u56DE\u64A4\uFF08Max Drawdown\uFF09\uFF0C\u7528\u56B4\u8B39\u7D71\u8A08\u8207\u8996\u89BA\u5316\u5716\u8868\u544A\u5225\u76F2\u76EE\u731C\u6E2C\uFF01",
+    authorId: "u-vc-25",
+    authorName: "\u91CF\u5316\u8001\u7F85 \uFF5C NexSight \u6D1E\u9451\u91CF\u5316\u5718\u968A",
+    teamName: "NexSight \u6D1E\u9451\u91CF\u5316\u5718\u968A",
+    organizationName: "NexSight Analytics",
+    showOrganization: true,
+    authorRole: "user",
+    sourcePainPointTitle: "[q-vp-pain-15] \u50B3\u7D71\u80A1\u5E02\u770B\u76E4\u8EDF\u9AD4\u50C5\u63D0\u4F9B\u843D\u5F8C\u6280\u8853\u6307\u6A19\uFF0C\u6563\u6236\u8207\u7814\u7A76\u54E1\u96E3\u4EE5\u5C07\u7E3D\u7D93\u6578\u64DA\u3001\u8CA1\u5831\u57FA\u672C\u9762\u8207\u7C4C\u78BC\u56E0\u5B50\u6574\u5408\u9032\u591A\u56E0\u7D20\u56DE\u6B78\u6A21\u578B\u9032\u884C\u6B77\u53F2\u56DE\u6E2C\u8207\u8DA8\u52E2\u63A8\u6F14",
+    referencedPainPoint: "[q-vp-pain-15] \u50B3\u7D71\u80A1\u5E02\u770B\u76E4\u8EDF\u9AD4\u50C5\u63D0\u4F9B\u843D\u5F8C\u6280\u8853\u6307\u6A19\uFF0C\u6563\u6236\u8207\u7814\u7A76\u54E1\u96E3\u4EE5\u5C07\u7E3D\u7D93\u6578\u64DA\u3001\u8CA1\u5831\u57FA\u672C\u9762\u8207\u7C4C\u78BC\u56E0\u5B50\u6574\u5408\u9032\u591A\u56E0\u7D20\u56DE\u6B78\u6A21\u578B\u9032\u884C\u6B77\u53F2\u56DE\u6E2C\u8207\u8DA8\u52E2\u63A8\u6F14",
+    images: [
+      "/nexsight-dashboard.jpg",
+      "/nexsight-prediction-chart.jpg",
+      "/nexsight-multifactor-analysis.jpg",
+      "/nexsight-backtest-validation.jpg",
+      "/nexsight-settings-v4.jpg"
+    ],
+    supportPoints: 176e3,
+    supporterCount: 82,
+    targetFundingAmount: 15e4,
+    likeCount: 216,
+    commentsCount: 12,
+    externalLink: "https://www.nexsight.it.com/",
+    demoUrl: "https://www.nexsight.it.com/",
+    status: "approved",
+    createdAt: new Date(Date.now() - 36e5 * 2.5).toISOString(),
+    updatedAt: new Date(Date.now() - 36e5 * 2.5).toISOString()
   },
   {
     id: "q-vp-idea-pace",
@@ -150732,7 +150775,7 @@ var DEFAULT_DEMO_PROPOSALS = [
     summary: "\u4E00\u7AD9\u5F0F AI \u884C\u92B7\u81EA\u52D5\u5316\u5F15\u64CE\uFF0C\u6253\u901A\u300C\u884C\u92B7\u4F01\u5283\u767C\u60F3 \u2192 \u591A\u898F\u683C\u7D20\u6750\u751F\u6210 \u2192 \u8DE8\u5E73\u53F0\u81EA\u52D5\u6295\u653E\u8207 ROAS \u5EE3\u544A\u7BA1\u7406\u300D\u5168\u6D41\u7A0B\u3002",
     description: "\u91DD\u5C0D\u54C1\u724C\u96FB\u5546\u8207\u4E2D\u5C0F\u4F01\u696D\u884C\u92B7\u4EBA\u54E1\u300C\u4F01\u5283\u767C\u60F3\u8017\u6642\u3001\u591A\u5E73\u53F0\u7D20\u6750\u7522\u88FD\u592A\u6162\u3001\u5EE3\u544A\u6295\u653E\u5F8C\u53F0\u64CD\u4F5C\u7E41\u7463\u4E14 ROAS \u96E3\u4EE5\u7A69\u5B9A\u300D\u4E4B\u75DB\u9EDE\uFF1A\n1. \u5168\u6D41\u7A0B\u4E00\u7AD9\u5F0F\u9589\u74B0\uFF08Plan \u2192 Asset \u2192 Campaign \u2192 Evaluate\uFF09\uFF1A\u8F38\u5165\u7522\u54C1\u7279\u8272\u8207\u53D7\u773E\u76EE\u6A19\uFF0CPACE \u81EA\u52D5\u751F\u6210\u5B8C\u6574\u884C\u92B7\u4F01\u5283\u6848\uFF0C\u4E26\u6279\u91CF\u7522\u51FA\u7B26\u5408 Meta\u3001Google\u3001TikTok \u898F\u683C\u7684\u9AD8\u8F49\u63DB\u5EE3\u544A\u5716\u6587\u8207\u5F71\u97F3\u8173\u672C\u7D20\u6750\u3002\n2. 24 \u5C0F\u6642 AI \u81EA\u52D5\u6295\u653E\u8207\u9810\u7B97\u52D5\u614B\u7BA1\u7406\uFF1A\u5373\u6642\u76E3\u6E2C\u5404\u53D7\u773E\u5305\u8207\u7D20\u6750\u6210\u6548\uFF0C\u81EA\u52D5\u95DC\u505C\u9AD8\u6210\u672C\u4F4E\u8F49\u63DB\u5EE3\u544A\u4E26\u91CD\u5206\u914D\u9810\u7B97\uFF0C\u8B93\u4E00\u4EBA\u884C\u92B7\u5718\u968A\u4E5F\u80FD\u767C\u63EE\u9802\u7D1A\u6578\u4F4D\u5EE3\u544A\u4EE3\u7406\u5546\u7684\u6295\u653E\u6548\u76CA\u3002",
     authorId: "u-vc-04",
-    authorName: "\u9EC3\u8A69\u6DB5 Chloe \uFF5C PACE \u589E\u9577\u79D1\u6280\u5718\u968A",
+    authorName: "\u8001K\u770B\u8DE8\u5883 \uFF5C PACE \u589E\u9577\u79D1\u6280\u5718\u968A",
     teamName: "PACE \u589E\u9577\u79D1\u6280\u5718\u968A",
     organizationName: "PACE Marketing AI",
     showOrganization: true,
@@ -150757,7 +150800,7 @@ var DEFAULT_DEMO_PROPOSALS = [
     summary: "\u7D50\u5408\u7A7F\u6234\u5F0F\u6578\u4F4D\u751F\u7406\u76E3\u6E2C\uFF08HRV \u58D3\u529B\u8207\u75B2\u52DE\u5EA6\uFF09\u81EA\u52D5\u9023\u52D5\u624B\u6A5F\u884C\u4E8B\u66C6\u8ABF\u6574\u6703\u8B70\u8207\u5598\u606F\u884C\u7A0B\uFF0C\u6700\u9069\u5408\u516C\u53F8 B2B \u63A1\u8CFC\u512A\u5316\u54E1\u5DE5\u8EAB\u5FC3\u72C0\u614B\uFF01",
     description: "\u91DD\u5C0D\u9AD8\u58D3\u8077\u5834\u54E1\u5DE5\u9577\u671F\u8655\u65BC\u96B1\u6027\u904E\u52DE\u3001\u9023\u8EF8\u6703\u8B70\u5C0E\u81F4\u5C08\u6CE8\u529B\u5D29\u6F70\u8207\u4F01\u696D\u4EBA\u624D\u6D41\u5931\u4E4B\u75DB\u9EDE\uFF1A\n1. \u6578\u4F4D\u751F\u7406\u76E3\u6E2C \xD7 \u624B\u6A5F\u884C\u4E8B\u66C6\u667A\u6167\u9023\u52D5\uFF1A\u900F\u904E\u7A7F\u6234\u88DD\u7F6E\u5373\u6642\u5075\u6E2C\u54E1\u5DE5\u5FC3\u7387\u8B8A\u7570\u5EA6\uFF08HRV\uFF09\u3001\u7761\u7720\u54C1\u8CEA\u8207\u58D3\u529B\u8CA0\u8377\uFF0C\u7576\u300EAI\u58D3\u5440\u300F\u767C\u73FE\u751F\u7406\u75B2\u52DE\u8D85\u6A19\u6642\uFF0C\u81EA\u52D5\u9023\u52D5\u624B\u6A5F\u884C\u4E8B\u66C6\u8ABF\u6574\u975E\u7DCA\u6025\u884C\u7A0B\u3001\u63D2\u5165 15 \u5206\u9418\u6E1B\u58D3\u6062\u5FA9\u7A7A\u6A94\uFF0C\u4E26\u5728\u7CBE\u795E\u6700\u4F73\u6CE2\u6BB5\u9396\u5B9A\u6DF1\u5EA6\u5DE5\u4F5C\u6642\u9593\u3002\n2. \u9069\u5408\u516C\u53F8\u63A1\u8CFC\u7684 B2B \u54E1\u5DE5\u72C0\u614B\u512A\u5316\u7CFB\u7D71\uFF1A\u5728\u4FDD\u969C\u500B\u4EBA\u751F\u7406\u6578\u64DA\u96B1\u79C1\u7684\u524D\u63D0\u4E0B\uFF0C\u5354\u52A9\u4F01\u696D HR \u8207\u7BA1\u7406\u5C64\u638C\u63E1\u90E8\u9580\u6574\u9AD4\u5DE5\u4F5C\u8CA0\u8377\u6307\u6A19\uFF0C\u964D\u4F4E\u904E\u52DE\u98A8\u96AA\u4E26\u63D0\u5347\u5718\u968A\u751F\u7522\u529B\u8207\u7559\u4EFB\u7387\u3002",
     authorId: "u-vc-10",
-    authorName: "\u8A31\u744B\u752F Vivian \uFF5C AI\u58D3\u5440 \u667A\u6167\u8077\u5834\u5065\u5EB7\u968A",
+    authorName: "\u8A31\u744B\u752F \uFF5C AI\u58D3\u5440 \u667A\u6167\u8077\u5834\u5065\u5EB7\u968A",
     teamName: "AI\u58D3\u5440 \u667A\u6167\u8077\u5834\u5065\u5EB7\u968A",
     organizationName: "AI YaYa Wellness",
     showOrganization: true,
@@ -150782,7 +150825,7 @@ var DEFAULT_DEMO_PROPOSALS = [
     summary: "\u89E3\u6C7A\u5E02\u96C6\u6D3B\u52D5\u65B9\u627E\u6524\u7E41\u7463\u8207\u9910\u8ECA\u4E3B\u5230\u8655\u8E29\u96F7\u4E4B\u75DB\u9EDE\uFF0C\u7D50\u5408 AI \u9632\u649E\u6524\u5BA2\u7FA4\u914D\u5C0D\u3001\u6524\u5546\u6578\u4F4D\u8B77\u7167\u8207\u62BC\u91D1\u5C65\u7D04\u8A17\u7BA1\u7684\u96D9\u5411\u5A92\u5408\u5E73\u53F0\u3002",
     description: "\u91DD\u5C0D\u9031\u672B\u6587\u5275\u5E02\u96C6\u3001\u97F3\u6A02\u796D\u3001\u4F01\u696D\u5BB6\u5EAD\u65E5\u4E3B\u8FA6\u65B9\u300C\u62DB\u5546\u8868\u55AE\u6563\u4E82\u3001\u4EBA\u5DE5\u5BE9\u6838\u8017\u6642\u3001\u73FE\u5834\u6524\u4F4D\u540C\u8CEA\u6027\u904E\u9AD8\u300D\u8207\u79FB\u52D5\u9910\u8ECA\u4E3B\u300C\u56DB\u8655\u627E\u5834\u6B21\u3001\u6015\u8E29\u96F7\u7A7A\u5834\u300D\u4E4B\u96D9\u5411\u75DB\u9EDE\uFF1A\n1. AI \u4EBA\u6D41\u9810\u4F30\u8207\u9632\u649E\u6524\u667A\u6167\u914D\u5C0D\uFF1A\u4E3B\u8FA6\u65B9\u767C\u5E03\u5834\u5730\u898F\u6A21\u3001\u904E\u5F80\u5BA2\u7FA4\u8F2A\u5ED3\u8207\u96FB\u529B/\u660E\u706B\u9650\u5236\u5F8C\uFF0C\u7CFB\u7D71\u81EA\u52D5\u5F9E\u5168\u53F0\u8A8D\u8B49\u9910\u8ECA\u8207\u624B\u4F5C\u6524\u5546\u5EAB\u5A92\u5408\u6700\u4F73\u54C1\u985E\u7D44\u5408\uFF08\u5982\uFF1A\u7CBE\u91C0\u98F2\u54C1\u3001\u7F8E\u5F0F\u6F22\u5821\u3001\u751C\u9EDE\u3001\u6587\u5275\u9078\u7269\u9EC3\u91D1\u6BD4\u4F8B\uFF09\u3002\n2. \u4E00\u7AD9\u5F0F\u6578\u4F4D\u62DB\u5546\u8B77\u7167\u8207\u62BC\u91D1\u5C65\u7D04\u8A17\u7BA1\uFF1A\u6524\u5546\u53EA\u9700\u5EFA\u7ACB\u4E00\u6B21\u54C1\u724C\u6A94\u6848\u8207\u98DF\u5B89\u767B\u9304\u8B49\u660E\u5373\u53EF\u4E00\u9375\u5831\u540D\u5168\u53F0\u6D3B\u52D5\uFF0C\u5167\u5EFA\u6524\u4F4D\u8CBB\u8207\u6E05\u6F54\u62BC\u91D1\u7B2C\u4E09\u65B9\u8A17\u7BA1\u3001\u96E8\u5929\u5EF6\u671F\u81EA\u52D5\u9000\u63DB\u6A5F\u5236\u8207\u8996\u89BA\u5316\u6524\u4F4D\u914D\u7F6E\u5716\u3002",
     authorId: "u-vc-03",
-    authorName: "\u5F35\u54F2\u744B Kevin \uFF5C StallMatch \u6524\u8ECA\u901A\u5718\u968A",
+    authorName: "\u963F\u54F2\u5E97\u9577 \uFF5C StallMatch \u6524\u8ECA\u901A\u5718\u968A",
     teamName: "StallMatch \u6524\u8ECA\u901A\u5718\u968A",
     organizationName: "StallMatch",
     showOrganization: true,
@@ -150807,10 +150850,10 @@ var DEFAULT_DEMO_PROPOSALS = [
     summary: "\u7D50\u5408\u8F15\u91CF\u908A\u7DE3\u904B\u7B97\u7121\u4EBA\u6A5F\u8207\u8FD1\u7D05\u5916\u5149\u8B5C\u5206\u6790\uFF0C\u65BC\u7530\u9593\u5373\u6642\u5075\u6E2C\u65E9\u671F\u75C5\u87F2\u5BB3\uFF0C\u6E1B\u5C11 60% \u8FB2\u85E5\u4F7F\u7528\u91CF\u3002",
     description: "\u5C08\u70BA\u81FA\u7063\u9AD8\u7D93\u6FDF\u50F9\u503C\u852C\u679C\uFF08\u5982\u8349\u8393\u3001\u751C\u6912\u3001\u91CB\u8FE6\uFF09\u958B\u767C\u4E4B\u667A\u6167\u908A\u7DE3\u8996\u89BA\u7121\u4EBA\u6A5F\u6AA2\u6E2C\u7CFB\u7D71\u3002\u7D50\u5408\u8F15\u91CF\u908A\u7DE3\u904B\u7B97\u6676\u7247\u8207\u9AD8\u5149\u8B5C\u611F\u6E2C\u6A21\u7D44\uFF0C\u65BC\u7530\u9593\u5373\u6642\u8FA8\u8B58\u70AD\u75BD\u75C5\u3001\u767D\u7C89\u75C5\u8207\u858A\u99AC\u5BB3\u87F2\uFF0C\u63D0\u524D 14 \u5929\u9810\u8B66\uFF0C\u5354\u52A9\u8FB2\u53CB\u7CBE\u6E96\u9776\u5411\u65BD\u85E5\u3002",
     authorId: "demo-u-1",
-    authorName: "\u570B\u7ACB\u81FA\u7063\u5927\u5B78 \uFF5C \u81FA\u5927\u667A\u6167\u8FB2\u5275\u968A",
-    teamName: "\u81FA\u5927\u667A\u6167\u8FB2\u5275\u968A",
-    schoolName: "\u570B\u7ACB\u81FA\u7063\u5927\u5B78",
-    organizationName: "\u570B\u7ACB\u81FA\u7063\u5927\u5B78",
+    authorName: "\u7DA0\u91CE\u8FB2\u696D\u79D1\u6280\u5BE6\u9A57\u5BA4 \uFF5C \u7DA0\u91CE\u667A\u6167\u8FB2\u5275\u5718\u968A",
+    teamName: "\u7DA0\u91CE\u667A\u6167\u8FB2\u5275\u5718\u968A",
+    schoolName: "\u7DA0\u91CE\u8FB2\u696D\u79D1\u6280\u5BE6\u9A57\u5BA4",
+    organizationName: "\u7DA0\u91CE\u8FB2\u696D\u79D1\u6280\u5BE6\u9A57\u5BA4",
     showOrganization: true,
     authorRole: "user",
     sourcePainPointTitle: "[q-vp-pain-06] \u5C71\u5340\u6EAB\u5BA4\u8FB2\u5834\u7DB2\u8DEF\u8A0A\u865F\u4E0D\u7A69\uFF0C\u611F\u6E2C\u5668\u65B7\u7DDA\u91CD\u9023\u5F8C\u6B77\u53F2\u6EAB\u6FD5\u5EA6\u8CC7\u6599\u6574\u6279\u907A\u5931",
@@ -150833,10 +150876,10 @@ var DEFAULT_DEMO_PROPOSALS = [
     summary: "\u7121\u611F\u914D\u6234\u4E4B\u6BEB\u7C73\u6CE2\u8DCC\u5012\u5075\u6E2C\u8207\u5FC3\u5F8B\u7570\u6B65\u56DE\u5831\u7CFB\u7D71\uFF0C\u4E32\u9023\u793E\u5340\u7167\u8B77\u64DA\u9EDE\u8207\u5BB6\u5C6C\u5373\u6642\u544A\u8B66\u901A\u77E5\u3002",
     description: "\u91DD\u5C0D\u8D85\u9AD8\u9F61\u793E\u6703\u9280\u9AEE\u5C45\u5BB6\u9632\u8DCC\u8207\u5FC3\u8840\u7BA1\u5B89\u5168\u75DB\u9EDE\u958B\u767C\u3002\u6574\u5408\u4F4E\u529F\u8017\u6BEB\u7C73\u6CE2\u96F7\u9054\u611F\u6E2C\u8207\u9AD8\u611F\u5EA6\u5FAE\u578B\u751F\u7406\u6676\u7247\uFF0C\u63D0\u4F9B 24 \u5C0F\u6642\u8DCC\u5012\u7121\u611F\u5B88\u8B77\u3001\u96E2\u5E8A\u8B66\u793A\u8207\u5BB6\u5C6C App \u5373\u6642\u9023\u7DDA\u3002",
     authorId: "demo-u-2",
-    authorName: "\u967D\u660E\u4EA4\u5927\u9280\u9AEE\u667A\u6167\u751F\u6280",
-    teamName: "\u967D\u660E\u4EA4\u5927\u9280\u9AEE\u667A\u6167\u751F\u6280",
-    schoolName: "\u570B\u7ACB\u967D\u660E\u4EA4\u901A\u5927\u5B78",
-    organizationName: "\u570B\u7ACB\u967D\u660E\u4EA4\u901A\u5927\u5B78",
+    authorName: "\u6A02\u9F61\u5916\u9AA8\u9ABC\u7814\u767C\u5BA4",
+    teamName: "\u6A02\u9F61\u5916\u9AA8\u9ABC\u7814\u767C\u5BA4",
+    schoolName: "\u9280\u9AEE\u8F14\u5177\u5275\u65B0\u5DE5\u574A",
+    organizationName: "\u9280\u9AEE\u8F14\u5177\u5275\u65B0\u5DE5\u574A",
     showOrganization: false,
     authorRole: "user",
     sourcePainPointTitle: "[q-vp-pain-04] \u9AD8\u9F61\u9577\u8005\u51FA\u9662\u5F8C\u8FD4\u5BB6\u670D\u85E5\u7A2E\u985E\u7E41\u591A\uFF0C\u5916\u7C4D\u770B\u8B77\u8207\u5BB6\u5C6C\u4EA4\u63A5\u5E38\u767C\u751F\u91CD\u8907\u9935\u85E5",
@@ -150853,16 +150896,16 @@ var DEFAULT_DEMO_PROPOSALS = [
   },
   {
     id: "demo-p-3",
-    title: "\u5927\u5B78\u6821\u5712\u5FAA\u74B0\u5305\u6750\u5171\u4EAB\u5FEB\u905E\u7AD9\u7CFB\u7D71",
+    title: "\u793E\u5340\u8207\u5546\u8FA6\u5FAA\u74B0\u5305\u6750\u5171\u4EAB\u5FEB\u905E\u7AD9\u7CFB\u7D71",
     stage: "pain_point",
     track: "cultural_services",
-    summary: "\u89E3\u6C7A\u5927\u5C08\u6821\u5712\u7DB2\u8CFC\u5FEB\u905E\u5305\u88DD\u5783\u573E\u5806\u7A4D\u6210\u707D\u554F\u984C\uFF0C\u5EFA\u7F6E\u6A21\u7D44\u5316\u5FAA\u74B0\u5305\u88DD\u56DE\u6536\u8207\u9EDE\u6578\u56DE\u994B\u7AD9\u3002",
-    description: "\u6BCF\u5E74\u5168\u570B\u5927\u5C08\u6821\u5712\u7522\u751F\u6578\u767E\u842C\u500B\u4E00\u6B21\u6027\u7DB2\u8CFC\u7D19\u7BB1\u8207\u6C23\u6CE1\u888B\u3002\u672C\u5C08\u6848\u7814\u767C\u9632\u507D RFID \u6A21\u7D44\u5316\u5FAA\u74B0\u7DE9\u885D\u7BB1\uFF0C\u65BC\u5404\u5927\u5BBF\u820D\u8207\u8D85\u5546\u8A2D\u7F6E\u81EA\u52D5\u6B78\u9084\u6A5F\uFF0C\u501F\u9084\u514D\u62BC\u91D1\uFF0C\u6BCF\u6B21\u56DE\u6536\u56DE\u994B\u6821\u5712\u751F\u6D3B\u9EDE\u6578\u3002",
+    summary: "\u89E3\u6C7A\u793E\u5340\u8207\u5546\u8FA6\u7DB2\u8CFC\u5FEB\u905E\u5305\u88DD\u5783\u573E\u5806\u7A4D\u6210\u707D\u554F\u984C\uFF0C\u5EFA\u7F6E\u6A21\u7D44\u5316\u5FAA\u74B0\u5305\u88DD\u56DE\u6536\u8207\u9EDE\u6578\u56DE\u994B\u7AD9\u3002",
+    description: "\u6BCF\u5E74\u5168\u570B\u793E\u5340\u8207\u5546\u8FA6\u7522\u751F\u6578\u767E\u842C\u500B\u4E00\u6B21\u6027\u7DB2\u8CFC\u7D19\u7BB1\u8207\u6C23\u6CE1\u888B\u3002\u672C\u5C08\u6848\u7814\u767C\u9632\u507D RFID \u6A21\u7D44\u5316\u5FAA\u74B0\u7DE9\u885D\u7BB1\uFF0C\u65BC\u5404\u5927\u793E\u5340\u6536\u767C\u5BA4\u8207\u8D85\u5546\u8A2D\u7F6E\u81EA\u52D5\u6B78\u9084\u6A5F\uFF0C\u501F\u9084\u514D\u62BC\u91D1\uFF0C\u6BCF\u6B21\u56DE\u6536\u56DE\u994B\u751F\u6D3B\u9EDE\u6578\u3002",
     authorId: "demo-u-3",
-    authorName: "\u570B\u7ACB\u6210\u529F\u5927\u5B78 \uFF5C \u6210\u5927\u6DE8\u96F6\u7DA0\u751F\u6D3B\u5C08\u6848\u7D44",
-    teamName: "\u6210\u5927\u6DE8\u96F6\u7DA0\u751F\u6D3B\u5C08\u6848\u7D44",
-    schoolName: "\u570B\u7ACB\u6210\u529F\u5927\u5B78",
-    organizationName: "\u570B\u7ACB\u6210\u529F\u5927\u5B78",
+    authorName: "\u96F6\u5EE2\u68C4\u6C38\u7E8C\u8A2D\u8A08\u806F\u76DF \uFF5C \u5FAA\u74B0\u7DA0\u751F\u6D3B\u5C08\u6848\u7D44",
+    teamName: "\u5FAA\u74B0\u7DA0\u751F\u6D3B\u5C08\u6848\u7D44",
+    schoolName: "\u96F6\u5EE2\u68C4\u6C38\u7E8C\u8A2D\u8A08\u806F\u76DF",
+    organizationName: "\u96F6\u5EE2\u68C4\u6C38\u7E8C\u8A2D\u8A08\u806F\u76DF",
     showOrganization: true,
     authorRole: "user",
     sourcePainPointTitle: "[q-vp-pain-02] \u8DE8\u5883\u96FB\u5546\u9000\u63DB\u8CA8\u9006\u7269\u6D41\u6210\u672C\u541E\u566C\u6BDB\u5229\uFF0C\u6D77\u5916\u5009\u6EEF\u92B7\u54C1\u96E3\u4EE5\u4E8C\u6B21\u53BB\u5316",
@@ -150885,10 +150928,10 @@ var DEFAULT_DEMO_PROPOSALS = [
     summary: "\u5229\u7528\u9000\u5F79\u8ECA\u7528\u92F0\u96FB\u6C60\u5EFA\u69CB\u68AF\u6B21\u5229\u7528\u5132\u80FD\u6AC3\uFF0C\u642D\u914D\u5373\u6642\u96FB\u50F9 AI \u81EA\u52D5\u524A\u5CF0\u586B\u8C37\uFF0C\u964D\u4F4E\u793E\u5340\u7528\u96FB\u8CA0\u64D4\u3002",
     description: "\u7D50\u5408\u81FA\u7063\u5728\u5730\u793E\u5340\u65E5\u7167\u8207\u5C0F\u578B\u98A8\u6A5F\uFF0C\u900F\u904E\u5F37\u5316\u5B78\u7FD2\u8ABF\u5EA6\u96FB\u6C60\u5145\u653E\u96FB\uFF0C\u5BE6\u73FE 95% \u7DA0\u96FB\u81EA\u767C\u81EA\u7528\u7387\uFF0C\u4E26\u63D0\u4F9B\u53F0\u96FB\u9700\u91CF\u53CD\u61C9\u8F14\u52A9\u670D\u52D9\u3002",
     authorId: "demo-u-4",
-    authorName: "\u6E05\u83EF\u7DA0\u96FB\u5148\u92D2\u968A",
-    teamName: "\u6E05\u83EF\u7DA0\u96FB\u5148\u92D2\u968A",
-    schoolName: "\u570B\u7ACB\u6E05\u83EF\u5927\u5B78",
-    organizationName: "\u570B\u7ACB\u6E05\u83EF\u5927\u5B78",
+    authorName: "\u5FAE\u96FB\u7DB2\u5132\u80FD\u5148\u92D2\u968A",
+    teamName: "\u5FAE\u96FB\u7DB2\u5132\u80FD\u5148\u92D2\u968A",
+    schoolName: "\u667A\u6167\u80FD\u6E90\u7CFB\u7D71\u5BE6\u9A57\u5BA4",
+    organizationName: "\u667A\u6167\u80FD\u6E90\u7CFB\u7D71\u5BE6\u9A57\u5BA4",
     showOrganization: false,
     authorRole: "user",
     sourcePainPointTitle: "[q-vp-pain-13] \u5171\u751F\u516C\u5BD3\u8207\u5206\u79DF\u5957\u623F\u590F\u5B63\u96FB\u8CBB\u5206\u6524\u4E0D\u516C\uFF0C\u516C\u5171\u7A7A\u9593\u51B7\u6C23\u672A\u95DC\u5F15\u767C\u5BA4\u53CB\u56B4\u91CD\u722D\u57F7",
@@ -150911,10 +150954,10 @@ var DEFAULT_DEMO_PROPOSALS = [
     summary: "\u5229\u7528\u81FA\u7063\u8FD1\u6D77\u990A\u6B96\u6D77\u85FB\u591A\u91A3\u8403\u53D6\uFF0C\u7814\u88FD\u53EF\u65BC 60 \u65E5\u5167\u5B8C\u5168\u571F\u58E4\u5206\u89E3\u4E4B\u9632\u6C34\u751F\u8CEA\u8584\u819C\u3002",
     description: "\u53D6\u4EE3\u50B3\u7D71\u77F3\u5316\u4E00\u6B21\u6027\u5851\u81A0\u6DCB\u819C\uFF0C\u5177\u9AD8\u963B\u6C23\u6027\u3001\u9632\u6CB9\u9632\u6C34\u3001\u6291\u83CC\u4E14\u53EF\u76F4\u63A5\u5806\u80A5\u5206\u89E3\uFF0C\u5B8C\u5168\u7121\u5FAE\u5851\u81A0\u6B98\u7559\u98A8\u96AA\u3002",
     authorId: "demo-u-5",
-    authorName: "\u570B\u7ACB\u81FA\u7063\u79D1\u6280\u5927\u5B78 \uFF5C \u81FA\u79D1\u5927\u5FAA\u74B0\u751F\u6750\u968A",
-    teamName: "\u81FA\u79D1\u5927\u5FAA\u74B0\u751F\u6750\u968A",
-    schoolName: "\u570B\u7ACB\u81FA\u7063\u79D1\u6280\u5927\u5B78",
-    organizationName: "\u570B\u7ACB\u81FA\u7063\u79D1\u6280\u5927\u5B78",
+    authorName: "\u7DA0\u8272\u6750\u6599\u5275\u65B0\u7814\u767C\u4E2D\u5FC3 \uFF5C \u7DA0\u5851\u5FAA\u74B0\u751F\u6750\u5BE6\u9A57\u5BA4",
+    teamName: "\u7DA0\u5851\u5FAA\u74B0\u751F\u6750\u5BE6\u9A57\u5BA4",
+    schoolName: "\u7DA0\u8272\u6750\u6599\u5275\u65B0\u7814\u767C\u4E2D\u5FC3",
+    organizationName: "\u7DA0\u8272\u6750\u6599\u5275\u65B0\u7814\u767C\u4E2D\u5FC3",
     showOrganization: true,
     authorRole: "user",
     sourcePainPointTitle: "[q-vp-pain-07] \u4E2D\u5C0F\u578B\u51B7\u93C8\u7269\u6D41\u8ECA\u968A\u4EF0\u8CF4\u7D19\u672C\u6EAB\u5EA6\u7C3D\u6536\u55AE\uFF0C\u751F\u9BAE\u9000\u8CA8\u6642\u7121\u6CD5\u91D0\u6E05\u5931\u6EAB\u8CAC\u4EFB\u6B78\u5C6C",
@@ -150937,10 +150980,10 @@ var DEFAULT_DEMO_PROPOSALS = [
     summary: "\u900F\u904E\u4F4E\u983B\u5BEC\u8F15\u91CF\u5316 AI \u5B78\u7FD2\u52A9\u7406\uFF0C\u91DD\u5C0D\u504F\u9109\u6578\u4F4D\u843D\u5DEE\u63D0\u4F9B\u7DDA\u4E0B\u5FEB\u53D6\u5B78\u7FD2\u9032\u5EA6\u8207\u4F34\u8B80\u6FC0\u52F5\u6A5F\u5236\u3002",
     description: "\u504F\u9109\u5B69\u7AE5\u5E38\u9762\u81E8\u5BB6\u5EAD\u983B\u5BEC\u53D7\u9650\u6216\u7F3A\u4E4F\u8AB2\u5F8C\u4F34\u8B80\u8CC7\u6E90\u3002\u672C\u7CFB\u7D71\u4EE5 Edge AI \u672C\u5730\u63A8\u8AD6\u8F14\u52A9\u95B1\u8B80\u7406\u89E3\uFF0C\u4E26\u4EE5\u5275\u661F\u9EDE\u6578\u89E3\u9396\u904A\u6232\u5316\u734E\u52F5\u3002",
     authorId: "demo-u-6",
-    authorName: "\u653F\u5927\u6578\u4F4D\u6559\u80B2\u5275\u751F\u968A",
-    teamName: "\u653F\u5927\u6578\u4F4D\u6559\u80B2\u5275\u751F\u968A",
-    schoolName: "\u570B\u7ACB\u653F\u6CBB\u5927\u5B78",
-    organizationName: "\u570B\u7ACB\u653F\u6CBB\u5927\u5B78",
+    authorName: "\u504F\u9109\u96D9\u8A9E\u6559\u80B2\u5171\u5B78\u5718",
+    teamName: "\u504F\u9109\u96D9\u8A9E\u6559\u80B2\u5171\u5B78\u5718",
+    schoolName: "\u5CF6\u5DBC\u6545\u4E8B\u6559\u80B2\u5275\u65B0\u5354\u6703",
+    organizationName: "\u5CF6\u5DBC\u6545\u4E8B\u6559\u80B2\u5275\u65B0\u5354\u6703",
     showOrganization: false,
     authorRole: "user",
     sourcePainPointTitle: "[q-vp-pain-12] \u96D9\u85AA\u5BB6\u5EAD\u570B\u5C0F\u4F4E\u5E74\u7D1A\u5B78\u7AE5\u9031\u4E09\u4E2D\u5348\u653E\u5B78\u5F8C\uFF0C\u5B89\u89AA\u73ED\u8207\u624D\u85DD\u8AB2\u63A5\u9001\u51FA\u73FE 2 \u5C0F\u6642\u5B89\u5168\u7A7A\u7A97",
@@ -150972,7 +151015,7 @@ var DEFAULT_VIBECODING_APPS = [
     bounty: 0,
     status: "open",
     authorId: "user-vibecoder-alex",
-    authorName: "VibeCoder Alex",
+    authorName: "\u963F\u51F1\uFF08\u7368\u7ACB\u958B\u767C\uFF09",
     authorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
     createdAt: new Date(Date.now() - 36e5 * 12).toISOString(),
     deadline: new Date(Date.now() + 864e5 * 30).toISOString(),
@@ -150994,7 +151037,7 @@ var DEFAULT_VIBECODING_APPS = [
         content: "\u91CD\u5927\u5347\u7D1A\u767C\u5E03\uFF01\u5168\u9762\u91CD\u69CB\u8868\u55AE\u52D5\u614B\u908F\u8F2F\u5F15\u64CE\uFF0C\u6E32\u67D3\u901F\u5EA6\u63D0\u5347 60%\uFF0C\u4E26\u65B0\u589E 5 \u7A2E\u5168\u65B0\u53EF\u8996\u5316\u984C\u578B\u8207 CSV \u5373\u6642\u5C0E\u51FA\u529F\u80FD\u3002\u4E0B\u8F09\u91CF\u5DF2\u7A81\u7834\u9996\u6279 12,000 \u6B21\uFF01",
         note: "\u6176\u795D\u4E0B\u8F09\u8207\u4F7F\u7528\u8005\u7A81\u7834 1 \u842C\u4EBA\u6B21\u91CC\u7A0B\u7891\u7248\u672C\uFF01",
         authorId: "user-vibecoder-alex",
-        authorName: "VibeCoder Alex",
+        authorName: "\u963F\u51F1\uFF08\u7368\u7ACB\u958B\u767C\uFF09",
         authorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
         updatedFields: ["\u5167\u5BB9\u8AAA\u660E", "\u76EE\u6A19", "\u6210\u679C\u7DB2\u5740", "\u6280\u8853\u67B6\u69CB", "\u7248\u672C\u865F"]
       },
@@ -151005,7 +151048,7 @@ var DEFAULT_VIBECODING_APPS = [
         content: "\u4FEE\u5FA9\u884C\u52D5\u7AEF\u9375\u76E4\u5F48\u51FA\u906E\u64CB\u554F\u984C\uFF0C\u65B0\u589E\u591A\u570B\u8A9E\u7CFB\u5207\u63DB\u652F\u63F4\u8207 Webhook \u6574\u5408\u3002",
         note: "\u793E\u7FA4\u53CD\u994B\u5FEB\u901F\u4FEE\u6B63\u7248\u672C",
         authorId: "user-vibecoder-alex",
-        authorName: "VibeCoder Alex",
+        authorName: "\u963F\u51F1\uFF08\u7368\u7ACB\u958B\u767C\uFF09",
         authorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
         updatedFields: ["\u6280\u8853\u67B6\u69CB", "\u7248\u672C\u865F"]
       }
@@ -151023,7 +151066,7 @@ var DEFAULT_VIBECODING_APPS = [
     tippersCount: 22,
     tipsHistory: [
       { id: "tip-1", userId: "user-1", userName: "\u5C0F\u660E", amount: 300, message: "\u4ECB\u9762\u505A\u5F97\u8D85\u7CBE\u7DFB\uFF01\u975E\u5E38\u5BE6\u7528\u7684 Vibe\u61C9\u7528", createdAt: new Date(Date.now() - 36e5 * 5).toISOString() },
-      { id: "tip-2", userId: "user-2", userName: "\u5275\u6295 Sam", amount: 500, message: "\u6280\u8853\u67B6\u69CB\u5F88\u6E05\u6670\uFF0C\u611F\u8B1D\u5206\u4EAB\u6210\u679C\uFF01", createdAt: new Date(Date.now() - 36e5 * 2).toISOString() }
+      { id: "tip-2", userId: "user-2", userName: "\u9AD8\u67CF\u7FF0", amount: 500, message: "\u6280\u8853\u67B6\u69CB\u5F88\u6E05\u6670\uFF0C\u611F\u8B1D\u5206\u4EAB\u6210\u679C\uFF01", createdAt: new Date(Date.now() - 36e5 * 2).toISOString() }
     ]
   },
   {
@@ -151039,7 +151082,7 @@ var DEFAULT_VIBECODING_APPS = [
     bounty: 0,
     status: "open",
     authorId: "user-vibecoder-chen",
-    authorName: "Chen (Vibe Studio)",
+    authorName: "\u9673\u51A0\u5B87",
     authorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
     createdAt: new Date(Date.now() - 36e5 * 28).toISOString(),
     deadline: new Date(Date.now() + 864e5 * 30).toISOString(),
@@ -151061,7 +151104,7 @@ var DEFAULT_VIBECODING_APPS = [
         content: "\u65B0\u589E Markdown \u5373\u6642\u6E32\u67D3\u756B\u5E03\u7BC0\u9EDE\uFF0C\u652F\u63F4\u5FEB\u6377\u9375\u5E73\u79FB\u8207\u7E2E\u653E\u756B\u5E03\uFF0C\u4E26\u512A\u5316\u89F8\u63A7\u677F\u624B\u52E2\u652F\u63F4\u3002",
         note: "\u6548\u80FD\u512A\u5316\u8207\u624B\u52E2\u652F\u63F4\u66F4\u65B0",
         authorId: "user-vibecoder-chen",
-        authorName: "Chen (Vibe Studio)",
+        authorName: "\u9673\u51A0\u5B87",
         authorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
         updatedFields: ["\u5167\u5BB9\u8AAA\u660E", "\u6280\u8853\u67B6\u69CB", "\u7248\u672C\u865F"]
       }
@@ -151094,7 +151137,7 @@ var DEFAULT_VIBECODING_APPS = [
     bounty: 0,
     status: "open",
     authorId: "user-vibecoder-linda",
-    authorName: "Linda (AI Creator)",
+    authorName: "\u5C0F\u7433\uFF08\u5F71\u97F3\u81EA\u52D5\u5316\uFF09",
     authorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
     createdAt: new Date(Date.now() - 36e5 * 48).toISOString(),
     deadline: new Date(Date.now() + 864e5 * 30).toISOString(),
@@ -151127,50 +151170,50 @@ var DEFAULT_VIBECODING_APPS = [
 
 // src/data/virtualProposalsSeed.ts
 var VIRTUAL_PERSONAS = [
-  { id: "u-vc-01", username: "vc_ethan_lin", name: "\u6797\u5BA5\u8FB0 Ethan", title: "\u5168\u7AEF\u7368\u7ACB\u958B\u767C\u8005", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u6CE8 AI \u81EA\u52D5\u5316\u8207\u8F15\u91CF SaaS \u7522\u54C1\u958B\u767C\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
-  { id: "u-vc-02", username: "vc_mia_chen", name: "\u9673\u8A9E\u5AE3 Mia", title: "UI/UX \u7522\u54C1\u8A2D\u8A08\u5E2B", avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80", bio: "\u71B1\u611B\u900F\u904E\u8A2D\u8A08\u601D\u8003\u89E3\u6C7A\u65E5\u5E38\u6578\u4F4D\u9AD4\u9A57\u75DB\u9EDE\u3002", domain: "\u5275\u65B0\u5275\u696D" },
-  { id: "u-vc-03", username: "vc_kevin_chang", name: "\u5F35\u54F2\u744B Kevin", title: "\u9023\u9396\u9910\u98F2\u71DF\u904B\u7E3D\u76E3", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80", bio: "\u7BA1\u7406 15 \u9593\u9580\u5E02\uFF0C\u95DC\u6CE8\u9580\u5E02\u6578\u4F4D\u8F49\u578B\u8207\u4EBA\u529B\u6392\u73ED\u512A\u5316\u3002", domain: "\u5275\u65B0\u5275\u696D" },
-  { id: "u-vc-04", username: "vc_chloe_huang", name: "\u9EC3\u8A69\u6DB5 Chloe", title: "\u8DE8\u5883\u96FB\u5546\u6210\u9577\u99ED\u5BA2", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80", bio: "\u6DF1\u8015\u6B50\u7F8E\u8207\u6771\u5357\u4E9E\u7368\u7ACB\u7AD9\u9078\u54C1\u8207\u8F49\u63DB\u7387\u512A\u5316\u3002", domain: "\u5C08\u696D\u554F\u984C" },
-  { id: "u-vc-05", username: "vc_liam_lee", name: "\u674E\u51A0\u5EF7 Liam", title: "AI \u61C9\u7528\u67B6\u69CB\u5E2B", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80", bio: "LLM Agent \u5DE5\u4F5C\u6D41\u8207\u4F01\u696D\u77E5\u8B58\u5EAB\u7CFB\u7D71\u5BE6\u8E10\u8005\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
-  { id: "u-vc-06", username: "vc_hannah_wu", name: "\u5433\u54C1\u59A4 Hannah", title: "\u65B0\u5275\u8CA1\u52D9\u8207\u52DF\u8CC7\u9867\u554F", avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80", bio: "\u5354\u52A9\u65E9\u671F\u5718\u968A\u5EFA\u7ACB\u8CA1\u52D9\u6A21\u578B\u3001\u4F30\u503C\u7D50\u69CB\u8207\u6295\u8CC7\u4EBA\u7C21\u5831\u3002", domain: "\u5C08\u696D\u554F\u984C" },
-  { id: "u-vc-07", username: "vc_evan_liu", name: "\u5289\u5B50\u8ED2 Evan", title: "\u65C5\u5BBF\u7A7A\u9593\u54C1\u724C\u4E3B\u7406\u4EBA", avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80", bio: "\u7D93\u71DF\u7279\u8272\u6C11\u5BBF\u8207\u5730\u65B9\u5275\u751F\u7B56\u5C55\uFF0C\u63A2\u7D22\u7121\u4EBA\u5316\u5165\u4F4F\u9AD4\u9A57\u3002", domain: "\u5275\u65B0\u5275\u696D" },
-  { id: "u-vc-08", username: "vc_serena_tsai", name: "\u8521\u5B9C\u84C1 Serena", title: "\u751F\u7269\u91AB\u5B78\u535A\u58EB\u5F8C\u7814\u7A76\u54E1", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80", bio: "\u7814\u7A76\u9AD8\u9F61\u7167\u8B77\u8207\u7CBE\u6E96\u71DF\u990A\uFF0C\u63A8\u52D5\u5B78\u8853\u6210\u679C\u7522\u696D\u5316\u3002", domain: "\u5B78\u8853\u63A2\u8A0E" },
-  { id: "u-vc-09", username: "vc_jasper_yang", name: "\u694A\u627F\u7FF0 Jasper", title: "\u81EA\u5A92\u9AD4\u5F71\u97F3\u5275\u4F5C\u8005", avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u6CE8\u77ED\u5F71\u97F3\u8173\u672C\u81EA\u52D5\u5316\u8207\u591A\u5E73\u53F0\u5167\u5BB9\u5206\u767C\u7B56\u7565\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
-  { id: "u-vc-10", username: "vc_vivian_hsu", name: "\u8A31\u744B\u752F Vivian", title: "\u4F01\u696D\u4EBA\u8CC7\u9577 HRD", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80", bio: "\u95DC\u6CE8\u6DF7\u5408\u8FA6\u516C\u6587\u5316\u3001\u7D44\u7E54\u7559\u624D\u8207\u65B0\u4E16\u4EE3\u54E1\u5DE5\u57F9\u8A13\u3002", domain: "\u5C08\u696D\u554F\u984C" },
-  { id: "u-vc-11", username: "vc_marcus_cheng", name: "\u912D\u5B87\u7FD4 Marcus", title: "\u7269\u806F\u7DB2\u97CC\u9AD4\u5DE5\u7A0B\u5E2B", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80", bio: "\u958B\u767C\u667A\u6167\u8FB2\u696D\u611F\u6E2C\u5668\u8207\u4F4E\u529F\u8017\u908A\u7DE3\u904B\u7B97\u8A2D\u5099\u3002", domain: "\u5275\u65B0\u5275\u696D" },
-  { id: "u-vc-12", username: "vc_phoebe_hsieh", name: "\u8B1D\u6B23\u7A4E Phoebe", title: "\u81E8\u5E8A\u5FC3\u7406\u5E2B\u8207\u4F5C\u5BB6", avatar: "https://images.unsplash.com/photo-1548142813-c348350df52b?w=150&auto=format&fit=crop&q=80", bio: "\u63A8\u5EE3\u8077\u5834\u58D3\u529B\u8ABF\u9069\u8207\u6578\u4F4D\u6392\u6BD2\u751F\u6D3B\u5BE6\u9A57\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
-  { id: "u-vc-13", username: "vc_derek_kuo", name: "\u90ED\u4FCA\u5B8F Derek", title: "\u667A\u6167\u7269\u6D41\u8ABF\u5EA6\u7D93\u7406", avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80", bio: "\u7814\u7A76\u51B7\u93C8\u8ECA\u968A\u8DEF\u5F91\u6700\u4F73\u5316\u8207\u6700\u5F8C\u4E00\u54E9\u8DEF\u914D\u9001\u6548\u7387\u3002", domain: "\u5C08\u696D\u554F\u984C" },
-  { id: "u-vc-14", username: "vc_claire_hung", name: "\u6D2A\u96C5\u7B51 Claire", title: "\u6C38\u7E8C\u767C\u5C55 ESG \u5C08\u6848\u7D93\u7406", avatar: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80", bio: "\u8F14\u5C0E\u4E2D\u5C0F\u4F01\u696D\u9032\u884C\u78B3\u76E4\u67E5\u8207\u7DA0\u8272\u4F9B\u61C9\u93C8\u8F49\u578B\u3002", domain: "\u5B78\u8853\u63A2\u8A0E" },
-  { id: "u-vc-15", username: "vc_ian_tseng", name: "\u66FE\u67CF\u7FF0 Ian", title: "\u524D\u7AEF\u4E92\u52D5\u8A2D\u8A08\u5E2B", avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80", bio: "\u71B1\u611B WebGL\u3001Three.js \u8207 Vibe Coding \u654F\u6377\u7522\u54C1\u5BE6\u4F5C\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
-  { id: "u-vc-16", username: "vc_elena_chou", name: "\u5468\u4F73\u7A4E Elena", title: "\u7368\u7ACB\u66F8\u5E97\u8207\u85DD\u6587\u7B56\u5C55\u4EBA", avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80", bio: "\u63A2\u7D22\u5BE6\u9AD4\u95B1\u8B80\u7A7A\u9593\u7684\u793E\u7FA4\u8A02\u95B1\u5236\u8207\u8907\u5408\u7D93\u71DF\u6A21\u5F0F\u3002", domain: "\u5275\u65B0\u5275\u696D" },
-  { id: "u-vc-17", username: "vc_stanley_yeh", name: "\u8449\u54F2\u9298 Stanley", title: "\u5C08\u5229\u5E2B\u8207\u667A\u8CA1\u6CD5\u52D9\u9867\u554F", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u7CBE\u8EDF\u9AD4\u5C08\u5229\u4F48\u5C40\u3001\u958B\u6E90\u6388\u6B0A\u5408\u898F\u8207\u8DE8\u570B\u5546\u6A19\u4FDD\u8B77\u3002", domain: "\u5C08\u696D\u554F\u984C" },
-  { id: "u-vc-18", username: "vc_ariel_hsu", name: "\u5F90\u82E5\u6DB5 Ariel", title: "\u5BF5\u7269\u9BAE\u98DF\u54C1\u724C\u5275\u8FA6\u4EBA", avatar: "https://images.unsplash.com/photo-1517365830460-955ce3ccd263?w=150&auto=format&fit=crop&q=80", bio: "\u7D50\u5408\u7378\u91AB\u71DF\u990A\u5B78\u8207\u8A02\u95B1\u5236\u914D\u9001\uFF0C\u89E3\u6C7A\u6BDB\u5B69\u6311\u98DF\u8207\u904E\u654F\u3002", domain: "\u5275\u65B0\u5275\u696D" },
-  { id: "u-vc-19", username: "vc_victor_lai", name: "\u8CF4\u653F\u5B8F Victor", title: "\u8CC7\u5B89\u5DE5\u7A0B\u5E2B & \u767D\u5E3D\u99ED\u5BA2", avatar: "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=150&auto=format&fit=crop&q=80", bio: "\u7814\u7A76 Web3 \u667A\u80FD\u5408\u7D04\u5BE9\u8A08\u8207\u96F6\u4FE1\u4EFB\u4F01\u696D\u7DB2\u8DEF\u67B6\u69CB\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
-  { id: "u-vc-20", username: "vc_amber_fan", name: "\u8303\u7B71\u5A77 Amber", title: "\u9AD8\u4E2D\u570B\u969B\u90E8\u96D9\u8A9E\u6559\u5E2B", avatar: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=150&auto=format&fit=crop&q=80", bio: "\u5BE6\u8E10\u63A2\u7A76\u5F0F\u5B78\u7FD2\u8207 AI \u8F14\u52A9\u500B\u4EBA\u5316\u8A9E\u8A00\u6559\u5B78\u3002", domain: "\u5B78\u8853\u63A2\u8A0E" },
-  { id: "u-vc-21", username: "vc_benson_su", name: "\u8607\u5EFA\u5B87 Benson", title: "\u5BA4\u5167\u7A7A\u9593\u6539\u9020\u8A2D\u8A08\u5E2B", avatar: "https://images.unsplash.com/photo-1463453091185-61582044d556?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u6CE8\u8001\u5C4B\u7FFB\u65B0\u3001\u5C0F\u576A\u6578\u6536\u7D0D\u6A5F\u80FD\u8207\u667A\u6167\u5BB6\u5EAD\u6574\u5408\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
-  { id: "u-vc-22", username: "vc_celine_pan", name: "\u6F58\u59FF\u59A4 Celine", title: "\u91AB\u7642\u5668\u6750\u7522\u54C1\u7D93\u7406", avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&auto=format&fit=crop&q=80", bio: "\u63A8\u52D5\u9060\u8DDD\u91AB\u7642\u7A7F\u6234\u88DD\u7F6E\u8207\u5C45\u5BB6\u5FA9\u5065\u6578\u4F4D\u7642\u6CD5\u3002", domain: "\u5275\u65B0\u5275\u696D" },
-  { id: "u-vc-23", username: "vc_lucas_ho", name: "\u4F55\u5B5F\u54F2 Lucas", title: "No-Code \u81EA\u52D5\u5316\u9867\u554F", avatar: "https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=150&auto=format&fit=crop&q=80", bio: "\u5354\u52A9\u4E00\u4EBA\u516C\u53F8\u7528 Make\u3001n8n \u8207 AI \u6253\u9020\u81EA\u52D5\u5316\u71DF\u904B\u5F15\u64CE\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
-  { id: "u-vc-24", username: "vc_stella_kao", name: "\u9AD8\u4EE5\u67D4 Stella", title: "\u793E\u7FA4\u5718\u8CFC\u8207\u4F9B\u61C9\u93C8\u9867\u554F", avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&auto=format&fit=crop&q=80", bio: "\u4E32\u806F\u5728\u5730\u5C0F\u8FB2\u8207\u5718\u5ABD\u793E\u7FA4\uFF0C\u512A\u5316\u5206\u6F64\u7D50\u7B97\u8207\u5EAB\u5B58\u9810\u6E2C\u3002", domain: "\u5275\u65B0\u5275\u696D" },
-  { id: "u-vc-25", username: "vc_felix_lo", name: "\u7F85\u5FD7\u9060 Felix", title: "\u91D1\u878D\u79D1\u6280\u91CF\u5316\u4EA4\u6613\u54E1", avatar: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=150&auto=format&fit=crop&q=80", bio: "\u7814\u7A76\u6F14\u7B97\u6CD5\u4EA4\u6613\u7B56\u7565\u3001\u98A8\u96AA\u63A7\u7BA1\u8207\u500B\u4EBA\u7406\u8CA1\u5DE5\u5177\u3002", domain: "\u5C08\u696D\u554F\u984C" },
-  { id: "u-vc-26", username: "vc_doris_tang", name: "\u5510\u5FC3\u5982 Doris", title: "\u9280\u9AEE\u6A02\u9F61\u6D3B\u52D5\u4F01\u5283\u5E2B", avatar: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80", bio: "\u8A2D\u8A08\u8DE8\u4E16\u4EE3\u5171\u878D\u684C\u904A\u8207\u793E\u5340\u9577\u8005\u9632\u5931\u667A\u6578\u4F4D\u4E92\u52D5\u8AB2\u7A0B\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
-  { id: "u-vc-27", username: "vc_austin_sung", name: "\u5B8B\u54C1\u8A00 Austin", title: "\u96F2\u7AEF\u539F\u751F\u67B6\u69CB\u5E2B", avatar: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u7CBE Kubernetes \u9AD8\u4F75\u767C\u5FAE\u670D\u52D9\u8207 FinOps \u96F2\u7AEF\u6210\u672C\u512A\u5316\u3002", domain: "\u5C08\u696D\u554F\u984C" },
-  { id: "u-vc-28", username: "vc_iris_fang", name: "\u65B9\u8A60\u6674 Iris", title: "\u82B3\u7642\u8207\u7761\u7720\u5065\u5EB7\u7BA1\u7406\u5E2B", avatar: "https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=150&auto=format&fit=crop&q=80", bio: "\u7D50\u5408\u7A7F\u6234\u6578\u64DA\u8207\u6C23\u5473\u79D1\u5B78\uFF0C\u6539\u5584\u73FE\u4EE3\u9AD8\u58D3\u65CF\u7FA4\u5931\u7720\u56F0\u64FE\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
-  { id: "u-vc-29", username: "vc_hugo_chung", name: "\u937E\u627F\u6069 Hugo", title: "\u88FD\u9020\u696D\u5DE5\u696D 4.0 \u9867\u554F", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80", bio: "\u5354\u52A9\u50B3\u7D71\u5DE5\u5EE0\u5C0E\u5165\u6A5F\u806F\u7DB2 AOI \u8996\u89BA\u6AA2\u6E2C\u8207\u9810\u6E2C\u6027\u7DAD\u8B77\u3002", domain: "\u5C08\u696D\u554F\u984C" },
-  { id: "u-vc-30", username: "vc_wendy_chiang", name: "\u59DC\u96C5\u96EF Wendy", title: "\u975E\u71DF\u5229\u7D44\u7E54\u5F71\u97FF\u529B\u7E3D\u76E3", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80", bio: "\u95DC\u6CE8\u516C\u76CA\u6350\u6B3E\u900F\u660E\u5316\u3001\u5FD7\u5DE5\u5A92\u5408\u6A5F\u5236\u8207\u793E\u6703\u6295\u8CC7\u5831\u916C\u7387\u3002", domain: "\u5B78\u8853\u63A2\u8A0E" },
-  { id: "u-vc-31", username: "vc_owen_peng", name: "\u5F6D\u5BA5\u5609 Owen", title: "\u97F3\u8A0A\u5DE5\u7A0B\u8207 Podcast \u88FD\u4F5C\u4EBA", avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80", bio: "\u6253\u9020 AI \u964D\u566A\u526A\u8F2F\u5DE5\u4F5C\u6D41\u8207\u8072\u97F3\u5167\u5BB9\u8B8A\u73FE\u5E73\u53F0\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
-  { id: "u-vc-32", username: "vc_tiffany_chuang", name: "\u838A\u5B50\u8431 Tiffany", title: "\u7CBE\u91C0\u5564\u9152\u8207\u9910\u9152\u9928\u4E3B\u7406\u4EBA", avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80", bio: "\u878D\u5408\u5728\u5730\u8FB2\u7522\u91C0\u9020\u5DE5\u85DD\uFF0C\u63A2\u7D22\u591C\u9593\u7D93\u6FDF\u8207\u6703\u54E1\u793E\u7FA4\u7D93\u71DF\u3002", domain: "\u5275\u65B0\u5275\u696D" },
-  { id: "u-vc-33", username: "vc_zack_shih", name: "\u77F3\u5BB6\u8C6A Zack", title: "\u904B\u52D5\u79D1\u5B78\u8207\u9AD4\u80FD\u6559\u7DF4", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80", bio: "\u904B\u7528\u52D5\u4F5C\u6355\u6349\u5206\u6790\u77EF\u6B63\u59FF\u52E2\uFF0C\u8A2D\u8A08\u8FA6\u516C\u5BA4\u5FAE\u904B\u52D5\u8655\u65B9\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
-  { id: "u-vc-34", username: "vc_bella_lien", name: "\u9023\u82B7\u6DB5 Bella", title: "\u667A\u6167\u96F6\u552E\u6578\u64DA\u5206\u6790\u5E2B", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80", bio: "\u900F\u904E POS \u6578\u64DA\u8207\u5929\u6C23\u6A21\u578B\u9810\u6E2C\u751F\u9BAE\u9580\u5E02\u6BCF\u65E5\u5099\u8CA8\u91CF\u3002", domain: "\u5C08\u696D\u554F\u984C" },
-  { id: "u-vc-35", username: "vc_simon_jen", name: "\u4EFB\u67CF\u5B87 Simon", title: "\u7368\u7ACB\u904A\u6232\u8207\u4E92\u52D5\u6558\u4E8B\u958B\u767C\u8005", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80", bio: "\u7528 AI \u52D5\u614B\u751F\u6210 NPC \u5C0D\u8A71\u8207\u652F\u7DDA\u5287\u60C5\uFF0C\u6253\u9020\u6C89\u6D78\u5F0F\u7DB2\u9801\u904A\u6232\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
-  { id: "u-vc-36", username: "vc_grace_ting", name: "\u4E01\u8A9E\u67D4 Grace", title: "\u7559\u5B78\u7533\u8ACB\u8207\u8077\u6DAF\u767C\u5C55\u6559\u7DF4", avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80", bio: "\u966A\u4F34\u8DE8\u9818\u57DF\u8F49\u8077\u8005\u68B3\u7406\u500B\u4EBA\u54C1\u724C\u8207\u6D77\u5916\u6C42\u8077\u5C65\u6B77\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
-  { id: "u-vc-37", username: "vc_nathan_chao", name: "\u8D99\u51A0\u5B87 Nathan", title: "\u7DA0\u80FD\u5132\u80FD\u7CFB\u7D71\u5DE5\u7A0B\u5E2B", avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80", bio: "\u7814\u7A76\u793E\u5340\u578B\u5FAE\u96FB\u7DB2\u3001\u96FB\u52D5\u8ECA\u5145\u96FB\u6A01\u8CA0\u8F09\u5E73\u8861\u8207\u9700\u91CF\u53CD\u61C9\u3002", domain: "\u5B78\u8853\u63A2\u8A0E" },
-  { id: "u-vc-38", username: "vc_vicky_sun", name: "\u5B6B\u90C1\u5A77 Vicky", title: "\u89AA\u5B50\u5171\u5B78\u7A7A\u9593\u5275\u8FA6\u4EBA", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80", bio: "\u89E3\u6C7A\u96D9\u85AA\u5BB6\u5EAD\u8AB2\u5F8C\u6258\u80B2\u8207\u5152\u7AE5 STEAM \u5275\u5BA2\u9AD4\u9A57\u9700\u6C42\u3002", domain: "\u5275\u65B0\u5275\u696D" },
-  { id: "u-vc-39", username: "vc_danny_wei", name: "\u9B4F\u5B50\u5091 Danny", title: "\u623F\u5730\u7522\u5305\u79DF\u4EE3\u7BA1\u71DF\u904B\u9577", avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80", bio: "\u7BA1\u7406 300+ \u9593\u5171\u751F\u516C\u5BD3\uFF0C\u63A8\u52D5\u79DF\u7D04\u6578\u4F4D\u5316\u8207\u5831\u4FEE\u81EA\u52D5\u6D3E\u5DE5\u3002", domain: "\u5C08\u696D\u554F\u984C" },
-  { id: "u-vc-40", username: "vc_peggy_fu", name: "\u5085\u601D\u7A4E Peggy", title: "\u6599\u7406\u7814\u7A76\u5BB6\u8207\u98DF\u8B5C\u4F5C\u5BB6", avatar: "https://images.unsplash.com/photo-1548142813-c348350df52b?w=150&auto=format&fit=crop&q=80", bio: "\u8A2D\u8A08 15 \u5206\u9418\u4E0B\u73ED\u5FEB\u624B\u6599\u7406\u8207\u51B0\u7BB1\u6E05\u5EAB\u5B58\u96F6\u6D6A\u8CBB\u83DC\u55AE\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
-  { id: "u-vc-41", username: "vc_aaron_ko", name: "\u67EF\u5B87\u502B Aaron", title: "\u700F\u89BD\u5668\u64F4\u5145\u529F\u80FD\u958B\u767C\u8005", avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u6CE8\u958B\u767C\u63D0\u5347\u7814\u7A76\u54E1\u8207\u77E5\u8B58\u5DE5\u4F5C\u8005\u6548\u7387\u7684 Chrome \u63D2\u4EF6\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
-  { id: "u-vc-42", username: "vc_cathy_hsiao", name: "\u856D\u96C5\u4E91 Cathy", title: "\u7259\u91AB\u8A3A\u6240\u6578\u4F4D\u8F49\u578B\u9867\u554F", avatar: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80", bio: "\u512A\u5316\u8A3A\u6240\u7D04\u8A3A\u723D\u7D04\u7387\u3001\u75C5\u60A3\u885B\u6559\u8FFD\u8E64\u8207\u81EA\u8CBB\u7642\u7A0B\u6E9D\u901A\u3002", domain: "\u5C08\u696D\u554F\u984C" }
+  { id: "u-vc-01", username: "vc_ethan_lin", name: "\u6797\u5BA5\u8FB0", title: "\u5168\u7AEF\u7368\u7ACB\u958B\u767C\u8005", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u6CE8 AI \u81EA\u52D5\u5316\u8207\u8F15\u91CF SaaS \u7522\u54C1\u958B\u767C\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
+  { id: "u-vc-02", username: "vc_mia_chen", name: "\u5C0F\u8475\u7684\u8A2D\u8A08\u7B46\u8A18", title: "UI/UX \u7522\u54C1\u8A2D\u8A08\u5E2B", avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80", bio: "\u71B1\u611B\u900F\u904E\u8A2D\u8A08\u601D\u8003\u89E3\u6C7A\u65E5\u5E38\u6578\u4F4D\u9AD4\u9A57\u75DB\u9EDE\u3002", domain: "\u5275\u65B0\u5275\u696D" },
+  { id: "u-vc-03", username: "vc_kevin_chang", name: "\u963F\u54F2\u5E97\u9577", title: "\u9023\u9396\u9910\u98F2\u71DF\u904B\u7E3D\u76E3", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80", bio: "\u7BA1\u7406 15 \u9593\u9580\u5E02\uFF0C\u95DC\u6CE8\u9580\u5E02\u6578\u4F4D\u8F49\u578B\u8207\u4EBA\u529B\u6392\u73ED\u512A\u5316\u3002", domain: "\u5275\u65B0\u5275\u696D" },
+  { id: "u-vc-04", username: "vc_chloe_huang", name: "\u8001K\u770B\u8DE8\u5883", title: "\u8DE8\u5883\u96FB\u5546\u6210\u9577\u99ED\u5BA2", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80", bio: "\u6DF1\u8015\u6B50\u7F8E\u8207\u6771\u5357\u4E9E\u7368\u7ACB\u7AD9\u9078\u54C1\u8207\u8F49\u63DB\u7387\u512A\u5316\u3002", domain: "\u5C08\u696D\u554F\u984C" },
+  { id: "u-vc-05", username: "vc_liam_lee", name: "\u674E\u51A0\u5EF7", title: "AI \u61C9\u7528\u67B6\u69CB\u5E2B", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80", bio: "LLM Agent \u5DE5\u4F5C\u6D41\u8207\u4F01\u696D\u77E5\u8B58\u5EAB\u7CFB\u7D71\u5BE6\u8E10\u8005\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
+  { id: "u-vc-06", username: "vc_hannah_wu", name: "\u5433\u54C1\u59A4", title: "\u65B0\u5275\u8CA1\u52D9\u8207\u52DF\u8CC7\u9867\u554F", avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80", bio: "\u5354\u52A9\u65E9\u671F\u5718\u968A\u5EFA\u7ACB\u8CA1\u52D9\u6A21\u578B\u3001\u4F30\u503C\u7D50\u69CB\u8207\u6295\u8CC7\u4EBA\u7C21\u5831\u3002", domain: "\u5C08\u696D\u554F\u984C" },
+  { id: "u-vc-07", username: "vc_evan_liu", name: "\u5C71\u6D77\u65C5\u4EBA\u5B50\u8ED2", title: "\u65C5\u5BBF\u7A7A\u9593\u54C1\u724C\u4E3B\u7406\u4EBA", avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80", bio: "\u7D93\u71DF\u7279\u8272\u6C11\u5BBF\u8207\u5730\u65B9\u5275\u751F\u7B56\u5C55\uFF0C\u63A2\u7D22\u7121\u4EBA\u5316\u5165\u4F4F\u9AD4\u9A57\u3002", domain: "\u5275\u65B0\u5275\u696D" },
+  { id: "u-vc-08", username: "vc_serena_tsai", name: "\u8521\u5B9C\u84C1", title: "\u751F\u91AB\u7814\u7A76\u54E1", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80", bio: "\u7814\u7A76\u9AD8\u9F61\u7167\u8B77\u8207\u7CBE\u6E96\u71DF\u990A\uFF0C\u63A8\u52D5\u7814\u767C\u6210\u679C\u7522\u696D\u5316\u3002", domain: "\u5B78\u8853\u63A2\u8A0E" },
+  { id: "u-vc-09", username: "vc_jasper_yang", name: "\u963F\u7FF0\u62CD\u7247\u4E2D", title: "\u81EA\u5A92\u9AD4\u5F71\u97F3\u5275\u4F5C\u8005", avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u6CE8\u77ED\u5F71\u97F3\u8173\u672C\u81EA\u52D5\u5316\u8207\u591A\u5E73\u53F0\u5167\u5BB9\u5206\u767C\u7B56\u7565\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
+  { id: "u-vc-10", username: "vc_vivian_hsu", name: "\u8A31\u744B\u752F", title: "\u4F01\u696D\u4EBA\u8CC7\u7E3D\u76E3", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80", bio: "\u95DC\u6CE8\u6DF7\u5408\u8FA6\u516C\u6587\u5316\u3001\u7D44\u7E54\u7559\u624D\u8207\u65B0\u4E16\u4EE3\u54E1\u5DE5\u57F9\u8A13\u3002", domain: "\u5C08\u696D\u554F\u984C" },
+  { id: "u-vc-11", username: "vc_marcus_cheng", name: "\u786C\u9AD4\u5B85\u5B87\u7FD4", title: "\u7269\u806F\u7DB2\u97CC\u9AD4\u5DE5\u7A0B\u5E2B", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80", bio: "\u958B\u767C\u667A\u6167\u8FB2\u696D\u611F\u6E2C\u5668\u8207\u4F4E\u529F\u8017\u908A\u7DE3\u904B\u7B97\u8A2D\u5099\u3002", domain: "\u5275\u65B0\u5275\u696D" },
+  { id: "u-vc-12", username: "vc_phoebe_hsieh", name: "\u8B1D\u6B23\u7A4E\u5FC3\u7406\u5E2B", title: "\u81E8\u5E8A\u5FC3\u7406\u5E2B\u8207\u4F5C\u5BB6", avatar: "https://images.unsplash.com/photo-1548142813-c348350df52b?w=150&auto=format&fit=crop&q=80", bio: "\u63A8\u5EE3\u8077\u5834\u58D3\u529B\u8ABF\u9069\u8207\u6578\u4F4D\u6392\u6BD2\u751F\u6D3B\u5BE6\u9A57\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
+  { id: "u-vc-13", username: "vc_derek_kuo", name: "\u90ED\u5B8F", title: "\u667A\u6167\u7269\u6D41\u8ABF\u5EA6\u7D93\u7406", avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80", bio: "\u7814\u7A76\u51B7\u93C8\u8ECA\u968A\u8DEF\u5F91\u6700\u4F73\u5316\u8207\u6700\u5F8C\u4E00\u54E9\u8DEF\u914D\u9001\u6548\u7387\u3002", domain: "\u5C08\u696D\u554F\u984C" },
+  { id: "u-vc-14", username: "vc_claire_hung", name: "\u6D2A\u96C5\u7B51", title: "\u6C38\u7E8C\u767C\u5C55 ESG \u5C08\u6848\u7D93\u7406", avatar: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80", bio: "\u8F14\u5C0E\u4E2D\u5C0F\u4F01\u696D\u9032\u884C\u78B3\u76E4\u67E5\u8207\u7DA0\u8272\u4F9B\u61C9\u93C8\u8F49\u578B\u3002", domain: "\u5B78\u8853\u63A2\u8A0E" },
+  { id: "u-vc-15", username: "vc_ian_tseng", name: "Kuro_Dev", title: "\u524D\u7AEF\u4E92\u52D5\u8A2D\u8A08\u5E2B", avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80", bio: "\u71B1\u611B WebGL\u3001Three.js \u8207 Vibe Coding \u654F\u6377\u7522\u54C1\u5BE6\u4F5C\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
+  { id: "u-vc-16", username: "vc_elena_chou", name: "\u5468\u7A4E", title: "\u7368\u7ACB\u66F8\u5E97\u8207\u85DD\u6587\u7B56\u5C55\u4EBA", avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80", bio: "\u63A2\u7D22\u5BE6\u9AD4\u95B1\u8B80\u7A7A\u9593\u7684\u793E\u7FA4\u8A02\u95B1\u5236\u8207\u8907\u5408\u7D93\u71DF\u6A21\u5F0F\u3002", domain: "\u5275\u65B0\u5275\u696D" },
+  { id: "u-vc-17", username: "vc_stanley_yeh", name: "\u8449\u54F2\u9298\u5C08\u5229\u5E2B", title: "\u5C08\u5229\u5E2B\u8207\u667A\u8CA1\u6CD5\u52D9\u9867\u554F", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u7CBE\u8EDF\u9AD4\u5C08\u5229\u4F48\u5C40\u3001\u958B\u6E90\u6388\u6B0A\u5408\u898F\u8207\u8DE8\u570B\u5546\u6A19\u4FDD\u8B77\u3002", domain: "\u5C08\u696D\u554F\u984C" },
+  { id: "u-vc-18", username: "vc_ariel_hsu", name: "\u6BDB\u5B69\u9BAE\u98DF\u82E5\u6DB5", title: "\u5BF5\u7269\u9BAE\u98DF\u54C1\u724C\u5275\u8FA6\u4EBA", avatar: "https://images.unsplash.com/photo-1517365830460-955ce3ccd263?w=150&auto=format&fit=crop&q=80", bio: "\u7D50\u5408\u7378\u91AB\u71DF\u990A\u5B78\u8207\u8A02\u95B1\u5236\u914D\u9001\uFF0C\u89E3\u6C7A\u6BDB\u5B69\u6311\u98DF\u8207\u904E\u654F\u3002", domain: "\u5275\u65B0\u5275\u696D" },
+  { id: "u-vc-19", username: "vc_victor_lai", name: "\u767D\u5E3D\u963F\u653F", title: "\u8CC7\u5B89\u5DE5\u7A0B\u5E2B & \u6EF2\u900F\u6E2C\u8A66\u9867\u554F", avatar: "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=150&auto=format&fit=crop&q=80", bio: "\u7814\u7A76 Web3 \u667A\u80FD\u5408\u7D04\u5BE9\u8A08\u8207\u96F6\u4FE1\u4EFB\u4F01\u696D\u7DB2\u8DEF\u67B6\u69CB\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
+  { id: "u-vc-20", username: "vc_amber_fan", name: "\u8303\u7B71\u5A77\u8001\u5E2B", title: "\u96D9\u8A9E\u5BE6\u9A57\u6559\u80B2\u6559\u5E2B", avatar: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=150&auto=format&fit=crop&q=80", bio: "\u5BE6\u8E10\u63A2\u7A76\u5F0F\u5B78\u7FD2\u8207 AI \u8F14\u52A9\u500B\u4EBA\u5316\u8A9E\u8A00\u6559\u5B78\u3002", domain: "\u5B78\u8853\u63A2\u8A0E" },
+  { id: "u-vc-21", username: "vc_benson_su", name: "\u8607\u5EFA\u5B87", title: "\u5BA4\u5167\u7A7A\u9593\u6539\u9020\u8A2D\u8A08\u5E2B", avatar: "https://images.unsplash.com/photo-1463453091185-61582044d556?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u6CE8\u8001\u5C4B\u7FFB\u65B0\u3001\u5C0F\u576A\u6578\u6536\u7D0D\u6A5F\u80FD\u8207\u667A\u6167\u5BB6\u5EAD\u6574\u5408\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
+  { id: "u-vc-22", username: "vc_celine_pan", name: "\u6F58\u59FF\u59A4", title: "\u91AB\u7642\u5668\u6750\u7522\u54C1\u7D93\u7406", avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&auto=format&fit=crop&q=80", bio: "\u63A8\u52D5\u9060\u8DDD\u91AB\u7642\u7A7F\u6234\u88DD\u7F6E\u8207\u5C45\u5BB6\u5FA9\u5065\u6578\u4F4D\u7642\u6CD5\u3002", domain: "\u5275\u65B0\u5275\u696D" },
+  { id: "u-vc-23", username: "vc_lucas_ho", name: "\u963F\u54F2\u81EA\u52D5\u5316\u5BE6\u9A57\u5BA4", title: "No-Code \u81EA\u52D5\u5316\u9867\u554F", avatar: "https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=150&auto=format&fit=crop&q=80", bio: "\u5354\u52A9\u4E00\u4EBA\u516C\u53F8\u7528 Make\u3001n8n \u8207 AI \u6253\u9020\u81EA\u52D5\u5316\u71DF\u904B\u5F15\u64CE\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
+  { id: "u-vc-24", username: "vc_stella_kao", name: "\u9AD8\u4EE5\u67D4", title: "\u793E\u7FA4\u5718\u8CFC\u8207\u4F9B\u61C9\u93C8\u9867\u554F", avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&auto=format&fit=crop&q=80", bio: "\u4E32\u806F\u5728\u5730\u5C0F\u8FB2\u8207\u5718\u5ABD\u793E\u7FA4\uFF0C\u512A\u5316\u5206\u6F64\u7D50\u7B97\u8207\u5EAB\u5B58\u9810\u6E2C\u3002", domain: "\u5275\u65B0\u5275\u696D" },
+  { id: "u-vc-25", username: "vc_felix_lo", name: "\u91CF\u5316\u8001\u7F85", title: "\u91D1\u878D\u79D1\u6280\u91CF\u5316\u4EA4\u6613\u54E1", avatar: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=150&auto=format&fit=crop&q=80", bio: "\u7814\u7A76\u6F14\u7B97\u6CD5\u4EA4\u6613\u7B56\u7565\u3001\u98A8\u96AA\u63A7\u7BA1\u8207\u500B\u4EBA\u7406\u8CA1\u5DE5\u5177\u3002", domain: "\u5C08\u696D\u554F\u984C" },
+  { id: "u-vc-26", username: "vc_doris_tang", name: "\u5510\u5FC3\u5982", title: "\u9280\u9AEE\u6A02\u9F61\u6D3B\u52D5\u4F01\u5283\u5E2B", avatar: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80", bio: "\u8A2D\u8A08\u8DE8\u4E16\u4EE3\u5171\u878D\u684C\u904A\u8207\u793E\u5340\u9577\u8005\u9632\u5931\u667A\u6578\u4F4D\u4E92\u52D5\u8AB2\u7A0B\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
+  { id: "u-vc-27", username: "vc_austin_sung", name: "\u5B8B\u54C1\u8A00", title: "\u96F2\u7AEF\u539F\u751F\u67B6\u69CB\u5E2B", avatar: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u7CBE Kubernetes \u9AD8\u4F75\u767C\u5FAE\u670D\u52D9\u8207 FinOps \u96F2\u7AEF\u6210\u672C\u512A\u5316\u3002", domain: "\u5C08\u696D\u554F\u984C" },
+  { id: "u-vc-28", username: "vc_iris_fang", name: "\u597D\u7720\u82B3\u7642\u5E2B\u5C0F\u6674", title: "\u82B3\u7642\u8207\u7761\u7720\u5065\u5EB7\u7BA1\u7406\u5E2B", avatar: "https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=150&auto=format&fit=crop&q=80", bio: "\u7D50\u5408\u7A7F\u6234\u6578\u64DA\u8207\u6C23\u5473\u79D1\u5B78\uFF0C\u6539\u5584\u73FE\u4EE3\u9AD8\u58D3\u65CF\u7FA4\u5931\u7720\u56F0\u64FE\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
+  { id: "u-vc-29", username: "vc_hugo_chung", name: "\u937E\u627F\u6069", title: "\u667A\u6167\u88FD\u9020\u9867\u554F", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80", bio: "\u5354\u52A9\u50B3\u7D71\u5DE5\u5EE0\u5C0E\u5165\u6A5F\u806F\u7DB2 AOI \u8996\u89BA\u6AA2\u6E2C\u8207\u9810\u6E2C\u6027\u7DAD\u8B77\u3002", domain: "\u5C08\u696D\u554F\u984C" },
+  { id: "u-vc-30", username: "vc_wendy_chiang", name: "\u59DC\u96C5\u96EF", title: "\u975E\u71DF\u5229\u7D44\u7E54\u5F71\u97FF\u529B\u7E3D\u76E3", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80", bio: "\u95DC\u6CE8\u516C\u76CA\u6350\u6B3E\u900F\u660E\u5316\u3001\u5FD7\u5DE5\u5A92\u5408\u6A5F\u5236\u8207\u793E\u6703\u6295\u8CC7\u5831\u916C\u7387\u3002", domain: "\u5B78\u8853\u63A2\u8A0E" },
+  { id: "u-vc-31", username: "vc_owen_peng", name: "\u8072\u97F3\u5DE5\u5320\u5BA5\u5609", title: "\u97F3\u8A0A\u5DE5\u7A0B\u8207 Podcast \u88FD\u4F5C\u4EBA", avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80", bio: "\u6253\u9020 AI \u964D\u566A\u526A\u8F2F\u5DE5\u4F5C\u6D41\u8207\u8072\u97F3\u5167\u5BB9\u8B8A\u73FE\u5E73\u53F0\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
+  { id: "u-vc-32", username: "vc_tiffany_chuang", name: "\u5FAE\u91BA\u4E3B\u7406\u4EBA\u5B50\u8431", title: "\u7CBE\u91C0\u9910\u9152\u9928\u4E3B\u7406\u4EBA", avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80", bio: "\u878D\u5408\u5728\u5730\u8FB2\u7522\u91C0\u9020\u5DE5\u85DD\uFF0C\u63A2\u7D22\u591C\u9593\u7D93\u6FDF\u8207\u6703\u54E1\u793E\u7FA4\u7D93\u71DF\u3002", domain: "\u5275\u65B0\u5275\u696D" },
+  { id: "u-vc-33", username: "vc_zack_shih", name: "\u6559\u7DF4\u963F\u8C6A", title: "\u904B\u52D5\u79D1\u5B78\u8207\u9AD4\u80FD\u6559\u7DF4", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80", bio: "\u904B\u7528\u52D5\u4F5C\u6355\u6349\u5206\u6790\u77EF\u6B63\u59FF\u52E2\uFF0C\u8A2D\u8A08\u8FA6\u516C\u5BA4\u5FAE\u904B\u52D5\u8655\u65B9\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
+  { id: "u-vc-34", username: "vc_bella_lien", name: "\u9023\u82B7\u6DB5", title: "\u667A\u6167\u96F6\u552E\u6578\u64DA\u5206\u6790\u5E2B", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80", bio: "\u900F\u904E POS \u6578\u64DA\u8207\u5929\u6C23\u6A21\u578B\u9810\u6E2C\u751F\u9BAE\u9580\u5E02\u6BCF\u65E5\u5099\u8CA8\u91CF\u3002", domain: "\u5C08\u696D\u554F\u984C" },
+  { id: "u-vc-35", username: "vc_simon_jen", name: "\u4EFB\u67CF\u5B87", title: "\u7368\u7ACB\u904A\u6232\u8207\u4E92\u52D5\u6558\u4E8B\u958B\u767C\u8005", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80", bio: "\u7528 AI \u52D5\u614B\u751F\u6210 NPC \u5C0D\u8A71\u8207\u652F\u7DDA\u5287\u60C5\uFF0C\u6253\u9020\u6C89\u6D78\u5F0F\u7DB2\u9801\u904A\u6232\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
+  { id: "u-vc-36", username: "vc_grace_ting", name: "\u8077\u6DAF\u6559\u7DF4\u8A9E\u67D4", title: "\u6D77\u5916\u6C42\u8077\u8207\u8077\u6DAF\u767C\u5C55\u6559\u7DF4", avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80", bio: "\u966A\u4F34\u8DE8\u9818\u57DF\u8F49\u8077\u8005\u68B3\u7406\u500B\u4EBA\u54C1\u724C\u8207\u6D77\u5916\u6C42\u8077\u5C65\u6B77\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
+  { id: "u-vc-37", username: "vc_nathan_chao", name: "\u8D99\u5B87", title: "\u7DA0\u80FD\u5132\u80FD\u7CFB\u7D71\u5DE5\u7A0B\u5E2B", avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80", bio: "\u7814\u7A76\u793E\u5340\u578B\u5FAE\u96FB\u7DB2\u3001\u96FB\u52D5\u8ECA\u5145\u96FB\u6A01\u8CA0\u8F09\u5E73\u8861\u8207\u9700\u91CF\u53CD\u61C9\u3002", domain: "\u5B78\u8853\u63A2\u8A0E" },
+  { id: "u-vc-38", username: "vc_vicky_sun", name: "\u5B6B\u90C1\u5A77", title: "\u89AA\u5B50\u5171\u5B78\u7A7A\u9593\u5275\u8FA6\u4EBA", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80", bio: "\u89E3\u6C7A\u96D9\u85AA\u5BB6\u5EAD\u8AB2\u5F8C\u6258\u80B2\u8207\u5152\u7AE5 STEAM \u5275\u5BA2\u9AD4\u9A57\u9700\u6C42\u3002", domain: "\u5275\u65B0\u5275\u696D" },
+  { id: "u-vc-39", username: "vc_danny_wei", name: "\u9B4F\u5091", title: "\u5305\u79DF\u4EE3\u7BA1\u71DF\u904B\u9577", avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80", bio: "\u7BA1\u7406 300+ \u9593\u5171\u751F\u516C\u5BD3\uFF0C\u63A8\u52D5\u79DF\u7D04\u6578\u4F4D\u5316\u8207\u5831\u4FEE\u81EA\u52D5\u6D3E\u5DE5\u3002", domain: "\u5C08\u696D\u554F\u984C" },
+  { id: "u-vc-40", username: "vc_peggy_fu", name: "\u4E0B\u73ED\u716E\u98EF\u7684\u601D\u7A4E", title: "\u6599\u7406\u7814\u7A76\u5BB6\u8207\u98DF\u8B5C\u4F5C\u5BB6", avatar: "https://images.unsplash.com/photo-1548142813-c348350df52b?w=150&auto=format&fit=crop&q=80", bio: "\u8A2D\u8A08 15 \u5206\u9418\u4E0B\u73ED\u5FEB\u624B\u6599\u7406\u8207\u51B0\u7BB1\u6E05\u5EAB\u5B58\u96F6\u6D6A\u8CBB\u83DC\u55AE\u3002", domain: "\u65E5\u5E38\u7591\u96E3" },
+  { id: "u-vc-41", username: "vc_aaron_ko", name: "\u5916\u639B\u958B\u767C\u8005\u963F\u502B", title: "\u700F\u89BD\u5668\u64F4\u5145\u529F\u80FD\u958B\u767C\u8005", avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80", bio: "\u5C08\u6CE8\u958B\u767C\u63D0\u5347\u7814\u7A76\u54E1\u8207\u77E5\u8B58\u5DE5\u4F5C\u8005\u6548\u7387\u7684 Chrome \u63D2\u4EF6\u3002", domain: "\u7DB2\u7AD9\u7A0B\u5F0F" },
+  { id: "u-vc-42", username: "vc_cathy_hsiao", name: "\u856D\u96C5\u4E91", title: "\u8A3A\u6240\u6578\u4F4D\u8F49\u578B\u9867\u554F", avatar: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80", bio: "\u512A\u5316\u8A3A\u6240\u7D04\u8A3A\u723D\u7D04\u7387\u3001\u75C5\u60A3\u885B\u6559\u8FFD\u8E64\u8207\u81EA\u8CBB\u7642\u7A0B\u6E9D\u901A\u3002", domain: "\u5C08\u696D\u554F\u984C" }
 ];
-var SIMULATED_BATCH_ID = "ideax_virtual_seed_v1";
+var SIMULATED_BATCH_ID = "ideax_virtual_seed_v2";
 var VIRTUAL_PERSONA_USERS = VIRTUAL_PERSONAS.map((p, idx) => ({
   id: p.id,
   memberId: `c9000000${String(idx + 1).padStart(2, "0")}`,
@@ -151997,6 +152040,11 @@ var SEED_INNOVATION_PROPOSALS = [
     specialZone: "create_ideas",
     referencedPainPoint: "[q-vp-pain-18] \u7368\u7ACB\u8EDF\u9AD4\u63A5\u6848\u5718\u968A\u8207\u696D\u4E3B\u53CD\u8986\u78BA\u8A8D\u9700\u6C42\u8B8A\u66F4\uFF0CLINE \u5C0D\u8A71\u7D00\u9304\u6563\u843D\u5C0E\u81F4\u9A57\u6536\u7CFE\u7D1B\u8207\u5C3E\u6B3E\u96E3\u6536",
     targetGoal: "\u5E0C\u671B\u4E32\u9023\u5168\u53F0\u5927\u5C08\u9662\u6821\u3001\u65B0\u5275\u5718\u968A\u8207\u7522\u696D\u5C08\u5BB6\uFF0C\u9054\u6210\u6BCF\u5E74 10,000 \u4EF6\u771F\u5BE6\u75DB\u9EDE\u8F49\u5316\u8207 1,000 \u7D44\u5275\u65B0\u89E3\u65B9\u53CA\u8EDF\u9AD4\u5C08\u6848\u843D\u5730\u5B75\u5316",
+    demoUrl: "https://ideax.tw",
+    externalLink: "https://ideax.tw",
+    youtubeUrl: "https://youtube.com/shorts/9aQE73bVAiU?si=I1vpUWqcJzcCO8xX",
+    coverMode: "youtube_video",
+    cardHoverMode: "video_autoplay",
     coverImage: "/ideax-thumbnail.png",
     galleryImages: [
       "/ideax-thumbnail.png",
@@ -152031,6 +152079,9 @@ var SEED_INNOVATION_PROPOSALS = [
     specialZone: "create_ideas",
     referencedPainPoint: "[q-vp-pain-11] \u793E\u5340\u5718\u8CFC\u4E3B\u6BCF\u9031\u8655\u7406\u4E0A\u767E\u7B46 LINE \u558A\u55AE\u8207\u8F49\u5E33\u672B\u4E94\u78BC\u6838\u5C0D\uFF0C\u4EBA\u5DE5\u5C0D\u5E33\u8017\u6642\u4E14\u5E38\u6F0F\u8CA8",
     targetGoal: "\u5E0C\u671B 6 \u500B\u6708\u5167\u65BC\u96D9\u5317\u53CA\u516D\u90FD\u91CD\u9EDE\u5546\u5708\u90E8\u7F72 500 \u5EA7\u667A\u6167\u6674\u4EAB\u5098\u7AD9\u9EDE\uFF0C\u4E32\u9023 1,200 \u5BB6\u5728\u5730\u5408\u4F5C\u5546\u5BB6\u9054\u6210\u6BCF\u6708 10 \u842C\u4EBA\u6B21\u5C0E\u6D41\u8F49\u63DB",
+    youtubeUrl: "https://youtu.be/0fVaQ4GKoto",
+    coverMode: "youtube_video",
+    cardHoverMode: "video_autoplay",
     coverImage: "/gosun-comic-borrow.png",
     galleryImages: [
       "/gosun-comic-borrow.png",
@@ -152098,6 +152149,43 @@ var SEED_INNOVATION_PROPOSALS = [
       "/dd-mazewar-maze4p.jpg",
       "/dd-mazewar-maze2p.jpg",
       "/dd-mazewar-logo.jpg"
+    ],
+    externalLink: "https://deeperdigger.online/"
+  },
+  {
+    id: "q-vp-idea-nexsight",
+    title: "NexSight \u6D1E\u9451\uFF1A\u7D50\u5408\u6B77\u53F2\u76F8\u4F3C K \u7DDA\u6BD4\u5C0D\u8207\u591A\u56E0\u7D20\u56DE\u6B78\u6A21\u578B\uFF0C\u7528\u771F\u5BE6\u56DE\u6E2C\u6578\u64DA\u544A\u5225\u76F4\u89BA\u76F2\u731C\u7684\u91CF\u5316\u6295\u8CC7\u7CFB\u7D71",
+    description: "\u50B3\u7D71\u770B\u76E4\u8EDF\u9AD4\u5927\u591A\u53EA\u63D0\u4F9B\u843D\u5F8C\u6280\u8853\u6307\u6A19\uFF0C\u500B\u4EBA\u6295\u8CC7\u8005\u8207\u7368\u7ACB\u7814\u7A76\u54E1\u5F88\u96E3\u628A\u7E3D\u9AD4\u7D93\u6FDF\u6578\u64DA\u3001\u57FA\u672C\u9762\u8CA1\u52D9\u6307\u6A19\u8207\u6CD5\u4EBA\u7C4C\u78BC\u56E0\u5B50\u4E00\u8D77\u6574\u5408\u9032\u591A\u56E0\u7D20\u56DE\u6B78\u6A21\u578B\u3002\n\n\u6211\u5011\u958B\u767C\u4E86 NexSight \u6D1E\u9451\uFF08https://www.nexsight.it.com/\uFF09\uFF1A\u652F\u63F4\u6B77\u53F2\u76F8\u4F3C\u8DA8\u52E2\u6BD4\u5C0D\u3001\u81EA\u8A02\u591A\u56E0\u5B50\u56DE\u6B78\u6B0A\u91CD\u63A8\u6F14\u3001\u4EE5\u53CA\u4E00\u9375\u57F7\u884C\u6B77\u53F2\u56DE\u6E2C\u8A08\u7B97\u52DD\u7387\u8207\u6700\u5927\u56DE\u64A4\uFF08Max Drawdown\uFF09\uFF0C\u8B93\u6BCF\u4E00\u6B21\u6295\u8CC7\u6C7A\u7B56\u90FD\u6709\u624E\u5BE6\u7684\u7D71\u8A08\u6578\u64DA\u7576\u5F8C\u76FE\uFF01",
+    category: "\u5275\u65B0\u5275\u696D",
+    subcategory: "\u8CC7\u8A0A\u79D1\u6280",
+    tags: ["\u5275\u65B0\u63D0\u6848", "NexSight\u6D1E\u9451", "\u591A\u56E0\u7D20\u56DE\u6B78\u9810\u6E2C", "\u80A1\u5E02\u6B77\u53F2\u8DA8\u52E2", "\u91CF\u5316\u56DE\u6E2C", "\u91D1\u878D\u79D1\u6280"],
+    level: "L0",
+    bounty: 0,
+    status: "open",
+    authorId: P(25).id,
+    authorName: P(25).name,
+    authorAvatar: P(25).avatar,
+    authorTitle: P(25).title,
+    createdAt: daysAgo(0, 2),
+    deadline: daysLater(60),
+    views: 1120,
+    likes: 216,
+    supportPoints: 176e3,
+    supporterCount: 82,
+    answersCount: 9,
+    postType: "innovation_proposal",
+    specialZone: "create_ideas",
+    demoUrl: "https://www.nexsight.it.com/",
+    externalLink: "https://www.nexsight.it.com/",
+    referencedPainPoint: "[q-vp-pain-15] \u50B3\u7D71\u80A1\u5E02\u770B\u76E4\u8EDF\u9AD4\u50C5\u63D0\u4F9B\u843D\u5F8C\u6280\u8853\u6307\u6A19\uFF0C\u6563\u6236\u8207\u7814\u7A76\u54E1\u96E3\u4EE5\u5C07\u7E3D\u7D93\u6578\u64DA\u3001\u8CA1\u5831\u57FA\u672C\u9762\u8207\u7C4C\u78BC\u56E0\u5B50\u6574\u5408\u9032\u591A\u56E0\u7D20\u56DE\u6B78\u6A21\u578B\u9032\u884C\u6B77\u53F2\u56DE\u6E2C\u8207\u8DA8\u52E2\u63A8\u6F14",
+    targetGoal: "\u5E0C\u671B 6 \u500B\u6708\u5167\u9054\u6210 50,000 \u540D\u91CF\u5316\u8207\u50F9\u503C\u6295\u8CC7\u8005\u65E5\u5E38\u4F7F\u7528\uFF0C\u63D0\u4F9B\u6700\u76F4\u89BA\u7684\u591A\u56E0\u7D20\u56DE\u6B78\u9810\u6E2C\u8207\u6B77\u53F2\u56DE\u6E2C\u9AD4\u9A57",
+    coverImage: "/nexsight-dashboard.jpg",
+    galleryImages: [
+      "/nexsight-dashboard.jpg",
+      "/nexsight-prediction-chart.jpg",
+      "/nexsight-multifactor-analysis.jpg",
+      "/nexsight-backtest-validation.jpg",
+      "/nexsight-settings-v4.jpg"
     ]
   },
   {
@@ -152873,6 +152961,9 @@ var SEED_VIBECODING_APPS = [
     currentVersion: "v6.2.0",
     referencedPainPoint: "[q-vp-pain-18] \u7368\u7ACB\u8EDF\u9AD4\u63A5\u6848\u5718\u968A\u8207\u696D\u4E3B\u53CD\u8986\u78BA\u8A8D\u9700\u6C42\u8B8A\u66F4\uFF0CLINE \u5C0D\u8A71\u7D00\u9304\u6563\u843D\u5C0E\u81F4\u9A57\u6536\u7CFE\u7D1B\u8207\u5C3E\u6B3E\u96E3\u6536",
     targetGoal: "\u6301\u7E8C\u8FED\u4EE3\u5168\u7AD9 AI \u667A\u5EAB\u5A92\u5408\u8207\u5275\u661F\u5B63\u5171\u5275\u6A5F\u5236\uFF0C\u670D\u52D9\u8D85\u904E 100,000 \u540D\u5275\u4F5C\u8005\u3001\u63A5\u6848\u5C08\u5BB6\u8207\u4F01\u696D\u767C\u6848\u65B9",
+    youtubeUrl: "https://youtube.com/shorts/QIHERRNPJnA?si=0bbtIipOI4Dc9Bxa",
+    coverMode: "youtube_video",
+    cardHoverMode: "video_autoplay",
     coverImage: "/ideax-thumbnail.png",
     galleryImages: [
       "/ideax-thumbnail.png",
@@ -152886,6 +152977,9 @@ var SEED_VIBECODING_APPS = [
     vibeCodingData: {
       appName: "IdeaX \u5275\u9EDE\u5B50",
       demoUrl: "https://ideax.tw",
+      youtubeUrl: "https://youtube.com/shorts/QIHERRNPJnA?si=0bbtIipOI4Dc9Bxa",
+      coverMode: "youtube_video",
+      cardHoverMode: "video_autoplay",
       coverImageUrl: "/ideax-thumbnail.png",
       screenshots: [
         "/ideax-thumbnail.png",
@@ -152941,11 +153035,11 @@ var SEED_VIBECODING_APPS = [
       "/nexsight-backtest-validation.jpg",
       "/nexsight-settings-v4.jpg"
     ],
-    demoUrl: "https://nexsight.demo.ideax.tw",
+    demoUrl: "https://www.nexsight.it.com/",
     techArchitecture: "React + TypeScript + Python FastAPI + Statsmodels / Scikit-Learn \u591A\u56E0\u7D20\u56DE\u6B78\u5F15\u64CE + TradingView Lightweight Charts + Tailwind CSS",
     vibeCodingData: {
       appName: "NexSight\u6D1E\u9451",
-      demoUrl: "https://nexsight.demo.ideax.tw",
+      demoUrl: "https://www.nexsight.it.com/",
       coverImageUrl: "/nexsight-dashboard.jpg",
       screenshots: [
         "/nexsight-dashboard.jpg",
@@ -152993,6 +153087,9 @@ var SEED_VIBECODING_APPS = [
     currentVersion: "v1.8.0",
     referencedPainPoint: "[q-vp-pain-11] \u793E\u5340\u5718\u8CFC\u4E3B\u6BCF\u9031\u8655\u7406\u4E0A\u767E\u7B46 LINE \u558A\u55AE\u8207\u8F49\u5E33\u672B\u4E94\u78BC\u6838\u5C0D\uFF0C\u4EBA\u5DE5\u5C0D\u5E33\u8017\u6642\u4E14\u5E38\u6F0F\u8CA8",
     targetGoal: "\u5E0C\u671B 6 \u500B\u6708\u5167\u9054\u6210 80,000 \u6B21 App \u4E0B\u8F09\u8207\u6703\u54E1\u8A3B\u518A\uFF0C\u4E32\u9023 1,200 \u9593\u5728\u5730\u5546\u5BB6\u5275\u9020\u6BCF\u6708 10 \u842C\u7B46\u5230\u5E97\u5C0E\u6D41\u6838\u92B7",
+    youtubeUrl: "https://youtu.be/0fVaQ4GKoto",
+    coverMode: "youtube_video",
+    cardHoverMode: "video_autoplay",
     coverImage: "/gosun-comic-borrow.png",
     galleryImages: [
       "/gosun-comic-borrow.png",
@@ -153013,6 +153110,9 @@ var SEED_VIBECODING_APPS = [
     vibeCodingData: {
       appName: "GoSun \u6674\u4EAB\u5098",
       demoUrl: "https://gosun-umbrella.demo.ideax.tw",
+      youtubeUrl: "https://youtu.be/0fVaQ4GKoto",
+      coverMode: "youtube_video",
+      cardHoverMode: "video_autoplay",
       coverImageUrl: "/gosun-comic-borrow.png",
       screenshots: [
         "/gosun-comic-borrow.png",
@@ -154984,8 +155084,8 @@ function buildSimulatedAnswersForQuestion(q) {
       deliveryType: tpl.deliveryType,
       freePreview: tpl.preview(q.title),
       fullContent: tpl.full(q.title),
-      isPaid: false,
-      price: 0,
+      isPaid: true,
+      price: [300, 500, 600, 800, 1e3, 1200, 1500][(seed + s2 * 3) % 7],
       likes: 4 + (seed + s2 * 7) % 28,
       isAccepted: false,
       createdAt: daysAgo(solCount - s2 + 1, 2 + s2 * 3),
@@ -156305,6 +156405,10 @@ var questionToStarSeasonProposal = (q) => {
     referencedPainPoint: q.referencedPainPoint,
     targetGoal: q.targetGoal,
     images: imgs,
+    youtubeUrl: q.youtubeUrl,
+    coverMode: q.coverMode,
+    cardHoverMode: q.cardHoverMode,
+    proposalProgressStage: q.proposalProgressStage,
     externalLink: q.demoUrl,
     technicalFeasibility: q.techArchitecture,
     tags: q.tags,
@@ -157246,7 +157350,7 @@ async function confirmFinalAwardByAdmin(params) {
   await batch.commit();
   return { success: true, message: `\u5DF2\u6210\u529F\u78BA\u8A8D\u540D\u6B21 (\u7B2C ${params.finalRank} \u540D) \u8207\u76F8\u95DC\u734E\u52F5\u6838\u51C6\uFF01` };
 }
-var DATABASE_PROPOSALS_SEED_VERSION = "v2026_10_16_db_v5";
+var DATABASE_PROPOSALS_SEED_VERSION = "v2026_10_18_db_v7";
 var isDatabaseSeedInProgress = false;
 var isDatabaseSeedDone = false;
 async function ensureProposalsSyncedToFirestore(force = false) {
@@ -157352,8 +157456,7 @@ async function ensureProposalsSyncedToFirestore(force = false) {
       await batch.commit();
     }
     const existingUSnap = await adminDb.collection("users").get();
-    const existingUIds = new Set(existingUSnap.docs.map((d) => d.id));
-    const usersToWrite = VIRTUAL_PERSONA_USERS.filter((u) => u && u.id && !existingUIds.has(u.id));
+    const usersToWrite = VIRTUAL_PERSONA_USERS.filter((u) => u && u.id);
     for (let i2 = 0; i2 < usersToWrite.length; i2 += 100) {
       const chunk = usersToWrite.slice(i2, i2 + 100);
       const batch = adminDb.batch();
@@ -157362,6 +157465,25 @@ async function ensureProposalsSyncedToFirestore(force = false) {
         batch.set(ref, { ...u, updatedAt: (/* @__PURE__ */ new Date()).toISOString() }, { merge: true });
       });
       await batch.commit();
+    }
+    const profileFixBatch = adminDb.batch();
+    let profileFixCount = 0;
+    existingUSnap.docs.forEach((d) => {
+      const data = d.data() || {};
+      const isHenryAccount = d.id === "c668940663" || d.id === "khQfTsoBdMM9ksz3XM2SEr5ThA02" || data.memberId === "c668940663" || data.memberId === "khQfTsoBdMM9ksz3XM2SEr5ThA02" || data.id === "c668940663" || data.id === "khQfTsoBdMM9ksz3XM2SEr5ThA02" || typeof data.name === "string" && data.name.includes("Henry");
+      const hasFilledContactAndRole = data.hasCompletedProfile === false && (Boolean(data.phone && String(data.phone).trim()) || Boolean(data.bio && String(data.bio).trim())) && Boolean(data.industry || data.jobTitle || data.title);
+      if (isHenryAccount && data.hasCompletedProfile !== true || hasFilledContactAndRole) {
+        profileFixBatch.set(
+          adminDb.collection("users").doc(d.id),
+          { hasCompletedProfile: true, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+          { merge: true }
+        );
+        profileFixCount++;
+      }
+    });
+    if (profileFixCount > 0) {
+      await profileFixBatch.commit();
+      console.log(`[Database Seed] Repaired hasCompletedProfile=true for ${profileFixCount} user(s).`);
     }
     await versionRef.set(
       {
