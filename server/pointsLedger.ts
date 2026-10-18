@@ -11,12 +11,14 @@
 import { getApps } from 'firebase-admin/app';
 import firebaseConfigJson from '../firebase-applet-config.json';
 import { hasAdminCredentials, isVerifiedAdmin } from './competitionService';
+import { SUBSCRIPTION_PLANS } from '../src/types';
 
 export type PointsOp =
   | { op: 'spend'; amount: number; purpose: SpendPurpose; refId?: string; toUserId?: string; note?: string }
   | { op: 'escrow_hold'; amount: number; refId: string; note?: string }
   | { op: 'escrow_release'; amount: number; refId: string; mode: 'refund' | 'payout'; payerUserId?: string; note?: string }
-  | { op: 'admin_adjust'; userId: string; delta: number; note?: string };
+  | { op: 'admin_adjust'; userId: string; delta: number; note?: string }
+  | { op: 'subscribe'; tier: string; cycle?: string };
 
 export type SpendPurpose = 'tip' | 'unlock' | 'promote' | 'service' | 'chat_offer' | 'subscription' | 'withdraw';
 const SPEND_PURPOSES: SpendPurpose[] = ['tip', 'unlock', 'promote', 'service', 'chat_offer', 'subscription', 'withdraw'];
@@ -231,5 +233,88 @@ export async function applyPointsOpWith(
     });
   }
 
+  if (input.op === 'subscribe') {
+    const plan = (SUBSCRIPTION_PLANS as any)[String(input.tier)];
+    if (!plan || input.tier === 'free') throw new PointsError('無效的方案');
+    const cycle = plan.billingCycles.find((c: any) => c.cycle === input.cycle) || plan.billingCycles[0];
+    const price = Math.max(0, Math.floor(Number(cycle.price) || 0));
+    const months = Math.max(1, Number(cycle.durationMonths) || 1);
+    return db.runTransaction(async (tx: any) => {
+      const snap = await tx.get(userRef);
+      const currentTier = snap.get('subscriptionTier') || 'free';
+      const expiresAt = Date.parse(snap.get('subscriptionExpiresAt') || '') || 0;
+      if (currentTier !== 'free' && expiresAt > Date.now()) {
+        throw new PointsError('目前方案尚未到期，變更方案將於下個期間生效');
+      }
+      const balance = Number(snap.get('balance')) || 0;
+      if (balance < price) throw new PointsError(`點數餘額不足（目前 ${balance} 點，需 ${price} 點）`, 402);
+      const next = balance - price;
+      const expiry = new Date();
+      expiry.setMonth(expiry.getMonth() + months);
+      const expiryStr = expiry.toISOString().split('T')[0];
+      tx.update(userRef, {
+        balance: next,
+        subscriptionTier: input.tier,
+        subscriptionExpiresAt: expiryStr,
+        nextSubscriptionTier: FieldValue.delete(),
+        nextSubscriptionCycle: FieldValue.delete(),
+        nextSubscriptionEffectiveAt: FieldValue.delete(),
+      });
+      tx.set(db.collection('points_ledger').doc(), {
+        userId: userRef.id,
+        op: 'subscribe',
+        tier: input.tier,
+        cycle: cycle.cycle,
+        delta: -price,
+        balanceAfter: next,
+        createdAt: new Date().toISOString(),
+      });
+      return { userId: userRef.id, balance: next, withheldPoints: Number(snap.get('withheldPoints')) || 0, subscriptionTier: input.tier, subscriptionExpiresAt: expiryStr };
+    });
+  }
+
   throw new PointsError('不支援的操作');
+}
+
+/**
+ * 每日方案到期處理（由伺服器定時呼叫）：
+ * 到期時若有預約的下期方案就扣點續訂，否則（或點數不足）轉為一般會員。
+ */
+export async function processSubscriptionExpiry(): Promise<{ renewed: number; downgraded: number }> {
+  const { db, FieldValue } = await getAdminDb();
+  const today = new Date().toISOString().split('T')[0];
+  const snap = await db.collection('users').where('subscriptionExpiresAt', '<', today).limit(200).get();
+  let renewed = 0;
+  let downgraded = 0;
+  for (const d of snap.docs) {
+    const u = d.data() as any;
+    if (!u.subscriptionTier || u.subscriptionTier === 'free') continue;
+    await db.runTransaction(async (tx: any) => {
+      const fresh = await tx.get(d.ref);
+      const data = fresh.data() || {};
+      const target = data.nextSubscriptionTier || null;
+      const plan = target && target !== 'free' ? (SUBSCRIPTION_PLANS as any)[target] : null;
+      const cycle = plan ? plan.billingCycles.find((c: any) => c.cycle === data.nextSubscriptionCycle) || plan.billingCycles[0] : null;
+      const price = cycle ? Math.max(0, Math.floor(Number(cycle.price) || 0)) : 0;
+      const balance = Number(data.balance) || 0;
+      const clearNext = {
+        nextSubscriptionTier: FieldValue.delete(),
+        nextSubscriptionCycle: FieldValue.delete(),
+        nextSubscriptionEffectiveAt: FieldValue.delete(),
+      };
+      if (plan && balance >= price) {
+        const expiry = new Date();
+        expiry.setMonth(expiry.getMonth() + Math.max(1, Number(cycle.durationMonths) || 1));
+        tx.update(d.ref, { balance: balance - price, subscriptionTier: target, subscriptionExpiresAt: expiry.toISOString().split('T')[0], ...clearNext });
+        tx.set(db.collection('points_ledger').doc(), {
+          userId: d.id, op: 'subscribe_renew', tier: target, delta: -price, balanceAfter: balance - price, createdAt: new Date().toISOString(),
+        });
+        renewed++;
+      } else {
+        tx.update(d.ref, { subscriptionTier: 'free', ...clearNext });
+        downgraded++;
+      }
+    });
+  }
+  return { renewed, downgraded };
 }

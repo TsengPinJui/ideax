@@ -9,7 +9,7 @@ import { rateLimit, requireAdminMiddleware } from './server/security';
 import { runAuthUidBackfill } from './server/backfillAuthUids';
 import { accountNoticeEmail, sendMail } from './server/mailer';
 import { runAssistantTick } from './server/assistantCron';
-import { applyPointsOp, PointsError } from './server/pointsLedger';
+import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/pointsLedger';
 import { verifyAuthToken } from './server/competitionService';
 
 dotenv.config();
@@ -3164,8 +3164,9 @@ app.get('/api/cron/assistant', async (req: Request, res: Response) => {
   }
   try {
     const result = await runAssistantTick(generateAssistant24hrReply);
-    console.log('[Assistant Cron]', JSON.stringify(result));
-    res.json({ success: true, result });
+    const subscriptions = await processSubscriptionExpiry().catch((e: any) => ({ error: e?.message || String(e) }));
+    console.log('[Assistant Cron]', JSON.stringify({ ...result, subscriptions }));
+    res.json({ success: true, result, subscriptions });
   } catch (err: any) {
     console.error('[Assistant Cron] failed:', err?.message || err);
     res.status(500).json({ success: false, error: err?.message || 'failed' });

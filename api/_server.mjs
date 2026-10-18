@@ -155093,6 +155093,141 @@ var ALL_VIRTUAL_PROPOSALS_SEED = RAW_VIRTUAL_PROPOSALS_SEED.map((q) => {
 });
 
 // src/types.ts
+var SUBSCRIPTION_PLANS = {
+  free: {
+    id: "free",
+    name: "\u4E00\u822C\u6703\u54E1",
+    pricingText: "\u514D\u8CBB\u4F7F\u7528",
+    monthlyPrice: 0,
+    billingCycles: [
+      { cycle: "monthly", price: 0, label: "\u514D\u8CBB\u65B9\u6848", durationMonths: 1 }
+    ],
+    platformFeeRate: 0.1,
+    feeDiscountText: "\u6A19\u6E96 10% \u670D\u52D9\u8CBB",
+    sellerPayoutRate: 0.9,
+    sellerPayoutText: "90%",
+    effectiveRateText: "10%",
+    rebatePercent: 0,
+    badgeClass: "bg-stone-100 text-stone-700 border-stone-200",
+    tagline: "\u6A19\u6E96\u8CBB\u7387\uFF0C\u7531\u89E3\u7B54\u8005\u5438\u6536 10% \u670D\u52D9\u8CBB",
+    benefits: [
+      "\u5168\u7AD9\u767C\u554F\u8207\u89E3\u7B54\u63D0\u6848",
+      "AI-CRM \u5C08\u5BB6\u5DE5\u4F5C\u53F0\uFF1A\u57FA\u790E\u984C\u5EAB\u700F\u89BD\u8207\u529F\u80FD\u9810\u89BD"
+    ]
+  },
+  pro: {
+    // 相容別名導向達人方案
+    id: "pro",
+    name: "\u9054\u4EBA\u65B9\u6848",
+    pricingText: "$299/\u6708 \u6216 $1,499/\u534A\u5E74",
+    monthlyPrice: 299,
+    billingCycles: [
+      { cycle: "monthly", price: 299, label: "\u6708\u7E73 NT$ 299/\u6708", durationMonths: 1 },
+      { cycle: "semi_annual", price: 1499, label: "\u534A\u5E74\u7E73 NT$ 1,499/\u534A\u5E74", savingsText: "\u7D04 $249/\u6708\uFF0C\u73FE\u7701 $295", durationMonths: 6 }
+    ],
+    platformFeeRate: 0.08,
+    feeDiscountText: "\u8CBB\u7387 8%\uFF08\u5BE6\u6536 92%\uFF09",
+    sellerPayoutRate: 0.92,
+    sellerPayoutText: "92%",
+    effectiveRateText: "8%",
+    rebatePercent: 2,
+    badgeClass: "bg-blue-50 text-blue-800 border-blue-200 font-bold",
+    tagline: "\u8CBB\u7387\u50C5 8%\uFF01\u89E3\u7B54\u8005\u5BE6\u6536\u9AD8\u9054 92%",
+    benefits: [
+      "\u5168\u7AD9\u767C\u554F\u8207\u89E3\u7B54\u63D0\u6848",
+      "\u8CBB\u7387 8%\uFF08\u89E3\u7B54\u8005\u5BE6\u6536 92%\uFF09",
+      "AI \u521D\u6B65\u554F\u984C\u5206\u6790\u5831\u544A\uFF1A\u514D\u8CBB\u67E5\u770B 50 \u6B21",
+      "AI \u63D0\u6848\u67B6\u69CB\u6574\u7406\uFF1A\u4E00\u9375\u6574\u7406\u70BA 4 \u5C64\u67B6\u69CB",
+      "\u{1F3AF} AI-CRM 24hr \u5BA2\u60C5\u5DE1\u822A\uFF1A\u57FA\u790E\u5DE1\u822A\u8207\u610F\u5411\u5075\u6E2C",
+      "\u{1F91D} \u96D9\u5411\u63E1\u624B\u63D0\u6848\uFF1A\u5E02\u5834\u9867\u554F \xD7 AICRM \u96D9\u5411\u5C08\u5C6C\u5A92\u5408\u63A8\u64AD"
+    ]
+  },
+  expert: {
+    id: "expert",
+    name: "\u9054\u4EBA\u65B9\u6848",
+    pricingText: "$299/\u6708 \u6216 $1,499/\u534A\u5E74",
+    monthlyPrice: 299,
+    billingCycles: [
+      { cycle: "monthly", price: 299, label: "\u6708\u7E73 NT$ 299/\u6708", durationMonths: 1 },
+      { cycle: "semi_annual", price: 1499, label: "\u534A\u5E74\u7E73 NT$ 1,499/\u534A\u5E74", savingsText: "\u7D04 $249/\u6708\uFF0C\u73FE\u7701 $295", durationMonths: 6 }
+    ],
+    platformFeeRate: 0.08,
+    feeDiscountText: "\u8CBB\u7387 8%\uFF08\u5BE6\u6536 92%\uFF09",
+    sellerPayoutRate: 0.92,
+    sellerPayoutText: "92%",
+    effectiveRateText: "8%",
+    rebatePercent: 2,
+    badgeClass: "bg-blue-50 text-blue-800 border-blue-200 font-bold",
+    tagline: "\u8CBB\u7387\u50C5 8%\uFF01\u89E3\u7B54\u8005\u5BE6\u6536\u9AD8\u9054 92%",
+    benefits: [
+      "\u5168\u7AD9\u767C\u554F\u8207\u89E3\u7B54\u63D0\u6848",
+      "\u8CBB\u7387 8%\uFF08\u89E3\u7B54\u8005\u5BE6\u6536 92%\uFF09",
+      "AI \u521D\u6B65\u554F\u984C\u5206\u6790\u5831\u544A\uFF1A\u514D\u8CBB\u67E5\u770B 50 \u6B21",
+      "AI \u63D0\u6848\u67B6\u69CB\u6574\u7406\uFF1A\u4E00\u9375\u6574\u7406\u70BA 4 \u5C64\u67B6\u69CB",
+      "\u{1F3AF} AI-CRM 24hr \u5BA2\u60C5\u5DE1\u822A\uFF1A\u57FA\u790E\u5DE1\u822A\u8207\u610F\u5411\u5075\u6E2C",
+      "\u{1F91D} \u96D9\u5411\u63E1\u624B\u63D0\u6848\uFF1A\u5E02\u5834\u9867\u554F \xD7 AICRM \u96D9\u5411\u5C08\u5C6C\u5A92\u5408\u63A8\u64AD"
+    ]
+  },
+  authority: {
+    id: "authority",
+    name: "\u6B0A\u5A01\u65B9\u6848",
+    pricingText: "$599/\u6708 \u6216 $5,990/\u5E74",
+    monthlyPrice: 599,
+    billingCycles: [
+      { cycle: "monthly", price: 599, label: "\u6708\u7E73 NT$ 599/\u6708", durationMonths: 1 },
+      { cycle: "annual", price: 5990, label: "\u5E74\u7E73 NT$ 5,990/\u5E74", savingsText: "\u5E74\u7E73\u73FE\u7701 NT$ 1,198", durationMonths: 12 }
+    ],
+    platformFeeRate: 0.05,
+    feeDiscountText: "\u670D\u52D9\u8CBB 5%\uFF08-5% \u6E1B\u514D\uFF0C\u5BE6\u6536 95%\uFF09",
+    sellerPayoutRate: 0.95,
+    sellerPayoutText: "95%",
+    effectiveRateText: "5%",
+    rebatePercent: 5,
+    badgeClass: "bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-700 font-black shadow-2xs",
+    tagline: "\u670D\u52D9\u8CBB\u50C5 5%\uFF08-5%\uFF09\uFF01\u5BE6\u6536 95% \uFF0B \u5347\u7D1A\u7121\u9650\u6B21 AI \u5206\u6790\u5831\u544A \uFF0B \u512A\u5148\u63A8\u85A6\u66DD\u5149",
+    benefits: [
+      "\u5168\u7AD9\u767C\u554F\u8207\u89E3\u7B54\u63D0\u6848",
+      "\u670D\u52D9\u8CBB\u50C5 5%\uFF08-5% \u6E1B\u514D\uFF0C\u5BE6\u6536 95%\uFF09",
+      "AI \u521D\u6B65\u554F\u984C\u5206\u6790\u5831\u544A\uFF1A\u5168\u7AD9\u514D\u8CBB\u7121\u9650\u6B21\u67E5\u770B\u53CA\u4E0B\u8F09\u5831\u544A",
+      "AI \u63D0\u6848\u67B6\u69CB\u6574\u7406\uFF1A\u4E00\u9375\u6574\u7406\u70BA 4 \u5C64\u67B6\u69CB",
+      "\u2728 \u5347\u7D1A\u9AD8\u8CDE\u63D0\u6848\u512A\u5148\u63A8\u85A6\u66DD\u5149",
+      "\u{1F3AF} AI-CRM 24hr \u5BA2\u60C5\u5DE1\u822A\u96F7\u9054\uFF1A\u5BE6\u6642\u5DE1\u5F0B\u5168\u7AD9\u984C\u5EAB\u8207\u767C\u6848\u8005\u7336\u8C6B\u671F",
+      "\u{1F91D} \u96D9\u5411\u63E1\u624B\u63D0\u6848\uFF1A\u5E02\u5834\u9867\u554F \xD7 AICRM \u5373\u6642\u63A8\u64AD\u96D9\u5411\u9AD8\u5951\u5408\u5C08\u6848\u5546\u6A5F",
+      "\u{1F4B0} \u512A\u8CEA\u63D0\u6848\u63A8\u85A6\u60A8\u4F86\u8CFA\uFF1A\u667A\u80FD\u904E\u6FFE\u9AD8\u984D\u61F8\u8CDE\u597D\u984C\u8207\u4E09\u968E\u6BB5\u7834\u5C40\u65B9\u91DD"
+    ]
+  },
+  master: {
+    id: "master",
+    name: "\u5927\u5E2B\u65B9\u6848",
+    pricingText: "$1,980/\u6708 \u6216 $19,800/\u5E74",
+    monthlyPrice: 1980,
+    billingCycles: [
+      { cycle: "monthly", price: 1980, label: "\u6708\u7E73 NT$ 1,980/\u6708", durationMonths: 1 },
+      { cycle: "annual", price: 19800, label: "\u5E74\u7E73 NT$ 19,800/\u5E74", savingsText: "\u5E74\u7E73\u73FE\u7701 NT$ 3,960", durationMonths: 12 }
+    ],
+    platformFeeRate: 0.02,
+    feeDiscountText: "\u670D\u52D9\u8CBB\u50C5 2%\uFF08-8% \u6E1B\u514D\uFF0C\u5BE6\u6536 98%\uFF09",
+    sellerPayoutRate: 0.98,
+    sellerPayoutText: "98%",
+    effectiveRateText: "2%",
+    rebatePercent: 8,
+    badgeClass: "bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-500 text-stone-950 border-amber-500 font-black shadow-sm",
+    tagline: "\u6975\u4F4E 2% \u670D\u52D9\u8CBB\uFF01\u5BE6\u6536\u9AD8\u9054 98% \uFF0B AI-CRM \u5BA2\u6236\u95DC\u4FC2\u7BA1\u7406",
+    benefits: [
+      "\u5168\u7AD9\u767C\u554F\u8207\u89E3\u7B54\u63D0\u6848",
+      "\u670D\u52D9\u8CBB\u6975\u4F4E 2%\uFF08-8% \u6E1B\u514D\uFF0C\u5BE6\u6536\u9AD8\u9054 98%\uFF09",
+      "AI \u521D\u6B65\u554F\u984C\u5206\u6790\u5831\u544A\uFF1A\u5168\u7AD9\u514D\u8CBB\u7121\u9650\u6B21\u67E5\u770B\u53CA\u4E0B\u8F09\u5831\u544A",
+      "AI \u63D0\u6848\u67B6\u69CB\u6574\u7406\uFF1A\u4E00\u9375\u6574\u7406\u70BA 4 \u5C64\u67B6\u69CB",
+      "\u9AD8\u8CDE\u63D0\u6848\u6700\u9AD8\u512A\u5148\u7D1A\u63A8\u85A6\u66DD\u5149",
+      "\u{1F3AF} AI-CRM 24hr \u5BA2\u60C5\u5DE1\u822A\u96F7\u9054\uFF1A\u5373\u6642\u5BA2\u60C5\u610F\u5411\u5075\u6E2C\u8207\u9AD8\u50F9\u503C\u5BA2\u6236\u5DE1\u822A",
+      "\u{1F91D} \u96D9\u5411\u63E1\u624B\u63D0\u6848\uFF1A\u5E02\u5834\u9867\u554F \xD7 AICRM \u5373\u6642\u63A8\u64AD\u96D9\u5411\u9AD8\u5951\u5408\u5C08\u6848\u5546\u6A5F",
+      "\u{1F4B0} \u512A\u8CEA\u63D0\u6848\u63A8\u85A6\u60A8\u4F86\u8CFA\uFF1A\u667A\u80FD\u904E\u6FFE\u9AD8\u984D\u61F8\u8CDE\u597D\u984C\u8207\u4E09\u968E\u6BB5\u7834\u5C40\u65B9\u91DD",
+      "\u{1F9E0} AI-CRM 24hr \u7B56\u7565\u8ECD\u5E2B\uFF1A\u5FC3\u7406\u5B78\u7834\u51B0\u8A71\u8853\u64EC\u5B9A\u8207\u6642\u7A0B\u63A8\u6F14",
+      "\u{1F916} 24hr AI \u7279\u52A9\u4EE3\u64CD\uFF1A\u5168\u81EA\u52D5\u5316\u96E2\u7DDA\u5C0D\u8AC7\u8207\u6392\u7A0B\u7834\u51B0\u4EE3\u64CD\u767C\u9001",
+      "\u{1F4CA} \u5BA2\u60C5\u8F49\u5316\u6F0F\u6597\u5206\u6790\uFF1A\u5373\u6642\u8FFD\u8E64\u8DDF\u9032\u8F49\u5316\u7387\u3001\u610F\u5411\u9031\u671F\u8207\u6536\u76CA\u6210\u9577"
+    ]
+  }
+};
 var DEFAULT_ASSISTANT_24HR_CONFIG = {
   isEnabled: false,
   tone: "professional",
@@ -159413,7 +159548,89 @@ async function applyPointsOpWith(deps, auth, input) {
       return { userId: payerRef.id, balance, withheldPoints: withheld };
     });
   }
+  if (input.op === "subscribe") {
+    const plan = SUBSCRIPTION_PLANS[String(input.tier)];
+    if (!plan || input.tier === "free") throw new PointsError("\u7121\u6548\u7684\u65B9\u6848");
+    const cycle = plan.billingCycles.find((c) => c.cycle === input.cycle) || plan.billingCycles[0];
+    const price = Math.max(0, Math.floor(Number(cycle.price) || 0));
+    const months = Math.max(1, Number(cycle.durationMonths) || 1);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      const currentTier = snap.get("subscriptionTier") || "free";
+      const expiresAt = Date.parse(snap.get("subscriptionExpiresAt") || "") || 0;
+      if (currentTier !== "free" && expiresAt > Date.now()) {
+        throw new PointsError("\u76EE\u524D\u65B9\u6848\u5C1A\u672A\u5230\u671F\uFF0C\u8B8A\u66F4\u65B9\u6848\u5C07\u65BC\u4E0B\u500B\u671F\u9593\u751F\u6548");
+      }
+      const balance = Number(snap.get("balance")) || 0;
+      if (balance < price) throw new PointsError(`\u9EDE\u6578\u9918\u984D\u4E0D\u8DB3\uFF08\u76EE\u524D ${balance} \u9EDE\uFF0C\u9700 ${price} \u9EDE\uFF09`, 402);
+      const next = balance - price;
+      const expiry = /* @__PURE__ */ new Date();
+      expiry.setMonth(expiry.getMonth() + months);
+      const expiryStr = expiry.toISOString().split("T")[0];
+      tx.update(userRef, {
+        balance: next,
+        subscriptionTier: input.tier,
+        subscriptionExpiresAt: expiryStr,
+        nextSubscriptionTier: FieldValue4.delete(),
+        nextSubscriptionCycle: FieldValue4.delete(),
+        nextSubscriptionEffectiveAt: FieldValue4.delete()
+      });
+      tx.set(db.collection("points_ledger").doc(), {
+        userId: userRef.id,
+        op: "subscribe",
+        tier: input.tier,
+        cycle: cycle.cycle,
+        delta: -price,
+        balanceAfter: next,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      return { userId: userRef.id, balance: next, withheldPoints: Number(snap.get("withheldPoints")) || 0, subscriptionTier: input.tier, subscriptionExpiresAt: expiryStr };
+    });
+  }
   throw new PointsError("\u4E0D\u652F\u63F4\u7684\u64CD\u4F5C");
+}
+async function processSubscriptionExpiry() {
+  const { db, FieldValue: FieldValue4 } = await getAdminDb();
+  const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const snap = await db.collection("users").where("subscriptionExpiresAt", "<", today).limit(200).get();
+  let renewed = 0;
+  let downgraded = 0;
+  for (const d of snap.docs) {
+    const u = d.data();
+    if (!u.subscriptionTier || u.subscriptionTier === "free") continue;
+    await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(d.ref);
+      const data = fresh.data() || {};
+      const target = data.nextSubscriptionTier || null;
+      const plan = target && target !== "free" ? SUBSCRIPTION_PLANS[target] : null;
+      const cycle = plan ? plan.billingCycles.find((c) => c.cycle === data.nextSubscriptionCycle) || plan.billingCycles[0] : null;
+      const price = cycle ? Math.max(0, Math.floor(Number(cycle.price) || 0)) : 0;
+      const balance = Number(data.balance) || 0;
+      const clearNext = {
+        nextSubscriptionTier: FieldValue4.delete(),
+        nextSubscriptionCycle: FieldValue4.delete(),
+        nextSubscriptionEffectiveAt: FieldValue4.delete()
+      };
+      if (plan && balance >= price) {
+        const expiry = /* @__PURE__ */ new Date();
+        expiry.setMonth(expiry.getMonth() + Math.max(1, Number(cycle.durationMonths) || 1));
+        tx.update(d.ref, { balance: balance - price, subscriptionTier: target, subscriptionExpiresAt: expiry.toISOString().split("T")[0], ...clearNext });
+        tx.set(db.collection("points_ledger").doc(), {
+          userId: d.id,
+          op: "subscribe_renew",
+          tier: target,
+          delta: -price,
+          balanceAfter: balance - price,
+          createdAt: (/* @__PURE__ */ new Date()).toISOString()
+        });
+        renewed++;
+      } else {
+        tx.update(d.ref, { subscriptionTier: "free", ...clearNext });
+        downgraded++;
+      }
+    });
+  }
+  return { renewed, downgraded };
 }
 
 // server.ts
@@ -162053,8 +162270,9 @@ app.get("/api/cron/assistant", async (req, res) => {
   }
   try {
     const result = await runAssistantTick(generateAssistant24hrReply);
-    console.log("[Assistant Cron]", JSON.stringify(result));
-    res.json({ success: true, result });
+    const subscriptions = await processSubscriptionExpiry().catch((e2) => ({ error: e2?.message || String(e2) }));
+    console.log("[Assistant Cron]", JSON.stringify({ ...result, subscriptions }));
+    res.json({ success: true, result, subscriptions });
   } catch (err) {
     console.error("[Assistant Cron] failed:", err?.message || err);
     res.status(500).json({ success: false, error: err?.message || "failed" });

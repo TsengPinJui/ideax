@@ -76,12 +76,13 @@ service cloud.firestore {
     function protectedUserFields() {
       return ['balance', 'withheldPoints', 'pendingEarnings', 'tipReceivablesPoints', 'thisWeekTipPoints',
               'totalWithdrawn', 'isBlocked', 'blockedReason', 'blockedUntil', 'blockedAt', 'blockedByAdminName',
-              'adminSites', 'isSiteAAdmin', 'isSiteBAdmin', 'adminIdentityBadge', 'isInitialAdmin'];
+              'adminSites', 'isSiteAAdmin', 'isSiteBAdmin', 'adminIdentityBadge', 'isInitialAdmin',
+              'subscriptionTier', 'subscriptionExpiresAt'];
     }
     // 身分欄位：只有本人能改
     function identityUserFields() {
       return ['name', 'avatar', 'email', 'username', 'phone', 'bio', 'title', 'authUid', 'memberId',
-              'accountType', 'role', 'realNameAuthStatus', 'expertCertStatus', 'verifiedExpert', 'subscriptionTier'];
+              'accountType', 'role', 'realNameAuthStatus', 'expertCertStatus', 'verifiedExpert'];
     }
     function isUserOwner(userId) {
       return isSignedIn() && (
