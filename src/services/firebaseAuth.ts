@@ -1,5 +1,6 @@
 import { getAuthHeaders } from './authHeader';
 import {
+  signInWithCustomToken,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
@@ -392,4 +393,22 @@ export async function updateFirebaseUserPassword(newPassword: string): Promise<v
     }
     throw new Error(error.message || '更新雲端密碼失敗，請稍後再試');
   }
+}
+
+/**
+ * 以「帳號名稱或手機號碼＋密碼」登入：由伺服器查出對應的 Email 並驗證密碼，
+ * 成功後回傳一次性登入憑證（前端不會拿到別人的 Email）。
+ */
+export async function loginWithIdentifierPassword(identifier: string, password: string): Promise<{ user: FirebaseUser; userId?: string }> {
+  const res = await fetch('/api/auth/password-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success || !data.customToken) {
+    throw new Error(data.error || '帳號或密碼不正確，請重新確認後再試！');
+  }
+  const cred = await signInWithCustomToken(auth, data.customToken);
+  return { user: cred.user, userId: data.userId };
 }

@@ -57,7 +57,10 @@ export async function findUserDocByAuth(auth: { uid: string; email?: string; ema
   if (!byAuth.empty) return byAuth.docs[0].ref;
   // 只有已驗證的 Email 才能用來對應會員資料（避免他人以未驗證的同名 Email 冒用）
   if (auth.email && auth.emailVerified) {
-    const byEmail = await db.collection('users').where('email', '==', auth.email.toLowerCase()).limit(1).get();
+    const email = auth.email.toLowerCase();
+    const byPrivate = await db.collection('user_private').where('email', '==', email).limit(1).get();
+    if (!byPrivate.empty) return db.collection('users').doc(byPrivate.docs[0].id);
+    const byEmail = await db.collection('users').where('email', '==', email).limit(1).get();
     if (!byEmail.empty) return byEmail.docs[0].ref;
   }
   return null;

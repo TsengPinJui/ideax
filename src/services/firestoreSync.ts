@@ -15,6 +15,7 @@ import {
   query,
   where,
   arrayUnion,
+  limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import {
@@ -38,6 +39,7 @@ import { getAuthHeaders } from './authHeader';
 import { auth } from './firebase';
 import { getMyAppUserId, getMyAuthUid, resolveAuthUid, resolveAuthUids } from './authIdentity';
 import { splitAnswerForStorage, type AnswerSecret } from '../utils/answerSecrets';
+import { PRIVATE_PROFILE_FIELDS, normalizePhone, pickPrivateProfile } from '../utils/privateProfile';
 import { PROTECTED_USER_FIELDS } from './pointsApi';
 
 const QUOTA_STORAGE_KEY = 'ideax_firestore_quota_exhausted_date';
@@ -588,7 +590,59 @@ const SECRET_FIELD_DELETES = () => ({
   password: deleteField(),
   realNameAuthData: deleteField(),
   realNameData: deleteField(),
+  // 聯絡方式與財務資料改存 user_private
+  ...Object.fromEntries(PRIVATE_PROFILE_FIELDS.map((k) => [k, deleteField()])),
 });
+
+/** 是否可以寫這位會員的私密資料：本人或管理員 */
+function canWritePrivateOf(user: User): boolean {
+  if (currentDataScope.isAdmin) return true;
+  const myUid = getMyAuthUid();
+  if (!myUid) return false;
+  return user.id === getMyAppUserId() || user.authUid === myUid || user.id === myUid;
+}
+
+function privateDocPayload(user: User, extra: Record<string, any> = {}) {
+  const myUid = getMyAuthUid();
+  const authUid = user.authUid || (user.id === getMyAppUserId() || user.id === myUid ? myUid : undefined);
+  return JSON.parse(
+    JSON.stringify({
+      ...pickPrivateProfile(user),
+      ...(normalizePhone(user.phone) ? { phoneNormalized: normalizePhone(user.phone) } : {}),
+      ...extra,
+      ...(authUid ? { authUid } : {}),
+      updatedAt: new Date().toISOString(),
+    })
+  );
+}
+
+/** 讀取自己的私密資料（Email、電話、銀行帳戶等） */
+export async function getMyPrivateProfile(userId: string): Promise<Partial<User> | null> {
+  if (!userId || !getMyAuthUid()) return null;
+  try {
+    const snap = await getDoc(doc(db, PRIVATE_USER_COLLECTION, userId));
+    if (!snap.exists()) return null;
+    return pickPrivateProfile(snap.data() as any);
+  } catch {
+    return null;
+  }
+}
+
+/** 管理員：讀取所有會員的私密資料（會員管理、審核、統計用） */
+export async function getAllPrivateProfiles(): Promise<Record<string, Partial<User>>> {
+  if (!currentDataScope.isAdmin) return {};
+  try {
+    const snap = await getDocs(collection(db, PRIVATE_USER_COLLECTION));
+    const out: Record<string, Partial<User>> = {};
+    snap.docs.forEach((d) => {
+      out[d.id] = pickPrivateProfile(d.data() as any);
+    });
+    return out;
+  } catch (err) {
+    handleFirestoreError('Failed to load private profiles', err);
+    return {};
+  }
+}
 
 /** 安全性：移除舊資料中殘留的明碼密碼與實名個資，避免流入每位訪客的瀏覽器 */
 export function stripUserSecrets(u: User): User {
@@ -667,9 +721,14 @@ export async function syncUserToFirestore(user: User): Promise<void> {
 
     await setDoc(userRef, firestoreData, { merge: true });
 
-    // 實名認證個資改存於獨立的 user_private 集合（之後由安全規則限定本人與管理員讀取）
-    if (privateRealName) {
-      await setDoc(doc(db, PRIVATE_USER_COLLECTION, user.id), { realNameAuthData: privateRealName, updatedAt: new Date().toISOString() }, { merge: true });
+    // 實名認證個資、聯絡方式與財務資料存於 user_private（本人與管理員才能讀寫）
+    if (canWritePrivateOf(user)) {
+      const priv = privateDocPayload(user, privateRealName ? { realNameAuthData: privateRealName } : {});
+      if (Object.keys(priv).some((k) => k !== 'updatedAt' && k !== 'authUid')) {
+        await setDoc(doc(db, PRIVATE_USER_COLLECTION, user.id), priv, { merge: true }).catch((err) =>
+          handleFirestoreError(`Failed to save private profile ${user.id}`, err)
+        );
+      }
     }
 
     // 同步提取使用者審核證書資料至 certifications 集合
@@ -776,8 +835,11 @@ export async function syncUsersToFirestore(users: User[]): Promise<void> {
         ...SECRET_FIELD_DELETES(),
         hasIdDocuments: Boolean(privateRealName?.idCardFrontFile || privateRealName?.idCardBackFile || (user as any).hasIdDocuments),
       };
-      if (privateRealName) {
-        batch.set(doc(db, PRIVATE_USER_COLLECTION, user.id), { realNameAuthData: privateRealName, updatedAt: new Date().toISOString() }, { merge: true });
+      {
+        const priv = privateDocPayload(user, privateRealName ? { realNameAuthData: privateRealName } : {});
+        if (Object.keys(priv).some((k) => k !== 'updatedAt' && k !== 'authUid')) {
+          batch.set(doc(db, PRIVATE_USER_COLLECTION, user.id), priv, { merge: true });
+        }
       }
 
       const isUserGraceOrDeact = Boolean(
@@ -826,6 +888,11 @@ export async function getUserFromFirestore(userId: string): Promise<User | null>
     const snap = await getDoc(userRef);
     if (snap.exists()) {
       return stripUserSecrets(snap.data() as User);
+    }
+    // 平台編號與登入帳號不同的會員：以 authUid 對照找回原本的會員資料，避免重複建立帳號
+    const byAuth = await getDocs(query(collection(db, 'users'), where('authUid', '==', userId), limit(1)));
+    if (!byAuth.empty) {
+      return stripUserSecrets({ ...(byAuth.docs[0].data() as User), id: byAuth.docs[0].id });
     }
     return null;
   } catch (err) {

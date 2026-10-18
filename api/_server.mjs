@@ -151033,6 +151033,27 @@ function splitAnswerForStorage(a) {
   return { publicAnswer: pub, secret: pub.hasProtectedContent ? secret : null };
 }
 
+// src/utils/privateProfile.ts
+var PRIVATE_PROFILE_FIELDS = ["email", "phone", "bankAccount", "surveyData", "annualSalary"];
+function pickPrivateProfile(u) {
+  const out = {};
+  for (const k of PRIVATE_PROFILE_FIELDS) {
+    const v = u?.[k];
+    if (v !== void 0 && v !== null && v !== "") out[k] = v;
+  }
+  return out;
+}
+function omitPrivateProfile(u) {
+  const out = { ...u };
+  for (const k of PRIVATE_PROFILE_FIELDS) delete out[k];
+  return out;
+}
+function normalizePhone(phone) {
+  if (typeof phone !== "string") return void 0;
+  const clean = phone.replace(/[\s-]/g, "");
+  return clean || void 0;
+}
+
 // src/data/vibeCodingData.ts
 var DEFAULT_VIBECODING_APPS = [
   {
@@ -157713,7 +157734,7 @@ async function ensureProposalsSyncedToFirestore(force = false) {
       const batch = adminDb.batch();
       chunk.forEach((u) => {
         const ref = adminDb.collection("users").doc(u.id);
-        batch.set(ref, { ...u, updatedAt: (/* @__PURE__ */ new Date()).toISOString() }, { merge: true });
+        batch.set(ref, { ...omitPrivateProfile(u), updatedAt: (/* @__PURE__ */ new Date()).toISOString() }, { merge: true });
       });
       await batch.commit();
     }
@@ -159457,9 +159478,17 @@ async function runAuthUidBackfill(apply) {
       } catch {
       }
     }
-    if (!uid && u.email) {
+    let email = u.email;
+    if (!uid && !email) {
       try {
-        uid = (await auth.getUserByEmail(String(u.email).trim().toLowerCase())).uid;
+        const p = await db.collection("user_private").doc(d.id).get();
+        email = p.exists ? p.data()?.email : void 0;
+      } catch {
+      }
+    }
+    if (!uid && email) {
+      try {
+        uid = (await auth.getUserByEmail(String(email).trim().toLowerCase())).uid;
       } catch {
       }
     }
@@ -159811,7 +159840,10 @@ async function findUserDocByAuth(auth, injected) {
   const byAuth = await db.collection("users").where("authUid", "==", auth.uid).limit(1).get();
   if (!byAuth.empty) return byAuth.docs[0].ref;
   if (auth.email && auth.emailVerified) {
-    const byEmail = await db.collection("users").where("email", "==", auth.email.toLowerCase()).limit(1).get();
+    const email = auth.email.toLowerCase();
+    const byPrivate = await db.collection("user_private").where("email", "==", email).limit(1).get();
+    if (!byPrivate.empty) return db.collection("users").doc(byPrivate.docs[0].id);
+    const byEmail = await db.collection("users").where("email", "==", email).limit(1).get();
     if (!byEmail.empty) return byEmail.docs[0].ref;
   }
   return null;
@@ -160371,6 +160403,125 @@ async function migrateAnswerSecrets(apply) {
   return { scanned: snap.size, toMigrate, migrated };
 }
 
+// server/privateProfile.ts
+async function getDb2() {
+  if (!hasAdminCredentials) throw new Error("\u4F3A\u670D\u5668\u5C1A\u672A\u8A2D\u5B9A FIREBASE_SERVICE_ACCOUNT");
+  const { getFirestore: getFirestore3, FieldValue: FieldValue4 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
+  const app2 = getApps()[0];
+  const dbId = firebase_applet_config_default.firestoreDatabaseId;
+  return { db: dbId ? getFirestore3(app2, dbId) : getFirestore3(app2), FieldValue: FieldValue4 };
+}
+async function migratePrivateProfiles(apply) {
+  const { db, FieldValue: FieldValue4 } = await getDb2();
+  const snap = await db.collection("users").get();
+  let toMigrate = 0;
+  let migrated = 0;
+  let batch = db.batch();
+  let ops = 0;
+  for (const d of snap.docs) {
+    const u = d.data() || {};
+    const priv = pickPrivateProfile(u);
+    const hasPublicPrivate = PRIVATE_PROFILE_FIELDS.some((k) => u[k] !== void 0);
+    if (!hasPublicPrivate) continue;
+    toMigrate++;
+    if (!apply) continue;
+    if (Object.keys(priv).length > 0) {
+      batch.set(
+        db.collection("user_private").doc(d.id),
+        {
+          ...JSON.parse(JSON.stringify(priv)),
+          ...priv.email ? { email: String(priv.email).trim().toLowerCase() } : {},
+          ...normalizePhone(priv.phone) ? { phoneNormalized: normalizePhone(priv.phone) } : {},
+          ...u.authUid ? { authUid: u.authUid } : {},
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        },
+        { merge: true }
+      );
+      ops++;
+    }
+    const del = {};
+    for (const k of PRIVATE_PROFILE_FIELDS) if (u[k] !== void 0) del[k] = FieldValue4.delete();
+    batch.update(d.ref, del);
+    ops++;
+    migrated++;
+    if (ops >= 400) {
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    }
+  }
+  if (ops > 0) await batch.commit();
+  return { scanned: snap.size, toMigrate, migrated };
+}
+var LoginError = class extends Error {
+  constructor(message2, status = 401) {
+    super(message2);
+    this.status = status;
+  }
+};
+var GENERIC_LOGIN_ERROR = "\u5E33\u865F\u6216\u5BC6\u78BC\u4E0D\u6B63\u78BA\uFF0C\u8ACB\u91CD\u65B0\u78BA\u8A8D\u5F8C\u518D\u8A66\uFF01";
+async function resolveLoginIdentity(identifier) {
+  const { db } = await getDb2();
+  const id = identifier.trim();
+  if (!id || id.length > 120 || id.includes("/")) return null;
+  let userId = null;
+  if (id.includes("@")) {
+    const p = await db.collection("user_private").where("email", "==", id.toLowerCase()).limit(1).get();
+    if (!p.empty) userId = p.docs[0].id;
+    return { userId: userId || "", email: id.toLowerCase() };
+  }
+  const byUsername = await db.collection("users").where("username", "==", id).limit(1).get();
+  if (!byUsername.empty) userId = byUsername.docs[0].id;
+  if (!userId) {
+    const cleanPhone = id.replace(/[\s-]/g, "");
+    if (/^\+?\d{8,15}$/.test(cleanPhone)) {
+      const lookups = [["phoneNormalized", cleanPhone], ["phone", cleanPhone], ["phone", id]];
+      for (const [field2, candidate] of lookups) {
+        const byPhone = await db.collection("user_private").where(field2, "==", candidate).limit(1).get();
+        if (!byPhone.empty) {
+          userId = byPhone.docs[0].id;
+          break;
+        }
+      }
+    }
+  }
+  if (!userId) {
+    const direct = await db.collection("users").doc(id).get();
+    if (direct.exists) userId = direct.id;
+  }
+  if (!userId) return null;
+  const priv = await db.collection("user_private").doc(userId).get();
+  let email = priv.exists ? priv.data()?.email : void 0;
+  if (!email) {
+    const pub = await db.collection("users").doc(userId).get();
+    email = pub.exists ? pub.data()?.email : void 0;
+  }
+  if (!email) return null;
+  return { userId, email: String(email).trim().toLowerCase() };
+}
+async function passwordLogin(identifier, password) {
+  if (typeof identifier !== "string" || typeof password !== "string" || !password || password.length > 128) {
+    throw new LoginError(GENERIC_LOGIN_ERROR);
+  }
+  const identity = await resolveLoginIdentity(identifier);
+  if (!identity) throw new LoginError(GENERIC_LOGIN_ERROR);
+  const apiKey = process.env.VITE_FIREBASE_API_KEY || firebase_applet_config_default.apiKey;
+  const resp = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: identity.email, password, returnSecureToken: false })
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data.localId) {
+    const msg = String(data?.error?.message || "");
+    if (msg.includes("TOO_MANY_ATTEMPTS")) throw new LoginError("\u5617\u8A66\u6B21\u6578\u904E\u591A\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66\u6216\u4F7F\u7528\u300C\u5FD8\u8A18\u5BC6\u78BC\u300D\u3002", 429);
+    if (msg.includes("USER_DISABLED")) throw new LoginError("\u6B64\u5E33\u865F\u5DF2\u505C\u7528\uFF0C\u5982\u6709\u7591\u554F\u8ACB\u806F\u7E6B\u5BA2\u670D\u3002", 403);
+    throw new LoginError(GENERIC_LOGIN_ERROR);
+  }
+  const customToken = await adminAuth.createCustomToken(data.localId);
+  return { customToken, userId: identity.userId };
+}
+
 // server.ts
 import_dotenv.default.config();
 process.on("uncaughtException", (err) => {
@@ -160389,6 +160540,7 @@ app.use(["/api/ai", "/api/agent"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 40,
 app.use(["/api/auth/send-email-code", "/api/auth/send-sms-code", "/api/auth/send-welcome-email"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 5, name: "send-code" }));
 app.use("/api/points", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "points" }));
 app.use("/api/answers", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "answers" }));
+app.use("/api/auth/password-login", rateLimit({ windowMs: 10 * 60 * 1e3, max: 10, name: "password-login" }));
 app.use(["/api/auth/verify-email-code", "/api/auth/verify-sms-code", "/api/auth/reset-password-with-code"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 20, name: "verify-code" }));
 app.use("/api/admin", requireAdminMiddleware);
 app.use("/api/competition", competitionRoutes_default);
@@ -163012,6 +163164,25 @@ app.post("/api/answers/contents", async (req, res) => {
   } catch (err) {
     console.error("[Answer Contents]", err?.message || err);
     res.status(500).json({ success: false, error: "\u8B80\u53D6\u65B9\u6848\u5167\u5BB9\u5931\u6557" });
+  }
+});
+app.post("/api/auth/password-login", async (req, res) => {
+  try {
+    const result = await passwordLogin(String(req.body?.identifier || ""), String(req.body?.password || ""));
+    res.json({ success: true, ...result });
+  } catch (err) {
+    const status = err instanceof LoginError ? err.status : 500;
+    if (status >= 500) console.error("[Password Login]", err?.message || err);
+    res.status(status).json({ success: false, error: status >= 500 ? "\u767B\u5165\u670D\u52D9\u66AB\u6642\u7121\u6CD5\u4F7F\u7528\uFF0C\u8ACB\u6539\u7528 Email \u767B\u5165" : err.message });
+  }
+});
+app.post("/api/admin/migrate-private-profiles", async (req, res) => {
+  try {
+    const result = await migratePrivateProfiles(req.body?.apply === true);
+    res.json({ success: true, result });
+  } catch (err) {
+    console.error("[Migrate Private Profiles]", err?.message || err);
+    res.status(500).json({ success: false, error: err?.message || "\u57F7\u884C\u5931\u6557" });
   }
 });
 app.post("/api/admin/migrate-answer-secrets", async (req, res) => {

@@ -23,9 +23,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 實名認證個資：僅本人與管理員可讀寫
+    // 會員私密資料（實名、Email、電話、銀行帳戶、問卷）：僅本人與管理員可讀寫
+    // 本人：登入帳號與會員編號相同，或會員資料的 authUid 是自己
+    function ownsUserDoc(userId) {
+      return isSignedIn() && (
+        request.auth.uid == userId ||
+        (exists(/databases/$(database)/documents/users/$(userId)) &&
+          get(/databases/$(database)/documents/users/$(userId)).data.get('authUid', '') == request.auth.uid)
+      );
+    }
     match /user_private/{userId} {
-      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow read: if isAdmin() || ownsUserDoc(userId) ||
+        (isSignedIn() && resource.data.get('authUid', '') == request.auth.uid);
+      allow create, update: if isAdmin() || (
+        ownsUserDoc(userId) && request.resource.data.get('authUid', request.auth.uid) == request.auth.uid
+      );
+      allow delete: if isAdmin();
     }
 
     // 1. 業務核心與交易類 (Core Business & Transactions)
@@ -185,9 +198,14 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.uid == userId ||
         resource.data.get('authUid', '') == request.auth.uid ||
-        ('email' in request.auth.token && request.auth.token.email != null && resource.data.get('email', '') != '' &&
+        ('email' in request.auth.token && request.auth.token.email != null && request.auth.token.email_verified == true &&
+          resource.data.get('email', '') != '' &&
           resource.data.get('email', '').lower() == request.auth.token.email.lower())
       );
+    }
+    // 聯絡方式與財務資料不可放在公開的會員資料（應存於 user_private）
+    function privateProfileFields() {
+      return ['email', 'phone', 'bankAccount', 'surveyData', 'annualSalary', 'password', 'realNameAuthData', 'realNameData'];
     }
     function becomesVerified(field) {
       return request.resource.data.get(field, '') == 'verified' && resource.data.get(field, '') != 'verified';
@@ -196,6 +214,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isAdmin() || (
         isSignedIn() &&
+        !request.resource.data.keys().hasAny(privateProfileFields()) &&
         request.resource.data.get('balance', 0) == 0 &&
         request.resource.data.get('withheldPoints', 0) == 0 &&
         request.resource.data.get('role', '') != 'admin' &&
@@ -204,6 +223,7 @@ service cloud.firestore {
       );
       allow update: if isAdmin() || (
         isUserOwner(userId) &&
+        !request.resource.data.keys().hasAny(privateProfileFields()) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedUserFields()) &&
         request.resource.data.get('role', '') != 'admin' &&
         request.resource.data.get('accountType', '') != 'admin' &&
@@ -212,6 +232,7 @@ service cloud.firestore {
         !(request.resource.data.get('verifiedExpert', false) == true && resource.data.get('verifiedExpert', false) != true)
       ) || (
         isSignedIn() &&
+        !request.resource.data.keys().hasAny(privateProfileFields()) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedUserFields().concat(identityUserFields()))
       );
       allow delete: if isAdmin();

@@ -49,9 +49,17 @@ export async function runAuthUidBackfill(apply: boolean): Promise<BackfillResult
         uid = (await auth.getUser(d.id)).uid;
       } catch {}
     }
-    if (!uid && u.email) {
+    let email: string | undefined = u.email;
+    if (!uid && !email) {
+      // Email 已搬到 user_private
       try {
-        uid = (await auth.getUserByEmail(String(u.email).trim().toLowerCase())).uid;
+        const p = await db.collection('user_private').doc(d.id).get();
+        email = p.exists ? (p.data() as any)?.email : undefined;
+      } catch {}
+    }
+    if (!uid && email) {
+      try {
+        uid = (await auth.getUserByEmail(String(email).trim().toLowerCase())).uid;
       } catch {}
     }
     if (!uid) {
