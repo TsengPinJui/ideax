@@ -162,7 +162,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   initialPostType = 'seek_solution',
   initialPublishIdentity = 'admin',
 }) => {
-  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode, isRaceMode, questions } = useApp();
+  const { currentUser, createQuestion, hasAgreedTerms, recordTermsAgreement, openAboutModal, isNoPaymentMode, isRaceMode, questions, showCenterToast } = useApp();
 
   const [publishIdentity, setPublishIdentity] = useState<'admin' | 'platform'>(initialPublishIdentity || 'admin');
 

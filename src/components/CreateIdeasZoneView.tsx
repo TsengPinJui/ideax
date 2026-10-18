@@ -57,6 +57,7 @@ import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../utils/guestAccess';
 import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
+import { getCompetitionStageInfo } from '../utils/competitionSchedule';
 
 export function getRemainingDaysText(unpublishAt?: string): string {
   if (!unpublishAt || unpublishAt === '永久' || unpublishAt === '永久刊登') return '永久';
@@ -136,6 +137,8 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         .catch(() => {});
     }
   }, [initialProposals]);
+
+  const stageInfo = getCompetitionStageInfo();
 
   // 1. 載入提案清單 (完全從資料庫 competition_proposals 與 questions 集合讀取，不硬編碼)
   const buildMergedProposals = (baseList?: StarSeasonProposal[]) => {
