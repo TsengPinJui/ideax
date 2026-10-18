@@ -6996,8 +6996,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ],
       relatedQuestionId: question?.id,
       relatedQuestionTitle: question?.title,
-      lastMessage: '已建立私聊對話',
-      lastMessageTime: '剛剛',
+      lastMessage: question
+        ? `您好，我是 ${currentUser.name}，想針對「${question.title}」跟您進一步討論！`
+        : `您好，我是 ${currentUser.name}，很高興認識您！`,
+      lastMessageTime: new Date().toISOString(),
       unreadCount: 0,
       messages: [
         {
@@ -7006,8 +7008,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           senderName: currentUser.name,
           senderAvatar: currentUser.avatar,
           text: question
-            ? `您好，我想針對您提問/解答的「${question.title}」進一步私訊討論！`
-            : `您好 ${targetUser.name}，很高興與您建立私密交流！`,
+            ? `您好，我是 ${currentUser.name}，想針對「${question.title}」跟您進一步討論！`
+            : `您好，我是 ${currentUser.name}，很高興認識您！`,
           createdAt: new Date().toISOString(),
         },
       ],
