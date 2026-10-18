@@ -3,6 +3,10 @@
   "trailingSlash": false,
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
       "source": "/((?!api/|assets/|sw\\.js|manifest\\.json|robots\\.txt|sitemap\\.xml|favicon.*|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|woff2?|ttf|eot|json|xml|txt)).*)",
       "destination": "/index.html"
     }
@@ -35,5 +39,10 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 60
+    }
+  }
 }

@@ -41,6 +41,21 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#063',
+    version: 'v2.2.17',
+    releaseDate: '2026.10.18',
+    releaseTime: '10:15',
+    author: 'IdeaX 創點子團隊',
+    summary: '修正正式站後端未啟動：所有 /api 功能（寄信、AI、管理員工具）在 Vercel 上恢復運作。',
+    changes: [
+      '新增 Vercel 伺服器函式 api/index.mjs（由 scripts/build-api.mjs 打包 server.ts），並將 /api/* 導向此函式。',
+      '原本 Vercel 只部署前端畫面，所有 /api/* 都回傳 404：驗證信、歡迎信、AI 功能、管理員工具都無法使用。',
+      'server.ts 匯出 app；在 Vercel 上不自行啟動監聽，本機與 AI Studio 照常運作。',
+      '修改後端程式後請執行 npm run build:api 並一起提交 api/index.mjs。',
+      '平台版本推進至 v2.2.17 (#063)。',
+    ],
+  },
+  {
     seqNumber: '#062',
     version: 'v2.2.16',
     releaseDate: '2026.10.18',
@@ -737,10 +752,10 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         summary: '管理當前系統運作版本號、增量序號與最後更新時間戳記。',
         content: `### 當前運行版本與序號規格
 
-* **版本號碼**：v2.2.16
-* **遞增序號**：#062（從 #001 依序遞增）
+* **版本號碼**：v2.2.17
+* **遞增序號**：#063（從 #001 依序遞增）
 * **最後更新日期**：2026.10.18
-* **最後更新時間**：10:05（依發布時戳靜態留存，不隨時鐘跳動）
+* **最後更新時間**：10:15（依發布時戳靜態留存，不隨時鐘跳動）
 * **發布狀態**：Production（正式運作中）
 * **運作模式**：單日 0.2.0 增量限制、四選一平台運營模式與完整歷史版本隨時調閱與下載。`,
       },
@@ -799,6 +814,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#063** | **v2.2.17** | 2026.10.18 | 10:15 | IdeaX 創點子核心 | 修正正式站後端未啟動：/api 功能在 Vercel 恢復運作 |
 | **#062** | **v2.2.16** | 2026.10.18 | 10:05 | IdeaX 創點子核心 | 私訊頭像與名稱改為顯示對方目前的資料 |
 | **#061** | **v2.2.15** | 2026.10.18 | 09:45 | IdeaX 創點子核心 | 管理儀表板新增「補齊帳號對照」一鍵工具；修正載入後聊天室消失 |
 | **#059** | **v2.2.13** | 2026.10.18 | 06:40 | IdeaX 創點子核心 | 私訊、通知與交易紀錄加上資料庫權限，只有當事人與管理員看得到 |
