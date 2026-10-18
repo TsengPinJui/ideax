@@ -2109,43 +2109,38 @@ export async function recordRealSiteVisit(sessionId?: string): Promise<RealSiteT
     activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
   }
 
-  const current = await getRealSiteTrafficStats();
   const nowParts = getUtc8PartsServer(Date.now());
 
-  const hourly = { ...current.hourly };
-  const daily = { ...current.daily };
+  // 以資料庫原子遞增計數：Vercel 上同時有多台伺服器處理請求，
+  // 「先讀再寫」會互相覆蓋而漏算，改用 increment 才不會掉數字
+  try {
+    const ref = clientDoc(rawFirestoreDb, 'platform_settings', 'site_traffic_stats');
+    await clientSetDoc(
+      ref,
+      {
+        hourly: { [nowParts.hourKey]: clientIncrement(1) },
+        daily: { [nowParts.dateKey]: clientIncrement(1) },
+        lastUpdatedUtc8: nowParts.fullDateTime,
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    if (!isQuotaError(err)) {
+      console.warn('[SiteTraffic] increment failed:', (err as any)?.message);
+    }
+  }
 
-  hourly[nowParts.hourKey] = (hourly[nowParts.hourKey] || 0) + 1;
-  daily[nowParts.dateKey] = (daily[nowParts.dateKey] || 0) + 1;
-
-  const sortedHours = Object.keys(hourly).sort();
-  const sortedDays = Object.keys(daily).sort();
-  const sumDaily = Object.values(daily).reduce((acc, v) => acc + v, 0);
-  const baseVisits = INITIAL_SITE_VISITS_BASE;
-  const totalVisits = baseVisits + sumDaily;
-
-  const firstRecordedAtUtc8 = current.firstRecordedAtUtc8 || nowParts.fullDateTime;
-  const firstHourKey = sortedHours[0] || nowParts.hourKey;
-  const firstDateKey = sortedDays[0] || nowParts.dateKey;
-  const lastUpdatedUtc8 = nowParts.fullDateTime;
-
-  const payload = {
-    baseVisits,
-    totalVisits,
-    hourly,
-    daily,
-    firstRecordedAtUtc8,
-    firstHourKey,
-    firstDateKey,
-    lastUpdatedUtc8,
-  };
-
-  await upsertMirrorAndFirestoreDoc('platform_settings', 'site_traffic_stats', payload, true);
-
-  return {
-    ...payload,
-    onlineUsersCount: getActiveOnlineCount(),
-  };
+  const current = await getRealSiteTrafficStats();
+  if (!current.firstRecordedAtUtc8) {
+    try {
+      await clientSetDoc(
+        clientDoc(rawFirestoreDb, 'platform_settings', 'site_traffic_stats'),
+        { firstRecordedAtUtc8: nowParts.fullDateTime, firstHourKey: nowParts.hourKey, firstDateKey: nowParts.dateKey },
+        { merge: true }
+      );
+    } catch {}
+  }
+  return current;
 }
 
 export function recordRealPresenceHeartbeat(sessionId?: string): { onlineUsersCount: number } {
