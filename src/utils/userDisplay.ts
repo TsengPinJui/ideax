@@ -381,23 +381,12 @@ export function restoreCanonicalUserIdentity(u: User): User {
     };
   }
 
-  // 自動判定是否已完成基本資料（修正註冊時跳過、事後於基本資料補填卻仍為 hasCompletedProfile: false 的問題，含 #c668940663 Henry）
-  const formattedId = getFormattedPlatformId(u);
-  const isHenryAccount =
-    u.id === 'c668940663' ||
-    u.memberId === 'c668940663' ||
-    u.id === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
-    u.memberId === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
-    formattedId === 'c668940663' ||
-    (typeof u.name === 'string' && u.name.includes('Henry'));
-  const effectivePhone = custom?.phone || u.phone;
+  // 自動判定是否已完成基本資料：註冊時跳過、事後已補填電話與職稱/產業的帳號，視為已完成
+  const effectivePhone = custom?.phone !== undefined ? custom.phone : u.phone;
   const effectiveTitle = custom?.title !== undefined ? custom.title : (u.industry || u.jobTitle || u.title);
   const shouldMarkProfileCompleted =
-    isHenryAccount ||
     u.hasCompletedProfile === true ||
-    Boolean(effectivePhone && String(effectivePhone).trim() && effectiveTitle) ||
-    Boolean(u.industry && (u.jobTitle || u.title) && u.bio) ||
-    Boolean(custom && (custom.phone || custom.title || custom.company || custom.name));
+    Boolean(effectivePhone && String(effectivePhone).trim() && effectiveTitle);
 
   // 3. 若有使用者主動修改之個人資料，優先套用
   if (custom) {
@@ -907,4 +896,12 @@ export function resolveUserAvatar(
   }
 
   return getDefaultAvatarForUser(userId);
+}
+
+/** 是否已具備發布所需的基本資料（電話＋職稱或產業） */
+export function hasFilledRequiredProfile(u: Partial<User> | null | undefined): boolean {
+  if (!u) return false;
+  const phoneOk = Boolean(u.phone && String(u.phone).trim());
+  const titleOk = Boolean(u.industry || u.jobTitle || u.title);
+  return u.hasCompletedProfile === true ? Boolean(u.phone || u.email) : phoneOk && titleOk;
 }

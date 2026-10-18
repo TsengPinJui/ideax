@@ -4,8 +4,7 @@ import { useApp } from '../context/AppContext';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { AIAnalysisResult } from '../services/aiService';
 import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
-import { resolveUserDisplayName, getUserNameColorClass } from '../utils/userDisplay';
-import { getFormattedPlatformId } from '../services/userIdService';
+import { resolveUserDisplayName, getUserNameColorClass, hasFilledRequiredProfile } from '../utils/userDisplay';
 import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { PainPointAutocompleteInput } from './PainPointAutocompleteInput';
@@ -455,23 +454,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       return failWithError('登錄帳號及個人資料為提問之必要條件，請先登入會員帳號（登入即代表同意全站一般服務條款）');
     }
 
-    const formattedPlatformId = getFormattedPlatformId(currentUser);
-    const isHenryOrFilledProfile =
-      currentUser.id === 'c668940663' ||
-      currentUser.memberId === 'c668940663' ||
-      currentUser.id === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
-      currentUser.memberId === 'khQfTsoBdMM9ksz3XM2SEr5ThA02' ||
-      formattedPlatformId === 'c668940663' ||
-      Boolean(currentUser.name && currentUser.name.includes('Henry')) ||
-      Boolean(currentUser.phone && String(currentUser.phone).trim()) ||
-      Boolean(currentUser.industry && (currentUser.jobTitle || currentUser.title) && currentUser.bio) ||
-      currentUser.hasCompletedProfile === true;
-
-    const isProfileComplete = Boolean(
-      isHenryOrFilledProfile &&
-      (currentUser.phone || currentUser.email) &&
-      (currentUser.industry || currentUser.jobTitle || currentUser.title || currentUser.name)
-    );
+    const isProfileComplete = hasFilledRequiredProfile(currentUser);
     if (!isProfileComplete) {
       return failWithError('⚠️ 個人資料為發布問題之必要條件！您在註冊時跳過了個人資料填寫，發布問題涉及履約通知，請先前往「會員中心 → 基本資料」補填完整個人資料。');
     }
