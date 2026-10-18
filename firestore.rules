@@ -6,11 +6,14 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
-    // 管理員：僅認 /admins/{uid}（只能從 Firebase Console 或後端建立）或 Custom Claims
+    // 管理員：/admins/{uid}（只能從 Firebase Console 或後端建立）、Custom Claims，
+    // 或「已驗證」的管理員 Email（與 Vercel 的 ADMIN_EMAILS 保持一致）
     function isAdmin() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        ('admin' in request.auth.token && request.auth.token.admin == true)
+        ('admin' in request.auth.token && request.auth.token.admin == true) ||
+        (request.auth.token.email_verified == true &&
+          request.auth.token.email in ['john25893619@gmail.com'])
       );
     }
 
