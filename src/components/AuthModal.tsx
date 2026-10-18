@@ -47,6 +47,7 @@ import {
 } from '../utils/idCardImageHelper';
 import {
   loginWithFirebaseEmail,
+  loginWithIdentifierPassword,
   registerWithFirebaseEmail,
   loginWithFirebaseGoogle,
   loginWithFirebaseFacebook,
@@ -601,57 +602,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
 
-      // 4. 非 Email 格式（使用者帳號 / 手機號碼 / ID 登入）：嚴格核驗密碼
-      if (localMatched) {
-        // 安全性：管理員帳號不可用本地密碼登入；一般帳號僅比對本機註冊時留存的密碼
-        const expectedPassword = localMatched.role === 'admin' ? undefined : localMatched.password;
-
-        if (expectedPassword) {
-          if (expectedPassword !== password) {
-            setErrorMsg('密碼錯誤（需為 6 ~ 20 位英數組合）');
-            setIsLoading(false);
-            return;
-          }
-        } else if (localMatched.role === 'admin') {
+      // 4. 非 Email 格式（使用者帳號 / 手機號碼 / ID 登入）：
+      //    由伺服器查出對應 Email 並驗證密碼（Email 屬私密資料，前端不會拿到）
+      const finishLogin = (u: any, rememberIdentifier: string) => {
+        if (u.role === 'admin') {
           setErrorMsg('管理員請改用已授權的管理員 Email 與密碼登入。');
           setIsLoading(false);
           return;
-        } else if (localMatched.email) {
-          // 本地無密碼但有 Email，嘗試以 Firebase 驗證密碼
-          try {
-            await loginWithFirebaseEmail(localMatched.email, password);
-          } catch {
-            setErrorMsg('密碼錯誤（需為 6 ~ 20 位英數組合）');
-            setIsLoading(false);
-            return;
-          }
-        } else {
-          setErrorMsg('密碼錯誤（若忘記密碼請點擊「忘記密碼」重設或使用手機驗證登入）');
-          setIsLoading(false);
-          return;
         }
-
-        const checkRes = checkUserDeactivationStatus(localMatched);
+        const checkRes = checkUserDeactivationStatus(u);
         if (!checkRes.canLogin) {
           setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已完成註銷。'));
           setIsLoading(false);
           return;
         }
-
-        const effectiveUser = checkRes.restoredUser || localMatched;
+        const effectiveUser = checkRes.restoredUser || u;
         switchAccount(effectiveUser.id);
-
         if (rememberMe) {
           localStorage.setItem(
             STORAGE_REMEMBER_LOGIN_KEY,
-            JSON.stringify({ identifier: effectiveUser.username || effectiveUser.email || identifier, rememberMe: true, lastLoginAt: new Date().toISOString() })
+            JSON.stringify({ identifier: rememberIdentifier, rememberMe: true, lastLoginAt: new Date().toISOString() })
           );
         } else {
           localStorage.removeItem(STORAGE_REMEMBER_LOGIN_KEY);
         }
-
         setSuccessMsg('登入成功。');
         setTimeout(() => onClose(), 400);
+      };
+
+      try {
+        const { user: fbUser, userId } = await loginWithIdentifierPassword(identifier, password);
+        const firestoreUser = await getUserFromFirestore(userId || fbUser.uid);
+        const matched = firestoreUser || localMatched;
+        if (!matched) {
+          setErrorMsg('登入失敗：找不到會員資料，請改用 Email 登入或聯繫客服。');
+          setIsLoading(false);
+          return;
+        }
+        finishLogin(matched, identifier);
+        return;
+      } catch (serverErr: any) {
+        // 舊版本機帳號（未在 Firebase 註冊）：比對本機註冊時留存的密碼
+        if (localMatched && localMatched.role !== 'admin' && localMatched.password && localMatched.password === password) {
+          finishLogin(localMatched, localMatched.username || identifier);
+          return;
+        }
+        setErrorMsg(serverErr?.message || '帳號或密碼不正確，請重新確認後再試！');
+        setIsLoading(false);
         return;
       }
 

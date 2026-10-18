@@ -107,6 +107,8 @@ import {
   loadAllDataFromFirestore,
   loadPersonalDataFromFirestore,
   getUserFromFirestore,
+  getMyPrivateProfile,
+  getAllPrivateProfiles,
   syncAiCrmConfigToFirestore,
   subscribePersonalData,
   setFirestoreDataScope,
@@ -2227,6 +2229,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id]);
+
+  // ── 會員私密資料（Email、電話、銀行帳戶、問卷）：本人讀自己的，管理員讀全部；
+  //    雲端重新載入會員清單後自動補回（公開資料裡已不含這些欄位） ──
+  const [firebaseUidState, setFirebaseUidState] = useState<string | null>(() => getMyAuthUid());
+  useEffect(() => {
+    const unsub = onAuthStateChanged(firebaseAuthInstance, (fbUser) => setFirebaseUidState(fbUser?.uid || null));
+    return unsub;
+  }, []);
+  const privateProfilesRef = useRef<Record<string, Partial<User>>>({});
+  const [privateProfilesVersion, setPrivateProfilesVersion] = useState(0);
+  useEffect(() => {
+    privateProfilesRef.current = {};
+    if (!firebaseUidState || isScopeGuest || !currentUser?.id) return;
+    let cancelled = false;
+    (async () => {
+      const all = currentUser.role === 'admin' ? await getAllPrivateProfiles() : {};
+      const mine = await getMyPrivateProfile(currentUser.id);
+      if (cancelled) return;
+      privateProfilesRef.current = { ...all, ...(mine ? { [currentUser.id]: mine } : {}) };
+      setPrivateProfilesVersion((v) => v + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseUidState, currentUser.id, currentUser.role, isScopeGuest]);
+  useEffect(() => {
+    const cache = privateProfilesRef.current;
+    if (Object.keys(cache).length === 0) return;
+    // 只補「缺少」的欄位，不覆蓋本機剛編輯的內容
+    const fill = (u: User): User => {
+      const p = cache[u.id];
+      if (!p) return u;
+      let patch: Record<string, any> | null = null;
+      for (const [k, v] of Object.entries(p)) {
+        if (v !== undefined && ((u as any)[k] === undefined || (u as any)[k] === '' || (u as any)[k] === null)) {
+          patch = patch || {};
+          patch[k] = v;
+        }
+      }
+      return patch ? ({ ...u, ...patch } as User) : u;
+    };
+    setAvailableUsers((prev) => {
+      let changed = false;
+      const next = prev.map((u) => {
+        const f = fill(u);
+        if (f !== u) changed = true;
+        return f;
+      });
+      return changed ? next : prev;
+    });
+    setCurrentUser((prev) => {
+      const f = fill(prev);
+      return f;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [privateProfilesVersion, availableUsers]);
 
   // 正在使用中的帳號被管理員停權：雲端會員資料更新後立即登出
   useEffect(() => {

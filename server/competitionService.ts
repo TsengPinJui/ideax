@@ -53,6 +53,7 @@ import {
 } from '../src/types/competition';
 import { DEFAULT_DEMO_PROPOSALS } from '../src/data/competitionProposals';
 import { splitAnswerForStorage } from '../src/utils/answerSecrets';
+import { omitPrivateProfile } from '../src/utils/privateProfile';
 import {
   ALL_VIRTUAL_PROPOSALS_SEED,
   SEED_INNOVATION_PROPOSALS,
@@ -1633,7 +1634,7 @@ export async function ensureProposalsSyncedToFirestore(force = false): Promise<v
       const batch = adminDb.batch();
       chunk.forEach((u) => {
         const ref = adminDb.collection('users').doc(u.id);
-        batch.set(ref, { ...u, updatedAt: new Date().toISOString() }, { merge: true });
+        batch.set(ref, { ...omitPrivateProfile(u as any), updatedAt: new Date().toISOString() }, { merge: true });
       });
       await batch.commit();
     }

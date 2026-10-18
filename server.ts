@@ -11,6 +11,7 @@ import { accountNoticeEmail, sendMail } from './server/mailer';
 import { runAssistantTick } from './server/assistantCron';
 import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/pointsLedger';
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
+import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
 import { verifyAuthToken } from './server/competitionService';
 
 dotenv.config();
@@ -39,6 +40,7 @@ app.use(['/api/ai', '/api/agent'], rateLimit({ windowMs: 10 * 60 * 1000, max: 40
 app.use(['/api/auth/send-email-code', '/api/auth/send-sms-code', '/api/auth/send-welcome-email'], rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'send-code' }));
 app.use('/api/points', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'points' }));
 app.use('/api/answers', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'answers' }));
+app.use('/api/auth/password-login', rateLimit({ windowMs: 10 * 60 * 1000, max: 10, name: 'password-login' }));
 app.use(['/api/auth/verify-email-code', '/api/auth/verify-sms-code', '/api/auth/reset-password-with-code'], rateLimit({ windowMs: 10 * 60 * 1000, max: 20, name: 'verify-code' }));
 
 // 安全性：所有 /api/admin/* 端點僅限認證管理員
@@ -3169,6 +3171,29 @@ app.post('/api/answers/contents', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[Answer Contents]', err?.message || err);
     res.status(500).json({ success: false, error: '讀取方案內容失敗' });
+  }
+});
+
+// 帳號名稱／手機號碼＋密碼登入：伺服器查 Email 並驗證密碼，回傳一次性登入憑證
+app.post('/api/auth/password-login', async (req: Request, res: Response) => {
+  try {
+    const result = await passwordLogin(String(req.body?.identifier || ''), String(req.body?.password || ''));
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    const status = err instanceof LoginError ? err.status : 500;
+    if (status >= 500) console.error('[Password Login]', err?.message || err);
+    res.status(status).json({ success: false, error: status >= 500 ? '登入服務暫時無法使用，請改用 Email 登入' : err.message });
+  }
+});
+
+// 管理員：把會員 Email、電話、銀行帳戶、問卷搬到 user_private（apply=false 只統計）
+app.post('/api/admin/migrate-private-profiles', async (req: Request, res: Response) => {
+  try {
+    const result = await migratePrivateProfiles(req.body?.apply === true);
+    res.json({ success: true, result });
+  } catch (err: any) {
+    console.error('[Migrate Private Profiles]', err?.message || err);
+    res.status(500).json({ success: false, error: err?.message || '執行失敗' });
   }
 });
 
