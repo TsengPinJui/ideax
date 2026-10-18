@@ -13,7 +13,7 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         ('admin' in request.auth.token && request.auth.token.admin == true) ||
         (request.auth.token.email_verified == true &&
-          request.auth.token.email in ['john25893619@gmail.com'])
+          request.auth.token.email in ['john25893619@gmail.com', 'operations@ideax.io'])
       );
     }
 
@@ -171,7 +171,7 @@ service cloud.firestore {
 
     // 會員資料：所有人可讀；點數與權限欄位只能由伺服器帳本（服務帳戶）或管理員異動
     function protectedUserFields() {
-      return ['balance', 'withheldPoints', 'pendingEarnings', 'tipReceivablesPoints', 'thisWeekTipPoints',
+      return ['balance', 'withheldPoints', 'pendingEarnings', 'tipReceivablesPoints', 'bountyReceivablesPoints', 'thisWeekTipPoints',
               'totalWithdrawn', 'isBlocked', 'blockedReason', 'blockedUntil', 'blockedAt', 'blockedByAdminName',
               'adminSites', 'isSiteAAdmin', 'isSiteBAdmin', 'adminIdentityBadge', 'isInitialAdmin',
               'subscriptionTier', 'subscriptionExpiresAt'];

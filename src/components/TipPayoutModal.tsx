@@ -43,9 +43,9 @@ export const TipPayoutModal: React.FC<TipPayoutModalProps> = ({
     }
   }, [initialMode, isOpen]);
 
-  // 懸賞採納後由平台直接結算撥付給解答者，不在此申請。
-  // （withheldPoints 是「提問者自己被預扣的懸賞」，不能當成可領收入）
-  const bountyReceivables = 0;
+  // 方案與懸賞收入（採納懸賞、階段驗收、付費解鎖、聊天室方案），由伺服器入帳
+  // （注意：withheldPoints 是「提問者自己被預扣的懸賞」，不是收入）
+  const bountyReceivables = Math.max(0, currentUser?.bountyReceivablesPoints || 0);
   const tipReceivables = Math.max(0, currentUser?.tipReceivablesPoints || 0);
 
   // 當前模式下可提領總點數
@@ -126,12 +126,12 @@ export const TipPayoutModal: React.FC<TipPayoutModalProps> = ({
         deductedTips = Math.max(0, pointsToWithdraw - deductedBounty);
       }
 
-      const newWithheld = Math.max(0, bountyReceivables - deductedBounty);
+      const newBountyReceivables = Math.max(0, bountyReceivables - deductedBounty);
       const newTipReceivables = Math.max(0, tipReceivables - deductedTips);
 
       const updatedUser = {
         ...currentUser,
-        withheldPoints: newWithheld,
+        bountyReceivablesPoints: newBountyReceivables,
         tipReceivablesPoints: newTipReceivables,
         totalPaidOut: (currentUser.totalPaidOut || 0) + netCash,
       };
@@ -144,10 +144,22 @@ export const TipPayoutModal: React.FC<TipPayoutModalProps> = ({
 
       // 正式點數模式：由伺服器扣減可撥款點數並建立撥款申請；失敗時還原
       const beforeTips = tipReceivables;
+      const beforeEarnings = bountyReceivables;
       const beforePaidOut = currentUser.totalPaidOut || 0;
-      submitTipPayoutRequest(pointsToWithdraw, `${modeTitle}申請 → ${bankSnapshot}`, () => {
-        setCurrentUser((prev) => ({ ...prev, tipReceivablesPoints: beforeTips, totalPaidOut: beforePaidOut }));
-      });
+      const payoutSource = payoutMode === 'bounty' ? 'earnings' : payoutMode === 'tips' ? 'tips' : 'combined';
+      submitTipPayoutRequest(
+        pointsToWithdraw,
+        `${modeTitle}申請 → ${bankSnapshot}`,
+        () => {
+          setCurrentUser((prev) => ({
+            ...prev,
+            tipReceivablesPoints: beforeTips,
+            bountyReceivablesPoints: beforeEarnings,
+            totalPaidOut: beforePaidOut,
+          }));
+        },
+        payoutSource
+      );
 
       // 建立撥款交易紀錄 (項目明確歸類為：打賞撥款 / 懸賞撥款 / 合併撥款)
       const payoutTxType =

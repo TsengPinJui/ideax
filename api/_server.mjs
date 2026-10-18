@@ -159852,7 +159852,8 @@ async function applyPointsOpWith(deps, auth, input) {
   if (input.op === "spend") {
     const amount = cleanAmount(input.amount);
     if (!SPEND_PURPOSES.includes(input.purpose)) throw new PointsError("\u7528\u9014\u4E0D\u6B63\u78BA");
-    const toRef = input.toUserId && input.purpose === "tip" ? db.collection("users").doc(String(input.toUserId)) : null;
+    const creditsPayee = input.purpose === "tip" || input.purpose === "chat_offer";
+    const toRef = input.toUserId && creditsPayee ? db.collection("users").doc(String(input.toUserId)) : null;
     if (toRef && toRef.id === userRef.id) throw new PointsError("\u7121\u6CD5\u6253\u8CDE\u7D66\u81EA\u5DF1");
     return db.runTransaction(async (tx) => {
       const snap = await tx.get(userRef);
@@ -159862,10 +159863,14 @@ async function applyPointsOpWith(deps, auth, input) {
       const next = balance - amount;
       tx.update(userRef, { balance: next });
       if (toRef && toSnap?.exists) {
-        tx.update(toRef, {
-          tipReceivablesPoints: FieldValue4.increment(amount),
-          thisWeekTipPoints: FieldValue4.increment(amount)
-        });
+        if (input.purpose === "tip") {
+          tx.update(toRef, {
+            tipReceivablesPoints: FieldValue4.increment(amount),
+            thisWeekTipPoints: FieldValue4.increment(amount)
+          });
+        } else {
+          tx.update(toRef, { bountyReceivablesPoints: FieldValue4.increment(amount) });
+        }
       }
       tx.set(db.collection("points_ledger").doc(), {
         userId: userRef.id,
@@ -159887,18 +159892,41 @@ async function applyPointsOpWith(deps, auth, input) {
   if (input.op === "payout_request") {
     const amount = cleanAmount(input.amount);
     if (amount < 100) throw new PointsError("\u55AE\u6B21\u64A5\u6B3E\u7533\u8ACB\u6700\u4F4E 100 \u9EDE");
+    const source = input.source === "earnings" || input.source === "combined" ? input.source : "tips";
+    const feeRateOf = await loadFeeRateResolver(db);
     return db.runTransaction(async (tx) => {
       const snap = await tx.get(userRef);
-      const receivable = Number(snap.get("tipReceivablesPoints")) || 0;
-      if (receivable < amount) throw new PointsError(`\u53EF\u64A5\u6B3E\u9EDE\u6578\u4E0D\u8DB3\uFF08\u76EE\u524D ${receivable} \u9EDE\uFF09`, 402);
-      const nextReceivable = receivable - amount;
-      tx.update(userRef, { tipReceivablesPoints: nextReceivable });
+      const tips = Number(snap.get("tipReceivablesPoints")) || 0;
+      const earnings = Number(snap.get("bountyReceivablesPoints")) || 0;
+      let fromEarnings = 0;
+      let fromTips = 0;
+      if (source === "tips") fromTips = amount;
+      else if (source === "earnings") fromEarnings = amount;
+      else {
+        fromEarnings = Math.min(earnings, amount);
+        fromTips = amount - fromEarnings;
+      }
+      if (fromTips > tips || fromEarnings > earnings) {
+        throw new PointsError(`\u53EF\u64A5\u6B3E\u9EDE\u6578\u4E0D\u8DB3\uFF08\u6253\u8CDE ${tips} \u9EDE\u3001\u65B9\u6848\u8207\u61F8\u8CDE\u6536\u5165 ${earnings} \u9EDE\uFF09`, 402);
+      }
+      const nextTips = tips - fromTips;
+      const nextEarnings = earnings - fromEarnings;
+      const feeRate = feeRateOf(String(snap.get("subscriptionTier") || "free"));
+      const fee = feeRate > 0 ? Math.round(amount * feeRate) : 0;
+      const bonus = feeRate < 0 ? Math.round(amount * Math.abs(feeRate)) : 0;
+      const net = amount - fee + bonus;
+      tx.update(userRef, { tipReceivablesPoints: nextTips, bountyReceivablesPoints: nextEarnings });
       const now = (/* @__PURE__ */ new Date()).toISOString();
       tx.set(db.collection("payout_requests").doc(), {
         userId: userRef.id,
         byAuthUid: auth.uid,
         amount,
-        source: "tips",
+        fromTips,
+        fromEarnings,
+        feeRate,
+        fee,
+        bonus,
+        netAmount: net,
         status: "pending",
         note: String(input.note || "").slice(0, 300),
         createdAt: now
@@ -159908,7 +159936,9 @@ async function applyPointsOpWith(deps, auth, input) {
         op: "payout_request",
         delta: 0,
         receivableDelta: -amount,
-        receivableAfter: nextReceivable,
+        tipsAfter: nextTips,
+        earningsAfter: nextEarnings,
+        netAmount: net,
         note: String(input.note || "").slice(0, 200),
         createdAt: now
       });
@@ -159916,7 +159946,9 @@ async function applyPointsOpWith(deps, auth, input) {
         userId: userRef.id,
         balance: Number(snap.get("balance")) || 0,
         withheldPoints: Number(snap.get("withheldPoints")) || 0,
-        tipReceivablesPoints: nextReceivable
+        tipReceivablesPoints: nextTips,
+        bountyReceivablesPoints: nextEarnings,
+        netAmount: net
       };
     });
   }
@@ -159968,9 +160000,21 @@ async function applyPointsOpWith(deps, auth, input) {
     const payerRef = isAdmin && input.payerUserId ? db.collection("users").doc(String(input.payerUserId)) : userRef;
     const escrowRef = db.collection("points_escrow").doc(`${payerRef.id}__${refId}`);
     const questionRef = db.collection("questions").doc(refId);
+    let payeeRef = null;
+    if (input.mode === "payout" && input.toAnswerId) {
+      const ansId = String(input.toAnswerId).slice(0, 160);
+      const aSnap = await db.collection("answers").doc(ansId).get();
+      if (!aSnap.exists) throw new PointsError("\u627E\u4E0D\u5230\u8981\u64A5\u4ED8\u7684\u89E3\u7B54", 404);
+      const ans = aSnap.data() || {};
+      if (ans.questionId !== refId && !refId.startsWith(`${ansId}#`)) throw new PointsError("\u89E3\u7B54\u8207\u9810\u6263\u9805\u76EE\u4E0D\u7B26");
+      payeeRef = await findSolverUserRef(db, ans);
+      if (!payeeRef) throw new PointsError("\u627E\u4E0D\u5230\u89E3\u7B54\u8005\u7684\u6703\u54E1\u8CC7\u6599", 404);
+      if (payeeRef.id === payerRef.id) throw new PointsError("\u4E0D\u80FD\u64A5\u4ED8\u7D66\u81EA\u5DF1");
+    }
     return db.runTransaction(async (tx) => {
       const snap = await tx.get(payerRef);
       if (!snap.exists) throw new PointsError("\u627E\u4E0D\u5230\u4ED8\u6B3E\u6703\u54E1", 404);
+      const payeeSnap = payeeRef ? await tx.get(payeeRef) : null;
       const escrowSnap = await tx.get(escrowRef);
       let available;
       if (escrowSnap.exists) {
@@ -159988,6 +160032,20 @@ async function applyPointsOpWith(deps, auth, input) {
       const withheld = Math.max(0, (Number(snap.get("withheldPoints")) || 0) - amount);
       const balance = (Number(snap.get("balance")) || 0) + (input.mode === "refund" ? amount : 0);
       tx.update(payerRef, { withheldPoints: withheld, balance });
+      if (payeeRef && payeeSnap?.exists) {
+        const earned = (Number(payeeSnap.get("bountyReceivablesPoints")) || 0) + amount;
+        tx.update(payeeRef, { bountyReceivablesPoints: earned });
+        tx.set(db.collection("points_ledger").doc(), {
+          userId: payeeRef.id,
+          op: "earn",
+          source: refId.includes("#phase") ? "phase" : "bounty",
+          receivableDelta: amount,
+          receivableAfter: earned,
+          refId,
+          fromUserId: payerRef.id,
+          createdAt: (/* @__PURE__ */ new Date()).toISOString()
+        });
+      }
       tx.set(
         escrowRef,
         {
@@ -160011,7 +160069,7 @@ async function applyPointsOpWith(deps, auth, input) {
         note: String(input.note || "").slice(0, 200),
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       });
-      return { userId: payerRef.id, balance, withheldPoints: withheld };
+      return { userId: payerRef.id, balance, withheldPoints: withheld, paidToUserId: payeeRef?.id || null };
     });
   }
   if (input.op === "subscribe") {
@@ -160128,6 +160186,8 @@ async function unlockAnswerTx(db, userRef, auth, input) {
     const isSolver = ans.solverAuthUid === auth.uid || ids.includes(ans.solverId);
     const done = { userId: userRef.id, balance: balance0, withheldPoints: withheld0, unlocked: true };
     if (isSolver || ids.some((id) => already.includes(id))) return done;
+    const solverRef = paidMode ? await findSolverUserRef(db, ans, tx) : null;
+    const solverSnap = solverRef ? await tx.get(solverRef) : null;
     const price = Math.max(0, Math.floor(Number(ans.price) || 0));
     let pay = 0;
     let offset = 0;
@@ -160172,6 +160232,21 @@ async function unlockAnswerTx(db, userRef, auth, input) {
       );
     }
     tx.update(answerRef, { unlockedByUserIds: Array.from(/* @__PURE__ */ new Set([...already, userRef.id])) });
+    const earned = pay + offset;
+    if (earned > 0 && solverRef && solverSnap?.exists && solverRef.id !== userRef.id) {
+      const after = (Number(solverSnap.get("bountyReceivablesPoints")) || 0) + earned;
+      tx.update(solverRef, { bountyReceivablesPoints: after });
+      tx.set(db.collection("points_ledger").doc(), {
+        userId: solverRef.id,
+        op: "earn",
+        source: "unlock",
+        receivableDelta: earned,
+        receivableAfter: after,
+        refId: answerId,
+        fromUserId: userRef.id,
+        createdAt: now
+      });
+    }
     tx.set(db.collection("points_ledger").doc(), {
       userId: userRef.id,
       op: "unlock_answer",
@@ -160186,6 +160261,36 @@ async function unlockAnswerTx(db, userRef, auth, input) {
     });
     return { userId: userRef.id, balance, withheldPoints: withheld, unlocked: true };
   });
+}
+async function findSolverUserRef(db, ans, tx) {
+  const getDoc2 = (ref) => tx ? tx.get(ref) : ref.get();
+  if (ans?.solverId && !String(ans.solverId).includes("/")) {
+    const ref = db.collection("users").doc(String(ans.solverId));
+    const snap = await getDoc2(ref);
+    if (snap.exists) return ref;
+  }
+  if (ans?.solverAuthUid) {
+    const direct = db.collection("users").doc(String(ans.solverAuthUid));
+    const snap = await getDoc2(direct);
+    if (snap.exists) return direct;
+    const q = await db.collection("users").where("authUid", "==", String(ans.solverAuthUid)).limit(1).get();
+    if (!q.empty) return q.docs[0].ref;
+  }
+  return null;
+}
+async function loadFeeRateResolver(db) {
+  let custom = null;
+  try {
+    const g = await db.collection("platform_settings").doc("global").get();
+    custom = g.exists ? (g.data() || {}).plans : null;
+  } catch {
+  }
+  return (tier) => {
+    const fromCustom = custom && !Array.isArray(custom) ? custom[tier]?.platformFeeRate : Array.isArray(custom) ? custom.find((p) => p?.id === tier)?.platformFeeRate : void 0;
+    const base = SUBSCRIPTION_PLANS[tier]?.platformFeeRate ?? SUBSCRIPTION_PLANS.free.platformFeeRate;
+    const r2 = typeof fromCustom === "number" ? fromCustom : base;
+    return Math.max(-0.2, Math.min(0.5, Number(r2) || 0));
+  };
 }
 
 // server/answerContent.ts

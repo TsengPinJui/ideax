@@ -337,7 +337,7 @@ interface AppContextType {
   isQuestionBookmarked: (questionId: string) => boolean;
   promoteQuestion: (questionId: string) => boolean;
   /** 正式點數模式：送出打賞撥款申請到伺服器（回傳 false 表示非正式模式，由畫面自行處理） */
-  submitTipPayoutRequest: (amount: number, note: string, onFail?: () => void) => boolean;
+  submitTipPayoutRequest: (amount: number, note: string, onFail?: () => void, source?: 'tips' | 'earnings' | 'combined') => boolean;
   incrementQuestionViews: (questionId: string, amount?: number) => void;
 
   // 痛點附議 (+1) 與 提問同問 (舉手) 與 討論按讚 (大拇指)
@@ -2158,6 +2158,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           patch.subscriptionExpiresAt = r.subscriptionExpiresAt;
         }
         if (typeof r.tipReceivablesPoints === 'number') patch.tipReceivablesPoints = r.tipReceivablesPoints;
+        if (typeof r.bountyReceivablesPoints === 'number') patch.bountyReceivablesPoints = r.bountyReceivablesPoints;
         setAvailableUsers((prev) => prev.map((u) => (u.id === r.userId ? { ...u, ...patch } : u)));
         if (r.userId === myId) {
           setCurrentUser((prev) => (prev.id === myId ? { ...prev, ...patch } : prev));
@@ -2184,6 +2185,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   subscriptionTier: fresh.subscriptionTier ?? prev.subscriptionTier,
                   subscriptionExpiresAt: fresh.subscriptionExpiresAt ?? prev.subscriptionExpiresAt,
                   tipReceivablesPoints: fresh.tipReceivablesPoints ?? prev.tipReceivablesPoints,
+                  bountyReceivablesPoints: fresh.bountyReceivablesPoints ?? prev.bountyReceivablesPoints,
                 }
               : prev
           );
@@ -5359,7 +5361,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Release questioner withheld points
     if (remainingWithheld > 0) {
-      runPointsOp({ op: 'escrow_release', amount: remainingWithheld, refId: targetAns.questionId, mode: 'payout', note: '採納解答撥付懸賞' });
+      runPointsOp({ op: 'escrow_release', amount: remainingWithheld, refId: targetAns.questionId, mode: 'payout', toAnswerId: targetAns.id, note: '採納解答撥付懸賞' });
     }
     setCurrentUser((prev) => ({
       ...prev,
@@ -6800,7 +6802,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const pointsToRelease = phase.points;
 
     // Release from currentUser withheld points
-    runPointsOp({ op: 'escrow_release', amount: pointsToRelease, refId: `${answerId}#phase${phaseIndex}`, mode: 'payout', note: '階段驗收撥付' });
+    runPointsOp({ op: 'escrow_release', amount: pointsToRelease, refId: `${answerId}#phase${phaseIndex}`, mode: 'payout', toAnswerId: answerId, note: '階段驗收撥付' });
     setCurrentUser((prev) => ({
       ...prev,
       withheldPoints: Math.max(0, (prev.withheldPoints || 0) - pointsToRelease),
@@ -7608,7 +7610,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (price > 0) {
-      runPointsOp({ op: 'spend', amount: price, purpose: 'chat_offer', refId: messageId }, '方案付款未完成');
+      runPointsOp({ op: 'spend', amount: price, purpose: 'chat_offer', refId: messageId, toUserId: offer.creatorId }, '方案付款未完成');
     }
     if (!isNoPaymentMode && !isRaceMode && price > 0) {
       setCurrentUser((prev) => ({
@@ -8303,9 +8305,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return q?.likes ?? 0;
   };
 
-  const submitTipPayoutRequest = (amount: number, note: string, onFail?: () => void): boolean => {
+  const submitTipPayoutRequest = (
+    amount: number,
+    note: string,
+    onFail?: () => void,
+    source: 'tips' | 'earnings' | 'combined' = 'tips'
+  ): boolean => {
     if (!isRealPointsEconomy) return false;
-    runPointsOp({ op: 'payout_request', amount, note }, '撥款申請未完成', onFail);
+    runPointsOp({ op: 'payout_request', amount, note, source }, '撥款申請未完成', onFail);
     return true;
   };
 

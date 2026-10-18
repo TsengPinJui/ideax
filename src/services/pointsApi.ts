@@ -7,10 +7,10 @@ import { getAuthHeaders } from './authHeader';
 export type PointsOpPayload =
   | { op: 'spend'; amount: number; purpose: 'tip' | 'unlock' | 'promote' | 'service' | 'chat_offer' | 'subscription' | 'withdraw'; refId?: string; toUserId?: string; note?: string }
   | { op: 'escrow_hold'; amount: number; refId: string; note?: string }
-  | { op: 'escrow_release'; amount: number; refId: string; mode: 'refund' | 'payout'; payerUserId?: string; note?: string }
+  | { op: 'escrow_release'; amount: number; refId: string; mode: 'refund' | 'payout'; payerUserId?: string; toAnswerId?: string; note?: string }
   | { op: 'admin_adjust'; userId: string; delta: number; note?: string }
   | { op: 'subscribe'; tier: string; cycle?: string }
-  | { op: 'payout_request'; amount: number; note?: string }
+  | { op: 'payout_request'; amount: number; source?: 'tips' | 'earnings' | 'combined'; note?: string }
   | { op: 'unlock_answer'; answerId: string; useWithheldOffset?: boolean };
 
 export type PointsOpResult =
@@ -22,6 +22,7 @@ export type PointsOpResult =
       subscriptionTier?: string;
       subscriptionExpiresAt?: string;
       tipReceivablesPoints?: number;
+      bountyReceivablesPoints?: number;
     }
   | { ok: false; error: string; status: number };
 
@@ -44,6 +45,7 @@ export async function pointsOp(payload: PointsOpPayload): Promise<PointsOpResult
       subscriptionTier: data.subscriptionTier,
       subscriptionExpiresAt: data.subscriptionExpiresAt,
       tipReceivablesPoints: typeof data.tipReceivablesPoints === 'number' ? data.tipReceivablesPoints : undefined,
+      bountyReceivablesPoints: typeof data.bountyReceivablesPoints === 'number' ? data.bountyReceivablesPoints : undefined,
     };
   } catch {
     return { ok: false, error: '無法連線到伺服器，點數未異動', status: 0 };
@@ -56,6 +58,7 @@ export const PROTECTED_USER_FIELDS = [
   'withheldPoints',
   'pendingEarnings',
   'tipReceivablesPoints',
+  'bountyReceivablesPoints',
   'thisWeekTipPoints',
   'totalWithdrawn',
   'isBlocked',

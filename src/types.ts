@@ -674,6 +674,7 @@ export interface User {
 
   // 痛點讀者打賞支持金（應收帳款與每週結算）
   tipReceivablesPoints?: number; // 累計待提領讀者打賞點數（存於應收帳款）
+  bountyReceivablesPoints?: number; // 待撥款的方案與懸賞收入（採納懸賞、階段驗收、付費解鎖、聊天室方案；由伺服器入帳）
   thisWeekTipPoints?: number; // 本週獲得打賞點數（每週一 00:00 統一結算）
   weeklyTipSettlements?: Array<{
     id: string;
