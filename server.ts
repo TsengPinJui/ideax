@@ -9,6 +9,8 @@ import { rateLimit, requireAdminMiddleware } from './server/security';
 import { runAuthUidBackfill } from './server/backfillAuthUids';
 import { accountNoticeEmail, sendMail } from './server/mailer';
 import { runAssistantTick } from './server/assistantCron';
+import { applyPointsOp, PointsError } from './server/pointsLedger';
+import { verifyAuthToken } from './server/competitionService';
 
 dotenv.config();
 
@@ -34,6 +36,7 @@ app.use(express.json());
 // - 寄送驗證碼：每個 IP 每 10 分鐘最多 5 次
 app.use(['/api/ai', '/api/agent'], rateLimit({ windowMs: 10 * 60 * 1000, max: 40, name: 'ai' }));
 app.use(['/api/auth/send-email-code', '/api/auth/send-sms-code', '/api/auth/send-welcome-email'], rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'send-code' }));
+app.use('/api/points', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'points' }));
 app.use(['/api/auth/verify-email-code', '/api/auth/verify-sms-code', '/api/auth/reset-password-with-code'], rateLimit({ windowMs: 10 * 60 * 1000, max: 20, name: 'verify-code' }));
 
 // 安全性：所有 /api/admin/* 端點僅限認證管理員
@@ -3139,6 +3142,20 @@ app.post('/api/ai/faq-agent-consult', async (req: Request, res: Response) => {
 });
 
 // Admin Endpoint: AI Agent One-Click Aggregate Collected Questions into FAQs (實體 Dify Agent 驅動)
+// 點數帳本：點數異動一律經由伺服器（需登入）
+app.post('/api/points/op', async (req: Request, res: Response) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: '請重新登入後再試' });
+    const result = await applyPointsOp(authUser, req.body || {});
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    const status = err instanceof PointsError ? err.status : 500;
+    if (status >= 500) console.error('[Points]', err?.message || err);
+    res.status(status).json({ success: false, error: err?.message || '點數處理失敗' });
+  }
+});
+
 // AI 特助伺服器值班：Vercel Cron 每 5 分鐘呼叫（需設定 CRON_SECRET），管理員也可手動觸發
 app.get('/api/cron/assistant', async (req: Request, res: Response) => {
   const secret = process.env.CRON_SECRET;

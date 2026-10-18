@@ -62,8 +62,61 @@ service cloud.firestore {
     }
 
     // 2. 用戶身分與審核治理類 (Identity, Verification & Governance)
+    // 點數帳本與預扣紀錄：只有伺服器（服務帳戶）能寫；管理員可讀
+    match /points_ledger/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /points_escrow/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // 會員資料：所有人可讀；點數與權限欄位只能由伺服器帳本（服務帳戶）或管理員異動
+    function protectedUserFields() {
+      return ['balance', 'withheldPoints', 'pendingEarnings', 'tipReceivablesPoints', 'thisWeekTipPoints',
+              'totalWithdrawn', 'isBlocked', 'blockedReason', 'blockedUntil', 'blockedAt', 'blockedByAdminName',
+              'adminSites', 'isSiteAAdmin', 'isSiteBAdmin', 'adminIdentityBadge', 'isInitialAdmin'];
+    }
+    // 身分欄位：只有本人能改
+    function identityUserFields() {
+      return ['name', 'avatar', 'email', 'username', 'phone', 'bio', 'title', 'authUid', 'memberId',
+              'accountType', 'role', 'realNameAuthStatus', 'expertCertStatus', 'verifiedExpert', 'subscriptionTier'];
+    }
+    function isUserOwner(userId) {
+      return isSignedIn() && (
+        request.auth.uid == userId ||
+        resource.data.get('authUid', '') == request.auth.uid ||
+        ('email' in request.auth.token && request.auth.token.email != null && resource.data.get('email', '') != '' &&
+          resource.data.get('email', '').lower() == request.auth.token.email.lower())
+      );
+    }
+    function becomesVerified(field) {
+      return request.resource.data.get(field, '') == 'verified' && resource.data.get(field, '') != 'verified';
+    }
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isAdmin() || (
+        isSignedIn() &&
+        request.resource.data.get('balance', 0) == 0 &&
+        request.resource.data.get('withheldPoints', 0) == 0 &&
+        request.resource.data.get('role', '') != 'admin' &&
+        request.resource.data.get('accountType', '') != 'admin' &&
+        request.resource.data.get('isBlocked', false) == false
+      );
+      allow update: if isAdmin() || (
+        isUserOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedUserFields()) &&
+        request.resource.data.get('role', '') != 'admin' &&
+        request.resource.data.get('accountType', '') != 'admin' &&
+        !becomesVerified('realNameAuthStatus') &&
+        !becomesVerified('expertCertStatus') &&
+        !(request.resource.data.get('verifiedExpert', false) == true && resource.data.get('verifiedExpert', false) != true)
+      ) || (
+        isSignedIn() &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedUserFields().concat(identityUserFields()))
+      );
+      allow delete: if isAdmin();
     }
 
     match /certifications/{certId} {
@@ -116,7 +169,7 @@ service cloud.firestore {
     // Default fallback
     // 注意：Firestore 規則是「任一條允許即放行」，因此萬用規則必須排除上方受保護的集合
     match /{collectionId}/{document=**} {
-      allow read, write: if !(collectionId in ['admins', 'user_private', 'transactions', 'conversations', 'notifications']);
+      allow read, write: if !(collectionId in ['admins', 'user_private', 'transactions', 'conversations', 'notifications', 'points_ledger', 'points_escrow']);
     }
   }
 }

@@ -37,6 +37,7 @@ import {
 import { getAuthHeaders } from './authHeader';
 import { auth } from './firebase';
 import { getMyAuthUid, resolveAuthUid, resolveAuthUids } from './authIdentity';
+import { PROTECTED_USER_FIELDS } from './pointsApi';
 
 const QUOTA_STORAGE_KEY = 'ideax_firestore_quota_exhausted_date';
 
@@ -635,6 +636,13 @@ export async function syncUserToFirestore(user: User): Promise<void> {
       firestoreData.deactivationReason = deleteField();
     }
 
+    // 一般會員寫入時移除點數與權限欄位（只能由伺服器帳本或管理員異動，資料庫規則也會擋）
+    if (!currentDataScope.isAdmin) {
+      for (const f of PROTECTED_USER_FIELDS) delete firestoreData[f];
+      if (firestoreData.role === 'admin') delete firestoreData.role;
+      if (firestoreData.accountType === 'admin') delete firestoreData.accountType;
+    }
+
     await setDoc(userRef, firestoreData, { merge: true });
 
     // 實名認證個資改存於獨立的 user_private 集合（之後由安全規則限定本人與管理員讀取）
@@ -728,6 +736,8 @@ export async function migrateUserInFirestore(oldUserId: string, updatedUser: Use
 
 export async function syncUsersToFirestore(users: User[]): Promise<void> {
   if (!users || users.length === 0 || isQuotaExhausted) return;
+  // 批次寫入多位會員只限管理員（一般會員只能改自己的資料，資料庫規則會擋下整批）
+  if (!currentDataScope.isAdmin) return;
   try {
     const batch = writeBatch(db);
     users.forEach((user) => {

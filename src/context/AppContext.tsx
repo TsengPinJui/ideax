@@ -106,6 +106,7 @@ import {
   pushAllDataToFirestore,
   loadAllDataFromFirestore,
   loadPersonalDataFromFirestore,
+  getUserFromFirestore,
   syncAiCrmConfigToFirestore,
   subscribePersonalData,
   setFirestoreDataScope,
@@ -124,6 +125,7 @@ import { PwaNotificationService } from '../services/pwaNotificationService';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth as firebaseAuthInstance } from '../services/firebase';
 import { setMyAppUserId, updateAuthUidDirectory } from '../services/authIdentity';
+import { pointsOp, PointsOpPayload } from '../services/pointsApi';
 import {
   conversationSignature,
   deliverNotificationToCloud,
@@ -2112,6 +2114,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Pull all data fresh from Firestore into local state & storage
+  // ===================================================================
+  // 點數帳本：正式模式下點數異動一律經由伺服器
+  // （競賽模式的創星幣、無金流模式、測試模式維持原本的本機模擬）
+  // ===================================================================
+  const isRealPointsEconomy = !isRaceMode && !isNoPaymentMode && !isDemoMode;
+  const realPointsEconomyRef = useRef(isRealPointsEconomy);
+  realPointsEconomyRef.current = isRealPointsEconomy;
+
+  // 正式模式：自己的點數以雲端（伺服器帳本）為準
+  useEffect(() => {
+    if (!isRealPointsEconomy || isScopeGuest) return;
+    const latest = availableUsers.find((u) => u.id === currentUser.id);
+    if (!latest) return;
+    const fields = ['balance', 'withheldPoints', 'tipReceivablesPoints', 'thisWeekTipPoints'] as const;
+    const changed = fields.some((f) => typeof (latest as any)[f] === 'number' && (latest as any)[f] !== (currentUser as any)[f]);
+    if (!changed) return;
+    setCurrentUser((prev) => {
+      if (prev.id !== latest.id) return prev;
+      const next: any = { ...prev };
+      for (const f of fields) if (typeof (latest as any)[f] === 'number') next[f] = (latest as any)[f];
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableUsers, isRealPointsEconomy]);
+  const runPointsOp = (payload: PointsOpPayload, failTitle = '點數處理失敗') => {
+    if (!isRealPointsEconomy) return;
+    const myId = currentUser.id;
+    void pointsOp(payload).then(async (r) => {
+      if (r.ok) {
+        setAvailableUsers((prev) =>
+          prev.map((u) => (u.id === r.userId ? { ...u, balance: r.balance, withheldPoints: r.withheldPoints } : u))
+        );
+        if (r.userId === myId) {
+          setCurrentUser((prev) => (prev.id === myId ? { ...prev, balance: r.balance, withheldPoints: r.withheldPoints } : prev));
+        }
+        return;
+      }
+      showCenterToast(failTitle, `${r.error}。點數已恢復為伺服器上的紀錄。`, { type: 'warning', duration: 4500 } as any);
+      try {
+        const fresh = await getUserFromFirestore(myId);
+        if (fresh) {
+          setCurrentUser((prev) =>
+            prev.id === myId
+              ? { ...prev, balance: fresh.balance ?? prev.balance, withheldPoints: fresh.withheldPoints ?? prev.withheldPoints }
+              : prev
+          );
+        }
+      } catch {}
+    });
+  };
+
   // 告訴資料層「現在是誰」：一般會員只下載自己的交易、私訊與通知；管理員載入全站
   const isScopeGuest = !currentUser?.id || currentUser.id === 'user-guest';
   setFirestoreDataScope({
@@ -2936,6 +2989,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     deactivationRequestedAt: finalDeact ? cu.deactivationRequestedAt : undefined,
                     deactivationScheduledPurgeAt: finalDeact ? cu.deactivationScheduledPurgeAt : undefined,
                     deactivationReason: finalDeact ? cu.deactivationReason : undefined,
+                    // 正式模式：點數以雲端（伺服器帳本）為準
+                    ...(realPointsEconomyRef.current
+                      ? {
+                          balance: typeof cu.balance === 'number' ? cu.balance : local.balance,
+                          withheldPoints: typeof cu.withheldPoints === 'number' ? cu.withheldPoints : local.withheldPoints,
+                          tipReceivablesPoints: typeof cu.tipReceivablesPoints === 'number' ? cu.tipReceivablesPoints : local.tipReceivablesPoints,
+                          thisWeekTipPoints: typeof cu.thisWeekTipPoints === 'number' ? cu.thisWeekTipPoints : local.thisWeekTipPoints,
+                        }
+                      : {}),
                     // 停權狀態以雲端為準（管理員在其他裝置停權／解除停權時要即時生效）
                     ...('isBlocked' in (rawCu as any)
                       ? {
@@ -4022,6 +4084,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       : Math.max(0, effectiveBalance - cleanAmount);
     const updatedReader = { ...currentUser, balance: newReaderBalance };
     setCurrentUser(updatedReader);
+    if (paymentSource === 'wallet') {
+      runPointsOp({ op: 'spend', amount: cleanAmount, purpose: 'tip', refId: questionId, toUserId: q.authorId }, '打賞未完成');
+    }
     try {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}user`, JSON.stringify(updatedReader));
     } catch (e) {}
@@ -4607,6 +4672,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // If bounty > 0, questioner pays via supported third-party payment gateway or points into safe escrow
     if (q.bounty > 0) {
+      runPointsOp({ op: 'escrow_hold', amount: q.bounty, refId: qId, note: '提問懸賞預扣' }, '懸賞預扣未完成');
       setCurrentUser((prev) => ({
         ...prev,
         balance: Math.max(0, (prev.balance || 0) - q.bounty),
@@ -4933,6 +4999,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    if (balanceToPay > 0) {
+      runPointsOp({ op: 'spend', amount: balanceToPay, purpose: 'unlock', refId: answerId }, '方案解鎖扣點未完成');
+    }
+    if (offsetAmount > 0 && targetQ) {
+      runPointsOp({ op: 'escrow_release', amount: offsetAmount, refId: targetQ.id, mode: 'payout', note: '以懸賞預扣折抵解鎖' });
+    }
+
     // Deduct points from buyer if balanceToPay > 0
     if (!isNoPaymentMode && !isRaceMode && balanceToPay > 0) {
       setCurrentUser((prev) => ({
@@ -5091,6 +5164,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     // Release questioner withheld points
+    if (remainingWithheld > 0) {
+      runPointsOp({ op: 'escrow_release', amount: remainingWithheld, refId: targetAns.questionId, mode: 'payout', note: '採納解答撥付懸賞' });
+    }
     setCurrentUser((prev) => ({
       ...prev,
       withheldPoints: Math.max(0, (prev.withheldPoints || 0) - remainingWithheld),
@@ -5326,6 +5402,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Action: deposit balance (custom amount)
   const depositBalance = (amount: number) => {
+    if (isRealPointsEconomy) {
+      showCenterToast('儲值暫停中', '線上儲值金流建置中，目前暫停自助儲值。如需點數請聯繫客服，由管理員協助核發。', { type: 'warning', duration: 5000 } as any);
+      return;
+    }
     setCurrentUser((prev) => ({
       ...prev,
       balance: prev.balance + amount,
@@ -5336,6 +5416,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const depositPackage = (packageId: string) => {
     const pkg = RECHARGE_PACKAGES.find((p) => p.id === packageId);
     if (!pkg) return;
+    if (isRealPointsEconomy) {
+      showCenterToast('儲值暫停中', '線上儲值金流建置中，目前暫停自助儲值。如需點數請聯繫客服，由管理員協助核發。', { type: 'warning', duration: 5000 } as any);
+      return;
+    }
 
     setCurrentUser((prev) => ({
       ...prev,
@@ -5375,6 +5459,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser.balance < amount || amount <= 0) return false;
     const fee = Math.round(amount * 0.05); // 固定提現手續費 5%
     const netAmount = amount - fee;
+    runPointsOp({ op: 'spend', amount, purpose: 'withdraw', note: `提現申請（實到 NT$ ${netAmount}）` }, '提現申請未完成');
 
     setCurrentUser((prev) => ({
       ...prev,
@@ -5408,6 +5493,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return false;
     }
+    runPointsOp({ op: 'spend', amount, purpose: 'service', note: note || '平台功能扣點' }, '扣點未完成');
     setCurrentUser((prev) => ({
       ...prev,
       balance: Math.max(0, (prev.balance || 0) - amount),
@@ -5458,6 +5544,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const refundAmount = q.withheldBounty || q.bounty || 0;
     if (refundAmount > 0) {
+      runPointsOp({ op: 'escrow_release', amount: refundAmount, refId: questionId, mode: 'refund', payerUserId: q.authorId, note: '爭議申訴退還預扣' });
       setCurrentUser((prev) => ({
         ...prev,
         balance: prev.balance + refundAmount,
@@ -5556,6 +5643,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isDirect && targetQuestionObj && targetQuestionObj.status !== 'solved') {
       const refundAmount = targetQuestionObj.withheldBounty || (targetQuestionObj.status === 'open' ? targetQuestionObj.bounty : 0) || 0;
       if (refundAmount > 0) {
+        runPointsOp({ op: 'escrow_release', amount: refundAmount, refId: targetQuestionObj.id, mode: 'refund', payerUserId: targetQuestionObj.authorId, note: '提問下架退還預扣' });
         if (currentUser.id === targetQuestionObj.authorId) {
           setCurrentUser((prev) => ({
             ...prev,
@@ -5648,6 +5736,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (targetQ && targetQ.status !== 'solved') {
       const refundAmount = targetQ.withheldBounty || (targetQ.status === 'open' ? targetQ.bounty : 0) || 0;
       if (refundAmount > 0) {
+        runPointsOp({ op: 'escrow_release', amount: refundAmount, refId: targetQ.id, mode: 'refund', payerUserId: targetQ.authorId, note: '提問刪除退還預扣' });
         // 退還至提問者帳戶
         if (currentUser.id === targetQ.authorId) {
           setCurrentUser((prev) => ({
@@ -6468,6 +6557,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // Withhold points from currentUser
+    runPointsOp({ op: 'escrow_hold', amount: pointsNeeded, refId: `${answerId}#phase${phaseIndex}`, note: '階段交付預扣' }, '階段預扣未完成');
     setCurrentUser((prev) => ({
       ...prev,
       balance: prev.balance - pointsNeeded,
@@ -6516,6 +6606,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const pointsToRelease = phase.points;
 
     // Release from currentUser withheld points
+    runPointsOp({ op: 'escrow_release', amount: pointsToRelease, refId: `${answerId}#phase${phaseIndex}`, mode: 'payout', note: '階段驗收撥付' });
     setCurrentUser((prev) => ({
       ...prev,
       withheldPoints: Math.max(0, (prev.withheldPoints || 0) - pointsToRelease),
@@ -6589,6 +6680,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const pointsToRefund = phase.points;
 
     // Refund to currentUser
+    runPointsOp({ op: 'escrow_release', amount: pointsToRefund, refId: `${answerId}#phase${phaseIndex}`, mode: 'refund', note: '階段退款' });
     setCurrentUser((prev) => ({
       ...prev,
       withheldPoints: Math.max(0, (prev.withheldPoints || 0) - pointsToRefund),
@@ -6743,6 +6835,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     expiry.setMonth(expiry.getMonth() + durationMonths);
     const expiryStr = expiry.toISOString().split('T')[0];
 
+    if (price > 0) {
+      runPointsOp({ op: 'spend', amount: price, purpose: 'subscription', refId: String(tier), note: `訂閱 ${tier}` }, '方案訂閱扣點未完成');
+    }
     setCurrentUser((prev) => ({
       ...prev,
       balance: !isNoPaymentMode && !isRaceMode ? Math.max(0, (prev.balance || 0) - price) : prev.balance,
@@ -7315,6 +7410,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    if (price > 0) {
+      runPointsOp({ op: 'spend', amount: price, purpose: 'chat_offer', refId: messageId }, '方案付款未完成');
+    }
     if (!isNoPaymentMode && !isRaceMode && price > 0) {
       setCurrentUser((prev) => ({
         ...prev,
@@ -8017,6 +8115,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    runPointsOp({ op: 'spend', amount: 50, purpose: 'promote', refId: questionId }, '推播扣點未完成');
     if (!isNoPaymentMode && !isRaceMode) {
       setCurrentUser((prev) => ({
         ...prev,

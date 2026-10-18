@@ -159221,6 +159221,201 @@ ${need}` : ""}${reply?.data?.shouldHandoverToHuman ? "\n\u5EFA\u8B70\u4F60\u89AA
   return result;
 }
 
+// server/pointsLedger.ts
+var SPEND_PURPOSES = ["tip", "unlock", "promote", "service", "chat_offer", "subscription", "withdraw"];
+var MAX_AMOUNT = 1e7;
+var PointsError = class extends Error {
+  constructor(message2, status = 400) {
+    super(message2);
+    this.status = status;
+  }
+};
+async function getAdminDb() {
+  if (!hasAdminCredentials) throw new PointsError("\u4F3A\u670D\u5668\u5C1A\u672A\u8A2D\u5B9A FIREBASE_SERVICE_ACCOUNT", 503);
+  const { getFirestore: getFirestore3, FieldValue: FieldValue4 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
+  const app2 = getApps()[0];
+  const dbId = firebase_applet_config_default.firestoreDatabaseId;
+  return { db: dbId ? getFirestore3(app2, dbId) : getFirestore3(app2), FieldValue: FieldValue4 };
+}
+function cleanAmount(n) {
+  const v = Math.floor(Number(n));
+  if (!Number.isFinite(v) || v <= 0 || v > MAX_AMOUNT) throw new PointsError("\u9EDE\u6578\u6578\u984D\u4E0D\u6B63\u78BA");
+  return v;
+}
+async function findUserDocByAuth(auth, injected) {
+  const { db } = injected || await getAdminDb();
+  const direct = await db.collection("users").doc(auth.uid).get();
+  if (direct.exists) return direct.ref;
+  const byAuth = await db.collection("users").where("authUid", "==", auth.uid).limit(1).get();
+  if (!byAuth.empty) return byAuth.docs[0].ref;
+  if (auth.email) {
+    const byEmail = await db.collection("users").where("email", "==", auth.email.toLowerCase()).limit(1).get();
+    if (!byEmail.empty) return byEmail.docs[0].ref;
+  }
+  return null;
+}
+async function applyPointsOp(auth, input) {
+  const { db, FieldValue: FieldValue4 } = await getAdminDb();
+  const isAdmin = await isVerifiedAdmin(auth.uid);
+  return applyPointsOpWith({ db, FieldValue: FieldValue4, isAdmin }, auth, input);
+}
+async function applyPointsOpWith(deps, auth, input) {
+  const { db, FieldValue: FieldValue4, isAdmin } = deps;
+  if (input.op === "admin_adjust") {
+    if (!isAdmin) throw new PointsError("\u50C5\u9650\u7BA1\u7406\u54E1", 403);
+    const delta = Math.trunc(Number(input.delta));
+    if (!Number.isFinite(delta) || delta === 0 || Math.abs(delta) > MAX_AMOUNT) throw new PointsError("\u8ABF\u6574\u6578\u984D\u4E0D\u6B63\u78BA");
+    const ref = db.collection("users").doc(String(input.userId || ""));
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new PointsError("\u627E\u4E0D\u5230\u6703\u54E1", 404);
+      const balance = Number(snap.get("balance")) || 0;
+      const next = balance + delta;
+      if (next < 0) throw new PointsError("\u8ABF\u6574\u5F8C\u9918\u984D\u4E0D\u53EF\u70BA\u8CA0\u6578");
+      tx.update(ref, { balance: next });
+      tx.set(db.collection("points_ledger").doc(), {
+        userId: ref.id,
+        op: "admin_adjust",
+        delta,
+        balanceAfter: next,
+        byAuthUid: auth.uid,
+        note: String(input.note || "").slice(0, 200),
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      return { userId: ref.id, balance: next, withheldPoints: Number(snap.get("withheldPoints")) || 0 };
+    });
+  }
+  const userRef = await findUserDocByAuth(auth, { db });
+  if (!userRef) throw new PointsError("\u627E\u4E0D\u5230\u60A8\u7684\u6703\u54E1\u8CC7\u6599\uFF0C\u8ACB\u91CD\u65B0\u767B\u5165", 404);
+  if (input.op === "spend") {
+    const amount = cleanAmount(input.amount);
+    if (!SPEND_PURPOSES.includes(input.purpose)) throw new PointsError("\u7528\u9014\u4E0D\u6B63\u78BA");
+    const toRef = input.toUserId && input.purpose === "tip" ? db.collection("users").doc(String(input.toUserId)) : null;
+    if (toRef && toRef.id === userRef.id) throw new PointsError("\u7121\u6CD5\u6253\u8CDE\u7D66\u81EA\u5DF1");
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      const toSnap = toRef ? await tx.get(toRef) : null;
+      const balance = Number(snap.get("balance")) || 0;
+      if (balance < amount) throw new PointsError(`\u9EDE\u6578\u9918\u984D\u4E0D\u8DB3\uFF08\u76EE\u524D ${balance} \u9EDE\uFF0C\u9700 ${amount} \u9EDE\uFF09`, 402);
+      const next = balance - amount;
+      tx.update(userRef, { balance: next });
+      if (toRef && toSnap?.exists) {
+        tx.update(toRef, {
+          tipReceivablesPoints: FieldValue4.increment(amount),
+          thisWeekTipPoints: FieldValue4.increment(amount)
+        });
+      }
+      tx.set(db.collection("points_ledger").doc(), {
+        userId: userRef.id,
+        op: "spend",
+        purpose: input.purpose,
+        delta: -amount,
+        balanceAfter: next,
+        refId: input.refId || null,
+        toUserId: toRef?.id || null,
+        note: String(input.note || "").slice(0, 200),
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      return { userId: userRef.id, balance: next, withheldPoints: Number(snap.get("withheldPoints")) || 0 };
+    });
+  }
+  if (input.op === "escrow_hold") {
+    const amount = cleanAmount(input.amount);
+    const refId = String(input.refId || "").slice(0, 120);
+    if (!refId) throw new PointsError("\u7F3A\u5C11\u9810\u6263\u9805\u76EE");
+    const escrowRef = db.collection("points_escrow").doc(`${userRef.id}__${refId}`);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      const escrowSnap = await tx.get(escrowRef);
+      const balance = Number(snap.get("balance")) || 0;
+      if (balance < amount) throw new PointsError(`\u9EDE\u6578\u9918\u984D\u4E0D\u8DB3\uFF08\u76EE\u524D ${balance} \u9EDE\uFF0C\u9700 ${amount} \u9EDE\uFF09`, 402);
+      const next = balance - amount;
+      const withheld = (Number(snap.get("withheldPoints")) || 0) + amount;
+      tx.update(userRef, { balance: next, withheldPoints: withheld });
+      const prevRemaining = escrowSnap.exists ? Number(escrowSnap.get("remaining")) || 0 : 0;
+      tx.set(
+        escrowRef,
+        {
+          payerId: userRef.id,
+          refId,
+          amount: (escrowSnap.exists ? Number(escrowSnap.get("amount")) || 0 : 0) + amount,
+          remaining: prevRemaining + amount,
+          status: "held",
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+          ...escrowSnap.exists ? {} : { createdAt: (/* @__PURE__ */ new Date()).toISOString() }
+        },
+        { merge: true }
+      );
+      tx.set(db.collection("points_ledger").doc(), {
+        userId: userRef.id,
+        op: "escrow_hold",
+        delta: -amount,
+        balanceAfter: next,
+        withheldAfter: withheld,
+        refId,
+        note: String(input.note || "").slice(0, 200),
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      return { userId: userRef.id, balance: next, withheldPoints: withheld };
+    });
+  }
+  if (input.op === "escrow_release") {
+    const amount = cleanAmount(input.amount);
+    const refId = String(input.refId || "").slice(0, 120);
+    if (!refId) throw new PointsError("\u7F3A\u5C11\u9810\u6263\u9805\u76EE");
+    if (input.mode !== "refund" && input.mode !== "payout") throw new PointsError("\u91CB\u653E\u65B9\u5F0F\u4E0D\u6B63\u78BA");
+    const payerRef = isAdmin && input.payerUserId ? db.collection("users").doc(String(input.payerUserId)) : userRef;
+    const escrowRef = db.collection("points_escrow").doc(`${payerRef.id}__${refId}`);
+    const questionRef = db.collection("questions").doc(refId);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(payerRef);
+      if (!snap.exists) throw new PointsError("\u627E\u4E0D\u5230\u4ED8\u6B3E\u6703\u54E1", 404);
+      const escrowSnap = await tx.get(escrowRef);
+      let available;
+      if (escrowSnap.exists) {
+        available = Number(escrowSnap.get("remaining")) || 0;
+      } else {
+        const qSnap = await tx.get(questionRef);
+        const isAuthor = qSnap.exists && qSnap.get("authorId") === payerRef.id;
+        if (!isAuthor && !isAdmin) throw new PointsError("\u627E\u4E0D\u5230\u9019\u7B46\u9810\u6263\u7D00\u9304", 404);
+        available = Math.min(
+          Number(snap.get("withheldPoints")) || 0,
+          qSnap.exists ? Number(qSnap.get("withheldBounty") ?? qSnap.get("bounty")) || 0 : 0
+        );
+      }
+      if (amount > available) throw new PointsError(`\u53EF\u91CB\u653E\u7684\u9810\u6263\u53EA\u5269 ${available} \u9EDE`);
+      const withheld = Math.max(0, (Number(snap.get("withheldPoints")) || 0) - amount);
+      const balance = (Number(snap.get("balance")) || 0) + (input.mode === "refund" ? amount : 0);
+      tx.update(payerRef, { withheldPoints: withheld, balance });
+      tx.set(
+        escrowRef,
+        {
+          payerId: payerRef.id,
+          refId,
+          remaining: available - amount,
+          status: available - amount <= 0 ? "released" : "held",
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        },
+        { merge: true }
+      );
+      tx.set(db.collection("points_ledger").doc(), {
+        userId: payerRef.id,
+        op: "escrow_release",
+        mode: input.mode,
+        delta: input.mode === "refund" ? amount : 0,
+        balanceAfter: balance,
+        withheldAfter: withheld,
+        refId,
+        byAuthUid: auth.uid,
+        note: String(input.note || "").slice(0, 200),
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      return { userId: payerRef.id, balance, withheldPoints: withheld };
+    });
+  }
+  throw new PointsError("\u4E0D\u652F\u63F4\u7684\u64CD\u4F5C");
+}
+
 // server.ts
 import_dotenv.default.config();
 process.on("uncaughtException", (err) => {
@@ -159237,6 +159432,7 @@ app.set("trust proxy", true);
 app.use(import_express3.default.json());
 app.use(["/api/ai", "/api/agent"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 40, name: "ai" }));
 app.use(["/api/auth/send-email-code", "/api/auth/send-sms-code", "/api/auth/send-welcome-email"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 5, name: "send-code" }));
+app.use("/api/points", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "points" }));
 app.use(["/api/auth/verify-email-code", "/api/auth/verify-sms-code", "/api/auth/reset-password-with-code"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 20, name: "verify-code" }));
 app.use("/api/admin", requireAdminMiddleware);
 app.use("/api/competition", competitionRoutes_default);
@@ -161837,6 +162033,18 @@ ${answer}
     explanation,
     quickOptions: ["\u8F49\u5165 24hr AI \u667A\u80FD\u5BA2\u670D\u6DF1\u5EA6\u5C0D\u8A71", "\u958B\u7ACB\u5C08\u5C6C\u5BA2\u670D\u5DE5\u55AE"]
   });
+});
+app.post("/api/points/op", async (req, res) => {
+  try {
+    const authUser = await verifyAuthToken(req.headers.authorization);
+    if (!authUser) return res.status(401).json({ success: false, error: "\u8ACB\u91CD\u65B0\u767B\u5165\u5F8C\u518D\u8A66" });
+    const result = await applyPointsOp(authUser, req.body || {});
+    res.json({ success: true, ...result });
+  } catch (err) {
+    const status = err instanceof PointsError ? err.status : 500;
+    if (status >= 500) console.error("[Points]", err?.message || err);
+    res.status(status).json({ success: false, error: err?.message || "\u9EDE\u6578\u8655\u7406\u5931\u6557" });
+  }
 });
 app.get("/api/cron/assistant", async (req, res) => {
   const secret = process.env.CRON_SECRET;
