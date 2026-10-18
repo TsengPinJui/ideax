@@ -106,6 +106,7 @@ import {
   pushAllDataToFirestore,
   loadAllDataFromFirestore,
   loadPersonalDataFromFirestore,
+  syncAiCrmConfigToFirestore,
   subscribePersonalData,
   setFirestoreDataScope,
   incrementQuestionViewInFirestore,
@@ -1825,6 +1826,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (e) {
         console.error(e);
       }
+      // 存到雲端，伺服器值班巡檢依此設定的間隔執行
+      void syncAiCrmConfigToFirestore(next);
       return next;
     });
   };
@@ -8280,7 +8283,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
 
-    // 每 5 秒巡檢一次是否有排定時程到期的代操任務
+    // 正式站由伺服器值班（每 5 分鐘）送出排程訊息，網頁端不再重複執行，避免同一則訊息送兩次
+    if (typeof window !== 'undefined' && /(^|\.)ideax\.tw$/.test(window.location.hostname)) return;
+    // 每 5 秒巡檢一次是否有排定時程到期的代操任務（本機與預覽環境）
     const intervalId = setInterval(checkAndExecuteScheduledTasks, 5000);
     // 初次掛載立即檢測一次
     checkAndExecuteScheduledTasks();

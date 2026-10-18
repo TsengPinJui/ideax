@@ -8,6 +8,7 @@ import authVerificationRouter from './server/authVerificationRoutes';
 import { rateLimit, requireAdminMiddleware } from './server/security';
 import { runAuthUidBackfill } from './server/backfillAuthUids';
 import { accountNoticeEmail, sendMail } from './server/mailer';
+import { runAssistantTick } from './server/assistantCron';
 
 dotenv.config();
 
@@ -2649,7 +2650,8 @@ app.post('/api/ai/customer-analytics', async (req: Request, res: Response) => {
 });
 
 // --- API 9: 24hr AI特助代客服務 (離線主動對談 + 商業機密防火牆 + 防惡意消耗) ---
-app.post('/api/ai/assistant-24hr-reply', async (req: Request, res: Response) => {
+// 24hr AI 特助：產生代答內容（聊天當下呼叫與伺服器定時值班共用）
+async function generateAssistant24hrReply(params: any): Promise<{ source: 'gemini' | 'fallback'; data: any }> {
   const {
     solverName,
     solverTitle,
@@ -2661,7 +2663,7 @@ app.post('/api/ai/assistant-24hr-reply', async (req: Request, res: Response) => 
     enableConfidentialityFirewall = true,
     conversationHistory = [],
     latestMessage,
-  } = req.body;
+  } = params || {};
 
   // Gemini AI Model 24hr Assistant
   const faqText = Array.isArray(faqList) && faqList.length > 0
@@ -2735,17 +2737,8 @@ ${historyText || '（這是客戶發起的新對話）'}
   };
 
   const parsed = await generateWithGeminiFallback(prompt, schema);
-  if (parsed) {
-    return res.json({
-      success: true,
-      source: 'gemini',
-      data: parsed,
-    });
-  }
-
-  // 離線降級智慧回覆
-  return res.json({
-    success: true,
+  if (parsed) return { source: 'gemini', data: parsed };
+  return {
     source: 'fallback',
     data: {
       replyText: `您好！我是 ${solverName || '專家'} 的 24hr AI 特助。${solverName || '顧問'} 目前正在離線狀態，我已先為您記錄這項需求。為了讓顧問稍後能第一時間為您評估，請問您期望的完成時程大約在什麼時候？是否有具體的預算範圍呢？`,
@@ -2754,8 +2747,14 @@ ${historyText || '（這是客戶發起的新對話）'}
       estimatedTimeline: '未提及',
       shouldHandoverToHuman: false,
     },
-  });
+  };
+}
+
+app.post('/api/ai/assistant-24hr-reply', async (req: Request, res: Response) => {
+  const result = await generateAssistant24hrReply(req.body);
+  return res.json({ success: true, source: result.source, data: result.data });
 });
+
 
 // --- API 10: 專家在線時「召喚 AI 特助請求建議」 ---
 app.post('/api/ai/expert-chat-advice', async (req: Request, res: Response) => {
@@ -3140,6 +3139,31 @@ app.post('/api/ai/faq-agent-consult', async (req: Request, res: Response) => {
 });
 
 // Admin Endpoint: AI Agent One-Click Aggregate Collected Questions into FAQs (實體 Dify Agent 驅動)
+// AI 特助伺服器值班：Vercel Cron 每 5 分鐘呼叫（需設定 CRON_SECRET），管理員也可手動觸發
+app.get('/api/cron/assistant', async (req: Request, res: Response) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers.authorization !== `Bearer ${secret}`) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+  try {
+    const result = await runAssistantTick(generateAssistant24hrReply);
+    console.log('[Assistant Cron]', JSON.stringify(result));
+    res.json({ success: true, result });
+  } catch (err: any) {
+    console.error('[Assistant Cron] failed:', err?.message || err);
+    res.status(500).json({ success: false, error: err?.message || 'failed' });
+  }
+});
+
+app.post('/api/admin/run-assistant-tick', async (_req: Request, res: Response) => {
+  try {
+    const result = await runAssistantTick(generateAssistant24hrReply);
+    res.json({ success: true, result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || 'failed' });
+  }
+});
+
 // 管理員：寄送帳號停權／解除停權通知信
 app.post('/api/admin/account-notice', async (req: Request, res: Response) => {
   try {

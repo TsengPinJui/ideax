@@ -566,6 +566,8 @@ export type AdminSite = 'site_a' | 'site_b'; // 'site_a': IdeaX 主站 | 'site_b
 export interface User {
   id: string;
   authUid?: string; // 對應的 Firebase 登入帳號 UID（資料庫權限以此判斷）
+  aiCrmLastScanAt?: string; // 伺服器 AI-CRM 最後巡檢時間
+  aiCrmLastScanMatches?: number; // 最後一次巡檢找到的案件數
   memberId?: string; // 規範ID（首字英文字母+亂數編排9碼，共10碼，例如 c123456789, a000000001, b987654321）
   accountType?: 'user' | 'admin' | 'enterprise'; // ID種類：一般用戶 (c) | 管理員 (a) | 企業機構 (b)
   username?: string; // 註冊帳號 (4~20 位英數字或底線)

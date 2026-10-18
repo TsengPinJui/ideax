@@ -42,7 +42,13 @@
   ],
   "functions": {
     "api/index.mjs": {
-      "maxDuration": 60
+      "maxDuration": 300
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/assistant",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

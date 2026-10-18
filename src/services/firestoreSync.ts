@@ -964,6 +964,16 @@ export async function syncTermsAgreementsToFirestore(user: User): Promise<void> 
   }
 }
 
+/** AI-CRM 巡檢設定存到雲端（platform_settings/global.aiCrmConfig），伺服器值班依此執行 */
+export async function syncAiCrmConfigToFirestore(config: Record<string, any>): Promise<void> {
+  if (isQuotaExhausted) return;
+  try {
+    await setDoc(doc(db, 'platform_settings', 'global'), { aiCrmConfig: JSON.parse(JSON.stringify(config)), updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (err) {
+    handleFirestoreError('syncAiCrmConfigToFirestore', err);
+  }
+}
+
 export async function syncPlatformSettingsToFirestore(settings: {
   commissionRate?: number;
   plans?: SubscriptionPlan[];

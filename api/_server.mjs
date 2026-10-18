@@ -157158,12 +157158,12 @@ async function toggleLikeProposal(userId, proposalId, fallbackBaseLikes) {
       updatedLikes = [...likedList, proposalId];
       newLikeCount = baseCount + 1;
     }
-    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const nowIso2 = (/* @__PURE__ */ new Date()).toISOString();
     if (propSnap.exists) {
       transaction.update(propRef, {
         likeCount: newLikeCount,
         likesCount: newLikeCount,
-        updatedAt: nowIso
+        updatedAt: nowIso2
       });
     } else {
       transaction.set(
@@ -157172,7 +157172,7 @@ async function toggleLikeProposal(userId, proposalId, fallbackBaseLikes) {
           id: proposalId,
           likeCount: newLikeCount,
           likesCount: newLikeCount,
-          updatedAt: nowIso
+          updatedAt: nowIso2
         },
         { merge: true }
       );
@@ -157181,7 +157181,7 @@ async function toggleLikeProposal(userId, proposalId, fallbackBaseLikes) {
       transaction.update(questionRef, {
         likes: newLikeCount,
         secondedCount: newLikeCount,
-        updatedAt: nowIso
+        updatedAt: nowIso2
       });
     }
     transaction.set(
@@ -157189,7 +157189,7 @@ async function toggleLikeProposal(userId, proposalId, fallbackBaseLikes) {
       {
         userId,
         proposalIds: updatedLikes,
-        updatedAt: nowIso
+        updatedAt: nowIso2
       },
       { merge: true }
     );
@@ -158716,6 +158716,272 @@ async function runAuthUidBackfill(apply) {
     result.notifications++;
     if (apply) await d.ref.update({ recipientAuthUid: uid });
   }
+  return result;
+}
+
+// server/assistantCron.ts
+var MAX_AUTO_REPLIES_PER_TICK = 15;
+var REPLY_WINDOW_MS = 24 * 60 * 60 * 1e3;
+var DEFAULT_SCAN_HOURS = 2;
+function nowIso() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+function msgTime(m2) {
+  const t2 = Date.parse(m2?.createdAt);
+  return Number.isNaN(t2) ? 0 : t2;
+}
+function isAiOrSystem(m2) {
+  if (!m2) return true;
+  if (m2.isSystem || m2.isAiAssistant) return true;
+  const name4 = String(m2.senderName || "");
+  return name4.includes("AI\u7279\u52A9") || name4.includes("AI \u7279\u52A9") || name4.includes("AI\u8ECD\u5E2B") || name4.includes("AI \u8ECD\u5E2B");
+}
+function getScanIntervalHours(crmConfig, now) {
+  if (!crmConfig) return DEFAULT_SCAN_HOURS;
+  if (crmConfig.scheduleMode === "fixed_interval") return Number(crmConfig.autoScanIntervalHours) || DEFAULT_SCAN_HOURS;
+  const hour = (now.getUTCHours() + 8) % 24;
+  const minute = now.getUTCMinutes();
+  const hm = hour * 60 + minute;
+  if (hm >= 9 * 60 && hm < 18 * 60) return Number(crmConfig.peakIntervalHours) || 1;
+  if (hm >= 18 * 60 && hm < 23 * 60 + 30) return Number(crmConfig.eveningIntervalHours) || 2;
+  return Number(crmConfig.offPeakIntervalHours) || 6;
+}
+async function runAssistantTick(generateReply) {
+  const started = Date.now();
+  const result = {
+    experts: 0,
+    scheduledSent: 0,
+    autoReplies: 0,
+    crmScans: 0,
+    crmMatches: 0,
+    errors: [],
+    durationMs: 0
+  };
+  if (!hasAdminCredentials) {
+    result.errors.push("\u4F3A\u670D\u5668\u5C1A\u672A\u8A2D\u5B9A FIREBASE_SERVICE_ACCOUNT");
+    return result;
+  }
+  const { getFirestore: getFirestore3, FieldValue: FieldValue4 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
+  const app2 = getApps()[0];
+  const dbId = firebase_applet_config_default.firestoreDatabaseId;
+  const db = dbId ? getFirestore3(app2, dbId) : getFirestore3(app2);
+  const now = /* @__PURE__ */ new Date();
+  const settingsSnap = await db.collection("platform_settings").doc("global").get().catch(() => null);
+  const crmConfig = settingsSnap?.exists ? settingsSnap.data()?.aiCrmConfig : null;
+  const expertsSnap = await db.collection("users").where("assistant24hrConfig.isEnabled", "==", true).get();
+  result.experts = expertsSnap.size;
+  const userCache = /* @__PURE__ */ new Map();
+  const getUser = async (id) => {
+    if (!id) return null;
+    if (userCache.has(id)) return userCache.get(id);
+    const snap = await db.collection("users").doc(id).get().catch(() => null);
+    const data = snap?.exists ? { id: snap.id, ...snap.data() } : null;
+    userCache.set(id, data);
+    return data;
+  };
+  const authUidOf = (u) => u ? u.authUid || (/^[A-Za-z0-9]{20,40}$/.test(u.id) ? u.id : null) : null;
+  const notify = async (recipient, title, message2, extra = {}) => {
+    const recipientAuthUid = authUidOf(recipient);
+    if (!recipient?.id) return;
+    const id = `notif-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    await db.collection("notifications").doc(id).set({
+      id,
+      userId: recipient.id,
+      recipientAuthUid: recipientAuthUid || null,
+      senderAuthUid: "system",
+      category: "personal",
+      title,
+      message: message2,
+      type: extra.type || "chat_message",
+      createdAt: nowIso(),
+      read: false,
+      ...extra
+    });
+  };
+  const findOrCreateConversation = async (expert, client, questionId, questionTitle) => {
+    const snap = await db.collection("conversations").where("participantIds", "array-contains", expert.id).get();
+    const existing = snap.docs.find((d) => {
+      const c = d.data();
+      return !c.isGroup && Array.isArray(c.participantIds) && c.participantIds.includes(client.id);
+    });
+    if (existing) return existing.ref;
+    const id = `conv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const ref = db.collection("conversations").doc(id);
+    await ref.set({
+      id,
+      participantIds: [expert.id, client.id],
+      participantAuthUids: [authUidOf(expert), authUidOf(client)].filter(Boolean),
+      participantDetails: [
+        { id: expert.id, name: expert.name || "\u5C08\u5BB6", avatar: expert.avatar || "", title: expert.title || "\u5C08\u5BB6" },
+        { id: client.id, name: client.name || "\u5BA2\u6236", avatar: client.avatar || "", title: client.title || "\u5E73\u53F0\u6703\u54E1" }
+      ],
+      roleByUser: { [expert.id]: "solver", [client.id]: "questioner" },
+      ...questionId ? { relatedQuestionId: questionId, relatedQuestionTitle: questionTitle || "" } : {},
+      lastMessage: "",
+      lastMessageTime: nowIso(),
+      messages: [],
+      createdAt: nowIso()
+    });
+    return ref;
+  };
+  const appendMessage = async (ref, message2, summary) => {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.data() || {};
+      const messages = Array.isArray(data.messages) ? data.messages : [];
+      tx.set(
+        ref,
+        { messages: [...messages, message2], lastMessage: summary, lastMessageTime: message2.createdAt, updatedAt: nowIso() },
+        { merge: true }
+      );
+    });
+  };
+  let repliesBudget = MAX_AUTO_REPLIES_PER_TICK;
+  for (const expertDoc of expertsSnap.docs) {
+    const expert = { id: expertDoc.id, ...expertDoc.data() };
+    userCache.set(expert.id, expert);
+    const config = expert.assistant24hrConfig || {};
+    if (expert.isBlocked) continue;
+    try {
+      const tasks = Array.isArray(config.scheduledTasks) ? config.scheduledTasks : [];
+      let changed = false;
+      const updatedTasks = [];
+      for (const task of tasks) {
+        if (task.status !== "pending" || !task.autoExecute || !(Number(task.scheduledTimestamp) <= Date.now())) {
+          updatedTasks.push(task);
+          continue;
+        }
+        changed = true;
+        const client = await getUser(task.clientId) || { id: task.clientId, name: task.clientName, avatar: task.clientAvatar };
+        try {
+          const ref = await findOrCreateConversation(expert, client, task.questionId, task.questionTitle);
+          const text = `[24hr AI\u7279\u52A9\u4EE3\u64CD] ${task.messageTemplate}`;
+          await appendMessage(
+            ref,
+            {
+              id: `msg-sched-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              senderId: expert.id,
+              senderName: `${expert.name || "\u5C08\u5BB6"} \u7684 24hr AI \u7279\u52A9`,
+              senderAvatar: expert.avatar || "",
+              text,
+              createdAt: nowIso(),
+              isAiAssistant: true
+            },
+            text.slice(0, 60)
+          );
+          await notify(client, `${expert.name || "\u5C08\u5BB6"} \u50B3\u4E86\u8A0A\u606F\u7D66\u4F60`, task.messageTemplate.slice(0, 80));
+          updatedTasks.push({ ...task, status: "completed", executedAt: nowIso(), executionResult: "\u5DF2\u7531 AI \u7279\u52A9\u65BC\u4F3A\u670D\u5668\u503C\u73ED\u6642\u81EA\u52D5\u9001\u51FA" });
+          result.scheduledSent++;
+        } catch (err) {
+          updatedTasks.push({ ...task, status: "pending", executionResult: `\u9001\u51FA\u5931\u6557\uFF1A${err?.message || err}` });
+          result.errors.push(`scheduled:${task.id}`);
+        }
+      }
+      if (changed) {
+        await expertDoc.ref.update({ "assistant24hrConfig.scheduledTasks": updatedTasks });
+      }
+    } catch (err) {
+      result.errors.push(`tasks:${expert.id}:${err?.message || err}`);
+    }
+    try {
+      const offlineMs = Math.max(1, Number(config.offlineTriggerMinutes) || 20) * 60 * 1e3;
+      const dailyLimit = Number(config.dailyMessageLimitPerChat) || 30;
+      const today = new Date(Date.now() + 8 * 3600 * 1e3).toISOString().slice(0, 10);
+      const convSnap = await db.collection("conversations").where("participantIds", "array-contains", expert.id).get();
+      for (const convDoc of convSnap.docs) {
+        if (repliesBudget <= 0) break;
+        const conv = convDoc.data();
+        if (conv.isGroup) continue;
+        const messages = Array.isArray(conv.messages) ? conv.messages : [];
+        const last = messages[messages.length - 1];
+        if (!last || last.senderId === expert.id || isAiOrSystem(last)) continue;
+        const lastAt = msgTime(last);
+        if (!lastAt || Date.now() - lastAt < offlineMs || Date.now() - lastAt > REPLY_WINDOW_MS) continue;
+        const todayAiCount = messages.filter(
+          (m2) => m2.senderId === expert.id && isAiOrSystem(m2) && String(m2.createdAt || "").slice(0, 10) === today
+        ).length;
+        if (todayAiCount >= dailyLimit) continue;
+        const reply = await generateReply({
+          solverName: expert.name,
+          solverTitle: expert.title,
+          tone: config.tone,
+          toneDescription: config.toneDescription,
+          faqList: config.faqList,
+          customPrompts: config.customPrompts,
+          requireHumanApprovalForDeals: config.requireHumanApprovalForDeals !== false,
+          enableConfidentialityFirewall: config.enableConfidentialityFirewall !== false,
+          conversationHistory: messages.slice(-8).map((m2) => ({
+            senderName: m2.senderName,
+            text: m2.text,
+            isSelf: m2.senderId === expert.id
+          })),
+          latestMessage: last.text
+        });
+        const replyText = String(reply?.data?.replyText || "").trim();
+        if (!replyText) continue;
+        await appendMessage(
+          convDoc.ref,
+          {
+            id: `msg-assistant-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            senderId: expert.id,
+            senderName: `${expert.name || "\u5C08\u5BB6"} \u7684 24hr AI \u7279\u52A9`,
+            senderAvatar: expert.avatar || "",
+            text: replyText,
+            createdAt: nowIso(),
+            isAiAssistant: true
+          },
+          `[24hr AI\u7279\u52A9\u4EE3\u7B54] ${replyText.slice(0, 30)}...`
+        );
+        repliesBudget--;
+        result.autoReplies++;
+        const clientName = last.senderName || "\u5BA2\u6236";
+        const need = reply?.data?.identifiedNeed ? `\u9700\u6C42\u6458\u8981\uFF1A${reply.data.identifiedNeed}` : "";
+        await notify(
+          expert,
+          `AI \u7279\u52A9\u5DF2\u4EE3\u4F60\u56DE\u8986 ${clientName}`,
+          `${clientName}\uFF1A\u300C${String(last.text || "").slice(0, 40)}\u300D${need ? `
+${need}` : ""}${reply?.data?.shouldHandoverToHuman ? "\n\u5EFA\u8B70\u4F60\u89AA\u81EA\u63A5\u624B\u9019\u6BB5\u5C0D\u8A71\u3002" : ""}`,
+          { linkChatId: convDoc.id }
+        );
+        await expertDoc.ref.update({
+          "assistant24hrConfig.totalAssistedCount": FieldValue4.increment(1),
+          "assistant24hrConfig.lastActiveAt": nowIso()
+        });
+      }
+    } catch (err) {
+      result.errors.push(`reply:${expert.id}:${err?.message || err}`);
+    }
+    try {
+      if (crmConfig && crmConfig.isEnabled === false) continue;
+      const intervalMs = getScanIntervalHours(crmConfig, now) * 3600 * 1e3;
+      const lastScanAt = Date.parse(expert.aiCrmLastScanAt || "") || 0;
+      if (Date.now() - lastScanAt < intervalMs) continue;
+      result.crmScans++;
+      const since = lastScanAt || Date.now() - 24 * 3600 * 1e3;
+      const domains = new Set([expert.domain, ...expert.domains || []].filter(Boolean));
+      const skills = new Set([...expert.skills || [], ...expert.subdomains || [], expert.subdomain].filter(Boolean).map(String));
+      const qSnap = await db.collection("questions").where("createdAt", ">=", new Date(since).toISOString()).limit(200).get();
+      const matches = qSnap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((q) => q.status === "open" && q.authorId !== expert.id).filter((q) => {
+        if (domains.size === 0 && skills.size === 0) return Number(q.bounty) > 0;
+        if (domains.has(q.category)) return true;
+        const tags = [...q.tags || [], q.subcategory, ...q.subcategories || []].filter(Boolean).map(String);
+        return tags.some((t2) => skills.has(t2));
+      }).sort((a, b) => (Number(b.bounty) || 0) - (Number(a.bounty) || 0)).slice(0, 5);
+      if (matches.length > 0) {
+        result.crmMatches += matches.length;
+        const list = matches.map((q) => `\u30FB${q.title}${Number(q.bounty) > 0 ? `\uFF08\u61F8\u8CDE ${q.bounty} \u9EDE\uFF09` : ""}`).join("\n");
+        await notify(expert, `AI-CRM \u5DE1\u6AA2\uFF1A\u767C\u73FE ${matches.length} \u500B\u9069\u5408\u4F60\u7684\u65B0\u6848\u4EF6`, list, {
+          type: "ai_match",
+          category: "system",
+          linkQuestionId: matches[0].id
+        });
+      }
+      await expertDoc.ref.update({ aiCrmLastScanAt: nowIso(), aiCrmLastScanMatches: matches.length });
+    } catch (err) {
+      result.errors.push(`crm:${expert.id}:${err?.message || err}`);
+    }
+  }
+  result.durationMs = Date.now() - started;
   return result;
 }
 
@@ -161046,7 +161312,7 @@ app.post("/api/ai/customer-analytics", async (req, res) => {
     }
   });
 });
-app.post("/api/ai/assistant-24hr-reply", async (req, res) => {
+async function generateAssistant24hrReply(params) {
   const {
     solverName,
     solverTitle,
@@ -161058,7 +161324,7 @@ app.post("/api/ai/assistant-24hr-reply", async (req, res) => {
     enableConfidentialityFirewall = true,
     conversationHistory = [],
     latestMessage
-  } = req.body;
+  } = params || {};
   const faqText = Array.isArray(faqList) && faqList.length > 0 ? faqList.map((f3, i2) => `Q${i2 + 1}: ${f3.question}
 A${i2 + 1}: ${f3.answer}`).join("\n") : "\u5C1A\u672A\u8A2D\u5B9A\u984D\u5916 FAQ";
   const customPromptText = Array.isArray(customPrompts) && customPrompts.length > 0 ? customPrompts.filter((p) => p.isEnabled !== false).map((p) => `- ${p.instruction}`).join("\n") : "\u7121\u7279\u5225\u81EA\u8A02\u6307\u4EE4";
@@ -161118,15 +161384,8 @@ ${historyText || "\uFF08\u9019\u662F\u5BA2\u6236\u767C\u8D77\u7684\u65B0\u5C0D\u
     required: ["replyText", "identifiedNeed", "shouldHandoverToHuman"]
   };
   const parsed = await generateWithGeminiFallback(prompt, schema);
-  if (parsed) {
-    return res.json({
-      success: true,
-      source: "gemini",
-      data: parsed
-    });
-  }
-  return res.json({
-    success: true,
+  if (parsed) return { source: "gemini", data: parsed };
+  return {
     source: "fallback",
     data: {
       replyText: `\u60A8\u597D\uFF01\u6211\u662F ${solverName || "\u5C08\u5BB6"} \u7684 24hr AI \u7279\u52A9\u3002${solverName || "\u9867\u554F"} \u76EE\u524D\u6B63\u5728\u96E2\u7DDA\u72C0\u614B\uFF0C\u6211\u5DF2\u5148\u70BA\u60A8\u8A18\u9304\u9019\u9805\u9700\u6C42\u3002\u70BA\u4E86\u8B93\u9867\u554F\u7A0D\u5F8C\u80FD\u7B2C\u4E00\u6642\u9593\u70BA\u60A8\u8A55\u4F30\uFF0C\u8ACB\u554F\u60A8\u671F\u671B\u7684\u5B8C\u6210\u6642\u7A0B\u5927\u7D04\u5728\u4EC0\u9EBC\u6642\u5019\uFF1F\u662F\u5426\u6709\u5177\u9AD4\u7684\u9810\u7B97\u7BC4\u570D\u5462\uFF1F`,
@@ -161135,7 +161394,11 @@ ${historyText || "\uFF08\u9019\u662F\u5BA2\u6236\u767C\u8D77\u7684\u65B0\u5C0D\u
       estimatedTimeline: "\u672A\u63D0\u53CA",
       shouldHandoverToHuman: false
     }
-  });
+  };
+}
+app.post("/api/ai/assistant-24hr-reply", async (req, res) => {
+  const result = await generateAssistant24hrReply(req.body);
+  return res.json({ success: true, source: result.source, data: result.data });
 });
 app.post("/api/ai/expert-chat-advice", async (req, res) => {
   const {
@@ -161338,6 +161601,28 @@ ${answer}
     explanation,
     quickOptions: ["\u8F49\u5165 24hr AI \u667A\u80FD\u5BA2\u670D\u6DF1\u5EA6\u5C0D\u8A71", "\u958B\u7ACB\u5C08\u5C6C\u5BA2\u670D\u5DE5\u55AE"]
   });
+});
+app.get("/api/cron/assistant", async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || req.headers.authorization !== `Bearer ${secret}`) {
+    return res.status(401).json({ success: false, error: "unauthorized" });
+  }
+  try {
+    const result = await runAssistantTick(generateAssistant24hrReply);
+    console.log("[Assistant Cron]", JSON.stringify(result));
+    res.json({ success: true, result });
+  } catch (err) {
+    console.error("[Assistant Cron] failed:", err?.message || err);
+    res.status(500).json({ success: false, error: err?.message || "failed" });
+  }
+});
+app.post("/api/admin/run-assistant-tick", async (_req, res) => {
+  try {
+    const result = await runAssistantTick(generateAssistant24hrReply);
+    res.json({ success: true, result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err?.message || "failed" });
+  }
 });
 app.post("/api/admin/account-notice", async (req, res) => {
   try {
