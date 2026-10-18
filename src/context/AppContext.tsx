@@ -4417,7 +4417,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logoutAccount = (userId?: string) => {
     const targetId = userId || currentUser.id;
-    logoutFromFirebase().catch(() => {});
+    // 只有登出「目前使用中的帳號」才登出 Firebase；登出裝置上其他帳號不影響目前的登入憑證
+    if (!userId || userId === currentUser.id) {
+      logoutFromFirebase().catch(() => {});
+    }
     setDeviceAccounts((prev) =>
       prev.map((a) => (a.userId === targetId ? { ...a, isLoggedIn: false } : a))
     );

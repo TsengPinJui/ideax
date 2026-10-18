@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AdminSessionNotice } from './AdminSessionNotice';
 import { ShieldCheck } from 'lucide-react';
 import { getAuthHeaders } from '../services/authHeader';
 
@@ -53,6 +54,7 @@ export const AdminAuthBackfillCard: React.FC = () => {
           </p>
         </div>
       </div>
+      <AdminSessionNotice />
       <div className="flex gap-2 flex-wrap">
         <button
           type="button"
