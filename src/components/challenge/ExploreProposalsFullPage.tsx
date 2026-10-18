@@ -36,6 +36,7 @@ import {
   Layers,
   User as UserIcon,
   HelpCircle,
+  Clock,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { isGuestUser } from '../../utils/userDisplay';
@@ -133,7 +134,7 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
   const [selectedTrack, setSelectedTrack] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'funding' | 'likes' | 'comments'>('funding');
+  const [sortBy, setSortBy] = useState<'funding' | 'likes' | 'comments' | 'latest'>('funding');
   const [cardViewMode, setCardViewMode] = useState<'large' | 'compact'>('large');
   const [likedProposalIds, setLikedProposalIds] = useState<string[]>([]);
 
@@ -333,6 +334,9 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
     }
     if (sortBy === 'comments') {
       return (b.commentsCount || 0) - (a.commentsCount || 0);
+    }
+    if (sortBy === 'latest') {
+      return (Date.parse((b as any).createdAt || '') || 0) - (Date.parse((a as any).createdAt || '') || 0);
     }
     return 0;
   });
@@ -1181,6 +1185,19 @@ export const ExploreProposalsFullPage: React.FC<ExploreProposalsFullPageProps> =
               >
                 <MessageSquare className={`w-3.5 h-3.5 ${sortBy === 'comments' ? 'text-white' : 'text-indigo-500'}`} />
                 <span>討論數</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy('latest')}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  sortBy === 'latest'
+                    ? 'bg-sky-600 text-white shadow-2xs font-black'
+                    : 'text-stone-600 hover:text-sky-700 hover:bg-white/70'
+                }`}
+                title="依提交時間由新到舊排序"
+              >
+                <Clock className={`w-3.5 h-3.5 ${sortBy === 'latest' ? 'text-white' : 'text-sky-500'}`} />
+                <span>最新</span>
               </button>
             </div>
 

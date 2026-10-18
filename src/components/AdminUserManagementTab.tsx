@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { AdminUserProfileModal } from './AdminUserProfileModal';
 import { AdminUserImpersonationModal } from './AdminUserImpersonationModal';
+import { AdminAuthBackfillCard } from './AdminAuthBackfillCard';
 
 interface AdminUserManagementTabProps {
   onNavigateToCertifications?: (userId?: string) => void;
@@ -424,6 +425,9 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
+      {/* 資料維護：補齊帳號對照（資料庫權限） */}
+      <AdminAuthBackfillCard />
+
       {/* 頂部訊息反饋 */}
       {feedbackMsg && (
         <div

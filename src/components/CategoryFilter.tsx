@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Category, ProblemLevel, CATEGORY_HIERARCHY, QuestionSortOption, MarketViewMode, SpecialZone } from '../types';
-import { Award, Flame, Sparkles, Lightbulb, Square, List, LayoutGrid, Coins, SlidersHorizontal, X } from 'lucide-react';
+import { Award, Clock, Flame, Sparkles, Lightbulb, Square, List, LayoutGrid, Coins, SlidersHorizontal, X } from 'lucide-react';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import { HelpTooltip } from './HelpTooltip';
@@ -212,6 +212,19 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             >
               <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-500 shrink-0" />
               <span>推薦</span>
+            </button>
+
+            <button
+              onClick={() => setSortBy('latest')}
+              className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm transition-all cursor-pointer flex items-center gap-1 md:gap-1.5 whitespace-nowrap ${
+                sortBy === 'latest'
+                  ? 'bg-white text-stone-950 shadow-2xs font-bold'
+                  : 'text-stone-600 hover:text-stone-900 font-medium'
+              }`}
+              title="依發布時間由新到舊排序"
+            >
+              <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 text-sky-500 shrink-0 hidden sm:inline" />
+              <span>最新</span>
             </button>
 
             <button

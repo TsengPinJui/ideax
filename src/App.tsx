@@ -415,6 +415,9 @@ function MainContent() {
       const saved = localStorage.getItem('ideax_market_sort_by');
       if (
         saved === 'recruiting_promoted' ||
+        saved === 'latest' ||
+        saved === 'most_likes' ||
+        saved === 'highest_tips' ||
         saved === 'most_solutions' ||
         saved === 'most_discussions' ||
         saved === 'highest_bounty'
@@ -1556,6 +1559,12 @@ function MainContent() {
           return b.id.localeCompare(a.id);
         }
 
+        // 最新發布（依時間由新到舊）
+        if (sortBy === 'latest') {
+          const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return diff !== 0 ? diff : b.id.localeCompare(a.id);
+        }
+
         // 2. 最多解答（方案數最多）
         if (sortBy === 'most_solutions') {
           const aSolutions = answers.filter((ans) => ans.questionId === a.id && (ans.type === 'solution' || !ans.type)).length;
@@ -2131,6 +2140,7 @@ function MainContent() {
                             className="px-2.5 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-rose-200 bg-white text-xs sm:text-sm font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-400 cursor-pointer shrink-0"
                           >
                             <option value="recruiting_promoted">🔥 熱門推薦</option>
+                            <option value="latest">🆕 最新發布</option>
                             <option value="most_likes">🔥 +1 附議最多</option>
                             <option value="highest_tips">🪙 點數支持 高到低</option>
                             <option value="highest_bounty">💰 懸賞金額 高到低</option>
@@ -2348,6 +2358,7 @@ function MainContent() {
                             className="px-2.5 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border border-sky-200 bg-white text-xs sm:text-sm font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-sky-400 cursor-pointer shrink-0"
                           >
                             <option value="recruiting_promoted">🔥 熱門推薦</option>
+                            <option value="latest">🆕 最新發布</option>
                             <option value="most_likes">👍 按讚最多</option>
                             <option value="most_discussions">💬 討論數最多</option>
                             <option value="most_solutions">💡 方案數最多</option>
