@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AdminSessionNotice } from './AdminSessionNotice';
 import { Bot } from 'lucide-react';
 import { getAuthHeaders } from '../services/authHeader';
 
@@ -42,6 +43,7 @@ export const AdminAssistantTickCard: React.FC = () => {
           </p>
         </div>
       </div>
+      <AdminSessionNotice />
       <button
         type="button"
         disabled={busy}
