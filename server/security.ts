@@ -45,8 +45,19 @@ export function rateLimit(options: { windowMs: number; max: number; name: string
 export async function requireAdminMiddleware(req: Request, res: Response, next: NextFunction) {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser || !(await isVerifiedAdmin(authUser.uid))) {
-      return res.status(403).json({ success: false, error: '未授權：僅限認證管理員' });
+    if (!authUser) {
+      return res.status(403).json({
+        success: false,
+        error: req.headers.authorization
+          ? '未授權：登入憑證無效或已過期，請登出後重新以管理員 Email 登入'
+          : '未授權：沒有登入憑證，請以管理員 Email 登入（不能用本機帳號切換）',
+      });
+    }
+    if (!(await isVerifiedAdmin(authUser.uid))) {
+      return res.status(403).json({
+        success: false,
+        error: `未授權：${authUser.email || authUser.uid} 不在管理員名單。請確認 Vercel 的 ADMIN_EMAILS 包含此 Email 且已完成 Email 驗證，或在 Firestore 的 admins 建立文件 ${authUser.uid}`,
+      });
     }
     next();
   } catch {

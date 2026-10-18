@@ -158846,8 +158846,17 @@ function rateLimit(options2) {
 async function requireAdminMiddleware(req, res, next) {
   try {
     const authUser = await verifyAuthToken(req.headers.authorization);
-    if (!authUser || !await isVerifiedAdmin(authUser.uid)) {
-      return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u50C5\u9650\u8A8D\u8B49\u7BA1\u7406\u54E1" });
+    if (!authUser) {
+      return res.status(403).json({
+        success: false,
+        error: req.headers.authorization ? "\u672A\u6388\u6B0A\uFF1A\u767B\u5165\u6191\u8B49\u7121\u6548\u6216\u5DF2\u904E\u671F\uFF0C\u8ACB\u767B\u51FA\u5F8C\u91CD\u65B0\u4EE5\u7BA1\u7406\u54E1 Email \u767B\u5165" : "\u672A\u6388\u6B0A\uFF1A\u6C92\u6709\u767B\u5165\u6191\u8B49\uFF0C\u8ACB\u4EE5\u7BA1\u7406\u54E1 Email \u767B\u5165\uFF08\u4E0D\u80FD\u7528\u672C\u6A5F\u5E33\u865F\u5207\u63DB\uFF09"
+      });
+    }
+    if (!await isVerifiedAdmin(authUser.uid)) {
+      return res.status(403).json({
+        success: false,
+        error: `\u672A\u6388\u6B0A\uFF1A${authUser.email || authUser.uid} \u4E0D\u5728\u7BA1\u7406\u54E1\u540D\u55AE\u3002\u8ACB\u78BA\u8A8D Vercel \u7684 ADMIN_EMAILS \u5305\u542B\u6B64 Email \u4E14\u5DF2\u5B8C\u6210 Email \u9A57\u8B49\uFF0C\u6216\u5728 Firestore \u7684 admins \u5EFA\u7ACB\u6587\u4EF6 ${authUser.uid}`
+      });
     }
     next();
   } catch {
