@@ -94,6 +94,7 @@ export type UserDashboardTab =
   | 'settings';
 
 export type QuestionSortOption = 
+  | 'latest'              // 🆕 最新發布（依發布時間由新到舊）
   | 'recruiting_promoted' // ✨推薦（依用戶最近搜尋關鍵字、主題、看板個性化推薦，付費推播置頂並註明招募中）
   | 'most_solutions'      // 最多解答（方案數最多 / 提案數最高）
   | 'most_discussions'    // 熱烈討論（討論數）
