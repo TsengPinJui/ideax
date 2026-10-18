@@ -1521,7 +1521,17 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                           </span>
                         </div>
                         <span className="text-[10px] text-stone-400 font-mono shrink-0">
-                          {conv.lastMessageTime ? new Date(conv.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                          {(() => {
+                            // 聊天清單時間：今天顯示時刻，其他日子顯示日期；舊資料的文字（如「剛剛」）照原樣
+                            const raw = conv.lastMessageTime || conv.messages?.[conv.messages.length - 1]?.createdAt || '';
+                            const t = Date.parse(raw);
+                            if (!raw) return '';
+                            if (Number.isNaN(t)) return raw;
+                            const d = new Date(t);
+                            return d.toDateString() === new Date().toDateString()
+                              ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : `${d.getMonth() + 1}/${d.getDate()}`;
+                          })()}
                         </span>
                       </div>
 
