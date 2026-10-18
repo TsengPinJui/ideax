@@ -64,6 +64,21 @@ export function getRemainingDaysText(unpublishAt?: string): string {
   return `${diffDays}天`;
 }
 
+/** 卡片上的刊登時間：今天／昨天／N 天前；超過 30 天顯示日期 */
+export function getPostedAgoText(createdAt?: string): string {
+  if (!createdAt) return '';
+  const t = new Date(createdAt).getTime();
+  if (isNaN(t)) return createdAt;
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const days = Math.floor((startOfToday.getTime() - t) / 86400000) + 1;
+  if (t >= startOfToday.getTime()) return '今天';
+  if (days <= 1) return '昨天';
+  if (days <= 30) return `${days} 天前`;
+  const d = new Date(t);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 interface CreateIdeasZoneViewProps {
   proposals?: StarSeasonProposal[];
   onSelectProposal: (proposal: StarSeasonProposal) => void;
@@ -1131,10 +1146,13 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                         className={`flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-200/80 ${
                           isAuthorOrAdmin ? 'hover:bg-amber-200/90 cursor-pointer transition-colors' : ''
                         }`}
-                        title={isAuthorOrAdmin ? '點擊設定刊登時間（永久、7天等）' : undefined}
+                        title={
+                          (proposal.createdAt ? `刊登於 ${new Date(proposal.createdAt).toLocaleDateString('zh-TW')}` : '') +
+                          (isAuthorOrAdmin ? `｜刊登期限：${getRemainingDaysText(proposal.unpublishAt)}（點擊設定）` : '')
+                        }
                       >
                         <Clock className="w-3 h-3 text-amber-700" />
-                        <span>{getRemainingDaysText(proposal.unpublishAt)}</span>
+                        <span>{getPostedAgoText(proposal.createdAt) || getRemainingDaysText(proposal.unpublishAt)}</span>
                       </span>
                     </div>
 
