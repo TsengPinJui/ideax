@@ -34,6 +34,7 @@ import { findReferencedPainPoint } from '../utils/painPointLinking';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { getFormattedAppNameAndTitle } from './QuestionCard';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../utils/guestAccess';
+import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
 
 interface VibeCodingExhibitionViewProps {
   questions?: Question[];
@@ -119,6 +120,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'tipped' | 'liked' | 'discussions'>('popular');
   const [viewMode, setViewMode] = useState<MarketViewMode>('large');
+  const [hoveredAppId, setHoveredAppId] = useState<string | null>(null);
 
   const vibeApps = useMemo(() => {
     return questions.filter(
@@ -379,30 +381,35 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
     // 2. 雙欄小卡片 (Grid Mode - 雙欄展示大圖卡片)
     if (viewMode === 'grid') {
+      const isCardHovered = hoveredAppId === app.id;
+      const fallbackImg = getUniqueProposalCoverImage({ id: app.id, title: app.title, track: primaryCategory });
       return (
         <div
           key={app.id}
           onClick={() => handleSelect(app)}
+          onMouseEnter={() => setHoveredAppId(app.id)}
+          onMouseLeave={() => setHoveredAppId((prev) => (prev === app.id ? null : prev))}
           className="bg-white rounded-2xl border border-stone-200 hover:border-indigo-400 overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group h-full"
         >
-          <div className="relative h-28 sm:h-36 bg-stone-100 overflow-hidden group/img">
-            <img
-              src={coverImg}
-              alt={app.title}
-              className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: app.id, title: app.title }, 2);
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
-
-            <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none">
+          <ProposalCardMediaBanner
+            youtubeUrl={app.youtubeUrl || app.vibeCodingData?.youtubeUrl}
+            coverMode={app.coverMode || app.vibeCodingData?.coverMode}
+            cardHoverMode={app.cardHoverMode || app.vibeCodingData?.cardHoverMode}
+            coverImage={app.coverImage || app.vibeCodingData?.coverImageUrl}
+            galleryImages={app.galleryImages || app.screenshots || app.vibeCodingData?.screenshots}
+            fallbackImage={fallbackImg}
+            onFallbackErrorImage={getUniqueProposalCoverImage({ id: app.id, title: app.title }, 2)}
+            title={app.title}
+            isHovered={isCardHovered}
+            heightClass="h-28 sm:h-36"
+          >
+            <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none z-10">
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                 {primaryCategory}
               </span>
             </div>
 
-            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 z-20">
               <button
                 type="button"
                 onClick={(e) => handleToggleBookmark(e, app)}
@@ -429,7 +436,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                 <span className="font-mono">{app.likes || 0}</span>
               </button>
             </div>
-          </div>
+          </ProposalCardMediaBanner>
 
           <div className="p-3 flex-1 flex flex-col justify-between gap-2">
             <div className="space-y-1">
@@ -462,27 +469,32 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
       );
     }
 
-    // 3. 大卡片 (Large Mode - 預設含封面大圖，像創點子創新提案那樣)
+    // 3. 大卡片 (Large Mode - 預設含封面大圖，支援滑鼠移入播放影片或圖片輪播)
+    const isLargeHovered = hoveredAppId === app.id;
+    const fallbackLargeImg = getUniqueProposalCoverImage({ id: app.id, title: app.title, track: primaryCategory });
     return (
       <div
         key={app.id}
         onClick={() => handleSelect(app)}
+        onMouseEnter={() => setHoveredAppId(app.id)}
+        onMouseLeave={() => setHoveredAppId((prev) => (prev === app.id ? null : prev))}
         className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 hover:border-indigo-400 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden cursor-pointer group relative"
       >
         {/* Cover Image / Header Banner (像創點子創新提案的大圖展示) */}
-        <div className="h-40 sm:h-48 bg-stone-100 relative overflow-hidden group/img">
-          <img
-            src={coverImg}
-            alt={app.title}
-            className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: app.id, title: app.title }, 2);
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
-
+        <ProposalCardMediaBanner
+          youtubeUrl={app.youtubeUrl || app.vibeCodingData?.youtubeUrl}
+          coverMode={app.coverMode || app.vibeCodingData?.coverMode}
+          cardHoverMode={app.cardHoverMode || app.vibeCodingData?.cardHoverMode}
+          coverImage={app.coverImage || app.vibeCodingData?.coverImageUrl}
+          galleryImages={app.galleryImages || app.screenshots || app.vibeCodingData?.screenshots}
+          fallbackImage={fallbackLargeImg}
+          onFallbackErrorImage={getUniqueProposalCoverImage({ id: app.id, title: app.title }, 2)}
+          title={app.title}
+          isHovered={isLargeHovered}
+          heightClass="h-40 sm:h-48"
+        >
           {/* Top Overlay Badges */}
-          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none">
+          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none z-10">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                 {primaryCategory}
@@ -502,7 +514,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
           </div>
 
           {/* ⭐ 收藏 + ❤️ Like 按鈕組 (像創點子那樣) */}
-          <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
+          <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 z-20">
             <button
               type="button"
               onClick={(e) => handleToggleBookmark(e, app)}
@@ -529,7 +541,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
               <span className="font-mono">{app.likes || 0}</span>
             </button>
           </div>
-        </div>
+        </ProposalCardMediaBanner>
 
         {/* Card Content Body */}
         <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3">

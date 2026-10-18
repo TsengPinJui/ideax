@@ -407,7 +407,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                       創星季
                     </span>
                     <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-emerald-600 text-white border border-emerald-500 shadow-2xs shrink-0">
-                      限時競賽
+                      11月限定
                     </span>
                   </div>
                   <p className="text-[10px] text-stone-600 mt-0.5 line-clamp-1">

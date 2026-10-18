@@ -87,7 +87,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
           {
             id: 'all' as SpecialZone,
             label: '全部問題',
-            shortLabel: '全部問題',
+            shortLabel: '全部',
             subLabel: '綜合市場大廳',
             icon: '🌐',
             count: zoneCounts.all,
@@ -105,23 +105,23 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
           {
             id: 'star_season' as const,
             label: '創星季（限時競賽）',
-            shortLabel: '創星季（限時競賽）',
+            shortLabel: '競賽',
             subLabel: '痛點徵件 × 創新提案挑戰賽',
             icon: '🏆',
-            count: '限時',
+            count: '11月限定',
             activeClasses: 'bg-emerald-600 text-white border-emerald-500 ring-2 ring-emerald-200 shadow-sm font-black',
             badgeActiveClasses: 'bg-white/25 text-white',
             idleClasses: 'bg-emerald-50/70 hover:bg-emerald-100 text-emerald-800 border-emerald-200/80 hover:border-emerald-300 shadow-2xs',
             badgeIdleClasses: 'bg-emerald-600 text-white',
             accentDot: 'bg-emerald-500',
-            title: '前往創星季：限時競賽',
+            title: '前往創星季：11月限定競賽',
           },
         ]
       : []),
     {
       id: 'pain_points',
       label: '痛點許願池',
-      shortLabel: '痛點許願池',
+      shortLabel: '痛點池',
       subLabel: '生活煩擾',
       icon: '🎯',
       count: zoneCounts.pain_points,
@@ -135,7 +135,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
     {
       id: 'create_ideas',
       label: '創點子（創新提案）',
-      shortLabel: '創點子（創新提案）',
+      shortLabel: '創新Idea',
       subLabel: '創新解方、創業企劃',
       icon: '💡',
       count: zoneCounts.create_ideas,
@@ -149,7 +149,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
     {
       id: 'vibecoding',
       label: 'VibeCoding 作品牆',
-      shortLabel: 'VibeCoding 作品牆',
+      shortLabel: '軟體作品',
       subLabel: '網站程式、小遊戲、AI工具、自動化、擴充功能',
       icon: '🚀',
       count: zoneCounts.vibecoding,
@@ -163,7 +163,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
     {
       id: 'l0_discussion',
       label: 'L0 討論區',
-      shortLabel: 'L0 討論區',
+      shortLabel: '自由討論',
       subLabel: '免費交流、自由問答',
       icon: '💬',
       count: zoneCounts.l0_discussion,

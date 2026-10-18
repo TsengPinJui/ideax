@@ -31,6 +31,7 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 import { StarSeasonProposal, STAR_SEASON_TRACKS } from '../types/competition';
+import { getInnovationProgressStageMeta } from '../types';
 import { useApp } from '../context/AppContext';
 import { mapQuestionsToStarSeasonProposals } from '../utils/questionUtils';
 import {
@@ -53,6 +54,7 @@ import { isGuestUser, getUserNameColorClass } from '../utils/userDisplay';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from '../utils/guestAccess';
+import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
 
 export function getRemainingDaysText(unpublishAt?: string): string {
   if (!unpublishAt || unpublishAt === '永久' || unpublishAt === '永久刊登') return '永久';
@@ -155,6 +157,9 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
           supportPoints: typeof p.supportPoints === 'number' && p.supportPoints > 0 ? p.supportPoints : existing.supportPoints,
           supporterCount: typeof p.supporterCount === 'number' && p.supporterCount > 0 ? p.supporterCount : existing.supporterCount,
           images: p.images && p.images.length > 0 ? p.images : existing.images,
+          youtubeUrl: p.youtubeUrl || existing.youtubeUrl,
+          coverMode: p.coverMode || existing.coverMode,
+          cardHoverMode: p.cardHoverMode || existing.cardHoverMode,
         });
       }
     });
@@ -192,6 +197,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   const [selectedTrack, setSelectedTrack] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'support' | 'likes' | 'discussions' | 'latest'>('support');
   const [viewMode, setViewMode] = useState<'large' | 'list' | 'grid'>('large');
+  const [hoveredProposalId, setHoveredProposalId] = useState<string | null>(null);
 
   // 創點子內直接檢視提案專頁（不跳轉至創星季網站，返回時直接回到上一頁）
   const [selectedProposalForDetail, setSelectedProposalForDetail] = useState<StarSeasonProposal | null>(null);
@@ -882,34 +888,40 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
 
             // 2. 小卡片 (Grid Mode - 雙欄展示大圖卡片)
             if (viewMode === 'grid') {
-              const coverImg =
-                (proposal.images && proposal.images.length > 0 && proposal.images[0]) ||
-                (proposal as any).coverImage ||
-                getUniqueProposalCoverImage(proposal);
+              const fallbackImg = getUniqueProposalCoverImage(proposal);
+              const isCardHovered = hoveredProposalId === proposal.id;
               return (
                 <div
                   key={proposal.id}
                   onClick={() => handleOpenProposalInCreateIdeas(proposal)}
+                  onMouseEnter={() => setHoveredProposalId(proposal.id)}
+                  onMouseLeave={() => setHoveredProposalId((prev) => (prev === proposal.id ? null : prev))}
                   className="bg-white rounded-2xl border border-stone-200 hover:border-amber-400 overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group h-full"
                 >
-                  <div className="relative h-28 sm:h-36 bg-stone-100 overflow-hidden group/img">
-                    <img
-                      src={coverImg}
-                      alt={proposal.title}
-                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: proposal.id }, 1);
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
-
-                    <div className="absolute top-2 left-2 pointer-events-none">
+                  <ProposalCardMediaBanner
+                    youtubeUrl={proposal.youtubeUrl}
+                    coverMode={proposal.coverMode}
+                    cardHoverMode={proposal.cardHoverMode}
+                    coverImage={(proposal as any).coverImage || proposal.images?.[0]}
+                    galleryImages={proposal.images}
+                    fallbackImage={fallbackImg}
+                    onFallbackErrorImage={getUniqueProposalCoverImage({ id: proposal.id }, 1)}
+                    title={proposal.title}
+                    isHovered={isCardHovered}
+                    heightClass="h-28 sm:h-36"
+                  >
+                    <div className="absolute top-2 left-2 pointer-events-none z-10 flex items-center gap-1 flex-wrap">
                       <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                         {trackInfo.name}
                       </span>
+                      {getInnovationProgressStageMeta(proposal.proposalProgressStage) && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/95 backdrop-blur-md text-emerald-900 border border-emerald-300 shadow-xs">
+                          {getInnovationProgressStageMeta(proposal.proposalProgressStage)?.shortLabel}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="absolute bottom-2 right-2 flex items-center gap-1">
+                    <div className="absolute bottom-2 right-2 flex items-center gap-1 z-20">
                       <button
                         type="button"
                         onClick={(e) => handleToggleBookmark(e, proposal)}
@@ -936,7 +948,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
                         <span className="font-mono">{proposal.likeCount || 0}</span>
                       </button>
                     </div>
-                  </div>
+                  </ProposalCardMediaBanner>
 
                   <div className="p-3 flex-1 flex flex-col justify-between gap-2">
                     <div className="space-y-1">
@@ -962,76 +974,73 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
               );
             }
 
-            // 3. 大卡片 (Large Mode - 預設含封面圖)
+            // 3. 大卡片 (Large Mode - 預設含封面圖，支援滑鼠移入播放影片或圖片輪播)
+            const isLargeCardHovered = hoveredProposalId === proposal.id;
+            const fallbackCoverImg = getUniqueProposalCoverImage(proposal);
             return (
               <div
                 key={proposal.id}
                 onClick={() => handleOpenProposalInCreateIdeas(proposal)}
+                onMouseEnter={() => setHoveredProposalId(proposal.id)}
+                onMouseLeave={() => setHoveredProposalId((prev) => (prev === proposal.id ? null : prev))}
                 className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 hover:border-amber-400 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden cursor-pointer group relative"
               >
                 {/* Cover Image / Header Banner (像創點子創新提案的大圖展示) */}
-                {(() => {
-                  const coverImg =
-                    (proposal.images && proposal.images.length > 0 && proposal.images[0]) ||
-                    (proposal as any).coverImage ||
-                    getUniqueProposalCoverImage(proposal);
-                  return (
-                    <div className="h-40 sm:h-48 bg-stone-100 relative overflow-hidden group/img">
-                      <img
-                        src={coverImg}
-                        alt={proposal.title}
-                        className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: proposal.id }, 1);
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
+                <ProposalCardMediaBanner
+                  youtubeUrl={proposal.youtubeUrl}
+                  coverMode={proposal.coverMode}
+                  cardHoverMode={proposal.cardHoverMode}
+                  coverImage={(proposal as any).coverImage || proposal.images?.[0]}
+                  galleryImages={proposal.images}
+                  fallbackImage={fallbackCoverImg}
+                  onFallbackErrorImage={getUniqueProposalCoverImage({ id: proposal.id }, 1)}
+                  title={proposal.title}
+                  isHovered={isLargeCardHovered}
+                  heightClass="h-40 sm:h-48"
+                >
+                  {/* Top Overlay Badges */}
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none z-10">
+                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
+                      {trackInfo.name}
+                    </span>
 
-                      {/* Top Overlay Badges */}
-                      <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none">
-                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
-                          {trackInfo.name}
-                        </span>
+                    {proposal.unpublishAt && (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-700/80 flex items-center gap-1 shadow-xs">
+                        <Clock className="w-3 h-3 text-emerald-400" />
+                        <span>刊登至 {proposal.unpublishAt}</span>
+                      </span>
+                    )}
+                  </div>
 
-                        {proposal.unpublishAt && (
-                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-700/80 flex items-center gap-1 shadow-xs">
-                            <Clock className="w-3 h-3 text-emerald-400" />
-                            <span>刊登至 {proposal.unpublishAt}</span>
-                          </span>
-                        )}
-                      </div>
-
-                      {/* ⭐ 收藏 + ❤️ Like 按鈕組 (僅顯示圖示) */}
-                      <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleBookmark(e, proposal)}
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer ${
-                            isBookmarked
-                              ? 'bg-amber-400 text-stone-950 hover:bg-amber-300 scale-105'
-                              : 'bg-white/95 backdrop-blur-md text-stone-700 hover:bg-white hover:text-amber-600'
-                          }`}
-                          title={isBookmarked ? '⭐ 已收藏（點擊取消）' : '⭐ 收藏提案'}
-                        >
-                          <Star className={`w-4 h-4 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleLike(e, proposal)}
-                          className={`h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 text-xs font-bold transition-all shadow-md cursor-pointer ${
-                            isLiked
-                              ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105'
-                              : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white hover:text-rose-500'
-                          }`}
-                          title={isLiked ? '❤️ 已 Like（點擊取消）' : '❤️ Like 此提案'}
-                        >
-                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
-                          <span className="font-mono">{proposal.likeCount || 0}</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
+                  {/* ⭐ 收藏 + ❤️ Like 按鈕組 (僅顯示圖示) */}
+                  <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 z-20">
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleBookmark(e, proposal)}
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer ${
+                        isBookmarked
+                          ? 'bg-amber-400 text-stone-950 hover:bg-amber-300 scale-105'
+                          : 'bg-white/95 backdrop-blur-md text-stone-700 hover:bg-white hover:text-amber-600'
+                      }`}
+                      title={isBookmarked ? '⭐ 已收藏（點擊取消）' : '⭐ 收藏提案'}
+                    >
+                      <Star className={`w-4 h-4 ${isBookmarked ? 'fill-stone-950 text-stone-950' : 'text-amber-500'}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleLike(e, proposal)}
+                      className={`h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 text-xs font-bold transition-all shadow-md cursor-pointer ${
+                        isLiked
+                          ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105'
+                          : 'bg-white/95 backdrop-blur-md text-rose-600 hover:bg-white hover:text-rose-500'
+                      }`}
+                      title={isLiked ? '❤️ 已 Like（點擊取消）' : '❤️ Like 此提案'}
+                    >
+                      <Heart className={`w-4 h-4 ${isLiked ? 'fill-white text-white' : 'fill-rose-500 text-rose-500'}`} />
+                      <span className="font-mono">{proposal.likeCount || 0}</span>
+                    </button>
+                  </div>
+                </ProposalCardMediaBanner>
 
                 {/* Card Content Body */}
                 <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3">

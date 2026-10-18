@@ -8,6 +8,7 @@ import { HelpTooltip } from './HelpTooltip';
 import { CopyableUserId } from './CopyableUserId';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 import { isGuestUser } from '../utils/userDisplay';
+import { getYoutubeEmbedUrl } from '../utils/youtubeUtils';
 import {
   X,
   Sparkles,
@@ -1228,9 +1229,46 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           </div>
         ) : (
         <>
-        {/* 多媒體大圖、圖集、技術架構與線上網址 */}
-        {(question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || question.techArchitecture || question.demoUrl) && (
+        {/* 多媒體大圖、YouTube 介紹影片、圖集、技術架構與線上網址 */}
+        {(question.youtubeUrl || question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || question.techArchitecture || question.demoUrl) && (
           <div className="p-4 sm:p-5 rounded-2xl bg-stone-50/70 border border-stone-200/90 shadow-2xs space-y-4">
+            {/* YouTube 介紹影片 */}
+            {(() => {
+              const ytEmbed = getYoutubeEmbedUrl(question.youtubeUrl || question.vibeCodingData?.youtubeUrl, {
+                autoplay: true,
+                mute: false,
+                controls: true,
+              });
+              if (!ytEmbed) return null;
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                      <Video className="w-4 h-4 text-red-600" />
+                      <span>YouTube 提案介紹影片</span>
+                    </div>
+                    <a
+                      href={question.youtubeUrl || question.vibeCodingData?.youtubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
+                    >
+                      <span>於 YouTube 開啟</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-stone-200 shadow-sm">
+                    <iframe
+                      src={ytEmbed}
+                      title={`${question.title} - YouTube 介紹影片`}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              );
+            })()}
             {/* 封面大圖 */}
             {question.coverImage && (
               <div className="relative w-full h-56 sm:h-72 rounded-xl overflow-hidden bg-stone-900 border border-stone-200 shadow-sm">
@@ -2044,7 +2082,15 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 }`}
               >
                 <Award className="w-4 h-4 text-amber-600" />
-                <span>解決方案（{solutionAnswers.length + referencingProposals.length}）</span>
+                <span className="flex items-center gap-1.5">
+                  {(solutionAnswers.length + referencingProposals.length) > 0 && (
+                    <span className="relative flex h-2 w-2" title="已有落地解決方案">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                    </span>
+                  )}
+                  <span>解決方案（{solutionAnswers.length + referencingProposals.length}）</span>
+                </span>
               </button>
             </div>
           </div>
@@ -2159,8 +2205,16 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                 </div>
               ) : (
                 solutionAnswers.map((ans) => {
-                  const isSolver = currentUser.id === ans.solverId;
-                  const isUnlocked = isNoPaymentMode || isSolver || ans.isAccepted || (ans.unlockedByUserIds && ans.unlockedByUserIds.includes(currentUser.id)) || (!ans.isPaid) || Boolean(ans.isUnlockedByCurrentUser);
+                  // 解決方案務必先付費解鎖才能看，除非解鎖價格為零（或非付費公開交流方案）
+                  const isZeroPrice = (!ans.isPaid) || ((ans.price || 0) === 0);
+                  const isSolver = Boolean(currentUser && currentUser.id !== 'user-guest' && currentUser.id === ans.solverId);
+                  const isUnlockedByPayment = Boolean(
+                    currentUser &&
+                    currentUser.id !== 'user-guest' &&
+                    ans.unlockedByUserIds &&
+                    ans.unlockedByUserIds.includes(currentUser.id)
+                  );
+                  const isUnlocked = isZeroPrice || isSolver || isUnlockedByPayment;
                   const isAccepted = ans.isAccepted;
                   const isExpanded = expandedAnswers[ans.id] ?? false;
 

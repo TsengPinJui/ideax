@@ -705,11 +705,13 @@ export const AdminSiteTrafficChart: React.FC<AdminSiteTrafficChartProps> = ({
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200/80">
-          <span className="text-[11px] font-bold text-purple-800 block">網站累計總瀏覽量 (自 1,700 起算)</span>
+          <span className="text-[11px] font-bold text-purple-800 block">網站累計總瀏覽量</span>
           <span className="text-lg sm:text-xl font-black text-purple-950 font-mono mt-0.5 block">
             {(summaryStats.endCumulative || 1700).toLocaleString()} <span className="text-xs font-bold">次</span>
           </span>
-          <span className="text-[10px] text-purple-700 font-mono block mt-0.5 truncate">初始基數 1,700 ＋ 真實進站累加</span>
+          <span className="text-[10px] text-purple-700 font-mono block mt-0.5 truncate">
+            網站起始日2026/09/22
+          </span>
         </div>
         <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80">
           <span className="text-[11px] font-bold text-amber-800 block">

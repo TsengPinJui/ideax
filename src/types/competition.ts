@@ -174,6 +174,12 @@ export interface StarSeasonProposal {
   
   // 圖片與相片展示 (痛點 0~3 張圖片；提案 1~3 張照片)
   images?: string[];
+  youtubeUrl?: string; // YouTube 介紹影片連結 (選填)
+  coverMode?: 'custom_image' | 'youtube_video'; // 封面選擇：自訂封面 或 YouTube 影片當封面
+  cardHoverMode?: 'video_autoplay' | 'image_carousel'; // 卡片模式滑鼠移入時展示：影片自動播放 或 圖片輪播
+  showCardImage?: boolean; // 可以選擇是否顯示圖片在卡片（預設 true）
+  cardDisplayImage?: string; // 可選擇一張指定圖片展示於卡片
+  proposalProgressStage?: string; // 創新提案完程度：初步構想(0~2)、正在計畫(3~6)、實行中(7~9)、已完成(10)、成功驗證,持續精進 (11 up)
   
   // 補充資料、引用相關痛點與希望達成目標 (選填)
   externalLink?: string; // 補充資料連結 / 外部連結 (選填)

@@ -281,6 +281,12 @@ interface AppContextType {
       techArchitecture?: string;
       coverImage?: string;
       galleryImages?: string[];
+      youtubeUrl?: string;
+      coverMode?: 'custom_image' | 'youtube_video';
+      cardHoverMode?: 'video_autoplay' | 'image_carousel';
+      showCardImage?: boolean;
+      cardDisplayImage?: string;
+      proposalProgressStage?: string;
       version?: string;
       updateContent?: string;
       updateNote?: string;
@@ -4655,8 +4661,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateLogs: newQ.updateLogs,
       coverImage: newQ.coverImage,
       galleryImages: newQ.galleryImages,
+      youtubeUrl: newQ.youtubeUrl,
+      coverMode: newQ.coverMode,
+      cardHoverMode: newQ.cardHoverMode,
+      proposalProgressStage: newQ.proposalProgressStage,
       techArchitecture: newQ.techArchitecture,
       demoUrl: newQ.demoUrl,
+      fileLink: newQ.fileLink,
       fileUrl: newQ.fileUrl,
       vibeCodingData: newQ.vibeCodingData,
       status: 'open',
@@ -4787,6 +4798,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       techArchitecture?: string;
       coverImage?: string;
       galleryImages?: string[];
+      youtubeUrl?: string;
+      coverMode?: 'custom_image' | 'youtube_video';
+      cardHoverMode?: 'video_autoplay' | 'image_carousel';
+      showCardImage?: boolean;
+      cardDisplayImage?: string;
+      proposalProgressStage?: string;
       version?: string;
       updateContent?: string;
       updateNote?: string;
@@ -4824,6 +4841,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (params.subcategories !== undefined) changedFields.push('分類');
     if (params.targetGoal !== undefined && params.targetGoal !== currentQ.targetGoal) changedFields.push('目標');
     if (params.demoUrl !== undefined && params.demoUrl !== currentQ.demoUrl) changedFields.push('網址');
+    if (params.youtubeUrl !== undefined && params.youtubeUrl !== currentQ.youtubeUrl) changedFields.push('YouTube介紹影片');
+    if (params.coverMode !== undefined && params.coverMode !== currentQ.coverMode) changedFields.push('封面呈現方式');
+    if (params.cardHoverMode !== undefined && params.cardHoverMode !== currentQ.cardHoverMode) changedFields.push('卡片動態展示');
+    if (params.proposalProgressStage !== undefined && params.proposalProgressStage !== currentQ.proposalProgressStage) changedFields.push('提案進度狀態');
     if (params.techArchitecture !== undefined && params.techArchitecture !== currentQ.techArchitecture) changedFields.push('技術架構');
     if (params.version && params.version !== currentQ.currentVersion) changedFields.push('版本號');
     if (changedFields.length === 0) changedFields.push('內容更新');
@@ -4855,6 +4876,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       techArchitecture: params.techArchitecture !== undefined ? params.techArchitecture : currentQ.techArchitecture,
       coverImage: params.coverImage !== undefined ? params.coverImage : currentQ.coverImage,
       galleryImages: params.galleryImages !== undefined ? params.galleryImages : currentQ.galleryImages,
+      youtubeUrl: params.youtubeUrl !== undefined ? params.youtubeUrl : currentQ.youtubeUrl,
+      coverMode: params.coverMode !== undefined ? params.coverMode : currentQ.coverMode,
+      cardHoverMode: params.cardHoverMode !== undefined ? params.cardHoverMode : currentQ.cardHoverMode,
+      showCardImage: params.showCardImage !== undefined ? params.showCardImage : currentQ.showCardImage,
+      cardDisplayImage: params.cardDisplayImage !== undefined ? params.cardDisplayImage : currentQ.cardDisplayImage,
+      proposalProgressStage: params.proposalProgressStage !== undefined ? params.proposalProgressStage : currentQ.proposalProgressStage,
       vibeCodingData: currentQ.vibeCodingData
         ? {
             ...currentQ.vibeCodingData,
@@ -4863,6 +4890,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             githubUrl: params.fileLink !== undefined ? params.fileLink : currentQ.vibeCodingData.githubUrl,
             coverImageUrl: params.coverImage !== undefined ? params.coverImage : currentQ.vibeCodingData.coverImageUrl,
             screenshots: params.galleryImages !== undefined ? params.galleryImages : currentQ.vibeCodingData.screenshots,
+            youtubeUrl: params.youtubeUrl !== undefined ? params.youtubeUrl : currentQ.vibeCodingData.youtubeUrl,
+            coverMode: params.coverMode !== undefined ? params.coverMode : currentQ.vibeCodingData.coverMode,
+            cardHoverMode: params.cardHoverMode !== undefined ? params.cardHoverMode : currentQ.vibeCodingData.cardHoverMode,
           }
         : currentQ.vibeCodingData,
       currentVersion: params.version?.trim() || currentQ.currentVersion,

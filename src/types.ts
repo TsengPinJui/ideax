@@ -910,6 +910,12 @@ export interface Question {
   referencedPainPoint?: string; // 引用相關痛點 (選填)
   coverImage?: string; // 大圖/封面圖 (VibeCoding展場/創新提案)
   galleryImages?: string[]; // 上傳 0~6 張截圖/圖片
+  youtubeUrl?: string; // YouTube 介紹影片連結 (創新提案 / 軟體提案)
+  coverMode?: 'custom_image' | 'youtube_video'; // 封面選擇：自訂封面圖 或 直接用 YouTube 影片當封面
+  cardHoverMode?: 'video_autoplay' | 'image_carousel'; // 卡片模式滑鼠移入時展示：影片自動播放 或 圖片輪播
+  showCardImage?: boolean; // 可以選擇是否顯示圖片在卡片（預設 true 若有上傳圖片；若設為 false 則卡片不顯示大圖，改顯示詳述/AI摘要/熱門留言）
+  cardDisplayImage?: string; // 可選擇一張指定圖片展示於卡片
+  proposalProgressStage?: InnovationProgressStage | string; // 創新提案完程度：初步構想(0~2)、正在計畫(3~6)、實行中(7~9)、已完成(10)、成功驗證,持續精進 (11 up)
   techArchitecture?: string; // 技術架構 (VibeCoding展場)
   demoUrl?: string; // 網站網址或檔案連結
   fileLink?: string; // 檔案下載連結
@@ -1532,4 +1538,65 @@ export interface DraftFaqItem {
   isAiGenerated?: boolean;
   adminNotes?: string;
 }
+
+export type InnovationProgressStage =
+  | 'initial_idea'
+  | 'planning'
+  | 'in_progress'
+  | 'completed'
+  | 'validated_refining';
+
+export interface InnovationProgressStageMeta {
+  id: InnovationProgressStage;
+  label: string;
+  shortLabel: string;
+  scoreRange: string;
+  badgeClasses: string;
+}
+
+export const INNOVATION_PROGRESS_STAGES: InnovationProgressStageMeta[] = [
+  {
+    id: 'initial_idea',
+    label: '初步構想(0~2)',
+    shortLabel: '初步構想',
+    scoreRange: '0~2',
+    badgeClasses: 'bg-stone-100 text-stone-700 border-stone-300',
+  },
+  {
+    id: 'planning',
+    label: '正在計畫(3~6)',
+    shortLabel: '正在計畫',
+    scoreRange: '3~6',
+    badgeClasses: 'bg-sky-50 text-sky-800 border-sky-300',
+  },
+  {
+    id: 'in_progress',
+    label: '實行中(7~9)',
+    shortLabel: '實行中',
+    scoreRange: '7~9',
+    badgeClasses: 'bg-amber-50 text-amber-800 border-amber-300',
+  },
+  {
+    id: 'completed',
+    label: '已完成(10)',
+    shortLabel: '已完成',
+    scoreRange: '10',
+    badgeClasses: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+  },
+  {
+    id: 'validated_refining',
+    label: '成功驗證,持續精進 (11 up)',
+    shortLabel: '成功驗證,持續精進',
+    scoreRange: '11 up',
+    badgeClasses: 'bg-purple-50 text-purple-800 border-purple-300',
+  },
+];
+
+export function getInnovationProgressStageMeta(stage?: string | null): InnovationProgressStageMeta | undefined {
+  if (!stage) return undefined;
+  return INNOVATION_PROGRESS_STAGES.find(
+    (s) => s.id === stage || s.label === stage || s.shortLabel === stage
+  );
+}
+
 

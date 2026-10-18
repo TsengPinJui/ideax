@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Question, MarketViewMode } from '../types';
+import { Question, MarketViewMode, getInnovationProgressStageMeta } from '../types';
 import { LEVEL_CONFIGS } from '../data/mockData';
 import { resolveUserDisplayName, resolveUserAvatar, getUserNameColorClass } from '../utils/userDisplay';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
@@ -10,6 +10,8 @@ import { shareOrCopyUrl } from '../utils/shareUtils';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
 import { getUniqueProposalCoverImage } from '../utils/proposalImageUtils';
 import { isSampleContent } from '../utils/sampleContent';
+import { ProposalCardMediaBanner } from './ProposalCardMediaBanner';
+import { extractYoutubeVideoId } from '../utils/youtubeUtils';
 
 interface QuestionCardProps {
   question: Question;
@@ -108,6 +110,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   } = useApp();
   const isBookmarked = isQuestionBookmarked(question.id);
   const [isShareCopied, setIsShareCopied] = React.useState(false);
+  const [isHovered, setIsHovered] = React.useState(false);
 
   const isSeconded = isQuestionSeconded(question.id);
   const secondCount = getQuestionSecondCount(question.id);
@@ -212,30 +215,62 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     );
   };
 
+  const effectiveYoutubeUrl = question.youtubeUrl || question.vibeCodingData?.youtubeUrl;
+  const effectiveCoverMode = question.coverMode || question.vibeCodingData?.coverMode || 'custom_image';
+  const effectiveCardHoverMode = question.cardHoverMode || question.vibeCodingData?.cardHoverMode;
+  const hasYoutubeVideo = Boolean(extractYoutubeVideoId(effectiveYoutubeUrl));
+
+  // 無圖片貼文之三階內容遞補：1. 詳述 (description) -> 2. AI 摘要 (aiAnalysis.summary) -> 3. 熱門留言 (topComment)
+  const cleanDescription = (question.description || '').trim();
+  const aiSummaryText = (
+    question.aiAnalysis?.summary ||
+    question.aiPreliminaryReport?.problemAnalysis?.coreDiagnosis ||
+    ''
+  ).trim();
+  const topCommentObj = React.useMemo(() => {
+    const related = answers.filter(
+      (a) => a.questionId === question.id && Boolean((a.freePreview || a.fullContent || '').trim())
+    );
+    if (related.length === 0) return null;
+    return [...related].sort((a, b) => (b.likes || 0) - (a.likes || 0))[0];
+  }, [answers, question.id]);
+  const topCommentText = topCommentObj
+    ? (topCommentObj.freePreview || topCommentObj.fullContent || '').trim()
+    : '';
+  const topCommentAuthor = topCommentObj
+    ? resolveUserDisplayName(topCommentObj.solverId, topCommentObj.solverName, availableUsers)
+    : '';
+
+  const effectiveSolutionsCount = solutionsCount ?? question.answersCount ?? 0;
+  const hasSolutions = effectiveSolutionsCount > 0;
+  const allowCardImage = question.showCardImage !== false;
+  const effectiveDisplayImage = question.cardDisplayImage || question.coverImage || question.vibeCodingData?.coverImageUrl;
+
   // =========================================================================
   // 3. 方格式 (Grid Mode - 雙欄緊湊卡片，適合手機與快速瀏覽)
   // =========================================================================
   if (viewMode === 'grid') {
     const showGridCover =
-      isVibeCoding ||
-      isInnovationProposal ||
-      Boolean(question.coverImage) ||
-      Boolean(question.galleryImages && question.galleryImages.length > 0) ||
-      Boolean(question.screenshots && question.screenshots.length > 0);
+      allowCardImage &&
+      (isVibeCoding ||
+        isInnovationProposal ||
+        hasYoutubeVideo ||
+        Boolean(question.cardDisplayImage) ||
+        Boolean(question.coverImage) ||
+        Boolean(question.galleryImages && question.galleryImages.length > 0) ||
+        Boolean(question.screenshots && question.screenshots.length > 0));
 
-    const gridCoverImg =
-      question.coverImage ||
-      question.galleryImages?.[0] ||
-      question.screenshots?.[0] ||
-      getUniqueProposalCoverImage({
-        id: question.id,
-        title: question.title,
-        track: question.subcategory,
-      });
+    const gridFallbackImg = getUniqueProposalCoverImage({
+      id: question.id,
+      title: question.title,
+      track: question.subcategory,
+    });
 
     return (
       <article
         onClick={onClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         className={`group bg-white rounded-2xl border transition-all duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between relative h-full overflow-hidden ${
           showGridCover ? 'p-0' : 'p-3 sm:p-3.5'
         } ${
@@ -247,24 +282,34 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         }`}
       >
         {showGridCover && (
-          <div className="relative h-28 sm:h-34 bg-stone-100 overflow-hidden group/img">
-            <img
-              src={gridCoverImg}
-              alt={question.title}
-              className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: question.id, title: question.title }, 2);
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
-
-            <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none">
+          <ProposalCardMediaBanner
+            youtubeUrl={effectiveYoutubeUrl}
+            coverMode={effectiveCoverMode}
+            cardHoverMode={effectiveCardHoverMode}
+            coverImage={effectiveDisplayImage}
+            galleryImages={question.cardDisplayImage ? [question.cardDisplayImage] : (question.galleryImages || question.screenshots || question.vibeCodingData?.screenshots)}
+            fallbackImage={gridFallbackImg}
+            onFallbackErrorImage={getUniqueProposalCoverImage({ id: question.id, title: question.title }, 2)}
+            title={question.title}
+            isHovered={isHovered}
+            heightClass="h-28 sm:h-34"
+          >
+            <div className="absolute top-2 left-2 flex items-center gap-1 flex-wrap pointer-events-none z-10">
               <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-md text-white border border-stone-700/80 shadow-xs">
                 {displayCategoryLabel}
               </span>
+              {hasSolutions && (
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-600/90 backdrop-blur-md text-white border border-rose-300 shadow-xs flex items-center gap-1" title="已有落地解決方案">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-200 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                  </span>
+                  <span>有解方</span>
+                </span>
+              )}
             </div>
 
-            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 z-20">
               <button
                 type="button"
                 onClick={handleBookmarkClick}
@@ -291,9 +336,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 <span className="font-mono">{Math.max(likesCount || 0, secondCount || 0)}</span>
               </button>
             </div>
-          </div>
+          </ProposalCardMediaBanner>
         )}
-        <div className={`space-y-1.5 ${showGridCover ? 'p-3 pb-0' : ''}`}>
+        <div className={`space-y-1.5 flex-1 flex flex-col ${showGridCover ? 'p-3 pb-0' : ''}`}>
           {/* Top Line: 子領域 + 懸賞金 */}
           <div className="flex items-center justify-between gap-1.5">
             <span
@@ -311,6 +356,15 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             </span>
 
             <div className="shrink-0 font-mono text-right flex items-center gap-1">
+              {hasSolutions && !showGridCover && (
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-1 shadow-2xs" title="已有落地解決方案">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-600"></span>
+                  </span>
+                  <span>有解方</span>
+                </span>
+              )}
               {(question.isStarSeason || question.tags?.includes('創星季')) && (
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="創星季參賽題目" />
               )}
@@ -319,9 +373,16 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   軟體作品
                 </span>
               ) : isInnovationProposal ? (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shadow-2xs">
-                  創新提案
-                </span>
+                <div className="flex items-center gap-1">
+                  {getInnovationProgressStageMeta(question.proposalProgressStage) && (
+                    <span className={`text-[10px] font-bold border px-1.5 py-0.5 rounded shadow-2xs ${getInnovationProgressStageMeta(question.proposalProgressStage)?.badgeClasses}`}>
+                      {getInnovationProgressStageMeta(question.proposalProgressStage)?.shortLabel}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shadow-2xs">
+                    創新提案
+                  </span>
+                </div>
               ) : isNoPaymentMode ? (
                 <span className="text-[10px] font-semibold text-stone-500">免費</span>
               ) : isPainPoint ? (
@@ -361,6 +422,52 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   #{tag}
                 </span>
               ))}
+            </div>
+          )}
+
+          {/* 無圖片卡片之空白處自動遞補顯示：1. 詳述 -> 2. AI 摘要 -> 3. 熱門留言 */}
+          {!showGridCover && (cleanDescription || aiSummaryText || topCommentText) && (
+            <div className="pt-1.5 flex-1 flex flex-col justify-center space-y-1.5">
+              {cleanDescription ? (
+                <>
+                  <p className="text-[11px] sm:text-xs text-stone-600 leading-relaxed line-clamp-3 font-normal">
+                    {cleanDescription}
+                  </p>
+                  {aiSummaryText ? (
+                    <div className="px-2 py-1.5 rounded-lg bg-amber-50/70 border border-amber-200/60 text-[10px] text-amber-950 leading-snug line-clamp-2 flex items-start gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-600 shrink-0 mt-0.5" />
+                      <span>
+                        <strong className="font-bold">AI 摘要：</strong>
+                        {aiSummaryText}
+                      </span>
+                    </div>
+                  ) : topCommentText ? (
+                    <div className="px-2 py-1.5 rounded-lg bg-stone-50 border border-stone-200/70 text-[10px] text-stone-600 leading-snug line-clamp-2 flex items-start gap-1">
+                      <MessageCircle className="w-3 h-3 text-stone-400 shrink-0 mt-0.5" />
+                      <span>
+                        <strong className="font-bold text-stone-700">{topCommentAuthor || '熱門留言'}：</strong>
+                        {topCommentText}
+                      </span>
+                    </div>
+                  ) : null}
+                </>
+              ) : aiSummaryText ? (
+                <div className="p-2 rounded-xl bg-amber-50/70 border border-amber-200/70 text-[11px] text-amber-950 leading-relaxed line-clamp-4 flex items-start gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="font-bold">AI 摘要：</strong>
+                    {aiSummaryText}
+                  </span>
+                </div>
+              ) : topCommentText ? (
+                <div className="p-2 rounded-xl bg-stone-50 border border-stone-200/80 text-[11px] text-stone-600 leading-relaxed line-clamp-4 flex items-start gap-1.5">
+                  <MessageCircle className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="font-bold text-stone-700">熱門留言 · {topCommentAuthor}：</strong>
+                    {topCommentText}
+                  </span>
+                </div>
+              ) : null}
             </div>
           )}
         </div>
@@ -441,9 +548,17 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 <CheckCircle2 className="w-2.5 h-2.5" />
                 <span>已採納</span>
               </span>
+            ) : hasSolutions ? (
+              <span className="font-bold font-mono text-rose-600 bg-rose-50 border border-rose-200/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-2xs" title="已有落地解決方案">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                </span>
+                <span>{effectiveSolutionsCount} 方案</span>
+              </span>
             ) : (
-              <span className="font-bold font-mono text-stone-700">
-                {solutionsCount ?? question.answersCount} 方案
+              <span className="font-bold font-mono text-stone-500">
+                0 方案
               </span>
             )}
           </div>
@@ -701,9 +816,17 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
             {isSolved ? (
               <span className="font-bold text-emerald-600">已採納</span>
+            ) : hasSolutions ? (
+              <span className="font-bold font-mono text-rose-600 bg-rose-50 border border-rose-200/90 px-2 py-0.5 rounded-lg flex items-center gap-1.5 shadow-2xs" title="已有落地解決方案">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                </span>
+                <span>{effectiveSolutionsCount} 方案</span>
+              </span>
             ) : (
-              <span className="font-bold font-mono text-stone-800">
-                {solutionsCount ?? question.answersCount} 方案
+              <span className="font-bold font-mono text-stone-500">
+                0 方案
               </span>
             )}
           </div>
@@ -716,27 +839,28 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   // 1. 大視窗 (Large Mode - FlyingV / 嘖嘖 / Apple 卡片式簡約美學，含大圖展示)
   // =========================================================================
   const hasCoverImage =
-    isVibeCoding ||
-    isInnovationProposal ||
-    Boolean(question.coverImage) ||
-    Boolean(question.galleryImages && question.galleryImages.length > 0) ||
-    Boolean(question.screenshots && question.screenshots.length > 0) ||
-    question.specialZone === 'vibecoding' ||
-    question.specialZone === 'create_ideas';
+    allowCardImage &&
+    (isVibeCoding ||
+      isInnovationProposal ||
+      hasYoutubeVideo ||
+      Boolean(question.cardDisplayImage) ||
+      Boolean(question.coverImage) ||
+      Boolean(question.galleryImages && question.galleryImages.length > 0) ||
+      Boolean(question.screenshots && question.screenshots.length > 0) ||
+      question.specialZone === 'vibecoding' ||
+      question.specialZone === 'create_ideas');
 
-  const coverImg =
-    question.coverImage ||
-    question.galleryImages?.[0] ||
-    question.screenshots?.[0] ||
-    getUniqueProposalCoverImage({
-      id: question.id,
-      title: question.title,
-      track: question.subcategory,
-    });
+  const fallbackCoverImg = getUniqueProposalCoverImage({
+    id: question.id,
+    title: question.title,
+    track: question.subcategory,
+  });
 
   return (
     <article
       onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`group bg-white rounded-2xl sm:rounded-3xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between relative overflow-hidden ${
         isPromoted
           ? 'border-purple-300/80 bg-gradient-to-b from-purple-50/10 via-white to-white'
@@ -745,30 +869,40 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           : 'border-stone-200/90 hover:border-amber-400'
       }`}
     >
-      <div>
+      <div className="flex-1 flex flex-col">
         {hasCoverImage ? (
-          /* 像創點子 (創新提案) 的大圖展示橫幅 */
-          <div className="relative h-40 sm:h-48 overflow-hidden bg-stone-100 border-b border-stone-100 group/img">
-            <img
-              src={coverImg}
-              alt={question.title}
-              className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = getUniqueProposalCoverImage({ id: question.id, title: question.title }, 2);
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent pointer-events-none" />
-
+          /* 像創點子 (創新提案) 的大圖展示橫幅 (支援滑鼠移到播放 YouTube 影片或圖片輪播) */
+          <ProposalCardMediaBanner
+            youtubeUrl={effectiveYoutubeUrl}
+            coverMode={effectiveCoverMode}
+            cardHoverMode={effectiveCardHoverMode}
+            coverImage={effectiveDisplayImage}
+            galleryImages={question.cardDisplayImage ? [question.cardDisplayImage] : (question.galleryImages || question.screenshots || question.vibeCodingData?.screenshots)}
+            fallbackImage={fallbackCoverImg}
+            onFallbackErrorImage={getUniqueProposalCoverImage({ id: question.id, title: question.title }, 2)}
+            title={question.title}
+            isHovered={isHovered}
+            heightClass="h-40 sm:h-48"
+          >
             {/* 左上角標籤：領域分類 */}
-            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap pointer-events-none">
+            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap pointer-events-none z-10">
               <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-stone-900 border border-white/40 shadow-xs">
                 {displayCategoryLabel}
                 {question.subcategory ? ` · ${question.subcategory}` : ''}
               </span>
             </div>
 
-            {/* 右上角標籤：軟體作品 / 創新提案 / 創星季 */}
-            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 pointer-events-none">
+            {/* 右上角標籤：軟體作品 / 創新提案 / 創星季 / 有解決方案紅點 */}
+            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 pointer-events-none z-10 flex-wrap">
+              {hasSolutions && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-600/95 backdrop-blur-md text-white shadow-xs flex items-center gap-1 border border-rose-300" title="已有落地解決方案">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-200 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                  </span>
+                  <span>有解決方案</span>
+                </span>
+              )}
               {isSampleContent(question) && (
                 <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-stone-800/80 backdrop-blur-md text-white shadow-xs" title="此為平台示範內容，非真實會員發布">
                   範例
@@ -785,14 +919,21 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   軟體作品
                 </span>
               ) : isInnovationProposal ? (
-                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 font-black border border-amber-300 shadow-xs">
-                  創新提案
-                </span>
+                <>
+                  {getInnovationProgressStageMeta(question.proposalProgressStage) && (
+                    <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-emerald-900 border border-emerald-300 shadow-xs">
+                      {getInnovationProgressStageMeta(question.proposalProgressStage)?.label}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 font-black border border-amber-300 shadow-xs">
+                    創新提案
+                  </span>
+                </>
               ) : null}
             </div>
 
             {/* 右下角浮動操作按鈕 (⭐ 收藏 + ❤️ Like) */}
-            <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
+            <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 z-20">
               <button
                 type="button"
                 onClick={handleBookmarkClick}
@@ -819,7 +960,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 <span className="font-mono text-xs">{Math.max(likesCount || 0, secondCount || 0)}</span>
               </button>
             </div>
-          </div>
+          </ProposalCardMediaBanner>
         ) : (
           /* 非大圖卡片之一般頂部分類標籤與賞金列 */
           <div className="p-4 sm:p-5 pb-0">
@@ -930,7 +1071,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           </div>
         )}
 
-        <div className={`p-4 sm:p-5 ${hasCoverImage ? 'pt-3.5 sm:pt-4' : 'pt-2 sm:pt-2.5'}`}>
+        <div className={`p-4 sm:p-5 flex-1 flex flex-col ${hasCoverImage ? 'pt-3.5 sm:pt-4' : 'pt-2 sm:pt-2.5'}`}>
 
         {/* Title */}
         <h3 className="text-[15px] sm:text-base font-bold text-stone-900 group-hover:text-amber-600 transition-colors leading-snug line-clamp-2">
@@ -944,10 +1085,68 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           )}
         </h3>
 
-        {/* Description snippet */}
-        <p className="mt-1.5 text-xs text-stone-500 line-clamp-2 leading-relaxed font-normal">
-          {question.description}
-        </p>
+        {/* Description / AI Summary / Top Comment snippet */}
+        {hasCoverImage ? (
+          cleanDescription ? (
+            <p className="mt-1.5 text-xs text-stone-500 line-clamp-2 leading-relaxed font-normal">
+              {cleanDescription}
+            </p>
+          ) : aiSummaryText ? (
+            <p className="mt-1.5 text-xs text-amber-900/90 line-clamp-2 leading-relaxed font-normal">
+              ✨ AI 摘要：{aiSummaryText}
+            </p>
+          ) : topCommentText ? (
+            <p className="mt-1.5 text-xs text-stone-500 line-clamp-2 leading-relaxed font-normal">
+              💬 {topCommentAuthor}：{topCommentText}
+            </p>
+          ) : null
+        ) : (
+          /* 無圖片大卡片：自動填補空白處（詳述 -> AI 摘要 -> 熱門留言） */
+          (cleanDescription || aiSummaryText || topCommentText) && (
+            <div className="mt-2 flex-1 flex flex-col justify-center space-y-2">
+              {cleanDescription ? (
+                <>
+                  <p className="text-xs sm:text-[13px] text-stone-600 line-clamp-4 leading-relaxed font-normal">
+                    {cleanDescription}
+                  </p>
+                  {aiSummaryText ? (
+                    <div className="px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/70 text-xs text-amber-950 leading-relaxed line-clamp-2 flex items-start gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <span>
+                        <strong className="font-bold">AI 摘要：</strong>
+                        {aiSummaryText}
+                      </span>
+                    </div>
+                  ) : topCommentText ? (
+                    <div className="px-3 py-2 rounded-xl bg-stone-50 border border-stone-200/80 text-xs text-stone-600 leading-relaxed line-clamp-2 flex items-start gap-1.5">
+                      <MessageCircle className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
+                      <span>
+                        <strong className="font-bold text-stone-700">熱門留言 · {topCommentAuthor}：</strong>
+                        {topCommentText}
+                      </span>
+                    </div>
+                  ) : null}
+                </>
+              ) : aiSummaryText ? (
+                <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/70 text-xs text-amber-950 leading-relaxed line-clamp-4 flex items-start gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="font-bold">AI 摘要：</strong>
+                    {aiSummaryText}
+                  </span>
+                </div>
+              ) : topCommentText ? (
+                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 text-xs text-stone-600 leading-relaxed line-clamp-4 flex items-start gap-1.5">
+                  <MessageCircle className="w-4 h-4 text-stone-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="font-bold text-stone-700">熱門留言 · {topCommentAuthor}：</strong>
+                    {topCommentText}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          )
+        )}
 
         {/* 對應痛點或解決提案 (精簡為俐落單行膠囊，避免卡片內多層色塊堆疊) */}
         {(referencedPainPointObj || question.referencedPainPoint) && (
@@ -1092,12 +1291,23 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               <CheckCircle2 className="w-3 h-3" />
               <span>已採納</span>
             </span>
+          ) : hasSolutions ? (
+            <span
+              className="flex items-center gap-1.5 font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full transition-colors text-[11px] font-mono shadow-2xs"
+              title="已有專家提交落地解決方案"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+              </span>
+              <span>{effectiveSolutionsCount} 方案</span>
+            </span>
           ) : (
             <span
-              className="flex items-center gap-1 font-bold text-stone-800 bg-stone-100 group-hover:bg-amber-500 group-hover:text-stone-950 px-2.5 py-0.5 rounded-full transition-colors text-[11px] font-mono"
+              className="flex items-center gap-1 font-bold text-stone-600 bg-stone-100 group-hover:bg-amber-500 group-hover:text-stone-950 px-2.5 py-0.5 rounded-full transition-colors text-[11px] font-mono"
               title="方案解答數"
             >
-              <span>{solutionsCount ?? question.answersCount} 方案</span>
+              <span>0 方案</span>
             </span>
           )}
         </div>

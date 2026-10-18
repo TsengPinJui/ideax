@@ -242,6 +242,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     isFirestoreConnected,
     lastSyncTime,
     syncAllToCloud,
+    pullAllDataFromFirestore,
     deviceAccounts,
     switchAccount,
     logoutAccount,
@@ -4020,24 +4021,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                             setIsCloudSyncing(true);
                             setCloudSyncReport(null);
                             try {
-                              const { loadAllDataFromFirestore } = await import('../services/firestoreSync');
-                              const cloudData = await loadAllDataFromFirestore();
-                              if (cloudData) {
-                                if (cloudData.questions && cloudData.questions.length > 0) {
-                                  setQuestions(cloudData.questions);
-                                }
-                                if (cloudData.users && cloudData.users.length > 0) {
-                                  setAvailableUsers(cloudData.users);
-                                }
-                                if (cloudData.answers && cloudData.answers.length > 0) {
-                                  setAnswers(cloudData.answers);
-                                }
-                                if (cloudData.transactions && cloudData.transactions.length > 0) {
-                                  setTransactions(cloudData.transactions);
-                                }
-                                setCloudSyncReport(`✅ 下載拉取成功！已自雲端資料庫獲取最新題庫與帳目資料。`);
+                              const ok = await pullAllDataFromFirestore();
+                              if (ok) {
+                                setCloudSyncReport(`✅ 下載拉取成功！已自雲端資料庫獲取最新題庫、用戶名單、對話與帳目數據。`);
                               } else {
-                                setCloudSyncReport(`雲端尚無新資料或網路連線異常。`);
+                                setCloudSyncReport(`雲端資料庫已是最新狀態，或網路連線異常。`);
                               }
                             } catch (e: any) {
                               setCloudSyncReport(`拉取失敗: ${e?.message || '未知錯誤'}`);

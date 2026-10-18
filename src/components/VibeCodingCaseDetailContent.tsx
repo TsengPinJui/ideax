@@ -28,8 +28,10 @@ import {
   Star,
   Heart,
   Send,
+  Video,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { getYoutubeEmbedUrl } from '../utils/youtubeUtils';
 
 interface VibeCodingCaseDetailContentProps {
   question: Question;
@@ -467,6 +469,44 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
           )}
         </div>
       </div>
+
+      {/* 0. YouTube 介紹影片 (若作者有提供) */}
+      {(() => {
+        const ytEmbed = getYoutubeEmbedUrl(question.youtubeUrl || question.vibeCodingData?.youtubeUrl, {
+          autoplay: true,
+          mute: false,
+          controls: true,
+        });
+        if (!ytEmbed) return null;
+        return (
+          <div className="rounded-xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+            <div className="px-4 py-2.5 bg-stone-900 text-white flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <Video className="w-4 h-4 text-red-500" />
+                <span>YouTube 作品介紹與實機操作影片</span>
+              </div>
+              <a
+                href={question.youtubeUrl || question.vibeCodingData?.youtubeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-semibold text-stone-300 hover:text-white flex items-center gap-1"
+              >
+                <span>於 YouTube 開啟</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+            <div className="aspect-video w-full bg-black">
+              <iframe
+                src={ytEmbed}
+                title={`${question.title} - YouTube 介紹影片`}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 1. Screenshot Gallery */}
       {allImages.length > 0 && (

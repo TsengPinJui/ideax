@@ -41,6 +41,7 @@ import { ProposalRichContentDisplay } from './ProposalRichContentDisplay';
 import { withdrawCompetitionProposal } from '../../services/competitionAdminSync';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../../utils/painPointLinking';
 import { isGuestPreviewOnly } from '../../utils/guestAccess';
+import { getYoutubeEmbedUrl } from '../../utils/youtubeUtils';
 
 interface ProposalDetailFullPageProps {
   proposal: StarSeasonProposal;
@@ -771,6 +772,44 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               </div>
             )}
           </div>
+
+          {/* YouTube 介紹影片展示 */}
+          {(() => {
+            const ytEmbed = getYoutubeEmbedUrl(proposal.youtubeUrl, {
+              autoplay: true,
+              mute: false,
+              controls: true,
+            });
+            if (!ytEmbed) return null;
+            return (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-red-600 text-white flex items-center justify-center text-[10px] font-black">▶</span>
+                    <span>YouTube 提案介紹影片</span>
+                  </h3>
+                  <a
+                    href={proposal.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
+                  >
+                    <span>前往 YouTube 觀看</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+                <div className="rounded-2xl overflow-hidden border border-stone-200 bg-black aspect-video shadow-sm">
+                  <iframe
+                    src={ytEmbed}
+                    title={`${proposal.title} - YouTube 介紹影片`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 圖片展示 (相片/展示圖片) */}
           {proposal.images && proposal.images.length > 0 && (

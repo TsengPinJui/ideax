@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Question, VIBECODING_CATEGORIES } from '../types';
+import { Question, VIBECODING_CATEGORIES, InnovationProgressStage, INNOVATION_PROGRESS_STAGES } from '../types';
 import { useApp } from '../context/AppContext';
 import { PainPointAutocompleteInput } from './PainPointAutocompleteInput';
 import {
@@ -17,8 +17,12 @@ import {
   Flame,
   Eye,
   Upload,
+  Play,
+  Video,
+  Images,
 } from 'lucide-react';
 import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
+import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from '../utils/youtubeUtils';
 import {
   processUploadedImageFile,
   MAX_IMAGE_FILE_SIZE_MB,
@@ -73,6 +77,18 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   const [galleryImages, setGalleryImages] = useState<string[]>(
     question.galleryImages || question.vibeCodingData?.screenshots || []
   );
+  const [youtubeUrl, setYoutubeUrl] = useState(question.youtubeUrl || question.vibeCodingData?.youtubeUrl || '');
+  const [coverMode, setCoverMode] = useState<'custom_image' | 'youtube_video'>(
+    question.coverMode || question.vibeCodingData?.coverMode || 'custom_image'
+  );
+  const [cardHoverMode, setCardHoverMode] = useState<'video_autoplay' | 'image_carousel'>(
+    question.cardHoverMode || question.vibeCodingData?.cardHoverMode || 'video_autoplay'
+  );
+  const [proposalProgressStage, setProposalProgressStage] = useState<InnovationProgressStage | string>(
+    question.proposalProgressStage || ''
+  );
+  const [showCardImage, setShowCardImage] = useState<boolean>(question.showCardImage !== false);
+  const [selectedCardImage, setSelectedCardImage] = useState<string>(question.cardDisplayImage || '');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const [version, setVersion] = useState(getNextVersion);
@@ -95,6 +111,12 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       setTechArchitecture(question.techArchitecture || '');
       setCoverImage(question.coverImage || question.vibeCodingData?.coverImageUrl || '');
       setGalleryImages(question.galleryImages || question.vibeCodingData?.screenshots || []);
+      setYoutubeUrl(question.youtubeUrl || question.vibeCodingData?.youtubeUrl || '');
+      setCoverMode(question.coverMode || question.vibeCodingData?.coverMode || 'custom_image');
+      setCardHoverMode(question.cardHoverMode || question.vibeCodingData?.cardHoverMode || 'video_autoplay');
+      setProposalProgressStage(question.proposalProgressStage || '');
+      setShowCardImage(question.showCardImage !== false);
+      setSelectedCardImage(question.cardDisplayImage || '');
       setVersion(getNextVersion());
       setChangelogContent('');
       setChangelogNote('');
@@ -163,6 +185,10 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       setError('請填寫內容說明');
       return;
     }
+    if (!isVibeCoding && !proposalProgressStage) {
+      setError('【創新提案】請勾選目前提案的完程度［初步構想(0~2)、正在計畫(3~6)、實行中(7~9)、已完成(10)、成功驗證,持續精進 (11 up)］（必填）');
+      return;
+    }
     if (!changelogContent.trim()) {
       setError('請填寫本次版本的「更新摘要」（必填，將顯示於版本更新紀錄）');
       return;
@@ -184,6 +210,12 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       techArchitecture: techArchitecture.trim(),
       coverImage: coverImage.trim(),
       galleryImages,
+      youtubeUrl: youtubeUrl.trim(),
+      coverMode,
+      cardHoverMode,
+      showCardImage,
+      cardDisplayImage: showCardImage ? (selectedCardImage || (galleryImages.length > 0 ? galleryImages[0] : coverImage.trim()) || undefined) : undefined,
+      proposalProgressStage: !isVibeCoding ? (proposalProgressStage || undefined) : undefined,
       version: version.trim() || undefined,
       updateContent: summaryText,
       updateNote: changelogNote.trim() || undefined,
@@ -366,6 +398,55 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
               </div>
             )}
 
+            {/* 創新提案：要求勾選完程度（必填） */}
+            {!isVibeCoding && (
+              <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/90 space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-1.5">
+                  <label className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>完程度 *</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white">
+                      必選勾選
+                    </span>
+                  </label>
+                  <span className="text-[11px] text-emerald-800 font-medium">
+                    請勾選最符合您提案的完程度階段
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {INNOVATION_PROGRESS_STAGES.map((stageItem) => {
+                    const isChecked = proposalProgressStage === stageItem.id || proposalProgressStage === stageItem.label;
+                    return (
+                      <button
+                        key={stageItem.id}
+                        type="button"
+                        onClick={() => {
+                          setProposalProgressStage(stageItem.id);
+                          if (error) setError('');
+                        }}
+                        className={`px-3 py-2 rounded-lg border text-left transition-all cursor-pointer flex items-center gap-2 ${
+                          isChecked
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-200 font-black'
+                            : 'bg-white hover:bg-emerald-50/80 text-stone-800 border-emerald-200 hover:border-emerald-400 font-bold'
+                        }`}
+                      >
+                        <span
+                          className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 transition-colors ${
+                            isChecked
+                              ? 'bg-white border-white text-emerald-600'
+                              : 'border-stone-300 bg-stone-50 text-transparent'
+                          }`}
+                        >
+                          ✓
+                        </span>
+                        <span className="text-xs leading-snug">{stageItem.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Title */}
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
@@ -409,13 +490,13 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
                   <Target className="w-3.5 h-3.5 text-emerald-600" />
-                  期望目標
+                  期望目標 / 欲達到的改善效果
                 </label>
                 <input
                   type="text"
                   value={targetGoal}
                   onChange={(e) => setTargetGoal(e.target.value)}
-                  placeholder="例如：希望達成 10,000 人次使用"
+                  placeholder="例如：希望能解決人工流程易出錯問題，達到作業時間縮短 50% 與零錯單的改善效果"
                   className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
                 />
               </div>
@@ -566,6 +647,178 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* 可以選擇是否顯示圖片在卡片，可選擇一張 */}
+              {(galleryImages.length > 0 || Boolean(coverImage.trim())) && (
+                <div className="p-3.5 rounded-xl bg-white/95 border border-amber-200 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <label className="text-xs font-black text-stone-900 flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showCardImage}
+                        onChange={(e) => setShowCardImage(e.target.checked)}
+                        className="rounded border-amber-400 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span>在卡片上顯示圖片（勾選啟用）</span>
+                    </label>
+                    <span className="text-[11px] text-stone-500">
+                      {showCardImage ? '已啟用：可於下方點選 1 張作為卡片展示封面' : '已關閉：卡片將以文字詳述/AI摘要/熱門留言呈現'}
+                    </span>
+                  </div>
+
+                  {showCardImage && (
+                    <div>
+                      <p className="text-[11px] text-stone-600 font-medium mb-1.5">
+                        👉 點擊選擇其中 1 張作為卡片展示圖片：
+                      </p>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        {(coverImage.trim() ? [coverImage.trim(), ...galleryImages] : galleryImages).map((img, idx) => {
+                          const isChosen = (selectedCardImage ? selectedCardImage === img : idx === 0);
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => setSelectedCardImage(img)}
+                              className={`relative group h-16 rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
+                                isChosen
+                                  ? 'border-amber-500 ring-2 ring-amber-400/50 shadow-md scale-102'
+                                  : 'border-stone-200 opacity-70 hover:opacity-100 hover:border-amber-300'
+                              }`}
+                              title="點擊選定為卡片展示圖"
+                            >
+                              <img src={img} alt={`展示圖 ${idx + 1}`} className="w-full h-full object-cover" />
+                              {isChosen && (
+                                <span className="absolute bottom-1 inset-x-1 py-0.5 rounded bg-amber-500 text-stone-950 font-black text-[9px] text-center shadow-xs">
+                                  ★ 卡片展示
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* YouTube 介紹影片連結與卡片封面/懸停動態展示設定 */}
+              <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                    <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                      <Video className="w-3.5 h-3.5 text-red-600" />
+                      <span>YouTube 介紹影片連結 (選填)</span>
+                    </label>
+                    <span className="text-[10px] font-semibold text-stone-500">
+                      公開播放於大卡片與內頁
+                    </span>
+                  </div>
+                  <input
+                    type="url"
+                    value={youtubeUrl}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setYoutubeUrl(val);
+                      const vid = extractYoutubeVideoId(val);
+                      if (vid && !coverImage.trim()) {
+                        setCoverMode('youtube_video');
+                        setCardHoverMode('video_autoplay');
+                      }
+                    }}
+                    placeholder="例如：https://www.youtube.com/watch?v=... 或 https://youtu.be/..."
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:border-red-500 text-xs text-stone-900 outline-none bg-white font-mono"
+                  />
+                  {youtubeUrl.trim() && (
+                    <div className="mt-1.5">
+                      {extractYoutubeVideoId(youtubeUrl) ? (
+                        <div className="inline-flex items-center gap-2 text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                          <img
+                            src={getYoutubeThumbnailUrl(youtubeUrl) || ''}
+                            alt="YouTube 縮圖"
+                            className="w-10 h-6 object-cover rounded border border-emerald-300"
+                          />
+                          <span>✓ 已解析 YouTube 影片（ID: {extractYoutubeVideoId(youtubeUrl)}）</span>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-rose-600 font-bold">
+                          ⚠️ 請輸入有效的 YouTube 影片網址
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-stone-200/80">
+                  <div>
+                    <label className="block text-[11px] font-bold text-stone-700 mb-1.5">
+                      1. 卡片靜態封面來源選擇
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCoverMode('custom_image')}
+                        className={`px-2.5 py-2 rounded-lg text-[11px] font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          coverMode === 'custom_image'
+                            ? 'bg-stone-900 text-white border-stone-900'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        <ImageIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span>使用自訂封面</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCoverMode('youtube_video')}
+                        disabled={!extractYoutubeVideoId(youtubeUrl)}
+                        className={`px-2.5 py-2 rounded-lg text-[11px] font-bold border flex items-center justify-center gap-1.5 transition-all ${
+                          !extractYoutubeVideoId(youtubeUrl)
+                            ? 'bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed'
+                            : coverMode === 'youtube_video'
+                            ? 'bg-red-600 text-white border-red-600 cursor-pointer'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-red-50 hover:text-red-700 cursor-pointer'
+                        }`}
+                      >
+                        <Play className="w-3.5 h-3.5 shrink-0" />
+                        <span>YouTube 當封面</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-stone-700 mb-1.5">
+                      2. 卡片瀏覽時（滑鼠移到卡片）動態展示
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCardHoverMode('video_autoplay')}
+                        disabled={!extractYoutubeVideoId(youtubeUrl)}
+                        className={`px-2.5 py-2 rounded-lg text-[11px] font-bold border flex items-center justify-center gap-1.5 transition-all ${
+                          !extractYoutubeVideoId(youtubeUrl)
+                            ? 'bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed'
+                            : cardHoverMode === 'video_autoplay'
+                            ? 'bg-red-600 text-white border-red-600 cursor-pointer'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-red-50 hover:text-red-700 cursor-pointer'
+                        }`}
+                      >
+                        <Video className="w-3.5 h-3.5 shrink-0" />
+                        <span>滑鼠移到播影片</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCardHoverMode('image_carousel')}
+                        className={`px-2.5 py-2 rounded-lg text-[11px] font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          cardHoverMode === 'image_carousel' || !extractYoutubeVideoId(youtubeUrl)
+                            ? 'bg-amber-500 text-stone-950 border-amber-500'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-amber-50 hover:text-amber-800'
+                        }`}
+                      >
+                        <Images className="w-3.5 h-3.5 shrink-0" />
+                        <span>滑鼠移到圖片輪播</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -638,6 +891,10 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
           bounty={question.bounty}
           coverImage={coverImage}
           galleryImages={galleryImages}
+          youtubeUrl={youtubeUrl}
+          coverMode={coverMode}
+          cardHoverMode={cardHoverMode}
+          proposalProgressStage={proposalProgressStage || undefined}
           appName={appName}
           demoUrl={demoUrl || fileLink}
           techArchitecture={techArchitecture}

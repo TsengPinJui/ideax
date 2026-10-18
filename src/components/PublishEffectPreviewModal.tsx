@@ -51,6 +51,10 @@ export interface PublishEffectPreviewModalProps {
   bounty?: number;
   coverImage?: string;
   galleryImages?: string[];
+  youtubeUrl?: string;
+  coverMode?: 'custom_image' | 'youtube_video';
+  cardHoverMode?: 'video_autoplay' | 'image_carousel';
+  proposalProgressStage?: string;
   // VibeCoding specific
   appName?: string;
   demoUrl?: string;
@@ -81,6 +85,10 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
   bounty = 0,
   coverImage,
   galleryImages = [],
+  youtubeUrl,
+  coverMode = 'custom_image',
+  cardHoverMode = 'video_autoplay',
+  proposalProgressStage,
   appName = '',
   demoUrl,
   techArchitecture,
@@ -195,6 +203,10 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
     appName: isVibeApp ? effectiveAppName : undefined,
     coverImage: coverImage || undefined,
     galleryImages: galleryImages.length > 0 ? galleryImages : undefined,
+    youtubeUrl: youtubeUrl || undefined,
+    coverMode,
+    cardHoverMode,
+    proposalProgressStage: proposalProgressStage || undefined,
     techArchitecture: techArchitecture || (isVibeApp ? 'React + TypeScript + Tailwind CSS + Gemini API' : undefined),
     demoUrl: demoUrl || undefined,
     referencedPainPoint: effectivePainPoint,
@@ -243,7 +255,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                   </span>
                 </div>
                 <h2 className="text-sm sm:text-lg font-black text-stone-900 truncate mt-0.5">
-                  兩種類型提案・前台展示效果預覽
+                  前台展示效果預覽
                 </h2>
               </div>
             </div>
