@@ -34,9 +34,9 @@ export const AdminMascotStatsCard: React.FC = () => {
   }, [days]);
 
   const total = useMemo(() => {
-    const t = { impression: 0, click: 0, open: 0, ask: 0, drag: 0, collapse: 0, session: 0, sad: 0, comfort: 0, interactionMs: 0, agents: {} as Record<string, number> };
+    const t = { impression: 0, click: 0, open: 0, ask: 0, drag: 0, collapse: 0, session: 0, sad: 0, comfort: 0, unanswered: 0, interactionMs: 0, agents: {} as Record<string, number> };
     for (const r of rows || []) {
-      for (const k of ['impression', 'click', 'open', 'ask', 'drag', 'collapse', 'session', 'sad', 'comfort'] as const) t[k] += r.counts[k] || 0;
+      for (const k of ['impression', 'click', 'open', 'ask', 'drag', 'collapse', 'session', 'sad', 'comfort', 'unanswered'] as const) t[k] += r.counts[k] || 0;
       t.interactionMs += r.interactionMs || 0;
       for (const [a, n] of Object.entries(r.agents || {})) t.agents[a] = (t.agents[a] || 0) + (n || 0);
     }
@@ -48,6 +48,7 @@ export const AdminMascotStatsCard: React.FC = () => {
     { label: '點擊率', value: pct(total.click, total.impression), sub: `${total.click.toLocaleString()} 次點擊` },
     { label: '開啟對話率', value: pct(total.open, total.impression), sub: `${total.open.toLocaleString()} 次開啟` },
     { label: '提問數', value: total.ask.toLocaleString(), sub: `每次開啟 ${total.open ? (total.ask / total.open).toFixed(1) : '—'} 題` },
+    { label: '無法回答', value: total.unanswered.toLocaleString(), sub: `占提問 ${pct(total.unanswered, total.ask)}` },
     { label: '平均互動時長', value: fmtDuration(total.session ? total.interactionMs / total.session : 0), sub: `${total.session.toLocaleString()} 段互動` },
     { label: '收起次數', value: total.collapse.toLocaleString(), sub: `拖曳 ${total.drag.toLocaleString()} 次` },
     { label: '回訪安慰率', value: pct(total.comfort, total.sad), sub: `想你 ${total.sad.toLocaleString()} 次・被安慰 ${total.comfort.toLocaleString()} 次` },
@@ -78,7 +79,7 @@ export const AdminMascotStatsCard: React.FC = () => {
       {!rows && !error && <p className="text-xs text-stone-500">讀取中…</p>}
       {rows && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {tiles.map((t) => (
               <div key={t.label} className="rounded-xl bg-stone-50 border border-stone-200 p-3">
                 <p className="text-[11px] font-bold text-stone-500">{t.label}</p>

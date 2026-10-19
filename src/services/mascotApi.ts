@@ -18,11 +18,14 @@ export function mascotVisitorId(): string {
 }
 
 /** 先問伺服器這題要轉接給哪位助理（很快，用來顯示「正在轉接…職稱」） */
-export async function routeMascot(message: string): Promise<{ agent: MascotAgent; agentLabel: string } | null> {
+export type MascotRoute = { outOfScope: false; agent: MascotAgent; agentLabel: string } | { outOfScope: true; reply: string };
+export async function routeMascot(message: string): Promise<MascotRoute | null> {
   try {
     const res = await fetch('/api/mascot/route', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) });
     const data = await res.json().catch(() => ({}));
-    return res.ok && data.success ? { agent: data.agent, agentLabel: data.agentLabel } : null;
+    if (!res.ok || !data.success) return null;
+    if (data.outOfScope) return { outOfScope: true, reply: String(data.reply || '') };
+    return { outOfScope: false, agent: data.agent, agentLabel: data.agentLabel };
   } catch {
     return null;
   }
@@ -32,7 +35,7 @@ export async function askMascot(
   message: string,
   conversationIds: Partial<Record<MascotAgent, string>>,
   agent?: MascotAgent
-): Promise<{ ok: true; reply: string; agent: MascotAgent; agentLabel: string; conversationId?: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; reply: string; agent?: MascotAgent; agentLabel?: string; conversationId?: string } | { ok: false; error: string }> {
   try {
     const res = await fetch('/api/mascot/ask', {
       method: 'POST',
@@ -47,7 +50,7 @@ export async function askMascot(
   }
 }
 
-export type MascotEventType = 'impression' | 'click' | 'drag' | 'open' | 'collapse' | 'expand' | 'session' | 'sad' | 'comfort';
+export type MascotEventType = 'impression' | 'click' | 'drag' | 'open' | 'collapse' | 'expand' | 'session' | 'sad' | 'comfort' | 'unanswered';
 export function trackMascotEvent(type: MascotEventType, durationMs?: number) {
   try {
     const body = JSON.stringify({ type, durationMs });

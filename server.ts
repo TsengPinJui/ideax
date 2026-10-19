@@ -12,7 +12,7 @@ import { runAssistantTick } from './server/assistantCron';
 import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/pointsLedger';
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
-import { classifyMascotQuestion, getMascotStats, MASCOT_AGENTS, mascotAgentKey, recordMascotEvent, type MascotAgent } from './server/mascot';
+import { classifyMascotQuestion, getMascotStats, MASCOT_AGENTS, MASCOT_OUT_OF_SCOPE_REPLY, MASCOT_UNAVAILABLE_REPLY, mascotAgentKey, normalizeAgentReply, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken } from './server/competitionService';
 
 dotenv.config();
@@ -3170,6 +3170,12 @@ app.post('/api/mascot/route', async (req: Request, res: Response) => {
     const message = String(req.body?.message || '').trim().slice(0, 800);
     if (!message) return res.status(400).json({ success: false, error: '請輸入問題' });
     const { agent, by } = await classifyMascotQuestion(message, generateRawTextWithGemini);
+    if (agent === 'none') {
+      // 三位助理都不負責：不轉接，直接回固定文字（也記一筆「無法回答」給後台參考）
+      void recordMascotEvent({ type: 'ask' }).catch(() => {});
+      void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
+      return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: by });
+    }
     res.json({ success: true, agent, agentLabel: MASCOT_AGENTS[agent].label, routedBy: by });
   } catch (err: any) {
     console.error('[Mascot Route]', err?.message || err);
@@ -3185,7 +3191,13 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
     const conversationIds = (req.body?.conversationIds && typeof req.body.conversationIds === 'object') ? req.body.conversationIds : {};
     const visitorId = String(req.body?.visitorId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) || 'guest';
     const preRouted = typeof req.body?.agent === 'string' && req.body.agent in MASCOT_AGENTS ? (req.body.agent as MascotAgent) : null;
-    const { agent, by } = preRouted ? { agent: preRouted, by: 'pre-routed' as const } : await classifyMascotQuestion(message, generateRawTextWithGemini);
+    const routed = preRouted ? { agent: preRouted, by: 'pre-routed' as const } : await classifyMascotQuestion(message, generateRawTextWithGemini);
+    if (routed.agent === 'none') {
+      void recordMascotEvent({ type: 'ask' }).catch(() => {});
+      void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
+      return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: routed.by });
+    }
+    const { agent, by } = routed as { agent: MascotAgent; by: string };
     const meta = MASCOT_AGENTS[agent];
     const apiKey = mascotAgentKey(agent);
     let reply = '';
@@ -3205,11 +3217,18 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
         conversationId = r.conversationId;
       }
     }
+    // 助理沒回應時不改用其他 AI 代答（避免隨意回答），老實告知稍後再試
+    let unanswered = false;
     if (!reply) {
-      source = 'gemini';
-      reply = (await generateRawTextWithGemini(message, `${meta.persona}請用繁體中文、口語親切地回答，150 字以內。`)) || '我現在有點忙不過來，請稍後再問我一次，或到「客服中心」留言給我們喔！';
+      source = 'unavailable';
+      reply = MASCOT_UNAVAILABLE_REPLY;
+    } else {
+      const n = normalizeAgentReply(reply);
+      reply = n.reply;
+      unanswered = n.unanswered;
     }
     void recordMascotEvent({ type: 'ask', agent }).catch(() => {});
+    if (unanswered || source === 'unavailable') void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
     res.json({ success: true, reply, agent, agentLabel: meta.label, routedBy: by, conversationId, source });
   } catch (err: any) {
     console.error('[Mascot Ask]', err?.message || err);
