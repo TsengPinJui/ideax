@@ -1,3 +1,4 @@
+import { GUEST_VISIBLE_COUNT } from '../utils/guestAccess';
 import React from 'react';
 import { Lock, LogIn, Sparkles, ShieldCheck } from 'lucide-react';
 
@@ -65,10 +66,10 @@ export const GuestBoardGateBlurOverlay: React.FC<GuestBoardGateBlurOverlayProps>
 
           <div className="space-y-1">
             <h4 className="text-base sm:text-lg font-black text-stone-900 tracking-tight">
-              需要登入才能查看更多
+              登入後查看更多
             </h4>
             <p className="text-xs text-stone-600 leading-relaxed">
-              未登入可瀏覽前 10 則項目。{boardName ? `【${boardName}】` : '此看板'}尚有{' '}
+              未登入可瀏覽前 {GUEST_VISIBLE_COUNT} 則項目。{boardName ? `【${boardName}】` : '此看板'}尚有{' '}
               <strong className="text-amber-700 font-black font-mono">{remainingCount}</strong> 則內容，登入帳號即可免費暢覽完整討論、痛點細節與解方提案！
             </p>
           </div>
@@ -80,7 +81,7 @@ export const GuestBoardGateBlurOverlay: React.FC<GuestBoardGateBlurOverlayProps>
               className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-stone-950 font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <LogIn className="w-4 h-4 text-stone-950" />
-              <span>立即登入查看更多</span>
+              <span>登入後查看更多</span>
             </button>
           </div>
 

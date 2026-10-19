@@ -448,21 +448,28 @@ function MainContent() {
   const [isOnboardingFromAbout, setIsOnboardingFromAbout] = useState(false);
   const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
 
-  // 問題市場版面檢視模式：手機預設條列式排列 (list)，電腦預設方格式 (grid)
-  const [viewMode, setViewMode] = useState<MarketViewMode>(() => {
+  // 問題市場版面檢視模式（使用者沒自己選過時的預設）：
+  // 電腦一律大卡片；手機版有圖片的看板用大卡片，痛點許願池與 L0 討論區（多半沒有圖片）用條列式
+  const defaultViewModeFor = (zone: SpecialZone): MarketViewMode => {
+    if (typeof window === 'undefined' || window.innerWidth >= 768) return 'large';
+    return zone === 'pain_points' || zone === 'l0_discussion' ? 'list' : 'large';
+  };
+  const readSavedViewMode = (): MarketViewMode | null => {
     try {
       const saved = localStorage.getItem('ideax_market_view_mode');
-      if (saved === 'large' || saved === 'list' || saved === 'grid') {
-        return saved;
-      }
+      if (saved === 'large' || saved === 'list' || saved === 'grid') return saved;
     } catch (e) {
       // ignore
     }
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 768 ? 'list' : 'grid';
-    }
-    return 'grid';
-  });
+    return null;
+  };
+  const [viewMode, setViewMode] = useState<MarketViewMode>(() => readSavedViewMode() || defaultViewModeFor(specialZone));
+
+  // 切換看板時，沒自己選過檢視模式的人，跟著看板套用預設
+  useEffect(() => {
+    if (!readSavedViewMode()) setViewMode(defaultViewModeFor(specialZone));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [specialZone]);
 
   const handleSetViewMode = (mode: MarketViewMode) => {
     setViewMode(mode);

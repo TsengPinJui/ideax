@@ -419,7 +419,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     }));
   }, [proposals, isSimulatedDataPurged, stageInfo.activeStage, stageInfo.isProposalStage, stageInfo.isExpertReviewStage, stageInfo.isResultsStage]);
 
-  // 每批顯示 3 個提案 (未登入訪客可瀏覽前 10 則：前 6 則完整、後 4 則僅預覽)
+  // 每批顯示 3 個提案 (未登入訪客可瀏覽前 20 則：前 16 則完整、後 4 則僅預覽)
   const isGuest = isGuestUser(currentUser);
   const homepageProposalBatches = useMemo(() => {
     const list = homepageAllProposals.filter((p) => p.stage !== 'pain_point'); // 依需求：提案輪播只顯示提案解方，不顯示痛點
@@ -442,7 +442,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 向左前進下一批
   const handleCarouselNext = useCallback(() => {
-    // 訪客也可以左右切換，瀏覽前 10 則（第 11 則起由下方登入遮罩提示）
+    // 訪客也可以左右切換，瀏覽前 20 則（第 21 則起由下方登入遮罩提示）
     if (homepageProposalBatches.length <= 1) return;
     setHomepageCarouselBatchIndex((prev) => {
       if (prev >= homepageProposalBatches.length) {
@@ -454,7 +454,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 向右上一批
   const handleCarouselPrev = useCallback(() => {
-    // 訪客也可以左右切換，瀏覽前 10 則（第 11 則起由下方登入遮罩提示）
+    // 訪客也可以左右切換，瀏覽前 20 則（第 21 則起由下方登入遮罩提示）
     if (homepageProposalBatches.length <= 1) return;
     setHomepageCarouselBatchIndex((prev) => {
       if (prev <= 0) {
@@ -1146,7 +1146,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
     return list;
   }, [proposals, questions, stageInfo.activeStage]);
 
-  // 痛點問題每批 3 個（三張一批輪播，未登入訪客可瀏覽前 10 則）
+  // 痛點問題每批 3 個（三張一批輪播，未登入訪客可瀏覽前 20 則）
   const homepagePainPointBatches = useMemo(() => {
     const list = homepagePainPoints;
     const effectiveList = isGuest ? list.slice(0, GUEST_VISIBLE_COUNT) : list;
@@ -1166,7 +1166,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 痛點向左前進下一批
   const handlePainPointCarouselNext = useCallback(() => {
-    // 訪客也可以左右切換，瀏覽前 10 則（第 11 則起由下方登入遮罩提示）
+    // 訪客也可以左右切換，瀏覽前 20 則（第 21 則起由下方登入遮罩提示）
     if (homepagePainPointBatches.length <= 1) return;
     setHomepagePainPointBatchIndex((prev) => {
       if (prev >= homepagePainPointBatches.length) {
@@ -1178,7 +1178,7 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
 
   // 痛點向右上一批
   const handlePainPointCarouselPrev = useCallback(() => {
-    // 訪客也可以左右切換，瀏覽前 10 則（第 11 則起由下方登入遮罩提示）
+    // 訪客也可以左右切換，瀏覽前 20 則（第 21 則起由下方登入遮罩提示）
     if (homepagePainPointBatches.length <= 1) return;
     setHomepagePainPointBatchIndex((prev) => {
       if (prev <= 0) {

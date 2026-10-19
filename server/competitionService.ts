@@ -1483,7 +1483,7 @@ export async function confirmFinalAwardByAdmin(params: {
   return { success: true, message: `已成功確認名次 (第 ${params.finalRank} 名) 與相關獎勵核准！` };
 }
 
-const DATABASE_PROPOSALS_SEED_VERSION = 'v2026_10_18_db_v7';
+const DATABASE_PROPOSALS_SEED_VERSION = 'v2026_10_20_db_v8';
 let isDatabaseSeedInProgress = false;
 let isDatabaseSeedDone = false;
 
@@ -1659,6 +1659,88 @@ export async function ensureProposalsSyncedToFirestore(force = false): Promise<v
     if (profileFixCount > 0) {
       await profileFixBatch.commit();
       console.log(`[Database Seed] Repaired hasCompletedProfile=true for ${profileFixCount} user(s).`);
+    }
+
+    // 5. 範例內容更新（v8：逐篇改寫的留言與專家方案、新頭像、新封面、修正痛點關聯）
+    //    已存在的範例文件只更新內容欄位，不動按讚、瀏覽、打賞等互動數字
+    try {
+      const writtenPropIds = new Set(propsToWrite.map((p) => p.id));
+      const propRefresh = Array.from(allStarProposalsMap.values()).filter((p) => existingPropIds.has(p.id) && !writtenPropIds.has(p.id));
+      for (let i = 0; i < propRefresh.length; i += 100) {
+        const batch = adminDb.batch();
+        propRefresh.slice(i, i + 100).forEach((p: any) => {
+          batch.set(
+            adminDb.collection('competition_proposals').doc(p.id),
+            {
+              images: p.images || [],
+              authorAvatar: p.authorAvatar || null,
+              referencedPainPoint: p.referencedPainPoint || null,
+              sourcePainPointTitle: p.sourcePainPointTitle || null,
+              updatedAt: new Date().toISOString(),
+            },
+            { merge: true }
+          );
+        });
+        await batch.commit();
+      }
+
+      const writtenQIds = new Set(questionsToWrite.map((q: any) => q.id));
+      const qRefresh = Array.from(allSeedQuestionsMap.values()).filter((q: any) => existingQIds.has(q.id) && !writtenQIds.has(q.id));
+      for (let i = 0; i < qRefresh.length; i += 100) {
+        const batch = adminDb.batch();
+        qRefresh.slice(i, i + 100).forEach((q: any) => {
+          batch.set(
+            adminDb.collection('questions').doc(q.id),
+            {
+              title: q.title,
+              description: q.description,
+              authorAvatar: q.authorAvatar || null,
+              coverImage: q.coverImage || null,
+              galleryImages: q.galleryImages || null,
+              vibeCodingData: q.vibeCodingData || null,
+              referencedPainPoint: q.referencedPainPoint || null,
+              tipsHistory: q.tipsHistory || null,
+              updatedAt: new Date().toISOString(),
+            },
+            { merge: true }
+          );
+        });
+        await batch.commit();
+      }
+
+      const writtenAIds = new Set(answersToWrite.map((a) => a.id));
+      const seedAnsIds = new Set(ALL_VIRTUAL_ANSWERS_SEED.map((a) => a.id));
+      const aRefresh = ALL_VIRTUAL_ANSWERS_SEED.filter((a) => existingAIds.has(a.id) && !writtenAIds.has(a.id) && !deletedIds.has(a.questionId));
+      for (let i = 0; i < aRefresh.length; i += 100) {
+        const batch = adminDb.batch();
+        aRefresh.slice(i, i + 100).forEach((a) => {
+          const { publicAnswer, secret } = splitAnswerForStorage(a);
+          const { likes: _likes, ...content } = publicAnswer as any;
+          batch.set(adminDb.collection('answers').doc(a.id), { ...content, updatedAt: new Date().toISOString() }, { merge: true });
+          if (secret) {
+            batch.set(
+              adminDb.collection('answer_secrets').doc(a.id),
+              { ...JSON.parse(JSON.stringify(secret)), solverId: a.solverId || null, updatedAt: new Date().toISOString() },
+              { merge: true }
+            );
+          }
+        });
+        await batch.commit();
+      }
+
+      // 舊版模板留言（新版已不存在的範例留言）直接移除
+      const obsoleteAnsIds = Array.from(existingAIds).filter((id) => id.startsWith('ans-vp-') && !seedAnsIds.has(id));
+      for (let i = 0; i < obsoleteAnsIds.length; i += 50) {
+        await Promise.all(
+          obsoleteAnsIds.slice(i, i + 50).flatMap((id) => [
+            adminDb.collection('answers').doc(id).delete().catch(() => {}),
+            adminDb.collection('answer_secrets').doc(id).delete().catch(() => {}),
+          ])
+        );
+      }
+      console.log(`[Database Seed] Refreshed ${propRefresh.length} proposals, ${qRefresh.length} questions, ${aRefresh.length} answers; removed ${obsoleteAnsIds.length} old template answers.`);
+    } catch (refreshErr: any) {
+      console.warn('[Database Seed] Sample content refresh skipped:', refreshErr?.message || refreshErr);
     }
 
     await versionRef.set(
