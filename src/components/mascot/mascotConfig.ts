@@ -6,6 +6,8 @@ export interface MascotConfig {
   showOnMobile: boolean;
   /** 開啟提問對話（轉給三位 Dify 助理） */
   chatEnabled: boolean;
+  /** 發亮音效 */
+  soundEnabled: boolean;
   /** 對話泡泡預設文字 */
   bubbleText: string;
   /** 多日未上線：超過幾天沒來會傷心哭泣 */
@@ -24,6 +26,7 @@ export const DEFAULT_MASCOT_CONFIG: MascotConfig = {
   enabled: true,
   showOnMobile: true,
   chatEnabled: true,
+  soundEnabled: true,
   bubbleText: '對什麼主題有興趣呢？客服問題也可以問我~',
   sadAfterDays: 3,
   sadText: '好久沒上來找我玩，有點想你...',
@@ -57,6 +60,7 @@ export function normalizeMascotConfig(raw: unknown): MascotConfig {
     enabled: typeof r.enabled === 'boolean' ? r.enabled : d.enabled,
     showOnMobile: typeof r.showOnMobile === 'boolean' ? r.showOnMobile : d.showOnMobile,
     chatEnabled: typeof r.chatEnabled === 'boolean' ? r.chatEnabled : d.chatEnabled,
+    soundEnabled: typeof r.soundEnabled === 'boolean' ? r.soundEnabled : d.soundEnabled,
     bubbleText: cleanText(r.bubbleText, d.bubbleText),
     sadAfterDays: Math.round(clampNum(r.sadAfterDays, MASCOT_LIMITS.sadAfterDays.min, MASCOT_LIMITS.sadAfterDays.max, d.sadAfterDays)),
     sadText: cleanText(r.sadText, d.sadText),

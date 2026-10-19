@@ -35,18 +35,25 @@ export async function askMascot(
   message: string,
   conversationIds: Partial<Record<MascotAgent, string>>,
   agent?: MascotAgent
-): Promise<{ ok: true; reply: string; agent?: MascotAgent; agentLabel?: string; conversationId?: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; reply: string; agent?: MascotAgent; agentLabel?: string; conversationId?: string; source?: string } | { ok: false; error: string; timedOut?: boolean }> {
+  // 伺服器最多等助理 3 分鐘＋小燈泡代答，前端最多等 5 分鐘
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 300000);
   try {
     const res = await fetch('/api/mascot/ask', {
       method: 'POST',
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, conversationIds, agent, visitorId: mascotVisitorId() }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) return { ok: false, error: data.error || (res.status === 429 ? '問得太快了，休息一下再問我～' : '暫時無法回答，請稍後再試') };
-    return { ok: true, reply: data.reply, agent: data.agent, agentLabel: data.agentLabel, conversationId: data.conversationId };
-  } catch {
+    return { ok: true, reply: data.reply, agent: data.agent, agentLabel: data.agentLabel, conversationId: data.conversationId, source: data.source };
+  } catch (err: any) {
+    if (err?.name === 'AbortError') return { ok: false, error: '這個問題小燈泡還要回去研究研究！很抱歉讓你都那麼久~', timedOut: true };
     return { ok: false, error: '連線不穩，請稍後再試' };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

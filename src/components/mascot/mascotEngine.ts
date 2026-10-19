@@ -6,20 +6,32 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-export type MascotMood = 'idle' | 'happy' | 'sad' | 'think' | 'dizzy' | 'scared';
+export type MascotMood = 'idle' | 'happy' | 'sad' | 'think' | 'dizzy' | 'scared' | 'shy';
 export interface MascotTuning { k: number; damp: number; amp: number }
 export interface MascotEngineOptions {
   root: HTMLElement; shadow: HTMLElement; bubble: HTMLElement; bubbleText: HTMLElement;
   glow: HTMLElement; rays: Element; alarm: HTMLElement; puddle: HTMLElement; drops: HTMLElement; pool: HTMLElement;
   tuning?: Partial<MascotTuning>; bubbleDefault?: string;
   getInsets?: () => { bottom: number; right: number };
-  onEvent?: (type: 'click' | 'drag' | 'comfort') => void;
+  onEvent?: (type: 'click' | 'drag' | 'comfort' | 'dropped' | 'glow') => void;
 }
+export interface MascotStage { x: number; y: number; lean?: number; look?: 'around' }
 export interface MascotEngine {
   setMood(m: MascotMood, ms?: number): void; say(text: string, ms?: number): void; jump(p?: number): void;
-  cheer(text?: string): void; sad(text?: string): void; think(on: boolean): void; wave(text?: string): void;
+  cheer(text?: string): void; sad(text?: string): void; embarrassed(text?: string): void; think(on: boolean): void; wave(text?: string): void;
   poke(): void; shake(): void; setTuning(t: Partial<MascotTuning>): void; setBubbleDefault(t: string): void;
-  enterFrom(): void; getMood(): MascotMood; destroy(): void;
+  enterFrom(): void; getMood(): MascotMood; refreshInsets(): void; destroy(): void;
+  /** 舞台走位：指定站位（null 回到右下角）；teleport 直接瞬移（藏在對話框後面時用） */
+  stage(target: MascotStage | null, teleport?: boolean): void;
+  /** 說話嘴型，持續 ms 毫秒 */
+  talk(ms: number): void;
+  /** 果凍啵一下（正值往右、負值往左） */
+  pop(k: number): void;
+  /** 壓扁蓄力（正值壓扁） */
+  squash?(k: number): void;
+  /** 取消站位並受重力掉回地面（例如對話框關閉時） */
+  drop(): void;
+  size(): { w: number; h: number; foot: number };
 }
 
 export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
@@ -49,8 +61,9 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   const camera = new THREE.PerspectiveCamera(30, 180 / 240, 0.1, 50);
-  camera.position.set(0, 0.55, 9.4);
-  camera.lookAt(0, 0.45, 0);
+  // 畫布比燈泡本體大 PAD 倍（四周留透明空間），探頭、舉手、躺下、被拉長時才不會被裁掉；鏡頭等比拉遠，畫面上的大小不變
+  camera.position.set(0, 0.888, 14.1);
+  camera.lookAt(0, 0.888, 0);
 
   scene.add(new THREE.HemisphereLight(0xfff4e0, 0x5a4a30, 0.7));
   const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-3, 4, 5); scene.add(key);
@@ -339,11 +352,15 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     jumpY: 0, jumpV: 0, blinkAt: performance.now() + 2000, blink: 0,
     lookX: 0, lookY: 0, pose: 'idle', waveUntil: 0, spinAt: 0, lastPointer: null,
     flickerAt: 0, flickerOn: false, prevX: 0, prevY: 0, prevVx: 0, prevVy: 0, ax: 0, ay: 0,
-    sadSince: 0, sadLie: false, lie: 0, sadMix: 0, puddle: 0,
+    sadSince: 0, sadLie: false, lie: 0, sadMix: 0, puddle: 0, stage: null, talkUntil: 0, dropFromStage: false,
   };
   const size = () => ({ w: el.offsetWidth, h: el.offsetHeight });
-  const FOOT_RATIO = 0.86; // 腳底在畫布中的高度比例
-  function home() { const { w } = size(); return { x: innerWidth - w / 2 - insets.right, y: innerHeight - insets.bottom }; }
+  const FOOT_RATIO = 0.8; // 腳底在畫布中的高度比例
+  const PAD = 1.5; // 畫布 / 燈泡本體框 的比例（CSS 尺寸也要一致）
+  const msize = () => ({ w: el.offsetWidth / PAD, h: el.offsetHeight / PAD });
+  // 除錯用：localStorage 設 ixm_debug=1 時可在主控台讀取狀態
+  try { if (localStorage.getItem('ixm_debug') === '1') (window as any).__ixm = S; } catch {}
+  function home() { const { w } = msize(); return { x: innerWidth - w / 2 - insets.right, y: innerHeight - insets.bottom }; }
   { const h = home(); S.x = h.x; S.y = h.y; S.prevX = S.x; S.prevY = S.y; }
 
   let drag = null;
@@ -366,7 +383,12 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
   function endDrag(e) {
     if (!drag || drag.id !== e.pointerId) return;
     el.classList.remove('dragging');
-    if (drag.moved) { const h = drag.hist; if (h.length >= 2) { const a = h[0], b = h[h.length - 1], dt = Math.max(16, b.t - a.t) / 1000; S.vx = (b.x - a.x) / dt; S.vy = (b.y - a.y) / dt; } S.mode = 'fly'; S.tumbleV += S.vx * 0.012; }
+    if (drag.moved) {
+      const h = drag.hist; if (h.length >= 2) { const a = h[0], b = h[h.length - 1], dt = Math.max(16, b.t - a.t) / 1000; S.vx = (b.x - a.x) / dt; S.vy = (b.y - a.y) / dt; }
+      S.mode = 'fly'; S.tumbleV += S.vx * 0.012;
+      // 原本站在高處（對話框上方）被拖下來放開：掉回地面會暈倒，之後由外層決定是否再爬回去
+      if (S.stage && S.stage.y < innerHeight - insets.bottom - 30) { S.stage = null; S.dropFromStage = true; }
+    }
     else { if (grab) poke(grab.p, 4.2); onClick(); }
     drag = null; grab = null;
   }
@@ -385,9 +407,10 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
   function setMood(m, ms = 0) {
     if (m === 'sad' && S.mood !== 'sad') S.sadSince = performance.now();
     if (m !== 'sad' && m !== 'scared') S.sadLie = false;
+    if (m === 'happy' && S.mood !== 'happy') emit('glow'); // 亮起來（外層播放發亮音效）
     S.mood = m; S.moodUntil = ms ? performance.now() + ms : 0;
-    S.glowTarget = { happy: 1, sad: 0.03, think: 0.5, dizzy: 0.08, scared: 0.6 }[m] ?? 0.15;
-    S.pose = { happy: 'up', sad: 'cry', dizzy: 'fallen', scared: 'panic' }[m] || 'idle';
+    S.glowTarget = { happy: 1, sad: 0.03, think: 0.5, dizzy: 0.08, scared: 0.6, shy: 0.28 }[m] ?? 0.15;
+    S.pose = { happy: 'up', sad: 'cry', dizzy: 'fallen', scared: 'panic', shy: 'scratch' }[m] || 'idle';
     alarmEl.style.opacity = m === 'scared' ? '1' : '0';
     faceDirty = true;
   }
@@ -401,7 +424,8 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
   function drawFace() {
     const m = S.mood, c = fctx, W = 512, H = 384;
     const lx = S.lookX * 10, ly = S.lookY * 9;
-    const sig = [m, lx.toFixed(0), ly.toFixed(0), S.blink.toFixed(1), Math.floor(performance.now() / (m === 'sad' ? 60 : 120)) % 64].join('|');
+    const talking = S.talkUntil > performance.now() && m !== 'sad' && m !== 'scared' && m !== 'dizzy';
+    const sig = [m, lx.toFixed(0), ly.toFixed(0), S.blink.toFixed(1), talking ? 't' : '', Math.floor(performance.now() / (m === 'sad' || talking ? 60 : 120)) % 64].join('|');
     if (!faceDirty && sig === faceSig) return;
     faceSig = sig; faceDirty = false;
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 1024, 768); c.setTransform(2, 0, 0, 2, 0, 0);
@@ -409,9 +433,20 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     const wail = m === 'sad' && Math.floor(performance.now() / 2600) % 2 === 0;
     const INK = '#3b2412';
     // 腮紅（柔和漸層）
-    for (const x of [148, 364]) { const g = c.createRadialGradient(x, 222, 2, x, 222, 34); g.addColorStop(0, m === 'happy' ? 'rgba(255,110,70,0.6)' : 'rgba(255,130,80,0.45)'); g.addColorStop(1, 'rgba(255,130,80,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(x, 222, 34, 22, 0, 0, Math.PI * 2); c.fill(); }
+    for (const x of [148, 364]) { const g = c.createRadialGradient(x, 222, 2, x, 222, 34); g.addColorStop(0, m === 'shy' ? 'rgba(255,80,70,0.8)' : m === 'happy' ? 'rgba(255,110,70,0.6)' : 'rgba(255,130,80,0.45)'); g.addColorStop(1, 'rgba(255,130,80,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(x, 222, 34, 22, 0, 0, Math.PI * 2); c.fill(); }
     // 眼睛
+    if (m === 'shy') {
+      // 不好意思：臉頰 /// 紅暈線
+      c.strokeStyle = 'rgba(220,60,50,0.75)'; c.lineWidth = 4; c.lineCap = 'round';
+      for (const x of [148, 364]) for (let k = -1; k <= 1; k++) { c.beginPath(); c.moveTo(x + k * 14 - 6, 232); c.lineTo(x + k * 14 + 6, 212); c.stroke(); }
+    }
     for (const x of ex) {
+      if (m === 'shy') {
+        // 眼睛瞇成 ^ ^（尷尬地笑）
+        c.strokeStyle = INK; c.lineWidth = 8; c.lineCap = 'round';
+        c.beginPath(); c.moveTo(x - 22, ey + 8); c.quadraticCurveTo(x, ey - 20, x + 22, ey + 8); c.stroke();
+        continue;
+      }
       const ry = m === 'scared' ? 42 : 38, rx = 31;
       c.save(); c.beginPath(); c.ellipse(x, ey, rx, ry, 0, 0, Math.PI * 2); c.clip();
       const gw = c.createRadialGradient(x - 8, ey - 14, 4, x, ey, 44); gw.addColorStop(0, '#ffffff'); gw.addColorStop(1, '#efe6d6'); c.fillStyle = gw; c.fillRect(x - 40, ey - 50, 80, 100);
@@ -441,12 +476,21 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     // 眉毛
     c.strokeStyle = INK; c.lineWidth = 10; c.lineCap = 'round';
     const brow = (x1, y1, cx, cy, x2, y2) => { c.beginPath(); c.moveTo(x1, y1); c.quadraticCurveTo(cx, cy, x2, y2); c.stroke(); };
-    if (m === 'sad' || m === 'scared') { brow(166, 104, 196, 98, 222, 80); brow(290, 80, 316, 98, 346, 104); }
+    if (m === 'sad' || m === 'scared' || m === 'shy') { brow(166, 104, 196, 98, 222, 80); brow(290, 80, 316, 98, 346, 104); }
     else if (m === 'happy') { brow(166, 92, 196, 70, 226, 86); brow(286, 86, 316, 70, 346, 92); }
     else { brow(166, 100, 196, 84, 226, 94); brow(286, 94, 316, 84, 346, 100); }
     // 嘴巴
     c.lineWidth = 8;
-    if (m === 'happy') {
+    if (talking) {
+      // 說話：嘴巴一開一合（大小不規則一點比較自然）
+      const tt = performance.now();
+      const open = Math.max(0.08, Math.abs(Math.sin(tt / 85)) * (0.55 + 0.45 * Math.abs(Math.sin(tt / 310))));
+      const mh = 6 + open * 30, mw = 26 + (1 - open) * 8;
+      c.save(); c.beginPath(); c.ellipse(256, 258, mw, mh, 0, 0, Math.PI * 2);
+      const gm = c.createLinearGradient(0, 258 - mh, 0, 258 + mh); gm.addColorStop(0, '#5e1a10'); gm.addColorStop(1, '#8a2c1a'); c.fillStyle = gm; c.fill(); c.clip();
+      c.fillStyle = '#ff7f6e'; c.beginPath(); c.ellipse(256, 258 + mh * 0.75, mw * 0.65, mh * 0.5, 0, 0, Math.PI * 2); c.fill(); c.restore();
+      c.strokeStyle = INK; c.lineWidth = 4; c.beginPath(); c.ellipse(256, 258, mw, mh, 0, 0, Math.PI * 2); c.stroke();
+    } else if (m === 'happy') {
       c.save(); c.beginPath(); c.moveTo(208, 236); c.quadraticCurveTo(256, 318, 304, 236); c.quadraticCurveTo(256, 250, 208, 236); c.closePath();
       const gm = c.createLinearGradient(0, 236, 0, 290); gm.addColorStop(0, '#5e1a10'); gm.addColorStop(1, '#8a2c1a'); c.fillStyle = gm; c.fill(); c.clip();
       c.fillStyle = '#ff7f6e'; c.beginPath(); c.ellipse(256, 286, 26, 15, 0, 0, Math.PI * 2); c.fill();
@@ -465,6 +509,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
         c.beginPath(); c.moveTo(222, 276); c.quadraticCurveTo(239, 256, 256, 264); c.quadraticCurveTo(273, 256, 290, 276); c.stroke();
       }
     }
+    else if (m === 'shy') { c.lineWidth = 7; c.beginPath(); c.moveTo(224, 262); c.bezierCurveTo(236, 250, 244, 276, 256, 262); c.bezierCurveTo(268, 250, 276, 276, 288, 262); c.stroke(); }
     else if (m === 'think') { brow(238, 262, 256, 254, 274, 262); }
     else if (m === 'dizzy') { c.beginPath(); c.moveTo(224, 262); for (let i = 0; i <= 8; i++) c.lineTo(224 + i * 8, 262 + (i % 2 ? -7 : 7)); c.stroke(); }
     else { brow(222, 248, 256, 278, 290, 248); c.lineWidth = 4; brow(214, 242, 216, 248, 222, 250); brow(298, 242, 296, 248, 290, 250); }
@@ -477,6 +522,12 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
       for (const x of [176, 336]) { c.beginPath(); c.moveTo(x, 182); c.bezierCurveTo(x - 6, 220, x + 6, 260, x - 2, wail ? 330 : 290); c.stroke(); }
       // 豆大淚珠
       for (const [x, o] of [[176, 0], [336, 0.5], [170, 0.25], [342, 0.75]]) { const y = 196 + ((t + o) % 1) * 130, r = wail ? 1.35 : 1; c.beginPath(); c.moveTo(x, y - 14 * r); c.quadraticCurveTo(x + 12 * r, y + 6 * r, x, y + 10 * r); c.quadraticCurveTo(x - 12 * r, y + 6 * r, x, y - 14 * r); c.fill(); }
+    }
+    if (m === 'shy') {
+      // 一滴大冷汗
+      const x = 380, y = 104 + Math.sin(performance.now() / 400) * 3;
+      c.fillStyle = 'rgba(110,190,245,0.95)'; c.beginPath(); c.moveTo(x, y - 24); c.quadraticCurveTo(x + 19, y + 12, x, y + 18); c.quadraticCurveTo(x - 19, y + 12, x, y - 24); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.8)'; c.beginPath(); c.ellipse(x - 6, y + 6, 3, 5, 0, 0, Math.PI * 2); c.fill();
     }
     if (m === 'scared') {
       c.fillStyle = 'rgba(110,190,245,0.95)';
@@ -492,6 +543,11 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
       const m = side === 'R' ? -1 : 1;
       let P = POSES[S.pose] || POSES.idle;
       let hx = P.hand[0] * m, hy = P.hand[1], hz = P.hand[2], cx = P.ctrl[0] * m, cy = P.ctrl[1], cz = P.ctrl[2];
+      if (S.pose === 'scratch') {
+        // 一手抓頭、一手放在胸前，不好意思的樣子
+        if (side === 'R') { hx = 0.72 + Math.sin(now / 65) * 0.05; hy = 2.2 + Math.cos(now / 65) * 0.06; hz = 0.25; cx = 1.35; cy = 1.35; cz = 0.3; }
+        else { hx = -0.32; hy = 0.6; hz = 1.05; cx = -1.0; cy = 0.35; cz = 0.7; }
+      }
       if (S.pose === 'cry') {
         if (side === 'L') { hx = -0.34 + Math.sin(now / 95) * 0.06; hy = 1.55 + Math.cos(now / 95) * 0.04; hz = 1.2; cx = -1.05; cy = 0.8; cz = 0.75; }
         else { hx = 0.85 + Math.sin(now / 650) * 0.05; hy = -0.55; hz = 0.35; cx = 0.95; cy = 0.05; cz = 0.3; }
@@ -523,7 +579,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (!running || destroyed) return;
     if (now - lastInsetRead > 1000) { lastInsetRead = now; readInsets(); }
     const dt = Math.min(0.033, (now - lastT) / 1000); lastT = now;
-    const vw = innerWidth, vh = innerHeight, { w, h } = size(), H = home();
+    const vw = innerWidth, vh = innerHeight, { w, h } = size(), H = S.stage ? { x: S.stage.x, y: S.stage.y } : home();
 
     if (S.moodUntil && now > S.moodUntil && S.mood !== 'sad') setMood('idle');
     const high = (S.mode === 'drag' || S.mode === 'fly') && S.y < vh * 0.55;
@@ -534,7 +590,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (S.mood === 'sad') S.pose = S.sadLie ? 'lieCry' : 'cry';
     if (S.mode === 'fly' || S.mode === 'fallen') {
       S.vy += 2400 * dt; S.x += S.vx * dt; S.y += S.vy * dt;
-      const left = w * 0.35, right = vw - w * 0.35, floor = vh - insets.bottom, ceil = h * 0.9;
+      const mz = msize(); const left = mz.w * 0.35, right = vw - mz.w * 0.35, floor = vh - insets.bottom, ceil = mz.h * 0.9;
       const bounce = (sp) => { S.squashV += Math.min(14, sp * 0.006); };
       if (S.x < left) { S.x = left; bounce(Math.abs(S.vx)); S.vx = -S.vx * 0.55; S.tumbleV *= -0.6; }
       if (S.x > right) { S.x = right; bounce(Math.abs(S.vx)); S.vx = -S.vx * 0.55; S.tumbleV *= -0.6; }
@@ -542,7 +598,8 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
       if (S.y > floor) {
         const impact = Math.abs(S.vy); S.y = floor; bounce(impact);
         S.vy = impact > 260 ? -impact * 0.45 : 0; S.vx *= 0.82;
-        if (impact > 1500 && S.mood !== 'dizzy') { setMood('dizzy', 2600); say('頭好暈…', 2200); S.mode = 'fallen'; }
+        if ((impact > 1500 || S.dropFromStage) && S.mood !== 'dizzy') { setMood('dizzy', 2600); say('頭好暈…', 2200); S.mode = 'fallen'; }
+        if (S.dropFromStage) { S.dropFromStage = false; emit('dropped'); }
         if (S.vy === 0 && Math.abs(S.vx) < 30) { S.vx = 0; if (S.mode === 'fly') later(() => { if (S.mode === 'fly') S.mode = 'home'; }, 500); }
       }
       if (S.mode === 'fallen' && S.mood !== 'dizzy' && S.vy === 0) S.mode = 'home';
@@ -575,6 +632,8 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (S.mode === 'drag') angT = THREE.MathUtils.clamp(S.vx * 0.0005, -0.6, 0.6);
     if (S.mode === 'fallen' && S.mood === 'dizzy') angT = (S.angle >= 0 ? 1 : -1) * Math.PI / 2;
     if (S.mood === 'sad') angT = S.sadLie ? -Math.PI / 2 : -0.1;
+    if (S.mood === 'shy' && S.mode === 'home') angT = 0.13 + Math.sin(now / 320) * 0.04; // 微微低頭鞠躬
+    if (S.stage && S.stage.lean != null && S.mode === 'home') angT = S.stage.lean; // 探頭時身體傾斜
     if (S.mode === 'fly' && S.y < vh - insets.bottom - 2) { S.angle += S.tumbleV * dt; S.tumbleV *= 0.99; }
     else {
       S.angle = Math.atan2(Math.sin(S.angle), Math.cos(S.angle));
@@ -586,14 +645,17 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (S.mode === 'drag') yawT = THREE.MathUtils.clamp(S.vx / 1200, -1, 1);
     else if (S.lastPointer && now - S.lastPointer.t < 3000) yawT = THREE.MathUtils.clamp((S.lastPointer.x - S.x) / 600, -0.75, 0.75);
     else yawT = Math.sin(now / 2600) * 0.45;
+    if (S.mood === 'shy' && S.mode !== 'drag') yawT = -0.35; // 害羞地把臉轉開一點
+    if (S.stage && S.stage.look === 'around') yawT = Math.sin(now / 420) * 0.6; // 探頭左右張望
     if (S.lie > 0.3) yawT = 0;
     if (S.spinAt) { const p = (now - S.spinAt) / 2400; if (p >= 1) S.spinAt = 0; else yawT = p * Math.PI * 2; }
     if (!S.spinAt) S.yaw = Math.atan2(Math.sin(S.yaw), Math.cos(S.yaw));
     S.yaw += (yawT - S.yaw) * Math.min(1, dt * (S.spinAt ? 12 : 5));
 
     let lx = 0, ly = 0;
-    if (S.lastPointer) { lx = THREE.MathUtils.clamp((S.lastPointer.x - S.x) / 260, -1, 1); ly = THREE.MathUtils.clamp((S.lastPointer.y - (S.y - h * 0.6)) / 260, -1, 1); }
+    if (S.lastPointer) { lx = THREE.MathUtils.clamp((S.lastPointer.x - S.x) / 260, -1, 1); ly = THREE.MathUtils.clamp((S.lastPointer.y - (S.y - msize().h * 0.6)) / 260, -1, 1); }
     if (S.mood === 'sad') { lx = 0; ly = 0.9; }
+    if (S.stage && S.stage.look === 'around') { lx = Math.sin(now / 420); ly = -0.1; }
     S.lookX += (lx - S.lookX) * Math.min(1, dt * 8); S.lookY += (ly - S.lookY) * Math.min(1, dt * 8);
     if (now > S.blinkAt) { S.blinkStart = now; S.blinkAt = now + (Math.random() < 0.2 ? 260 : 2400 + Math.random() * 3200); }
     { const bt = (now - (S.blinkStart || -1e9)) / 170; S.blink = bt >= 0 && bt < 1 ? Math.sin(Math.PI * bt) : 0; }
@@ -646,7 +708,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     renderer.toneMappingExposure = 1.0 + g * 0.35 - sm * 0.3;
     updateArms(now);
     stepSparks(dt);
-    sparkMat.uniforms.uScale.value = renderer.getPixelRatio() * size().h;
+    sparkMat.uniforms.uScale.value = renderer.getPixelRatio() * msize().h;
     drawFace();
     renderer.render(scene, camera);
 
@@ -663,7 +725,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
       poolEl.style.transform = `translate(${S.x - 130}px, ${vh - insets.bottom - 22}px) scale(${0.8 + g * 0.3 + lift2 * 0.3})`; }
     S.puddle = S.mood === 'sad' && S.mode === 'home' ? Math.min(1, S.puddle + dt / 7) : Math.max(0, S.puddle - dt / 1.2);
     puddleEl.style.opacity = String(Math.min(1, S.puddle * 1.6));
-    puddleEl.style.transform = `translate(${S.x - 65 - S.lie * w * 0.12}px, ${vh - insets.bottom - 10}px) scale(${0.3 + S.puddle * 0.9}, ${0.4 + S.puddle * 0.6})`;
+    puddleEl.style.transform = `translate(${S.x - 65 - S.lie * msize().w * 0.12}px, ${vh - insets.bottom - 10}px) scale(${0.3 + S.puddle * 0.9}, ${0.4 + S.puddle * 0.6})`;
     const wailing = S.mood === 'sad' && Math.floor(now / 2600) % 2 === 0;
     dropsEl.style.opacity = wailing && !reduceMotion ? String(0.5 + 0.5 * Math.abs(Math.sin(now / 300))) : '0';
     dropsEl.style.transform = `translateY(${(now / 12) % 18 - 9}px)`;
@@ -674,7 +736,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (!bubble.hidden) {
       if (bubbleUntil && now > bubbleUntil) { bubbleText.textContent = bubbleDefault; bubbleUntil = 0; }
       const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
-      const bx = Math.max(12, Math.min(vw - bw - 12, S.x - bw + 20)), by = Math.max(12, S.y - h * 0.95 - bh + S.jumpY);
+      const bx = Math.max(12, Math.min(vw - bw - 12, S.x - bw + 20)), by = Math.max(12, S.y - msize().h * 0.95 - bh + S.jumpY);
       bubble.style.transform = `translate(${bx}px, ${by}px)`;
     }
     rafId = requestAnimationFrame(frame);
@@ -703,6 +765,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     cheer: (text) => { if (S.mood === 'sad') return; setMood('happy', 2200); jump(1.1); if (text) say(text, 2400); },
     sad: (text) => { setMood('sad'); if (text) say(text, 1e9); },
     think: (thinking) => { if (thinking) setMood('think'); else if (S.mood === 'think') setMood('idle'); },
+    embarrassed: (text) => { setMood('shy', 5200); wobble(1.4); if (text) say(text, 4200); },
     wave: (text) => { S.waveUntil = performance.now() + 2400; if (text) say(text, 2200); },
     poke: () => { const a = (Math.random() - 0.5) * 1.4; poke(new THREE.Vector3(Math.sin(a) * 0.95, 0.95 + 1.35 + Math.random() * 0.4, Math.cos(a) * 0.95), 4.2); },
     shake: () => { let i = 0; const t = setInterval(() => { if (destroyed) return clearInterval(t); wobble(i % 2 ? 2.4 : -2.4); if (++i >= 4) clearInterval(t); }, 110); cleanups.push(() => clearInterval(t)); },
@@ -710,6 +773,22 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     setBubbleDefault: (t) => { bubbleDefault = t; if (!bubbleUntil) bubbleText.textContent = t; },
     enterFrom: () => { S.x = innerWidth + 80; S.mode = 'home'; setMood('happy', 1500); },
     getMood: () => S.mood,
+    stage: (t, teleport) => {
+      S.stage = t ? { ...t } : null;
+      if (t && teleport) { S.x = t.x; S.y = t.y; S.vx = 0; S.vy = 0; S.prevX = S.x; S.prevY = S.y + S.jumpY; S.prevVx = 0; S.prevVy = 0; }
+      if (S.mode !== 'drag') S.mode = 'home';
+    },
+    talk: (ms) => { S.talkUntil = performance.now() + Math.max(0, ms); faceDirty = true; },
+    pop: (k) => wobble(k),
+    squash: (k) => { S.squash = k; S.squashV = 0; },
+    drop: () => {
+      S.stage = null;
+      if (S.mode === 'drag') return;
+      if (S.y < innerHeight - insets.bottom - 20) { S.mode = 'fly'; S.vx = 0; S.vy = 0; } else S.mode = 'home';
+    },
+    // 回傳燈泡本體框（不含透明留白）的大小；foot 為腳底在本體框中的比例
+    size: () => ({ ...msize(), foot: 0.86 }),
+    refreshInsets: () => { readInsets(); if (S.mode === 'fallen' || S.mode === 'fly') return; S.mode = 'home'; },
     destroy: () => {
       destroyed = true; cancelAnimationFrame(rafId); cleanups.forEach((f) => f());
       scene.traverse((obj) => { if (obj.geometry) obj.geometry.dispose(); const m = obj.material; if (m) (Array.isArray(m) ? m : [m]).forEach((mm) => { if (mm.map) mm.map.dispose(); mm.dispose(); }); });
