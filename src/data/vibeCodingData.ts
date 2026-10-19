@@ -1,4 +1,5 @@
 import { Question } from '../types';
+import { SEED_TIME_ANCHOR_MS } from './seedTime';
 
 export const DEFAULT_VIBECODING_APPS: Question[] = [
   {
@@ -16,7 +17,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     authorId: 'user-vibecoder-alex',
     authorName: '阿凱（獨立開發）',
     authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-    createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 12).toISOString(),
     deadline: new Date(Date.now() + 86400000 * 30).toISOString(),
     views: 890,
     likes: 124,
@@ -64,8 +65,8 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     supportPoints: 1850,
     tippersCount: 22,
     tipsHistory: [
-      { id: 'tip-1', userId: 'user-1', userName: '小明', amount: 300, message: '介面做得超精緻！非常實用的 Vibe應用', createdAt: new Date(Date.now() - 3600000 * 5).toISOString() },
-      { id: 'tip-2', userId: 'user-2', userName: '高柏翰', amount: 500, message: '技術架構很清晰，感謝分享成果！', createdAt: new Date(Date.now() - 3600000 * 2).toISOString() }
+      { id: 'tip-1', userId: 'user-1', userName: '小明', amount: 300, message: '介面做得超精緻！非常實用的 Vibe應用', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 5).toISOString() },
+      { id: 'tip-2', userId: 'user-2', userName: '高柏翰', amount: 500, message: '技術架構很清晰，感謝分享成果！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 2).toISOString() }
     ]
   },
   {
@@ -83,7 +84,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     authorId: 'user-vibecoder-chen',
     authorName: '陳冠宇',
     authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 28).toISOString(),
     deadline: new Date(Date.now() + 86400000 * 30).toISOString(),
     views: 650,
     likes: 88,
@@ -119,8 +120,8 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     supportPoints: 1200,
     tippersCount: 15,
     tipsHistory: [
-      { id: 'tip-vibe2-1', userId: 'vp-user-06', userName: '許家豪 總監', amount: 400, message: '無邊界畫布直接串 API 太強了，幫我們省下超多 PoC 時間！', createdAt: new Date(Date.now() - 3600000 * 6).toISOString() },
-      { id: 'tip-vibe2-2', userId: 'vp-user-02', userName: '張雅婷 執行長', amount: 300, message: '團隊腦力激盪跟驗證痛點必備神器，支持持續迭代！', createdAt: new Date(Date.now() - 3600000 * 3).toISOString() }
+      { id: 'tip-vibe2-1', userId: 'vp-user-06', userName: '許家豪 總監', amount: 400, message: '無邊界畫布直接串 API 太強了，幫我們省下超多 PoC 時間！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 6).toISOString() },
+      { id: 'tip-vibe2-2', userId: 'vp-user-02', userName: '張雅婷 執行長', amount: 300, message: '團隊腦力激盪跟驗證痛點必備神器，支持持續迭代！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 3).toISOString() }
     ]
   },
   {
@@ -138,7 +139,7 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     authorId: 'user-vibecoder-linda',
     authorName: '小琳（影音自動化）',
     authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-    createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 48).toISOString(),
     deadline: new Date(Date.now() + 86400000 * 30).toISOString(),
     views: 1120,
     likes: 195,
@@ -161,8 +162,8 @@ export const DEFAULT_VIBECODING_APPS: Question[] = [
     supportPoints: 2450,
     tippersCount: 30,
     tipsHistory: [
-      { id: 'tip-vibe3-1', userId: 'vp-user-08', userName: '蘇郁婷 品牌主理人', amount: 500, message: '自媒體救星！以前剪一支 Reels 要兩小時，現在 10 分鐘搞定！', createdAt: new Date(Date.now() - 3600000 * 8).toISOString() },
-      { id: 'tip-vibe3-2', userId: 'vp-user-03', userName: '王建民 廠長', amount: 350, message: '瀏覽器端直接跑 WebAssembly 切片不卡頓，非常驚豔！', createdAt: new Date(Date.now() - 3600000 * 4).toISOString() }
+      { id: 'tip-vibe3-1', userId: 'vp-user-08', userName: '蘇郁婷 品牌主理人', amount: 500, message: '自媒體救星！以前剪一支 Reels 要兩小時，現在 10 分鐘搞定！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 8).toISOString() },
+      { id: 'tip-vibe3-2', userId: 'vp-user-03', userName: '王建民 廠長', amount: 350, message: '瀏覽器端直接跑 WebAssembly 切片不卡頓，非常驚豔！', createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 4).toISOString() }
     ]
   }
 ];
