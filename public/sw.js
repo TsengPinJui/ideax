@@ -79,6 +79,7 @@ self.addEventListener('fetch', (event) => {
     !event.request.url.startsWith('http') ||
     !url.protocol.startsWith('http') ||
     url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/__/') || // Firebase 登入處理頁（由 Vercel 轉送），不可被 SW 改成首頁
     url.pathname.startsWith('/_vercel/') || // Vercel Web Analytics 腳本與回報請求不經 SW 快取
     url.hostname.includes('googletagmanager.com') ||
     url.hostname.includes('google-analytics.com')
