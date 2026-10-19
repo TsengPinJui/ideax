@@ -38,7 +38,7 @@ import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { CORE_TEST_ACCOUNTS } from '../data/mockData';
-import { resolveUserDisplayName, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP, DEFAULT_GREY_SILHOUETTE_AVATAR } from '../utils/userDisplay';
+import { resolveUserDisplayName, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP, presetAvatarFor } from '../utils/userDisplay';
 import { User as UserType, UserSurveyData, Category } from '../types';
 import {
   processIdCardImage,
@@ -491,7 +491,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             id: fbUser.uid,
             name: fbUser.displayName || identifier.split('@')[0],
             title: '平台會員',
-            avatar: fbUser.photoURL || DEFAULT_GREY_SILHOUETTE_AVATAR,
+            avatar: fbUser.photoURL || presetAvatarFor(fbUser.uid),
             role: 'questioner' as const,
             balance: 0,
             pendingEarnings: 0,
@@ -1155,7 +1155,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         title: isExpert
           ? jobTitle.trim() || '認證解題專家'
           : (isQuestionerSkipped ? '新進提問者' : (jobTitle.trim() || '創新專案發起人')),
-        avatar: DEFAULT_GREY_SILHOUETTE_AVATAR,
+        avatar: presetAvatarFor(newId),
         role: regRole,
         balance: 0,
         pendingEarnings: 0,
