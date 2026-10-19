@@ -351,8 +351,10 @@ export const SolversView: React.FC<SolversViewProps> = ({
         const blurredSolvers = isGuest && filtered.length > GUEST_VISIBLE_COUNT ? filtered.slice(GUEST_VISIBLE_COUNT, GUEST_VISIBLE_COUNT + GUEST_BLURRED_TEASER_COUNT) : [];
 
         // 空狀態：沒有任何專家時邀請成為第一批認證專家；有專家但搜尋/篩選無結果時提示調整條件
-        if (filtered.length === 0) {
-          const hasAnySolver = solvers.length > 0;
+        // 首批專家招募期間：專家智庫只顯示招募公告（12 月公布首批名單後再改回 false）
+        const SHOW_RECRUITING_NOTICE = true;
+        if (SHOW_RECRUITING_NOTICE || filtered.length === 0) {
+          const hasAnySolver = !SHOW_RECRUITING_NOTICE && solvers.length > 0;
           return (
             <div className="rounded-3xl border border-dashed border-amber-300 bg-gradient-to-br from-amber-50/80 via-white to-white px-6 py-10 sm:py-14 text-center">
               <div className="mx-auto w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center">
@@ -386,29 +388,18 @@ export const SolversView: React.FC<SolversViewProps> = ({
                 </>
               ) : (
                 <>
-                  <h3 className="mt-4 text-lg sm:text-xl font-black text-stone-900">專家智庫正在招募第一批認證專家</h3>
-                  <p className="mt-2 text-sm text-stone-500 max-w-md mx-auto leading-relaxed">
-                    通過實名與資歷認證，就能出現在這裡，讓需要你專業的人直接找到你。
-                  </p>
-                  <div className="mt-5 flex flex-wrap justify-center gap-2.5">
+                  <h3 className="mt-4 text-xl sm:text-2xl font-black text-stone-900">正在召集第一批專家！</h3>
+                  <p className="mt-2 text-sm sm:text-base font-bold text-amber-700">12 月將公布首批智庫名單！</p>
+                  <div className="mt-6 flex flex-wrap justify-center gap-2.5">
                     <button
                       type="button"
                       onClick={handleOpenCertification}
-                      className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-sm font-black text-stone-950 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-sm sm:text-base font-black text-stone-950 cursor-pointer"
                     >
                       <ShieldCheck className="w-4 h-4" />
-                      <span>申請成為認證專家</span>
+                      <span>成為專家</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
-                    {onPostQuestion && (
-                      <button
-                        type="button"
-                        onClick={onPostQuestion}
-                        className="px-5 py-2.5 rounded-xl bg-white border border-stone-200 hover:border-stone-300 text-sm font-bold text-stone-700 cursor-pointer"
-                      >
-                        先發布問題
-                      </button>
-                    )}
                   </div>
                 </>
               )}
