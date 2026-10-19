@@ -3,7 +3,7 @@
  */
 import { getApps } from 'firebase-admin/app';
 import firebaseConfigJson from '../firebase-applet-config.json';
-import { hasAdminCredentials, verifyAuthToken } from './competitionService';
+import { hasAdminCredentials } from './competitionService';
 
 export type MascotAgent = 'cs' | 'market_advisor' | 'aicrm';
 
@@ -206,29 +206,6 @@ async function getDb() {
   const app = getApps()[0];
   const dbId = (firebaseConfigJson as any).firestoreDatabaseId;
   return { db: dbId ? getFirestore(app, dbId) : getFirestore(app), FieldValue };
-}
-
-/**
- * 由伺服器確認提問者目前的會員方案（不採信前端傳來的資料）：
- * 驗證登入憑證 → 讀 users/{uid}.subscriptionTier 與到期日，過期就視為一般會員
- */
-export async function getMascotUserTier(authHeader?: string): Promise<{ uid: string | null; tier: string }> {
-  try {
-    const authUser = await verifyAuthToken(authHeader);
-    if (!authUser?.uid) return { uid: null, tier: 'guest' };
-    const fs = await getDb();
-    if (!fs) return { uid: authUser.uid, tier: 'free' };
-    const snap = await fs.db.collection('users').doc(authUser.uid).get();
-    let tier = String(snap.get('subscriptionTier') || 'free');
-    const exp = snap.get('subscriptionExpiresAt');
-    if (tier !== 'free' && exp) {
-      const end = new Date(`${String(exp).slice(0, 10)}T23:59:59+08:00`).getTime();
-      if (Number.isFinite(end) && end < Date.now()) tier = 'free';
-    }
-    return { uid: authUser.uid, tier };
-  } catch {
-    return { uid: null, tier: 'guest' };
-  }
 }
 
 function twDay(d = new Date()): string {

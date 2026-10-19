@@ -159467,7 +159467,7 @@ var AICRM_FEATURES = [
 var planName = (tier) => tier === "guest" ? "\u8A2A\u5BA2" : SUBSCRIPTION_PLANS[tier]?.name || "\u4E00\u822C\u6703\u54E1";
 var ASK_ABOUT_RE = /怎麼(用|使用|開通|申請|收費)|如何(使用|開通|申請)|是什麼|什麼是|介紹一下|多少錢|多少點|費用|價格|收費|規則|有哪些功能|在哪(裡)?(用|使用)?/;
 var DO_IT_RE = /幫我|給我|替我|請(你)?(幫|直接)|直接|推薦|告訴我|寫(一|個|份|段)|產生|生成|分析一下/;
-function guardMascotQuestion(raw, who = { tier: "guest" }) {
+function guardMascotQuestion(raw) {
   const message2 = String(raw || "");
   const hasPII = EMAIL_RE.test(message2) || PHONE_RE.test(message2) || TWID_RE.test(message2);
   EMAIL_RE.lastIndex = 0;
@@ -159502,13 +159502,11 @@ function guardMascotQuestion(raw, who = { tier: "guest" }) {
   }
   const crm = AICRM_FEATURES.find((f3) => f3.doRe.test(message2));
   if (crm && !(ASK_ABOUT_RE.test(message2) && !DO_IT_RE.test(message2))) {
-    if (crm.tiers.includes(who.tier)) return { action: "pass", message: maskPII(message2), aicrmAllowed: true };
-    const need = planName(crm.tiers[0]);
     return {
       action: "reply",
-      reason: "plan_required",
+      reason: "paid_feature",
       feature: crm.key,
-      reply: who.tier === "guest" ? `\u300C${crm.name}\u300D\u662F\u6703\u54E1\u8A02\u95B1\u529F\u80FD\uFF0C\u8ACB\u5148\u767B\u5165\uFF0C\u5C0F\u71C8\u6CE1\u78BA\u8A8D\u4F60\u7684\u6703\u54E1\u65B9\u6848\u5F8C\u624D\u80FD\u5E6B\u4F60\u5594\uFF01` : `\u300C${crm.name}\u300D\u9700\u8981\u300C${need}\u300D\u4EE5\u4E0A\u7684\u6703\u54E1\u65B9\u6848\uFF0C\u4F60\u76EE\u524D\u662F\u300C${planName(who.tier)}\u300D\u3002\u53EF\u4EE5\u5230 \u500B\u4EBA\u4E2D\u5FC3\uFF08\u96FB\u8166\u7248\u9EDE\u53F3\u4E0A\u89D2\u982D\u50CF\uFF0C\u624B\u6A5F\u7248\u9EDE\u5E95\u90E8\u300C\u6211\u7684\u300D\uFF09\u2192\u300C\u6703\u54E1\u65B9\u6848\u300D\u67E5\u770B\u8207\u5347\u7D1A\u3002`
+      reply: `\u300C${crm.name}\u300D\u662F\u6703\u54E1\u8A02\u95B1\u529F\u80FD\uFF08\u300C${planName(crm.tiers[0])}\u300D\u4EE5\u4E0A\uFF09\uFF0C\u5C0F\u71C8\u6CE1\u4E0D\u80FD\u5728\u5C0D\u8A71\u6846\u5E6B\u4F60\u4F7F\u7528\u5594\uFF01\u8ACB\u5230 \u500B\u4EBA\u4E2D\u5FC3\uFF08\u96FB\u8166\u7248\u9EDE\u53F3\u4E0A\u89D2\u982D\u50CF\uFF0C\u624B\u6A5F\u7248\u9EDE\u5E95\u90E8\u300C\u6211\u7684\u300D\uFF09\u2192\u300CAI-CRM \u5BA2\u6236\u95DC\u4FC2\u7BA1\u7406\u300D\u4F7F\u7528\uFF1B\u60F3\u5347\u7D1A\u65B9\u6848\u53EF\u4EE5\u5230\u300C\u6703\u54E1\u65B9\u6848\u300D\u3002`
     };
   }
   return { action: "pass", message: maskPII(message2) };
@@ -159667,24 +159665,6 @@ async function getDb3() {
   const app2 = getApps()[0];
   const dbId = firebase_applet_config_default.firestoreDatabaseId;
   return { db: dbId ? getFirestore3(app2, dbId) : getFirestore3(app2), FieldValue: FieldValue4 };
-}
-async function getMascotUserTier(authHeader) {
-  try {
-    const authUser = await verifyAuthToken(authHeader);
-    if (!authUser?.uid) return { uid: null, tier: "guest" };
-    const fs5 = await getDb3();
-    if (!fs5) return { uid: authUser.uid, tier: "free" };
-    const snap = await fs5.db.collection("users").doc(authUser.uid).get();
-    let tier = String(snap.get("subscriptionTier") || "free");
-    const exp = snap.get("subscriptionExpiresAt");
-    if (tier !== "free" && exp) {
-      const end = (/* @__PURE__ */ new Date(`${String(exp).slice(0, 10)}T23:59:59+08:00`)).getTime();
-      if (Number.isFinite(end) && end < Date.now()) tier = "free";
-    }
-    return { uid: authUser.uid, tier };
-  } catch {
-    return { uid: null, tier: "guest" };
-  }
 }
 function twDay(d = /* @__PURE__ */ new Date()) {
   return new Date(d.getTime() + 8 * 36e5).toISOString().slice(0, 10);
@@ -162362,15 +162342,14 @@ app.post("/api/mascot/route", async (req, res) => {
   try {
     const message2 = String(req.body?.message || "").trim().slice(0, 800);
     if (!message2) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u554F\u984C" });
-    const who = await getMascotUserTier(req.headers.authorization);
-    const guard = guardMascotQuestion(message2, who);
+    const guard = guardMascotQuestion(message2);
     if (guard.action === "reply") {
       void recordMascotEvent({ type: "ask" }).catch(() => {
       });
       return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason });
     }
-    let { agent, by } = guard.aicrmAllowed ? { agent: "aicrm", by: "plan" } : await classifyMascotQuestion(guard.message, generateRawTextWithGemini);
-    if (agent === "aicrm" && !guard.aicrmAllowed) agent = "cs";
+    let { agent, by } = await classifyMascotQuestion(guard.message, generateRawTextWithGemini);
+    if (agent === "aicrm") agent = "cs";
     if (agent === "none") {
       void recordMascotEvent({ type: "ask" }).catch(() => {
       });
@@ -162389,8 +162368,7 @@ app.post("/api/mascot/ask", async (req, res) => {
   try {
     const rawMessage = String(req.body?.message || "").trim().slice(0, 800);
     if (!rawMessage) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u554F\u984C" });
-    const who = await getMascotUserTier(req.headers.authorization);
-    const guard = guardMascotQuestion(rawMessage, who);
+    const guard = guardMascotQuestion(rawMessage);
     if (guard.action === "reply") {
       void recordMascotEvent({ type: "ask" }).catch(() => {
       });
@@ -162400,10 +162378,9 @@ app.post("/api/mascot/ask", async (req, res) => {
     const conversationIds = req.body?.conversationIds && typeof req.body.conversationIds === "object" ? req.body.conversationIds : {};
     const visitorId = String(req.body?.visitorId || "guest").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "guest";
     let preRouted = typeof req.body?.agent === "string" && req.body.agent in MASCOT_AGENTS ? req.body.agent : null;
-    if (preRouted === "aicrm" && !guard.aicrmAllowed) preRouted = null;
-    if (guard.aicrmAllowed) preRouted = "aicrm";
+    if (preRouted === "aicrm") preRouted = null;
     const routed = preRouted ? { agent: preRouted, by: "pre-routed" } : await classifyMascotQuestion(message2, generateRawTextWithGemini);
-    if (routed.agent === "aicrm" && !guard.aicrmAllowed) routed.agent = "cs";
+    if (routed.agent === "aicrm") routed.agent = "cs";
     if (routed.agent === "none") {
       void recordMascotEvent({ type: "ask" }).catch(() => {
       });
@@ -162423,8 +162400,8 @@ app.post("/api/mascot/ask", async (req, res) => {
         query: message2,
         inputs: { platform_name: "IdeaX", \u5E73\u53F0\u540D\u7A31: "IdeaX", entry: "mascot" },
         conversationId: typeof conversationIds[agent] === "string" ? conversationIds[agent] : void 0,
-        // AI-CRM 已確認是本人且方案符合，才帶入會員身分；其他助理一律匿名
-        user: agent === "aicrm" && who.uid ? `ideax_${who.uid}` : `mascot_${visitorId}`,
+        user: `mascot_${visitorId}`,
+        // 一律匿名，助理無法用來查詢任何人的資料
         timeoutMs: MASCOT_AGENT_WAIT_MS
         // 助理最多等三分鐘
       }).catch(() => null);
@@ -162497,13 +162474,12 @@ app.post("/api/admin/mascot-route-test", async (req, res) => {
   try {
     const raw = String(req.body?.message || "").trim().slice(0, 500);
     if (!raw) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u6E2C\u8A66\u554F\u984C" });
-    const who = await getMascotUserTier(req.headers.authorization);
-    const guard = guardMascotQuestion(raw, who);
-    const guardLabel = { others: "\uFF08\u8B77\u6B04\uFF1A\u4E0D\u63D0\u4F9B\u4ED6\u4EBA\u8CC7\u6599\uFF09", own_account: "\uFF08\u8B77\u6B04\uFF1A\u5F15\u5C0E\u81EA\u884C\u67E5\u770B\u5E33\u76EE\uFF09", paid_feature: "\uFF08\u8B77\u6B04\uFF1A\u4ED8\u8CBB\u529F\u80FD\u4E0D\u4EE3\u70BA\u4F7F\u7528\uFF09", plan_required: "\uFF08\u8B77\u6B04\uFF1A\u6703\u54E1\u65B9\u6848\u4E0D\u7B26\uFF09" };
+    const guard = guardMascotQuestion(raw);
+    const guardLabel = { others: "\uFF08\u8B77\u6B04\uFF1A\u4E0D\u63D0\u4F9B\u4ED6\u4EBA\u8CC7\u6599\uFF09", own_account: "\uFF08\u8B77\u6B04\uFF1A\u5F15\u5C0E\u81EA\u884C\u67E5\u770B\u5E33\u76EE\uFF09", paid_feature: "\uFF08\u8B77\u6B04\uFF1A\u4ED8\u8CBB\u529F\u80FD\u8ACB\u5230\u7DB2\u7AD9\u4ECB\u9762\u4F7F\u7528\uFF09" };
     if (guard.action === "reply") return res.json({ success: true, agent: "none", label: guardLabel[guard.reason], routedBy: "guard", answer: guard.reply });
     const message2 = guard.message;
-    let { agent, by } = guard.aicrmAllowed ? { agent: "aicrm", by: "plan" } : await classifyMascotQuestion(message2, generateRawTextWithGemini);
-    if (agent === "aicrm" && !guard.aicrmAllowed) agent = "cs";
+    let { agent, by } = await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    if (agent === "aicrm") agent = "cs";
     if (agent === "none") return res.json({ success: true, agent: "none", label: "\uFF08\u4E0D\u8F49\u63A5\uFF0C\u56DE\u8986\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF09", routedBy: by });
     const info = mascotAgentKeyInfo(agent);
     const out = { success: true, agent, label: MASCOT_AGENTS[agent].label, routedBy: by, envName: info.envName, difyAppName: await fetchDifyAppName(info.key) };
