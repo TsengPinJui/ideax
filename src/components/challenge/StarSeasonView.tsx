@@ -188,11 +188,23 @@ export const StarSeasonView: React.FC<StarSeasonViewProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [account, setAccount] = useState<CompetitionAccount | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
-  const [exploreInitialTab, setExploreInitialTab] = useState<'solution' | 'pain_point'>('solution');
-  const [homepageSectionTab, setHomepageSectionTab] = useState<'solution' | 'pain_point'>('solution');
+  // 「解方提案／痛點問題」預設分頁：跟著正在進行或下一個要開始的階段
+  // （報名預熱與痛點徵件期間 → 痛點問題；預先提案以後 → 解方提案）
+  const preferredSectionTab = (s: { activeStage: number }): 'solution' | 'pain_point' => (s.activeStage < 2 ? 'pain_point' : 'solution');
+  const [exploreInitialTab, setExploreInitialTab] = useState<'solution' | 'pain_point'>(() => preferredSectionTab(getCompetitionStageInfo()));
+  const [homepageSectionTab, setHomepageSectionTabState] = useState<'solution' | 'pain_point'>(() => preferredSectionTab(getCompetitionStageInfo()));
+  const userPickedSectionTab = useRef(false);
+  const setHomepageSectionTab = (t: 'solution' | 'pain_point') => {
+    userPickedSectionTab.current = true; // 使用者自己切換過，就不再自動跟著階段改
+    setHomepageSectionTabState(t);
+  };
 
   // 創星季當前競賽階段 (報名 10/17、痛點徵件 10/24~11/13、模擬募資與提案 11/14~12/04、決選 12/05~12/11、公布 12/12~12/16)
   const [stageInfo, setStageInfo] = useState(() => getCompetitionStageInfo());
+  // 頁面開著時跨到下一個階段：使用者沒手動切換過，就自動換到對應的分頁
+  useEffect(() => {
+    if (!userPickedSectionTab.current) setHomepageSectionTabState(preferredSectionTab(stageInfo));
+  }, [stageInfo.activeStage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleStageChange = () => {
