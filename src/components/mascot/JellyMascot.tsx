@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
 import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
-import { playBabble, playGlowSound, stopBabble, unlockMascotAudio } from './mascotSound';
+import { playBabble, playClank, playGlowSound, playShock, playZap, startCurrent, stopBabble, stopCurrent, unlockMascotAudio } from './mascotSound';
 import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
 
 const COLLAPSED_KEY = 'ideax_mascot_collapsed';
@@ -62,7 +62,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
   const sendingRef = useRef(false);
   const waitTimer = useRef(0);
   const revealTimer = useRef(0);
-  useEffect(() => () => { if (waitTimer.current) window.clearInterval(waitTimer.current); if (revealTimer.current) window.clearInterval(revealTimer.current); stopBabble(); }, []);
+  useEffect(() => () => { if (waitTimer.current) window.clearInterval(waitTimer.current); if (revealTimer.current) window.clearInterval(revealTimer.current); stopBabble(); stopCurrent(); }, []);
   const [grips, setGrips] = useState<Array<{ dir: 'left' | 'top'; left: number; top: number }>>([]);
   const [liveText, setLiveText] = useState('');
   const chatRef = useRef<HTMLElement>(null);
@@ -122,7 +122,17 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
         tuning: { k: configRef.current.firmness, damp: configRef.current.damping, amp: configRef.current.wobble },
         bubbleDefault: configRef.current.bubbleText,
         getInsets: measureInsets,
-        onEvent: (type) => {
+        onEvent: (type, data) => {
+          // 音效事件（後台「音效」開關控制）：撞擊哐當、驚嚇觸電、閃爍滋滋
+          if (type === 'impact' || type === 'scared' || type === 'calm' || type === 'zap') {
+            if (type === 'calm') { stopCurrent(); return; }
+            if (configRef.current.soundEnabled) {
+              if (type === 'impact') playClank(data || 0);
+              else if (type === 'scared') { playShock(); startCurrent(); }
+              else playZap();
+            }
+            return;
+          }
           markActive();
           // 從對話框上被拖下來摔暈：過一會兒自己再爬回對話框頂部
           if (type === 'glow') { if (configRef.current.soundEnabled) playGlowSound(); return; }
@@ -170,6 +180,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
     return () => {
       window.removeEventListener(MASCOT_PREVIEW_EVENT, onPreview);
       window.removeEventListener(MASCOT_CHEER_EVENT, onCheer);
+      stopCurrent();
       engine.destroy();
       if (engineRef.current === engine) engineRef.current = null;
     };
