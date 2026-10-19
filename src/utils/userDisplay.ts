@@ -359,6 +359,7 @@ export function restoreCanonicalUserIdentity(u: User): User {
         ...u,
         name: vp.name,
         title: custom?.title !== undefined ? custom.title : vp.title,
+        avatar: custom?.avatar || vp.avatar,
       };
     }
   }
@@ -865,6 +866,12 @@ export function resolveUserAvatar(
     const canon = CANONICAL_CORE_PROFILES[userId] || (aliasId ? CANONICAL_CORE_PROFILES[aliasId] : undefined);
     if (canon?.avatar) {
       return canon.avatar;
+    }
+
+    // 2b. 範例創作者帳號：一律使用目前的頭像（雲端或瀏覽器裡可能還存著舊照片）
+    if (userId.startsWith('u-vc-')) {
+      const vp = VIRTUAL_PERSONAS.find((p) => p.id === userId);
+      if (vp) return vp.avatar;
     }
 
     // 3. 從傳入的 usersList 中查找該帳號

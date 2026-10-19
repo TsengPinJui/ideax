@@ -2,6 +2,7 @@ import { Question, User, Category, Answer, UserRole } from '../types';
 import { ProposalComment } from '../types/competition';
 import { DEFAULT_VIBECODING_APPS } from './vibeCodingData';
 import { SEED_TIME_ANCHOR_MS } from './seedTime';
+import { SEED_THREADS } from './seedThreads';
 
 export interface VirtualPersona {
   id: string;
@@ -18,48 +19,48 @@ export interface VirtualPersona {
  * 嚴格確保無任何姓名、Username、Email 或 ID 重複，並支援於後台（資料庫）直接刪除。
  */
 export const VIRTUAL_PERSONAS: VirtualPersona[] = [
-  { id: 'u-vc-01', username: 'vc_ethan_lin', name: '林宥辰', title: '全端獨立開發者', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', bio: '專注 AI 自動化與輕量 SaaS 產品開發。', domain: '網站程式' },
-  { id: 'u-vc-02', username: 'vc_mia_chen', name: '小葵的設計筆記', title: 'UI/UX 產品設計師', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80', bio: '熱愛透過設計思考解決日常數位體驗痛點。', domain: '創新創業' },
-  { id: 'u-vc-03', username: 'vc_kevin_chang', name: '阿哲店長', title: '連鎖餐飲營運總監', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', bio: '管理 15 間門市，關注門市數位轉型與人力排班優化。', domain: '創新創業' },
-  { id: 'u-vc-04', username: 'vc_chloe_huang', name: '老K看跨境', title: '跨境電商成長駭客', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80', bio: '深耕歐美與東南亞獨立站選品與轉換率優化。', domain: '專業問題' },
-  { id: 'u-vc-05', username: 'vc_liam_lee', name: '李冠廷', title: 'AI 應用架構師', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80', bio: 'LLM Agent 工作流與企業知識庫系統實踐者。', domain: '網站程式' },
-  { id: 'u-vc-06', username: 'vc_hannah_wu', name: '吳品妤', title: '新創財務與募資顧問', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80', bio: '協助早期團隊建立財務模型、估值結構與投資人簡報。', domain: '專業問題' },
-  { id: 'u-vc-07', username: 'vc_evan_liu', name: '山海旅人子軒', title: '旅宿空間品牌主理人', avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80', bio: '經營特色民宿與地方創生策展，探索無人化入住體驗。', domain: '創新創業' },
-  { id: 'u-vc-08', username: 'vc_serena_tsai', name: '蔡宜蓁', title: '生醫研究員', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80', bio: '研究高齡照護與精準營養，推動研發成果產業化。', domain: '學術探討' },
-  { id: 'u-vc-09', username: 'vc_jasper_yang', name: '阿翰拍片中', title: '自媒體影音創作者', avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80', bio: '專注短影音腳本自動化與多平台內容分發策略。', domain: '網站程式' },
-  { id: 'u-vc-10', username: 'vc_vivian_hsu', name: '許瑋甯', title: '企業人資總監', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', bio: '關注混合辦公文化、組織留才與新世代員工培訓。', domain: '專業問題' },
-  { id: 'u-vc-11', username: 'vc_marcus_cheng', name: '硬體宅宇翔', title: '物聯網韌體工程師', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80', bio: '開發智慧農業感測器與低功耗邊緣運算設備。', domain: '創新創業' },
-  { id: 'u-vc-12', username: 'vc_phoebe_hsieh', name: '謝欣穎心理師', title: '臨床心理師與作家', avatar: 'https://images.unsplash.com/photo-1548142813-c348350df52b?w=150&auto=format&fit=crop&q=80', bio: '推廣職場壓力調適與數位排毒生活實驗。', domain: '日常疑難' },
-  { id: 'u-vc-13', username: 'vc_derek_kuo', name: '郭宏', title: '智慧物流調度經理', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80', bio: '研究冷鏈車隊路徑最佳化與最後一哩路配送效率。', domain: '專業問題' },
-  { id: 'u-vc-14', username: 'vc_claire_hung', name: '洪雅筑', title: '永續發展 ESG 專案經理', avatar: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80', bio: '輔導中小企業進行碳盤查與綠色供應鏈轉型。', domain: '學術探討' },
-  { id: 'u-vc-15', username: 'vc_ian_tseng', name: 'Kuro_Dev', title: '前端互動設計師', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80', bio: '熱愛 WebGL、Three.js 與 Vibe Coding 敏捷產品實作。', domain: '網站程式' },
-  { id: 'u-vc-16', username: 'vc_elena_chou', name: '周穎', title: '獨立書店與藝文策展人', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80', bio: '探索實體閱讀空間的社群訂閱制與複合經營模式。', domain: '創新創業' },
-  { id: 'u-vc-17', username: 'vc_stanley_yeh', name: '葉哲銘專利師', title: '專利師與智財法務顧問', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80', bio: '專精軟體專利佈局、開源授權合規與跨國商標保護。', domain: '專業問題' },
-  { id: 'u-vc-18', username: 'vc_ariel_hsu', name: '毛孩鮮食若涵', title: '寵物鮮食品牌創辦人', avatar: 'https://images.unsplash.com/photo-1517365830460-955ce3ccd263?w=150&auto=format&fit=crop&q=80', bio: '結合獸醫營養學與訂閱制配送，解決毛孩挑食與過敏。', domain: '創新創業' },
-  { id: 'u-vc-19', username: 'vc_victor_lai', name: '白帽阿政', title: '資安工程師 & 滲透測試顧問', avatar: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=150&auto=format&fit=crop&q=80', bio: '研究 Web3 智能合約審計與零信任企業網路架構。', domain: '網站程式' },
-  { id: 'u-vc-20', username: 'vc_amber_fan', name: '范筱婷老師', title: '雙語實驗教育教師', avatar: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=150&auto=format&fit=crop&q=80', bio: '實踐探究式學習與 AI 輔助個人化語言教學。', domain: '學術探討' },
-  { id: 'u-vc-21', username: 'vc_benson_su', name: '蘇建宇', title: '室內空間改造設計師', avatar: 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=150&auto=format&fit=crop&q=80', bio: '專注老屋翻新、小坪數收納機能與智慧家庭整合。', domain: '日常疑難' },
-  { id: 'u-vc-22', username: 'vc_celine_pan', name: '潘姿妤', title: '醫療器材產品經理', avatar: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&auto=format&fit=crop&q=80', bio: '推動遠距醫療穿戴裝置與居家復健數位療法。', domain: '創新創業' },
-  { id: 'u-vc-23', username: 'vc_lucas_ho', name: '阿哲自動化實驗室', title: 'No-Code 自動化顧問', avatar: 'https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=150&auto=format&fit=crop&q=80', bio: '協助一人公司用 Make、n8n 與 AI 打造自動化營運引擎。', domain: '網站程式' },
-  { id: 'u-vc-24', username: 'vc_stella_kao', name: '高以柔', title: '社群團購與供應鏈顧問', avatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&auto=format&fit=crop&q=80', bio: '串聯在地小農與團媽社群，優化分潤結算與庫存預測。', domain: '創新創業' },
-  { id: 'u-vc-25', username: 'vc_felix_lo', name: '量化老羅', title: '金融科技量化交易員', avatar: 'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=150&auto=format&fit=crop&q=80', bio: '研究演算法交易策略、風險控管與個人理財工具。', domain: '專業問題' },
-  { id: 'u-vc-26', username: 'vc_doris_tang', name: '唐心如', title: '銀髮樂齡活動企劃師', avatar: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80', bio: '設計跨世代共融桌遊與社區長者防失智數位互動課程。', domain: '日常疑難' },
-  { id: 'u-vc-27', username: 'vc_austin_sung', name: '宋品言', title: '雲端原生架構師', avatar: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=150&auto=format&fit=crop&q=80', bio: '專精 Kubernetes 高併發微服務與 FinOps 雲端成本優化。', domain: '專業問題' },
-  { id: 'u-vc-28', username: 'vc_iris_fang', name: '好眠芳療師小晴', title: '芳療與睡眠健康管理師', avatar: 'https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=150&auto=format&fit=crop&q=80', bio: '結合穿戴數據與氣味科學，改善現代高壓族群失眠困擾。', domain: '日常疑難' },
-  { id: 'u-vc-29', username: 'vc_hugo_chung', name: '鍾承恩', title: '智慧製造顧問', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80', bio: '協助傳統工廠導入機聯網 AOI 視覺檢測與預測性維護。', domain: '專業問題' },
-  { id: 'u-vc-30', username: 'vc_wendy_chiang', name: '姜雅雯', title: '非營利組織影響力總監', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', bio: '關注公益捐款透明化、志工媒合機制與社會投資報酬率。', domain: '學術探討' },
-  { id: 'u-vc-31', username: 'vc_owen_peng', name: '聲音工匠宥嘉', title: '音訊工程與 Podcast 製作人', avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80', bio: '打造 AI 降噪剪輯工作流與聲音內容變現平台。', domain: '網站程式' },
-  { id: 'u-vc-32', username: 'vc_tiffany_chuang', name: '微醺主理人子萱', title: '精釀餐酒館主理人', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80', bio: '融合在地農產釀造工藝，探索夜間經濟與會員社群經營。', domain: '創新創業' },
-  { id: 'u-vc-33', username: 'vc_zack_shih', name: '教練阿豪', title: '運動科學與體能教練', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', bio: '運用動作捕捉分析矯正姿勢，設計辦公室微運動處方。', domain: '日常疑難' },
-  { id: 'u-vc-34', username: 'vc_bella_lien', name: '連芷涵', title: '智慧零售數據分析師', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80', bio: '透過 POS 數據與天氣模型預測生鮮門市每日備貨量。', domain: '專業問題' },
-  { id: 'u-vc-35', username: 'vc_simon_jen', name: '任柏宇', title: '獨立遊戲與互動敘事開發者', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80', bio: '用 AI 動態生成 NPC 對話與支線劇情，打造沉浸式網頁遊戲。', domain: '網站程式' },
-  { id: 'u-vc-36', username: 'vc_grace_ting', name: '職涯教練語柔', title: '海外求職與職涯發展教練', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80', bio: '陪伴跨領域轉職者梳理個人品牌與海外求職履歷。', domain: '日常疑難' },
-  { id: 'u-vc-37', username: 'vc_nathan_chao', name: '趙宇', title: '綠能儲能系統工程師', avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80', bio: '研究社區型微電網、電動車充電樁負載平衡與需量反應。', domain: '學術探討' },
-  { id: 'u-vc-38', username: 'vc_vicky_sun', name: '孫郁婷', title: '親子共學空間創辦人', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80', bio: '解決雙薪家庭課後托育與兒童 STEAM 創客體驗需求。', domain: '創新創業' },
-  { id: 'u-vc-39', username: 'vc_danny_wei', name: '魏傑', title: '包租代管營運長', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80', bio: '管理 300+ 間共生公寓，推動租約數位化與報修自動派工。', domain: '專業問題' },
-  { id: 'u-vc-40', username: 'vc_peggy_fu', name: '下班煮飯的思穎', title: '料理研究家與食譜作家', avatar: 'https://images.unsplash.com/photo-1548142813-c348350df52b?w=150&auto=format&fit=crop&q=80', bio: '設計 15 分鐘下班快手料理與冰箱清庫存零浪費菜單。', domain: '日常疑難' },
-  { id: 'u-vc-41', username: 'vc_aaron_ko', name: '外掛開發者阿倫', title: '瀏覽器擴充功能開發者', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80', bio: '專注開發提升研究員與知識工作者效率的 Chrome 插件。', domain: '網站程式' },
-  { id: 'u-vc-42', username: 'vc_cathy_hsiao', name: '蕭雅云', title: '診所數位轉型顧問', avatar: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80', bio: '優化診所約診爽約率、病患衛教追蹤與自費療程溝通。', domain: '專業問題' },
+  { id: 'u-vc-01', username: 'vc_ethan_lin', name: '林宥辰', title: '全端獨立開發者', avatar: '/avatars/vc-01.svg', bio: '專注 AI 自動化與輕量 SaaS 產品開發。', domain: '網站程式' },
+  { id: 'u-vc-02', username: 'vc_mia_chen', name: '小葵的設計筆記', title: 'UI/UX 產品設計師', avatar: '/avatars/vc-02.svg', bio: '熱愛透過設計思考解決日常數位體驗痛點。', domain: '創新創業' },
+  { id: 'u-vc-03', username: 'vc_kevin_chang', name: '阿哲店長', title: '連鎖餐飲營運總監', avatar: '/avatars/vc-03.svg', bio: '管理 15 間門市，關注門市數位轉型與人力排班優化。', domain: '創新創業' },
+  { id: 'u-vc-04', username: 'vc_chloe_huang', name: '老K看跨境', title: '跨境電商成長駭客', avatar: '/avatars/vc-04.svg', bio: '深耕歐美與東南亞獨立站選品與轉換率優化。', domain: '專業問題' },
+  { id: 'u-vc-05', username: 'vc_liam_lee', name: '李冠廷', title: 'AI 應用架構師', avatar: '/avatars/vc-05.svg', bio: 'LLM Agent 工作流與企業知識庫系統實踐者。', domain: '網站程式' },
+  { id: 'u-vc-06', username: 'vc_hannah_wu', name: '吳品妤', title: '新創財務與募資顧問', avatar: '/avatars/vc-06.svg', bio: '協助早期團隊建立財務模型、估值結構與投資人簡報。', domain: '專業問題' },
+  { id: 'u-vc-07', username: 'vc_evan_liu', name: '山海旅人子軒', title: '旅宿空間品牌主理人', avatar: '/avatars/vc-07.svg', bio: '經營特色民宿與地方創生策展，探索無人化入住體驗。', domain: '創新創業' },
+  { id: 'u-vc-08', username: 'vc_serena_tsai', name: '蔡宜蓁', title: '生醫研究員', avatar: '/avatars/vc-08.svg', bio: '研究高齡照護與精準營養，推動研發成果產業化。', domain: '學術探討' },
+  { id: 'u-vc-09', username: 'vc_jasper_yang', name: '阿翰拍片中', title: '自媒體影音創作者', avatar: '/avatars/vc-09.svg', bio: '專注短影音腳本自動化與多平台內容分發策略。', domain: '網站程式' },
+  { id: 'u-vc-10', username: 'vc_vivian_hsu', name: '許瑋甯', title: '企業人資總監', avatar: '/avatars/vc-10.svg', bio: '關注混合辦公文化、組織留才與新世代員工培訓。', domain: '專業問題' },
+  { id: 'u-vc-11', username: 'vc_marcus_cheng', name: '硬體宅宇翔', title: '物聯網韌體工程師', avatar: '/avatars/vc-11.svg', bio: '開發智慧農業感測器與低功耗邊緣運算設備。', domain: '創新創業' },
+  { id: 'u-vc-12', username: 'vc_phoebe_hsieh', name: '謝欣穎心理師', title: '臨床心理師與作家', avatar: '/avatars/vc-12.svg', bio: '推廣職場壓力調適與數位排毒生活實驗。', domain: '日常疑難' },
+  { id: 'u-vc-13', username: 'vc_derek_kuo', name: '郭宏', title: '智慧物流調度經理', avatar: '/avatars/vc-13.svg', bio: '研究冷鏈車隊路徑最佳化與最後一哩路配送效率。', domain: '專業問題' },
+  { id: 'u-vc-14', username: 'vc_claire_hung', name: '洪雅筑', title: '永續發展 ESG 專案經理', avatar: '/avatars/vc-14.svg', bio: '輔導中小企業進行碳盤查與綠色供應鏈轉型。', domain: '學術探討' },
+  { id: 'u-vc-15', username: 'vc_ian_tseng', name: 'Kuro_Dev', title: '前端互動設計師', avatar: '/avatars/vc-15.svg', bio: '熱愛 WebGL、Three.js 與 Vibe Coding 敏捷產品實作。', domain: '網站程式' },
+  { id: 'u-vc-16', username: 'vc_elena_chou', name: '周穎', title: '獨立書店與藝文策展人', avatar: '/avatars/vc-16.svg', bio: '探索實體閱讀空間的社群訂閱制與複合經營模式。', domain: '創新創業' },
+  { id: 'u-vc-17', username: 'vc_stanley_yeh', name: '葉哲銘專利師', title: '專利師與智財法務顧問', avatar: '/avatars/vc-17.svg', bio: '專精軟體專利佈局、開源授權合規與跨國商標保護。', domain: '專業問題' },
+  { id: 'u-vc-18', username: 'vc_ariel_hsu', name: '毛孩鮮食若涵', title: '寵物鮮食品牌創辦人', avatar: '/avatars/vc-18.svg', bio: '結合獸醫營養學與訂閱制配送，解決毛孩挑食與過敏。', domain: '創新創業' },
+  { id: 'u-vc-19', username: 'vc_victor_lai', name: '白帽阿政', title: '資安工程師 & 滲透測試顧問', avatar: '/avatars/vc-19.svg', bio: '研究 Web3 智能合約審計與零信任企業網路架構。', domain: '網站程式' },
+  { id: 'u-vc-20', username: 'vc_amber_fan', name: '范筱婷老師', title: '雙語實驗教育教師', avatar: '/avatars/vc-20.svg', bio: '實踐探究式學習與 AI 輔助個人化語言教學。', domain: '學術探討' },
+  { id: 'u-vc-21', username: 'vc_benson_su', name: '蘇建宇', title: '室內空間改造設計師', avatar: '/avatars/vc-21.svg', bio: '專注老屋翻新、小坪數收納機能與智慧家庭整合。', domain: '日常疑難' },
+  { id: 'u-vc-22', username: 'vc_celine_pan', name: '潘姿妤', title: '醫療器材產品經理', avatar: '/avatars/vc-22.svg', bio: '推動遠距醫療穿戴裝置與居家復健數位療法。', domain: '創新創業' },
+  { id: 'u-vc-23', username: 'vc_lucas_ho', name: '阿哲自動化實驗室', title: 'No-Code 自動化顧問', avatar: '/avatars/vc-23.svg', bio: '協助一人公司用 Make、n8n 與 AI 打造自動化營運引擎。', domain: '網站程式' },
+  { id: 'u-vc-24', username: 'vc_stella_kao', name: '高以柔', title: '社群團購與供應鏈顧問', avatar: '/avatars/vc-24.svg', bio: '串聯在地小農與團媽社群，優化分潤結算與庫存預測。', domain: '創新創業' },
+  { id: 'u-vc-25', username: 'vc_felix_lo', name: '量化老羅', title: '金融科技量化交易員', avatar: '/avatars/vc-25.svg', bio: '研究演算法交易策略、風險控管與個人理財工具。', domain: '專業問題' },
+  { id: 'u-vc-26', username: 'vc_doris_tang', name: '唐心如', title: '銀髮樂齡活動企劃師', avatar: '/avatars/vc-26.svg', bio: '設計跨世代共融桌遊與社區長者防失智數位互動課程。', domain: '日常疑難' },
+  { id: 'u-vc-27', username: 'vc_austin_sung', name: '宋品言', title: '雲端原生架構師', avatar: '/avatars/vc-27.svg', bio: '專精 Kubernetes 高併發微服務與 FinOps 雲端成本優化。', domain: '專業問題' },
+  { id: 'u-vc-28', username: 'vc_iris_fang', name: '好眠芳療師小晴', title: '芳療與睡眠健康管理師', avatar: '/avatars/vc-28.svg', bio: '結合穿戴數據與氣味科學，改善現代高壓族群失眠困擾。', domain: '日常疑難' },
+  { id: 'u-vc-29', username: 'vc_hugo_chung', name: '鍾承恩', title: '智慧製造顧問', avatar: '/avatars/vc-29.svg', bio: '協助傳統工廠導入機聯網 AOI 視覺檢測與預測性維護。', domain: '專業問題' },
+  { id: 'u-vc-30', username: 'vc_wendy_chiang', name: '姜雅雯', title: '非營利組織影響力總監', avatar: '/avatars/vc-30.svg', bio: '關注公益捐款透明化、志工媒合機制與社會投資報酬率。', domain: '學術探討' },
+  { id: 'u-vc-31', username: 'vc_owen_peng', name: '聲音工匠宥嘉', title: '音訊工程與 Podcast 製作人', avatar: '/avatars/vc-31.svg', bio: '打造 AI 降噪剪輯工作流與聲音內容變現平台。', domain: '網站程式' },
+  { id: 'u-vc-32', username: 'vc_tiffany_chuang', name: '微醺主理人子萱', title: '精釀餐酒館主理人', avatar: '/avatars/vc-32.svg', bio: '融合在地農產釀造工藝，探索夜間經濟與會員社群經營。', domain: '創新創業' },
+  { id: 'u-vc-33', username: 'vc_zack_shih', name: '教練阿豪', title: '運動科學與體能教練', avatar: '/avatars/vc-33.svg', bio: '運用動作捕捉分析矯正姿勢，設計辦公室微運動處方。', domain: '日常疑難' },
+  { id: 'u-vc-34', username: 'vc_bella_lien', name: '連芷涵', title: '智慧零售數據分析師', avatar: '/avatars/vc-34.svg', bio: '透過 POS 數據與天氣模型預測生鮮門市每日備貨量。', domain: '專業問題' },
+  { id: 'u-vc-35', username: 'vc_simon_jen', name: '任柏宇', title: '獨立遊戲與互動敘事開發者', avatar: '/avatars/vc-35.svg', bio: '用 AI 動態生成 NPC 對話與支線劇情，打造沉浸式網頁遊戲。', domain: '網站程式' },
+  { id: 'u-vc-36', username: 'vc_grace_ting', name: '職涯教練語柔', title: '海外求職與職涯發展教練', avatar: '/avatars/vc-36.svg', bio: '陪伴跨領域轉職者梳理個人品牌與海外求職履歷。', domain: '日常疑難' },
+  { id: 'u-vc-37', username: 'vc_nathan_chao', name: '趙宇', title: '綠能儲能系統工程師', avatar: '/avatars/vc-37.svg', bio: '研究社區型微電網、電動車充電樁負載平衡與需量反應。', domain: '學術探討' },
+  { id: 'u-vc-38', username: 'vc_vicky_sun', name: '孫郁婷', title: '親子共學空間創辦人', avatar: '/avatars/vc-38.svg', bio: '解決雙薪家庭課後托育與兒童 STEAM 創客體驗需求。', domain: '創新創業' },
+  { id: 'u-vc-39', username: 'vc_danny_wei', name: '魏傑', title: '包租代管營運長', avatar: '/avatars/vc-39.svg', bio: '管理 300+ 間共生公寓，推動租約數位化與報修自動派工。', domain: '專業問題' },
+  { id: 'u-vc-40', username: 'vc_peggy_fu', name: '下班煮飯的思穎', title: '料理研究家與食譜作家', avatar: '/avatars/vc-40.svg', bio: '設計 15 分鐘下班快手料理與冰箱清庫存零浪費菜單。', domain: '日常疑難' },
+  { id: 'u-vc-41', username: 'vc_aaron_ko', name: '外掛開發者阿倫', title: '瀏覽器擴充功能開發者', avatar: '/avatars/vc-41.svg', bio: '專注開發提升研究員與知識工作者效率的 Chrome 插件。', domain: '網站程式' },
+  { id: 'u-vc-42', username: 'vc_cathy_hsiao', name: '蕭雅云', title: '診所數位轉型顧問', avatar: '/avatars/vc-42.svg', bio: '優化診所約診爽約率、病患衛教追蹤與自費療程溝通。', domain: '專業問題' },
 ];
 
 export const SIMULATED_BATCH_ID = 'ideax_virtual_seed_v2';
@@ -186,7 +187,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 46,
     answersCount: 5,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-02',
@@ -209,7 +209,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 39,
     answersCount: 4,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-03',
@@ -232,7 +231,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 34,
     answersCount: 3,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-04',
@@ -255,7 +253,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 78,
     answersCount: 7,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-05',
@@ -278,7 +275,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 53,
     answersCount: 6,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-06',
@@ -301,7 +297,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 31,
     answersCount: 3,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-07',
@@ -324,7 +319,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 41,
     answersCount: 4,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1580674285054-bed31e145f59?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-08',
@@ -347,7 +341,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 64,
     answersCount: 5,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1565514020179-026b92b84bb6?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-09',
@@ -370,7 +363,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 48,
     answersCount: 4,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-10',
@@ -393,7 +385,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 83,
     answersCount: 6,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-11',
@@ -416,7 +407,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 55,
     answersCount: 5,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-12',
@@ -439,7 +429,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 72,
     answersCount: 6,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-13',
@@ -462,7 +451,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 44,
     answersCount: 4,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-14',
@@ -485,7 +473,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 61,
     answersCount: 5,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-15',
@@ -554,7 +541,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 95,
     answersCount: 6,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-17',
@@ -577,7 +563,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 89,
     answersCount: 5,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-19',
@@ -600,7 +585,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 104,
     answersCount: 7,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-20',
@@ -623,7 +607,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 79,
     answersCount: 5,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-21',
@@ -646,7 +629,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 91,
     answersCount: 6,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-22',
@@ -669,7 +651,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 70,
     answersCount: 4,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-23',
@@ -692,7 +673,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 112,
     answersCount: 8,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-24',
@@ -715,7 +695,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 86,
     answersCount: 5,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-25',
@@ -738,7 +717,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 77,
     answersCount: 6,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-26',
@@ -761,7 +739,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 75,
     answersCount: 5,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-27',
@@ -784,7 +761,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 99,
     answersCount: 6,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-28',
@@ -807,7 +783,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 68,
     answersCount: 4,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-29',
@@ -830,7 +805,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 93,
     answersCount: 7,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-30',
@@ -853,7 +827,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 74,
     answersCount: 5,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-31',
@@ -876,7 +849,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 69,
     answersCount: 4,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1558997519-83ea9252edf8?w=800&auto=format&fit=crop&q=80',
   },
   {
     id: 'q-vp-pain-32',
@@ -899,7 +871,6 @@ export const SEED_PAIN_POINTS: Question[] = [
     secondedCount: 82,
     answersCount: 5,
     postType: 'pain_point',
-    coverImage: 'https://images.unsplash.com/photo-1472162072942-cd5147eb3902?w=800&auto=format&fit=crop&q=80',
   },
 ];
 
@@ -969,7 +940,6 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 8,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-11] 社區團購主每週處理上百筆 LINE 喊單與轉帳末五碼核對，人工對帳耗時且常漏貨',
     targetGoal: '希望 6 個月內於雙北及六都重點商圈部署 500 座智慧晴享傘站點，串連 1,200 家在地合作商家達成每月 10 萬人次導流轉換',
     youtubeUrl: 'https://youtu.be/0fVaQ4GKoto',
     coverMode: 'youtube_video',
@@ -1103,9 +1073,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 6,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-02] 跨境電商退換貨逆物流成本吞噬毛利，海外倉滯銷品難以二次去化',
     targetGoal: '希望 6 個月內協助 500 家中小型品牌與跨境電商導入，平均縮短 75% 行銷企劃與素材製程並提升 35% 廣告 ROAS',
-    coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/real-pace.jpg',
   },
   {
     id: 'q-vp-idea-aiyaya',
@@ -1130,9 +1099,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 6,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-05] 企業導入遠距與混合辦公後，新進人員前 90 天孤立感重、隱性離職率飆升',
     targetGoal: '希望 6 個月內完成 50 家中大型企業福委會與人資部門 B2B 採購導入，協助 10,000 名職場工作者降低 40% 會議過勞指數',
-    coverImage: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/real-aiyaya.jpg',
   },
   {
     id: 'q-vp-idea-stallmatch',
@@ -1157,9 +1125,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 6,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-01] 獨立餐飲門市尖峰時段電話訂餐與現場點餐衝突，漏單率高達 15%',
     targetGoal: '希望 6 個月內串連全台 300 家市集活動主辦方與 3,000 台特色餐車/攤商，促成 1,500 場次無痛媒合',
-    coverImage: 'https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-stallmatch.jpg',
   },
   {
     id: 'q-vp-idea-01',
@@ -1184,7 +1151,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-01] 獨立餐飲門市尖峰時段電話訂餐與現場點餐衝突，漏單率高達 15%',
     targetGoal: '希望 6 個月內輔導 120 間獨立早午餐門市導入，將尖峰漏單率降至 1% 以下',
-    coverImage: 'https://images.unsplash.com/photo-1556740758-90de374c12ad?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-01.jpg',
   },
   {
     id: 'q-vp-idea-02',
@@ -1209,7 +1176,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-02] 跨境電商退換貨逆物流成本吞噬毛利，海外倉滯銷品難以二次去化',
     targetGoal: '希望 6 個月內串聯美西 15 所大學城節點，協助 50 家跨境品牌回收百萬退貨殘值',
-    coverImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-02.jpg',
   },
   {
     id: 'q-vp-idea-03',
@@ -1234,7 +1201,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-03] 特色民宿夜間無人櫃檯時段，外籍旅客入住身分核對與門鎖授權經常卡關',
     targetGoal: '希望 6 個月內於花東與南投 80 間特色民宿完成實證，夜間人工支援率下降 90%',
-    coverImage: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-03.jpg',
   },
   {
     id: 'q-vp-idea-04',
@@ -1259,7 +1226,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-04] 高齡長者出院後返家服藥種類繁多，外籍看護與家屬交接常發生重複餵藥',
     targetGoal: '希望 6 個月內與 30 家社區健保藥局及居服機構合作，守護 2,000 個長照家庭',
-    coverImage: 'https://images.unsplash.com/photo-1576671081837-49000212a370?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-04.jpg',
   },
   {
     id: 'q-vp-idea-05',
@@ -1284,7 +1251,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-05] 企業導入遠距與混合辦公後，新進人員前 90 天孤立感重、隱性離職率飆升',
     targetGoal: '希望 6 個月內導入 25 家科技與新創團隊，將試用期留任率提升至 92% 以上',
-    coverImage: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-05.jpg',
   },
   {
     id: 'q-vp-idea-06',
@@ -1309,7 +1276,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-06] 山區溫室農場網路訊號不穩，感測器斷線重連後歷史溫濕度資料整批遺失',
     targetGoal: '希望 6 個月內於中南部高經濟作物溫室部署 500 顆節點，達成 99.99% 數據完整率',
-    coverImage: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-06.jpg',
   },
   {
     id: 'q-vp-idea-07',
@@ -1334,7 +1301,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-07] 中小型冷鏈物流車隊仰賴紙本溫度簽收單，生鮮退貨時無法釐清失溫責任歸屬',
     targetGoal: '希望 6 個月內完成 10 萬箱生鮮水產冷鏈配送實證，將退貨爭議率降低 85%',
-    coverImage: 'https://images.unsplash.com/photo-1586528116493-a029325540fa?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-07.jpg',
   },
   {
     id: 'q-vp-idea-08',
@@ -1359,7 +1326,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-08] 傳統金屬加工廠上游要求提交 ISO 14064 碳盤查數據，但廠內電表與製程全無分攤紀錄',
     targetGoal: '希望 6 個月內協助 60 家中南部金屬與塑膠加工廠完成首份產品碳足跡盤查報告',
-    coverImage: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-08.jpg',
   },
   {
     id: 'q-vp-idea-09',
@@ -1384,7 +1351,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-09] 寵物鮮食與保健品訂閱制客戶在第 3 個月容易因「冰箱塞爆」而一鍵取消訂閱',
     targetGoal: '希望 6 個月內將訂閱制第 3 個月斷訂率從 42% 降至 12% 以下',
-    coverImage: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-09.jpg',
   },
   {
     id: 'q-vp-idea-10',
@@ -1409,7 +1376,7 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     specialZone: 'create_ideas',
     referencedPainPoint: '[q-vp-pain-10] 老屋翻新裝修過程追加工程款爭議不斷，屋主與統包師傅缺乏具法律效力的變更留痕',
     targetGoal: '希望 6 個月內服務 500 件住宅翻修案，達成零工程款追加糾紛之目標',
-    coverImage: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-10.jpg',
   },
   {
     id: 'q-vp-idea-11',
@@ -1432,9 +1399,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 4,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-03] 特色民宿夜間無人櫃檯時段，外籍旅客入住身分核對與門鎖授權經常卡關',
     targetGoal: '希望 6 個月內串聯全台 20 間獨立書店共同導入，單店月均增加 4.5 萬元穩定經常性收入',
-    coverImage: 'https://images.unsplash.com/photo-1507842229356-51c61504d3ab?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-11.jpg',
   },
   {
     id: 'q-vp-idea-12',
@@ -1457,9 +1423,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 5,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-04] 高齡長者出院後返家服藥種類繁多，外籍看護與家屬交接常發生重複餵藥',
     targetGoal: '希望 6 個月內進駐 50 家社區藥局，完成 10,000 名長者免費早期防跌肌力篩檢',
-    coverImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-12.jpg',
   },
   {
     id: 'q-vp-idea-13',
@@ -1482,9 +1447,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 5,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-11] 社區團購主每週處理上百筆 LINE 喊單與轉帳末五碼核對，人工對帳耗時且常漏貨',
     targetGoal: '希望 6 個月內於 15 間連鎖生鮮門市完成測試，將每日熟食與烘焙報廢率降至 2% 以下',
-    coverImage: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-13.jpg',
   },
   {
     id: 'q-vp-idea-14',
@@ -1507,9 +1471,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 6,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-13] 共生公寓與分租套房夏季電費分攤不公，公共空間冷氣未關引發室友嚴重爭執',
     targetGoal: '希望 6 個月內協助 30 個既有社區大樓管委會通過充電樁增設案',
-    coverImage: 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-14.jpg',
   },
   {
     id: 'q-vp-idea-15',
@@ -1532,9 +1495,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 4,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-06] 山區溫室農場網路訊號不穩，感測器斷線重連後歷史溫濕度資料整批遺失',
     targetGoal: '希望 6 個月內去化 20 公噸產地格外品鮮果，並與 40 家企業達成中秋與年節禮盒契作',
-    coverImage: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-15.jpg',
   },
   {
     id: 'q-vp-idea-16',
@@ -1557,9 +1519,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 5,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-12] 雙薪家庭國小低年級學童週三中午放學後，安親班與才藝課接送出現 2 小時安全空窗',
     targetGoal: '希望 6 個月內在全台舉辦 60 場跨世代故事工作坊，為 500 位長者完成個人生命有聲書',
-    coverImage: 'https://images.unsplash.com/photo-1516307365426-bea591f05011?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-16.jpg',
   },
   {
     id: 'q-vp-idea-17',
@@ -1582,9 +1543,8 @@ export const SEED_INNOVATION_PROPOSALS: Question[] = [
     answersCount: 5,
     postType: 'innovation_proposal',
     specialZone: 'create_ideas',
-    referencedPainPoint: '[q-vp-pain-14] 牙醫診所自費植牙與矯正時段臨時爽約，造成醫師椅位空轉與高昂人力浪費',
     targetGoal: '希望 6 個月內協助 20 家中小型社福團體導入，定期定額捐款人留存率提升 35%',
-    coverImage: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800&auto=format&fit=crop&q=80',
+    coverImage: '/seed-covers/q-vp-idea-17.jpg',
   },
 ];
 
@@ -1715,7 +1675,6 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v2.1.0',
-    referencedPainPoint: '[q-vp-pain-05] 企業導入遠距與混合辦公後，新進人員前 90 天孤立感重、隱性離職率飆升',
     targetGoal: '希望 6 個月內達成 80,000 局人機心理戰對決，成為朋友聚會與線上破冰最受歡迎的 AI 推理小遊戲',
     coverImage: '/dd-aiwolf-logo.png',
     galleryImages: [
@@ -1790,7 +1749,6 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.4.0',
-    referencedPainPoint: '[q-vp-pain-05] 企業導入遠距與混合辦公後，新進人員前 90 天孤立感重、隱性離職率飆升',
     targetGoal: '希望 6 個月內達成 60,000 場多人連線對戰，提供朋友聚會最輕鬆上手的即時競技體驗',
     coverImage: '/dd-mazewar-cover.jpg',
     galleryImages: [
@@ -1981,7 +1939,6 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.8.0',
-    referencedPainPoint: '[q-vp-pain-11] 社區團購主每週處理上百筆 LINE 喊單與轉帳末五碼核對，人工對帳耗時且常漏貨',
     targetGoal: '希望 6 個月內達成 80,000 次 App 下載與會員註冊，串連 1,200 間在地商家創造每月 10 萬筆到店導流核銷',
     youtubeUrl: 'https://youtu.be/0fVaQ4GKoto',
     coverMode: 'youtube_video',
@@ -2061,20 +2018,16 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v2.0.0',
-    referencedPainPoint: '[q-vp-pain-02] 跨境電商退換貨逆物流成本吞噬毛利，海外倉滯銷品難以二次去化',
     targetGoal: '希望 6 個月內達成 30,000 名行銷人員與品牌主註冊使用，幫企業省下 75% 素材製作與廣告代操成本',
-    coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/real-pace.jpg',
+    galleryImages: ['/seed-covers/real-pace.jpg'],
     demoUrl: 'https://pace-marketing-ai.demo.ideax.tw',
     techArchitecture: 'Next.js + TypeScript + Gemini 2.5 Pro + Meta/Google Ads Marketing API + Tailwind CSS',
     vibeCodingData: {
       appName: 'PACE',
       demoUrl: 'https://pace-marketing-ai.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=900&auto=format&fit=crop&q=80',
-      screenshots: ['https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80'],
+      coverImageUrl: '/seed-covers/real-pace.jpg',
+      screenshots: ['/seed-covers/real-pace.jpg'],
       appType: '行銷企劃與廣告自動投放平台',
       techStack: ['Next.js', 'TypeScript', 'Gemini API', 'Meta/Google Ads API'],
       aiToolsUsed: ['Google AI Studio', 'Cursor'],
@@ -2112,20 +2065,16 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.5.0',
-    referencedPainPoint: '[q-vp-pain-05] 企業導入遠距與混合辦公後，新進人員前 90 天孤立感重、隱性離職率飆升',
     targetGoal: '希望 6 個月內達成 50 家企業 B2B 採購授權與 25,000 名企業員工日常配戴連動使用',
-    coverImage: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/real-aiyaya.jpg',
+    galleryImages: ['/seed-covers/real-aiyaya.jpg'],
     demoUrl: 'https://ai-yaya-wellness.demo.ideax.tw',
     techArchitecture: 'React Native / PWA + Apple HealthKit / Google Health Connect + Google Calendar API + Gemini 2.5 Flash',
     vibeCodingData: {
       appName: 'AI壓呀 (AI YaYa)',
       demoUrl: 'https://ai-yaya-wellness.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=900&auto=format&fit=crop&q=80',
-      screenshots: ['https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&auto=format&fit=crop&q=80'],
+      coverImageUrl: '/seed-covers/real-aiyaya.jpg',
+      screenshots: ['/seed-covers/real-aiyaya.jpg'],
       appType: '健康監測與行事曆自動排程系統',
       techStack: ['React PWA', 'HealthKit / Health Connect API', 'Google Calendar API', 'Gemini AI'],
       aiToolsUsed: ['Google AI Studio', 'Cursor'],
@@ -2163,20 +2112,16 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.6.0',
-    referencedPainPoint: '[q-vp-pain-01] 獨立餐飲門市尖峰時段電話訂餐與現場點餐衝突，漏單率高達 15%',
     targetGoal: '希望 6 個月內達成 3,000 台認證餐車與手作攤商入駐，完成 1,500 場大型市集與企業活動媒合',
-    coverImage: 'https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-stallmatch.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-stallmatch.jpg'],
     demoUrl: 'https://stallmatch.demo.ideax.tw',
     techArchitecture: 'React + TypeScript + HTML5 Canvas 互動場地排位 + Supabase + Tailwind CSS',
     vibeCodingData: {
       appName: 'StallMatch 攤車通',
       demoUrl: 'https://stallmatch.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=900&auto=format&fit=crop&q=80',
-      screenshots: ['https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=800&auto=format&fit=crop&q=80'],
+      coverImageUrl: '/seed-covers/q-vp-vibe-stallmatch.jpg',
+      screenshots: ['/seed-covers/q-vp-vibe-stallmatch.jpg'],
       appType: '市集活動與攤販餐車媒合平台',
       techStack: ['React', 'TypeScript', 'HTML5 Canvas', 'Supabase', 'Tailwind CSS'],
       aiToolsUsed: ['Google AI Studio', 'Cursor'],
@@ -2212,19 +2157,15 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.4.0',
-    referencedPainPoint: '[q-vp-pain-01] 獨立餐飲門市尖峰時段電話訂餐與現場點餐衝突，漏單率高達 15%',
     targetGoal: '希望 6 個月內達成 15,000 次下載與註冊使用，協助自由工作者省下 80% 報稅整理時間',
-    coverImage: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-01.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-01.jpg'],
     demoUrl: 'https://receiptsnap-ai.demo.ideax.tw',
     techArchitecture: 'React + TypeScript + Gemini Vision API + Tailwind CSS',
     vibeCodingData: {
       demoUrl: 'https://receiptsnap-ai.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=900&auto=format&fit=crop&q=80',
-      screenshots: ['https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80'],
+      coverImageUrl: '/seed-covers/q-vp-vibe-01.jpg',
+      screenshots: ['/seed-covers/q-vp-vibe-01.jpg'],
       appType: '生產力與財務工具',
       techStack: ['React', 'TypeScript', 'Gemini Vision API', 'Tailwind CSS'],
       aiToolsUsed: ['Google AI Studio', 'Cursor'],
@@ -2260,18 +2201,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v2.1.0',
-    referencedPainPoint: '[q-vp-pain-05] 遠距混合辦公新進員工「怕打擾主管不敢問」，前三個月缺乏歸屬感離職率高',
     targetGoal: '希望 6 個月內達成 25,000 次下載次數，成為產品經理與顧問每週必用的提案神器',
-    coverImage: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-02.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-02.jpg'],
     demoUrl: 'https://slidecraft-flow.demo.ideax.tw',
     techArchitecture: 'Next.js + Mermaid.js + Tailwind CSS + Gemini 2.5 Flash',
     vibeCodingData: {
       demoUrl: 'https://slidecraft-flow.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-02.jpg',
       appType: '商務簡報與視覺化',
       techStack: ['Next.js', 'Mermaid.js', 'Tailwind CSS', 'Gemini 2.5 Flash'],
       aiToolsUsed: ['Google AI Studio', 'Claude Code'],
@@ -2307,18 +2244,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.2.3',
-    referencedPainPoint: '[q-vp-pain-02] 跨境電商退換貨逆物流成本吞噬毛利，海外倉滯銷品難以二次去化',
     targetGoal: '希望 6 個月內達成 30,000 次下載與網頁安裝次數，幫助千位知識型創作者克服鏡頭恐懼',
-    coverImage: 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-03.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-03.jpg'],
     demoUrl: 'https://hooklab-studio.demo.ideax.tw',
     techArchitecture: 'React + Web Speech API + Tailwind CSS',
     vibeCodingData: {
       demoUrl: 'https://hooklab-studio.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-03.jpg',
       appType: '創作者影音工具',
       techStack: ['React', 'Web Speech API', 'Tailwind CSS'],
       aiToolsUsed: ['Cursor', 'Google AI Studio'],
@@ -2354,18 +2287,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.0.5',
-    referencedPainPoint: '[q-vp-pain-03] 特色民宿夜間無人櫃檯時段，外籍旅客入住身分核對與門鎖授權經常卡關',
     targetGoal: '希望 6 個月內達成 18,000 次下載與元件匯出次數，讓每個獨立網站都擁有藝術級動態背景',
-    coverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-04.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-04.jpg'],
     demoUrl: 'https://shadervibe-3d.demo.ideax.tw',
     techArchitecture: 'Three.js + WebGL + GLSL + React',
     vibeCodingData: {
       demoUrl: 'https://shadervibe-3d.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-04.jpg',
       appType: '設計與前端開發工具',
       techStack: ['Three.js', 'WebGL', 'GLSL', 'React'],
       aiToolsUsed: ['Google AI Studio', 'v0'],
@@ -2401,18 +2330,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.1.0',
-    referencedPainPoint: '[q-vp-pain-06] 山區溫室農場網路訊號不穩，感測器斷線重連後歷史溫濕度資料整批遺失',
     targetGoal: '希望 6 個月內達成 12,000 次下載次數，保護開發團隊零機密金鑰外洩',
-    coverImage: 'https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-05.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-05.jpg'],
     demoUrl: 'https://envshield-local.demo.ideax.tw',
     techArchitecture: 'TypeScript + Web Workers + Vite',
     vibeCodingData: {
       demoUrl: 'https://envshield-local.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-05.jpg',
       appType: '資安與開發輔助',
       techStack: ['TypeScript', 'Web Workers', 'Vite'],
       aiToolsUsed: ['Cursor', 'Claude'],
@@ -2428,7 +2353,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     id: 'q-vp-vibe-06',
     appName: 'RubricMate 評語助手',
     title: '給國高中老師的期末評語小幫手 RubricMate（支援雙語評量規準勾選）',
-    description: '太太是高中雙語班導師，每到學期末要寫四十幾個學生的學習歷程回饋跟英文評語，常看她寫到凌晨兩點。\n幫她做了這個表單工具：先設定好這學期的評量項目，針對每個學生勾選幾個日常表現特徵（例如：上台報告台風穩、小組討論很會整合意見），就會組合出自然不罐頭的中英雙語評語草稿，老師只要微調幾句就能交差。',
+    description: '我自己是高中雙語班導師，每到學期末要寫四十幾個學生的學習歷程回饋跟英文評語，常常寫到凌晨兩點。\n所以利用寒假做了這個表單工具：先設定好這學期的評量項目，針對每個學生勾選幾個日常表現特徵（例如：上台報告台風穩、小組討論很會整合意見），就會組合出自然不罐頭的中英雙語評語草稿，老師只要微調幾句就能交差。',
     category: '網站程式',
     subcategory: 'AI工具',
     subcategories: ['AI工具', '網站程式'],
@@ -2448,18 +2373,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.3.0',
-    referencedPainPoint: '[q-vp-pain-12] 雙薪家庭國小低年級學童週三中午放學後，安親班與才藝課接送出現 2 小時安全空窗',
     targetGoal: '希望 6 個月內達成 8,000 次下載與教師註冊使用，為第一線教師每學期省下 40 小時行政工時',
-    coverImage: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-06.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-06.jpg'],
     demoUrl: 'https://rubricmate-edu.demo.ideax.tw',
     techArchitecture: 'React + Tailwind CSS + Gemini API',
     vibeCodingData: {
       demoUrl: 'https://rubricmate-edu.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-06.jpg',
       appType: '教育與教學輔助',
       techStack: ['React', 'Tailwind CSS', 'Gemini API'],
       aiToolsUsed: ['Google AI Studio'],
@@ -2495,18 +2416,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v2.0.1',
-    referencedPainPoint: '[q-vp-pain-07] 中小型冷鏈物流車隊仰賴紙本溫度簽收單，生鮮退貨時無法釐清失溫責任歸屬',
     targetGoal: '希望 6 個月內達成 20,000 次下載與工作流範本匯出次數',
-    coverImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-07.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-07.jpg'],
     demoUrl: 'https://flowblueprint.demo.ideax.tw',
     techArchitecture: 'React Flow + TypeScript + Tailwind CSS',
     vibeCodingData: {
       demoUrl: 'https://flowblueprint.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-07.jpg',
       appType: 'No-Code 自動化工具',
       techStack: ['React Flow', 'TypeScript', 'Tailwind CSS'],
       aiToolsUsed: ['Google AI Studio', 'Cursor'],
@@ -2542,18 +2459,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.5.2',
-    referencedPainPoint: '[q-vp-pain-11] 社區團購主每週處理上百筆 LINE 喊單與轉帳末五碼核對，人工對帳耗時且常漏貨',
     targetGoal: '希望 6 個月內達成 35,000 次下載與試算使用，成為小資族最信賴的理財規劃工具',
-    coverImage: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-08.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-08.jpg'],
     demoUrl: 'https://etf-pulse-tw.demo.ideax.tw',
     techArchitecture: 'React + Recharts + TypeScript + WebAssembly',
     vibeCodingData: {
       demoUrl: 'https://etf-pulse-tw.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-08.jpg',
       appType: '個人理財與數據模擬',
       techStack: ['React', 'Recharts', 'TypeScript', 'WebAssembly'],
       aiToolsUsed: ['Google AI Studio', 'Cursor'],
@@ -2589,18 +2502,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.1.4',
-    referencedPainPoint: '[q-vp-pain-08] 傳統金屬加工廠上游要求提交 ISO 14064 碳盤查數據，但廠內電表與製程全無分攤紀錄',
     targetGoal: '希望 6 個月內達成 10,000 次下載與檢測次數，幫新創工程團隊平均節省 30% 雲端帳單',
-    coverImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-09.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-09.jpg'],
     demoUrl: 'https://kubecost-radar.demo.ideax.tw',
     techArchitecture: 'React + TypeScript + js-yaml + Tailwind CSS',
     vibeCodingData: {
       demoUrl: 'https://kubecost-radar.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-09.jpg',
       appType: 'DevOps 與雲端 FinOps',
       techStack: ['React', 'TypeScript', 'js-yaml', 'Tailwind CSS'],
       aiToolsUsed: ['Cursor', 'Google AI Studio'],
@@ -2636,18 +2545,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.3.2',
-    referencedPainPoint: '[q-vp-pain-14] 牙醫診所自費植牙與矯正時段臨時爽約，造成醫師椅位空轉與高昂人力浪費',
     targetGoal: '希望 6 個月內達成 16,000 次下載次數，讓獨立 Podcaster 後製時間縮短至 10 分鐘',
-    coverImage: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-10.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-10.jpg'],
     demoUrl: 'https://podcut-note.demo.ideax.tw',
     techArchitecture: 'Web Audio API + React + Canvas API + Gemini API',
     vibeCodingData: {
       demoUrl: 'https://podcut-note.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-10.jpg',
       appType: '音訊後製與內容行銷',
       techStack: ['Web Audio API', 'React', 'Canvas API', 'Gemini API'],
       aiToolsUsed: ['Google AI Studio', 'Cursor'],
@@ -2683,18 +2588,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v0.9.8-beta',
-    referencedPainPoint: '[q-vp-pain-13] 共生公寓與分租套房夏季電費分攤不公，公共空間冷氣未關引發室友嚴重爭執',
     targetGoal: '希望 6 個月內達成 50,000 次遊玩與下載安裝次數，打造華文圈最受歡迎的 AI 原生互動小說遊戲',
-    coverImage: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-11.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-11.jpg'],
     demoUrl: 'https://mythweaver-rpg.demo.ideax.tw',
     techArchitecture: 'Phaser 3 + React + TypeScript + Gemini 2.5 Flash',
     vibeCodingData: {
       demoUrl: 'https://mythweaver-rpg.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-11.jpg',
       appType: '互動娛樂與網頁遊戲',
       techStack: ['Phaser 3', 'React', 'TypeScript', 'Gemini 2.5 Flash'],
       aiToolsUsed: ['Google AI Studio', 'Midjourney', 'Cursor'],
@@ -2730,18 +2631,15 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.6.0',
-    referencedPainPoint: '[q-vp-pain-09] 寵物鮮食與保健品訂閱制客戶在第 3 個月容易因「冰箱塞爆」而一鍵取消訂閱',
+    referencedPainPoint: '[q-vp-pain-17] 週末去大賣場買菜塞滿冰箱，結果忘記最裡面冰了什麼，每個月都在丟爛掉的葉菜跟過期牛奶',
     targetGoal: '希望 6 個月內達成 40,000 次下載次數，陪伴外食與自煮族每月省下 3,000 元買菜錢',
-    coverImage: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-12.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-12.jpg'],
     demoUrl: 'https://fridgechef.demo.ideax.tw',
     techArchitecture: 'React + PWA + Tailwind CSS + Gemini API',
     vibeCodingData: {
       demoUrl: 'https://fridgechef.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-12.jpg',
       appType: '飲食健康與生活工具',
       techStack: ['React', 'PWA', 'Tailwind CSS', 'Gemini API'],
       aiToolsUsed: ['Google AI Studio'],
@@ -2777,18 +2675,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.2.0',
-    referencedPainPoint: '[q-vp-pain-10] 老屋翻新裝修過程追加工程款爭議不斷，屋主與統包師傅缺乏具法律效力的變更留痕',
     targetGoal: '希望 6 個月內於 Chrome 線上應用程式商店達成 22,000 次下載安裝次數',
-    coverImage: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-13.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-13.jpg'],
     demoUrl: 'https://citelens-ext.demo.ideax.tw',
     techArchitecture: 'Chrome Extension Manifest V3 + React + IndexedDB',
     vibeCodingData: {
       demoUrl: 'https://citelens-ext.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-13.jpg',
       appType: '瀏覽器擴充與學術工具',
       techStack: ['Chrome Extension Manifest V3', 'React', 'IndexedDB'],
       aiToolsUsed: ['Cursor', 'Google AI Studio'],
@@ -2824,18 +2718,14 @@ export const SEED_VIBECODING_APPS: Question[] = [
     postType: 'vibecoding_app',
     specialZone: 'vibecoding',
     currentVersion: 'v1.0.8',
-    referencedPainPoint: '[q-vp-pain-04] 高齡長者出院後返家服藥種類繁多，外籍看護與家屬交接常發生重複餵藥',
     targetGoal: '希望 6 個月內達成 28,000 次下載與離線安裝次數，陪伴高壓族群找回深度睡眠',
-    coverImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80',
-    galleryImages: [
-      'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
-    ],
+    coverImage: '/seed-covers/q-vp-vibe-14.jpg',
+    galleryImages: ['/seed-covers/q-vp-vibe-14.jpg'],
     demoUrl: 'https://breathewave.demo.ideax.tw',
     techArchitecture: 'React + Web Audio API + CSS Animations + PWA',
     vibeCodingData: {
       demoUrl: 'https://breathewave.demo.ideax.tw',
-      coverImageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=900&auto=format&fit=crop&q=80',
+      coverImageUrl: '/seed-covers/q-vp-vibe-14.jpg',
       appType: '身心健康與睡眠輔助',
       techStack: ['React', 'Web Audio API', 'CSS Animations', 'PWA'],
       aiToolsUsed: ['Google AI Studio'],
@@ -3260,7 +3150,7 @@ export const SEED_SEEK_SOLUTIONS: Question[] = [
 export const SEED_L0_DISCUSSIONS: Question[] = [
   {
     id: 'q-vp-chat-01',
-    title: '大家現在寫程式或做サイドプロジェクト（Side Project），真的已經完全不手寫 CSS 跟基礎 CRUD 了嗎？',
+    title: '大家現在做 Side Project，真的已經不手寫 CSS 跟基礎 CRUD 了嗎？',
     description: '自從開始用 Vibe Coding 工作流後，我發現自己 80% 的時間都在思考產品定位、使用者動線跟邊界條件，真正動手敲鍵盤寫語法的時間不到 20%。好奇各位工程師與設計師現在的日常開發比例怎麼分配？',
     category: '網站程式',
     subcategory: 'AI工具',
@@ -3798,39 +3688,48 @@ function hashSeedStr(str: string): number {
   return h >>> 0;
 }
 
+// 打賞留言：短、口語，不同語氣混著用（打賞時大多只會留一句話）
 const TIP_MESSAGES_BY_TYPE: Record<string, string[]> = {
   pain_point: [
-    '這個痛點寫得太真實了！我們現場也每天遇到一模一樣的狀況，小額打賞支持，希望能催生出好用的落地解方！',
-    '非常有共鳴的第一線產業觀察，附議 +1 並打賞支持！期待看到跨領域團隊針對這題提出創新產品。',
-    '感謝把問題結構拆解得這麼清楚，已轉發給我們工程與產品團隊評估，打賞支持好議題！',
-    '這題如果能解決，市場潛力非常龐大！贊助一點心意，拋磚引玉吸引更多高手來提案。',
-    '身邊至少五個同業朋友都在抱怨這件事，支持版主把真實痛點整理出來！',
+    '同樣困擾，希望有人能解',
+    '+1，我們也遇過',
+    '小小心意，希望題目被更多人看到',
+    '這題真的很實際',
+    '期待解方！',
+    '寫得好清楚，推',
+    '',
   ],
   innovation_proposal: [
-    '商業模式與切入角度非常有亮點！不用大改既有硬體就能無痛導入，打賞支持團隊繼續推進 MVP 實證！',
-    '很喜歡這個解方兼顧成本與第一線操作直覺的設計，已收藏並贊助點數支持！',
-    '從痛點拆解到落地目標都很具體，期待看到你們後續與場域合作的第一階段測試數據！',
-    '這個創新點子很有社會價值與商業可行性，打賞支持！有機會也希望能交流通路合作。',
-    '切中要害的解方！比傳統高價系統靈活太多了，支持獨立創新團隊！',
+    '加油，期待看到成品',
+    '這個我會用！',
+    '方向很喜歡，支持一下',
+    '有上線記得通知我',
+    '先投一票',
+    '試辦需要場地可以找我聊',
+    '',
   ],
   vibecoding_app: [
-    '剛點進 Demo 試玩了一下，介面互動跟流暢度超乎想像！打賞支持獨立開發者持續迭代新版本！',
-    '用 Vibe Coding 把這麼實用的垂直小工具做出來太強了，已經加入書籤每週使用，贊助一杯咖啡！',
-    '完美解決我平常工作最花時間的痛點，技術架構也很乾淨，打賞支持開源與產品化！',
-    'AI 工作流串接得非常自然，完全沒有多餘複雜的設定，敲碗未來推出團隊協作版！',
-    '這種輕量、直覺又精準解決單一痛點的 Web App 才是大家真正需要的，打賞支持！',
+    '已收藏，請你喝杯咖啡',
+    '好用！謝謝分享',
+    '每週都在用，支持一下',
+    '小工具大幫助',
+    '期待下一版',
+    '請繼續更新🙏',
+    '',
   ],
   seek_solution: [
-    '這題問到核心關鍵了！我們團隊近期也在評估相同架構，先打賞支持並卡位學習前輩們的實戰解答。',
-    '非常高品質的專業提問，背景條件與限制都交代得很清楚，贊助點數幫推！',
-    '同問 +1！這塊在業界確實很少公開的踩坑指南，小額打賞支持好問題！',
-    '感謝提出這麼實務的議題，下面的討論串與專家方案含金量超高，打賞支持！',
+    '同問，先卡位',
+    '底下的回覆好有料',
+    '問得很清楚，推',
+    '我也想知道答案',
+    '',
   ],
   chat_discussion: [
-    '這個話題太有共鳴了哈哈哈！看完底下大家的留言學到超多實用技巧，打賞一杯咖啡支持版主！',
-    '很喜歡這種輕鬆又能交流跨領域經驗的討論串，贊助支持優質社群氛圍！',
-    '週末配咖啡看完這串討論超療癒，感謝發起這麼棒的話題！',
-    '推一個！大家推薦的方法跟工具都超接地氣，打賞支持好文！',
+    '哈哈好有共鳴',
+    '看留言學到好多',
+    '推這串',
+    '笑死，太真實',
+    '',
   ],
 };
 
@@ -3853,7 +3752,7 @@ export function generateSimulatedTipsForQuestion(q: Question): {
   const count = 1 + (seed % 5); // 1 ~ 5 筆不同數量的打賞紀錄
   const postTypeKey = q.postType || 'pain_point';
   const msgPool = TIP_MESSAGES_BY_TYPE[postTypeKey] || TIP_MESSAGES_BY_TYPE.pain_point;
-  const tipAmountsPoints = [50, 100, 150, 200, 300, 500, 800];
+  const tipAmountsPoints = [10, 20, 50, 50, 100, 30, 200];
 
   const tipsHistory: NonNullable<Question['tipsHistory']> = [];
   let totalPoints = 0;
@@ -3931,210 +3830,68 @@ const RAW_VIRTUAL_PROPOSALS_SEED: Question[] = [
 ];
 
 function buildSimulatedAnswersForQuestion(q: Question): Answer[] {
-  const seed = hashSeedStr(`ans-v2-${q.id}`);
+  const thread = SEED_THREADS[q.id];
+  if (!thread) return [];
+  const seed = hashSeedStr(`ans-v3-${q.id}`);
   const results: Answer[] = [];
-  const pType = q.postType || 'seek_solution';
 
-  const pickPersona = (offset: number): VirtualPersona => {
-    let idx = ((seed + offset * 11) % VIRTUAL_PERSONAS.length) + 1;
-    let cand = P(idx);
-    if (cand.id === q.authorId) {
-      cand = P((idx % VIRTUAL_PERSONAS.length) + 1);
-    }
-    return cand;
+  // 留言時間排在貼文之後：依序往後推幾小時到一天多，但不超過示範資料的時間錨點
+  const postMs = Date.parse(q.createdAt || '') || SEED_TIME_ANCHOR_MS - 7 * 86400000;
+  const latestMs = Math.max(SEED_TIME_ANCHOR_MS - 20 * 60000, postMs + 15 * 60000);
+  let cursor = postMs;
+  const nextTime = (i: number) => {
+    const gapH = 1 + ((seed >>> (i % 16)) % 30); // 1～30 小時
+    cursor = Math.min(latestMs, cursor + gapH * 3600000 + ((seed + i * 17) % 50) * 60000);
+    return new Date(cursor).toISOString();
   };
 
-  // 依據不同貼文 ID 決定差異化的方案數 (0~4) 與討論數 (1~7)，避免每篇看起來都一樣
-  let solCount = 1;
-  let discCount = 2;
-
-  if (pType === 'pain_point') {
-    const solOptions = [0, 1, 2, 1, 3, 0, 2];
-    const discOptions = [1, 3, 2, 5, 4, 6, 2, 3];
-    solCount = solOptions[seed % solOptions.length];
-    discCount = discOptions[(seed >> 3) % discOptions.length];
-  } else if (pType === 'innovation_proposal' || pType === 'vibecoding_app') {
-    const solOptions = [0, 1, 2, 0, 1, 3];
-    const discOptions = [1, 2, 4, 3, 5, 2, 6];
-    solCount = solOptions[(seed + 2) % solOptions.length];
-    discCount = discOptions[(seed >> 2) % discOptions.length];
-  } else if (pType === 'seek_solution') {
-    const solOptions = [1, 2, 3, 1, 4, 2, 0];
-    const discOptions = [1, 2, 3, 0, 4, 5, 2];
-    solCount = solOptions[(seed + 1) % solOptions.length];
-    discCount = discOptions[(seed >> 3) % discOptions.length];
-    if (solCount === 0 && discCount === 0) discCount = 2;
-  } else {
-    // chat_discussion (L0)
-    solCount = 0;
-    const discOptions = [1, 2, 4, 3, 6, 5, 2, 7];
-    discCount = discOptions[(seed + 4) % discOptions.length];
-  }
-
-  // 專家方案模板池（多樣化切角與實務建議）
-  const solutionTemplates = [
-    {
-      deliveryType: '落地實踐路徑',
-      preview: (title: string) =>
-        `【精華摘要】針對「${title.slice(0, 18)}...」，建議先別急著開發重型系統，改用「兩週最小可行防呆（Micro-SOP）」先壓低 70% 人為失誤，確認第一線人員真的願意配合後再做自動化。`,
-      full: (title: string) =>
-        `【分階段實測與低成本落地建議】\n\n針對「${title}」，很多團隊一開始就砸預算寫新系統，結果現場人員嫌麻煩不愛用。建議分三步走：\n1. 第 1~2 週：先砍掉一半非必要填報欄位，改用單一視覺化勾選或語音留痕。\n2. 第 3~4 週：利用現成 LINE OA 或輕量網頁做異常通知，不強迫安裝新 App。\n3. 第 2 個月：盤點哪個環節還是最常漏接，只針對該瓶頸寫自動化腳本。`,
-    },
-    {
-      deliveryType: '商業策略架構',
-      preview: (title: string) =>
-        `【逆向思考方案】這題的核心其實不是技術問題，而是「利害關係人誘因不對稱」。如果不重新設計分潤或免責機制，單靠工具很難長期維持。`,
-      full: (title: string) =>
-        `【誘因重構與商業驗證模型】\n\n1. 先釐清誰為錯誤買單、誰承擔多出來的操作時間：把省下來的隱性損耗提撥 15%~20% 作為第一線人員的即時獎勵。\n2. 建議先找 5~10 家熟識場域做「零月費、按實際省下成本抽成」的對照測試，有真實前後對比數據後才好規模化推廣。`,
-    },
-    {
-      deliveryType: '技術架構評估',
-      preview: (title: string) =>
-        `【輕量化技術解方】評估過類似場景，建議採用本地離線快取（Local-first）加上非同步佇列同步，就算現場網路斷斷續續也不會掉單或卡畫面。`,
-      full: (title: string) =>
-        `【架構取捨與邊界條件防護】\n\n1. 前端採用 PWA 搭配 IndexedDB 本地暫存，操作當下 0 延遲回饋。\n2. 後端設定冪等性（Idempotency Key）防重複寫入，並保留 30 天雙軌並行期，萬一新流程出狀況隨時可退回原作業模式。`,
-    },
-    {
-      deliveryType: '成本效益拆解',
-      preview: (title: string) =>
-        `【損益平衡試算】我們幫同類型團隊算過帳，初期直接串接現成 API 與標準化表單即可解決 80% 痛點，建置成本不到自建系統的五分之一。`,
-      full: (title: string) =>
-        `【ROI 試算與替代方案比較】\n\n1. 方案 A（全自建）：開發週期 3 個月以上，隱性維護成本高，適合日單量破千後再考慮。\n2. 方案 B（模組化組裝）：前兩週即可上線驗證，把 20% 極端例外狀況留給人工處理，回本週期可縮短至 45 天內。`,
-    },
-  ];
-
-  for (let s = 0; s < solCount; s++) {
-    const solver = pickPersona(s + 1);
-    const tpl = solutionTemplates[(seed + s * 3) % solutionTemplates.length];
+  (thread.s || []).forEach((sol, i) => {
+    const p = P(sol.by);
     results.push({
-      id: `ans-vp-${q.id}-sol-${s + 1}`,
+      id: `ans-vp-${q.id}-sol-${i + 1}`,
       questionId: q.id,
       type: 'solution',
-      solverId: solver.id,
-      solverName: solver.name,
-      solverTitle: solver.title,
-      solverAvatar: solver.avatar,
-      solverRating: Number((4.7 + ((seed + s) % 3) * 0.1).toFixed(1)),
+      solverId: p.id,
+      solverName: p.name,
+      solverTitle: p.title,
+      solverAvatar: p.avatar,
+      solverRating: Number((4.5 + ((seed + i) % 5) * 0.1).toFixed(1)),
       deliveryFormat: 'text',
-      deliveryType: tpl.deliveryType,
-      freePreview: tpl.preview(q.title),
-      fullContent: tpl.full(q.title),
+      deliveryType: sol.type,
+      freePreview: sol.preview,
+      fullContent: sol.full,
       isPaid: true,
-      price: [300, 500, 600, 800, 1000, 1200, 1500][(seed + s * 3) % 7],
-      likes: 4 + ((seed + s * 7) % 28),
+      price: sol.price,
+      likes: (seed + i * 7) % 19,
       isAccepted: false,
-      createdAt: daysAgo(solCount - s + 1, 2 + s * 3),
+      createdAt: nextTime(i),
       isSimulated: true,
       simulatedBatchId: SIMULATED_BATCH_ID,
     });
-  }
+  });
 
-  // 口語化、討論式、提問式、逆風質疑與真實交流留言池（不制式、不全正面）
-  const painPointDiscussions: Array<(authorName: string) => string> = [
-    (author) =>
-      `老實說這個問題我們店裡也遇過，但之前試過導入平板跟 LINE 機器人，結果第一線人員根本不想多按一步，不到兩週又打回原形😅 你們覺得問題是出在工具太複雜，還是根本沒有獎懲誘因？\n\n💬 ${author} 回覆：這點超中肯！我們也在想是不是要做成完全不用打字、逼一下就好的方式，不然現場忙起來真的沒人要填。`,
-    () =>
-      `好奇問一下，這種情況如果發生在尖峰時段，現場連看手機螢幕的時間都沒有，有什麼辦法是不看螢幕也能確認的嗎？`,
-    () =>
-      `痛點是真痛點，但講句比較現實的，中小型老闆連一個月幾百塊的訂閱工具都會猶豫半天... 如果不能直接幫他們「多賺錢」而是純省時間，大家覺得真的有人願意買單嗎？`,
-    (author) =>
-      `我們上個月才因為一模一樣的狀況賠了一筆客訴金... 想問原 PO 目前你們內部是怎麼先用人工頂著的？有用 Excel 還是紙本簽名？\n\n💬 ${author} 回覆：目前只能先在群組規定拍照回傳，但照片洗版超快，月底對帳還是會漏，才想上來問問看有沒有更好的解法。`,
-    () =>
-      `其實不一定需要搞新系統吧？我們後來發現把交接表砍掉 70% 非必要欄位、只留三個勾選格，錯誤率就降很多了。有時候是管理規定太囉嗦而不是缺工具，大家覺得呢？`,
-    () =>
-      `卡一個，這題超實際！想看有沒有做硬體或軟硬整合的朋友分享一下，如果環境很吵或手很髒的時候這類方案到底行不行得通？`,
-    () =>
-      `之前看過別家做類似的，最後死在硬體耗材跟後續誰要負責維護。如果故障時叫修要等三天，現場一定直接放棄不用了，這塊有人想過怎麼解嗎？`,
-  ];
-
-  const proposalDiscussions: Array<(authorName: string, isVibe: boolean) => string> = [
-    (author, isVibe) =>
-      `概念是不錯，但想問個比較現實的問題：如果遇到現場網路不穩或是使用者根本懶得看說明，這套${isVibe ? '工具' : '方案'}有防呆或離線備案嗎？不然卡住一次大概就被冰起來了🤔\n\n💬 ${author} 回覆：問到重點了！我們目前正在補離線暫存跟一鍵略過進階設定的模式，感謝提醒！`,
-    (_, isVibe) =>
-      `剛看了一下介紹，好奇為什麼不直接做成 LINE LIFF 或 Chrome 外掛就好？如果要讓使用者另外記一個網址或帳號，初期的留存率會不會掉很快？${isVibe ? '雖然 Demo 跑起來算順，但切換視窗還是有點小門檻。' : ''}`,
-    () =>
-      `想請教團隊，這塊目前市面上好像已經有幾個類似的免費替代方案（或是用 Notion + 自動化就能湊出來），你們覺得最大的差異化是什麼？未來如果收費預計怎麼定價？`,
-    (author) =>
-      `老實講第一步的流程對新手還是有點小複雜，我剛看說明的時候卡了一下不太確定資料要怎麼餵進去，建議有沒有辦法直接放幾個現成範本讓人一鍵套用？\n\n💬 ${author} 回覆：收到！我們這週末就會把 3 個常用情境範本直接放到首頁，不用從零設定！`,
-    () =>
-      `請問這個如果實際導入到公司內部，資料會經過第三方雲端嗎？我們公司法務跟資安對這塊超感冒，如果不能匯出本地或私有化部署通常直接被打槍...`,
-    () =>
-      `從對應的痛點貼文點過來的～方向滿有趣的，但比較擔心初期冷啟動的時候如果數據量不夠，準確度會不會差很多？現在有小規模實測的數字可以分享嗎？`,
-    () =>
-      `我自己是覺得功能不用包山包海，把最核心的那個轉換步驟做到極致快就贏了！現在介面上的次要按鈕稍微有點多，反而分散注意力，給團隊參考看看～`,
-  ];
-
-  const seekSolutionDiscussions: Array<(authorName: string) => string> = [
-    (author) =>
-      `先問個前提：你們目前的月流量跟預算規模大概在哪個區間？不同量級的解法差非常多，如果還在早期階段，其實不太建議一次上這麼重的架構。\n\n💬 ${author} 回覆：目前還在早期驗證階段，預算確實有限，那看來應該先走輕量路線測試水溫！`,
-    () =>
-      `看樓上幾位都推自動化工具，但我逆風提一個觀點：在內部 SOP 還沒跑順之前太早導入系統，只會把混亂的流程固化而已，建議先用人工跑兩週抓出例外狀況再說。`,
-    () =>
-      `同問 +1！我們上禮拜開會也在吵一模一樣的事，業務派跟工程派看法完全相反，一邊想快點上線衝業績、一邊怕後面維護火葬場，想問版主後來比較傾向哪邊？`,
-    () =>
-      `好奇如果照這個方向改，舊用戶的轉換陣痛期大概要抓多久？有沒有人有實際改版後掉留存的比例可以參考？很怕一改版原本的熟客全跑光...`,
-    () =>
-      `這題水滿深的，先別急著找外包或買軟體，你們內部有先算過單一客戶的獲客成本（CAC）跟回本週期嗎？算完說不定會發現問題根本不在這一塊。`,
-    () =>
-      `推討論！想順便請教樓上幾位前輩，如果團隊裡面只有一個人兼著管這塊，沒有專職 PM 的話，有沒有最偷懶但不會出大包的折衷做法？`,
-  ];
-
-  const chatDiscussions: Array<(authorName: string) => string> = [
-    (author) =>
-      `笑死，第一眼看到標題還以為是我同事偷發文🤣 我們部門每次開會說要「簡化流程」，結果最後都會多出一張新的表單要填...\n\n💬 ${author} 回覆：真的！！永遠都在為了管理表單而新增另一張表單😂`,
-    () =>
-      `我反而跟版主相反欸！我是那種不先把工具跟資料夾分類好就渾身不對勁的人，雖然常被朋友吐槽是在做精神時光屋的準備工作哈哈，有人也是這樣嗎？`,
-    () =>
-      `好奇大家遇到這種卡關的時候，都是硬撐把它做完，還是直接關電腦去睡覺明天再說？我自己實測超過晚上 11 點做的決定通常隔天早上看都會想掐死自己😂`,
-    () =>
-      `老實說試過番茄鐘、Notion 模板跟各種時間管理法，最後發現唯一真正有用的生產力工具叫做「明天早上十點要交」的死線壓力...`,
-    () =>
-      `有同感，但有時候不是自己想拖延，是需求方一直改來改去，做太快反而變白工，後來都學乖先做到 60 分確認方向對了再往下細修。`,
-    () =>
-      `有沒有人試過把這類重複性高又無聊的瑣事全部丟給自動化腳本處理的？求推薦真正好上手的懶人做法，太複雜的設完我都忘了怎麼維護～`,
-    () =>
-      `看到大家也都有一樣的困擾突然覺得被安慰到了哈哈哈，原來不是只有我一個人在糾結這種小事！`,
-  ];
-
-  const isVibe = pType === 'vibecoding_app';
-
-  for (let d = 0; d < discCount; d++) {
-    const commenter = pickPersona(solCount + d + 2);
-    let text = '';
-    if (pType === 'pain_point') {
-      const fn = painPointDiscussions[(seed + d * 3) % painPointDiscussions.length];
-      text = fn(q.authorName);
-    } else if (pType === 'innovation_proposal' || pType === 'vibecoding_app') {
-      const fn = proposalDiscussions[(seed + d * 3) % proposalDiscussions.length];
-      text = fn(q.authorName, isVibe);
-    } else if (pType === 'seek_solution') {
-      const fn = seekSolutionDiscussions[(seed + d * 3) % seekSolutionDiscussions.length];
-      text = fn(q.authorName);
-    } else {
-      const fn = chatDiscussions[(seed + d * 3) % chatDiscussions.length];
-      text = fn(q.authorName);
-    }
-
+  (thread.c || []).forEach(([by, text, reply], i) => {
+    const p = P(by);
     results.push({
-      id: `ans-vp-${q.id}-disc-${d + 1}`,
+      id: `ans-vp-${q.id}-disc-${i + 1}`,
       questionId: q.id,
       type: 'discussion',
-      solverId: commenter.id,
-      solverName: commenter.name,
-      solverTitle: commenter.title,
-      solverAvatar: commenter.avatar,
-      solverRating: Number((4.6 + ((seed + d) % 4) * 0.1).toFixed(1)),
+      solverId: p.id,
+      solverName: p.name,
+      solverTitle: p.title,
+      solverAvatar: p.avatar,
+      solverRating: Number((4.5 + ((seed + i) % 5) * 0.1).toFixed(1)),
       deliveryType: '交流探討',
-      freePreview: text,
+      freePreview: reply ? `${text}\n\n💬 ${q.authorName} 回覆：${reply}` : text,
       isPaid: false,
       price: 0,
-      likes: 1 + ((seed + d * 5) % 24),
+      likes: (seed >>> (i + 2)) % 13,
       isAccepted: false,
-      createdAt: daysAgo(Math.max(0, discCount - d - 1), 1 + d * 2),
+      createdAt: nextTime(i + 5),
       isSimulated: true,
       simulatedBatchId: SIMULATED_BATCH_ID,
     });
-  }
+  });
 
   return results;
 }
@@ -4174,36 +3931,24 @@ export function getSimulatedProposalComments(proposalId: string, proposalTitleOr
     }));
   }
 
+  // 只有示範提案才補示範留言；真實用戶的提案絕不放假留言
+  if (!isSimulatedQuestion(proposalId)) return [];
+  const thread = SEED_THREADS[proposalId];
+  if (!thread?.c?.length) return [];
   const seed = hashSeedStr(proposalId || proposalTitle || 'default-prop');
-  const shortTitle = proposalTitle ? `「${proposalTitle.slice(0, 14)}」` : '這個提案';
-  const commentPool = [
-    `剛看完${shortTitle}的說明，切入點滿有意思的！不過好奇問一下，如果初期沒有補貼或點數回饋，第一線使用者自發持續用的動機夠強嗎？`,
-    `想請教團隊，這套架構如果遇到尖峰時段或現場網路不穩，有沒有離線緩存或簡化步驟的備案？很怕現場人員卡住一次就不想用了🤔`,
-    `從對應痛點一路點過來的～比起傳統動輒幾十萬的系統，這種輕量做法確實接地氣很多！想問目前有開放小規模場域報名測試嗎？`,
-    `逆風討論一下：這塊市場目前好像已經有幾個國外免費小工具可以做到 7 成功能，你們覺得最大的差異化護城河會在哪裡？在地化整合還是硬體搭配？`,
-    `介面跟流程看起來滿直覺的，但建議可以把初次設定再縮短一點，最好打開就能直接套用預設範本，對非技術背景的人會友善很多！`,
-    `卡位關注！我們團隊最近也在研究類似議題，想問後續會考慮開放簡單的 API 或匯出 CSV 報表跟既有 ERP/Notion 串接嗎？`,
-  ];
-
-  const countOptions = [1, 2, 3, 4, 2, 5, 3];
-  const count = countOptions[seed % countOptions.length];
-  const out: ProposalComment[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const p = P(((seed + i * 7 + 3) % VIRTUAL_PERSONAS.length) + 1);
-    out.push({
+  return thread.c.map(([by, text], i) => {
+    const p = P(by);
+    return {
       id: `sim-pcomm-${proposalId}-${i + 1}`,
       proposalId,
       authorId: p.id,
       authorName: `${p.name} ｜ ${p.title}`,
       authorAvatar: p.avatar,
       authorRole: 'user',
-      content: commentPool[(seed + i * 2) % commentPool.length],
-      createdAt: new Date(SEED_TIME_ANCHOR_MS - (count - i) * 64800000).toISOString(),
-    });
-  }
-
-  return out;
+      content: text,
+      createdAt: new Date(SEED_TIME_ANCHOR_MS - (thread.c!.length - i) * (30 + (seed % 20)) * 3600000).toISOString(),
+    };
+  });
 }
 
 export const getSimulatedCommentsForProposalId = getSimulatedProposalComments;
