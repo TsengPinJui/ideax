@@ -263,7 +263,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
 
   const authorInfo = getProposalCardAuthorText(proposal);
 
-  // 訪客瀏覽規則：列表第 7～10 則僅開放預覽（只顯示前兩張圖片，其餘內容需登入）
+  // 訪客瀏覽規則：列表第 17～20 則僅開放預覽（只顯示前兩張圖片，其餘內容需登入）
   const guestPreviewOnly = (!currentUser || currentUser.id === 'user-guest') && isGuestPreviewOnly(proposal.id);
   const guestPreviewImages = (proposal.images || []).filter(Boolean).slice(0, 2);
 
