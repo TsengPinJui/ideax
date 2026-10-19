@@ -1,6 +1,8 @@
 import { getAuthHeaders } from './authHeader';
 import {
   signInWithCustomToken,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
@@ -17,7 +19,7 @@ import {
   updatePassword,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { auth } from './firebase';
+import { auth, firebaseConfig } from './firebase';
 
 export async function loginWithFirebaseEmail(email: string, password: string): Promise<FirebaseUser> {
   try {
@@ -96,10 +98,59 @@ export async function confirmFirebasePasswordReset(actionCodeOrLink: string, new
   }
 }
 
+
+/**
+ * 手機瀏覽器：社群登入改用「整頁跳轉」（不開新視窗）。
+ * 只在登入處理頁與網站同網域時使用（VITE_FIREBASE_AUTH_DOMAIN），否則跳轉回來會遺失登入狀態。
+ */
+const SOCIAL_REDIRECT_FLAG = 'ideax_social_redirect_provider';
+export function prefersRedirectLogin(): boolean {
+  if (typeof window === 'undefined') return false;
+  const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  return mobile && firebaseConfig.authDomain === window.location.hostname;
+}
+async function startSocialRedirect(kind: 'google' | 'facebook', provider: GoogleAuthProvider | FacebookAuthProvider): Promise<never> {
+  try {
+    sessionStorage.setItem(SOCIAL_REDIRECT_FLAG, kind);
+    localStorage.setItem(SOCIAL_REDIRECT_FLAG, kind);
+  } catch {}
+  await signInWithRedirect(auth, provider);
+  // 頁面會跳轉離開，這個 Promise 不會結束
+  return new Promise<never>(() => {});
+}
+
+export type SocialRedirectOutcome =
+  | { provider: 'google' | 'facebook'; user: FirebaseUser }
+  | { provider: 'google' | 'facebook'; error: string; code?: string };
+
+/** 網站載入時呼叫：完成整頁跳轉回來的社群登入 */
+export async function consumeSocialRedirectResult(): Promise<SocialRedirectOutcome | null> {
+  let kind: 'google' | 'facebook' | null = null;
+  try {
+    kind = (sessionStorage.getItem(SOCIAL_REDIRECT_FLAG) || localStorage.getItem(SOCIAL_REDIRECT_FLAG)) as any;
+  } catch {}
+  if (!kind) return null;
+  try {
+    sessionStorage.removeItem(SOCIAL_REDIRECT_FLAG);
+    localStorage.removeItem(SOCIAL_REDIRECT_FLAG);
+  } catch {}
+  try {
+    const result = await getRedirectResult(auth);
+    if (result?.user) return { provider: kind, user: result.user };
+    return null;
+  } catch (error: any) {
+    if (error?.code === 'auth/account-exists-with-different-credential') {
+      return { provider: kind, code: error.code, error: '這個 Email 已經用其他方式（Email 密碼或另一個社群帳號）註冊過，請改用原本的方式登入。' };
+    }
+    return { provider: kind, code: error?.code, error: error?.message || '社群登入失敗，請稍後再試。' };
+  }
+}
+
 export async function loginWithFirebaseGoogle(): Promise<FirebaseUser> {
   try {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    if (prefersRedirectLogin()) return await startSocialRedirect('google', provider);
     const cred = await signInWithPopup(auth, provider);
     return cred.user;
   } catch (error: any) {
@@ -117,12 +168,13 @@ export async function loginWithFirebaseFacebook(): Promise<FirebaseUser> {
   try {
     const provider = new FacebookAuthProvider();
     // 不主動強制要求 email scope，避免 Meta 應用程式未啟用 email 權限時噴出 Invalid Scopes: email 錯誤
+    if (prefersRedirectLogin()) return await startSocialRedirect('facebook', provider);
     const cred = await signInWithPopup(auth, provider);
     return cred.user;
   } catch (error: any) {
     console.warn('Firebase Facebook login error:', error);
     if (error.code === 'auth/account-exists-with-different-credential') {
-      const customErr: any = new Error('此 Facebook 帳號綁定的 Email 已在平台使用其他方式（例如 Google 或密碼）註冊！');
+      const customErr: any = new Error('這個 Facebook 帳號的 Email 已經用其他方式（Email 密碼或 Google）註冊過，請改用原本的方式登入。');
       customErr.code = error.code;
       customErr.email = error.customData?.email;
       customErr.customData = error.customData;
