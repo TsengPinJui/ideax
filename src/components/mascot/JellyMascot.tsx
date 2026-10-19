@@ -198,11 +198,16 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
     try {
       setStatus('小燈泡正在判斷要找哪位助理…');
       const route = await routeMascot(q);
+      if (route?.outOfScope) {
+        // 三位助理都不負責的問題：不轉接、不隨意回答
+        setMsgs((m) => [...m, { id: ++msgSeq.current, who: 'bot', text: route.reply, tag: '小燈泡' }]);
+        return;
+      }
       setStatus(route ? `正在轉接…${route.agentLabel}` : '正在轉接…');
       const res = await askMascot(q, convIds.current, route?.agent);
       if (res.ok) {
-        if (res.conversationId) convIds.current[res.agent] = res.conversationId;
-        setMsgs((m) => [...m, { id: ++msgSeq.current, who: 'bot', text: res.reply, tag: res.agentLabel }]);
+        if (res.agent && res.conversationId) convIds.current[res.agent] = res.conversationId;
+        setMsgs((m) => [...m, { id: ++msgSeq.current, who: 'bot', text: res.reply, tag: res.agentLabel || '小燈泡' }]);
         engineRef.current?.jump(0.6);
       } else {
         setMsgs((m) => [...m, { id: ++msgSeq.current, who: 'bot', text: res.error, tag: '小燈泡' }]);

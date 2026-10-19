@@ -159424,8 +159424,18 @@ function keywordMatches(message2) {
 }
 function parseAgent(text) {
   const t2 = String(text || "").trim().toLowerCase();
-  const m2 = t2.match(/\b(market_advisor|aicrm|cs)\b/);
+  const m2 = t2.match(/\b(market_advisor|aicrm|cs|none)\b/);
   return m2 ? m2[1] : null;
+}
+var MASCOT_OUT_OF_SCOPE_REPLY = "\u9019\u500B\u554F\u984C\u6211\u9084\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\u5594~\u5C0F\u71C8\u6CE1\u5C07\u6301\u7E8C\u5B78\u7FD2\uFF01";
+var MASCOT_UNAVAILABLE_REPLY = "\u5C0F\u71C8\u6CE1\u66AB\u6642\u806F\u7D61\u4E0D\u4E0A\u52A9\u7406\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u554F\u6211\u4E00\u6B21\uFF0C\u6216\u5BEB\u4FE1\u5230 support@ideax.tw \u5594\uFF01";
+function normalizeAgentReply(reply) {
+  const t2 = String(reply || "").trim();
+  if (!t2) return { reply: MASCOT_OUT_OF_SCOPE_REPLY, unanswered: true };
+  const refusal = /無法回答|無法提供|無法協助|不在.{0,8}(服務|回答)?範圍|超出.{0,8}範圍|沒有相關資(訊|料)|查無相關|我不清楚|我不知道|不確定答案/;
+  const hasGuidance = /support@|工單|客服|聯繫|聯絡|信箱|建議您|可以(先)?(到|至|前往)/.test(t2);
+  if (t2.length <= 80 && refusal.test(t2) && !hasGuidance) return { reply: MASCOT_OUT_OF_SCOPE_REPLY, unanswered: true };
+  return { reply: t2, unanswered: false };
 }
 async function classifyMascotQuestion(message2, generateText) {
   const hits = keywordMatches(message2);
@@ -159434,15 +159444,17 @@ async function classifyMascotQuestion(message2, generateText) {
 cs = \u5B98\u65B9\u5BA2\u670D\u7279\u52A9\uFF1A\u5E33\u865F\uFF0F\u5E33\u6236\u3001\u767B\u5165\u3001\u500B\u4EBA\u8CC7\u6599\u3001\u9EDE\u6578\u5132\u503C\u3001\u64A5\u6B3E\u8207\u63D0\u9818\u3001\u4ED8\u6B3E\u767C\u7968\u3001\u61F8\u8CDE\u5206\u7D1A\uFF08L0\uFF5EL4\uFF09\u898F\u5247\u3001\u9000\u6B3E\u8207\u722D\u8B70\u7533\u8A34\u3001\u5C08\u4EBA\u5DE5\u55AE\u3001\u6703\u54E1\u65B9\u6848\u8207\u8CBB\u7528\u3001\u6210\u70BA\u5C08\u5BB6\u3001\u5275\u661F\u5B63\u5831\u540D\u3001\u5E73\u53F0\u898F\u5247\u8207\u64CD\u4F5C\u3001\u932F\u8AA4\u56DE\u5831\u3001\u6AA2\u8209\uFF0C\u4EE5\u53CA\u5176\u4ED6\u4E00\u822C\u554F\u984C
 market_advisor = \u5E02\u5834\u9867\u554F\uFF1A\u5E6B\u4F7F\u7528\u8005\u81EA\u5DF1\u7684\u984C\u76EE\u505A\u5206\u985E\u3001\u8A55\u4F30\u50F9\u503C\u4E26\u5EFA\u8B70\u61F8\u8CDE\u8207\u6A19\u7C64\u3001\u5C0B\u627E\u6216\u63A8\u85A6\u5408\u9069\u7684\u5C08\u5BB6\u3001\u6DF1\u5EA6\u554F\u984C\u5206\u6790\u5831\u544A\u3001\u91DD\u5C0D\u5C65\u7D04\u500B\u6848\u63D0\u51FA\u8ABF\u89E3\u8207\u548C\u89E3\u5EFA\u8B70
 aicrm = \u696D\u52D9\u9867\u554F\uFF08\u7D66\u5C08\u5BB6\u7528\uFF09\uFF1A\u627E\u6848\u5B50\u8207\u9AD8\u8CDE\u597D\u984C\u3001\u8A55\u4F30\u767C\u6848\u65B9\u6210\u6848\u610F\u5411\u3001\u5BE6\u6536\u6DE8\u5229\u8A66\u7B97\u3001\u63D0\u6848\u5207\u5165\u65B9\u5F0F\u3001\u8DDF\u9032\u6642\u6BB5\u8207\u7834\u51B0\u8A71\u8853
+none = \u8207 IdeaX \u5E73\u53F0\u3001\u63D0\u554F\u89E3\u984C\u3001\u627E\u5C08\u5BB6\u3001\u63A5\u6848\u5B8C\u5168\u7121\u95DC\u7684\u554F\u984C\uFF08\u4F8B\u5982\u5929\u6C23\u3001\u65B0\u805E\u3001\u80A1\u50F9\u3001\u9592\u804A\u516B\u5366\u3001\u4EE3\u5BEB\u4F5C\u696D\u6216\u7A0B\u5F0F\u3001\u91AB\u7642\u6216\u6CD5\u5F8B\u500B\u4EBA\u8AEE\u8A62\u3001\u5176\u4ED6\u7DB2\u7AD9\u7684\u554F\u984C\uFF09\u3002\u6253\u62DB\u547C\u6216\u8A62\u554F IdeaX \u662F\u4EC0\u9EBC\u8ACB\u56DE cs\uFF0C\u53EA\u6709\u660E\u78BA\u7121\u95DC\u6642\u624D\u56DE none
 
 \u4F7F\u7528\u8005\u8A0A\u606F\uFF1A\u300C${message2.slice(0, 500)}\u300D`;
   try {
     const text = await Promise.race([
-      generateText(prompt, "\u4F60\u662F\u5206\u6D41\u5668\uFF0C\u53EA\u8F38\u51FA cs\u3001market_advisor \u6216 aicrm \u5176\u4E2D\u4E00\u500B\u4EE3\u78BC\uFF0C\u4E0D\u8981\u8F38\u51FA\u5176\u4ED6\u6587\u5B57\u3002"),
+      generateText(prompt, "\u4F60\u662F\u5206\u6D41\u5668\uFF0C\u53EA\u8F38\u51FA cs\u3001market_advisor\u3001aicrm \u6216 none \u5176\u4E2D\u4E00\u500B\u4EE3\u78BC\uFF0C\u4E0D\u8981\u8F38\u51FA\u5176\u4ED6\u6587\u5B57\u3002"),
       new Promise((r2) => setTimeout(() => r2(null), 6e3))
     ]);
     const agent = parseAgent(text);
-    if (agent && (!hits.length || hits.includes(agent))) return { agent, by: "ai" };
+    if (agent === "none" && !hits.length) return { agent: "none", by: "ai" };
+    if (agent && agent !== "none" && (!hits.length || hits.includes(agent))) return { agent, by: "ai" };
   } catch {
   }
   for (const a of ["cs", "market_advisor", "aicrm"]) if (hits.includes(a)) return { agent: a, by: "keyword" };
@@ -159455,7 +159467,7 @@ function mascotAgentKey(agent) {
   }
   return "";
 }
-var EVENT_TYPES = ["impression", "click", "drag", "open", "ask", "collapse", "expand", "session", "sad", "comfort"];
+var EVENT_TYPES = ["impression", "click", "drag", "open", "ask", "collapse", "expand", "session", "sad", "comfort", "unanswered"];
 async function getDb3() {
   if (!hasAdminCredentials) return null;
   const { getFirestore: getFirestore3, FieldValue: FieldValue4 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
@@ -162140,6 +162152,13 @@ app.post("/api/mascot/route", async (req, res) => {
     const message2 = String(req.body?.message || "").trim().slice(0, 800);
     if (!message2) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u554F\u984C" });
     const { agent, by } = await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    if (agent === "none") {
+      void recordMascotEvent({ type: "ask" }).catch(() => {
+      });
+      void recordMascotEvent({ type: "unanswered" }).catch(() => {
+      });
+      return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: by });
+    }
     res.json({ success: true, agent, agentLabel: MASCOT_AGENTS[agent].label, routedBy: by });
   } catch (err) {
     console.error("[Mascot Route]", err?.message || err);
@@ -162153,7 +162172,15 @@ app.post("/api/mascot/ask", async (req, res) => {
     const conversationIds = req.body?.conversationIds && typeof req.body.conversationIds === "object" ? req.body.conversationIds : {};
     const visitorId = String(req.body?.visitorId || "guest").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "guest";
     const preRouted = typeof req.body?.agent === "string" && req.body.agent in MASCOT_AGENTS ? req.body.agent : null;
-    const { agent, by } = preRouted ? { agent: preRouted, by: "pre-routed" } : await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    const routed = preRouted ? { agent: preRouted, by: "pre-routed" } : await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    if (routed.agent === "none") {
+      void recordMascotEvent({ type: "ask" }).catch(() => {
+      });
+      void recordMascotEvent({ type: "unanswered" }).catch(() => {
+      });
+      return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: routed.by });
+    }
+    const { agent, by } = routed;
     const meta2 = MASCOT_AGENTS[agent];
     const apiKey = mascotAgentKey(agent);
     let reply = "";
@@ -162173,11 +162200,18 @@ app.post("/api/mascot/ask", async (req, res) => {
         conversationId = r2.conversationId;
       }
     }
+    let unanswered = false;
     if (!reply) {
-      source = "gemini";
-      reply = await generateRawTextWithGemini(message2, `${meta2.persona}\u8ACB\u7528\u7E41\u9AD4\u4E2D\u6587\u3001\u53E3\u8A9E\u89AA\u5207\u5730\u56DE\u7B54\uFF0C150 \u5B57\u4EE5\u5167\u3002`) || "\u6211\u73FE\u5728\u6709\u9EDE\u5FD9\u4E0D\u904E\u4F86\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u554F\u6211\u4E00\u6B21\uFF0C\u6216\u5230\u300C\u5BA2\u670D\u4E2D\u5FC3\u300D\u7559\u8A00\u7D66\u6211\u5011\u5594\uFF01";
+      source = "unavailable";
+      reply = MASCOT_UNAVAILABLE_REPLY;
+    } else {
+      const n = normalizeAgentReply(reply);
+      reply = n.reply;
+      unanswered = n.unanswered;
     }
     void recordMascotEvent({ type: "ask", agent }).catch(() => {
+    });
+    if (unanswered || source === "unavailable") void recordMascotEvent({ type: "unanswered" }).catch(() => {
     });
     res.json({ success: true, reply, agent, agentLabel: meta2.label, routedBy: by, conversationId, source });
   } catch (err) {

@@ -42,37 +42,55 @@ function keywordMatches(message: string): MascotAgent[] {
 }
 
 /** 解析分流器輸出：只認完整代碼，避免說明文字裡順帶出現其他代碼而誤判 */
-function parseAgent(text: string | null | undefined): MascotAgent | null {
+function parseAgent(text: string | null | undefined): MascotAgent | 'none' | null {
   const t = String(text || '').trim().toLowerCase();
-  const m = t.match(/\b(market_advisor|aicrm|cs)\b/);
-  return m ? (m[1] as MascotAgent) : null;
+  const m = t.match(/\b(market_advisor|aicrm|cs|none)\b/);
+  return m ? (m[1] as MascotAgent | 'none') : null;
+}
+
+/** 三位助理都不負責的問題：固定回覆，不讓任何 AI 隨意作答 */
+export const MASCOT_OUT_OF_SCOPE_REPLY = '這個問題我還暫時無法回答喔~小燈泡將持續學習！';
+/** 助理暫時聯絡不上（不改用其他 AI 代答，避免答錯） */
+export const MASCOT_UNAVAILABLE_REPLY = '小燈泡暫時聯絡不上助理，請稍後再問我一次，或寫信到 support@ideax.tw 喔！';
+
+/** 助理回覆只是一句「答不出來」時，改用固定回覆；有附上指引（例如客服信箱）的較長回覆照常保留 */
+export function normalizeAgentReply(reply: string): { reply: string; unanswered: boolean } {
+  const t = String(reply || '').trim();
+  if (!t) return { reply: MASCOT_OUT_OF_SCOPE_REPLY, unanswered: true };
+  const refusal = /無法回答|無法提供|無法協助|不在.{0,8}(服務|回答)?範圍|超出.{0,8}範圍|沒有相關資(訊|料)|查無相關|我不清楚|我不知道|不確定答案/;
+  const hasGuidance = /support@|工單|客服|聯繫|聯絡|信箱|建議您|可以(先)?(到|至|前往)/.test(t);
+  if (t.length <= 80 && refusal.test(t) && !hasGuidance) return { reply: MASCOT_OUT_OF_SCOPE_REPLY, unanswered: true };
+  return { reply: t, unanswered: false };
 }
 
 /**
  * 判斷要轉接哪位助理：
  * 1. 只命中一類關鍵字 → 直接轉接（快又穩，例如「帳戶」一定找客服）
  * 2. 命中多類或都沒命中 → 交給內建 AI 判斷
- * 3. AI 逾時或失敗 → 命中多類時依序取客服 > 市場 > 業務；都沒命中則由客服接手
+ * 3. 都沒命中且 AI 判斷為三位助理都不負責（none）→ 不轉接，直接回固定文字
+ * 4. AI 逾時或失敗 → 命中多類時依序取客服 > 市場 > 業務；都沒命中則由客服接手（客服設定為不捏造）
  */
 export async function classifyMascotQuestion(
   message: string,
   generateText: (prompt: string, system?: string) => Promise<string | null>
-): Promise<{ agent: MascotAgent; by: 'keyword' | 'ai' | 'default' }> {
+): Promise<{ agent: MascotAgent | 'none'; by: 'keyword' | 'ai' | 'default' }> {
   const hits = keywordMatches(message);
   if (hits.length === 1) return { agent: hits[0], by: 'keyword' };
   const prompt = `請判斷以下使用者訊息該交給哪一位助理處理，只回答一個代碼：
 cs = 官方客服特助：帳號／帳戶、登入、個人資料、點數儲值、撥款與提領、付款發票、懸賞分級（L0～L4）規則、退款與爭議申訴、專人工單、會員方案與費用、成為專家、創星季報名、平台規則與操作、錯誤回報、檢舉，以及其他一般問題
 market_advisor = 市場顧問：幫使用者自己的題目做分類、評估價值並建議懸賞與標籤、尋找或推薦合適的專家、深度問題分析報告、針對履約個案提出調解與和解建議
 aicrm = 業務顧問（給專家用）：找案子與高賞好題、評估發案方成案意向、實收淨利試算、提案切入方式、跟進時段與破冰話術
+none = 與 IdeaX 平台、提問解題、找專家、接案完全無關的問題（例如天氣、新聞、股價、閒聊八卦、代寫作業或程式、醫療或法律個人諮詢、其他網站的問題）。打招呼或詢問 IdeaX 是什麼請回 cs，只有明確無關時才回 none
 
 使用者訊息：「${message.slice(0, 500)}」`;
   try {
     const text = await Promise.race([
-      generateText(prompt, '你是分流器，只輸出 cs、market_advisor 或 aicrm 其中一個代碼，不要輸出其他文字。'),
+      generateText(prompt, '你是分流器，只輸出 cs、market_advisor、aicrm 或 none 其中一個代碼，不要輸出其他文字。'),
       new Promise<null>((r) => setTimeout(() => r(null), 6000)),
     ]);
     const agent = parseAgent(text);
-    if (agent && (!hits.length || hits.includes(agent))) return { agent, by: 'ai' };
+    if (agent === 'none' && !hits.length) return { agent: 'none', by: 'ai' };
+    if (agent && agent !== 'none' && (!hits.length || hits.includes(agent))) return { agent, by: 'ai' };
   } catch {}
   for (const a of ['cs', 'market_advisor', 'aicrm'] as const) if (hits.includes(a)) return { agent: a, by: 'keyword' };
   return { agent: 'cs', by: 'default' };
@@ -87,7 +105,7 @@ export function mascotAgentKey(agent: MascotAgent): string {
 }
 
 // ───────────── 統計 ─────────────
-const EVENT_TYPES = ['impression', 'click', 'drag', 'open', 'ask', 'collapse', 'expand', 'session', 'sad', 'comfort'] as const;
+const EVENT_TYPES = ['impression', 'click', 'drag', 'open', 'ask', 'collapse', 'expand', 'session', 'sad', 'comfort', 'unanswered'] as const;
 export type MascotEventType = (typeof EVENT_TYPES)[number];
 
 async function getDb() {
