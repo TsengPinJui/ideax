@@ -49,6 +49,7 @@ import {
 import { MessageSquarePlus, Sparkles, Filter, AlertCircle, Flame, MessageCircle, X, Users, ArrowRight, Pin, ShieldAlert, Lightbulb, HelpCircle, ChevronDown, ChevronUp, Search, Heart, ThumbsUp, Square, List, LayoutGrid } from 'lucide-react';
 import { GUEST_VISIBLE_COUNT, GUEST_BLURRED_TEASER_COUNT, registerGuestListExposure } from './utils/guestAccess';
 import { NotificationOptInPrompt } from './components/NotificationOptInPrompt';
+import { MascotHost } from './components/mascot/MascotHost';
 import { lazyNamed, preloadWhenIdle } from './utils/lazyNamed';
 
 // 需要時才載入的頁面（程式碼分割）：縮小首頁第一次下載的檔案大小
@@ -3344,6 +3345,9 @@ function MainContent() {
 
       {/* 發布內容後詢問是否開啟通知 */}
       <NotificationOptInPrompt />
+
+      {/* 右下角 3D 燈泡吉祥物（管理員可在儀表板調整或關閉；創星季獨立站不顯示） */}
+      <MascotHost hidden={activeTab === 'star_season'} />
 
       {/* 舊網站獨立創星季懸浮按鈕：可拖動、可貼齊隱藏到邊框、可隨時再叫出（使用創星季圖片，不用燈泡） */}
       {activeTab !== 'star_season' && (

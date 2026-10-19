@@ -35,7 +35,8 @@ export async function askMascot(
   }
 }
 
-export function trackMascotEvent(type: 'impression' | 'click' | 'drag' | 'open' | 'collapse' | 'expand' | 'session', durationMs?: number) {
+export type MascotEventType = 'impression' | 'click' | 'drag' | 'open' | 'collapse' | 'expand' | 'session' | 'sad' | 'comfort';
+export function trackMascotEvent(type: MascotEventType, durationMs?: number) {
   try {
     const body = JSON.stringify({ type, durationMs });
     if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
@@ -48,7 +49,7 @@ export function trackMascotEvent(type: 'impression' | 'click' | 'drag' | 'open' 
 
 export interface MascotDayStats {
   day: string;
-  counts: Partial<Record<'impression' | 'click' | 'drag' | 'open' | 'ask' | 'collapse' | 'expand' | 'session', number>>;
+  counts: Partial<Record<MascotEventType | 'ask', number>>;
   agents: Partial<Record<MascotAgent, number>>;
   interactionMs: number;
 }

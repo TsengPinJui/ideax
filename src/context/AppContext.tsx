@@ -1,3 +1,4 @@
+import { DEFAULT_MASCOT_CONFIG, cheerMascot, normalizeMascotConfig, type MascotConfig } from '../components/mascot/mascotConfig';
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Question,
@@ -439,6 +440,10 @@ interface AppContextType {
   // Public Metrics Controls (Admin)
   publicMetricsConfig: PublicMetricsConfig;
   updatePublicMetricsConfig: (config: Partial<PublicMetricsConfig>) => void;
+
+  // 燈泡吉祥物設定 (Admin)
+  mascotConfig: MascotConfig;
+  saveMascotConfig: (config: MascotConfig) => Promise<void>;
 
   // AI-CRM System Config (Admin)
   aiCrmConfig: AiCrmSystemConfig;
@@ -1165,6 +1170,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return merged;
         });
       }
+      if (settings.mascotConfig) applyMascotConfig(settings.mascotConfig);
       if (settings.competitionHomepageStatsConfig) {
         try {
           localStorage.setItem('ideax_competition_homepage_stats_config', JSON.stringify(settings.competitionHomepageStatsConfig));
@@ -1831,6 +1837,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       syncPlatformSettingsToFirestore({ publicMetricsConfig: next });
       return next;
     });
+  };
+
+  // 燈泡吉祥物設定：雲端 platform_settings/global.mascotConfig，本機快取讓吉祥物不用等雲端就能出現
+  const [mascotConfig, setMascotConfig] = useState<MascotConfig>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}mascot_config`);
+      if (saved) return normalizeMascotConfig(JSON.parse(saved));
+    } catch {}
+    return DEFAULT_MASCOT_CONFIG;
+  });
+  const applyMascotConfig = (raw: unknown) => {
+    const next = normalizeMascotConfig(raw);
+    setMascotConfig(next);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}mascot_config`, JSON.stringify(next));
+    } catch {}
+    return next;
+  };
+  const saveMascotConfig = async (config: MascotConfig) => {
+    const next = applyMascotConfig(config);
+    await syncPlatformSettingsToFirestore({ mascotConfig: next });
   };
 
   // AI-CRM System Config (Admin settings)
@@ -4897,6 +4924,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const toastTitle = `${kindLabel}發布成功！`;
     const toastSubtitle = `已成功發布${kindLabel}「${q.title.slice(0, 24)}」${q.bounty > 0 ? `（懸賞 ${q.bounty.toLocaleString()} 點）` : ''}！`;
     showCenterToast(toastTitle, toastSubtitle, { type: 'success', duration: 2500 });
+    cheerMascot('發布成功！太棒了～');
 
     // 發布後是詢問通知權限的好時機（「有人回覆時要通知你嗎？」），等成功提示消失後再顯示
     try {
@@ -5148,6 +5176,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 成功提示 Toast（留言討論 或 提案方案）
     if (isDiscussion) {
+      cheerMascot('謝謝你的分享！');
       showCenterToast('留言討論發布成功！', '您的交流見解已成功送出並公開顯示。', {
         type: 'success',
         duration: 2200,
@@ -9587,6 +9616,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markAllSystemNotificationsRead,
         publicMetricsConfig,
         updatePublicMetricsConfig,
+        mascotConfig,
+        saveMascotConfig,
         aiCrmConfig,
         updateAiCrmConfig,
         updateAssistant24hrConfig,
