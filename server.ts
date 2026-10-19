@@ -12,7 +12,7 @@ import { runAssistantTick } from './server/assistantCron';
 import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/pointsLedger';
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
-import { classifyMascotQuestion, getMascotStats, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
+import { classifyMascotQuestion, fetchDifyAppName, getMascotStats, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken } from './server/competitionService';
 
 dotenv.config();
@@ -3253,6 +3253,50 @@ app.post('/api/mascot/event', async (req: Request, res: Response) => {
     res.json({ success: ok });
   } catch {
     res.json({ success: false });
+  }
+});
+
+// 後台轉接檢查：三位助理各用哪個環境變數、對應 Dify 哪個應用、是否共用同一把金鑰（不回傳金鑰本身）
+app.get('/api/admin/mascot-agents', async (_req: Request, res: Response) => {
+  try {
+    const agents = Object.keys(MASCOT_AGENTS) as MascotAgent[];
+    const infos = agents.map((a) => ({ agent: a, ...mascotAgentKeyInfo(a) }));
+    const names = await Promise.all(infos.map((i) => fetchDifyAppName(i.key)));
+    res.json({
+      success: true,
+      agents: infos.map((i, idx) => ({
+        agent: i.agent,
+        label: MASCOT_AGENTS[i.agent].label,
+        envName: i.envName,
+        configured: !!i.key,
+        keyTail: i.key ? i.key.slice(-4) : null,
+        difyAppName: names[idx],
+        nameLooksRight: names[idx] ? MASCOT_AGENT_NAME_HINTS[i.agent].test(names[idx]!) : null,
+        sharedWith: infos.filter((o) => o.agent !== i.agent && o.key && o.key === i.key).map((o) => MASCOT_AGENTS[o.agent].label),
+      })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '檢查失敗' });
+  }
+});
+
+// 後台測試轉接：看一句話會分給誰；ask=true 時實際問該助理並回傳回答與耗時
+app.post('/api/admin/mascot-route-test', async (req: Request, res: Response) => {
+  try {
+    const message = String(req.body?.message || '').trim().slice(0, 500);
+    if (!message) return res.status(400).json({ success: false, error: '請輸入測試問題' });
+    const { agent, by } = await classifyMascotQuestion(message, generateRawTextWithGemini);
+    if (agent === 'none') return res.json({ success: true, agent: 'none', label: '（不轉接，回覆暫時無法回答）', routedBy: by });
+    const info = mascotAgentKeyInfo(agent);
+    const out: any = { success: true, agent, label: MASCOT_AGENTS[agent].label, routedBy: by, envName: info.envName, difyAppName: await fetchDifyAppName(info.key) };
+    if (req.body?.ask && info.key) {
+      const r = await callDifyStreamingAgent({ apiKey: info.key, query: message, inputs: { platform_name: 'IdeaX', 平台名稱: 'IdeaX', entry: 'mascot-admin-test' }, user: 'mascot_admin_test', timeoutMs: 90000 }).catch(() => null);
+      out.answer = r?.text ? r.text.slice(0, 600) : null;
+      out.latencyMs = r?.latencyMs ?? null;
+    }
+    res.json(out);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '測試失敗' });
   }
 });
 

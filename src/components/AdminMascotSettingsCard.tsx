@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Lightbulb, RotateCcw, Save } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { AdminMascotRouteCheck } from './AdminMascotRouteCheck';
 import {
   DEFAULT_MASCOT_CONFIG,
   MASCOT_LIMITS,
@@ -121,6 +122,9 @@ export const AdminMascotSettingsCard: React.FC = () => {
             <Toggle label="開放提問" hint="AI 分流給三位 Dify 助理" checked={draft.chatEnabled} onChange={(v) => update({ chatEnabled: v })} />
             <Toggle label="發亮音效" hint="開心亮起來時播放叮鈴聲" checked={draft.soundEnabled} onChange={(v) => update({ soundEnabled: v })} />
           </div>
+
+          {/* 轉接檢查：三位助理的金鑰對應哪個 Dify 應用、測試分流 */}
+          <AdminMascotRouteCheck />
 
           <div className="space-y-3 p-3 rounded-xl bg-white border border-stone-200">
             <p className="text-xs font-black text-stone-900">果凍手感</p>
