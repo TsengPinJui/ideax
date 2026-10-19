@@ -66,7 +66,7 @@ export function mascotAgentKey(agent: MascotAgent): string {
 }
 
 // ───────────── 統計 ─────────────
-const EVENT_TYPES = ['impression', 'click', 'drag', 'open', 'ask', 'collapse', 'expand', 'session'] as const;
+const EVENT_TYPES = ['impression', 'click', 'drag', 'open', 'ask', 'collapse', 'expand', 'session', 'sad', 'comfort'] as const;
 export type MascotEventType = (typeof EVENT_TYPES)[number];
 
 async function getDb() {

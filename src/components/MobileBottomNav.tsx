@@ -35,6 +35,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
   return (
     <nav
+      data-ixm-avoid="bottom"
       className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-stone-200/80 px-2 py-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_-8px_rgba(0,0,0,0.06)]"
       aria-label="行動端底部快速導覽列"
     >
