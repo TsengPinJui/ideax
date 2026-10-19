@@ -26,7 +26,7 @@ export const AdminMascotRouteCheck: React.FC = () => {
   };
 
   const problem = (r: MascotAgentCheck) =>
-    !r.configured ? '沒有設定金鑰'
+    !r.configured ? '沒有設定金鑰（目前由小燈泡用 Gemini 代答）'
     : r.sharedWith.length ? `和${r.sharedWith.join('、')}共用同一把金鑰`
     : r.nameLooksRight === false ? '應用名稱看起來不像這位助理，請確認'
     : !r.difyAppName ? '查不到 Dify 應用名稱（金鑰可能失效或 Dify 版本不支援）'

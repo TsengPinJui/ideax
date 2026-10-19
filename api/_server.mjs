@@ -159396,6 +159396,127 @@ async function passwordLogin(identifier, password) {
   return { customToken, userId: identity.userId };
 }
 
+// server/mascotGuard.ts
+var SUPPORT_EMAIL = "support@ideax.tw";
+var DASHBOARD_HINT = "\u500B\u4EBA\u4E2D\u5FC3\uFF08\u96FB\u8166\u7248\u9EDE\u53F3\u4E0A\u89D2\u982D\u50CF\uFF0C\u624B\u6A5F\u7248\u9EDE\u5E95\u90E8\u300C\u6211\u7684\u300D\uFF09";
+var MASK = "\uFF3B\u5DF2\u96B1\u85CF\uFF3D";
+var PRIVATE_DATA = "(\u5E33\u6236|\u5E33\u865F|\u8D26\u6237|\u8D26\u53F7|\u8CC7\u6599|\u500B\u8CC7|\u9918\u984D|\u9EDE\u6578|\u4EA4\u6613|\u8A02\u55AE|\u96FB\u8A71|\u624B\u6A5F|\u4FE1\u7BB1|e-?mail|\u5730\u5740|\u8EAB\u5206|\u8EAB\u4EFD|\u6536\u5165|\u6536\u76CA|\u7D00\u9304|\u5BC6\u78BC|\u9280\u884C|\u5BE6\u540D|\u8B49\u4EF6)";
+var OTHERS_RE = new RegExp(`(\u5225\u4EBA|\u4ED6\u4EBA|\u5176\u4ED6(\u7528\u6236|\u6703\u54E1|\u4F7F\u7528\u8005)|\u67D0(\u4EBA|\u4F4D|\u500B)(\u7528\u6236|\u6703\u54E1|\u4F7F\u7528\u8005)?|(\u9019|\u90A3)(\u500B|\u4F4D)(\u7528\u6236|\u6703\u54E1|\u4F7F\u7528\u8005|\u4EBA|\u5C08\u5BB6|\u63D0\u554F\u8005)|\u5C0D\u65B9|(?<!\u5176)\u4ED6|\u5979)\u7684.{0,8}${PRIVATE_DATA}`, "i");
+var LOOKUP_OTHERS_RE = /(幫我|請|可以)?(查|查詢|調閱|告訴我).{0,6}(這個|那個|某個|某位|這位|那位)?(人|用戶|會員|使用者|帳號)/;
+var OWN_TOPICS = [
+  { re: /餘額|點數|剩.{0,2}點|(多少|幾)點|儲值紀錄|消費紀錄|扣款紀錄|交易紀錄|交易明細|帳務|帳目|收支|撥款|提領|收益|收入|發票/, where: `${DASHBOARD_HINT} \u2192\u300C\u9EDE\u6578 & \u6536\u652F\u300D` },
+  { re: /訂單|案件|解鎖紀錄|購買紀錄/, where: `${DASHBOARD_HINT} \u2192\u300C\u6211\u7684\u6848\u4EF6\u300D` },
+  { re: /會員等級|我的方案|訂閱狀態|會員到期/, where: `${DASHBOARD_HINT} \u2192\u300C\u6703\u54E1\u65B9\u6848\u300D` },
+  { re: /實名|認證狀態|審核狀態/, where: `${DASHBOARD_HINT} \u2192\u300C\u5BE6\u540D\u8A8D\u8B49\u300D\u6216\u300C\u5C08\u5BB6\u8A8D\u8B49\u300D` },
+  { re: /個人資料|基本資料|綁定|暱稱|頭像/, where: `${DASHBOARD_HINT} \u2192\u300C\u5E33\u865F\u8207\u57FA\u672C\u8CC7\u6599\u300D` }
+];
+var OWN_RES = [
+  /(我的|自己的).{0,6}(餘額|點數|交易|紀錄|明細|帳務|帳目|收支|撥款|提領|收益|收入|發票|訂單|案件|會員等級|方案|訂閱|實名|認證|個人資料|基本資料)/,
+  /我(還|目前|現在)?(有|剩)(多少|幾)/,
+  /(查|看|確認).{0,4}(我的|自己的)?(餘額|剩餘點數|點數餘額|交易紀錄|交易明細|帳務|帳目|收支|撥款紀錄|提領紀錄|訂單)/
+];
+var HOWTO_RE = /怎麼|如何|要怎|方法|步驟|在哪|哪裡/;
+var CHECKING_RE = /多少|剩|紀錄|明細|不見|少了|沒收到|沒有入帳|對不上|不對|錯了|查/;
+var EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+var PHONE_RE = /(?:\+?886[-\s]?|0)9\d{2}[-\s]?\d{3}[-\s]?\d{3}|\b0\d{1,2}[-\s]?\d{6,8}\b/g;
+var TWID_RE = /\b[A-Z][12]\d{8}\b/gi;
+var LONG_DIGITS_RE = /\b\d{10,16}\b/g;
+function maskPII(text) {
+  return text.replace(EMAIL_RE, (m2) => m2.toLowerCase().endsWith("@ideax.tw") ? m2 : MASK).replace(PHONE_RE, MASK).replace(TWID_RE, MASK).replace(LONG_DIGITS_RE, MASK);
+}
+var PAID_FEATURES = [
+  {
+    key: "headhunter",
+    name: "AI \u7375\u982D\u914D\u5C0D",
+    doRe: /獵頭|延攬|媒合|(找|推薦|介紹|配對).{0,15}(專家|顧問|高手|人才)|專家推薦|(合適|適合)的專家|誰(能|可以)(解|幫)/,
+    where: "\u300C\u5C08\u5BB6\u667A\u5EAB\u300D\u9801\u7684\u300CAI \u7375\u982D\u914D\u5C0D\u300D"
+  },
+  {
+    key: "unlock",
+    name: "\u89E3\u9396\u65B9\u6848",
+    doRe: /解鎖|(看|告訴我|給我|貼|分享|透露).{0,8}(解答|解法|方案內容|答案|完整方案|付費內容)|(這|那)(題|個問題|篇)的(解答|答案|解法|方案)|付費(方案|內容|解答)的內容/,
+    where: "\u554F\u984C\u9801\u4E2D\u60F3\u770B\u7684\u65B9\u6848\uFF0C\u7528\u9EDE\u6578\u89E3\u9396"
+  },
+  {
+    key: "report",
+    name: "\u5E02\u5834\u9867\u554F\u6DF1\u5EA6\u5206\u6790\u5831\u544A",
+    doRe: /(分析|診斷|評估)報告|深度分析|完整分析|幫我分析(這|我)?(個|的)?(問題|題目|專案)/,
+    where: "\u554F\u984C\u9801\u4E2D\u7684\u300C\u5E02\u5834\u9867\u554F\u6DF1\u5EA6\u5206\u6790\u5831\u544A\u300D\uFF08\u9069\u7528 L1\uFF5EL4 \u61F8\u8CDE\u554F\u984C\uFF09"
+  }
+];
+var AICRM_FEATURES = [
+  {
+    key: "aicrm_radar",
+    name: "AI-CRM \u5BA2\u60C5\u5DE1\u822A\u8207\u610F\u5411\u5075\u6E2C",
+    doRe: /成案(機率|意向|指數)|意向(指數|偵測|分數)|發案方.{0,6}(心理|猶豫|意向)|客戶猶豫|猶豫期|客情巡航|巡航|巡檢/,
+    tiers: ["pro", "expert", "authority", "master"]
+  },
+  {
+    key: "aicrm_bounty",
+    name: "\u512A\u8CEA\u63D0\u6848\u63A8\u85A6\u60A8\u4F86\u8CFA",
+    doRe: /(推薦|找|挑).{0,8}(高賞|好題|案子|題目|案源)|高賞好題|實收(試算|淨利)|提案切入|切入方針|推薦您來賺/,
+    tiers: ["authority", "master"]
+  },
+  {
+    key: "aicrm_strategy",
+    name: "AI-CRM \u7B56\u7565\u8ECD\u5E2B\u8207 24hr \u7279\u52A9\u4EE3\u64CD",
+    doRe: /破冰|話術|跟進(時段|時間|時程)|時程推演|代操|拓客|潛在客戶|軍師|AI ?特助|24 ?hr ?特助|業務特助|特助代操/i,
+    tiers: ["master"]
+  }
+];
+var planName = (tier) => tier === "guest" ? "\u8A2A\u5BA2" : SUBSCRIPTION_PLANS[tier]?.name || "\u4E00\u822C\u6703\u54E1";
+var ASK_ABOUT_RE = /怎麼(用|使用|開通|申請|收費)|如何(使用|開通|申請)|是什麼|什麼是|介紹一下|多少錢|多少點|費用|價格|收費|規則|有哪些功能|在哪(裡)?(用|使用)?/;
+var DO_IT_RE = /幫我|給我|替我|請(你)?(幫|直接)|直接|推薦|告訴我|寫(一|個|份|段)|產生|生成|分析一下/;
+function guardMascotQuestion(raw, who = { tier: "guest" }) {
+  const message2 = String(raw || "");
+  const hasPII = EMAIL_RE.test(message2) || PHONE_RE.test(message2) || TWID_RE.test(message2);
+  EMAIL_RE.lastIndex = 0;
+  PHONE_RE.lastIndex = 0;
+  TWID_RE.lastIndex = 0;
+  const piiLookup = hasPII && /(查|查詢|調閱|告訴我|給我|看一下)/.test(message2) && new RegExp(PRIVATE_DATA, "i").test(message2);
+  if (OTHERS_RE.test(message2) || hasPII && LOOKUP_OTHERS_RE.test(message2) || piiLookup) {
+    return {
+      action: "reply",
+      reason: "others",
+      reply: "\u70BA\u4E86\u4FDD\u8B77\u6BCF\u4F4D\u7528\u6236\u7684\u96B1\u79C1\uFF0C\u5C0F\u71C8\u6CE1\u4E0D\u80FD\u63D0\u4F9B\u6216\u67E5\u8A62\u5176\u4ED6\u4EBA\u7684\u5E33\u6236\u3001\u4EA4\u6613\u6216\u806F\u7D61\u8CC7\u6599\u5594\uFF01\u5982\u679C\u4F60\u548C\u5C0D\u65B9\u6709\u4EA4\u6613\u4E0A\u7684\u554F\u984C\uFF0C\u53EF\u4EE5\u5728\u6848\u4EF6\u7684\u804A\u5929\u5BA4\u6E9D\u901A\uFF0C\u6216\u5BEB\u4FE1\u5230 support@ideax.tw \u8ACB\u4EBA\u5DE5\u5BA2\u670D\u5354\u52A9\u3002"
+    };
+  }
+  if (OWN_RES.some((re) => re.test(message2)) && !(HOWTO_RE.test(message2) && !CHECKING_RE.test(message2))) {
+    const topic = OWN_TOPICS.find((t2) => t2.re.test(message2));
+    if (topic) {
+      return {
+        action: "reply",
+        reason: "own_account",
+        reply: `\u4F60\u7684\u500B\u4EBA\u5E33\u76EE\u8CC7\u6599\u53EA\u6709\u4F60\u81EA\u5DF1\u770B\u5F97\u5230\uFF0C\u5C0F\u71C8\u6CE1\u6C92\u8FA6\u6CD5\u66FF\u4F60\u67E5\u5594\uFF01\u8ACB\u5230 ${topic.where} \u67E5\u770B\uFF1B\u5982\u679C\u8CC7\u6599\u6709\u7591\u554F\uFF0C\u53EF\u4EE5\u5BEB\u4FE1\u5230 ${SUPPORT_EMAIL}\uFF0C\u4EBA\u5DE5\u5BA2\u670D\u6703\u5354\u52A9\u4F60\u78BA\u8A8D\uFF08\u5E73\u65E5 09:30\uFF5E18:30\uFF09\u3002`
+      };
+    }
+  }
+  const paid = PAID_FEATURES.find((f3) => f3.doRe.test(message2));
+  if (paid && !(ASK_ABOUT_RE.test(message2) && !DO_IT_RE.test(message2))) {
+    return {
+      action: "reply",
+      reason: "paid_feature",
+      feature: paid.key,
+      reply: `\u300C${paid.name}\u300D\u662F\u5E73\u53F0\u7684\u4ED8\u8CBB\u529F\u80FD\uFF0C\u5C0F\u71C8\u6CE1\u4E0D\u80FD\u76F4\u63A5\u5E6B\u4F60\u4F7F\u7528\u5594\uFF01\u8ACB\u5230 ${paid.where}\u3002\u60F3\u5148\u4E86\u89E3\u600E\u9EBC\u4F7F\u7528\u6216\u8CBB\u7528\uFF0C\u4E5F\u53EF\u4EE5\u554F\u6211\u300C${paid.name}\u600E\u9EBC\u7528\u300D\u6216\u300C${paid.name}\u591A\u5C11\u9322\u300D\u3002`
+    };
+  }
+  const crm = AICRM_FEATURES.find((f3) => f3.doRe.test(message2));
+  if (crm && !(ASK_ABOUT_RE.test(message2) && !DO_IT_RE.test(message2))) {
+    if (crm.tiers.includes(who.tier)) return { action: "pass", message: maskPII(message2), aicrmAllowed: true };
+    const need = planName(crm.tiers[0]);
+    return {
+      action: "reply",
+      reason: "plan_required",
+      feature: crm.key,
+      reply: who.tier === "guest" ? `\u300C${crm.name}\u300D\u662F\u6703\u54E1\u8A02\u95B1\u529F\u80FD\uFF0C\u8ACB\u5148\u767B\u5165\uFF0C\u5C0F\u71C8\u6CE1\u78BA\u8A8D\u4F60\u7684\u6703\u54E1\u65B9\u6848\u5F8C\u624D\u80FD\u5E6B\u4F60\u5594\uFF01` : `\u300C${crm.name}\u300D\u9700\u8981\u300C${need}\u300D\u4EE5\u4E0A\u7684\u6703\u54E1\u65B9\u6848\uFF0C\u4F60\u76EE\u524D\u662F\u300C${planName(who.tier)}\u300D\u3002\u53EF\u4EE5\u5230 \u500B\u4EBA\u4E2D\u5FC3\uFF08\u96FB\u8166\u7248\u9EDE\u53F3\u4E0A\u89D2\u982D\u50CF\uFF0C\u624B\u6A5F\u7248\u9EDE\u5E95\u90E8\u300C\u6211\u7684\u300D\uFF09\u2192\u300C\u6703\u54E1\u65B9\u6848\u300D\u67E5\u770B\u8207\u5347\u7D1A\u3002`
+    };
+  }
+  return { action: "pass", message: maskPII(message2) };
+}
+function redactMascotReply(text) {
+  return maskPII(String(text || ""));
+}
+
 // server/mascot.ts
 var MASCOT_AGENTS = {
   cs: {
@@ -159410,7 +159531,8 @@ var MASCOT_AGENTS = {
   },
   aicrm: {
     label: "\u696D\u52D9\u9867\u554F",
-    envKeys: ["DIFY_AICRM_API_KEY", "DIFY_API_KEY"],
+    envKeys: ["DIFY_AICRM_API_KEY"],
+    // 沒設定就由小燈泡（Gemini）代答，不借用客服的金鑰
     persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u696D\u52D9\u9867\u554F\uFF08AI-CRM \u7279\u52A9\uFF09\uFF0C\u5354\u52A9\u8A8D\u8B49\u5C08\u5BB6\u627E\u9AD8\u50F9\u503C\u6848\u5B50\u8207\u61F8\u8CDE\u597D\u984C\u3001\u8A55\u4F30\u767C\u6848\u65B9\u6210\u6848\u610F\u5411\u3001\u8A66\u7B97\u5BE6\u6536\u6DE8\u5229\u3001\u898F\u5283\u63D0\u6848\u5207\u5165\u65B9\u5F0F\u8207\u8DDF\u9032\u6642\u6BB5\u3001\u64B0\u5BEB\u7834\u51B0\u8A71\u8853\u3002\u4E0D\u8A87\u5927\u4FDD\u8B49\u7372\u5229\u3002"
   }
 };
@@ -159439,12 +159561,26 @@ var PROXY_FACTS = `IdeaX \u5275\u9EDE\u5B50\u5E73\u53F0\u57FA\u672C\u898F\u5247\
 - \u9000\u6B3E\u7CFE\u7D1B\u3001\u8A50\u9A19\u6AA2\u8209\u6216\u8907\u96DC\u500B\u6848\u53EF\u958B\u7ACB\u300C\u5C08\u4EBA\u5DE5\u55AE\u300D\uFF0C\u5BE9\u67E5\u5C08\u54E1\u6703\u5728 3 \u500B\u5DE5\u4F5C\u5929\u5167\u8ABF\u67E5\u4E26\u56DE\u8986\u3002
 - \u96B1\u79C1\uFF1A\u5BE6\u540D\u8A8D\u8B49\u8B49\u4EF6\u7167\u7247\u5BE9\u6838\u5F8C\u5373\u6C38\u4E45\u92B7\u6BC0\uFF1B\u804A\u5929\u5BA4\u5716\u7247 7 \u65E5\u5F8C\u6E05\u9664\uFF1B\u5E33\u865F\u8A3B\u92B7\u6709 7 \u65E5\u53CD\u6094\u671F\uFF1B\u4ED8\u8CBB\u6703\u54E1\u7B49\u7D1A\u4E0D\u6703\u5728\u516C\u958B\u9801\u9762\u986F\u793A\u3002
 - \u5B98\u65B9\u5BA2\u670D\u4FE1\u7BB1 support@ideax.tw\uFF0C\u670D\u52D9\u6642\u9593\u5E73\u65E5 09:30\uFF5E18:30\u3002`;
-async function proxyAnswerWithGemini(message2, agentLabel, generateText, timeoutMs = 9e4) {
-  const system = `\u4F60\u662F IdeaX \u5275\u9EDE\u5B50\u7684\u5409\u7965\u7269\u300C\u5C0F\u71C8\u6CE1\u300D\u3002${agentLabel}\u76EE\u524D\u5FD9\u7DDA\u4E2D\uFF0C\u4F60\u8981\u4EE3\u70BA\u56DE\u7B54\u4F7F\u7528\u8005\u3002
+var PROXY_ROLES = {
+  cs: {
+    can: "\u56DE\u7B54\u5E73\u53F0\u898F\u5247\u3001\u9EDE\u6578\u8207\u61F8\u8CDE\u5206\u7D1A\u3001\u64A5\u6B3E\u8207\u9000\u6B3E\u898F\u5247\u3001\u96B1\u79C1\u3001\u6703\u54E1\u8207\u4E00\u822C\u64CD\u4F5C\u554F\u984C\uFF0C\u4E26\u5B89\u64AB\u4F7F\u7528\u8005\u60C5\u7DD2\u3001\u5F15\u5C0E\u958B\u7ACB\u5C08\u4EBA\u5DE5\u55AE\u3002"
+  },
+  market_advisor: {
+    can: "\u4F9D\u4F7F\u7528\u8005\u63CF\u8FF0\u7684\u984C\u76EE\uFF0C\u5EFA\u8B70\u4E3B\u9818\u57DF\uFF08\u5275\u65B0\u5275\u696D\uFF0F\u5C08\u696D\u554F\u984C\uFF0F\u5B78\u8853\u63A2\u8A0E\uFF0F\u65E5\u5E38\u7591\u96E3\uFF09\u3001\u50F9\u503C\u5206\u7D1A\uFF08L0\uFF5EL4\uFF09\u8207\u5408\u7406\u61F8\u8CDE\u7BC4\u570D\u30013\uFF5E5 \u500B\u6A19\u7C64\uFF1B\u91DD\u5C0D\u5C65\u7D04\u7CFE\u7D1B\u63D0\u4F9B\u5BA2\u89C0\u7684\u8ABF\u89E3\u601D\u8DEF\uFF08\u4F8B\u5982\u6BD4\u4F8B\u6298\u8B93\u7D50\u6848\u6216\u9650\u671F\u88DC\u6B63\u9A57\u6536\uFF09\u3002"
+  },
+  aicrm: {
+    can: "\u5354\u52A9\u5C08\u5BB6\u8A66\u7B97\u5BE6\u6536\uFF08\u6B0A\u5A01\u65B9\u6848\u5E73\u53F0\u670D\u52D9\u8CBB 5%\u3001\u5BE6\u6536 95%\uFF1B\u5927\u5E2B\u65B9\u6848\u670D\u52D9\u8CBB 2%\u3001\u5BE6\u6536 98%\uFF1B\u4E00\u822C\u62BD\u6210 25%\uFF09\u3001\u5EFA\u8B70\u63D0\u6848\u5207\u5165\u65B9\u5F0F\uFF08\u5148\u5C0D\u7126\u95DC\u9375\u75DB\u9EDE\u2192\u63D0\u51FA\u67B6\u69CB\u8207\u91CC\u7A0B\u7891\u2192\u8AAA\u660E\u4EA4\u4ED8\u6E05\u55AE\u8207\u9A57\u6536\uFF09\u3001\u5EFA\u8B70\u8DDF\u9032\u6642\u6BB5\uFF08\u4E0A\u5348 10:00\uFF5E11:30\u3001\u5348\u5F8C 14:30\uFF5E16:00\u3001\u665A\u9593 19:30\uFF5E21:00\uFF09\u3001\u63D0\u4F9B\u7834\u51B0\u8A71\u8853\u65B9\u5411\u3002\u4E0D\u53EF\u4FDD\u8B49\u7372\u5229\u3002"
+  }
+};
+async function proxyAnswerWithGemini(message2, agent, generateText, timeoutMs = 9e4) {
+  const label = MASCOT_AGENTS[agent].label;
+  const system = `\u4F60\u662F IdeaX \u5275\u9EDE\u5B50\u7684\u5409\u7965\u7269\u300C\u5C0F\u71C8\u6CE1\u300D\u3002${label}\u66AB\u6642\u7121\u6CD5\u56DE\u8986\uFF0C\u4F60\u8981\u4EE3\u66FF${label}\u56DE\u7B54\u4F7F\u7528\u8005\u3002
+\u4F60\u53EF\u4EE5\u505A\u7684\u4E8B\uFF1A${PROXY_ROLES[agent].can}
 \u898F\u5247\uFF1A
-1. \u53EA\u80FD\u6839\u64DA\u4E0B\u65B9\u63D0\u4F9B\u7684\u5E73\u53F0\u898F\u5247\u56DE\u7B54\uFF0C\u4E0D\u53EF\u4EE5\u81EA\u884C\u63A8\u6E2C\u6216\u88DC\u5145\u898F\u5247\u88E1\u6C92\u6709\u7684\u8CC7\u8A0A\u3002
-2. \u554F\u984C\u6D89\u53CA\u4F7F\u7528\u8005\u81EA\u5DF1\u7684\u5E33\u6236\u72C0\u614B\u3001\u9918\u984D\u3001\u8A02\u55AE\u3001\u4EA4\u6613\u7D00\u9304\u3001\u500B\u4EBA\u8CC7\u6599\uFF0C\u6216\u898F\u5247\u88E1\u627E\u4E0D\u5230\u7B54\u6848\u3001\u6216\u4F60\u6C92\u6709\u6B0A\u9650\u8655\u7406\uFF08\u4F8B\u5982\u9000\u6B3E\u6838\u51C6\u3001\u5E33\u865F\u89E3\u9396\uFF09\uFF0C\u4E00\u5F8B\u53EA\u8F38\u51FA CANNOT_ANSWER\u3002
-3. \u53EF\u4EE5\u56DE\u7B54\u6642\uFF0C\u7528\u7E41\u9AD4\u4E2D\u6587\u3001\u89AA\u5207\u53E3\u8A9E\u3001150 \u5B57\u4EE5\u5167\uFF0C\u7D50\u5C3E\u63D0\u9192\u300C\u8A73\u7D30\u4EE5\u7DB2\u7AD9\u516C\u544A\u70BA\u6E96\uFF0C\u4E5F\u53EF\u4EE5\u5BEB\u4FE1\u5230 support@ideax.tw\u300D\u3002
+1. \u5E73\u53F0\u898F\u5247\u53EA\u80FD\u4F9D\u64DA\u4E0B\u65B9\u63D0\u4F9B\u7684\u8CC7\u6599\uFF0C\u4E0D\u53EF\u81EA\u884C\u7DE8\u9020\u898F\u5247\u3001\u6578\u5B57\u6216\u529F\u80FD\u3002
+2. \u4E0D\u53EF\u634F\u9020\u4EFB\u4F55\u5177\u9AD4\u7684\u5C08\u5BB6\u59D3\u540D\u3001\u984C\u76EE\u3001\u6848\u4EF6\u3001\u4F7F\u7528\u8005\u5E33\u6236\u72C0\u614B\u3001\u9918\u984D\u3001\u8A02\u55AE\u6216\u4EA4\u6613\u7D00\u9304\uFF1B\u9700\u8981\u67E5\u8CC7\u6599\u624D\u80FD\u56DE\u7B54\u3001\u6D89\u53CA\u4F7F\u7528\u8005\u500B\u4EBA\u5E33\u6236\uFF0C\u6216\u9700\u8981\u4EBA\u5DE5\u8655\u7406\uFF08\u4F8B\u5982\u9000\u6B3E\u6838\u51C6\u3001\u5E33\u865F\u89E3\u9396\uFF09\u7684\u554F\u984C\uFF0C\u4E00\u5F8B\u53EA\u8F38\u51FA CANNOT_ANSWER\u3002
+3. \u8207 IdeaX \u5E73\u53F0\u3001\u63D0\u554F\u89E3\u984C\u3001\u627E\u5C08\u5BB6\u3001\u63A5\u6848\u7121\u95DC\u7684\u554F\u984C\uFF0C\u53EA\u8F38\u51FA CANNOT_ANSWER\u3002
+4. \u53EF\u4EE5\u56DE\u7B54\u6642\uFF0C\u7528\u7E41\u9AD4\u4E2D\u6587\u3001\u89AA\u5207\u53E3\u8A9E\u3001200 \u5B57\u4EE5\u5167\uFF0C\u7D50\u5C3E\u63D0\u9192\u300C\u8A73\u7D30\u4EE5\u7DB2\u7AD9\u516C\u544A\u70BA\u6E96\uFF0C\u4E5F\u53EF\u4EE5\u5BEB\u4FE1\u5230 support@ideax.tw\u300D\u3002
 ${PROXY_FACTS}`;
   try {
     const text = await Promise.race([
@@ -159531,6 +159667,24 @@ async function getDb3() {
   const app2 = getApps()[0];
   const dbId = firebase_applet_config_default.firestoreDatabaseId;
   return { db: dbId ? getFirestore3(app2, dbId) : getFirestore3(app2), FieldValue: FieldValue4 };
+}
+async function getMascotUserTier(authHeader) {
+  try {
+    const authUser = await verifyAuthToken(authHeader);
+    if (!authUser?.uid) return { uid: null, tier: "guest" };
+    const fs5 = await getDb3();
+    if (!fs5) return { uid: authUser.uid, tier: "free" };
+    const snap = await fs5.db.collection("users").doc(authUser.uid).get();
+    let tier = String(snap.get("subscriptionTier") || "free");
+    const exp = snap.get("subscriptionExpiresAt");
+    if (tier !== "free" && exp) {
+      const end = (/* @__PURE__ */ new Date(`${String(exp).slice(0, 10)}T23:59:59+08:00`)).getTime();
+      if (Number.isFinite(end) && end < Date.now()) tier = "free";
+    }
+    return { uid: authUser.uid, tier };
+  } catch {
+    return { uid: null, tier: "guest" };
+  }
 }
 function twDay(d = /* @__PURE__ */ new Date()) {
   return new Date(d.getTime() + 8 * 36e5).toISOString().slice(0, 10);
@@ -162208,7 +162362,15 @@ app.post("/api/mascot/route", async (req, res) => {
   try {
     const message2 = String(req.body?.message || "").trim().slice(0, 800);
     if (!message2) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u554F\u984C" });
-    const { agent, by } = await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    const who = await getMascotUserTier(req.headers.authorization);
+    const guard = guardMascotQuestion(message2, who);
+    if (guard.action === "reply") {
+      void recordMascotEvent({ type: "ask" }).catch(() => {
+      });
+      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason });
+    }
+    let { agent, by } = guard.aicrmAllowed ? { agent: "aicrm", by: "plan" } : await classifyMascotQuestion(guard.message, generateRawTextWithGemini);
+    if (agent === "aicrm" && !guard.aicrmAllowed) agent = "cs";
     if (agent === "none") {
       void recordMascotEvent({ type: "ask" }).catch(() => {
       });
@@ -162216,20 +162378,32 @@ app.post("/api/mascot/route", async (req, res) => {
       });
       return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: by });
     }
-    res.json({ success: true, agent, agentLabel: MASCOT_AGENTS[agent].label, routedBy: by });
+    res.json({ success: true, agent, agentLabel: MASCOT_AGENTS[agent].label, routedBy: by, available: !!mascotAgentKey(agent) });
   } catch (err) {
     console.error("[Mascot Route]", err?.message || err);
     res.status(500).json({ success: false, error: "\u66AB\u6642\u7121\u6CD5\u8F49\u63A5\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66" });
   }
 });
 app.post("/api/mascot/ask", async (req, res) => {
+  const askStartedAt = Date.now();
   try {
-    const message2 = String(req.body?.message || "").trim().slice(0, 800);
-    if (!message2) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u554F\u984C" });
+    const rawMessage = String(req.body?.message || "").trim().slice(0, 800);
+    if (!rawMessage) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u554F\u984C" });
+    const who = await getMascotUserTier(req.headers.authorization);
+    const guard = guardMascotQuestion(rawMessage, who);
+    if (guard.action === "reply") {
+      void recordMascotEvent({ type: "ask" }).catch(() => {
+      });
+      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, source: "guard" });
+    }
+    const message2 = guard.message;
     const conversationIds = req.body?.conversationIds && typeof req.body.conversationIds === "object" ? req.body.conversationIds : {};
     const visitorId = String(req.body?.visitorId || "guest").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "guest";
-    const preRouted = typeof req.body?.agent === "string" && req.body.agent in MASCOT_AGENTS ? req.body.agent : null;
+    let preRouted = typeof req.body?.agent === "string" && req.body.agent in MASCOT_AGENTS ? req.body.agent : null;
+    if (preRouted === "aicrm" && !guard.aicrmAllowed) preRouted = null;
+    if (guard.aicrmAllowed) preRouted = "aicrm";
     const routed = preRouted ? { agent: preRouted, by: "pre-routed" } : await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    if (routed.agent === "aicrm" && !guard.aicrmAllowed) routed.agent = "cs";
     if (routed.agent === "none") {
       void recordMascotEvent({ type: "ask" }).catch(() => {
       });
@@ -162249,26 +162423,28 @@ app.post("/api/mascot/ask", async (req, res) => {
         query: message2,
         inputs: { platform_name: "IdeaX", \u5E73\u53F0\u540D\u7A31: "IdeaX", entry: "mascot" },
         conversationId: typeof conversationIds[agent] === "string" ? conversationIds[agent] : void 0,
-        user: `mascot_${visitorId}`,
+        // AI-CRM 已確認是本人且方案符合，才帶入會員身分；其他助理一律匿名
+        user: agent === "aicrm" && who.uid ? `ideax_${who.uid}` : `mascot_${visitorId}`,
         timeoutMs: MASCOT_AGENT_WAIT_MS
         // 助理最多等三分鐘
       }).catch(() => null);
       if (r2?.text) {
-        reply = r2.text;
+        reply = redactMascotReply(r2.text);
         conversationId = r2.conversationId;
       }
     }
     let unanswered = false;
     let replyLabel = meta2.label;
+    const waitedLong = Date.now() - askStartedAt > 6e4;
     if (!reply) {
-      const proxied = await proxyAnswerWithGemini(message2, meta2.label, generateRawTextWithGemini);
+      const proxied = await proxyAnswerWithGemini(message2, agent, generateRawTextWithGemini);
       if (proxied) {
         source = "mascot";
-        reply = proxied;
+        reply = redactMascotReply(proxied);
         replyLabel = "\u5C0F\u71C8\u6CE1\uFF08\u4EE3\u70BA\u56DE\u7B54\uFF09";
       } else {
         source = "apology";
-        reply = MASCOT_APOLOGY_REPLY;
+        reply = waitedLong ? MASCOT_APOLOGY_REPLY : "\u9019\u500B\u554F\u984C\u5C0F\u71C8\u6CE1\u9084\u8981\u56DE\u53BB\u7814\u7A76\u7814\u7A76\uFF01";
         replyLabel = "\u5C0F\u71C8\u6CE1";
         unanswered = true;
       }
@@ -162319,15 +162495,21 @@ app.get("/api/admin/mascot-agents", async (_req, res) => {
 });
 app.post("/api/admin/mascot-route-test", async (req, res) => {
   try {
-    const message2 = String(req.body?.message || "").trim().slice(0, 500);
-    if (!message2) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u6E2C\u8A66\u554F\u984C" });
-    const { agent, by } = await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    const raw = String(req.body?.message || "").trim().slice(0, 500);
+    if (!raw) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u6E2C\u8A66\u554F\u984C" });
+    const who = await getMascotUserTier(req.headers.authorization);
+    const guard = guardMascotQuestion(raw, who);
+    const guardLabel = { others: "\uFF08\u8B77\u6B04\uFF1A\u4E0D\u63D0\u4F9B\u4ED6\u4EBA\u8CC7\u6599\uFF09", own_account: "\uFF08\u8B77\u6B04\uFF1A\u5F15\u5C0E\u81EA\u884C\u67E5\u770B\u5E33\u76EE\uFF09", paid_feature: "\uFF08\u8B77\u6B04\uFF1A\u4ED8\u8CBB\u529F\u80FD\u4E0D\u4EE3\u70BA\u4F7F\u7528\uFF09", plan_required: "\uFF08\u8B77\u6B04\uFF1A\u6703\u54E1\u65B9\u6848\u4E0D\u7B26\uFF09" };
+    if (guard.action === "reply") return res.json({ success: true, agent: "none", label: guardLabel[guard.reason], routedBy: "guard", answer: guard.reply });
+    const message2 = guard.message;
+    let { agent, by } = guard.aicrmAllowed ? { agent: "aicrm", by: "plan" } : await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    if (agent === "aicrm" && !guard.aicrmAllowed) agent = "cs";
     if (agent === "none") return res.json({ success: true, agent: "none", label: "\uFF08\u4E0D\u8F49\u63A5\uFF0C\u56DE\u8986\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF09", routedBy: by });
     const info = mascotAgentKeyInfo(agent);
     const out = { success: true, agent, label: MASCOT_AGENTS[agent].label, routedBy: by, envName: info.envName, difyAppName: await fetchDifyAppName(info.key) };
     if (req.body?.ask && info.key) {
       const r2 = await callDifyStreamingAgent({ apiKey: info.key, query: message2, inputs: { platform_name: "IdeaX", \u5E73\u53F0\u540D\u7A31: "IdeaX", entry: "mascot-admin-test" }, user: "mascot_admin_test", timeoutMs: 9e4 }).catch(() => null);
-      out.answer = r2?.text ? r2.text.slice(0, 600) : null;
+      out.answer = r2?.text ? redactMascotReply(r2.text).slice(0, 600) : null;
       out.latencyMs = r2?.latencyMs ?? null;
     }
     res.json(out);

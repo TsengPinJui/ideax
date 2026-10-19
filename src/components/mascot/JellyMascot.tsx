@@ -330,8 +330,10 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
       const label = route?.agentLabel || '助理';
       const t0 = Date.now();
       let shyShown = false;
+      const offline = route?.available === false; // 這位助理沒設定：直接由小燈泡代答，不用等
       const tick = () => {
         const sec = (Date.now() - t0) / 1000;
+        if (offline) { setStatus(`${label}暫時不在線，小燈泡代為回答…`); return; }
         if (sec >= 60 && !shyShown) { shyShown = true; engineRef.current?.embarrassed(); } // 等太久：不好意思
         setStatus(
           sec >= 180 ? '小燈泡正在代為回答…'

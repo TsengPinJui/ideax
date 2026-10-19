@@ -3,7 +3,7 @@
  */
 import { getApps } from 'firebase-admin/app';
 import firebaseConfigJson from '../firebase-applet-config.json';
-import { hasAdminCredentials } from './competitionService';
+import { hasAdminCredentials, verifyAuthToken } from './competitionService';
 
 export type MascotAgent = 'cs' | 'market_advisor' | 'aicrm';
 
@@ -20,7 +20,7 @@ export const MASCOT_AGENTS: Record<MascotAgent, { label: string; envKeys: string
   },
   aicrm: {
     label: '業務顧問',
-    envKeys: ['DIFY_AICRM_API_KEY', 'DIFY_API_KEY'],
+    envKeys: ['DIFY_AICRM_API_KEY'], // 沒設定就由小燈泡（Gemini）代答，不借用客服的金鑰
     persona: '你是「創點子 IdeaX」業務顧問（AI-CRM 特助），協助認證專家找高價值案子與懸賞好題、評估發案方成案意向、試算實收淨利、規劃提案切入方式與跟進時段、撰寫破冰話術。不誇大保證獲利。',
   },
 };
@@ -70,17 +70,33 @@ const PROXY_FACTS = `IdeaX 創點子平台基本規則（以網站最新公告�
 - 隱私：實名認證證件照片審核後即永久銷毀；聊天室圖片 7 日後清除；帳號註銷有 7 日反悔期；付費會員等級不會在公開頁面顯示。
 - 官方客服信箱 support@ideax.tw，服務時間平日 09:30～18:30。`;
 
+/** 各助理代答時可以做的事（依三位助理的實際定位），以及不能捏造的範圍 */
+const PROXY_ROLES: Record<MascotAgent, { can: string }> = {
+  cs: {
+    can: '回答平台規則、點數與懸賞分級、撥款與退款規則、隱私、會員與一般操作問題，並安撫使用者情緒、引導開立專人工單。',
+  },
+  market_advisor: {
+    can: '依使用者描述的題目，建議主領域（創新創業／專業問題／學術探討／日常疑難）、價值分級（L0～L4）與合理懸賞範圍、3～5 個標籤；針對履約糾紛提供客觀的調解思路（例如比例折讓結案或限期補正驗收）。',
+  },
+  aicrm: {
+    can: '協助專家試算實收（權威方案平台服務費 5%、實收 95%；大師方案服務費 2%、實收 98%；一般抽成 25%）、建議提案切入方式（先對焦關鍵痛點→提出架構與里程碑→說明交付清單與驗收）、建議跟進時段（上午 10:00～11:30、午後 14:30～16:00、晚間 19:30～21:00）、提供破冰話術方向。不可保證獲利。',
+  },
+};
+
 export async function proxyAnswerWithGemini(
   message: string,
-  agentLabel: string,
+  agent: MascotAgent,
   generateText: (prompt: string, system?: string) => Promise<string | null>,
   timeoutMs = 90000
 ): Promise<string | null> {
-  const system = `你是 IdeaX 創點子的吉祥物「小燈泡」。${agentLabel}目前忙線中，你要代為回答使用者。
+  const label = MASCOT_AGENTS[agent].label;
+  const system = `你是 IdeaX 創點子的吉祥物「小燈泡」。${label}暫時無法回覆，你要代替${label}回答使用者。
+你可以做的事：${PROXY_ROLES[agent].can}
 規則：
-1. 只能根據下方提供的平台規則回答，不可以自行推測或補充規則裡沒有的資訊。
-2. 問題涉及使用者自己的帳戶狀態、餘額、訂單、交易紀錄、個人資料，或規則裡找不到答案、或你沒有權限處理（例如退款核准、帳號解鎖），一律只輸出 CANNOT_ANSWER。
-3. 可以回答時，用繁體中文、親切口語、150 字以內，結尾提醒「詳細以網站公告為準，也可以寫信到 support@ideax.tw」。
+1. 平台規則只能依據下方提供的資料，不可自行編造規則、數字或功能。
+2. 不可捏造任何具體的專家姓名、題目、案件、使用者帳戶狀態、餘額、訂單或交易紀錄；需要查資料才能回答、涉及使用者個人帳戶，或需要人工處理（例如退款核准、帳號解鎖）的問題，一律只輸出 CANNOT_ANSWER。
+3. 與 IdeaX 平台、提問解題、找專家、接案無關的問題，只輸出 CANNOT_ANSWER。
+4. 可以回答時，用繁體中文、親切口語、200 字以內，結尾提醒「詳細以網站公告為準，也可以寫信到 support@ideax.tw」。
 ${PROXY_FACTS}`;
   try {
     const text = await Promise.race([
@@ -190,6 +206,29 @@ async function getDb() {
   const app = getApps()[0];
   const dbId = (firebaseConfigJson as any).firestoreDatabaseId;
   return { db: dbId ? getFirestore(app, dbId) : getFirestore(app), FieldValue };
+}
+
+/**
+ * 由伺服器確認提問者目前的會員方案（不採信前端傳來的資料）：
+ * 驗證登入憑證 → 讀 users/{uid}.subscriptionTier 與到期日，過期就視為一般會員
+ */
+export async function getMascotUserTier(authHeader?: string): Promise<{ uid: string | null; tier: string }> {
+  try {
+    const authUser = await verifyAuthToken(authHeader);
+    if (!authUser?.uid) return { uid: null, tier: 'guest' };
+    const fs = await getDb();
+    if (!fs) return { uid: authUser.uid, tier: 'free' };
+    const snap = await fs.db.collection('users').doc(authUser.uid).get();
+    let tier = String(snap.get('subscriptionTier') || 'free');
+    const exp = snap.get('subscriptionExpiresAt');
+    if (tier !== 'free' && exp) {
+      const end = new Date(`${String(exp).slice(0, 10)}T23:59:59+08:00`).getTime();
+      if (Number.isFinite(end) && end < Date.now()) tier = 'free';
+    }
+    return { uid: authUser.uid, tier };
+  } catch {
+    return { uid: null, tier: 'guest' };
+  }
 }
 
 function twDay(d = new Date()): string {
