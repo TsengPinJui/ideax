@@ -12,7 +12,7 @@ import { runAssistantTick } from './server/assistantCron';
 import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/pointsLedger';
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
-import { classifyMascotQuestion, getMascotStats, MASCOT_AGENTS, MASCOT_OUT_OF_SCOPE_REPLY, MASCOT_UNAVAILABLE_REPLY, mascotAgentKey, normalizeAgentReply, recordMascotEvent, type MascotAgent } from './server/mascot';
+import { classifyMascotQuestion, getMascotStats, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken } from './server/competitionService';
 
 dotenv.config();
@@ -3210,26 +3210,36 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
         inputs: { platform_name: 'IdeaX', 平台名稱: 'IdeaX', entry: 'mascot' },
         conversationId: typeof conversationIds[agent] === 'string' ? conversationIds[agent] : undefined,
         user: `mascot_${visitorId}`,
-        timeoutMs: 25000,
+        timeoutMs: MASCOT_AGENT_WAIT_MS, // 助理最多等三分鐘
       }).catch(() => null);
       if (r?.text) {
         reply = r.text;
         conversationId = r.conversationId;
       }
     }
-    // 助理沒回應時不改用其他 AI 代答（避免隨意回答），老實告知稍後再試
+    // 助理超過三分鐘沒回（或出錯）→ 小燈泡依平台基本規則代答；答不了就道歉，不隨意回答
     let unanswered = false;
+    let replyLabel = meta.label;
     if (!reply) {
-      source = 'unavailable';
-      reply = MASCOT_UNAVAILABLE_REPLY;
+      const proxied = await proxyAnswerWithGemini(message, meta.label, generateRawTextWithGemini);
+      if (proxied) {
+        source = 'mascot';
+        reply = proxied;
+        replyLabel = '小燈泡（代為回答）';
+      } else {
+        source = 'apology';
+        reply = MASCOT_APOLOGY_REPLY;
+        replyLabel = '小燈泡';
+        unanswered = true;
+      }
     } else {
       const n = normalizeAgentReply(reply);
       reply = n.reply;
       unanswered = n.unanswered;
     }
     void recordMascotEvent({ type: 'ask', agent }).catch(() => {});
-    if (unanswered || source === 'unavailable') void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
-    res.json({ success: true, reply, agent, agentLabel: meta.label, routedBy: by, conversationId, source });
+    if (unanswered) void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
+    res.json({ success: true, reply, agent, agentLabel: replyLabel, routedBy: by, conversationId, source });
   } catch (err: any) {
     console.error('[Mascot Ask]', err?.message || err);
     res.status(500).json({ success: false, error: '暫時無法回答，請稍後再試' });

@@ -85,6 +85,7 @@ export const AdminMascotSettingsCard: React.FC = () => {
     mascotConfig.enabled ? '顯示中' : '已關閉',
     mascotConfig.showOnMobile ? '含手機' : '僅電腦',
     mascotConfig.chatEnabled ? '對話開啟' : '對話關閉',
+    mascotConfig.soundEnabled ? '音效開' : '音效關',
   ];
 
   return (
@@ -114,10 +115,11 @@ export const AdminMascotSettingsCard: React.FC = () => {
 
       {open && (
         <div className="space-y-4 pt-1">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Toggle label="全站顯示" hint="關閉後所有人都看不到" checked={draft.enabled} onChange={(v) => update({ enabled: v })} />
             <Toggle label="手機也顯示" hint="小螢幕會站在底部導覽列上方" checked={draft.showOnMobile} onChange={(v) => update({ showOnMobile: v })} />
             <Toggle label="開放提問" hint="AI 分流給三位 Dify 助理" checked={draft.chatEnabled} onChange={(v) => update({ chatEnabled: v })} />
+            <Toggle label="發亮音效" hint="開心亮起來時播放叮鈴聲" checked={draft.soundEnabled} onChange={(v) => update({ soundEnabled: v })} />
           </div>
 
           <div className="space-y-3 p-3 rounded-xl bg-white border border-stone-200">

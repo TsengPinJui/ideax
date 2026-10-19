@@ -1,15 +1,15 @@
 /* IdeaX 燈泡吉祥物（右下角）。所有 class 以 ixm- 開頭，避免和全站樣式衝突 */
-.ixm-root { position: fixed; left: 0; top: 0; width: 200px; height: 270px; z-index: 35; touch-action: none; pointer-events: none; user-select: none; -webkit-user-select: none; will-change: transform; -webkit-tap-highlight-color: transparent; }
-.ixm-hit { position: absolute; left: 24%; right: 24%; top: 9%; bottom: 13%; z-index: 4; pointer-events: auto; cursor: grab; border-radius: 46% 46% 30% 30%; touch-action: none; }
+.ixm-root { position: fixed; left: 0; top: 0; width: 300px; height: 405px; z-index: 35; touch-action: none; pointer-events: none; user-select: none; -webkit-user-select: none; will-change: transform; -webkit-tap-highlight-color: transparent; }
+.ixm-hit { position: absolute; left: 32.7%; right: 32.7%; top: 28.6%; bottom: 19.3%; z-index: 4; pointer-events: auto; cursor: grab; border-radius: 46% 46% 30% 30%; touch-action: none; }
 .ixm-root.dragging .ixm-hit { cursor: grabbing; }
 .ixm-root:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; border-radius: 24px; }
 .ixm-canvas { width: 100%; height: 100%; display: block; position: relative; z-index: 1; }
-.ixm-glow { position: absolute; left: 50%; top: 40%; width: 260px; height: 260px; margin: -130px 0 0 -130px; border-radius: 50%; pointer-events: none; opacity: 0; z-index: 0;
+.ixm-glow { position: absolute; left: 50%; top: 49%; width: 260px; height: 260px; margin: -130px 0 0 -130px; border-radius: 50%; pointer-events: none; opacity: 0; z-index: 0;
   background: radial-gradient(closest-side, rgba(255, 228, 120, .95), rgba(255, 210, 70, .45) 45%, rgba(255, 200, 40, 0) 75%); }
-.ixm-rays { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; opacity: 0; }
-.ixm-alarm { position: absolute; left: 0; top: 0; width: 100%; pointer-events: none; z-index: 3; font: 900 34px/1 "Arial Black", Arial, sans-serif; color: #26211c; opacity: 0; }
+.ixm-rays { position: absolute; left: 16.67%; top: 22.7%; width: 66.67%; height: 66.67%; pointer-events: none; z-index: 2; overflow: visible; opacity: 0; }
+.ixm-alarm { position: absolute; left: 16.67%; top: 22.7%; width: 66.67%; pointer-events: none; z-index: 3; font: 900 34px/1 "Arial Black", Arial, sans-serif; color: #26211c; opacity: 0; }
 .ixm-alarm span { position: absolute; }
-.ixm-drops { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; opacity: 0; }
+.ixm-drops { position: absolute; left: 16.67%; top: 22.7%; width: 66.67%; height: 66.67%; pointer-events: none; z-index: 3; opacity: 0; }
 .ixm-drops svg { position: absolute; width: 22px; height: 30px; }
 .ixm-shadow { position: fixed; left: 0; top: 0; width: 96px; height: 16px; border-radius: 50%; z-index: 34; pointer-events: none; background: radial-gradient(closest-side, rgba(40, 30, 10, .3), rgba(40, 30, 10, 0)); }
 .ixm-pool { position: fixed; left: 0; top: 0; width: 260px; height: 46px; border-radius: 50%; z-index: 33; pointer-events: none; opacity: 0;
@@ -48,9 +48,16 @@
 .ixm-chat form button:disabled { opacity: .5; cursor: default; }
 .ixm-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 640px) {
-  .ixm-root { width: 124px; height: 168px; }
+  .ixm-root { width: 186px; height: 252px; }
   .ixm-glow { width: 170px; height: 170px; margin: -85px 0 0 -85px; }
   .ixm-alarm { font-size: 24px; }
   .ixm-bubble { max-width: 200px; font-size: 12.5px; }
 }
 @media (prefers-reduced-motion: reduce) { .ixm-root { will-change: auto; } }
+/* 抓住對話框邊框的手指（疊在對話框上方） */
+.ixm-grip { position: fixed; z-index: 46; pointer-events: none; width: 30px; height: 44px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .18)); animation: ixm-grip-in .22s ease-out both; }
+.ixm-grip-top { transform: rotate(90deg); transform-origin: 15px 22px; }
+@keyframes ixm-grip-in { from { opacity: 0; translate: -8px 0; } to { opacity: 1; translate: 0 0; } }
+.ixm-grip-top { animation-name: ixm-grip-in-top; }
+@keyframes ixm-grip-in-top { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .ixm-grip { animation: none; } }

@@ -50,8 +50,50 @@ function parseAgent(text: string | null | undefined): MascotAgent | 'none' | nul
 
 /** 三位助理都不負責的問題：固定回覆，不讓任何 AI 隨意作答 */
 export const MASCOT_OUT_OF_SCOPE_REPLY = '這個問題我還暫時無法回答喔~小燈泡將持續學習！';
-/** 助理暫時聯絡不上（不改用其他 AI 代答，避免答錯） */
-export const MASCOT_UNAVAILABLE_REPLY = '小燈泡暫時聯絡不上助理，請稍後再問我一次，或寫信到 support@ideax.tw 喔！';
+/** 等了很久、小燈泡也無法代答時的道歉文字 */
+export const MASCOT_APOLOGY_REPLY = '這個問題小燈泡還要回去研究研究！很抱歉讓你都那麼久~';
+/** 等助理多久後改由小燈泡代答（前端提示的時間點要一致） */
+export const MASCOT_AGENT_WAIT_MS = 180000;
+
+/**
+ * 小燈泡代答（助理超過三分鐘沒回或出錯時）：
+ * 只能根據下面的平台基本規則回答；涉及帳戶狀態、餘額、訂單、個人資料、或規則裡沒寫的事，一律回 CANNOT_ANSWER，
+ * 由前端顯示道歉文字，避免隨意回答。
+ */
+const PROXY_FACTS = `IdeaX 創點子平台基本規則（以網站最新公告為準）：
+- 痛點可免費提出，提問者不用預付；專家可自訂金額交付解法，其他有相同痛點的人可付費解鎖。
+- 懸賞分級：L0 免費交流 0 點；L1 基礎懸賞 100～300 點；L2 進階懸賞 301～899 點；L3 高階挑戰 900～2,999 點；L4 企業級顧問 3,000 點以上。平台沒有「每次提問扣 10 點」的規則。
+- 金流：發案時資金由第三方金流託管預扣；提問者驗收並點「採納放款」後進入 7 日交易猶豫期；平台每月 5 號把上月收益匯到專家實名帳戶。
+- 徵件期限到了沒有專家投標，點數全額退回提問者錢包。
+- 退款：交付檔案損毀且 48 小時內未補正、全文惡意抄襲、或約定的視訊會談無故缺席，提問方可申請全額退款。
+- 退款糾紛、詐騙檢舉或複雜個案可開立「專人工單」，審查專員會在 3 個工作天內調查並回覆。
+- 隱私：實名認證證件照片審核後即永久銷毀；聊天室圖片 7 日後清除；帳號註銷有 7 日反悔期；付費會員等級不會在公開頁面顯示。
+- 官方客服信箱 support@ideax.tw，服務時間平日 09:30～18:30。`;
+
+export async function proxyAnswerWithGemini(
+  message: string,
+  agentLabel: string,
+  generateText: (prompt: string, system?: string) => Promise<string | null>,
+  timeoutMs = 90000
+): Promise<string | null> {
+  const system = `你是 IdeaX 創點子的吉祥物「小燈泡」。${agentLabel}目前忙線中，你要代為回答使用者。
+規則：
+1. 只能根據下方提供的平台規則回答，不可以自行推測或補充規則裡沒有的資訊。
+2. 問題涉及使用者自己的帳戶狀態、餘額、訂單、交易紀錄、個人資料，或規則裡找不到答案、或你沒有權限處理（例如退款核准、帳號解鎖），一律只輸出 CANNOT_ANSWER。
+3. 可以回答時，用繁體中文、親切口語、150 字以內，結尾提醒「詳細以網站公告為準，也可以寫信到 support@ideax.tw」。
+${PROXY_FACTS}`;
+  try {
+    const text = await Promise.race([
+      generateText(`使用者的問題：「${message.slice(0, 600)}」`, system),
+      new Promise<null>((r) => setTimeout(() => r(null), timeoutMs)),
+    ]);
+    const t = String(text || '').trim();
+    if (!t || /CANNOT_ANSWER/i.test(t)) return null;
+    return t;
+  } catch {
+    return null;
+  }
+}
 
 /** 助理回覆只是一句「答不出來」時，改用固定回覆；有附上指引（例如客服信箱）的較長回覆照常保留 */
 export function normalizeAgentReply(reply: string): { reply: string; unanswered: boolean } {

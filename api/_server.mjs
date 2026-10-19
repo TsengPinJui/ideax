@@ -159428,7 +159428,36 @@ function parseAgent(text) {
   return m2 ? m2[1] : null;
 }
 var MASCOT_OUT_OF_SCOPE_REPLY = "\u9019\u500B\u554F\u984C\u6211\u9084\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\u5594~\u5C0F\u71C8\u6CE1\u5C07\u6301\u7E8C\u5B78\u7FD2\uFF01";
-var MASCOT_UNAVAILABLE_REPLY = "\u5C0F\u71C8\u6CE1\u66AB\u6642\u806F\u7D61\u4E0D\u4E0A\u52A9\u7406\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u554F\u6211\u4E00\u6B21\uFF0C\u6216\u5BEB\u4FE1\u5230 support@ideax.tw \u5594\uFF01";
+var MASCOT_APOLOGY_REPLY = "\u9019\u500B\u554F\u984C\u5C0F\u71C8\u6CE1\u9084\u8981\u56DE\u53BB\u7814\u7A76\u7814\u7A76\uFF01\u5F88\u62B1\u6B49\u8B93\u4F60\u90FD\u90A3\u9EBC\u4E45~";
+var MASCOT_AGENT_WAIT_MS = 18e4;
+var PROXY_FACTS = `IdeaX \u5275\u9EDE\u5B50\u5E73\u53F0\u57FA\u672C\u898F\u5247\uFF08\u4EE5\u7DB2\u7AD9\u6700\u65B0\u516C\u544A\u70BA\u6E96\uFF09\uFF1A
+- \u75DB\u9EDE\u53EF\u514D\u8CBB\u63D0\u51FA\uFF0C\u63D0\u554F\u8005\u4E0D\u7528\u9810\u4ED8\uFF1B\u5C08\u5BB6\u53EF\u81EA\u8A02\u91D1\u984D\u4EA4\u4ED8\u89E3\u6CD5\uFF0C\u5176\u4ED6\u6709\u76F8\u540C\u75DB\u9EDE\u7684\u4EBA\u53EF\u4ED8\u8CBB\u89E3\u9396\u3002
+- \u61F8\u8CDE\u5206\u7D1A\uFF1AL0 \u514D\u8CBB\u4EA4\u6D41 0 \u9EDE\uFF1BL1 \u57FA\u790E\u61F8\u8CDE 100\uFF5E300 \u9EDE\uFF1BL2 \u9032\u968E\u61F8\u8CDE 301\uFF5E899 \u9EDE\uFF1BL3 \u9AD8\u968E\u6311\u6230 900\uFF5E2,999 \u9EDE\uFF1BL4 \u4F01\u696D\u7D1A\u9867\u554F 3,000 \u9EDE\u4EE5\u4E0A\u3002\u5E73\u53F0\u6C92\u6709\u300C\u6BCF\u6B21\u63D0\u554F\u6263 10 \u9EDE\u300D\u7684\u898F\u5247\u3002
+- \u91D1\u6D41\uFF1A\u767C\u6848\u6642\u8CC7\u91D1\u7531\u7B2C\u4E09\u65B9\u91D1\u6D41\u8A17\u7BA1\u9810\u6263\uFF1B\u63D0\u554F\u8005\u9A57\u6536\u4E26\u9EDE\u300C\u63A1\u7D0D\u653E\u6B3E\u300D\u5F8C\u9032\u5165 7 \u65E5\u4EA4\u6613\u7336\u8C6B\u671F\uFF1B\u5E73\u53F0\u6BCF\u6708 5 \u865F\u628A\u4E0A\u6708\u6536\u76CA\u532F\u5230\u5C08\u5BB6\u5BE6\u540D\u5E33\u6236\u3002
+- \u5FB5\u4EF6\u671F\u9650\u5230\u4E86\u6C92\u6709\u5C08\u5BB6\u6295\u6A19\uFF0C\u9EDE\u6578\u5168\u984D\u9000\u56DE\u63D0\u554F\u8005\u9322\u5305\u3002
+- \u9000\u6B3E\uFF1A\u4EA4\u4ED8\u6A94\u6848\u640D\u6BC0\u4E14 48 \u5C0F\u6642\u5167\u672A\u88DC\u6B63\u3001\u5168\u6587\u60E1\u610F\u6284\u8972\u3001\u6216\u7D04\u5B9A\u7684\u8996\u8A0A\u6703\u8AC7\u7121\u6545\u7F3A\u5E2D\uFF0C\u63D0\u554F\u65B9\u53EF\u7533\u8ACB\u5168\u984D\u9000\u6B3E\u3002
+- \u9000\u6B3E\u7CFE\u7D1B\u3001\u8A50\u9A19\u6AA2\u8209\u6216\u8907\u96DC\u500B\u6848\u53EF\u958B\u7ACB\u300C\u5C08\u4EBA\u5DE5\u55AE\u300D\uFF0C\u5BE9\u67E5\u5C08\u54E1\u6703\u5728 3 \u500B\u5DE5\u4F5C\u5929\u5167\u8ABF\u67E5\u4E26\u56DE\u8986\u3002
+- \u96B1\u79C1\uFF1A\u5BE6\u540D\u8A8D\u8B49\u8B49\u4EF6\u7167\u7247\u5BE9\u6838\u5F8C\u5373\u6C38\u4E45\u92B7\u6BC0\uFF1B\u804A\u5929\u5BA4\u5716\u7247 7 \u65E5\u5F8C\u6E05\u9664\uFF1B\u5E33\u865F\u8A3B\u92B7\u6709 7 \u65E5\u53CD\u6094\u671F\uFF1B\u4ED8\u8CBB\u6703\u54E1\u7B49\u7D1A\u4E0D\u6703\u5728\u516C\u958B\u9801\u9762\u986F\u793A\u3002
+- \u5B98\u65B9\u5BA2\u670D\u4FE1\u7BB1 support@ideax.tw\uFF0C\u670D\u52D9\u6642\u9593\u5E73\u65E5 09:30\uFF5E18:30\u3002`;
+async function proxyAnswerWithGemini(message2, agentLabel, generateText, timeoutMs = 9e4) {
+  const system = `\u4F60\u662F IdeaX \u5275\u9EDE\u5B50\u7684\u5409\u7965\u7269\u300C\u5C0F\u71C8\u6CE1\u300D\u3002${agentLabel}\u76EE\u524D\u5FD9\u7DDA\u4E2D\uFF0C\u4F60\u8981\u4EE3\u70BA\u56DE\u7B54\u4F7F\u7528\u8005\u3002
+\u898F\u5247\uFF1A
+1. \u53EA\u80FD\u6839\u64DA\u4E0B\u65B9\u63D0\u4F9B\u7684\u5E73\u53F0\u898F\u5247\u56DE\u7B54\uFF0C\u4E0D\u53EF\u4EE5\u81EA\u884C\u63A8\u6E2C\u6216\u88DC\u5145\u898F\u5247\u88E1\u6C92\u6709\u7684\u8CC7\u8A0A\u3002
+2. \u554F\u984C\u6D89\u53CA\u4F7F\u7528\u8005\u81EA\u5DF1\u7684\u5E33\u6236\u72C0\u614B\u3001\u9918\u984D\u3001\u8A02\u55AE\u3001\u4EA4\u6613\u7D00\u9304\u3001\u500B\u4EBA\u8CC7\u6599\uFF0C\u6216\u898F\u5247\u88E1\u627E\u4E0D\u5230\u7B54\u6848\u3001\u6216\u4F60\u6C92\u6709\u6B0A\u9650\u8655\u7406\uFF08\u4F8B\u5982\u9000\u6B3E\u6838\u51C6\u3001\u5E33\u865F\u89E3\u9396\uFF09\uFF0C\u4E00\u5F8B\u53EA\u8F38\u51FA CANNOT_ANSWER\u3002
+3. \u53EF\u4EE5\u56DE\u7B54\u6642\uFF0C\u7528\u7E41\u9AD4\u4E2D\u6587\u3001\u89AA\u5207\u53E3\u8A9E\u3001150 \u5B57\u4EE5\u5167\uFF0C\u7D50\u5C3E\u63D0\u9192\u300C\u8A73\u7D30\u4EE5\u7DB2\u7AD9\u516C\u544A\u70BA\u6E96\uFF0C\u4E5F\u53EF\u4EE5\u5BEB\u4FE1\u5230 support@ideax.tw\u300D\u3002
+${PROXY_FACTS}`;
+  try {
+    const text = await Promise.race([
+      generateText(`\u4F7F\u7528\u8005\u7684\u554F\u984C\uFF1A\u300C${message2.slice(0, 600)}\u300D`, system),
+      new Promise((r2) => setTimeout(() => r2(null), timeoutMs))
+    ]);
+    const t2 = String(text || "").trim();
+    if (!t2 || /CANNOT_ANSWER/i.test(t2)) return null;
+    return t2;
+  } catch {
+    return null;
+  }
+}
 function normalizeAgentReply(reply) {
   const t2 = String(reply || "").trim();
   if (!t2) return { reply: MASCOT_OUT_OF_SCOPE_REPLY, unanswered: true };
@@ -162193,7 +162222,8 @@ app.post("/api/mascot/ask", async (req, res) => {
         inputs: { platform_name: "IdeaX", \u5E73\u53F0\u540D\u7A31: "IdeaX", entry: "mascot" },
         conversationId: typeof conversationIds[agent] === "string" ? conversationIds[agent] : void 0,
         user: `mascot_${visitorId}`,
-        timeoutMs: 25e3
+        timeoutMs: MASCOT_AGENT_WAIT_MS
+        // 助理最多等三分鐘
       }).catch(() => null);
       if (r2?.text) {
         reply = r2.text;
@@ -162201,9 +162231,19 @@ app.post("/api/mascot/ask", async (req, res) => {
       }
     }
     let unanswered = false;
+    let replyLabel = meta2.label;
     if (!reply) {
-      source = "unavailable";
-      reply = MASCOT_UNAVAILABLE_REPLY;
+      const proxied = await proxyAnswerWithGemini(message2, meta2.label, generateRawTextWithGemini);
+      if (proxied) {
+        source = "mascot";
+        reply = proxied;
+        replyLabel = "\u5C0F\u71C8\u6CE1\uFF08\u4EE3\u70BA\u56DE\u7B54\uFF09";
+      } else {
+        source = "apology";
+        reply = MASCOT_APOLOGY_REPLY;
+        replyLabel = "\u5C0F\u71C8\u6CE1";
+        unanswered = true;
+      }
     } else {
       const n = normalizeAgentReply(reply);
       reply = n.reply;
@@ -162211,9 +162251,9 @@ app.post("/api/mascot/ask", async (req, res) => {
     }
     void recordMascotEvent({ type: "ask", agent }).catch(() => {
     });
-    if (unanswered || source === "unavailable") void recordMascotEvent({ type: "unanswered" }).catch(() => {
+    if (unanswered) void recordMascotEvent({ type: "unanswered" }).catch(() => {
     });
-    res.json({ success: true, reply, agent, agentLabel: meta2.label, routedBy: by, conversationId, source });
+    res.json({ success: true, reply, agent, agentLabel: replyLabel, routedBy: by, conversationId, source });
   } catch (err) {
     console.error("[Mascot Ask]", err?.message || err);
     res.status(500).json({ success: false, error: "\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66" });
