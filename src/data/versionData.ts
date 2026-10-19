@@ -2,9 +2,9 @@
  * 平台版本與發布資訊統一設定
  * 最後更新時間固定依版本發布紀錄（不隨系統時鐘動態跳動）
  */
-export const APP_VERSION = '2.4.11';
+export const APP_VERSION = '2.4.12';
 export const APP_RELEASE_DATE = '2026.10.19';
-export const APP_RELEASE_TIME = '18:45';
-export const APP_LAST_UPDATED = '2026.10.19 18:45 (UTC+8)';
+export const APP_RELEASE_TIME = '18:55';
+export const APP_LAST_UPDATED = '2026.10.19 18:55 (UTC+8)';
 export const APP_TIMEZONE = 'UTC+8';
-export const APP_SEQUENCE_NUMBER = '#094';
+export const APP_SEQUENCE_NUMBER = '#095';
