@@ -159511,6 +159511,7 @@ app.use(["/api/auth/send-email-code", "/api/auth/send-sms-code", "/api/auth/send
 app.use("/api/points", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "points" }));
 app.use("/api/answers", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "answers" }));
 app.use("/api/mascot/ask", rateLimit({ windowMs: 60 * 1e3, max: 12, name: "mascot-ask" }));
+app.use("/api/mascot/route", rateLimit({ windowMs: 60 * 1e3, max: 20, name: "mascot-route" }));
 app.use("/api/mascot/event", rateLimit({ windowMs: 60 * 1e3, max: 60, name: "mascot-event" }));
 app.use("/api/auth/password-login", rateLimit({ windowMs: 10 * 60 * 1e3, max: 10, name: "password-login" }));
 app.use(["/api/auth/verify-email-code", "/api/auth/verify-sms-code", "/api/auth/reset-password-with-code"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 20, name: "verify-code" }));
@@ -162126,13 +162127,25 @@ app.post("/api/points/op", async (req, res) => {
     res.status(status).json({ success: false, error: err?.message || "\u9EDE\u6578\u8655\u7406\u5931\u6557" });
   }
 });
+app.post("/api/mascot/route", async (req, res) => {
+  try {
+    const message2 = String(req.body?.message || "").trim().slice(0, 800);
+    if (!message2) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u554F\u984C" });
+    const { agent, by } = await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    res.json({ success: true, agent, agentLabel: MASCOT_AGENTS[agent].label, routedBy: by });
+  } catch (err) {
+    console.error("[Mascot Route]", err?.message || err);
+    res.status(500).json({ success: false, error: "\u66AB\u6642\u7121\u6CD5\u8F49\u63A5\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66" });
+  }
+});
 app.post("/api/mascot/ask", async (req, res) => {
   try {
     const message2 = String(req.body?.message || "").trim().slice(0, 800);
     if (!message2) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u554F\u984C" });
     const conversationIds = req.body?.conversationIds && typeof req.body.conversationIds === "object" ? req.body.conversationIds : {};
     const visitorId = String(req.body?.visitorId || "guest").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "guest";
-    const { agent, by } = await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    const preRouted = typeof req.body?.agent === "string" && req.body.agent in MASCOT_AGENTS ? req.body.agent : null;
+    const { agent, by } = preRouted ? { agent: preRouted, by: "pre-routed" } : await classifyMascotQuestion(message2, generateRawTextWithGemini);
     const meta2 = MASCOT_AGENTS[agent];
     const apiKey = mascotAgentKey(agent);
     let reply = "";
