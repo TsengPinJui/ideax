@@ -3,6 +3,7 @@ import {
   signInWithCustomToken,
   signInWithRedirect,
   getRedirectResult,
+  signInWithCredential,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
@@ -100,6 +101,75 @@ export async function confirmFirebasePasswordReset(actionCodeOrLink: string, new
 
 
 /**
+ * 手機 Facebook 登入（直接向 Facebook 取得授權，不經 Firebase 登入處理頁）：
+ * 手機裝有 Facebook App 時，授權完常被送回瀏覽器的「新分頁」，Firebase 存在單一分頁的狀態會遺失。
+ * 這裡把驗證碼存在所有分頁共用的 localStorage，回到 /auth/facebook-callback 後再用通行證登入 Firebase。
+ * 需在 Vercel 設定 VITE_FACEBOOK_APP_ID，並在 Facebook 後台登記 https://<網域>/auth/facebook-callback。
+ */
+const FB_DIRECT_STATE_KEY = 'ideax_fb_direct_oauth_state';
+const FB_CALLBACK_PATH = '/auth/facebook-callback';
+// 網站一載入就先記下回傳內容（之後網址可能被頁面路由改掉）
+const initialFbCallbackHash: string | null =
+  typeof window !== 'undefined' && window.location.pathname === FB_CALLBACK_PATH ? window.location.hash || window.location.search : null;
+
+function facebookAppId(): string {
+  return String((import.meta as any).env?.VITE_FACEBOOK_APP_ID || '').trim();
+}
+function canUseFacebookDirect(): boolean {
+  if (typeof window === 'undefined') return false;
+  const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  return mobile && /^\d{6,20}$/.test(facebookAppId());
+}
+function startFacebookDirectOAuth(): Promise<never> {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const state = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  try {
+    localStorage.setItem(FB_DIRECT_STATE_KEY, JSON.stringify({ state, at: Date.now() }));
+  } catch {}
+  const redirectUri = `${window.location.origin}${FB_CALLBACK_PATH}`;
+  const url =
+    'https://www.facebook.com/v19.0/dialog/oauth' +
+    `?client_id=${encodeURIComponent(facebookAppId())}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&state=${state}` +
+    '&response_type=token&scope=public_profile';
+  window.location.assign(url);
+  return new Promise<never>(() => {});
+}
+
+async function consumeFacebookDirectCallback(): Promise<SocialRedirectOutcome | null> {
+  if (!initialFbCallbackHash) return null;
+  const params = new URLSearchParams(initialFbCallbackHash.replace(/^[#?]/, ''));
+  try {
+    window.history.replaceState(null, '', '/');
+  } catch {}
+  let saved: { state?: string; at?: number } = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(FB_DIRECT_STATE_KEY) || '{}');
+    localStorage.removeItem(FB_DIRECT_STATE_KEY);
+  } catch {}
+  if (params.get('error')) {
+    const cancelled = params.get('error_reason') === 'user_denied';
+    return { provider: 'facebook', code: cancelled ? 'cancelled' : 'fb_error', error: cancelled ? '您已取消 Facebook 授權。' : params.get('error_description') || 'Facebook 授權失敗。' };
+  }
+  const token = params.get('access_token');
+  const fresh = saved.at && Date.now() - saved.at < 15 * 60 * 1000;
+  if (!token || !saved.state || saved.state !== params.get('state') || !fresh) {
+    return { provider: 'facebook', code: 'state_mismatch', error: '登入驗證已過期或不一致，請重新按一次 Facebook 登入。' };
+  }
+  try {
+    const cred = await signInWithCredential(auth, FacebookAuthProvider.credential(token));
+    return { provider: 'facebook', user: cred.user };
+  } catch (error: any) {
+    if (error?.code === 'auth/account-exists-with-different-credential') {
+      return { provider: 'facebook', code: error.code, error: '這個 Facebook 帳號的 Email 已經用其他方式（Email 密碼或 Google）註冊過，請改用原本的方式登入。' };
+    }
+    return { provider: 'facebook', code: error?.code, error: error?.message || 'Facebook 登入失敗，請稍後再試。' };
+  }
+}
+
+/**
  * 手機瀏覽器：社群登入改用「整頁跳轉」（不開新視窗）。
  * 只在登入處理頁與網站同網域時使用（VITE_FIREBASE_AUTH_DOMAIN），否則跳轉回來會遺失登入狀態。
  */
@@ -125,6 +195,8 @@ export type SocialRedirectOutcome =
 
 /** 網站載入時呼叫：完成整頁跳轉回來的社群登入 */
 export async function consumeSocialRedirectResult(): Promise<SocialRedirectOutcome | null> {
+  const fbDirect = await consumeFacebookDirectCallback();
+  if (fbDirect) return fbDirect;
   let kind: 'google' | 'facebook' | null = null;
   try {
     kind = (sessionStorage.getItem(SOCIAL_REDIRECT_FLAG) || localStorage.getItem(SOCIAL_REDIRECT_FLAG)) as any;
@@ -168,6 +240,7 @@ export async function loginWithFirebaseFacebook(): Promise<FirebaseUser> {
   try {
     const provider = new FacebookAuthProvider();
     // 不主動強制要求 email scope，避免 Meta 應用程式未啟用 email 權限時噴出 Invalid Scopes: email 錯誤
+    if (canUseFacebookDirect()) return await startFacebookDirectOAuth();
     if (prefersRedirectLogin()) return await startSocialRedirect('facebook', provider);
     const cred = await signInWithPopup(auth, provider);
     return cred.user;

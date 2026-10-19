@@ -41,6 +41,19 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#095',
+    version: 'v2.4.12',
+    releaseDate: '2026.10.19',
+    releaseTime: '18:55',
+    author: 'IdeaX 創點子團隊',
+    summary: '手機 Facebook 登入改為直接向 Facebook 授權，避免 Facebook App 跳回新分頁時登入失敗（需完成後台設定）。',
+    changes: [
+      '手機 Facebook 登入改為直接向 Facebook 取得授權，授權完成後由網站完成登入。',
+      '解決手機裝有 Facebook App 時，跳回新分頁導致的 missing initial state 錯誤。',
+      '平台版本推進至 v2.4.12 (#095)。',
+    ],
+  },
+  {
     seqNumber: '#094',
     version: 'v2.4.11',
     releaseDate: '2026.10.19',
@@ -1180,10 +1193,10 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         summary: '管理當前系統運作版本號、增量序號與最後更新時間戳記。',
         content: `### 當前運行版本與序號規格
 
-* **版本號碼**：v2.4.11
-* **遞增序號**：#094（從 #001 依序遞增）
+* **版本號碼**：v2.4.12
+* **遞增序號**：#095（從 #001 依序遞增）
 * **最後更新日期**：2026.10.19
-* **最後更新時間**：18:45（依發布時戳靜態留存，不隨時鐘跳動）
+* **最後更新時間**：18:55（依發布時戳靜態留存，不隨時鐘跳動）
 * **發布狀態**：Production（正式運作中）
 * **運作模式**：單日 0.2.0 增量限制、四選一平台運營模式與完整歷史版本隨時調閱與下載。`,
       },
@@ -1242,6 +1255,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#095** | **v2.4.12** | 2026.10.18 | 18:55 | IdeaX 創點子核心 | 手機 Facebook 登入改直接授權 |
 | **#094** | **v2.4.11** | 2026.10.18 | 18:45 | IdeaX 創點子核心 | 手機社群登入改整頁跳轉；修正登入失敗誤切帳號 |
 | **#093** | **v2.4.10** | 2026.10.19 | 18:25 | IdeaX 創點子核心 | 修正手機 Facebook／Google 登入錯誤（同網域登入處理） |
 | **#092** | **v2.4.9** | 2026.10.19 | 18:10 | IdeaX 創點子核心 | 示範提案改用固定發布時間，真實新提案排回最前 |
