@@ -206,6 +206,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
   const [techArchitecture, setTechArchitecture] = useState<string>('');
   const [demoUrl, setDemoUrl] = useState<string>('');
+  const [previewMode, setPreviewMode] = useState<'embed' | 'external'>('embed');
   const [currentVersion, setCurrentVersion] = useState<string>('v1.0.0');
 
   const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -668,6 +669,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         proposalProgressStage: postType === 'innovation_proposal' ? (proposalProgressStage || undefined) : undefined,
         techArchitecture: techArchitecture.trim() || undefined,
         demoUrl: demoUrl.trim() || externalLink.trim() || undefined,
+        externalLink: externalLink.trim() || undefined,
+        previewMode: postType === 'vibecoding_app' ? previewMode : undefined,
         fileUrl: externalLink.trim() || undefined,
         isFeatured: isPromotedWithMegaphone,
         authorId,
@@ -1590,19 +1593,52 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                   />
                 </div>
 
-                {/* 網站網址或檔案連結 */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>網站網址或線上體驗 Demo 連結</span>
+                {/* 網站網址與嵌入預覽設定 (沿用 demoUrl 並搭配 previewMode) */}
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center justify-between flex-wrap gap-1">
+                      <span className="flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>作品外部連結 / 嵌入預覽網址</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-700 font-semibold">
+                        可填寫線上 Demo 網址（未填寫時將自動沿用下方外部連結）
+                      </span>
+                    </label>
+                    <input
+                      type="url"
+                      value={demoUrl}
+                      onChange={(e) => setDemoUrl(e.target.value)}
+                      placeholder="例如：https://my-vibecoding-app.vercel.app 或專屬作品網站連結"
+                      className="w-full px-3 py-2 rounded-xl border border-emerald-200 focus:border-emerald-500 text-xs text-stone-900 outline-none bg-white font-mono"
+                    />
+                  </div>
+
+                  <label className="flex items-start gap-2.5 p-3 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50 cursor-pointer transition-colors select-none">
+                    <input
+                      type="checkbox"
+                      checked={previewMode === 'embed'}
+                      onChange={(e) => setPreviewMode(e.target.checked ? 'embed' : 'external')}
+                      className="mt-0.5 w-4 h-4 rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
+                    />
+                    <div className="text-xs leading-relaxed flex-1">
+                      <div className="font-bold text-emerald-950 flex items-center gap-1.5 flex-wrap">
+                        <span>啟用嵌入預覽網址（勾選即同意開放用戶在內嵌網頁互動）</span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            previewMode === 'embed'
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-stone-200 text-stone-600'
+                          }`}
+                        >
+                          {previewMode === 'embed' ? '內嵌互動模式 (embed)' : '外部開啟模式 (external)'}
+                        </span>
+                      </div>
+                      <p className="text-stone-600 mt-0.5">
+                        勾選後將於作品內頁介紹區嵌入 iframe 互動視窗，讓訪客直接操作體驗；若取消勾選或目標網站禁止內嵌（X-Frame-Options / CSP），系統將自動切換為「在新分頁開啟」外部連結。
+                      </p>
+                    </div>
                   </label>
-                  <input
-                    type="url"
-                    value={demoUrl}
-                    onChange={(e) => setDemoUrl(e.target.value)}
-                    placeholder="例如：https://my-vibecoding-app.vercel.app 或 GitHub 專案連結"
-                    className="w-full px-3 py-2 rounded-xl border border-emerald-200 focus:border-emerald-500 text-xs text-stone-900 outline-none bg-white font-mono"
-                  />
                 </div>
 
                 {/* 版本號碼 (選填) */}
@@ -2390,6 +2426,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           proposalProgressStage={proposalProgressStage || undefined}
           appName={appName}
           demoUrl={demoUrl || externalLink}
+          externalLink={externalLink}
+          previewMode={previewMode}
           techArchitecture={techArchitecture}
           referencedPainPoint={referencedPainPoint}
           targetGoal={targetGoal}

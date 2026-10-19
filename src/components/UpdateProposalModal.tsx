@@ -70,8 +70,11 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   const [description, setDescription] = useState(question.description || '');
   const [referencedPainPoint, setReferencedPainPoint] = useState(question.referencedPainPoint || '');
   const [targetGoal, setTargetGoal] = useState(question.targetGoal || '');
-  const [demoUrl, setDemoUrl] = useState(question.demoUrl || question.vibeCodingData?.demoUrl || '');
-  const [fileLink, setFileLink] = useState(question.fileLink || question.fileUrl || '');
+  const [demoUrl, setDemoUrl] = useState(question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl || '');
+  const [fileLink, setFileLink] = useState(question.fileLink || question.externalLink || question.fileUrl || '');
+  const [previewMode, setPreviewMode] = useState<'embed' | 'external'>(
+    question.previewMode || ((question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl) ? 'embed' : 'external')
+  );
   const [techArchitecture, setTechArchitecture] = useState(question.techArchitecture || '');
   const [coverImage, setCoverImage] = useState(question.coverImage || question.vibeCodingData?.coverImageUrl || '');
   const [galleryImages, setGalleryImages] = useState<string[]>(
@@ -106,8 +109,11 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       setDescription(question.description || '');
       setReferencedPainPoint(question.referencedPainPoint || '');
       setTargetGoal(question.targetGoal || '');
-      setDemoUrl(question.demoUrl || question.vibeCodingData?.demoUrl || '');
-      setFileLink(question.fileLink || question.fileUrl || '');
+      setDemoUrl(question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl || '');
+      setFileLink(question.fileLink || question.externalLink || question.fileUrl || '');
+      setPreviewMode(
+        question.previewMode || ((question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl) ? 'embed' : 'external')
+      );
       setTechArchitecture(question.techArchitecture || '');
       setCoverImage(question.coverImage || question.vibeCodingData?.coverImageUrl || '');
       setGalleryImages(question.galleryImages || question.vibeCodingData?.screenshots || []);
@@ -205,7 +211,9 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       subcategories: isVibeCoding ? selectedCategories : undefined,
       referencedPainPoint: referencedPainPoint.trim(),
       targetGoal: targetGoal.trim(),
-      demoUrl: demoUrl.trim(),
+      demoUrl: demoUrl.trim() || (isVibeCoding ? fileLink.trim() : ''),
+      externalLink: isVibeCoding ? (fileLink.trim() || demoUrl.trim()) : undefined,
+      previewMode: isVibeCoding ? previewMode : undefined,
       fileLink: fileLink.trim(),
       techArchitecture: techArchitecture.trim(),
       coverImage: coverImage.trim(),
@@ -507,7 +515,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1 flex items-center gap-1">
                   <Globe className="w-3.5 h-3.5 text-indigo-600" />
-                  網站連結 (Demo URL)
+                  {isVibeCoding ? '嵌入預覽網址 / 作品網站連結' : '網站連結 (Demo URL)'}
                 </label>
                 <input
                   type="url"
@@ -519,17 +527,39 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1">
-                  原始碼或相關檔案連結
+                  {isVibeCoding ? '外部連結 / 原始碼或相關檔案' : '原始碼或相關檔案連結'}
                 </label>
                 <input
                   type="url"
                   value={fileLink}
                   onChange={(e) => setFileLink(e.target.value)}
-                  placeholder="https://github.com/..."
+                  placeholder="https://github.com/... 或外部網站連結"
                   className="w-full px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs text-stone-800 focus:border-emerald-600 outline-none"
                 />
               </div>
             </div>
+
+            {isVibeCoding && (
+              <label className="flex items-start gap-2.5 p-3 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 cursor-pointer transition-colors select-none">
+                <input
+                  type="checkbox"
+                  checked={previewMode === 'embed'}
+                  onChange={(e) => setPreviewMode(e.target.checked ? 'embed' : 'external')}
+                  className="mt-0.5 w-4 h-4 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                />
+                <div className="text-xs leading-relaxed flex-1">
+                  <div className="font-bold text-indigo-950 flex items-center gap-1.5 flex-wrap">
+                    <span>開放內嵌網頁互動預覽（勾選即同意開放用戶在內嵌網頁互動）</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${previewMode === 'embed' ? 'bg-indigo-600 text-white' : 'bg-stone-200 text-stone-600'}`}>
+                      {previewMode === 'embed' ? '內嵌互動模式' : '外部開啟模式'}
+                    </span>
+                  </div>
+                  <p className="text-stone-500 mt-0.5">
+                    勾選後將於作品介紹區顯示 iframe 互動預覽（若未單獨填寫嵌入預覽網址，將自動沿用外部連結網址）；若取消勾選或網站禁止內嵌，則提供「在新分頁開啟」按鈕。
+                  </p>
+                </div>
+              </label>
+            )}
 
             {isVibeCoding && (
               <div>
@@ -905,6 +935,8 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
           proposalProgressStage={proposalProgressStage || undefined}
           appName={appName}
           demoUrl={demoUrl || fileLink}
+          externalLink={fileLink}
+          previewMode={previewMode}
           techArchitecture={techArchitecture}
           referencedPainPoint={referencedPainPoint}
           targetGoal={targetGoal}

@@ -593,34 +593,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>找專家</span>
               </button>
             )}
-
-            {/* 創星季 */}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('star_season');
-                setSelectedQuestion(null);
-                setSelectedSolver(null);
-                try {
-                  if (typeof window !== 'undefined') {
-                    window.location.hash = '#/star-season';
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }
-                } catch {}
-              }}
-              className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full transition-all cursor-pointer text-xs sm:text-sm flex items-center gap-1.5 group active:scale-98 ${
-                activeTab === 'star_season'
-                  ? 'bg-amber-100/90 text-stone-950 font-bold ring-1 ring-amber-300'
-                  : 'hover:bg-stone-100 text-stone-700'
-              }`}
-              title="前往創星季競賽"
-            >
-              <img
-                src="/logo-chuangxingji-text.png"
-                alt="創星季"
-                className="h-5 lg:h-6 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
-              />
-            </button>
           </nav>
         </div>
 

@@ -1653,7 +1653,7 @@ export const SEED_VIBECODING_APPS: Question[] = [
     id: 'q-vp-vibe-aiwolf',
     appName: 'AI偽人殺 (Find the AI)',
     title: '抓出混在玩家裡的 AI 線上推理桌遊',
-    description: '收錄於 DeeperDigger ( https://deeperdigger.online/ ) 的多人推理派對遊戲：\n1. 陣營對決：支援 4 人局（3 人類 + 1 AI）與 6 人局（4 人類 + 2 AI），可選 Gemini 或 ChatGPT 單模型，也能開啟雙 AI 模型混戰。\n2. AI 幕後密謀：AI 會模仿人類語氣聊破冰話題，還會在專屬「AI 私聊頻道」互相串通、帶風向找人背鍋。內建投票意向、準確率統計與玩家標記筆記功能。',
+    description: '收錄於 DeeperDigger ( https://deeperdigger.online/ ) 的多人推理派對遊戲：\n1. 陣營對決：支援 4 人局（3 人類 + 1 AI）與 6 人局（4 人類 + 2 AI），可選 Gemini 或 ChatGPT 單模型，也能開啟雙 AI 模型混戰。\n2. AI 幕後密謀：AI 會模仿人類語氣聊破冰話題，還會在專屬「AI 私聊頻道」互相串通、帶風向找人背鍋。內建投票意向、準確率統計與玩家標記筆記功能。\n※ 備註：如果遊戲中 AI 玩家無反應，代表 AI 額度沒了，不另補充。',
     category: '網站程式',
     subcategory: '小遊戲',
     subcategories: ['小遊戲', 'AI工具'],
@@ -3788,10 +3788,16 @@ export function generateSimulatedTipsForQuestion(q: Question): {
 }
 
 export function enrichQuestionWithSimulatedData(q: Question): Question {
+  const isVibe = q.postType === 'vibecoding_app' || q.specialZone === 'vibecoding';
+  const existingWorkUrl = q.demoUrl || q.externalLink || q.vibeCodingData?.demoUrl;
+  const resolvedPreviewMode = q.previewMode || (isVibe && existingWorkUrl ? 'embed' : undefined);
+
   // 若為真實用戶發布之真實貼文，絕不混入任何模擬數據，嚴格保持真實資料純淨
   if (!isSimulatedQuestion(q)) {
     return {
       ...q,
+      ...(existingWorkUrl && !q.demoUrl ? { demoUrl: existingWorkUrl } : {}),
+      ...(resolvedPreviewMode ? { previewMode: resolvedPreviewMode } : {}),
       isSimulated: false,
     };
   }
@@ -3801,6 +3807,8 @@ export function enrichQuestionWithSimulatedData(q: Question): Question {
   const simLikes = 8 + ((seed * 13) % 65);
   return {
     ...q,
+    ...(existingWorkUrl && !q.demoUrl ? { demoUrl: existingWorkUrl } : {}),
+    ...(resolvedPreviewMode ? { previewMode: resolvedPreviewMode } : {}),
     isSimulated: true,
     simulatedBatchId: q.simulatedBatchId || SIMULATED_BATCH_ID,
     likes: typeof q.likes === 'number' && q.likes > 0 ? q.likes : simLikes,

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { Category, MarketViewMode, Question } from '../types';
 import { QuestionCard } from './QuestionCard';
+import { VibeCodingEmbedPreview } from './VibeCodingEmbedPreview';
 
 export interface PublishEffectPreviewModalProps {
   isOpen: boolean;
@@ -59,6 +60,7 @@ export interface PublishEffectPreviewModalProps {
   appName?: string;
   demoUrl?: string;
   externalLink?: string;
+  previewMode?: 'embed' | 'external';
   techArchitecture?: string;
   referencedPainPoint?: string;
   targetGoal?: string;
@@ -93,6 +95,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
   appName = '',
   demoUrl,
   externalLink,
+  previewMode = 'embed',
   techArchitecture,
   referencedPainPoint,
   targetGoal,
@@ -1023,6 +1026,39 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                       <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 text-stone-800 text-xs sm:text-sm leading-relaxed whitespace-pre-line font-medium">
                         {displayDesc}
                       </div>
+                    </div>
+
+                    {effectiveDemoUrl && (
+                      <VibeCodingEmbedPreview
+                        url={effectiveDemoUrl}
+                        externalUrl={externalLink || effectiveDemoUrl}
+                        previewMode={previewMode}
+                        title={displayAppName}
+                      />
+                    )}
+
+                    <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/90 flex items-start gap-2.5 text-xs text-amber-950 leading-relaxed">
+                      <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <p className="font-medium">
+                        <strong className="font-black text-amber-900">注意: </strong>
+                        刊登內容與影片雖已受提案者授權與責任歸屬，仍有可能涉及釣魚、詐騙、盜版、非法資訊、兒童不宜暴力內容，若有相關情事請向平台檢舉。
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/90 flex items-start gap-2.5 text-xs text-amber-950 leading-relaxed">
+                      <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <p className="font-medium">
+                        <strong className="font-black text-amber-900">注意: </strong>
+                        刊登內容與影片雖已受提案者授權與責任歸屬，仍有可能涉及釣魚、詐騙、盜版、非法資訊、兒童不宜暴力內容，若有相關情事請向平台檢舉。
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/90 flex items-start gap-2.5 text-xs text-amber-950 leading-relaxed">
+                      <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <p className="font-medium">
+                        <strong className="font-black text-amber-900">注意: </strong>
+                        刊登內容與影片雖已受提案者授權與責任歸屬，仍有可能涉及釣魚、詐騙、盜版、非法資訊、兒童不宜暴力內容，若有相關情事請向平台檢舉。
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

@@ -68,7 +68,7 @@ const PROTECTED_QUESTION_FIELDS = new Set([
   'authorId', 'authorAuthUid', 'authorName', 'authorAvatar', 'title', 'description', 'bounty',
   'withheldBounty', 'postType', 'level', 'deadline', 'phases', 'isOfficial', 'publishIdentity',
   'status', 'isFeatured', 'disputeStatus', 'appName', 'youtubeUrl', 'coverImage', 'galleryImages',
-  'demoUrl', 'fileUrl', 'updateLogs', 'specialZone', 'isStarSeason', 'isDelisted',
+  'demoUrl', 'previewMode', 'fileUrl', 'updateLogs', 'specialZone', 'isStarSeason', 'isDelisted',
 ]);
 
 /** 是否為內容發布者：比對 authorAuthUid、authorId，或透過會員資料的 authUid 對照 */
@@ -93,6 +93,81 @@ function stripUserSecretsForPublic(u: any) {
   const { password, realNameAuthData, realNameData, phone, email, bankAccount, idNumber, address, ...rest } = u;
   return rest;
 }
+
+// 0. 檢查外部網址是否允許 iframe 內嵌（檢測 X-Frame-Options / CSP frame-ancestors 與連線狀態）
+router.get('/check-embed', async (req: Request, res: Response) => {
+  const rawUrl = String(req.query.url || '').trim();
+  if (!rawUrl) {
+    return res.status(400).json({ canEmbed: false, reason: 'invalid-url' });
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return res.json({ canEmbed: false, reason: 'invalid-protocol' });
+    }
+  } catch {
+    return res.json({ canEmbed: false, reason: 'invalid-url' });
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (host.endsWith('.demo.ideax.tw') || host.endsWith('.example.com') || host === 'example.com') {
+    return res.json({ canEmbed: false, reason: 'demo-placeholder' });
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    let response: globalThis.Response;
+    try {
+      response = await fetch(parsed.toString(), {
+        method: 'HEAD',
+        redirect: 'follow',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)',
+        },
+      });
+      if (response.status === 405 || response.status === 403) {
+        response = await fetch(parsed.toString(), {
+          method: 'GET',
+          redirect: 'follow',
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)',
+          },
+        });
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (response.status >= 500 || response.status === 404) {
+      return res.json({ canEmbed: false, reason: `http-${response.status}` });
+    }
+
+    const xfo = (response.headers.get('x-frame-options') || '').toLowerCase().trim();
+    if (xfo.includes('deny') || xfo.includes('sameorigin')) {
+      return res.json({ canEmbed: false, reason: 'x-frame-options', detail: xfo });
+    }
+
+    const csp = (response.headers.get('content-security-policy') || '').toLowerCase();
+    const faMatch = csp.match(/frame-ancestors\s+([^;]+)/i);
+    if (faMatch) {
+      const ancestors = faMatch[1].trim();
+      if (
+        ancestors.includes("'none'") ||
+        (ancestors.includes("'self'") && !ancestors.includes('*') && !ancestors.includes('https:'))
+      ) {
+        return res.json({ canEmbed: false, reason: 'csp-frame-ancestors', detail: ancestors });
+      }
+    }
+
+    return res.json({ canEmbed: true, finalUrl: response.url || parsed.toString() });
+  } catch (err: any) {
+    return res.json({ canEmbed: false, reason: 'unreachable', detail: err?.message || 'timeout' });
+  }
+});
 
 // 1. 公開時程與活動設定
 router.get('/config', (req: Request, res: Response) => {

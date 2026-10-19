@@ -3212,6 +3212,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
       onQuickCommentSubmit={handleQuickCommentSubmit}
       guestPreviewOnly={guestPreviewOnly}
       onRequestLogin={() => openAuthModal('login')}
+      onOpenReportModal={() => setIsDisputeModalOpen(true)}
     />
   ) : (
     content
@@ -3258,12 +3259,12 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               </label>
               <div className="grid grid-cols-2 gap-1.5 text-xs font-bold">
                 {[
+                  { id: 'fraud', label: '釣魚網站 / 涉嫌詐騙' },
+                  { id: 'copyright', label: '盜版侵權 / 抄襲剽竊' },
+                  { id: 'illegal', label: '非法資訊 / 兒童不宜暴力' },
                   { id: 'spam', label: '違規廣告 / 惡意灌水' },
-                  { id: 'copyright', label: '侵犯智慧財產權 / 抄襲' },
                   { id: 'inappropriate', label: '不當言論 / 人身攻擊' },
-                  { id: 'fraud', label: '涉嫌詐欺 / 虛假內容' },
-                  { id: 'bug', label: 'APP或網站技術異常(Bug)' },
-                  { id: 'other', label: '其他違規原因' },
+                  { id: 'other', label: '其他違規或異常原因' },
                 ].map((item) => (
                   <button
                     key={item.id}

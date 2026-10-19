@@ -4810,7 +4810,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cardHoverMode: newQ.cardHoverMode,
       proposalProgressStage: newQ.proposalProgressStage,
       techArchitecture: newQ.techArchitecture,
-      demoUrl: newQ.demoUrl,
+      demoUrl: newQ.demoUrl || newQ.externalLink,
+      externalLink: newQ.externalLink,
+      previewMode: newQ.previewMode || ((newQ.postType === 'vibecoding_app' && (newQ.demoUrl || newQ.externalLink)) ? 'embed' : undefined),
       fileLink: newQ.fileLink,
       fileUrl: newQ.fileUrl,
       vibeCodingData: newQ.vibeCodingData,
@@ -4970,6 +4972,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       referencedPainPoint?: string;
       tags?: string[];
       demoUrl?: string;
+      externalLink?: string;
+      previewMode?: 'embed' | 'external';
       fileLink?: string;
       techArchitecture?: string;
       coverImage?: string;
@@ -5048,6 +5052,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       referencedPainPoint: params.referencedPainPoint !== undefined ? params.referencedPainPoint : currentQ.referencedPainPoint,
       tags: params.tags !== undefined ? params.tags : currentQ.tags,
       demoUrl: params.demoUrl !== undefined ? params.demoUrl : currentQ.demoUrl,
+      externalLink: params.externalLink !== undefined ? params.externalLink : currentQ.externalLink,
+      previewMode: params.previewMode !== undefined ? params.previewMode : currentQ.previewMode,
       fileLink: params.fileLink !== undefined ? params.fileLink : currentQ.fileLink,
       techArchitecture: params.techArchitecture !== undefined ? params.techArchitecture : currentQ.techArchitecture,
       coverImage: params.coverImage !== undefined ? params.coverImage : currentQ.coverImage,

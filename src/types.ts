@@ -920,8 +920,9 @@ export interface Question {
   cardDisplayImage?: string; // 可選擇一張指定圖片展示於卡片
   proposalProgressStage?: InnovationProgressStage | string; // 創新提案完程度：初步構想(0~2)、正在計畫(3~6)、實行中(7~9)、已完成(10)、成功驗證,持續精進 (11 up)
   techArchitecture?: string; // 技術架構 (VibeCoding展場)
-  demoUrl?: string; // 網站網址或檔案連結
+  demoUrl?: string; // 網站網址或嵌入預覽連結
   externalLink?: string; // 外部連結 / 專屬網站連結 (選填)
+  previewMode?: 'embed' | 'external'; // 作品預覽模式：'embed' 內嵌網頁互動 | 'external' 外部連結開啟
   fileLink?: string; // 檔案下載連結
   fileUrl?: string; // 檔案下載連結 / 成果檔案
   targetGoal?: string; // 希望達成的目標 (選填)

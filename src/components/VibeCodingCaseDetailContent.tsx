@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Question, Answer } from '../types';
 import { getQuestionVibeCategories } from './VibeCodingExhibitionView';
 import { ProposalChangelogSection } from './ProposalChangelogSection';
+import { VibeCodingEmbedPreview } from './VibeCodingEmbedPreview';
 import {
   ExternalLink,
   Code2,
@@ -29,6 +30,8 @@ import {
   Heart,
   Send,
   Video,
+  ShieldAlert,
+  Flag,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getYoutubeEmbedUrl } from '../utils/youtubeUtils';
@@ -60,6 +63,7 @@ interface VibeCodingCaseDetailContentProps {
   /** 訪客僅預覽：只顯示前兩張圖片，其餘內容需登入 */
   guestPreviewOnly?: boolean;
   onRequestLogin?: () => void;
+  onOpenReportModal?: () => void;
 }
 
 interface CaseRichMeta {
@@ -137,6 +141,7 @@ function getCaseRichMeta(q: Question): CaseRichMeta {
       backgroundParagraphs: [
         '傳統狼人殺需要湊滿較多人數，而且新手常不知道第一輪該說什麼。AI偽人殺把電腦對手變成「會裝成人類聊天的 AI 玩家」，4 到 6 人就能隨時開局。',
         '遊戲裡每回合會給出生活化的破冰題目（例如「最近遇到的小確幸」），AI 不只會模仿人類語氣回答，還會在專屬的「AI 私聊頻道」裡互相串通、栽贓給真人玩家。',
+        '※ 備註：若遊玩過程中 AI 遊戲玩家無反應，代表目前 AI 額度已用盡，不另行補充。',
       ],
       features: [
         {
@@ -365,8 +370,9 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
   onQuickCommentSubmit,
   guestPreviewOnly = false,
   onRequestLogin,
+  onOpenReportModal,
 }) => {
-  const { toggleLikeDiscussionAnswer, isDiscussionAnswerLiked, getDiscussionAnswerLikesCount } = useApp();
+  const { toggleLikeDiscussionAnswer, isDiscussionAnswerLiked, getDiscussionAnswerLikesCount, openAboutModal, openCustomerService } = useApp();
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -389,7 +395,9 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
     meta.captions[activeImageIdx] ||
     `${question.appName || question.title.split('：')[0]} 畫面 ${activeImageIdx + 1}`;
 
-  const demoUrl = question.demoUrl || question.vibeCodingData?.demoUrl || '';
+  const demoUrl = question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl || '';
+  const previewMode: 'embed' | 'external' =
+    question.previewMode || question.vibeCodingData?.previewMode || 'embed';
   const versionLabel = question.currentVersion || question.version || 'v1.0.0';
   const appName = question.appName || question.vibeCodingData?.appName || '';
 
@@ -702,56 +710,100 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
         </div>
       </div>
 
-      {/* 3. Main Two-Column Content */}
+      {/* 3. 作品介紹 & 內嵌互動預覽區（桌面版大空間滿寬、手機版滿版寬度自適應高度） */}
+      <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
+        <h3 className="text-base font-bold text-stone-900">
+          作品介紹
+        </h3>
+        <div className="space-y-2.5 text-sm text-stone-700 leading-relaxed">
+          {meta.backgroundParagraphs.map((para, i) => (
+            <p key={i} className="whitespace-pre-line">
+              {para}
+            </p>
+          ))}
+        </div>
+
+        {(referencedPainPointObj || question.referencedPainPoint) && (
+          <div
+            onClick={() => {
+              if (referencedPainPointObj && onSelectReferencedPainPoint) {
+                onSelectReferencedPainPoint(referencedPainPointObj);
+              }
+            }}
+            className={`mt-3 p-3 rounded-lg bg-rose-50/70 border border-rose-200 flex items-center justify-between gap-3 ${
+              referencedPainPointObj ? 'hover:bg-rose-100/70 cursor-pointer transition-colors' : ''
+            }`}
+          >
+            <div className="flex items-start gap-2 min-w-0">
+              <Flame className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold text-rose-700 block">
+                  解決的痛點問題
+                </span>
+                <p className="text-xs font-bold text-stone-900 truncate">
+                  {referencedPainPointObj
+                    ? referencedPainPointObj.title
+                    : question.referencedPainPoint?.replace(/^\[[^\]]+\]\s*/, '')}
+                </p>
+              </div>
+            </div>
+            {referencedPainPointObj && (
+              <span className="shrink-0 text-xs font-bold text-rose-700">
+                查看痛點 →
+              </span>
+            )}
+          </div>
+        )}
+      </section>
+
+      {demoUrl && (
+        <VibeCodingEmbedPreview
+          url={demoUrl}
+          title={appName || question.title}
+          previewMode={previewMode}
+        />
+      )}
+
+      {/* 作品安全與責任歸屬警示橫幅 */}
+      <div className="p-3.5 sm:p-4 rounded-xl bg-amber-50/90 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-start gap-2.5 text-xs text-amber-950 leading-relaxed">
+          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <p className="font-medium">
+            <strong className="font-black text-amber-900">注意: </strong>
+            刊登內容與影片雖已受提案者授權與責任歸屬，仍有可能涉及釣魚、詐騙、盜版、非法資訊、兒童不宜暴力內容，若有相關情事請向平台檢舉。
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+          <button
+            type="button"
+            onClick={() => openAboutModal('disclaimer')}
+            className="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-white hover:bg-amber-100/70 text-amber-900 text-[11px] font-bold transition-colors cursor-pointer"
+          >
+            責任劃分與免責聲明
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (onOpenReportModal) {
+                onOpenReportModal();
+              } else {
+                openCustomerService({
+                  subject: `檢舉 VibeCoding 作品：${appName || question.title} (${question.id})`,
+                });
+              }
+            }}
+            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+          >
+            <Flag className="w-3 h-3" />
+            <span>向平台檢舉</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3B. Main Two-Column Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column (8 cols) */}
         <div className="lg:col-span-8 space-y-5">
-          {/* 作品介紹 */}
-          <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
-            <h3 className="text-base font-bold text-stone-900">
-              作品介紹
-            </h3>
-            <div className="space-y-2.5 text-sm text-stone-700 leading-relaxed">
-              {meta.backgroundParagraphs.map((para, i) => (
-                <p key={i} className="whitespace-pre-line">
-                  {para}
-                </p>
-              ))}
-            </div>
-
-            {(referencedPainPointObj || question.referencedPainPoint) && (
-              <div
-                onClick={() => {
-                  if (referencedPainPointObj && onSelectReferencedPainPoint) {
-                    onSelectReferencedPainPoint(referencedPainPointObj);
-                  }
-                }}
-                className={`mt-3 p-3 rounded-lg bg-rose-50/70 border border-rose-200 flex items-center justify-between gap-3 ${
-                  referencedPainPointObj ? 'hover:bg-rose-100/70 cursor-pointer transition-colors' : ''
-                }`}
-              >
-                <div className="flex items-start gap-2 min-w-0">
-                  <Flame className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-bold text-rose-700 block">
-                      解決的痛點問題
-                    </span>
-                    <p className="text-xs font-bold text-stone-900 truncate">
-                      {referencedPainPointObj
-                        ? referencedPainPointObj.title
-                        : question.referencedPainPoint?.replace(/^\[[^\]]+\]\s*/, '')}
-                    </p>
-                  </div>
-                </div>
-                {referencedPainPointObj && (
-                  <span className="shrink-0 text-xs font-bold text-rose-700">
-                    查看痛點 →
-                  </span>
-                )}
-              </div>
-            )}
-          </section>
-
           {/* 主要功能 */}
           <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
             <h3 className="text-base font-bold text-stone-900">
