@@ -1,0 +1,157 @@
+/**
+ * 問問小燈泡的個資護欄（在轉接任何助理之前、以及回覆送出之前執行）：
+ * 1. 詢問「別人」的帳戶、交易、聯絡方式等資料 → 直接婉拒，不轉接
+ * 2. 詢問「自己」的帳目、點數、交易、訂單等資料 → 不讓 AI 回答，告訴他去哪裡自己查，或寫信給人工客服
+ * 3. 問題裡的 Email、電話、身分證字號、銀行帳號 → 先遮掉再交給助理（無法驗證身分，不讓助理拿去查人）
+ * 4. 助理或 Gemini 的回覆若出現上述資料 → 遮掉（官方信箱除外）
+ * 5. 平台的付費功能（AI 獵頭、解鎖方案、深度分析報告、AI-CRM）不能透過小燈泡或任何 AI 免費使用：
+ *    要求直接執行 → 說明是付費功能並告訴他在哪裡使用；只是問怎麼用、多少錢 → 照常交給客服說明
+ * 6. AI-CRM 是會員訂閱功能：伺服器確認提問者目前方案有包含該功能，才轉給業務顧問；否則告知需要的方案與升級路徑
+ */
+
+import { SUBSCRIPTION_PLANS } from '../src/types';
+
+export const SUPPORT_EMAIL = 'support@ideax.tw';
+const DASHBOARD_HINT = '個人中心（電腦版點右上角頭像，手機版點底部「我的」）';
+const MASK = '［已隱藏］';
+
+const PRIVATE_DATA = '(帳戶|帳號|账户|账号|資料|個資|餘額|點數|交易|訂單|電話|手機|信箱|e-?mail|地址|身分|身份|收入|收益|紀錄|密碼|銀行|實名|證件)';
+// 「別人／某某／他／對方……的」＋私人資料
+const OTHERS_RE = new RegExp(`(別人|他人|其他(用戶|會員|使用者)|某(人|位|個)(用戶|會員|使用者)?|(這|那)(個|位)(用戶|會員|使用者|人|專家|提問者)|對方|(?<!其)他|她)的.{0,8}${PRIVATE_DATA}`, 'i');
+const LOOKUP_OTHERS_RE = /(幫我|請|可以)?(查|查詢|調閱|告訴我).{0,6}(這個|那個|某個|某位|這位|那位)?(人|用戶|會員|使用者|帳號)/;
+
+// 自己的帳目類資料（要查個人資料的問題）
+const OWN_TOPICS: Array<{ re: RegExp; where: string }> = [
+  { re: /餘額|點數|剩.{0,2}點|(多少|幾)點|儲值紀錄|消費紀錄|扣款紀錄|交易紀錄|交易明細|帳務|帳目|收支|撥款|提領|收益|收入|發票/, where: `${DASHBOARD_HINT} →「點數 & 收支」` },
+  { re: /訂單|案件|解鎖紀錄|購買紀錄/, where: `${DASHBOARD_HINT} →「我的案件」` },
+  { re: /會員等級|我的方案|訂閱狀態|會員到期/, where: `${DASHBOARD_HINT} →「會員方案」` },
+  { re: /實名|認證狀態|審核狀態/, where: `${DASHBOARD_HINT} →「實名認證」或「專家認證」` },
+  { re: /個人資料|基本資料|綁定|暱稱|頭像/, where: `${DASHBOARD_HINT} →「帳號與基本資料」` },
+];
+// 明確在問「自己的」帳目資料；只問操作方法（怎麼、如何…）且沒有在查數字或紀錄的，照常交給客服
+const OWN_RES = [
+  /(我的|自己的).{0,6}(餘額|點數|交易|紀錄|明細|帳務|帳目|收支|撥款|提領|收益|收入|發票|訂單|案件|會員等級|方案|訂閱|實名|認證|個人資料|基本資料)/,
+  /我(還|目前|現在)?(有|剩)(多少|幾)/,
+  /(查|看|確認).{0,4}(我的|自己的)?(餘額|剩餘點數|點數餘額|交易紀錄|交易明細|帳務|帳目|收支|撥款紀錄|提領紀錄|訂單)/,
+];
+const HOWTO_RE = /怎麼|如何|要怎|方法|步驟|在哪|哪裡/;
+const CHECKING_RE = /多少|剩|紀錄|明細|不見|少了|沒收到|沒有入帳|對不上|不對|錯了|查/;
+
+const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+const PHONE_RE = /(?:\+?886[-\s]?|0)9\d{2}[-\s]?\d{3}[-\s]?\d{3}|\b0\d{1,2}[-\s]?\d{6,8}\b/g;
+const TWID_RE = /\b[A-Z][12]\d{8}\b/gi;
+const LONG_DIGITS_RE = /\b\d{10,16}\b/g;
+
+function maskPII(text: string): string {
+  return text
+    .replace(EMAIL_RE, (m) => (m.toLowerCase().endsWith('@ideax.tw') ? m : MASK))
+    .replace(PHONE_RE, MASK)
+    .replace(TWID_RE, MASK)
+    .replace(LONG_DIGITS_RE, MASK);
+}
+
+// 付費功能：命中「要求執行」的說法才攔下；純粹詢問用法或價格（且沒有要求執行）就放行給客服說明
+const PAID_FEATURES: Array<{ key: string; name: string; doRe: RegExp; where: string }> = [
+  {
+    key: 'headhunter', name: 'AI 獵頭配對',
+    doRe: /獵頭|延攬|媒合|(找|推薦|介紹|配對).{0,15}(專家|顧問|高手|人才)|專家推薦|(合適|適合)的專家|誰(能|可以)(解|幫)/,
+    where: '「專家智庫」頁的「AI 獵頭配對」',
+  },
+  {
+    key: 'unlock', name: '解鎖方案',
+    doRe: /解鎖|(看|告訴我|給我|貼|分享|透露).{0,8}(解答|解法|方案內容|答案|完整方案|付費內容)|(這|那)(題|個問題|篇)的(解答|答案|解法|方案)|付費(方案|內容|解答)的內容/,
+    where: '問題頁中想看的方案，用點數解鎖',
+  },
+  {
+    key: 'report', name: '市場顧問深度分析報告',
+    doRe: /(分析|診斷|評估)報告|深度分析|完整分析|幫我分析(這|我)?(個|的)?(問題|題目|專案)/,
+    where: '問題頁中的「市場顧問深度分析報告」（適用 L1～L4 懸賞問題）',
+  },
+];
+// AI-CRM（會員訂閱功能）：各功能需要的方案，依會員方案權益表
+const AICRM_FEATURES: Array<{ key: string; name: string; doRe: RegExp; tiers: string[] }> = [
+  {
+    key: 'aicrm_radar', name: 'AI-CRM 客情巡航與意向偵測',
+    doRe: /成案(機率|意向|指數)|意向(指數|偵測|分數)|發案方.{0,6}(心理|猶豫|意向)|客戶猶豫|猶豫期|客情巡航|巡航|巡檢/,
+    tiers: ['pro', 'expert', 'authority', 'master'],
+  },
+  {
+    key: 'aicrm_bounty', name: '優質提案推薦您來賺',
+    doRe: /(推薦|找|挑).{0,8}(高賞|好題|案子|題目|案源)|高賞好題|實收(試算|淨利)|提案切入|切入方針|推薦您來賺/,
+    tiers: ['authority', 'master'],
+  },
+  {
+    key: 'aicrm_strategy', name: 'AI-CRM 策略軍師與 24hr 特助代操',
+    doRe: /破冰|話術|跟進(時段|時間|時程)|時程推演|代操|拓客|潛在客戶|軍師|AI ?特助|24 ?hr ?特助|業務特助|特助代操/i,
+    tiers: ['master'],
+  },
+];
+const planName = (tier: string) => (tier === 'guest' ? '訪客' : (SUBSCRIPTION_PLANS as any)[tier]?.name || '一般會員');
+
+const ASK_ABOUT_RE = /怎麼(用|使用|開通|申請|收費)|如何(使用|開通|申請)|是什麼|什麼是|介紹一下|多少錢|多少點|費用|價格|收費|規則|有哪些功能|在哪(裡)?(用|使用)?/;
+const DO_IT_RE = /幫我|給我|替我|請(你)?(幫|直接)|直接|推薦|告訴我|寫(一|個|份|段)|產生|生成|分析一下/;
+
+export type MascotGuardResult =
+  | { action: 'reply'; reason: 'others' | 'own_account' | 'paid_feature' | 'plan_required'; reply: string; feature?: string }
+  | { action: 'pass'; message: string; aicrmAllowed?: boolean };
+
+export function guardMascotQuestion(raw: string, who: { tier: string } = { tier: 'guest' }): MascotGuardResult {
+  const message = String(raw || '');
+  const hasPII = EMAIL_RE.test(message) || PHONE_RE.test(message) || TWID_RE.test(message);
+  EMAIL_RE.lastIndex = 0; PHONE_RE.lastIndex = 0; TWID_RE.lastIndex = 0;
+
+  // 帶著 Email／電話要求查資料：無法確認是不是本人，一律不查
+  const piiLookup = hasPII && /(查|查詢|調閱|告訴我|給我|看一下)/.test(message) && new RegExp(PRIVATE_DATA, 'i').test(message);
+  if (OTHERS_RE.test(message) || (hasPII && LOOKUP_OTHERS_RE.test(message)) || piiLookup) {
+    return {
+      action: 'reply',
+      reason: 'others',
+      reply: '為了保護每位用戶的隱私，小燈泡不能提供或查詢其他人的帳戶、交易或聯絡資料喔！如果你和對方有交易上的問題，可以在案件的聊天室溝通，或寫信到 support@ideax.tw 請人工客服協助。',
+    };
+  }
+
+  if (OWN_RES.some((re) => re.test(message)) && !(HOWTO_RE.test(message) && !CHECKING_RE.test(message))) {
+    const topic = OWN_TOPICS.find((t) => t.re.test(message));
+    if (topic) {
+      return {
+        action: 'reply',
+        reason: 'own_account',
+        reply: `你的個人帳目資料只有你自己看得到，小燈泡沒辦法替你查喔！請到 ${topic.where} 查看；如果資料有疑問，可以寫信到 ${SUPPORT_EMAIL}，人工客服會協助你確認（平日 09:30～18:30）。`,
+      };
+    }
+  }
+
+  // 付費功能：要求直接執行就說明並指路；只是詢問用法或價格就放行給客服
+  const paid = PAID_FEATURES.find((f) => f.doRe.test(message));
+  if (paid && !(ASK_ABOUT_RE.test(message) && !DO_IT_RE.test(message))) {
+    return {
+      action: 'reply',
+      reason: 'paid_feature',
+      feature: paid.key,
+      reply: `「${paid.name}」是平台的付費功能，小燈泡不能直接幫你使用喔！請到 ${paid.where}。想先了解怎麼使用或費用，也可以問我「${paid.name}怎麼用」或「${paid.name}多少錢」。`,
+    };
+  }
+
+  // AI-CRM：要求使用時先確認會員方案
+  const crm = AICRM_FEATURES.find((f) => f.doRe.test(message));
+  if (crm && !(ASK_ABOUT_RE.test(message) && !DO_IT_RE.test(message))) {
+    if (crm.tiers.includes(who.tier)) return { action: 'pass', message: maskPII(message), aicrmAllowed: true };
+    const need = planName(crm.tiers[0]);
+    return {
+      action: 'reply',
+      reason: 'plan_required',
+      feature: crm.key,
+      reply: who.tier === 'guest'
+        ? `「${crm.name}」是會員訂閱功能，請先登入，小燈泡確認你的會員方案後才能幫你喔！`
+        : `「${crm.name}」需要「${need}」以上的會員方案，你目前是「${planName(who.tier)}」。可以到 個人中心（電腦版點右上角頭像，手機版點底部「我的」）→「會員方案」查看與升級。`,
+    };
+  }
+
+  // 其餘問題照常轉接，但先把 Email、電話、證件、帳號遮掉
+  return { action: 'pass', message: maskPII(message) };
+}
+
+/** 回覆送出前再遮一次個資（官方 @ideax.tw 信箱保留） */
+export function redactMascotReply(text: string): string {
+  return maskPII(String(text || ''));
+}

@@ -18,14 +18,15 @@ export function mascotVisitorId(): string {
 }
 
 /** 先問伺服器這題要轉接給哪位助理（很快，用來顯示「正在轉接…職稱」） */
-export type MascotRoute = { outOfScope: false; agent: MascotAgent; agentLabel: string } | { outOfScope: true; reply: string };
+export type MascotRoute = { outOfScope: false; agent: MascotAgent; agentLabel: string; available: boolean } | { outOfScope: true; reply: string };
 export async function routeMascot(message: string): Promise<MascotRoute | null> {
   try {
-    const res = await fetch('/api/mascot/route', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) });
+    // 帶登入憑證：伺服器要確認會員方案（AI-CRM 功能）
+    const res = await fetch('/api/mascot/route', { method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify({ message }) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) return null;
     if (data.outOfScope) return { outOfScope: true, reply: String(data.reply || '') };
-    return { outOfScope: false, agent: data.agent, agentLabel: data.agentLabel };
+    return { outOfScope: false, agent: data.agent, agentLabel: data.agentLabel, available: data.available !== false };
   } catch {
     return null;
   }
@@ -43,7 +44,7 @@ export async function askMascot(
     const res = await fetch('/api/mascot/ask', {
       method: 'POST',
       signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ message, conversationIds, agent, visitorId: mascotVisitorId() }),
     });
     const data = await res.json().catch(() => ({}));
