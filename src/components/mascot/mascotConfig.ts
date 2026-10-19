@@ -6,7 +6,7 @@ export interface MascotConfig {
   showOnMobile: boolean;
   /** 開啟提問對話（轉給三位 Dify 助理） */
   chatEnabled: boolean;
-  /** 發亮音效 */
+  /** 音效（發亮叮鈴聲、說話聲） */
   soundEnabled: boolean;
   /** 對話泡泡預設文字 */
   bubbleText: string;
