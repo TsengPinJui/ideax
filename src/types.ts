@@ -546,6 +546,7 @@ export interface BankAccountInfo {
 }
 
 export interface UserSurveyData {
+  source?: 'survey_form'; // 從個人中心問卷表單送出（使用者自己填的）；舊版註冊自動存的預設答案沒有這個標記
   desiredServices?: string[]; // 期望在IdeaX使用的服務 (可多選)
   desiredServicesCustom?: string; // 期望在IdeaX使用的服務 (自填)
   relatedDomains?: string[]; // 相關領域 (可多選)

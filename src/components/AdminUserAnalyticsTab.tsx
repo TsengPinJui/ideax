@@ -1,3 +1,4 @@
+import { realAgeGroup, realIndustry, realJobTitle, realSurvey, UNFILLED_COLOR, UNFILLED_LABEL } from '../utils/surveyData';
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   BarChart3,
@@ -177,6 +178,24 @@ export const AdminUserAnalyticsTab: React.FC = () => {
   // Compute statistics
   const totalCount = validUsers.length || 1;
 
+  // 上方三個百分比：只算真的有作答這題的人（不再把沒填的人算進分母或補預設值）
+  const kpi = useMemo(() => {
+    const pick = (get: (u: (typeof validUsers)[number]) => string | undefined, yes: (v: string) => boolean, demoYes?: (u: (typeof validUsers)[number]) => boolean) => {
+      let answered = 0, y = 0;
+      validUsers.forEach((u) => {
+        const v = get(u);
+        if (v) { answered++; if (yes(v)) y++; }
+        else if (isDemoMode && demoYes) { answered++; if (demoYes(u)) y++; }
+      });
+      return { answered, yes: y };
+    };
+    return {
+      budget: pick((u) => realSurvey(u)?.willingQuestionBudget, (v) => v !== 'none'),
+      sideHustle: pick((u) => realSurvey(u)?.willingToBeSideHustle, (v) => v === 'very_willing' || v === 'considering', (u) => u.role === 'solver'),
+      subscribe: pick((u) => realSurvey(u)?.willingToSubscribeSolverPlan, (v) => v === 'willing' || v === 'depends_profit', (u) => !!u.subscriptionTier && u.subscriptionTier !== 'free'),
+    };
+  }, [validUsers, isDemoMode]);
+
   // 1. 性別分佈
   const genderStats = useMemo(() => {
     const counts: Record<string, number> = { male: 0, female: 0, other: 0, undisclosed: 0 };
@@ -201,9 +220,10 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       '35_44': 0,
       '45_54': 0,
       '55_above': 0,
+      unfilled: 0,
     };
     validUsers.forEach((u) => {
-      const a = u.ageGroup || '25_34';
+      const a = realAgeGroup(u) || 'unfilled'; // 沒填（或註冊時略過）不再算成 25~34 歲
       counts[a] = (counts[a] || 0) + 1;
     });
     return [
@@ -213,6 +233,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       { key: '35_44', label: '35 ~ 44 歲', count: counts['35_44'], color: '#f59e0b' },
       { key: '45_54', label: '45 ~ 54 歲', count: counts['45_54'], color: '#f97316' },
       { key: '55_above', label: '55 歲以上', count: counts['55_above'], color: '#ef4444' },
+      { key: 'unfilled', label: UNFILLED_LABEL, count: counts.unfilled, color: UNFILLED_COLOR },
     ];
   }, [validUsers]);
 
@@ -341,9 +362,11 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     };
 
     validUsers.forEach((u) => {
-      const rawJob = u.jobTitle || u.title || (u.surveyData as any)?.jobTitle || '軟體工程師';
-      const ind = u.industry || u.domain;
-      const classified = classifyJobTitle(rawJob, ind);
+      // 沒填職稱與行業（或註冊時略過）歸到「未填寫」，不再當成軟體工程師
+      const rawJob = realJobTitle(u) || (realSurvey(u) as any)?.jobTitle;
+      const ind = realIndustry(u);
+      if (!rawJob && !ind) { counts[UNFILLED_LABEL] = (counts[UNFILLED_LABEL] || 0) + 1; return; }
+      const classified = classifyJobTitle(rawJob || '', ind);
       counts[classified.industry] = (counts[classified.industry] || 0) + 1;
     });
 
@@ -354,7 +377,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       .map(([label, count], idx) => ({
         label,
         count,
-        color: colors[idx % colors.length],
+        color: label === UNFILLED_LABEL ? UNFILLED_COLOR : colors[idx % colors.length],
       }));
   }, [validUsers]);
 
@@ -370,9 +393,11 @@ export const AdminUserAnalyticsTab: React.FC = () => {
     };
 
     validUsers.forEach((u) => {
-      const rawJob = u.jobTitle || u.title || (u.surveyData as any)?.jobTitle || '軟體工程師';
-      const ind = u.industry || u.domain;
-      const classified = classifyJobTitle(rawJob, ind);
+      // 沒填職稱與行業（或註冊時略過）歸到「未填寫」，不再當成軟體工程師
+      const rawJob = realJobTitle(u) || (realSurvey(u) as any)?.jobTitle;
+      const ind = realIndustry(u);
+      if (!rawJob && !ind) { counts[UNFILLED_LABEL] = (counts[UNFILLED_LABEL] || 0) + 1; return; }
+      const classified = classifyJobTitle(rawJob || '', ind);
       counts[classified.level] = (counts[classified.level] || 0) + 1;
     });
 
@@ -383,7 +408,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       .map(([label, count], idx) => ({
         label,
         count,
-        color: colors[idx % colors.length],
+        color: label === UNFILLED_LABEL ? UNFILLED_COLOR : colors[idx % colors.length],
       }));
   }, [validUsers]);
 
@@ -398,7 +423,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       '拓展跨界人脈網絡': 0,
     };
     validUsers.forEach((u) => {
-      const s = u.surveyData?.desiredServices;
+      const s = realSurvey(u)?.desiredServices;
       if (s && s.length > 0) {
         s.forEach((item) => {
           if (counts[item] !== undefined) counts[item] = counts[item] + 1;
@@ -412,12 +437,14 @@ export const AdminUserAnalyticsTab: React.FC = () => {
           counts['發布懸賞徵求專家解方'] += 1;
           counts['探索市場痛點與創新商機'] += 1;
         }
+      } else {
+        counts[UNFILLED_LABEL] = (counts[UNFILLED_LABEL] || 0) + 1; // 沒填這題
       }
     });
     return Object.entries(counts).map(([name, count], idx) => ({
       name,
       count,
-      color: ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4'][idx % 6],
+      color: name === UNFILLED_LABEL ? UNFILLED_COLOR : ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4'][idx % 6],
     }));
   }, [validUsers, isDemoMode]);
 
@@ -425,9 +452,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
   const domainStats = useMemo(() => {
     const counts: Record<string, number> = {};
     validUsers.forEach((u) => {
-      const domains = u.surveyData?.relatedDomains?.length
-        ? u.surveyData.relatedDomains
-        : (isDemoMode ? [u.domain || '創新創業'] : (u.domain ? [u.domain] : []));
+      const domains = realSurvey(u)?.relatedDomains?.length
+        ? realSurvey(u)!.relatedDomains!
+        : (isDemoMode ? [u.domain || '創新創業'] : [UNFILLED_LABEL]); // 沒填問卷：歸到「未填寫」
       domains.forEach((d) => {
         counts[d] = (counts[d] || 0) + 1;
       });
@@ -448,10 +475,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       above_20000: 0,
       none: 0,
     };
+    let unfilled = 0;
     validUsers.forEach((u) => {
-      const b = u.surveyData?.willingQuestionBudget || (isDemoMode ? (u.balance > 5000 ? '5000_20000' : '2000_5000') : undefined);
+      const b = realSurvey(u)?.willingQuestionBudget || (isDemoMode ? (u.balance > 5000 ? '5000_20000' : '2000_5000') : undefined);
       if (b && counts[b] !== undefined) {
         counts[b] = (counts[b] || 0) + 1;
+      } else if (!b) {
+        unfilled++; // 沒填這題
       }
     });
     return [
@@ -461,6 +491,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       { key: '5000_20000', label: 'NT$ 5,000 ~ 20,000', count: counts['5000_20000'], color: '#f59e0b' },
       { key: 'above_20000', label: 'NT$ 20,000 以上', count: counts.above_20000, color: '#8b5cf6' },
       { key: 'none', label: '暫無付費意願', count: counts.none, color: '#cbd5e1' },
+      { key: 'unfilled', label: UNFILLED_LABEL, count: unfilled, color: UNFILLED_COLOR },
     ];
   }, [validUsers, isDemoMode]);
 
@@ -473,10 +504,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       weekly: 0,
       on_demand: 0,
     };
+    let unfilled = 0;
     validUsers.forEach((u) => {
-      const f = u.surveyData?.usageFrequency || (isDemoMode ? (u.role === 'admin' ? 'multiple_daily' : 'few_times_weekly') : undefined);
+      const f = realSurvey(u)?.usageFrequency || (isDemoMode ? (u.role === 'admin' ? 'multiple_daily' : 'few_times_weekly') : undefined);
       if (f && counts[f] !== undefined) {
         counts[f] = (counts[f] || 0) + 1;
+      } else if (!f) {
+        unfilled++; // 沒填這題
       }
     });
     return [
@@ -485,6 +519,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       { key: 'few_times_weekly', label: '每週 2 ~ 3 次', count: counts.few_times_weekly, color: '#f59e0b' },
       { key: 'weekly', label: '每週 1 次', count: counts.weekly, color: '#f97316' },
       { key: 'on_demand', label: '偶爾或有特定需求才開', count: counts.on_demand, color: '#9ca3af' },
+      { key: 'unfilled', label: UNFILLED_LABEL, count: unfilled, color: UNFILLED_COLOR },
     ];
   }, [validUsers, isDemoMode]);
 
@@ -496,10 +531,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       open_minded: 0,
       not_interested: 0,
     };
+    let unfilled = 0;
     validUsers.forEach((u) => {
-      const sh = u.surveyData?.willingToBeSideHustle || (isDemoMode ? (u.role === 'solver' ? 'very_willing' : 'considering') : undefined);
+      const sh = realSurvey(u)?.willingToBeSideHustle || (isDemoMode ? (u.role === 'solver' ? 'very_willing' : 'considering') : undefined);
       if (sh && counts[sh] !== undefined) {
         counts[sh] = (counts[sh] || 0) + 1;
+      } else if (!sh) {
+        unfilled++; // 沒填這題
       }
     });
     return [
@@ -507,6 +545,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       { key: 'considering', label: '考慮中（有空檔兼職嘗試）', count: counts.considering, color: '#3b82f6' },
       { key: 'open_minded', label: '不排斥但目前無規劃', count: counts.open_minded, color: '#f59e0b' },
       { key: 'not_interested', label: '目前不考慮', count: counts.not_interested, color: '#9ca3af' },
+      { key: 'unfilled', label: UNFILLED_LABEL, count: unfilled, color: UNFILLED_COLOR },
     ];
   }, [validUsers, isDemoMode]);
 
@@ -517,16 +556,20 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       depends_bounty: 0,
       not_willing: 0,
     };
+    let unfilled = 0;
     validUsers.forEach((u) => {
-      const w = u.surveyData?.willingToProvideSolutions || (isDemoMode ? (u.role === 'solver' ? 'very_willing' : 'depends_bounty') : undefined);
+      const w = realSurvey(u)?.willingToProvideSolutions || (isDemoMode ? (u.role === 'solver' ? 'very_willing' : 'depends_bounty') : undefined);
       if (w && counts[w] !== undefined) {
         counts[w] = (counts[w] || 0) + 1;
+      } else if (!w) {
+        unfilled++; // 沒填這題
       }
     });
     return [
       { key: 'very_willing', label: '非常願意（積極解答接案）', count: counts.very_willing, color: '#10b981' },
       { key: 'depends_bounty', label: '視題目難度與報酬而定', count: counts.depends_bounty, color: '#f59e0b' },
       { key: 'not_willing', label: '暫無意願（目前僅想提問）', count: counts.not_willing, color: '#9ca3af' },
+      { key: 'unfilled', label: UNFILLED_LABEL, count: unfilled, color: UNFILLED_COLOR },
     ];
   }, [validUsers, isDemoMode]);
 
@@ -538,10 +581,13 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       free_tier_first: 0,
       not_willing: 0,
     };
+    let unfilled = 0;
     validUsers.forEach((u) => {
-      const s = u.surveyData?.willingToSubscribeSolverPlan || (isDemoMode ? (u.subscriptionTier && u.subscriptionTier !== 'free' ? 'willing' : 'depends_profit') : undefined);
+      const s = realSurvey(u)?.willingToSubscribeSolverPlan || (isDemoMode ? (u.subscriptionTier && u.subscriptionTier !== 'free' ? 'willing' : 'depends_profit') : undefined);
       if (s && counts[s] !== undefined) {
         counts[s] = (counts[s] || 0) + 1;
+      } else if (!s) {
+        unfilled++; // 沒填這題
       }
     });
     return [
@@ -549,6 +595,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
       { key: 'depends_profit', label: '視接案獲利情況而定', count: counts.depends_profit, color: '#3b82f6' },
       { key: 'free_tier_first', label: '先體驗免費版', count: counts.free_tier_first, color: '#f59e0b' },
       { key: 'not_willing', label: '暫不考慮付費', count: counts.not_willing, color: '#9ca3af' },
+      { key: 'unfilled', label: UNFILLED_LABEL, count: unfilled, color: UNFILLED_COLOR },
     ];
   }, [validUsers, isDemoMode]);
 
@@ -959,16 +1006,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <DollarSign className="w-4 h-4 text-amber-600" />
           </div>
           <p className="text-2xl font-black text-amber-950">
-            {validUsers.length > 0
-              ? Math.round(
-                  (validUsers.filter((u) => u.surveyData?.willingQuestionBudget && u.surveyData.willingQuestionBudget !== 'none').length /
-                    validUsers.length) *
-                    100
-                )
-              : 0}
-            %
+            {kpi.budget.answered > 0 ? `${Math.round((kpi.budget.yes / kpi.budget.answered) * 100)}%` : '—'}
           </p>
-          <p className="text-[10px] text-stone-400 mt-0.5">具備直接懸賞消費意願</p>
+          <p className="text-[10px] text-stone-400 mt-0.5">具備直接懸賞消費意願・{kpi.budget.answered} 人作答</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs">
@@ -977,21 +1017,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <Briefcase className="w-4 h-4 text-blue-600" />
           </div>
           <p className="text-2xl font-black text-blue-950">
-            {validUsers.length > 0
-              ? Math.round(
-                  (validUsers.filter(
-                    (u) =>
-                      u.surveyData?.willingToBeSideHustle === 'very_willing' ||
-                      u.surveyData?.willingToBeSideHustle === 'considering' ||
-                      (isDemoMode && u.role === 'solver')
-                  ).length /
-                    validUsers.length) *
-                    100
-                )
-              : 0}
-            %
+            {kpi.sideHustle.answered > 0 ? `${Math.round((kpi.sideHustle.yes / kpi.sideHustle.answered) * 100)}%` : '—'}
           </p>
-          <p className="text-[10px] text-stone-400 mt-0.5">具備專家接案與解題意願</p>
+          <p className="text-[10px] text-stone-400 mt-0.5">具備專家接案與解題意願・{kpi.sideHustle.answered} 人作答</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs">
@@ -1000,21 +1028,9 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             <Crown className="w-4 h-4 text-emerald-600" />
           </div>
           <p className="text-2xl font-black text-emerald-950">
-            {validUsers.length > 0
-              ? Math.round(
-                  (validUsers.filter(
-                    (u) =>
-                      u.surveyData?.willingToSubscribeSolverPlan === 'willing' ||
-                      u.surveyData?.willingToSubscribeSolverPlan === 'depends_profit' ||
-                      (isDemoMode && u.subscriptionTier && u.subscriptionTier !== 'free')
-                  ).length /
-                    validUsers.length) *
-                    100
-                )
-              : 0}
-            %
+            {kpi.subscribe.answered > 0 ? `${Math.round((kpi.subscribe.yes / kpi.subscribe.answered) * 100)}%` : '—'}
           </p>
-          <p className="text-[10px] text-stone-400 mt-0.5">含視獲利付費訂閱者</p>
+          <p className="text-[10px] text-stone-400 mt-0.5">含視獲利付費訂閱者・{kpi.subscribe.answered} 人作答</p>
         </div>
       </div>
 
@@ -1218,7 +1234,7 @@ export const AdminUserAnalyticsTab: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-stone-100">
               {filteredUsers.map((u) => {
-                const s = u.surveyData || {};
+                const s = realSurvey(u) || {}; // 只顯示使用者真的填過的答案
                 return (
                   <tr key={u.id} className="hover:bg-stone-50/70 transition-colors">
                     <td className="p-3">
