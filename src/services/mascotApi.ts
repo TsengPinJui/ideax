@@ -85,3 +85,37 @@ export async function fetchMascotStats(days = 14): Promise<MascotDayStats[] | nu
     return null;
   }
 }
+
+/** 後台轉接檢查（管理員） */
+export interface MascotAgentCheck {
+  agent: MascotAgent;
+  label: string;
+  envName: string | null;
+  configured: boolean;
+  keyTail: string | null;
+  difyAppName: string | null;
+  nameLooksRight: boolean | null;
+  sharedWith: string[];
+}
+export async function fetchMascotAgentCheck(): Promise<MascotAgentCheck[] | null> {
+  try {
+    const res = await fetch('/api/admin/mascot-agents', { headers: await getAuthHeaders() });
+    const data = await res.json().catch(() => ({}));
+    return res.ok && data.success ? data.agents : null;
+  } catch {
+    return null;
+  }
+}
+export async function testMascotRoute(message: string, ask: boolean): Promise<any> {
+  try {
+    const res = await fetch('/api/admin/mascot-route-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+      body: JSON.stringify({ message, ask }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return res.ok && data.success ? data : { error: data.error || '測試失敗' };
+  } catch {
+    return { error: '連線失敗' };
+  }
+}

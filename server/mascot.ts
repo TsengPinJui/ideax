@@ -138,6 +138,40 @@ none = 與 IdeaX 平台、提問解題、找專家、接案完全無關的問題
   return { agent: 'cs', by: 'default' };
 }
 
+/** 這位助理實際用哪個環境變數的金鑰（給後台轉接檢查用，不回傳金鑰本身） */
+export function mascotAgentKeyInfo(agent: MascotAgent): { envName: string | null; key: string } {
+  for (const k of MASCOT_AGENTS[agent].envKeys) {
+    const v = process.env[k];
+    if (v) return { envName: k, key: v };
+  }
+  return { envName: null, key: '' };
+}
+
+/** 用金鑰向 Dify 查這把金鑰屬於哪個應用（名稱），確認沒有接錯 */
+export async function fetchDifyAppName(key: string): Promise<string | null> {
+  if (!key) return null;
+  const base = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 6000);
+  try {
+    const r = await fetch(`${base}/info`, { headers: { Authorization: `Bearer ${key}` }, signal: controller.signal });
+    if (!r.ok) return null;
+    const d: any = await r.json().catch(() => null);
+    return typeof d?.name === 'string' && d.name ? d.name : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/** 應用名稱看起來是否對應到這位助理（只是提醒用的粗略判斷） */
+export const MASCOT_AGENT_NAME_HINTS: Record<MascotAgent, RegExp> = {
+  cs: /客服|support|service|\bcs\b/i,
+  market_advisor: /市場|market|顧問|advisor/i,
+  aicrm: /crm|業務|客情|商機|sales/i,
+};
+
 export function mascotAgentKey(agent: MascotAgent): string {
   for (const k of MASCOT_AGENTS[agent].envKeys) {
     const v = process.env[k];

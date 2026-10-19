@@ -159489,6 +159489,34 @@ none = \u8207 IdeaX \u5E73\u53F0\u3001\u63D0\u554F\u89E3\u984C\u3001\u627E\u5C08
   for (const a of ["cs", "market_advisor", "aicrm"]) if (hits.includes(a)) return { agent: a, by: "keyword" };
   return { agent: "cs", by: "default" };
 }
+function mascotAgentKeyInfo(agent) {
+  for (const k of MASCOT_AGENTS[agent].envKeys) {
+    const v = process.env[k];
+    if (v) return { envName: k, key: v };
+  }
+  return { envName: null, key: "" };
+}
+async function fetchDifyAppName(key) {
+  if (!key) return null;
+  const base = (process.env.DIFY_API_BASE_URL || "https://api.dify.ai/v1").replace(/\/+$/, "");
+  const controller = new AbortController();
+  const t2 = setTimeout(() => controller.abort(), 6e3);
+  try {
+    const r2 = await fetch(`${base}/info`, { headers: { Authorization: `Bearer ${key}` }, signal: controller.signal });
+    if (!r2.ok) return null;
+    const d = await r2.json().catch(() => null);
+    return typeof d?.name === "string" && d.name ? d.name : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t2);
+  }
+}
+var MASCOT_AGENT_NAME_HINTS = {
+  cs: /客服|support|service|\bcs\b/i,
+  market_advisor: /市場|market|顧問|advisor/i,
+  aicrm: /crm|業務|客情|商機|sales/i
+};
 function mascotAgentKey(agent) {
   for (const k of MASCOT_AGENTS[agent].envKeys) {
     const v = process.env[k];
@@ -162265,6 +162293,46 @@ app.post("/api/mascot/event", async (req, res) => {
     res.json({ success: ok });
   } catch {
     res.json({ success: false });
+  }
+});
+app.get("/api/admin/mascot-agents", async (_req, res) => {
+  try {
+    const agents = Object.keys(MASCOT_AGENTS);
+    const infos = agents.map((a) => ({ agent: a, ...mascotAgentKeyInfo(a) }));
+    const names = await Promise.all(infos.map((i2) => fetchDifyAppName(i2.key)));
+    res.json({
+      success: true,
+      agents: infos.map((i2, idx) => ({
+        agent: i2.agent,
+        label: MASCOT_AGENTS[i2.agent].label,
+        envName: i2.envName,
+        configured: !!i2.key,
+        keyTail: i2.key ? i2.key.slice(-4) : null,
+        difyAppName: names[idx],
+        nameLooksRight: names[idx] ? MASCOT_AGENT_NAME_HINTS[i2.agent].test(names[idx]) : null,
+        sharedWith: infos.filter((o) => o.agent !== i2.agent && o.key && o.key === i2.key).map((o) => MASCOT_AGENTS[o.agent].label)
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err?.message || "\u6AA2\u67E5\u5931\u6557" });
+  }
+});
+app.post("/api/admin/mascot-route-test", async (req, res) => {
+  try {
+    const message2 = String(req.body?.message || "").trim().slice(0, 500);
+    if (!message2) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u6E2C\u8A66\u554F\u984C" });
+    const { agent, by } = await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    if (agent === "none") return res.json({ success: true, agent: "none", label: "\uFF08\u4E0D\u8F49\u63A5\uFF0C\u56DE\u8986\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF09", routedBy: by });
+    const info = mascotAgentKeyInfo(agent);
+    const out = { success: true, agent, label: MASCOT_AGENTS[agent].label, routedBy: by, envName: info.envName, difyAppName: await fetchDifyAppName(info.key) };
+    if (req.body?.ask && info.key) {
+      const r2 = await callDifyStreamingAgent({ apiKey: info.key, query: message2, inputs: { platform_name: "IdeaX", \u5E73\u53F0\u540D\u7A31: "IdeaX", entry: "mascot-admin-test" }, user: "mascot_admin_test", timeoutMs: 9e4 }).catch(() => null);
+      out.answer = r2?.text ? r2.text.slice(0, 600) : null;
+      out.latencyMs = r2?.latencyMs ?? null;
+    }
+    res.json(out);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err?.message || "\u6E2C\u8A66\u5931\u6557" });
   }
 });
 app.get("/api/admin/mascot-stats", async (req, res) => {
