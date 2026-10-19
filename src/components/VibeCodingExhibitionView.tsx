@@ -118,7 +118,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'tipped' | 'liked' | 'discussions'>('popular');
+  const [sortBy, setSortBy] = useState<'popular' | 'latest' | 'tipped' | 'liked' | 'discussions'>('latest');
   const [viewMode, setViewMode] = useState<MarketViewMode>('large');
   const [hoveredAppId, setHoveredAppId] = useState<string | null>(null);
 
