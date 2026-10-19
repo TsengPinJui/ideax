@@ -46,6 +46,13 @@ export const SolversView: React.FC<SolversViewProps> = ({
   const [selectedDomain, setSelectedDomain] = useState<string>('全部');
   const [searchQuery, setSearchQuery] = useState(appSearchQuery || '');
   const [isHeadhunterOpen, setIsHeadhunterOpen] = useState(false);
+  // 從小燈泡的「前往 AI 獵頭配對」捷徑過來：直接打開獵頭視窗（扣點與搜尋仍由使用者在視窗中操作）
+  useEffect(() => {
+    const open = () => { try { sessionStorage.removeItem('ideax_open_headhunter'); } catch {} setIsHeadhunterOpen(true); };
+    try { if (sessionStorage.getItem('ideax_open_headhunter') === '1') open(); } catch {}
+    window.addEventListener('ideax:open-headhunter', open);
+    return () => window.removeEventListener('ideax:open-headhunter', open);
+  }, []);
 
   useEffect(() => {
     if (appSearchQuery !== undefined) {
