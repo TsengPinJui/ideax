@@ -971,6 +971,35 @@ function MainContent() {
     };
   }, []);
 
+  // 小燈泡對話框的功能捷徑：只打開網站頁面（白名單），需要登入的頁面先請訪客登入
+  useEffect(() => {
+    const DASH_TABS = new Set(['points_receivables', 'subscriptions', 'profile', 'real_name_auth', 'expert_certification', 'customer_service_report']);
+    const onMascotNavigate = (e: Event) => {
+      const to = String((e as CustomEvent).detail?.to || '');
+      const isGuest = currentUser.id === 'user-guest';
+      const needLogin = to === 'my_projects' || to === 'ai_crm' || to.startsWith('dash:');
+      if (needLogin && isGuest) { promptLogin('請先登入，才能打開這個頁面喔！'); return; }
+      setSelectedQuestion(null);
+      setSelectedSolver(null);
+      if (to === 'explore') setActiveTab('explore');
+      else if (to === 'solvers') setActiveTab('solvers');
+      else if (to === 'headhunter') {
+        try { sessionStorage.setItem('ideax_open_headhunter', '1'); } catch {}
+        setActiveTab('solvers');
+        window.setTimeout(() => window.dispatchEvent(new CustomEvent('ideax:open-headhunter')), 300);
+      } else if (to === 'membership') setActiveTab('membership');
+      else if (to === 'my_projects') setActiveTab('my_projects');
+      else if (to === 'ai_crm') setActiveTab('ai_crm');
+      else if (to.startsWith('dash:') && DASH_TABS.has(to.slice(5))) {
+        setUserDashboardTab(to.slice(5) as any);
+        setActiveTab('user_dashboard');
+      } else return;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('ideax:mascot-navigate', onMascotNavigate);
+    return () => window.removeEventListener('ideax:mascot-navigate', onMascotNavigate);
+  }, [currentUser.id, promptLogin]);
+
   // Guest intercept: if guest tries to view personal center or my projects or create question, redirect to login
   useEffect(() => {
     if (currentUser.id === 'user-guest' && (activeTab === 'create_question' || activeTab === 'user_dashboard' || activeTab === 'my_projects')) {

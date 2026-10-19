@@ -72,6 +72,13 @@ export function normalizeMascotConfig(raw: unknown): MascotConfig {
 
 /** 管理員調整滑桿時即時預覽（尚未儲存），吉祥物會監聽這個事件 */
 export const MASCOT_PREVIEW_EVENT = 'ideax:mascot-preview';
+/** 小燈泡對話框的功能捷徑：只允許這些網站內的目的地（伺服器送來其他值會被忽略） */
+export const MASCOT_NAVIGATE_EVENT = 'ideax:mascot-navigate';
+export const MASCOT_NAV_TARGETS = new Set([
+  'explore', 'solvers', 'headhunter', 'membership', 'my_projects', 'ai_crm', 'mailto',
+  'dash:points_receivables', 'dash:subscriptions', 'dash:profile', 'dash:real_name_auth', 'dash:expert_certification', 'dash:customer_service_report',
+]);
+
 /** 其他地方要讓吉祥物開心（登入、發布成功等） */
 export const MASCOT_CHEER_EVENT = 'ideax:mascot-cheer';
 

@@ -159398,17 +159398,18 @@ async function passwordLogin(identifier, password) {
 
 // server/mascotGuard.ts
 var SUPPORT_EMAIL = "support@ideax.tw";
+var MAIL_ACTION = { label: "\u5BEB\u4FE1\u7D66\u4EBA\u5DE5\u5BA2\u670D", to: "mailto" };
 var DASHBOARD_HINT = "\u500B\u4EBA\u4E2D\u5FC3\uFF08\u96FB\u8166\u7248\u9EDE\u53F3\u4E0A\u89D2\u982D\u50CF\uFF0C\u624B\u6A5F\u7248\u9EDE\u5E95\u90E8\u300C\u6211\u7684\u300D\uFF09";
 var MASK = "\uFF3B\u5DF2\u96B1\u85CF\uFF3D";
 var PRIVATE_DATA = "(\u5E33\u6236|\u5E33\u865F|\u8D26\u6237|\u8D26\u53F7|\u8CC7\u6599|\u500B\u8CC7|\u9918\u984D|\u9EDE\u6578|\u4EA4\u6613|\u8A02\u55AE|\u96FB\u8A71|\u624B\u6A5F|\u4FE1\u7BB1|e-?mail|\u5730\u5740|\u8EAB\u5206|\u8EAB\u4EFD|\u6536\u5165|\u6536\u76CA|\u7D00\u9304|\u5BC6\u78BC|\u9280\u884C|\u5BE6\u540D|\u8B49\u4EF6)";
 var OTHERS_RE = new RegExp(`(\u5225\u4EBA|\u4ED6\u4EBA|\u5176\u4ED6(\u7528\u6236|\u6703\u54E1|\u4F7F\u7528\u8005)|\u67D0(\u4EBA|\u4F4D|\u500B)(\u7528\u6236|\u6703\u54E1|\u4F7F\u7528\u8005)?|(\u9019|\u90A3)(\u500B|\u4F4D)(\u7528\u6236|\u6703\u54E1|\u4F7F\u7528\u8005|\u4EBA|\u5C08\u5BB6|\u63D0\u554F\u8005)|\u5C0D\u65B9|(?<!\u5176)\u4ED6|\u5979)\u7684.{0,8}${PRIVATE_DATA}`, "i");
 var LOOKUP_OTHERS_RE = /(幫我|請|可以)?(查|查詢|調閱|告訴我).{0,6}(這個|那個|某個|某位|這位|那位)?(人|用戶|會員|使用者|帳號)/;
 var OWN_TOPICS = [
-  { re: /餘額|點數|剩.{0,2}點|(多少|幾)點|儲值紀錄|消費紀錄|扣款紀錄|交易紀錄|交易明細|帳務|帳目|收支|撥款|提領|收益|收入|發票/, where: `${DASHBOARD_HINT} \u2192\u300C\u9EDE\u6578 & \u6536\u652F\u300D` },
-  { re: /訂單|案件|解鎖紀錄|購買紀錄/, where: `${DASHBOARD_HINT} \u2192\u300C\u6211\u7684\u6848\u4EF6\u300D` },
-  { re: /會員等級|我的方案|訂閱狀態|會員到期/, where: `${DASHBOARD_HINT} \u2192\u300C\u6703\u54E1\u65B9\u6848\u300D` },
-  { re: /實名|認證狀態|審核狀態/, where: `${DASHBOARD_HINT} \u2192\u300C\u5BE6\u540D\u8A8D\u8B49\u300D\u6216\u300C\u5C08\u5BB6\u8A8D\u8B49\u300D` },
-  { re: /個人資料|基本資料|綁定|暱稱|頭像/, where: `${DASHBOARD_HINT} \u2192\u300C\u5E33\u865F\u8207\u57FA\u672C\u8CC7\u6599\u300D` }
+  { re: /餘額|點數|剩.{0,2}點|(多少|幾)點|儲值紀錄|消費紀錄|扣款紀錄|交易紀錄|交易明細|帳務|帳目|收支|撥款|提領|收益|收入|發票/, where: `${DASHBOARD_HINT} \u2192\u300C\u9EDE\u6578 & \u6536\u652F\u300D`, actions: [{ label: "\u6253\u958B\u300C\u9EDE\u6578 & \u6536\u652F\u300D", to: "dash:points_receivables" }] },
+  { re: /訂單|案件|解鎖紀錄|購買紀錄/, where: `${DASHBOARD_HINT} \u2192\u300C\u6211\u7684\u6848\u4EF6\u300D`, actions: [{ label: "\u6253\u958B\u300C\u6211\u7684\u6848\u4EF6\u300D", to: "my_projects" }] },
+  { re: /會員等級|我的方案|訂閱狀態|會員到期/, where: `${DASHBOARD_HINT} \u2192\u300C\u6703\u54E1\u65B9\u6848\u300D`, actions: [{ label: "\u6253\u958B\u300C\u6703\u54E1\u65B9\u6848\u300D", to: "dash:subscriptions" }] },
+  { re: /實名|認證狀態|審核狀態/, where: `${DASHBOARD_HINT} \u2192\u300C\u5BE6\u540D\u8A8D\u8B49\u300D\u6216\u300C\u5C08\u5BB6\u8A8D\u8B49\u300D`, actions: [{ label: "\u6253\u958B\u300C\u5BE6\u540D\u8A8D\u8B49\u300D", to: "dash:real_name_auth" }, { label: "\u6253\u958B\u300C\u5C08\u5BB6\u8A8D\u8B49\u300D", to: "dash:expert_certification" }] },
+  { re: /個人資料|基本資料|綁定|暱稱|頭像/, where: `${DASHBOARD_HINT} \u2192\u300C\u5E33\u865F\u8207\u57FA\u672C\u8CC7\u6599\u300D`, actions: [{ label: "\u6253\u958B\u300C\u5E33\u865F\u8207\u57FA\u672C\u8CC7\u6599\u300D", to: "dash:profile" }] }
 ];
 var OWN_RES = [
   /(我的|自己的).{0,6}(餘額|點數|交易|紀錄|明細|帳務|帳目|收支|撥款|提領|收益|收入|發票|訂單|案件|會員等級|方案|訂閱|實名|認證|個人資料|基本資料)/,
@@ -159429,19 +159430,22 @@ var PAID_FEATURES = [
     key: "headhunter",
     name: "AI \u7375\u982D\u914D\u5C0D",
     doRe: /獵頭|延攬|媒合|(找|推薦|介紹|配對).{0,15}(專家|顧問|高手|人才)|專家推薦|(合適|適合)的專家|誰(能|可以)(解|幫)/,
-    where: "\u300C\u5C08\u5BB6\u667A\u5EAB\u300D\u9801\u7684\u300CAI \u7375\u982D\u914D\u5C0D\u300D"
+    where: "\u300C\u5C08\u5BB6\u667A\u5EAB\u300D\u9801\u7684\u300CAI \u7375\u982D\u914D\u5C0D\u300D",
+    actions: [{ label: "\u524D\u5F80 AI \u7375\u982D\u914D\u5C0D", to: "headhunter" }]
   },
   {
     key: "unlock",
     name: "\u89E3\u9396\u65B9\u6848",
     doRe: /解鎖|(看|告訴我|給我|貼|分享|透露).{0,8}(解答|解法|方案內容|答案|完整方案|付費內容)|(這|那)(題|個問題|篇)的(解答|答案|解法|方案)|付費(方案|內容|解答)的內容/,
-    where: "\u554F\u984C\u9801\u4E2D\u60F3\u770B\u7684\u65B9\u6848\uFF0C\u7528\u9EDE\u6578\u89E3\u9396"
+    where: "\u554F\u984C\u9801\u4E2D\u60F3\u770B\u7684\u65B9\u6848\uFF0C\u7528\u9EDE\u6578\u89E3\u9396",
+    actions: [{ label: "\u524D\u5F80\u554F\u984C\u5217\u8868", to: "explore" }]
   },
   {
     key: "report",
     name: "\u5E02\u5834\u9867\u554F\u6DF1\u5EA6\u5206\u6790\u5831\u544A",
     doRe: /(分析|診斷|評估)報告|深度分析|完整分析|幫我分析(這|我)?(個|的)?(問題|題目|專案)/,
-    where: "\u554F\u984C\u9801\u4E2D\u7684\u300C\u5E02\u5834\u9867\u554F\u6DF1\u5EA6\u5206\u6790\u5831\u544A\u300D\uFF08\u9069\u7528 L1\uFF5EL4 \u61F8\u8CDE\u554F\u984C\uFF09"
+    where: "\u554F\u984C\u9801\u4E2D\u7684\u300C\u5E02\u5834\u9867\u554F\u6DF1\u5EA6\u5206\u6790\u5831\u544A\u300D\uFF08\u9069\u7528 L1\uFF5EL4 \u61F8\u8CDE\u554F\u984C\uFF09",
+    actions: [{ label: "\u524D\u5F80\u554F\u984C\u5217\u8868", to: "explore" }]
   }
 ];
 var AICRM_FEATURES = [
@@ -159478,6 +159482,7 @@ function guardMascotQuestion(raw) {
     return {
       action: "reply",
       reason: "others",
+      actions: [MAIL_ACTION],
       reply: "\u70BA\u4E86\u4FDD\u8B77\u6BCF\u4F4D\u7528\u6236\u7684\u96B1\u79C1\uFF0C\u5C0F\u71C8\u6CE1\u4E0D\u80FD\u63D0\u4F9B\u6216\u67E5\u8A62\u5176\u4ED6\u4EBA\u7684\u5E33\u6236\u3001\u4EA4\u6613\u6216\u806F\u7D61\u8CC7\u6599\u5594\uFF01\u5982\u679C\u4F60\u548C\u5C0D\u65B9\u6709\u4EA4\u6613\u4E0A\u7684\u554F\u984C\uFF0C\u53EF\u4EE5\u5728\u6848\u4EF6\u7684\u804A\u5929\u5BA4\u6E9D\u901A\uFF0C\u6216\u5BEB\u4FE1\u5230 support@ideax.tw \u8ACB\u4EBA\u5DE5\u5BA2\u670D\u5354\u52A9\u3002"
     };
   }
@@ -159487,6 +159492,7 @@ function guardMascotQuestion(raw) {
       return {
         action: "reply",
         reason: "own_account",
+        actions: [...topic.actions, MAIL_ACTION],
         reply: `\u4F60\u7684\u500B\u4EBA\u5E33\u76EE\u8CC7\u6599\u53EA\u6709\u4F60\u81EA\u5DF1\u770B\u5F97\u5230\uFF0C\u5C0F\u71C8\u6CE1\u6C92\u8FA6\u6CD5\u66FF\u4F60\u67E5\u5594\uFF01\u8ACB\u5230 ${topic.where} \u67E5\u770B\uFF1B\u5982\u679C\u8CC7\u6599\u6709\u7591\u554F\uFF0C\u53EF\u4EE5\u5BEB\u4FE1\u5230 ${SUPPORT_EMAIL}\uFF0C\u4EBA\u5DE5\u5BA2\u670D\u6703\u5354\u52A9\u4F60\u78BA\u8A8D\uFF08\u5E73\u65E5 09:30\uFF5E18:30\uFF09\u3002`
       };
     }
@@ -159497,6 +159503,7 @@ function guardMascotQuestion(raw) {
       action: "reply",
       reason: "paid_feature",
       feature: paid.key,
+      actions: paid.actions,
       reply: `\u300C${paid.name}\u300D\u662F\u5E73\u53F0\u7684\u4ED8\u8CBB\u529F\u80FD\uFF0C\u5C0F\u71C8\u6CE1\u4E0D\u80FD\u76F4\u63A5\u5E6B\u4F60\u4F7F\u7528\u5594\uFF01\u8ACB\u5230 ${paid.where}\u3002\u60F3\u5148\u4E86\u89E3\u600E\u9EBC\u4F7F\u7528\u6216\u8CBB\u7528\uFF0C\u4E5F\u53EF\u4EE5\u554F\u6211\u300C${paid.name}\u600E\u9EBC\u7528\u300D\u6216\u300C${paid.name}\u591A\u5C11\u9322\u300D\u3002`
     };
   }
@@ -159506,6 +159513,7 @@ function guardMascotQuestion(raw) {
       action: "reply",
       reason: "paid_feature",
       feature: crm.key,
+      actions: [{ label: "\u6253\u958B AI-CRM", to: "ai_crm" }, { label: "\u67E5\u770B\u6703\u54E1\u65B9\u6848", to: "membership" }],
       reply: `\u300C${crm.name}\u300D\u662F\u6703\u54E1\u8A02\u95B1\u529F\u80FD\uFF08\u300C${planName(crm.tiers[0])}\u300D\u4EE5\u4E0A\uFF09\uFF0C\u5C0F\u71C8\u6CE1\u4E0D\u80FD\u5728\u5C0D\u8A71\u6846\u5E6B\u4F60\u4F7F\u7528\u5594\uFF01\u8ACB\u5230 \u500B\u4EBA\u4E2D\u5FC3\uFF08\u96FB\u8166\u7248\u9EDE\u53F3\u4E0A\u89D2\u982D\u50CF\uFF0C\u624B\u6A5F\u7248\u9EDE\u5E95\u90E8\u300C\u6211\u7684\u300D\uFF09\u2192\u300CAI-CRM \u5BA2\u6236\u95DC\u4FC2\u7BA1\u7406\u300D\u4F7F\u7528\uFF1B\u60F3\u5347\u7D1A\u65B9\u6848\u53EF\u4EE5\u5230\u300C\u6703\u54E1\u65B9\u6848\u300D\u3002`
     };
   }
@@ -162346,7 +162354,7 @@ app.post("/api/mascot/route", async (req, res) => {
     if (guard.action === "reply") {
       void recordMascotEvent({ type: "ask" }).catch(() => {
       });
-      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason });
+      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, actions: guard.actions });
     }
     let { agent, by } = await classifyMascotQuestion(guard.message, generateRawTextWithGemini);
     if (agent === "aicrm") agent = "cs";
@@ -162372,7 +162380,7 @@ app.post("/api/mascot/ask", async (req, res) => {
     if (guard.action === "reply") {
       void recordMascotEvent({ type: "ask" }).catch(() => {
       });
-      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, source: "guard" });
+      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, source: "guard", actions: guard.actions });
     }
     const message2 = guard.message;
     const conversationIds = req.body?.conversationIds && typeof req.body.conversationIds === "object" ? req.body.conversationIds : {};
@@ -162476,7 +162484,7 @@ app.post("/api/admin/mascot-route-test", async (req, res) => {
     if (!raw) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u6E2C\u8A66\u554F\u984C" });
     const guard = guardMascotQuestion(raw);
     const guardLabel = { others: "\uFF08\u8B77\u6B04\uFF1A\u4E0D\u63D0\u4F9B\u4ED6\u4EBA\u8CC7\u6599\uFF09", own_account: "\uFF08\u8B77\u6B04\uFF1A\u5F15\u5C0E\u81EA\u884C\u67E5\u770B\u5E33\u76EE\uFF09", paid_feature: "\uFF08\u8B77\u6B04\uFF1A\u4ED8\u8CBB\u529F\u80FD\u8ACB\u5230\u7DB2\u7AD9\u4ECB\u9762\u4F7F\u7528\uFF09" };
-    if (guard.action === "reply") return res.json({ success: true, agent: "none", label: guardLabel[guard.reason], routedBy: "guard", answer: guard.reply });
+    if (guard.action === "reply") return res.json({ success: true, agent: "none", label: guardLabel[guard.reason], routedBy: "guard", answer: guard.reply, actions: guard.actions });
     const message2 = guard.message;
     let { agent, by } = await classifyMascotQuestion(message2, generateRawTextWithGemini);
     if (agent === "aicrm") agent = "cs";

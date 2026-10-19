@@ -12,6 +12,13 @@
 import { SUBSCRIPTION_PLANS } from '../src/types';
 
 export const SUPPORT_EMAIL = 'support@ideax.tw';
+
+/**
+ * 對話框裡的功能捷徑按鈕：to 只能是網站預先定義好的目的地（前端也有白名單），
+ * 只負責「打開網站頁面」，功能本身仍由使用者在網站介面操作。
+ */
+export interface MascotAction { label: string; to: string }
+const MAIL_ACTION: MascotAction = { label: '寫信給人工客服', to: 'mailto' };
 const DASHBOARD_HINT = '個人中心（電腦版點右上角頭像，手機版點底部「我的」）';
 const MASK = '［已隱藏］';
 
@@ -21,12 +28,12 @@ const OTHERS_RE = new RegExp(`(別人|他人|其他(用戶|會員|使用者)|某
 const LOOKUP_OTHERS_RE = /(幫我|請|可以)?(查|查詢|調閱|告訴我).{0,6}(這個|那個|某個|某位|這位|那位)?(人|用戶|會員|使用者|帳號)/;
 
 // 自己的帳目類資料（要查個人資料的問題）
-const OWN_TOPICS: Array<{ re: RegExp; where: string }> = [
-  { re: /餘額|點數|剩.{0,2}點|(多少|幾)點|儲值紀錄|消費紀錄|扣款紀錄|交易紀錄|交易明細|帳務|帳目|收支|撥款|提領|收益|收入|發票/, where: `${DASHBOARD_HINT} →「點數 & 收支」` },
-  { re: /訂單|案件|解鎖紀錄|購買紀錄/, where: `${DASHBOARD_HINT} →「我的案件」` },
-  { re: /會員等級|我的方案|訂閱狀態|會員到期/, where: `${DASHBOARD_HINT} →「會員方案」` },
-  { re: /實名|認證狀態|審核狀態/, where: `${DASHBOARD_HINT} →「實名認證」或「專家認證」` },
-  { re: /個人資料|基本資料|綁定|暱稱|頭像/, where: `${DASHBOARD_HINT} →「帳號與基本資料」` },
+const OWN_TOPICS: Array<{ re: RegExp; where: string; actions: MascotAction[] }> = [
+  { re: /餘額|點數|剩.{0,2}點|(多少|幾)點|儲值紀錄|消費紀錄|扣款紀錄|交易紀錄|交易明細|帳務|帳目|收支|撥款|提領|收益|收入|發票/, where: `${DASHBOARD_HINT} →「點數 & 收支」`, actions: [{ label: '打開「點數 & 收支」', to: 'dash:points_receivables' }] },
+  { re: /訂單|案件|解鎖紀錄|購買紀錄/, where: `${DASHBOARD_HINT} →「我的案件」`, actions: [{ label: '打開「我的案件」', to: 'my_projects' }] },
+  { re: /會員等級|我的方案|訂閱狀態|會員到期/, where: `${DASHBOARD_HINT} →「會員方案」`, actions: [{ label: '打開「會員方案」', to: 'dash:subscriptions' }] },
+  { re: /實名|認證狀態|審核狀態/, where: `${DASHBOARD_HINT} →「實名認證」或「專家認證」`, actions: [{ label: '打開「實名認證」', to: 'dash:real_name_auth' }, { label: '打開「專家認證」', to: 'dash:expert_certification' }] },
+  { re: /個人資料|基本資料|綁定|暱稱|頭像/, where: `${DASHBOARD_HINT} →「帳號與基本資料」`, actions: [{ label: '打開「帳號與基本資料」', to: 'dash:profile' }] },
 ];
 // 明確在問「自己的」帳目資料；只問操作方法（怎麼、如何…）且沒有在查數字或紀錄的，照常交給客服
 const OWN_RES = [
@@ -51,21 +58,24 @@ function maskPII(text: string): string {
 }
 
 // 付費功能：命中「要求執行」的說法才攔下；純粹詢問用法或價格（且沒有要求執行）就放行給客服說明
-const PAID_FEATURES: Array<{ key: string; name: string; doRe: RegExp; where: string }> = [
+const PAID_FEATURES: Array<{ key: string; name: string; doRe: RegExp; where: string; actions: MascotAction[] }> = [
   {
     key: 'headhunter', name: 'AI 獵頭配對',
     doRe: /獵頭|延攬|媒合|(找|推薦|介紹|配對).{0,15}(專家|顧問|高手|人才)|專家推薦|(合適|適合)的專家|誰(能|可以)(解|幫)/,
     where: '「專家智庫」頁的「AI 獵頭配對」',
+    actions: [{ label: '前往 AI 獵頭配對', to: 'headhunter' }],
   },
   {
     key: 'unlock', name: '解鎖方案',
     doRe: /解鎖|(看|告訴我|給我|貼|分享|透露).{0,8}(解答|解法|方案內容|答案|完整方案|付費內容)|(這|那)(題|個問題|篇)的(解答|答案|解法|方案)|付費(方案|內容|解答)的內容/,
     where: '問題頁中想看的方案，用點數解鎖',
+    actions: [{ label: '前往問題列表', to: 'explore' }],
   },
   {
     key: 'report', name: '市場顧問深度分析報告',
     doRe: /(分析|診斷|評估)報告|深度分析|完整分析|幫我分析(這|我)?(個|的)?(問題|題目|專案)/,
     where: '問題頁中的「市場顧問深度分析報告」（適用 L1～L4 懸賞問題）',
+    actions: [{ label: '前往問題列表', to: 'explore' }],
   },
 ];
 // AI-CRM（會員訂閱功能）：各功能需要的方案，依會員方案權益表
@@ -92,7 +102,7 @@ const ASK_ABOUT_RE = /怎麼(用|使用|開通|申請|收費)|如何(使用|開�
 const DO_IT_RE = /幫我|給我|替我|請(你)?(幫|直接)|直接|推薦|告訴我|寫(一|個|份|段)|產生|生成|分析一下/;
 
 export type MascotGuardResult =
-  | { action: 'reply'; reason: 'others' | 'own_account' | 'paid_feature'; reply: string; feature?: string }
+  | { action: 'reply'; reason: 'others' | 'own_account' | 'paid_feature'; reply: string; feature?: string; actions: MascotAction[] }
   | { action: 'pass'; message: string };
 
 export function guardMascotQuestion(raw: string): MascotGuardResult {
@@ -106,6 +116,7 @@ export function guardMascotQuestion(raw: string): MascotGuardResult {
     return {
       action: 'reply',
       reason: 'others',
+      actions: [MAIL_ACTION],
       reply: '為了保護每位用戶的隱私，小燈泡不能提供或查詢其他人的帳戶、交易或聯絡資料喔！如果你和對方有交易上的問題，可以在案件的聊天室溝通，或寫信到 support@ideax.tw 請人工客服協助。',
     };
   }
@@ -116,6 +127,7 @@ export function guardMascotQuestion(raw: string): MascotGuardResult {
       return {
         action: 'reply',
         reason: 'own_account',
+        actions: [...topic.actions, MAIL_ACTION],
         reply: `你的個人帳目資料只有你自己看得到，小燈泡沒辦法替你查喔！請到 ${topic.where} 查看；如果資料有疑問，可以寫信到 ${SUPPORT_EMAIL}，人工客服會協助你確認（平日 09:30～18:30）。`,
       };
     }
@@ -128,6 +140,7 @@ export function guardMascotQuestion(raw: string): MascotGuardResult {
       action: 'reply',
       reason: 'paid_feature',
       feature: paid.key,
+      actions: paid.actions,
       reply: `「${paid.name}」是平台的付費功能，小燈泡不能直接幫你使用喔！請到 ${paid.where}。想先了解怎麼使用或費用，也可以問我「${paid.name}怎麼用」或「${paid.name}多少錢」。`,
     };
   }
@@ -139,6 +152,7 @@ export function guardMascotQuestion(raw: string): MascotGuardResult {
       action: 'reply',
       reason: 'paid_feature',
       feature: crm.key,
+      actions: [{ label: '打開 AI-CRM', to: 'ai_crm' }, { label: '查看會員方案', to: 'membership' }],
       reply: `「${crm.name}」是會員訂閱功能（「${planName(crm.tiers[0])}」以上），小燈泡不能在對話框幫你使用喔！請到 個人中心（電腦版點右上角頭像，手機版點底部「我的」）→「AI-CRM 客戶關係管理」使用；想升級方案可以到「會員方案」。`,
     };
   }

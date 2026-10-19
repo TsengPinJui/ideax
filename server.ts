@@ -3174,7 +3174,7 @@ app.post('/api/mascot/route', async (req: Request, res: Response) => {
     const guard = guardMascotQuestion(message);
     if (guard.action === 'reply') {
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
-      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason });
+      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, actions: guard.actions });
     }
     let { agent, by } = await classifyMascotQuestion(guard.message, generateRawTextWithGemini);
     if (agent === 'aicrm') agent = 'cs'; // AI-CRM 是會員功能，小燈泡不轉接業務顧問；相關疑問由客服說明
@@ -3201,7 +3201,7 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
     const guard = guardMascotQuestion(rawMessage);
     if (guard.action === 'reply') {
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
-      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, source: 'guard' });
+      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, source: 'guard', actions: guard.actions });
     }
     const message = guard.message; // Email、電話、證件、帳號已遮掉
     const conversationIds = (req.body?.conversationIds && typeof req.body.conversationIds === 'object') ? req.body.conversationIds : {};
@@ -3308,7 +3308,7 @@ app.post('/api/admin/mascot-route-test', async (req: Request, res: Response) => 
     if (!raw) return res.status(400).json({ success: false, error: '請輸入測試問題' });
     const guard = guardMascotQuestion(raw);
     const guardLabel: Record<string, string> = { others: '（護欄：不提供他人資料）', own_account: '（護欄：引導自行查看帳目）', paid_feature: '（護欄：付費功能請到網站介面使用）' };
-    if (guard.action === 'reply') return res.json({ success: true, agent: 'none', label: guardLabel[guard.reason], routedBy: 'guard', answer: guard.reply });
+    if (guard.action === 'reply') return res.json({ success: true, agent: 'none', label: guardLabel[guard.reason], routedBy: 'guard', answer: guard.reply, actions: guard.actions });
     const message = guard.message;
     let { agent, by } = await classifyMascotQuestion(message, generateRawTextWithGemini);
     if (agent === 'aicrm') agent = 'cs';

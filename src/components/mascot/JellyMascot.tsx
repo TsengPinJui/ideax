@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
-import { MASCOT_CHEER_EVENT, MASCOT_PREVIEW_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
+import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
 import { playGlowSound, unlockMascotAudio } from './mascotSound';
-import { askMascot, routeMascot, trackMascotEvent, type MascotAgent } from '../../services/mascotApi';
+import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
 
 const COLLAPSED_KEY = 'ideax_mascot_collapsed';
 const LAST_VISIT_KEY = 'ideax_mascot_last_visit';
@@ -11,7 +11,7 @@ const IMPRESSION_KEY = 'ideax_mascot_impression';
 const DAY_MS = 86400000;
 const IDLE_SESSION_MS = 20000;
 
-interface ChatMsg { id: number; who: 'me' | 'bot'; text: string; tag?: string; reveal?: number }
+interface ChatMsg { id: number; who: 'me' | 'bot'; text: string; tag?: string; reveal?: number; actions?: MascotAction[] }
 
 const readLS = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const writeLS = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
@@ -260,14 +260,24 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
     return () => { cancelled = true; ro?.disconnect(); window.removeEventListener('resize', onResize); };
   }, [chatOpen, climbNonce]);
 
+  /** 功能捷徑：打開網站頁面（功能本身仍由使用者在網站介面操作）；手機上順便收起對話框，讓頁面露出來 */
+  const goTo = (to: string) => {
+    if (!MASCOT_NAV_TARGETS.has(to)) return;
+    markActive();
+    if (to === 'mailto') { window.location.href = 'mailto:support@ideax.tw'; return; }
+    try { window.dispatchEvent(new CustomEvent(MASCOT_NAVIGATE_EVENT, { detail: { to } })); } catch {}
+    if (window.innerWidth < WIDE_MIN) setChatOpen(false);
+  };
+
   /** 助理回覆：文字逐字出現，同時小燈泡嘴巴一開一合 */
-  const addBotReply = (text: string, tag?: string) => new Promise<void>((resolve) => {
+  const addBotReply = (text: string, tag?: string, actions?: MascotAction[]) => new Promise<void>((resolve) => {
     const id = ++msgSeq.current;
+    const safeActions = (actions || []).filter((a) => a && typeof a.label === 'string' && MASCOT_NAV_TARGETS.has(a.to)).slice(0, 3);
     const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     const dur = reduce ? 0 : Math.min(4500, Math.max(700, text.length * 35));
     setLiveText('');
-    if (!dur) { setMsgs((m) => [...m, { id, who: 'bot', text, tag }]); setLiveText(text); resolve(); return; }
-    setMsgs((m) => [...m, { id, who: 'bot', text, tag, reveal: 0 }]);
+    if (!dur) { setMsgs((m) => [...m, { id, who: 'bot', text, tag, actions: safeActions }]); setLiveText(text); resolve(); return; }
+    setMsgs((m) => [...m, { id, who: 'bot', text, tag, reveal: 0, actions: safeActions }]);
     engineRef.current?.talk(dur);
     const t0 = Date.now();
     if (revealTimer.current) window.clearInterval(revealTimer.current);
@@ -323,7 +333,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
       if (route?.outOfScope) {
         // 三位助理都不負責的問題：不轉接、不隨意回答
         engineRef.current?.think(false);
-        await addBotReply(route.reply, '小燈泡');
+        await addBotReply(route.reply, '小燈泡', route.actions);
         return;
       }
       // 依等待時間更新提示：0 秒轉接中 → 30 秒撰寫中 → 60 秒請再等等 → 3 分鐘小燈泡代答
@@ -350,7 +360,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
       engineRef.current?.think(false);
       if (res.ok) {
         if (res.agent && res.conversationId) convIds.current[res.agent] = res.conversationId;
-        await addBotReply(res.reply, res.agentLabel || '小燈泡');
+        await addBotReply(res.reply, res.agentLabel || '小燈泡', res.actions);
         if (res.source === 'apology') engineRef.current?.embarrassed();
       } else {
         await addBotReply(res.error, '小燈泡');
@@ -436,6 +446,13 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
               <div key={m.id} className={`ixm-msg ${m.who}`}>
                 {m.tag && <span className="ixm-tag">{m.tag}</span>}
                 {m.reveal === undefined ? m.text : m.text.slice(0, m.reveal)}
+                {m.reveal === undefined && m.actions && m.actions.length > 0 && (
+                  <span className="ixm-actions">
+                    {m.actions.map((a) => (
+                      <button key={a.to + a.label} type="button" className="ixm-action" onClick={() => goTo(a.to)}>{a.label} →</button>
+                    ))}
+                  </span>
+                )}
               </div>
             ))}
             {sending && status && <div className="ixm-typing" role="status">{status}</div>}
