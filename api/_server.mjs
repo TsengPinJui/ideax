@@ -150605,6 +150605,9 @@ var DEFAULT_COMPETITION_SCHEDULE = {
   }
 };
 
+// src/data/seedTime.ts
+var SEED_TIME_ANCHOR_MS = Date.parse("2026-10-16T12:00:00+08:00");
+
 // src/data/competitionProposals.ts
 var DEFAULT_DEMO_PROPOSALS = [
   {
@@ -150640,8 +150643,8 @@ var DEFAULT_DEMO_PROPOSALS = [
     coverMode: "youtube_video",
     cardHoverMode: "video_autoplay",
     status: "approved",
-    createdAt: new Date(Date.now() - 36e5 * 0.5).toISOString(),
-    updatedAt: new Date(Date.now() - 36e5 * 0.5).toISOString()
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 0.5).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 0.5).toISOString()
   },
   {
     id: "q-vp-idea-gosun",
@@ -150681,8 +150684,8 @@ var DEFAULT_DEMO_PROPOSALS = [
     coverMode: "youtube_video",
     cardHoverMode: "video_autoplay",
     status: "approved",
-    createdAt: new Date(Date.now() - 36e5 * 1).toISOString(),
-    updatedAt: new Date(Date.now() - 36e5 * 1).toISOString()
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 1).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 1).toISOString()
   },
   {
     id: "q-vp-idea-deeperdigger",
@@ -150732,8 +150735,8 @@ var DEFAULT_DEMO_PROPOSALS = [
     externalLink: "https://deeperdigger.online/",
     demoUrl: "https://deeperdigger.online/",
     status: "approved",
-    createdAt: new Date(Date.now() - 36e5 * 2).toISOString(),
-    updatedAt: new Date(Date.now() - 36e5 * 2).toISOString()
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 2).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 2).toISOString()
   },
   {
     id: "q-vp-idea-nexsight",
@@ -150765,8 +150768,8 @@ var DEFAULT_DEMO_PROPOSALS = [
     externalLink: "https://www.nexsight.it.com/",
     demoUrl: "https://www.nexsight.it.com/",
     status: "approved",
-    createdAt: new Date(Date.now() - 36e5 * 2.5).toISOString(),
-    updatedAt: new Date(Date.now() - 36e5 * 2.5).toISOString()
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 2.5).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 2.5).toISOString()
   },
   {
     id: "q-vp-idea-pace",
@@ -150790,8 +150793,8 @@ var DEFAULT_DEMO_PROPOSALS = [
     likeCount: 142,
     commentsCount: 6,
     status: "approved",
-    createdAt: new Date(Date.now() - 36e5 * 3).toISOString(),
-    updatedAt: new Date(Date.now() - 36e5 * 3).toISOString()
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 3).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 3).toISOString()
   },
   {
     id: "q-vp-idea-aiyaya",
@@ -150815,8 +150818,8 @@ var DEFAULT_DEMO_PROPOSALS = [
     likeCount: 136,
     commentsCount: 6,
     status: "approved",
-    createdAt: new Date(Date.now() - 36e5 * 4).toISOString(),
-    updatedAt: new Date(Date.now() - 36e5 * 4).toISOString()
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 4).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 4).toISOString()
   },
   {
     id: "q-vp-idea-stallmatch",
@@ -150840,8 +150843,8 @@ var DEFAULT_DEMO_PROPOSALS = [
     likeCount: 129,
     commentsCount: 6,
     status: "approved",
-    createdAt: new Date(Date.now() - 36e5 * 5).toISOString(),
-    updatedAt: new Date(Date.now() - 36e5 * 5).toISOString()
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 5).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 5).toISOString()
   },
   {
     id: "demo-p-1",
@@ -151071,7 +151074,7 @@ var DEFAULT_VIBECODING_APPS = [
     authorId: "user-vibecoder-alex",
     authorName: "\u963F\u51F1\uFF08\u7368\u7ACB\u958B\u767C\uFF09",
     authorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
-    createdAt: new Date(Date.now() - 36e5 * 12).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 12).toISOString(),
     deadline: new Date(Date.now() + 864e5 * 30).toISOString(),
     views: 890,
     likes: 124,
@@ -151119,8 +151122,8 @@ var DEFAULT_VIBECODING_APPS = [
     supportPoints: 1850,
     tippersCount: 22,
     tipsHistory: [
-      { id: "tip-1", userId: "user-1", userName: "\u5C0F\u660E", amount: 300, message: "\u4ECB\u9762\u505A\u5F97\u8D85\u7CBE\u7DFB\uFF01\u975E\u5E38\u5BE6\u7528\u7684 Vibe\u61C9\u7528", createdAt: new Date(Date.now() - 36e5 * 5).toISOString() },
-      { id: "tip-2", userId: "user-2", userName: "\u9AD8\u67CF\u7FF0", amount: 500, message: "\u6280\u8853\u67B6\u69CB\u5F88\u6E05\u6670\uFF0C\u611F\u8B1D\u5206\u4EAB\u6210\u679C\uFF01", createdAt: new Date(Date.now() - 36e5 * 2).toISOString() }
+      { id: "tip-1", userId: "user-1", userName: "\u5C0F\u660E", amount: 300, message: "\u4ECB\u9762\u505A\u5F97\u8D85\u7CBE\u7DFB\uFF01\u975E\u5E38\u5BE6\u7528\u7684 Vibe\u61C9\u7528", createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 5).toISOString() },
+      { id: "tip-2", userId: "user-2", userName: "\u9AD8\u67CF\u7FF0", amount: 500, message: "\u6280\u8853\u67B6\u69CB\u5F88\u6E05\u6670\uFF0C\u611F\u8B1D\u5206\u4EAB\u6210\u679C\uFF01", createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 2).toISOString() }
     ]
   },
   {
@@ -151138,7 +151141,7 @@ var DEFAULT_VIBECODING_APPS = [
     authorId: "user-vibecoder-chen",
     authorName: "\u9673\u51A0\u5B87",
     authorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-    createdAt: new Date(Date.now() - 36e5 * 28).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 28).toISOString(),
     deadline: new Date(Date.now() + 864e5 * 30).toISOString(),
     views: 650,
     likes: 88,
@@ -151174,8 +151177,8 @@ var DEFAULT_VIBECODING_APPS = [
     supportPoints: 1200,
     tippersCount: 15,
     tipsHistory: [
-      { id: "tip-vibe2-1", userId: "vp-user-06", userName: "\u8A31\u5BB6\u8C6A \u7E3D\u76E3", amount: 400, message: "\u7121\u908A\u754C\u756B\u5E03\u76F4\u63A5\u4E32 API \u592A\u5F37\u4E86\uFF0C\u5E6B\u6211\u5011\u7701\u4E0B\u8D85\u591A PoC \u6642\u9593\uFF01", createdAt: new Date(Date.now() - 36e5 * 6).toISOString() },
-      { id: "tip-vibe2-2", userId: "vp-user-02", userName: "\u5F35\u96C5\u5A77 \u57F7\u884C\u9577", amount: 300, message: "\u5718\u968A\u8166\u529B\u6FC0\u76EA\u8DDF\u9A57\u8B49\u75DB\u9EDE\u5FC5\u5099\u795E\u5668\uFF0C\u652F\u6301\u6301\u7E8C\u8FED\u4EE3\uFF01", createdAt: new Date(Date.now() - 36e5 * 3).toISOString() }
+      { id: "tip-vibe2-1", userId: "vp-user-06", userName: "\u8A31\u5BB6\u8C6A \u7E3D\u76E3", amount: 400, message: "\u7121\u908A\u754C\u756B\u5E03\u76F4\u63A5\u4E32 API \u592A\u5F37\u4E86\uFF0C\u5E6B\u6211\u5011\u7701\u4E0B\u8D85\u591A PoC \u6642\u9593\uFF01", createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 6).toISOString() },
+      { id: "tip-vibe2-2", userId: "vp-user-02", userName: "\u5F35\u96C5\u5A77 \u57F7\u884C\u9577", amount: 300, message: "\u5718\u968A\u8166\u529B\u6FC0\u76EA\u8DDF\u9A57\u8B49\u75DB\u9EDE\u5FC5\u5099\u795E\u5668\uFF0C\u652F\u6301\u6301\u7E8C\u8FED\u4EE3\uFF01", createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 3).toISOString() }
     ]
   },
   {
@@ -151193,7 +151196,7 @@ var DEFAULT_VIBECODING_APPS = [
     authorId: "user-vibecoder-linda",
     authorName: "\u5C0F\u7433\uFF08\u5F71\u97F3\u81EA\u52D5\u5316\uFF09",
     authorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
-    createdAt: new Date(Date.now() - 36e5 * 48).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 48).toISOString(),
     deadline: new Date(Date.now() + 864e5 * 30).toISOString(),
     views: 1120,
     likes: 195,
@@ -151216,8 +151219,8 @@ var DEFAULT_VIBECODING_APPS = [
     supportPoints: 2450,
     tippersCount: 30,
     tipsHistory: [
-      { id: "tip-vibe3-1", userId: "vp-user-08", userName: "\u8607\u90C1\u5A77 \u54C1\u724C\u4E3B\u7406\u4EBA", amount: 500, message: "\u81EA\u5A92\u9AD4\u6551\u661F\uFF01\u4EE5\u524D\u526A\u4E00\u652F Reels \u8981\u5169\u5C0F\u6642\uFF0C\u73FE\u5728 10 \u5206\u9418\u641E\u5B9A\uFF01", createdAt: new Date(Date.now() - 36e5 * 8).toISOString() },
-      { id: "tip-vibe3-2", userId: "vp-user-03", userName: "\u738B\u5EFA\u6C11 \u5EE0\u9577", amount: 350, message: "\u700F\u89BD\u5668\u7AEF\u76F4\u63A5\u8DD1 WebAssembly \u5207\u7247\u4E0D\u5361\u9813\uFF0C\u975E\u5E38\u9A5A\u8C54\uFF01", createdAt: new Date(Date.now() - 36e5 * 4).toISOString() }
+      { id: "tip-vibe3-1", userId: "vp-user-08", userName: "\u8607\u90C1\u5A77 \u54C1\u724C\u4E3B\u7406\u4EBA", amount: 500, message: "\u81EA\u5A92\u9AD4\u6551\u661F\uFF01\u4EE5\u524D\u526A\u4E00\u652F Reels \u8981\u5169\u5C0F\u6642\uFF0C\u73FE\u5728 10 \u5206\u9418\u641E\u5B9A\uFF01", createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 8).toISOString() },
+      { id: "tip-vibe3-2", userId: "vp-user-03", userName: "\u738B\u5EFA\u6C11 \u5EE0\u9577", amount: 350, message: "\u700F\u89BD\u5668\u7AEF\u76F4\u63A5\u8DD1 WebAssembly \u5207\u7247\u4E0D\u5361\u9813\uFF0C\u975E\u5E38\u9A5A\u8C54\uFF01", createdAt: new Date(SEED_TIME_ANCHOR_MS - 36e5 * 4).toISOString() }
     ]
   }
 ];
@@ -151328,7 +151331,7 @@ function isSimulatedQuestion(qOrId) {
   return false;
 }
 var P = (num) => VIRTUAL_PERSONAS[(num - 1) % VIRTUAL_PERSONAS.length];
-var daysAgo = (d, h2 = 2) => new Date(Date.now() - d * 864e5 - h2 * 36e5).toISOString();
+var daysAgo = (d, h2 = 2) => new Date(SEED_TIME_ANCHOR_MS - d * 864e5 - h2 * 36e5).toISOString();
 var daysLater = (d) => new Date(Date.now() + d * 864e5).toISOString().split("T")[0];
 var SEED_PAIN_POINTS = [
   {

@@ -1,4 +1,5 @@
 import { StarSeasonProposal } from '../types/competition';
+import { SEED_TIME_ANCHOR_MS } from './seedTime';
 
 /**
  * 創星季預設官方公開提案清單
@@ -38,8 +39,8 @@ export const DEFAULT_DEMO_PROPOSALS: StarSeasonProposal[] = [
     coverMode: 'youtube_video',
     cardHoverMode: 'video_autoplay',
     status: 'approved',
-    createdAt: new Date(Date.now() - 3600000 * 0.5).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 0.5).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 0.5).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 0.5).toISOString(),
   },
   {
     id: 'q-vp-idea-gosun',
@@ -79,8 +80,8 @@ export const DEFAULT_DEMO_PROPOSALS: StarSeasonProposal[] = [
     coverMode: 'youtube_video',
     cardHoverMode: 'video_autoplay',
     status: 'approved',
-    createdAt: new Date(Date.now() - 3600000 * 1).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 1).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 1).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 1).toISOString(),
   },
   {
     id: 'q-vp-idea-deeperdigger',
@@ -130,8 +131,8 @@ export const DEFAULT_DEMO_PROPOSALS: StarSeasonProposal[] = [
     externalLink: 'https://deeperdigger.online/',
     demoUrl: 'https://deeperdigger.online/',
     status: 'approved',
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 2).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 2).toISOString(),
   },
   {
     id: 'q-vp-idea-nexsight',
@@ -163,8 +164,8 @@ export const DEFAULT_DEMO_PROPOSALS: StarSeasonProposal[] = [
     externalLink: 'https://www.nexsight.it.com/',
     demoUrl: 'https://www.nexsight.it.com/',
     status: 'approved',
-    createdAt: new Date(Date.now() - 3600000 * 2.5).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 2.5).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 2.5).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 2.5).toISOString(),
   },
   {
     id: 'q-vp-idea-pace',
@@ -188,8 +189,8 @@ export const DEFAULT_DEMO_PROPOSALS: StarSeasonProposal[] = [
     likeCount: 142,
     commentsCount: 6,
     status: 'approved',
-    createdAt: new Date(Date.now() - 3600000 * 3).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 3).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 3).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 3).toISOString(),
   },
   {
     id: 'q-vp-idea-aiyaya',
@@ -213,8 +214,8 @@ export const DEFAULT_DEMO_PROPOSALS: StarSeasonProposal[] = [
     likeCount: 136,
     commentsCount: 6,
     status: 'approved',
-    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 4).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 4).toISOString(),
   },
   {
     id: 'q-vp-idea-stallmatch',
@@ -238,8 +239,8 @@ export const DEFAULT_DEMO_PROPOSALS: StarSeasonProposal[] = [
     likeCount: 129,
     commentsCount: 6,
     status: 'approved',
-    createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+    createdAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 5).toISOString(),
+    updatedAt: new Date(SEED_TIME_ANCHOR_MS - 3600000 * 5).toISOString(),
   },
   {
     id: 'demo-p-1',

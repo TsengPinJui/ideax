@@ -1346,6 +1346,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : {
               subcategories: rawQ.subcategories || seedQ?.subcategories,
             }),
+        // 示範資料一律使用固定的發布時間，避免雲端舊資料讓它們看起來永遠是最新
+        ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
       };
       const count = typeof realClicks[q.id] === 'number' ? realClicks[q.id] : (q.views || 0);
       return {
@@ -2543,6 +2545,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 : {
                     subcategories: q.subcategories || seedQ?.subcategories,
                   }),
+              ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
               tags: Array.isArray(seedQ?.tags || q.tags) ? (seedQ && !hasUserUpdates ? seedQ.tags : q.tags) : [],
               views: highestViews,
               viewsCount: highestViews,

@@ -1,6 +1,7 @@
 import { Question, User, Category, Answer, UserRole } from '../types';
 import { ProposalComment } from '../types/competition';
 import { DEFAULT_VIBECODING_APPS } from './vibeCodingData';
+import { SEED_TIME_ANCHOR_MS } from './seedTime';
 
 export interface VirtualPersona {
   id: string;
@@ -157,7 +158,7 @@ export function isSimulatedAnswer(aOrId?: Partial<Answer> | string | null): bool
 }
 
 const P = (num: number): VirtualPersona => VIRTUAL_PERSONAS[(num - 1) % VIRTUAL_PERSONAS.length];
-const daysAgo = (d: number, h = 2) => new Date(Date.now() - d * 86400000 - h * 3600000).toISOString();
+const daysAgo = (d: number, h = 2) => new Date(SEED_TIME_ANCHOR_MS - d * 86400000 - h * 3600000).toISOString();
 const daysLater = (d: number) => new Date(Date.now() + d * 86400000).toISOString().split('T')[0];
 
 // ============================================================================
@@ -4169,7 +4170,7 @@ export function getSimulatedProposalComments(proposalId: string, proposalTitleOr
       authorAvatar: a.solverAvatar,
       authorRole: 'user',
       content: a.freePreview,
-      createdAt: a.createdAt || new Date(Date.now() - (matchedAns.length - idx) * 43200000).toISOString(),
+      createdAt: a.createdAt || new Date(SEED_TIME_ANCHOR_MS - (matchedAns.length - idx) * 43200000).toISOString(),
     }));
   }
 
@@ -4198,7 +4199,7 @@ export function getSimulatedProposalComments(proposalId: string, proposalTitleOr
       authorAvatar: p.avatar,
       authorRole: 'user',
       content: commentPool[(seed + i * 2) % commentPool.length],
-      createdAt: new Date(Date.now() - (count - i) * 64800000).toISOString(),
+      createdAt: new Date(SEED_TIME_ANCHOR_MS - (count - i) * 64800000).toISOString(),
     });
   }
 
