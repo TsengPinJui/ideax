@@ -6,7 +6,7 @@
  * 4. 助理或 Gemini 的回覆若出現上述資料 → 遮掉（官方信箱除外）
  * 5. 平台的付費功能（AI 獵頭、解鎖方案、深度分析報告、AI-CRM）不能透過小燈泡或任何 AI 免費使用：
  *    要求直接執行 → 說明是付費功能並告訴他在哪裡使用；只是問怎麼用、多少錢 → 照常交給客服說明
- * 6. AI-CRM 是會員訂閱功能：伺服器確認提問者目前方案有包含該功能，才轉給業務顧問；否則告知需要的方案與升級路徑
+ * 6. AI-CRM（巡航、推薦您來賺、策略軍師、24hr 特助）是會員訂閱功能：一律不能從對話框使用，只提供網站上的使用路徑與需要的方案
  */
 
 import { SUBSCRIPTION_PLANS } from '../src/types';
@@ -92,10 +92,10 @@ const ASK_ABOUT_RE = /怎麼(用|使用|開通|申請|收費)|如何(使用|開�
 const DO_IT_RE = /幫我|給我|替我|請(你)?(幫|直接)|直接|推薦|告訴我|寫(一|個|份|段)|產生|生成|分析一下/;
 
 export type MascotGuardResult =
-  | { action: 'reply'; reason: 'others' | 'own_account' | 'paid_feature' | 'plan_required'; reply: string; feature?: string }
-  | { action: 'pass'; message: string; aicrmAllowed?: boolean };
+  | { action: 'reply'; reason: 'others' | 'own_account' | 'paid_feature'; reply: string; feature?: string }
+  | { action: 'pass'; message: string };
 
-export function guardMascotQuestion(raw: string, who: { tier: string } = { tier: 'guest' }): MascotGuardResult {
+export function guardMascotQuestion(raw: string): MascotGuardResult {
   const message = String(raw || '');
   const hasPII = EMAIL_RE.test(message) || PHONE_RE.test(message) || TWID_RE.test(message);
   EMAIL_RE.lastIndex = 0; PHONE_RE.lastIndex = 0; TWID_RE.lastIndex = 0;
@@ -132,18 +132,14 @@ export function guardMascotQuestion(raw: string, who: { tier: string } = { tier:
     };
   }
 
-  // AI-CRM：要求使用時先確認會員方案
+  // AI-CRM：會員訂閱功能，一律請用戶到網站介面使用（不從對話框調用）
   const crm = AICRM_FEATURES.find((f) => f.doRe.test(message));
   if (crm && !(ASK_ABOUT_RE.test(message) && !DO_IT_RE.test(message))) {
-    if (crm.tiers.includes(who.tier)) return { action: 'pass', message: maskPII(message), aicrmAllowed: true };
-    const need = planName(crm.tiers[0]);
     return {
       action: 'reply',
-      reason: 'plan_required',
+      reason: 'paid_feature',
       feature: crm.key,
-      reply: who.tier === 'guest'
-        ? `「${crm.name}」是會員訂閱功能，請先登入，小燈泡確認你的會員方案後才能幫你喔！`
-        : `「${crm.name}」需要「${need}」以上的會員方案，你目前是「${planName(who.tier)}」。可以到 個人中心（電腦版點右上角頭像，手機版點底部「我的」）→「會員方案」查看與升級。`,
+      reply: `「${crm.name}」是會員訂閱功能（「${planName(crm.tiers[0])}」以上），小燈泡不能在對話框幫你使用喔！請到 個人中心（電腦版點右上角頭像，手機版點底部「我的」）→「AI-CRM 客戶關係管理」使用；想升級方案可以到「會員方案」。`,
     };
   }
 

@@ -13,7 +13,7 @@ import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
 import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
-import { classifyMascotQuestion, fetchDifyAppName, getMascotStats, getMascotUserTier, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
+import { classifyMascotQuestion, fetchDifyAppName, getMascotStats, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken } from './server/competitionService';
 
 dotenv.config();
@@ -3171,16 +3171,13 @@ app.post('/api/mascot/route', async (req: Request, res: Response) => {
     const message = String(req.body?.message || '').trim().slice(0, 800);
     if (!message) return res.status(400).json({ success: false, error: '請輸入問題' });
     // 個資護欄：問別人的資料直接婉拒；問自己的帳目告訴他去哪裡查
-    const who = await getMascotUserTier(req.headers.authorization); // 伺服器確認會員方案（AI-CRM 用）
-    const guard = guardMascotQuestion(message, who);
+    const guard = guardMascotQuestion(message);
     if (guard.action === 'reply') {
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
       return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason });
     }
-    let { agent, by } = guard.aicrmAllowed
-      ? { agent: 'aicrm' as const, by: 'plan' as any }
-      : await classifyMascotQuestion(guard.message, generateRawTextWithGemini);
-    if (agent === 'aicrm' && !guard.aicrmAllowed) agent = 'cs'; // 業務顧問（AI-CRM）只給方案符合的會員使用
+    let { agent, by } = await classifyMascotQuestion(guard.message, generateRawTextWithGemini);
+    if (agent === 'aicrm') agent = 'cs'; // AI-CRM 是會員功能，小燈泡不轉接業務顧問；相關疑問由客服說明
     if (agent === 'none') {
       // 三位助理都不負責：不轉接，直接回固定文字（也記一筆「無法回答」給後台參考）
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
@@ -3201,8 +3198,7 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
   try {
     const rawMessage = String(req.body?.message || '').trim().slice(0, 800);
     if (!rawMessage) return res.status(400).json({ success: false, error: '請輸入問題' });
-    const who = await getMascotUserTier(req.headers.authorization);
-    const guard = guardMascotQuestion(rawMessage, who);
+    const guard = guardMascotQuestion(rawMessage);
     if (guard.action === 'reply') {
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
       return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, source: 'guard' });
@@ -3210,12 +3206,11 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
     const message = guard.message; // Email、電話、證件、帳號已遮掉
     const conversationIds = (req.body?.conversationIds && typeof req.body.conversationIds === 'object') ? req.body.conversationIds : {};
     const visitorId = String(req.body?.visitorId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) || 'guest';
-    // 前端帶來的分流結果只當參考：業務顧問（AI-CRM）一定要伺服器確認方案符合才可使用
+    // 前端帶來的分流結果只當參考；小燈泡一律不轉接業務顧問（AI-CRM 會員功能只能在網站介面使用）
     let preRouted = typeof req.body?.agent === 'string' && req.body.agent in MASCOT_AGENTS ? (req.body.agent as MascotAgent) : null;
-    if (preRouted === 'aicrm' && !guard.aicrmAllowed) preRouted = null;
-    if (guard.aicrmAllowed) preRouted = 'aicrm';
+    if (preRouted === 'aicrm') preRouted = null;
     const routed: { agent: MascotAgent | 'none'; by: string } = preRouted ? { agent: preRouted, by: 'pre-routed' } : await classifyMascotQuestion(message, generateRawTextWithGemini);
-    if (routed.agent === 'aicrm' && !guard.aicrmAllowed) routed.agent = 'cs';
+    if (routed.agent === 'aicrm') routed.agent = 'cs';
     if (routed.agent === 'none') {
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
       void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
@@ -3233,8 +3228,7 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
         query: message,
         inputs: { platform_name: 'IdeaX', 平台名稱: 'IdeaX', entry: 'mascot' },
         conversationId: typeof conversationIds[agent] === 'string' ? conversationIds[agent] : undefined,
-        // AI-CRM 已確認是本人且方案符合，才帶入會員身分；其他助理一律匿名
-        user: agent === 'aicrm' && who.uid ? `ideax_${who.uid}` : `mascot_${visitorId}`,
+        user: `mascot_${visitorId}`, // 一律匿名，助理無法用來查詢任何人的資料
         timeoutMs: MASCOT_AGENT_WAIT_MS, // 助理最多等三分鐘
       }).catch(() => null);
       if (r?.text) {
@@ -3312,13 +3306,12 @@ app.post('/api/admin/mascot-route-test', async (req: Request, res: Response) => 
   try {
     const raw = String(req.body?.message || '').trim().slice(0, 500);
     if (!raw) return res.status(400).json({ success: false, error: '請輸入測試問題' });
-    const who = await getMascotUserTier(req.headers.authorization);
-    const guard = guardMascotQuestion(raw, who);
-    const guardLabel: Record<string, string> = { others: '（護欄：不提供他人資料）', own_account: '（護欄：引導自行查看帳目）', paid_feature: '（護欄：付費功能不代為使用）', plan_required: '（護欄：會員方案不符）' };
+    const guard = guardMascotQuestion(raw);
+    const guardLabel: Record<string, string> = { others: '（護欄：不提供他人資料）', own_account: '（護欄：引導自行查看帳目）', paid_feature: '（護欄：付費功能請到網站介面使用）' };
     if (guard.action === 'reply') return res.json({ success: true, agent: 'none', label: guardLabel[guard.reason], routedBy: 'guard', answer: guard.reply });
     const message = guard.message;
-    let { agent, by } = guard.aicrmAllowed ? { agent: 'aicrm' as const, by: 'plan' as any } : await classifyMascotQuestion(message, generateRawTextWithGemini);
-    if (agent === 'aicrm' && !guard.aicrmAllowed) agent = 'cs';
+    let { agent, by } = await classifyMascotQuestion(message, generateRawTextWithGemini);
+    if (agent === 'aicrm') agent = 'cs';
     if (agent === 'none') return res.json({ success: true, agent: 'none', label: '（不轉接，回覆暫時無法回答）', routedBy: by });
     const info = mascotAgentKeyInfo(agent);
     const out: any = { success: true, agent, label: MASCOT_AGENTS[agent].label, routedBy: by, envName: info.envName, difyAppName: await fetchDifyAppName(info.key) };
