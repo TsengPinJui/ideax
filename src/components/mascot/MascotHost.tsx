@@ -29,13 +29,17 @@ export const MascotHost: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
       if (typeof w.requestIdleCallback === 'function') w.requestIdleCallback(() => !cancelled && setReady(true), { timeout: 4000 });
       else window.setTimeout(() => !cancelled && setReady(true), 1500);
     };
+    // 等頁面載完再下載 3D；有圖片一直載不完時，最多等 8 秒也照樣出現
+    let started = false;
+    const startOnce = () => { if (!started) { started = true; start(); } };
     const t = window.setTimeout(() => {
-      if (document.readyState === 'complete') start();
-      else window.addEventListener('load', start, { once: true });
+      if (document.readyState === 'complete') startOnce();
+      else window.addEventListener('load', startOnce, { once: true });
     }, 1200);
+    const fallback = window.setTimeout(startOnce, 8000);
     const onResize = () => setSmall(isSmallScreen());
     window.addEventListener('resize', onResize);
-    return () => { cancelled = true; window.clearTimeout(t); window.removeEventListener('load', start); window.removeEventListener('resize', onResize); };
+    return () => { cancelled = true; window.clearTimeout(t); window.clearTimeout(fallback); window.removeEventListener('load', startOnce); window.removeEventListener('resize', onResize); };
   }, []);
 
   if (!ready || hidden || !mascotConfig.enabled || (small && !mascotConfig.showOnMobile)) return null;

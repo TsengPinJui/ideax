@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
 import { MASCOT_CHEER_EVENT, MASCOT_PREVIEW_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
-import { askMascot, trackMascotEvent, type MascotAgent } from '../../services/mascotApi';
+import { askMascot, routeMascot, trackMascotEvent, type MascotAgent } from '../../services/mascotApi';
 
 const COLLAPSED_KEY = 'ideax_mascot_collapsed';
 const LAST_VISIT_KEY = 'ideax_mascot_last_visit';
@@ -38,6 +38,9 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState('');
+  // 一次只能問一題：上一題回覆前鎖住（用 ref 擋住連按 Enter 的競態）
+  const sendingRef = useRef(false);
   const [chatBottom, setChatBottom] = useState(16);
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -185,23 +188,33 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     const q = input.trim();
-    if (!q || sending) return;
+    if (!q || sendingRef.current) return;
+    sendingRef.current = true;
     markActive();
     setInput('');
     setMsgs((m) => [...m, { id: ++msgSeq.current, who: 'me', text: q }]);
     setSending(true);
     engineRef.current?.think(true);
-    const res = await askMascot(q, convIds.current);
-    setSending(false);
-    engineRef.current?.think(false);
-    if (res.ok) {
-      if (res.conversationId) convIds.current[res.agent] = res.conversationId;
-      setMsgs((m) => [...m, { id: ++msgSeq.current, who: 'bot', text: res.reply, tag: res.agentLabel }]);
-      engineRef.current?.jump(0.6);
-    } else {
-      setMsgs((m) => [...m, { id: ++msgSeq.current, who: 'bot', text: res.error, tag: '小燈泡' }]);
+    try {
+      setStatus('小燈泡正在判斷要找哪位助理…');
+      const route = await routeMascot(q);
+      setStatus(route ? `正在轉接…${route.agentLabel}` : '正在轉接…');
+      const res = await askMascot(q, convIds.current, route?.agent);
+      if (res.ok) {
+        if (res.conversationId) convIds.current[res.agent] = res.conversationId;
+        setMsgs((m) => [...m, { id: ++msgSeq.current, who: 'bot', text: res.reply, tag: res.agentLabel }]);
+        engineRef.current?.jump(0.6);
+      } else {
+        setMsgs((m) => [...m, { id: ++msgSeq.current, who: 'bot', text: res.error, tag: '小燈泡' }]);
+      }
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+      setStatus('');
+      engineRef.current?.think(false);
+      markActive();
+      window.setTimeout(() => inputRef.current?.focus(), 30);
     }
-    markActive();
   };
 
   if (collapsed) {
@@ -274,11 +287,12 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
                 {m.text}
               </div>
             ))}
-            {sending && <div className="ixm-typing">小燈泡思考中…</div>}
+            {sending && <div className="ixm-typing" role="status">{status || '正在轉接…'}</div>}
           </div>
           <form onSubmit={send}>
             <label htmlFor="ixm-input" className="ixm-sr">輸入問題</label>
-            <input id="ixm-input" ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} maxLength={500} autoComplete="off" placeholder="例如：忘記密碼怎麼辦？" />
+            <input id="ixm-input" ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} maxLength={500} autoComplete="off" readOnly={sending} aria-busy={sending}
+              placeholder={sending ? '小燈泡回覆中，請稍等…' : '例如：忘記密碼怎麼辦？'} />
             <button type="submit" disabled={sending || !input.trim()}>送出</button>
           </form>
         </section>
