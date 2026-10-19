@@ -160525,6 +160525,102 @@ async function passwordLogin(identifier, password) {
   return { customToken, userId: identity.userId };
 }
 
+// server/mascot.ts
+var MASCOT_AGENTS = {
+  cs: {
+    label: "\u5B98\u65B9\u5BA2\u670D\u7279\u52A9",
+    envKeys: ["DIFY_CS_API_KEY", "DIFY_API_KEY"],
+    persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u5B98\u65B9\u5BA2\u670D\u7279\u52A9\uFF0C\u8CA0\u8CAC\u5E33\u865F\u3001\u767B\u5165\u3001\u9EDE\u6578\u3001\u4ED8\u6B3E\u3001\u767C\u5E03\u898F\u5247\u3001\u5E73\u53F0\u64CD\u4F5C\u7B49\u5BA2\u670D\u554F\u984C\u3002\u56DE\u7B54\u7C21\u6F54\u3001\u53CB\u5584\u3001\u5177\u9AD4\u3002"
+  },
+  market_advisor: {
+    label: "\u5E02\u5834\u9867\u554F",
+    envKeys: ["DIFY_MARKET_ADVISOR_API_KEY"],
+    persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u5E02\u5834\u9867\u554F\uFF0C\u5354\u52A9\u4F7F\u7528\u8005\u63A2\u7D22\u6709\u8208\u8DA3\u7684\u4E3B\u984C\u3001\u91D0\u6E05\u554F\u984C\u3001\u5EFA\u8B70\u8981\u627E\u54EA\u500B\u9818\u57DF\u7684\u5C08\u5BB6\u3001\u600E\u9EBC\u5728\u5E73\u53F0\u4E0A\u767C\u554F\u6216\u63D0\u6848\u3002"
+  },
+  aicrm: {
+    label: "\u696D\u52D9\u9867\u554F",
+    envKeys: ["DIFY_AICRM_API_KEY", "DIFY_API_KEY"],
+    persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u696D\u52D9\u9867\u554F\uFF0C\u8CA0\u8CAC\u6703\u54E1\u65B9\u6848\u3001\u4F01\u696D\u5408\u4F5C\u3001\u6210\u70BA\u5C08\u5BB6\u3001\u5275\u661F\u5B63\u53C3\u8CFD\u8207\u5546\u52D9\u6D3D\u8A62\u3002\u56DE\u7B54\u6E05\u695A\u4E26\u5F15\u5C0E\u4E0B\u4E00\u6B65\u3002"
+  }
+};
+var KEYWORDS = [
+  ["cs", /登入|登錄|密碼|帳號|註冊|驗證|點數|儲值|退款|付款|扣款|發票|錯誤|無法|不能|bug|客服|檢舉|停權|刪除|隱私/i],
+  ["aicrm", /方案|訂閱|會員|價格|收費|合作|企業|廠商|贊助|專家申請|成為專家|認證|創星季|參賽|報名|商務|洽談/i]
+];
+function keywordRoute(message2) {
+  for (const [agent, re] of KEYWORDS) if (re.test(message2)) return agent;
+  return "market_advisor";
+}
+async function classifyMascotQuestion(message2, generateText) {
+  const prompt = `\u8ACB\u5224\u65B7\u4EE5\u4E0B\u4F7F\u7528\u8005\u8A0A\u606F\u8A72\u4EA4\u7D66\u54EA\u4E00\u4F4D\u52A9\u7406\u8655\u7406\uFF0C\u53EA\u56DE\u7B54\u4E00\u500B\u4EE3\u78BC\uFF1A
+cs = \u5BA2\u670D\u554F\u984C\uFF08\u5E33\u865F\u3001\u767B\u5165\u3001\u9EDE\u6578\u3001\u4ED8\u6B3E\u3001\u5E73\u53F0\u64CD\u4F5C\u3001\u932F\u8AA4\u56DE\u5831\u3001\u6AA2\u8209\uFF09
+aicrm = \u5546\u52D9\u8207\u6703\u54E1\uFF08\u6703\u54E1\u65B9\u6848\u3001\u50F9\u683C\u3001\u4F01\u696D\u5408\u4F5C\u3001\u6210\u70BA\u5C08\u5BB6\u3001\u5275\u661F\u5B63\u53C3\u8CFD\u5831\u540D\uFF09
+market_advisor = \u4E3B\u984C\u63A2\u7D22\u8207\u554F\u984C\u8AEE\u8A62\uFF08\u5C0D\u4EC0\u9EBC\u4E3B\u984C\u6709\u8208\u8DA3\u3001\u60F3\u89E3\u6C7A\u4EC0\u9EBC\u554F\u984C\u3001\u627E\u5C08\u5BB6\u3001\u600E\u9EBC\u767C\u554F\u6216\u63D0\u6848\u3001\u5176\u4ED6\u4E00\u822C\u554F\u984C\uFF09
+
+\u4F7F\u7528\u8005\u8A0A\u606F\uFF1A\u300C${message2.slice(0, 500)}\u300D`;
+  try {
+    const text = await Promise.race([
+      generateText(prompt, "\u4F60\u662F\u5206\u6D41\u5668\uFF0C\u53EA\u8F38\u51FA cs\u3001aicrm \u6216 market_advisor \u5176\u4E2D\u4E00\u500B\u4EE3\u78BC\uFF0C\u4E0D\u8981\u8F38\u51FA\u5176\u4ED6\u6587\u5B57\u3002"),
+      new Promise((r2) => setTimeout(() => r2(null), 6e3))
+    ]);
+    const m2 = String(text || "").toLowerCase().match(/market_advisor|aicrm|cs/);
+    if (m2) return { agent: m2[0], by: "ai" };
+  } catch {
+  }
+  return { agent: keywordRoute(message2), by: "keyword" };
+}
+function mascotAgentKey(agent) {
+  for (const k of MASCOT_AGENTS[agent].envKeys) {
+    const v = process.env[k];
+    if (v) return v;
+  }
+  return "";
+}
+var EVENT_TYPES = ["impression", "click", "drag", "open", "ask", "collapse", "expand", "session"];
+async function getDb3() {
+  if (!hasAdminCredentials) return null;
+  const { getFirestore: getFirestore3, FieldValue: FieldValue4 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
+  const app2 = getApps()[0];
+  const dbId = firebase_applet_config_default.firestoreDatabaseId;
+  return { db: dbId ? getFirestore3(app2, dbId) : getFirestore3(app2), FieldValue: FieldValue4 };
+}
+function twDay(d = /* @__PURE__ */ new Date()) {
+  return new Date(d.getTime() + 8 * 36e5).toISOString().slice(0, 10);
+}
+async function recordMascotEvent(input) {
+  const type = String(input?.type || "");
+  if (!EVENT_TYPES.includes(type)) return false;
+  const conn = await getDb3();
+  if (!conn) return false;
+  const { db, FieldValue: FieldValue4 } = conn;
+  const patch = { [`counts.${type}`]: FieldValue4.increment(1), updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+  if (type === "session") {
+    const ms = Math.max(0, Math.min(30 * 60 * 1e3, Math.floor(Number(input.durationMs) || 0)));
+    patch.interactionMs = FieldValue4.increment(ms);
+  }
+  if (type === "ask" && input.agent && input.agent in MASCOT_AGENTS) {
+    patch[`agents.${input.agent}`] = FieldValue4.increment(1);
+  }
+  await db.collection("mascot_stats").doc(twDay()).set({ day: twDay() }, { merge: true });
+  await db.collection("mascot_stats").doc(twDay()).update(patch);
+  return true;
+}
+async function getMascotStats(days = 14) {
+  const conn = await getDb3();
+  if (!conn) return { days: [] };
+  const { db } = conn;
+  const n = Math.max(1, Math.min(90, Math.floor(days)));
+  const ids = [];
+  for (let i2 = n - 1; i2 >= 0; i2--) ids.push(twDay(new Date(Date.now() - i2 * 864e5)));
+  const snaps = await db.getAll(...ids.map((id) => db.collection("mascot_stats").doc(id)));
+  return {
+    days: snaps.map((s2, i2) => {
+      const d = s2.exists ? s2.data() || {} : {};
+      return { day: ids[i2], counts: d.counts || {}, agents: d.agents || {}, interactionMs: d.interactionMs || 0 };
+    })
+  };
+}
+
 // server.ts
 import_dotenv.default.config();
 process.on("uncaughtException", (err) => {
@@ -160543,6 +160639,8 @@ app.use(["/api/ai", "/api/agent"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 40,
 app.use(["/api/auth/send-email-code", "/api/auth/send-sms-code", "/api/auth/send-welcome-email"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 5, name: "send-code" }));
 app.use("/api/points", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "points" }));
 app.use("/api/answers", rateLimit({ windowMs: 60 * 1e3, max: 30, name: "answers" }));
+app.use("/api/mascot/ask", rateLimit({ windowMs: 60 * 1e3, max: 12, name: "mascot-ask" }));
+app.use("/api/mascot/event", rateLimit({ windowMs: 60 * 1e3, max: 60, name: "mascot-event" }));
 app.use("/api/auth/password-login", rateLimit({ windowMs: 10 * 60 * 1e3, max: 10, name: "password-login" }));
 app.use(["/api/auth/verify-email-code", "/api/auth/verify-sms-code", "/api/auth/reset-password-with-code"], rateLimit({ windowMs: 10 * 60 * 1e3, max: 20, name: "verify-code" }));
 app.use("/api/admin", requireAdminMiddleware);
@@ -163155,6 +163253,59 @@ app.post("/api/points/op", async (req, res) => {
     const status = err instanceof PointsError ? err.status : 500;
     if (status >= 500) console.error("[Points]", err?.message || err);
     res.status(status).json({ success: false, error: err?.message || "\u9EDE\u6578\u8655\u7406\u5931\u6557" });
+  }
+});
+app.post("/api/mascot/ask", async (req, res) => {
+  try {
+    const message2 = String(req.body?.message || "").trim().slice(0, 800);
+    if (!message2) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u554F\u984C" });
+    const conversationIds = req.body?.conversationIds && typeof req.body.conversationIds === "object" ? req.body.conversationIds : {};
+    const visitorId = String(req.body?.visitorId || "guest").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "guest";
+    const { agent, by } = await classifyMascotQuestion(message2, generateRawTextWithGemini);
+    const meta2 = MASCOT_AGENTS[agent];
+    const apiKey = mascotAgentKey(agent);
+    let reply = "";
+    let conversationId;
+    let source = "dify";
+    if (apiKey) {
+      const r2 = await callDifyStreamingAgent({
+        apiKey,
+        query: message2,
+        inputs: { platform_name: "IdeaX", \u5E73\u53F0\u540D\u7A31: "IdeaX", entry: "mascot" },
+        conversationId: typeof conversationIds[agent] === "string" ? conversationIds[agent] : void 0,
+        user: `mascot_${visitorId}`,
+        timeoutMs: 25e3
+      }).catch(() => null);
+      if (r2?.text) {
+        reply = r2.text;
+        conversationId = r2.conversationId;
+      }
+    }
+    if (!reply) {
+      source = "gemini";
+      reply = await generateRawTextWithGemini(message2, `${meta2.persona}\u8ACB\u7528\u7E41\u9AD4\u4E2D\u6587\u3001\u53E3\u8A9E\u89AA\u5207\u5730\u56DE\u7B54\uFF0C150 \u5B57\u4EE5\u5167\u3002`) || "\u6211\u73FE\u5728\u6709\u9EDE\u5FD9\u4E0D\u904E\u4F86\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u554F\u6211\u4E00\u6B21\uFF0C\u6216\u5230\u300C\u5BA2\u670D\u4E2D\u5FC3\u300D\u7559\u8A00\u7D66\u6211\u5011\u5594\uFF01";
+    }
+    void recordMascotEvent({ type: "ask", agent }).catch(() => {
+    });
+    res.json({ success: true, reply, agent, agentLabel: meta2.label, routedBy: by, conversationId, source });
+  } catch (err) {
+    console.error("[Mascot Ask]", err?.message || err);
+    res.status(500).json({ success: false, error: "\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66" });
+  }
+});
+app.post("/api/mascot/event", async (req, res) => {
+  try {
+    const ok = await recordMascotEvent(req.body || {});
+    res.json({ success: ok });
+  } catch {
+    res.json({ success: false });
+  }
+});
+app.get("/api/admin/mascot-stats", async (req, res) => {
+  try {
+    res.json({ success: true, ...await getMascotStats(Number(req.query.days) || 14) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err?.message || "\u8B80\u53D6\u5931\u6557" });
   }
 });
 app.post("/api/answers/contents", async (req, res) => {
