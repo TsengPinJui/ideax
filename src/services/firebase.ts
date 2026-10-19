@@ -72,9 +72,21 @@ if (typeof window !== 'undefined') {
   };
 }
 
+function resolveAuthDomain(): string {
+  const configured = String((import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || '').trim();
+  if (configured && typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    // 只有在正式網域上使用自己的網域；AI Studio 預覽、本機開發仍用 Firebase 預設網域
+    if (host === configured || host === `www.${configured}` || configured === `www.${host}`) return host;
+  }
+  return firebaseConfigJson.authDomain;
+}
+
 export const firebaseConfig = {
   apiKey: firebaseConfigJson.apiKey,
-  authDomain: firebaseConfigJson.authDomain,
+  // 手機瀏覽器會隔離不同網域的資料，社群登入改走自己的網域（/__/auth 由 Vercel 轉送到 Firebase）。
+  // 需先在 Facebook／Google 後台加入 https://<網域>/__/auth/handler，再於 Vercel 設定 VITE_FIREBASE_AUTH_DOMAIN。
+  authDomain: resolveAuthDomain(),
   projectId: firebaseConfigJson.projectId,
   storageBucket: firebaseConfigJson.storageBucket,
   messagingSenderId: firebaseConfigJson.messagingSenderId,
