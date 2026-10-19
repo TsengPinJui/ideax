@@ -448,7 +448,7 @@ function MainContent() {
   const [isOnboardingFromAbout, setIsOnboardingFromAbout] = useState(false);
   const [isCategorySidebarOpen, setIsCategorySidebarOpen] = useState(false);
 
-  // 問題市場版面檢視模式：手機預設條列式排列 (list)，電腦預設方格式 (grid)
+  // 問題市場版面檢視模式：手機預設條列式排列 (list)，電腦預設大卡片 (large)
   const [viewMode, setViewMode] = useState<MarketViewMode>(() => {
     try {
       const saved = localStorage.getItem('ideax_market_view_mode');
@@ -459,9 +459,9 @@ function MainContent() {
       // ignore
     }
     if (typeof window !== 'undefined') {
-      return window.innerWidth < 768 ? 'list' : 'grid';
+      return window.innerWidth < 768 ? 'list' : 'large';
     }
-    return 'grid';
+    return 'large';
   });
 
   const handleSetViewMode = (mode: MarketViewMode) => {
