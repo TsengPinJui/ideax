@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
 import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
-import { playGlowSound, unlockMascotAudio } from './mascotSound';
+import { playBabble, playGlowSound, stopBabble, unlockMascotAudio } from './mascotSound';
 import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
 
 const COLLAPSED_KEY = 'ideax_mascot_collapsed';
@@ -62,7 +62,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
   const sendingRef = useRef(false);
   const waitTimer = useRef(0);
   const revealTimer = useRef(0);
-  useEffect(() => () => { if (waitTimer.current) window.clearInterval(waitTimer.current); if (revealTimer.current) window.clearInterval(revealTimer.current); }, []);
+  useEffect(() => () => { if (waitTimer.current) window.clearInterval(waitTimer.current); if (revealTimer.current) window.clearInterval(revealTimer.current); stopBabble(); }, []);
   const [grips, setGrips] = useState<Array<{ dir: 'left' | 'top'; left: number; top: number }>>([]);
   const [liveText, setLiveText] = useState('');
   const chatRef = useRef<HTMLElement>(null);
@@ -203,7 +203,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
   useEffect(() => {
     const seq = ++stageSeq.current;
     const eng = engineRef.current;
-    if (!chatOpen) { setGrips([]); eng?.drop(); return; } // 關閉對話框：在上面或爬到一半都會掉回地面
+    if (!chatOpen) { setGrips([]); eng?.drop(); stopBabble(); return; } // 關閉對話框：在上面或爬到一半都會掉回地面
     let cancelled = false;
     let settled = false;
     let ro: ResizeObserver | null = null;
@@ -256,6 +256,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
       if (typeof ResizeObserver === 'function' && chatRef.current) { ro = new ResizeObserver(() => onResize()); ro.observe(chatRef.current); }
       eng.jump(0.5);
       eng.talk(1300); // 像在說開場白
+      if (configRef.current.soundEnabled) playBabble(1300, configRef.current.bubbleText.slice(0, 16));
     })();
     return () => { cancelled = true; ro?.disconnect(); window.removeEventListener('resize', onResize); };
   }, [chatOpen, climbNonce]);
@@ -279,6 +280,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
     if (!dur) { setMsgs((m) => [...m, { id, who: 'bot', text, tag, actions: safeActions }]); setLiveText(text); resolve(); return; }
     setMsgs((m) => [...m, { id, who: 'bot', text, tag, reveal: 0, actions: safeActions }]);
     engineRef.current?.talk(dur);
+    if (configRef.current.soundEnabled) playBabble(dur, text); // 說話音效跟著逐字出現
     const t0 = Date.now();
     if (revealTimer.current) window.clearInterval(revealTimer.current);
     revealTimer.current = window.setInterval(() => {

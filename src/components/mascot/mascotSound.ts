@@ -65,3 +65,49 @@ export function playGlowSound(volume = 0.16) {
     });
   } catch {}
 }
+
+/**
+ * 說話音效：類似「嘰哩咕嚕」的短促音節，跟逐字出現的文字同步。
+ * 音高依文字決定（同一句話每次聽起來一樣），遇到標點停頓。
+ */
+let babbleTimers: number[] = [];
+
+export function stopBabble() {
+  babbleTimers.forEach((t) => window.clearTimeout(t));
+  babbleTimers = [];
+}
+
+function blip(c: AudioContext, at: number, freq: number, volume: number) {
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(freq, at);
+  o.frequency.exponentialRampToValueAtTime(freq * 1.18, at + 0.05);
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(volume, at + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + 0.07);
+  o.connect(g).connect(c.destination);
+  o.start(at);
+  o.stop(at + 0.08);
+}
+
+/** 依文字與總時長安排說話音節（text 可省略，省略時用隨機音高講 ms 毫秒） */
+export function playBabble(ms: number, text = '', volume = 0.07) {
+  stopBabble();
+  const c = getCtx();
+  if (!c || c.state !== 'running' || ms <= 0) return;
+  const chars = text ? Array.from(text) : Array.from({ length: Math.max(3, Math.round(ms / 85)) }, () => String.fromCharCode(0x4e00 + Math.floor(Math.random() * 2000)));
+  const step = ms / Math.max(1, chars.length); // 每個字出現的時間點（和逐字出現同步）
+  const every = Math.max(1, Math.ceil(80 / step)); // 字太快時隔幾個字才響一次（每聲至少間隔 80ms），不要像機關槍
+  chars.forEach((ch, i) => {
+    if (i % every !== 0) return;
+    if (/[\s，。、！？!?,.：:；;（）()「」『』…~～\-—]/.test(ch)) return; // 標點：停頓
+    const code = ch.codePointAt(0) || 0;
+    const freq = 380 + (code % 13) * 28 + (i % 3) * 12; // 380～740Hz，依字變化
+    const t = window.setTimeout(() => {
+      if (document.hidden) return;
+      try { blip(c, c.currentTime + 0.001, freq, volume); } catch {}
+    }, i * step);
+    babbleTimers.push(t);
+  });
+}

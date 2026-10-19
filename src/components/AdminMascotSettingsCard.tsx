@@ -120,7 +120,7 @@ export const AdminMascotSettingsCard: React.FC = () => {
             <Toggle label="全站顯示" hint="關閉後所有人都看不到" checked={draft.enabled} onChange={(v) => update({ enabled: v })} />
             <Toggle label="手機也顯示" hint="小螢幕會站在底部導覽列上方" checked={draft.showOnMobile} onChange={(v) => update({ showOnMobile: v })} />
             <Toggle label="開放提問" hint="AI 分流給三位 Dify 助理" checked={draft.chatEnabled} onChange={(v) => update({ chatEnabled: v })} />
-            <Toggle label="發亮音效" hint="開心亮起來時播放叮鈴聲" checked={draft.soundEnabled} onChange={(v) => update({ soundEnabled: v })} />
+            <Toggle label="音效" hint="發亮叮鈴聲、說話嘰哩咕嚕聲" checked={draft.soundEnabled} onChange={(v) => update({ soundEnabled: v })} />
           </div>
 
           {/* 轉接檢查：三位助理的金鑰對應哪個 Dify 應用、測試分流 */}
