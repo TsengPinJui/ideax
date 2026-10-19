@@ -221,27 +221,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   }, [smsCountdown]);
 
   // Step 2: Personal Profile & Survey
-  const [gender, setGender] = useState<'male' | 'female' | 'other' | 'undisclosed'>('male');
-  const [ageGroup, setAgeGroup] = useState<'under_18' | '18_24' | '25_34' | '35_44' | '45_54' | '55_above'>('25_34');
-  const [industry, setIndustry] = useState('資訊科技 / 軟體互聯網');
+  // 不預先替使用者選答案：沒選就存成未填寫（後台統計才不會被預設值灌水）
+  const [gender] = useState<'male' | 'female' | 'other' | 'undisclosed'>('undisclosed'); // 註冊表單沒有問性別
+  const [ageGroup, setAgeGroup] = useState<'' | 'under_18' | '18_24' | '25_34' | '35_44' | '45_54' | '55_above'>('');
+  const [industry, setIndustry] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [annualSalary, setAnnualSalary] = useState<'under_500k' | '500k_1000k' | '1000k_2000k' | '2000k_3000k' | 'above_3000k' | 'undisclosed'>('undisclosed');
   const [company, setCompany] = useState('');
   const [phone, setPhone] = useState('');
-
-  // Step 2: Survey questions (7 core questions)
-  const [desiredServices, setDesiredServices] = useState<string[]>([
-    '發布懸賞徵求專家解方',
-    '探索市場痛點與創新商機',
-  ]);
-  const [desiredServicesCustom, setDesiredServicesCustom] = useState('');
-  const [relatedDomains, setRelatedDomains] = useState<string[]>(['創新創業']);
-  const [relatedDomainsCustom, setRelatedDomainsCustom] = useState('');
-  const [willingQuestionBudget, setWillingQuestionBudget] = useState('2000_5000');
-  const [willingToProvideSolutions, setWillingToProvideSolutions] = useState('very_willing');
-  const [usageFrequency, setUsageFrequency] = useState('few_times_weekly');
-  const [willingToBeSideHustle, setWillingToBeSideHustle] = useState('considering');
-  const [willingToSubscribeSolverPlan, setWillingToSubscribeSolverPlan] = useState('depends_profit');
 
   // Terms agreement
   const [agreeGeneralTerms, setAgreeGeneralTerms] = useState(true);
@@ -1091,6 +1078,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const effectiveId = regIdNumber.trim();
       const effectivePhone = phone.trim() || regPhone.trim();
 
+      if (!industry) {
+        setErrorMsg('請選擇您的專業所屬行業。');
+        return;
+      }
       if (!effectiveLegalName) {
         setErrorMsg('註冊失敗：解答者依法須先填寫真實姓名進行實名核驗。');
         return;
@@ -1137,21 +1128,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
       }
 
-      const chosenDomains = regInterests.length > 0 ? regInterests : relatedDomains;
+      const chosenDomains: string[] = regInterests; // 只用使用者自己選的興趣；沒選時主領域另有「創新創業」保底
 
-      const survey: UserSurveyData = {
-        desiredServices,
-        desiredServicesCustom: desiredServicesCustom.trim() || undefined,
-        relatedDomains: chosenDomains,
-        relatedDomainsCustom: relatedDomainsCustom.trim() || undefined,
-        willingQuestionBudget,
-        willingToProvideSolutions,
-        usageFrequency,
-        willingToBeSideHustle,
-        willingToSubscribeSolverPlan,
-        completedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
 
       // 系統賦予獨一無二的專屬會員 ID (優先使用 Firebase Auth UID，若無則生成毫秒時間戳+隨機字串+UUID之全站唯一碼)
       const generateUniqueUserId = () => {
@@ -1188,10 +1166,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           : `${finalName} 的個人簡介。`,
         email: regEmail.trim() || `${finalUsername}@ideax.user`,
         phone: effectivePhone,
+        // 略過或沒選的欄位存成未填寫，不再補假資料
         gender: isQuestionerSkipped ? 'undisclosed' : gender,
-        ageGroup: isQuestionerSkipped ? '25_34' : ageGroup,
-        industry: isQuestionerSkipped ? '資訊科技 / 軟體互聯網' : industry,
-        jobTitle: isQuestionerSkipped ? '自由創業者' : (jobTitle.trim() || (isExpert ? '專家顧問' : '創業者')),
+        ageGroup: isQuestionerSkipped || !ageGroup ? undefined : ageGroup,
+        industry: isQuestionerSkipped || !industry ? undefined : industry,
+        jobTitle: isQuestionerSkipped ? undefined : jobTitle.trim() || undefined,
         annualSalary,
         company: company.trim() || undefined,
         domain: (chosenDomains[0] as Category) || '創新創業',
@@ -1221,7 +1200,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         reviewCount: 0,
         acceptedSolutionsCount: 0,
         submittedSolutionsCount: 0,
-        surveyData: survey,
+        // 註冊流程沒有問問卷，不再存預設答案；問卷由使用者在個人中心「問卷（用戶調查）」自行填寫
+        surveyData: undefined,
         hasAgreedGeneralTerms: true,
         agreedGeneralTermsVersion: CURRENT_TERMS_VERSION,
         agreedGeneralTermsAt: new Date().toISOString(),
@@ -2384,6 +2364,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           onChange={(e) => setIndustry(e.target.value)}
                           className="w-full px-3 py-2 bg-[#f0f4f8] text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none cursor-pointer"
                         >
+                          <option value="" disabled>請選擇行業</option>
                           <option value="資訊科技 / 軟體互聯網">資訊科技 / 軟體互聯網</option>
                           <option value="商業顧問 / 企管顧問">商業顧問 / 企管顧問</option>
                           <option value="法律智財 / 專利商標">法律智財 / 專利商標</option>
@@ -2402,6 +2383,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           onChange={(e) => setAgeGroup(e.target.value as any)}
                           className="w-full px-3 py-2 bg-[#f0f4f8] text-xs rounded-xl border border-transparent focus:border-amber-500 outline-none cursor-pointer"
                         >
+                          <option value="">請選擇（選填）</option>
                           <option value="18_24">18 ~ 24 歲</option>
                           <option value="25_34">25 ~ 34 歲</option>
                           <option value="35_44">35 ~ 44 歲</option>
@@ -2805,6 +2787,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             onChange={(e) => setIndustry(e.target.value)}
                             className="w-full px-3 py-1.5 bg-white text-xs rounded-xl border border-stone-200 focus:border-amber-500 outline-none cursor-pointer"
                           >
+                            <option value="">請選擇（選填）</option>
                             <option value="資訊科技 / 軟體互聯網">資訊科技 / 軟體互聯網</option>
                             <option value="商業顧問 / 企管顧問">商業顧問 / 企管顧問</option>
                             <option value="金融財務 / 投資機構">金融財務 / 投資機構</option>
@@ -2821,6 +2804,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             onChange={(e) => setAgeGroup(e.target.value as any)}
                             className="w-full px-3 py-1.5 bg-white text-xs rounded-xl border border-stone-200 focus:border-amber-500 outline-none cursor-pointer"
                           >
+                            <option value="">請選擇（選填）</option>
                             <option value="18_24">18 ~ 24 歲</option>
                             <option value="25_34">25 ~ 34 歲</option>
                             <option value="35_44">35 ~ 44 歲</option>

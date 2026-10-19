@@ -1,3 +1,4 @@
+import { realSurvey } from '../utils/surveyData';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData, Transaction, Question } from '../types';
@@ -746,14 +747,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   // Basic Personal Profile & SubTab State
   const [profileSubTab, setProfileSubTab] = useState<'basic' | 'survey'>('basic');
   const [userGender, setUserGender] = useState<string>(
-    currentUser.surveyData?.completedAt ? (currentUser.gender || '') : ''
+    realSurvey(currentUser)?.completedAt ? (currentUser.gender || '') : ''
   );
   const [userAgeGroup, setUserAgeGroup] = useState<string>(
-    currentUser.surveyData?.completedAt ? (currentUser.ageGroup || '') : ''
+    realSurvey(currentUser)?.completedAt ? (currentUser.ageGroup || '') : ''
   );
   const [userIndustry, setUserIndustry] = useState(currentUser.industry || '');
   const [userAnnualSalary, setUserAnnualSalary] = useState<string>(
-    currentUser.surveyData?.completedAt ? (currentUser.annualSalary || '') : ''
+    realSurvey(currentUser)?.completedAt ? (currentUser.annualSalary || '') : ''
   );
   const [userCompany, setUserCompany] = useState(currentUser.company || '');
   const [userPhone, setUserPhone] = useState(currentUser.phone || '');
@@ -797,25 +798,25 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
   // Survey Data State
   const [surveyDesiredServices, setSurveyDesiredServices] = useState<string[]>(
-    currentUser.surveyData?.desiredServices || []
+    realSurvey(currentUser)?.desiredServices || []
   );
-  const [surveyDesiredServicesCustom, setSurveyDesiredServicesCustom] = useState(currentUser.surveyData?.desiredServicesCustom || '');
+  const [surveyDesiredServicesCustom, setSurveyDesiredServicesCustom] = useState(realSurvey(currentUser)?.desiredServicesCustom || '');
   const [surveyRelatedDomains, setSurveyRelatedDomains] = useState<string[]>(
-    currentUser.surveyData?.relatedDomains || [currentUser.domain || '創新創業']
+    realSurvey(currentUser)?.relatedDomains || []
   );
-  const [surveyRelatedDomainsCustom, setSurveyRelatedDomainsCustom] = useState(currentUser.surveyData?.relatedDomainsCustom || '');
-  const [surveyWillingPointsPerQuestion, setSurveyWillingPointsPerQuestion] = useState(currentUser.surveyData?.willingPointsPerQuestion || '');
-  const [surveyWillingQuestionBudget, setSurveyWillingQuestionBudget] = useState(currentUser.surveyData?.willingQuestionBudget || '');
-  const [surveyMonthlyQuestionBudget, setSurveyMonthlyQuestionBudget] = useState(currentUser.surveyData?.monthlyQuestionBudget || '');
-  const [surveyWillingToProvideSolutions, setSurveyWillingToProvideSolutions] = useState(currentUser.surveyData?.willingToProvideSolutions || 'very_willing');
-  const [surveyUsageFrequency, setSurveyUsageFrequency] = useState(currentUser.surveyData?.usageFrequency || '');
-  const [surveyWillingToBeSideHustle, setSurveyWillingToBeSideHustle] = useState(currentUser.surveyData?.willingToBeSideHustle || '');
-  const [surveyWillingToSubscribeSolverPlan, setSurveyWillingToSubscribeSolverPlan] = useState(currentUser.surveyData?.willingToSubscribeSolverPlan || '');
-  const [surveyFeedback, setSurveyFeedback] = useState(currentUser.surveyData?.feedbackSuggestions || '');
+  const [surveyRelatedDomainsCustom, setSurveyRelatedDomainsCustom] = useState(realSurvey(currentUser)?.relatedDomainsCustom || '');
+  const [surveyWillingPointsPerQuestion, setSurveyWillingPointsPerQuestion] = useState(realSurvey(currentUser)?.willingPointsPerQuestion || '');
+  const [surveyWillingQuestionBudget, setSurveyWillingQuestionBudget] = useState(realSurvey(currentUser)?.willingQuestionBudget || '');
+  const [surveyMonthlyQuestionBudget, setSurveyMonthlyQuestionBudget] = useState(realSurvey(currentUser)?.monthlyQuestionBudget || '');
+  const [surveyWillingToProvideSolutions, setSurveyWillingToProvideSolutions] = useState(realSurvey(currentUser)?.willingToProvideSolutions || '');
+  const [surveyUsageFrequency, setSurveyUsageFrequency] = useState(realSurvey(currentUser)?.usageFrequency || '');
+  const [surveyWillingToBeSideHustle, setSurveyWillingToBeSideHustle] = useState(realSurvey(currentUser)?.willingToBeSideHustle || '');
+  const [surveyWillingToSubscribeSolverPlan, setSurveyWillingToSubscribeSolverPlan] = useState(realSurvey(currentUser)?.willingToSubscribeSolverPlan || '');
+  const [surveyFeedback, setSurveyFeedback] = useState(realSurvey(currentUser)?.feedbackSuggestions || '');
 
   // 當切換登入帳號或 currentUser 變更時，即時且同步更新表單各欄位為該當前用戶的資料
   React.useEffect(() => {
-    const hasCompletedSurvey = !!currentUser.surveyData?.completedAt;
+    const hasCompletedSurvey = !!realSurvey(currentUser)?.completedAt;
     setName(currentUser.name || '');
     setTitle(currentUser.title || '');
     setBio(currentUser.bio || '');
@@ -832,18 +833,18 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     setBranchName(initialBank?.branchName || '');
     setAccountNumber(initialBank?.accountNumber || '');
     setAccountHolder(initialBank?.accountHolder || (isRealAccountHolder ? currentUser.name : ''));
-    setSurveyDesiredServices(currentUser.surveyData?.desiredServices || []);
-    setSurveyDesiredServicesCustom(currentUser.surveyData?.desiredServicesCustom || '');
-    setSurveyRelatedDomains(currentUser.surveyData?.relatedDomains || [currentUser.domain || '創新創業']);
-    setSurveyRelatedDomainsCustom(currentUser.surveyData?.relatedDomainsCustom || '');
-    setSurveyWillingPointsPerQuestion(currentUser.surveyData?.willingPointsPerQuestion || '');
-    setSurveyWillingQuestionBudget(currentUser.surveyData?.willingQuestionBudget || '');
-    setSurveyMonthlyQuestionBudget(currentUser.surveyData?.monthlyQuestionBudget || '');
-    setSurveyWillingToProvideSolutions(currentUser.surveyData?.willingToProvideSolutions || 'very_willing');
-    setSurveyUsageFrequency(currentUser.surveyData?.usageFrequency || '');
-    setSurveyWillingToBeSideHustle(currentUser.surveyData?.willingToBeSideHustle || '');
-    setSurveyWillingToSubscribeSolverPlan(currentUser.surveyData?.willingToSubscribeSolverPlan || '');
-    setSurveyFeedback(currentUser.surveyData?.feedbackSuggestions || '');
+    setSurveyDesiredServices(realSurvey(currentUser)?.desiredServices || []);
+    setSurveyDesiredServicesCustom(realSurvey(currentUser)?.desiredServicesCustom || '');
+    setSurveyRelatedDomains(realSurvey(currentUser)?.relatedDomains || []);
+    setSurveyRelatedDomainsCustom(realSurvey(currentUser)?.relatedDomainsCustom || '');
+    setSurveyWillingPointsPerQuestion(realSurvey(currentUser)?.willingPointsPerQuestion || '');
+    setSurveyWillingQuestionBudget(realSurvey(currentUser)?.willingQuestionBudget || '');
+    setSurveyMonthlyQuestionBudget(realSurvey(currentUser)?.monthlyQuestionBudget || '');
+    setSurveyWillingToProvideSolutions(realSurvey(currentUser)?.willingToProvideSolutions || 'very_willing');
+    setSurveyUsageFrequency(realSurvey(currentUser)?.usageFrequency || '');
+    setSurveyWillingToBeSideHustle(realSurvey(currentUser)?.willingToBeSideHustle || '');
+    setSurveyWillingToSubscribeSolverPlan(realSurvey(currentUser)?.willingToSubscribeSolverPlan || '');
+    setSurveyFeedback(realSurvey(currentUser)?.feedbackSuggestions || '');
     setDomain((hasCompletedSurvey ? (currentUser.domain || '') : '') as any);
     setSkillsInput((currentUser.skills || ['創新創業', '商業模式']).map((s) => (s.startsWith('#') ? s : `#${s}`)).join(' '));
     setShowSubmittedCount(currentUser.showSubmittedCount ?? false);
@@ -1458,6 +1459,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     const newAvatar = avatar || currentUser.avatar;
     const updatedSurveyData: UserSurveyData = {
       ...currentUser.surveyData,
+      source: 'survey_form', // 使用者在個人中心自己填寫
       desiredServices: surveyDesiredServices,
       desiredServicesCustom: surveyDesiredServicesCustom.trim() || undefined,
       relatedDomains: surveyRelatedDomains,
@@ -1839,6 +1841,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
     const updatedSurveyData: UserSurveyData = {
       ...currentUser.surveyData,
+      source: 'survey_form', // 使用者在個人中心自己填寫
       desiredServices: surveyDesiredServices,
       desiredServicesCustom: surveyDesiredServicesCustom.trim() || undefined,
       relatedDomains: surveyRelatedDomains,
@@ -1851,13 +1854,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       willingToBeSideHustle: surveyWillingToBeSideHustle,
       willingToSubscribeSolverPlan: surveyWillingToSubscribeSolverPlan,
       feedbackSuggestions: surveyFeedback.trim() || undefined,
-      completedAt: currentUser.surveyData?.completedAt || new Date().toISOString(),
+      completedAt: realSurvey(currentUser)?.completedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
     // 依填寫順序計算（以前 500 名劃分）
     const completedCount = availableUsers.filter(
-      (u) => u.surveyData?.completedAt && u.id !== currentUser.id
+      (u) => realSurvey(u)?.completedAt && u.id !== currentUser.id // 只算真的填過問卷的人（不含舊版註冊自動存的預設答案）
     ).length;
 
     // 前 500 名贈送一週權威方案，其餘贈送一週達人方案
@@ -2871,14 +2874,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
               <span className="flex items-center gap-2">
                 <div className="w-5 h-5 rounded-md bg-purple-100/90 text-purple-800 flex items-center justify-center shrink-0 relative">
                   <ClipboardList className="w-3 h-3" />
-                  {!currentUser.surveyData?.completedAt && (
+                  {!realSurvey(currentUser)?.completedAt && (
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full ring-1 ring-white" />
                   )}
                 </div>
                 <span>問卷（用戶調查）</span>
               </span>
               <div className="flex items-center gap-1.5">
-                {currentUser.surveyData?.completedAt ? (
+                {realSurvey(currentUser)?.completedAt ? (
                   <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-750 border border-purple-200">已填寫</span>
                 ) : (
                   <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
@@ -4321,13 +4324,13 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all relative">
                             <ClipboardList className="w-3.5 h-3.5" />
-                            {!currentUser.surveyData?.completedAt && (
+                            {!realSurvey(currentUser)?.completedAt && (
                               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full ring-1.5 ring-white" />
                             )}
                           </div>
                           <span className="truncate">問卷調研</span>
                         </span>
-                        {currentUser.surveyData?.completedAt ? (
+                        {realSurvey(currentUser)?.completedAt ? (
                           <span className="text-[10px] text-purple-750 bg-purple-50 px-1.5 py-0.5 rounded-md font-bold border border-purple-200 shrink-0">已填寫</span>
                         ) : (
                           <span className="text-[9px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md font-bold border border-amber-200 shrink-0">
@@ -8058,10 +8061,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   <p className="text-xs text-stone-700 leading-relaxed font-medium">
                     填寫完畢獲得<strong>一週達人方案體驗（抽成僅 8% ＋ 雙 AI 分析工具）</strong>！前 500 名完成者更享有<strong>一週權威方案體驗（抽成降至 5%，比達人方案額外享有：AI 報告無限次下載 ＋ 高賞提案優先推薦）</strong>！
                   </p>
-                  {currentUser.surveyData?.completedAt && (
+                  {realSurvey(currentUser)?.completedAt && (
                     <div className="pt-1 flex items-center gap-2 text-xs font-bold text-emerald-800">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>您已完成問卷並享有會員方案體驗！（更新時間：{new Date(currentUser.surveyData.completedAt).toLocaleDateString()}）</span>
+                      <span>您已完成問卷並享有會員方案體驗！（更新時間：{new Date(realSurvey(currentUser)!.completedAt!).toLocaleDateString()}）</span>
                     </div>
                   )}
                 </div>

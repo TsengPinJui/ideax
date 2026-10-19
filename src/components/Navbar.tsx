@@ -1,3 +1,4 @@
+import { realSurvey } from '../utils/surveyData';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
@@ -1859,13 +1860,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="flex items-center gap-2.5">
                         <div className="w-7 h-7 rounded-lg bg-purple-100/90 text-purple-800 group-hover:bg-purple-200 group-hover:scale-105 flex items-center justify-center shrink-0 transition-all relative">
                           <ClipboardList className="w-3.5 h-3.5" />
-                          {!currentUser.surveyData?.completedAt && (
+                          {!realSurvey(currentUser)?.completedAt && (
                             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full ring-1.5 ring-white" />
                           )}
                         </div>
                         <span>問卷（用戶調查）</span>
                       </div>
-                      {currentUser.surveyData?.completedAt ? (
+                      {realSurvey(currentUser)?.completedAt ? (
                         <span className="text-[10px] font-bold text-purple-750 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">已填寫</span>
                       ) : (
                         <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">

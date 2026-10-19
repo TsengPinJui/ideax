@@ -1,3 +1,4 @@
+import { realSurvey } from '../utils/surveyData';
 import React from 'react';
 import { Compass, GraduationCap, Plus, User, Briefcase } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -25,7 +26,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   } = useApp();
   
   // 問卷未填寫提示紅點 (一般用戶未完成問卷或有待處理通知時顯示紅點)
-  const isSurveyPending = !currentUser?.surveyData?.completedAt && currentUser?.role !== 'admin' && currentUser?.id !== 'user-guest';
+  const isSurveyPending = !(currentUser && realSurvey(currentUser)?.completedAt) && currentUser?.role !== 'admin' && currentUser?.id !== 'user-guest';
   const showPersonalCenterRedDot = currentUser?.role === 'admin' ? pendingDisputesCount > 0 : (isSurveyPending || unreadPersonalCount > 0);
 
   const isExploreActive = activeTab === 'explore' || activeTab === 'question_detail';
