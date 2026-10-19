@@ -10,6 +10,7 @@ function pct(n: number, d: number) {
 function fmtDuration(ms: number) {
   if (!ms) return '—';
   const s = Math.round(ms / 1000);
+  if (s >= 3600) return `${Math.floor(s / 3600)} 小時 ${Math.floor((s % 3600) / 60)} 分`;
   return s >= 60 ? `${Math.floor(s / 60)} 分 ${s % 60} 秒` : `${s} 秒`;
 }
 
@@ -34,21 +35,27 @@ export const AdminMascotStatsCard: React.FC = () => {
   }, [days]);
 
   const total = useMemo(() => {
-    const t = { impression: 0, click: 0, open: 0, ask: 0, drag: 0, collapse: 0, session: 0, sad: 0, comfort: 0, unanswered: 0, interactionMs: 0, agents: {} as Record<string, number> };
+    const t = { impression: 0, click: 0, open: 0, ask: 0, drag: 0, collapse: 0, session: 0, sad: 0, comfort: 0, unanswered: 0, chat_mascot: 0, chat_agent: 0, mascot_answered: 0, escalated: 0, interactionMs: 0, chatMascotMs: 0, chatAgentMs: 0, agents: {} as Record<string, number> };
     for (const r of rows || []) {
-      for (const k of ['impression', 'click', 'open', 'ask', 'drag', 'collapse', 'session', 'sad', 'comfort', 'unanswered'] as const) t[k] += r.counts[k] || 0;
+      for (const k of ['impression', 'click', 'open', 'ask', 'drag', 'collapse', 'session', 'sad', 'comfort', 'unanswered', 'chat_mascot', 'chat_agent', 'mascot_answered', 'escalated'] as const) t[k] += r.counts[k] || 0;
       t.interactionMs += r.interactionMs || 0;
+      t.chatMascotMs += r.chatMascotMs || 0;
+      t.chatAgentMs += r.chatAgentMs || 0;
       for (const [a, n] of Object.entries(r.agents || {})) t.agents[a] = (t.agents[a] || 0) + (n || 0);
     }
     return t;
   }, [rows]);
 
+  const t_chatMascot = total.chatMascotMs;
+  const t_chatAgent = total.chatAgentMs;
   const tiles = [
     { label: '曝光次數', value: total.impression.toLocaleString() },
     { label: '點擊率', value: pct(total.click, total.impression), sub: `${total.click.toLocaleString()} 次點擊` },
     { label: '開啟對話率', value: pct(total.open, total.impression), sub: `${total.open.toLocaleString()} 次開啟` },
     { label: '提問數', value: total.ask.toLocaleString(), sub: `每次開啟 ${total.open ? (total.ask / total.open).toFixed(1) : '—'} 題` },
     { label: '無法回答', value: total.unanswered.toLocaleString(), sub: `占提問 ${pct(total.unanswered, total.ask)}` },
+    { label: '跟小燈泡聊天', value: fmtDuration(t_chatMascot), sub: `平均每段 ${fmtDuration(total.chat_mascot ? total.chatMascotMs / total.chat_mascot : 0)}・小燈泡自己回答 ${total.mascot_answered.toLocaleString()} 題` },
+    { label: '跟 AI 客服對話', value: fmtDuration(t_chatAgent), sub: `平均每段 ${fmtDuration(total.chat_agent ? total.chatAgentMs / total.chat_agent : 0)}・轉接 ${total.escalated.toLocaleString()} 次` },
     { label: '平均互動時長', value: fmtDuration(total.session ? total.interactionMs / total.session : 0), sub: `${total.session.toLocaleString()} 段互動` },
     { label: '收起次數', value: total.collapse.toLocaleString(), sub: `拖曳 ${total.drag.toLocaleString()} 次` },
     { label: '回訪安慰率', value: pct(total.comfort, total.sad), sub: `想你 ${total.sad.toLocaleString()} 次・被安慰 ${total.comfort.toLocaleString()} 次` },
@@ -59,7 +66,7 @@ export const AdminMascotStatsCard: React.FC = () => {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-amber-600" />
-          <h3 className="text-sm font-black text-stone-900">吉祥物互動統計</h3>
+          <h3 className="text-sm font-black text-stone-900">首頁小燈泡互動統計</h3>
         </div>
         <div className="flex gap-1.5" role="group" aria-label="統計區間">
           {[7, 14, 30].map((d) => (

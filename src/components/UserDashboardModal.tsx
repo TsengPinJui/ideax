@@ -1,6 +1,4 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { AdminMascotStatsCard } from './AdminMascotStatsCard';
-import { AdminMascotSettingsCard } from './AdminMascotSettingsCard';
 import { useApp } from '../context/AppContext';
 import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData, Transaction, Question } from '../types';
 import { LEVEL_CONFIGS, isMockTransactionId, isRealRegisteredUser } from '../data/mockData';
@@ -2002,7 +2000,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
     admin_user_management: '用戶管理',
     admin_user_analytics: '用戶分佈與習慣統計',
     admin_certifications: '受理認證 (實名、專家)',
-    admin_aicrm: 'AI-CRM 監控與 Agent 測試',
+    admin_aicrm: 'AI功能設定與監控',
     admin_mail_disputes: '申訴與郵件',
     settings: '帳號與基本資料',
     honors_achievements: '個人成就與榮譽',
@@ -2528,7 +2526,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </span>
                 </p>
 
-                {/* AI-CRM 監控與 Agent 測試 */}
+                {/* AI功能設定與監控（小燈泡、AI-CRM 與 Agent） */}
                 <button
                   type="button"
                   onClick={() => {
@@ -2543,7 +2541,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="block font-black text-stone-900 group-hover:text-purple-900 transition-colors">AI-CRM 監控與 Agent 測試</span>
+                        <span className="block font-black text-stone-900 group-hover:text-purple-900 transition-colors">AI功能設定與監控</span>
                         <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">後台</span>
                       </div>
                       <span className="text-[10px] text-stone-500 font-normal">全站客服特助、拓客代操、爭議調解與 Agent 實測</span>
@@ -3144,7 +3142,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 />
 
                 {/* 吉祥物互動統計 */}
-                <AdminMascotStatsCard />
 
                 {/* 第二排：總註冊用戶 ＋ 認證專家 (雙欄並排) */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -3879,8 +3876,6 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 )}
               </div>
 
-              {/* 燈泡吉祥物設定（顯示、對話、想你天數、果凍手感） */}
-              <AdminMascotSettingsCard />
 
               {/* 特殊環境開關 (共用相對開關 + 權限範圍) */}
               <div id="environment-controls-section" className="p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800 text-stone-300 text-xs space-y-3">

@@ -13,7 +13,7 @@ import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
 import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
-import { classifyMascotQuestion, fetchDifyAppName, getMascotStats, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
+import { classifyMascotQuestion, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken } from './server/competitionService';
 
 dotenv.config();
@@ -3176,16 +3176,19 @@ app.post('/api/mascot/route', async (req: Request, res: Response) => {
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
       return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, actions: guard.actions });
     }
-    let { agent, by } = await classifyMascotQuestion(guard.message, generateRawTextWithGemini);
-    if (agent === 'aicrm') agent = 'cs'; // AI-CRM 是會員功能，小燈泡不轉接業務顧問；相關疑問由客服說明
-    if (agent === 'none') {
-      // 三位助理都不負責：不轉接，直接回固定文字（也記一筆「無法回答」給後台參考）
+    // 小燈泡先判斷：聊天與簡單問題自己回答；需要專業處理的才轉接
+    const plan = await planMascotRoute(guard.message, generateRawTextWithGemini);
+    if (plan.agent === 'none') {
+      // 與平台無關、需要真實資料的問題：不隨意回答（也記一筆「無法回答」給後台參考）
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
       void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
-      return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: by });
+      return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: plan.by });
+    }
+    if (plan.agent === 'mascot') {
+      return res.json({ success: true, agent: 'mascot', agentLabel: '小燈泡', escalateTo: plan.escalateTo, routedBy: plan.by, available: true });
     }
     // available=false：這位助理沒設定金鑰，前端直接提示由小燈泡代答
-    res.json({ success: true, agent, agentLabel: MASCOT_AGENTS[agent].label, routedBy: by, available: !!mascotAgentKey(agent) });
+    res.json({ success: true, agent: plan.agent, agentLabel: MASCOT_AGENTS[plan.agent].label, routedBy: plan.by, available: !!mascotAgentKey(plan.agent) });
   } catch (err: any) {
     console.error('[Mascot Route]', err?.message || err);
     res.status(500).json({ success: false, error: '暫時無法轉接，請稍後再試' });
@@ -3201,9 +3204,25 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
     const guard = guardMascotQuestion(rawMessage);
     if (guard.action === 'reply') {
       void recordMascotEvent({ type: 'ask' }).catch(() => {});
-      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, source: 'guard', actions: guard.actions });
+      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, source: 'guard', actions: guard.actions, handler: 'mascot' });
     }
     const message = guard.message; // Email、電話、證件、帳號已遮掉
+    // 小燈泡自己回答（聊天或簡單問題）；答不出來且屬於平台問題 → 請前端轉接客服
+    if (req.body?.agent === 'mascot') {
+      const self = await mascotSelfAnswer(message, generateRawTextWithGemini);
+      if (self) {
+        void recordMascotEvent({ type: 'ask' }).catch(() => {});
+        void recordMascotEvent({ type: 'mascot_answered' }).catch(() => {});
+        return res.json({ success: true, reply: redactMascotReply(self), agentLabel: '小燈泡', source: 'mascot_self', handler: 'mascot' });
+      }
+      if (req.body?.escalateTo === 'cs') {
+        void recordMascotEvent({ type: 'escalated' }).catch(() => {});
+        return res.json({ success: true, escalate: 'cs', agentLabel: MASCOT_AGENTS.cs.label, available: !!mascotAgentKey('cs') });
+      }
+      void recordMascotEvent({ type: 'ask' }).catch(() => {});
+      void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
+      return res.json({ success: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, agentLabel: '小燈泡', source: 'mascot_self', handler: 'mascot' });
+    }
     const conversationIds = (req.body?.conversationIds && typeof req.body.conversationIds === 'object') ? req.body.conversationIds : {};
     const visitorId = String(req.body?.visitorId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) || 'guest';
     // 前端帶來的分流結果只當參考；小燈泡一律不轉接業務顧問（AI-CRM 會員功能只能在網站介面使用）
@@ -3260,7 +3279,7 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
     }
     void recordMascotEvent({ type: 'ask', agent }).catch(() => {});
     if (unanswered) void recordMascotEvent({ type: 'unanswered' }).catch(() => {});
-    res.json({ success: true, reply, agent, agentLabel: replyLabel, routedBy: by, conversationId, source });
+    res.json({ success: true, reply, agent, agentLabel: replyLabel, routedBy: by, conversationId, source, handler: 'agent' });
   } catch (err: any) {
     console.error('[Mascot Ask]', err?.message || err);
     res.status(500).json({ success: false, error: '暫時無法回答，請稍後再試' });
@@ -3310,9 +3329,19 @@ app.post('/api/admin/mascot-route-test', async (req: Request, res: Response) => 
     const guardLabel: Record<string, string> = { others: '（護欄：不提供他人資料）', own_account: '（護欄：引導自行查看帳目）', paid_feature: '（護欄：付費功能請到網站介面使用）' };
     if (guard.action === 'reply') return res.json({ success: true, agent: 'none', label: guardLabel[guard.reason], routedBy: 'guard', answer: guard.reply, actions: guard.actions });
     const message = guard.message;
-    let { agent, by } = await classifyMascotQuestion(message, generateRawTextWithGemini);
-    if (agent === 'aicrm') agent = 'cs';
-    if (agent === 'none') return res.json({ success: true, agent: 'none', label: '（不轉接，回覆暫時無法回答）', routedBy: by });
+    // 和網站上一樣：小燈泡先判斷，聊天與簡單問題自己回答，答不了才轉接
+    const plan = await planMascotRoute(message, generateRawTextWithGemini);
+    const by = plan.by;
+    if (plan.agent === 'none') return res.json({ success: true, agent: 'none', label: '（不轉接，回覆暫時無法回答）', routedBy: by });
+    let agent: MascotAgent;
+    if (plan.agent === 'mascot') {
+      const t0 = Date.now();
+      const self = req.body?.ask ? await mascotSelfAnswer(message, generateRawTextWithGemini) : null;
+      if (!req.body?.ask) return res.json({ success: true, agent: 'mascot', label: plan.escalateTo ? '小燈泡先回答，答不了再轉官方客服特助' : '小燈泡自己回答（聊天）', routedBy: by });
+      if (self) return res.json({ success: true, agent: 'mascot', label: '小燈泡自己回答', routedBy: by, answer: redactMascotReply(self), latencyMs: Date.now() - t0 });
+      if (!plan.escalateTo) return res.json({ success: true, agent: 'mascot', label: '小燈泡（答不出來，回覆暫時無法回答）', routedBy: by, answer: MASCOT_OUT_OF_SCOPE_REPLY });
+      agent = 'cs';
+    } else agent = plan.agent;
     const info = mascotAgentKeyInfo(agent);
     const out: any = { success: true, agent, label: MASCOT_AGENTS[agent].label, routedBy: by, envName: info.envName, difyAppName: await fetchDifyAppName(info.key) };
     if (req.body?.ask && info.key) {

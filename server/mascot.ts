@@ -33,7 +33,7 @@ export const MASCOT_AGENTS: Record<MascotAgent, { label: string; envKeys: string
  */
 const KEYWORDS: Record<MascotAgent, RegExp> = {
   cs: /登入|登錄|登出|密碼|帳號|帳戶|账户|账号|個人資料|頭像|暱稱|綁定|手機號|信箱|e-?mail|註冊|驗證|實名|點數|儲值|加值|退費|退款|付款|扣款|刷卡|發票|提領|出金|匯款|撥款|放款|驗收|方案|訂閱|會員|價格|費用|收費|抽成|手續費|懸賞規則|分級|\bL[0-4]\b|成為專家|專家認證|申請專家|專家申請|創星季|參賽|報名|規則|條款|怎麼用|如何使用|操作|教學|刪文|通知|錯誤|bug|當機|閃退|無法|不能|打不開|客服|工單|爭議|糾紛|檢舉|詐騙|停權|封鎖|隱私|個資/i,
-  market_advisor: /找.{0,15}專家|推薦.{0,10}專家|專家推薦|合適的專家|適合的專家|媒合|獵頭|延攬|誰能解|誰可以幫|幫我分類|分類一下|歸類|標籤|題目價值|值多少|建議懸賞|懸賞多少|該定多少|定多少|分析報告|深度報告|診斷|調解建議|和解方案|需求蔓延|履約|市場分析|市場趨勢|有興趣|主題/i,
+  market_advisor: /找.{0,15}專家|推薦.{0,10}專家|專家推薦|合適的專家|適合的專家|媒合|獵頭|延攬|誰能解|誰可以幫|幫我分類|分類一下|歸類|標籤|題目價值|值多少|建議懸賞|懸賞多少|該定多少|定多少|分析報告|深度報告|診斷|調解建議|和解方案|需求蔓延|履約|市場分析|市場趨勢/i,
   aicrm: /接案|找案子|案源|商機|好題|高賞|高額懸賞|適合我.*題|推薦.*(題目|案子)|成案|意向|破冰|話術|跟進|追蹤客戶|客戶猶豫|發案方|實收|淨利|收益|來賺|賺錢|代操|拓客|潛在客戶|提案切入|切入方針/i,
 };
 
@@ -154,6 +154,74 @@ none = 與 IdeaX 平台、提問解題、找專家、接案完全無關的問題
   return { agent: 'cs', by: 'default' };
 }
 
+/**
+ * 小燈泡先判斷、再轉接：
+ * - mascot：小燈泡自己回答（輕鬆聊天、平台基本規則就答得出來的簡單問題）；答不出來時 escalateTo 指定要轉給誰
+ * - market_advisor：題目分類、懸賞建議、調解等需要專業處理的，直接轉市場顧問
+ * - none：與平台無關、需要真實資料的問題（新聞、股價、醫療法律、代寫作業…），不隨意回答
+ */
+const CHAT_RE = /^(你好|您好|妳好|嗨|哈囉|安安|hi|hello|hey|yo|早安|午安|晚安|早|謝謝|感謝|謝啦|掰掰|再見|bye)|你是誰|妳是誰|你叫什麼|你幾歲|你住(在)?哪|你(好|很|真)可愛|好可愛|陪我聊|聊聊天|聊天|好無聊|無聊|哈哈|笑死|我好累|好累|加油|心情|你會什麼|你可以做什麼|你喜歡/i;
+export async function planMascotRoute(
+  message: string,
+  generateText: (prompt: string, system?: string) => Promise<string | null>
+): Promise<{ agent: 'mascot' | 'market_advisor' | 'none'; escalateTo: 'cs' | null; by: string }> {
+  const hits = keywordMatches(message);
+  if (!hits.length && CHAT_RE.test(message)) return { agent: 'mascot', escalateTo: null, by: 'keyword' };
+  if (hits.length === 1 && hits[0] === 'market_advisor') return { agent: 'market_advisor', escalateTo: null, by: 'keyword' };
+  // 只有客服類關鍵字：小燈泡先試，答不了再轉客服；同時碰到市場顧問的關鍵字才交給 AI 判斷
+  if (hits.length && !hits.includes('market_advisor')) return { agent: 'mascot', escalateTo: 'cs', by: 'keyword' };
+  const prompt = `請判斷以下使用者訊息屬於哪一類，只回答一個代碼：
+chat = 打招呼、閒聊、聊心情、問小燈泡自己的事
+cs = 和 IdeaX 平台有關的問題（帳號、點數、懸賞、撥款、退款、會員、規則、操作、錯誤回報、一般平台疑問）
+market_advisor = 請市場顧問處理：幫自己的題目分類、評估價值與建議懸賞、履約糾紛的調解建議
+none = 與 IdeaX 無關、需要真實資料或專業判斷的問題（新聞、天氣、股價、醫療或法律個人諮詢、代寫作業或程式、其他網站）
+
+使用者訊息：「${message.slice(0, 500)}」`;
+  try {
+    const text = await Promise.race([
+      generateText(prompt, '你是分流器，只輸出 chat、cs、market_advisor 或 none 其中一個代碼，不要輸出其他文字。'),
+      new Promise<null>((r) => setTimeout(() => r(null), 6000)),
+    ]);
+    const m = String(text || '').trim().toLowerCase().match(/\b(market_advisor|chat|cs|none)\b/);
+    if (m) {
+      if (m[1] === 'chat') return { agent: 'mascot', escalateTo: null, by: 'ai' };
+      if (m[1] === 'cs') return { agent: 'mascot', escalateTo: 'cs', by: 'ai' };
+      if (m[1] === 'market_advisor') return { agent: 'market_advisor', escalateTo: null, by: 'ai' };
+      return { agent: 'none', escalateTo: null, by: 'ai' };
+    }
+  } catch {}
+  return { agent: 'mascot', escalateTo: 'cs', by: 'default' };
+}
+
+/** 小燈泡自己回答：輕鬆聊天，或平台基本規則就答得出來的簡單問題；其餘一律 CANNOT_ANSWER（交給客服或不回答） */
+export async function mascotSelfAnswer(
+  message: string,
+  generateText: (prompt: string, system?: string) => Promise<string | null>,
+  timeoutMs = 25000
+): Promise<string | null> {
+  const system = `你是 IdeaX 創點子平台的吉祥物「小燈泡」，一顆會發光的果凍燈泡，住在網站右下角。個性開朗、熱心、有點怕高，喜歡新點子，看到大家來找你會很開心。
+你可以做兩件事：
+1. 輕鬆聊天：打招呼、聊心情、鼓勵使用者、介紹自己（你是 IdeaX 的吉祥物，可以陪聊，也可以幫忙找對的 AI 助理）。
+2. 回答平台的簡單問題：只能根據下方平台規則回答，規則裡有完整答案才回答。
+規則：
+- 需要查使用者自己的帳戶、點數、交易、訂單，需要人工處理，或下方規則沒有寫到的平台問題，只輸出 CANNOT_ANSWER（會交給官方客服）。
+- 與 IdeaX 無關、需要真實資料或專業判斷的問題（新聞、天氣、股價、醫療、法律、代寫作業或程式），只輸出 CANNOT_ANSWER。
+- 不可以捏造任何數字、規則、人名、案件或功能。
+- 用繁體中文、親切口語，120 字以內，可以用 1 個表情符號。
+${PROXY_FACTS}`;
+  try {
+    const text = await Promise.race([
+      generateText(`使用者說：「${message.slice(0, 600)}」`, system),
+      new Promise<null>((r) => setTimeout(() => r(null), timeoutMs)),
+    ]);
+    const t = String(text || '').trim();
+    if (!t || /CANNOT_ANSWER/i.test(t)) return null;
+    return t;
+  } catch {
+    return null;
+  }
+}
+
 /** 這位助理實際用哪個環境變數的金鑰（給後台轉接檢查用，不回傳金鑰本身） */
 export function mascotAgentKeyInfo(agent: MascotAgent): { envName: string | null; key: string } {
   for (const k of MASCOT_AGENTS[agent].envKeys) {
@@ -197,7 +265,7 @@ export function mascotAgentKey(agent: MascotAgent): string {
 }
 
 // ───────────── 統計 ─────────────
-const EVENT_TYPES = ['impression', 'click', 'drag', 'open', 'ask', 'collapse', 'expand', 'session', 'sad', 'comfort', 'unanswered'] as const;
+const EVENT_TYPES = ['impression', 'click', 'drag', 'open', 'ask', 'collapse', 'expand', 'session', 'sad', 'comfort', 'unanswered', 'chat_mascot', 'chat_agent', 'mascot_answered', 'escalated'] as const;
 export type MascotEventType = (typeof EVENT_TYPES)[number];
 
 async function getDb() {
@@ -219,9 +287,10 @@ export async function recordMascotEvent(input: { type: string; durationMs?: numb
   if (!conn) return false;
   const { db, FieldValue } = conn;
   const patch: Record<string, any> = { [`counts.${type}`]: FieldValue.increment(1), updatedAt: new Date().toISOString() };
-  if (type === 'session') {
+  if (type === 'session' || type === 'chat_mascot' || type === 'chat_agent') {
     const ms = Math.max(0, Math.min(30 * 60 * 1000, Math.floor(Number(input.durationMs) || 0)));
-    patch.interactionMs = FieldValue.increment(ms);
+    // session：和吉祥物互動的時間；chat_mascot／chat_agent：對話框裡跟小燈泡聊／跟 AI 客服談的時間
+    patch[type === 'session' ? 'interactionMs' : type === 'chat_mascot' ? 'chatMascotMs' : 'chatAgentMs'] = FieldValue.increment(ms);
   }
   if (type === 'ask' && input.agent && input.agent in MASCOT_AGENTS) {
     patch[`agents.${input.agent}`] = FieldValue.increment(1);
@@ -242,7 +311,7 @@ export async function getMascotStats(days = 14) {
   return {
     days: snaps.map((s: any, i: number) => {
       const d = s.exists ? s.data() || {} : {};
-      return { day: ids[i], counts: d.counts || {}, agents: d.agents || {}, interactionMs: d.interactionMs || 0 };
+      return { day: ids[i], counts: d.counts || {}, agents: d.agents || {}, interactionMs: d.interactionMs || 0, chatMascotMs: d.chatMascotMs || 0, chatAgentMs: d.chatAgentMs || 0 };
     }),
   };
 }

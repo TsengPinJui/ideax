@@ -96,6 +96,25 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
     if (!session.current) session.current = { start: now, last: now };
     else session.current.last = now;
   }, []);
+  // 對話時間：分開統計「跟小燈泡聊」和「跟 AI 客服談」的時間（2 分鐘沒動作就不再計時）
+  const CHAT_IDLE_MS = 120000;
+  const chatSeg = useRef<{ handler: 'mascot' | 'agent'; start: number; last: number } | null>(null);
+  const chatHandler = useRef<'mascot' | 'agent'>('mascot');
+  const flushChat = useCallback(() => {
+    const seg = chatSeg.current;
+    if (!seg) return;
+    chatSeg.current = null;
+    const ms = Math.min(Date.now(), seg.last + CHAT_IDLE_MS) - seg.start;
+    if (ms >= 1000) trackMascotEvent(seg.handler === 'mascot' ? 'chat_mascot' : 'chat_agent', ms);
+  }, []);
+  const touchChat = useCallback((handler?: 'mascot' | 'agent') => {
+    const now = Date.now();
+    if (handler) chatHandler.current = handler;
+    const seg = chatSeg.current;
+    if (seg && (now - seg.last > CHAT_IDLE_MS || seg.handler !== chatHandler.current)) flushChat();
+    if (!chatSeg.current) chatSeg.current = { handler: chatHandler.current, start: now, last: now };
+    else chatSeg.current.last = now;
+  }, [flushChat]);
   const flushSession = useCallback(() => {
     const s = session.current;
     if (!s) return;
@@ -103,11 +122,14 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
     trackMascotEvent('session', Math.max(1000, s.last - s.start + 1000));
   }, []);
   useEffect(() => {
-    const t = window.setInterval(() => { if (session.current && Date.now() - session.current.last > IDLE_SESSION_MS) flushSession(); }, 5000);
-    const onHide = () => flushSession();
+    const t = window.setInterval(() => {
+      if (session.current && Date.now() - session.current.last > IDLE_SESSION_MS) flushSession();
+      if (chatSeg.current && Date.now() - chatSeg.current.last > CHAT_IDLE_MS) flushChat();
+    }, 5000);
+    const onHide = () => { flushSession(); flushChat(); };
     window.addEventListener('pagehide', onHide);
-    return () => { window.clearInterval(t); window.removeEventListener('pagehide', onHide); flushSession(); };
-  }, [flushSession]);
+    return () => { window.clearInterval(t); window.removeEventListener('pagehide', onHide); flushSession(); flushChat(); };
+  }, [flushSession, flushChat]);
 
   // 建立 / 拆除 3D 引擎（收起時整個拆掉，釋放 GPU）
   useEffect(() => {
@@ -281,6 +303,12 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
     if (window.innerWidth < WIDE_MIN) setChatOpen(false);
   };
 
+  // 對話框打開：開始計算跟小燈泡聊的時間；關閉：結算
+  useEffect(() => {
+    if (chatOpen) { chatHandler.current = 'mascot'; touchChat(); }
+    else flushChat();
+  }, [chatOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /** 助理回覆：文字逐字出現，同時小燈泡嘴巴一開一合 */
   const addBotReply = (text: string, tag?: string, actions?: MascotAction[]) => new Promise<void>((resolve) => {
     const id = ++msgSeq.current;
@@ -336,25 +364,55 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
     if (!q || sendingRef.current) return;
     sendingRef.current = true;
     markActive();
+    touchChat();
     setInput('');
     setMsgs((m) => [...m, { id: ++msgSeq.current, who: 'me', text: q }]);
     setSending(true);
     engineRef.current?.think(true);
     try {
-      setStatus('小燈泡正在判斷要找哪位助理…');
+      // 1. 小燈泡先判斷
+      setStatus('小燈泡想一想…');
       const route = await routeMascot(q);
       if (route?.outOfScope) {
-        // 三位助理都不負責的問題：不轉接、不隨意回答
+        // 護欄或與平台無關的問題：不轉接、不隨意回答
         engineRef.current?.think(false);
+        setStatus('');
         await addBotReply(route.reply, '小燈泡', route.actions);
+        touchChat('mascot');
         return;
       }
-      // 依等待時間更新提示：0 秒轉接中 → 30 秒撰寫中 → 60 秒請再等等 → 3 分鐘小燈泡代答
-      const label = route?.agentLabel || '助理';
+      let agentForAsk: MascotAgent | undefined = route && route.agent !== 'mascot' ? route.agent : undefined;
+      let label = route?.agentLabel || '助理';
+      let available = route?.available !== false;
+
+      // 2. 聊天或簡單問題：小燈泡自己回答；答不出來的平台問題再轉接客服
+      if (route?.agent === 'mascot') {
+        const self = await askMascot(q, convIds.current, 'mascot', route.escalateTo);
+        if (!self.ok) {
+          engineRef.current?.think(false);
+          setStatus('');
+          await addBotReply(self.error, '小燈泡');
+          return;
+        }
+        if (!self.escalate) {
+          engineRef.current?.think(false);
+          setStatus('');
+          await addBotReply(self.reply, '小燈泡', self.actions);
+          touchChat('mascot');
+          return;
+        }
+        agentForAsk = self.escalate;
+        label = self.agentLabel || '官方客服特助';
+        available = self.available !== false;
+      }
+
+      // 3. 轉接 AI 助理：依等待時間更新提示（0 秒轉接中 → 30 秒撰寫中 → 60 秒請再等等 → 3 分鐘小燈泡代答）
+      touchChat('agent');
       const t0 = Date.now();
       let shyShown = false;
-      const offline = route?.available === false; // 這位助理沒設定：直接由小燈泡代答，不用等
+      const offline = !available; // 這位助理沒設定：直接由小燈泡代答，不用等
       const tick = () => {
+        touchChat('agent'); // 等待助理回覆也算在 AI 客服的時間
         const sec = (Date.now() - t0) / 1000;
         if (offline) { setStatus(`${label}暫時不在線，小燈泡代為回答…`); return; }
         if (sec >= 60 && !shyShown) { shyShown = true; engineRef.current?.embarrassed(); } // 等太久：不好意思
@@ -367,13 +425,14 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
       };
       tick();
       waitTimer.current = window.setInterval(tick, 1000);
-      const res = await askMascot(q, convIds.current, route?.agent);
+      const res = await askMascot(q, convIds.current, agentForAsk);
       if (waitTimer.current) { window.clearInterval(waitTimer.current); waitTimer.current = 0; }
       setStatus('');
       engineRef.current?.think(false);
       if (res.ok) {
         if (res.agent && res.conversationId) convIds.current[res.agent] = res.conversationId;
         await addBotReply(res.reply, res.agentLabel || '小燈泡', res.actions);
+        touchChat(res.handler || 'agent');
         if (res.source === 'apology') engineRef.current?.embarrassed();
       } else {
         await addBotReply(res.error, '小燈泡');
@@ -389,6 +448,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
       window.setTimeout(() => inputRef.current?.focus(), 30);
     }
   };
+
 
   if (collapsed) {
     return (
@@ -473,7 +533,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
           </div>
           <form onSubmit={send}>
             <label htmlFor="ixm-input" className="ixm-sr">輸入問題</label>
-            <input id="ixm-input" ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} maxLength={500} autoComplete="off" readOnly={sending} aria-busy={sending}
+            <input id="ixm-input" ref={inputRef} value={input} onChange={(e) => { setInput(e.target.value); touchChat(); }} maxLength={500} autoComplete="off" readOnly={sending} aria-busy={sending}
               placeholder={sending ? '小燈泡回覆中，請稍等…' : '例如：忘記密碼怎麼辦？'} />
             <button type="submit" disabled={sending || !input.trim()}>送出</button>
           </form>

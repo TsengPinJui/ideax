@@ -149,6 +149,31 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isCategorySidebarOpen = isCategorySidebarOpenProp !== undefined ? isCategorySidebarOpenProp : internalIsCategorySidebarOpen;
   const setIsCategorySidebarOpen = setIsCategorySidebarOpenProp || setInternalIsCategorySidebarOpen;
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  // 管理員選單搜尋：依項目名稱、說明與補充關鍵字（data-search）即時篩選
+  const [adminMenuQuery, setAdminMenuQuery] = useState('');
+  const [adminMenuNoMatch, setAdminMenuNoMatch] = useState(false);
+  const adminMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (!isUserMenuOpen) setAdminMenuQuery(''); }, [isUserMenuOpen]);
+  useEffect(() => {
+    const root = adminMenuRef.current;
+    if (!root) return;
+    const terms = adminMenuQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    let any = false;
+    Array.from(root.children).forEach((section) => {
+      const el = section as HTMLElement;
+      if (el.dataset.menuSearch === 'box') return;
+      let visible = 0;
+      el.querySelectorAll<HTMLElement>('button').forEach((btn) => {
+        const text = `${btn.textContent || ''} ${btn.dataset.search || ''}`.toLowerCase();
+        const match = terms.every((t) => text.includes(t));
+        btn.hidden = !match;
+        if (match) visible++;
+      });
+      el.hidden = terms.length > 0 && visible === 0;
+      if (visible) any = true;
+    });
+    setAdminMenuNoMatch(terms.length > 0 && !any);
+  }, [adminMenuQuery, isUserMenuOpen]);
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const [isSwitchAccountSectionOpen, setIsSwitchAccountSectionOpen] = useState(false);
 
@@ -1320,7 +1345,31 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 {/* 管理員個人中心清單 - 重新整理核心邏輯分類 */}
                 {currentUser.role === 'admin' ? (
-                  <div className="py-1 divide-y divide-stone-100 text-xs">
+                  <div ref={adminMenuRef} className="py-1 divide-y divide-stone-100 text-xs">
+                    {/* 搜尋管理功能與設定 */}
+                    <div data-menu-search="box" className="px-2.5 pt-1 pb-2 space-y-1.5">
+                      <label htmlFor="admin-menu-search" className="sr-only">搜尋管理功能與設定</label>
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
+                        <input
+                          id="admin-menu-search"
+                          type="search"
+                          value={adminMenuQuery}
+                          onChange={(e) => setAdminMenuQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') { e.stopPropagation(); setAdminMenuQuery(''); }
+                            if (e.key === 'Enter') {
+                              const first = Array.from(adminMenuRef.current?.querySelectorAll<HTMLButtonElement>('button') || []).find((b) => !b.hidden && !b.closest('[hidden]'));
+                              first?.click();
+                            }
+                          }}
+                          placeholder="搜尋設定，例如：小燈泡、點數、認證"
+                          autoComplete="off"
+                          className="w-full pl-8 pr-2.5 py-2 rounded-xl border border-stone-200 bg-stone-50 text-base sm:text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:bg-white"
+                        />
+                      </div>
+                      {adminMenuNoMatch && <p className="px-1 text-[11px] text-stone-500" role="status">找不到「{adminMenuQuery.trim()}」相關的設定，換個關鍵字試試。</p>}
+                    </div>
                     {/* 分類 0: 📊 總覽與平台數據 (置頂) */}
                     <div className="py-1.5 px-1.5 space-y-0.5 bg-purple-50/40">
                       <p className="px-2 pt-0.5 pb-1 text-[10px] font-black text-purple-900 uppercase tracking-wider flex items-center justify-between">
@@ -1509,8 +1558,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-bold border border-amber-200">2 項</span>
                       </p>
 
-                      {/* 1. AI-CRM 監控與 Agent 測試 */}
+                      {/* 1. AI功能設定與監控（小燈泡、AI-CRM 與 Agent） */}
                       <button
+                        data-search="小燈泡 吉祥物 首頁小燈泡 mascot 音效 轉接 對話 統計 ai 客服 agent dify gemini"
                         onClick={() => handleOpenDashboard('admin_aicrm')}
                         className="w-full px-2.5 py-1.5 rounded-xl text-left text-xs font-bold text-stone-850 hover:bg-purple-50 hover:text-purple-950 flex items-center justify-between cursor-pointer group transition-all"
                       >
@@ -1520,10 +1570,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="block font-black text-stone-900 group-hover:text-purple-900 transition-colors">AI-CRM 監控與 Agent 測試</span>
+                              <span className="block font-black text-stone-900 group-hover:text-purple-900 transition-colors">AI功能設定與監控</span>
                               <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">後台</span>
                             </div>
-                            <span className="text-[10px] text-stone-500 font-normal">全站客服特助、拓客代操、爭議調解與 Agent 實測</span>
+                            <span className="text-[10px] text-stone-500 font-normal">首頁小燈泡、客服特助、拓客代操與 Agent 實測</span>
                           </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-purple-700 transition-colors" />

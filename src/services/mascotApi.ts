@@ -19,14 +19,15 @@ export function mascotVisitorId(): string {
 
 /** 先問伺服器這題要轉接給哪位助理（很快，用來顯示「正在轉接…職稱」） */
 export interface MascotAction { label: string; to: string }
-export type MascotRoute = { outOfScope: false; agent: MascotAgent; agentLabel: string; available: boolean } | { outOfScope: true; reply: string; actions?: MascotAction[] };
+/** agent='mascot'：小燈泡先自己回答（escalateTo='cs' 表示答不出來時轉客服） */
+export type MascotRoute = { outOfScope: false; agent: MascotAgent | 'mascot'; agentLabel: string; available: boolean; escalateTo?: 'cs' | null } | { outOfScope: true; reply: string; actions?: MascotAction[] };
 export async function routeMascot(message: string): Promise<MascotRoute | null> {
   try {
     const res = await fetch('/api/mascot/route', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) return null;
     if (data.outOfScope) return { outOfScope: true, reply: String(data.reply || ''), actions: Array.isArray(data.actions) ? data.actions : [] };
-    return { outOfScope: false, agent: data.agent, agentLabel: data.agentLabel, available: data.available !== false };
+    return { outOfScope: false, agent: data.agent, agentLabel: data.agentLabel, available: data.available !== false, escalateTo: data.escalateTo || null };
   } catch {
     return null;
   }
@@ -35,8 +36,9 @@ export async function routeMascot(message: string): Promise<MascotRoute | null> 
 export async function askMascot(
   message: string,
   conversationIds: Partial<Record<MascotAgent, string>>,
-  agent?: MascotAgent
-): Promise<{ ok: true; reply: string; agent?: MascotAgent; agentLabel?: string; conversationId?: string; source?: string; actions?: MascotAction[] } | { ok: false; error: string; timedOut?: boolean }> {
+  agent?: MascotAgent | 'mascot',
+  escalateTo?: 'cs' | null
+): Promise<{ ok: true; reply: string; agent?: MascotAgent; agentLabel?: string; conversationId?: string; source?: string; actions?: MascotAction[]; handler?: 'mascot' | 'agent'; escalate?: 'cs'; available?: boolean } | { ok: false; error: string; timedOut?: boolean }> {
   // 伺服器最多等助理 3 分鐘＋小燈泡代答，前端最多等 5 分鐘
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 300000);
@@ -45,11 +47,11 @@ export async function askMascot(
       method: 'POST',
       signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, conversationIds, agent, visitorId: mascotVisitorId() }),
+      body: JSON.stringify({ message, conversationIds, agent, escalateTo, visitorId: mascotVisitorId() }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) return { ok: false, error: data.error || (res.status === 429 ? '問得太快了，休息一下再問我～' : '暫時無法回答，請稍後再試') };
-    return { ok: true, reply: data.reply, agent: data.agent, agentLabel: data.agentLabel, conversationId: data.conversationId, source: data.source, actions: Array.isArray(data.actions) ? data.actions : undefined };
+    return { ok: true, reply: data.reply || '', agent: data.agent, agentLabel: data.agentLabel, conversationId: data.conversationId, source: data.source, actions: Array.isArray(data.actions) ? data.actions : undefined, handler: data.handler, escalate: data.escalate, available: data.available };
   } catch (err: any) {
     if (err?.name === 'AbortError') return { ok: false, error: '這個問題小燈泡還要回去研究研究！很抱歉讓你都那麼久~', timedOut: true };
     return { ok: false, error: '連線不穩，請稍後再試' };
@@ -58,7 +60,7 @@ export async function askMascot(
   }
 }
 
-export type MascotEventType = 'impression' | 'click' | 'drag' | 'open' | 'collapse' | 'expand' | 'session' | 'sad' | 'comfort' | 'unanswered';
+export type MascotEventType = 'impression' | 'click' | 'drag' | 'open' | 'collapse' | 'expand' | 'session' | 'sad' | 'comfort' | 'unanswered' | 'chat_mascot' | 'chat_agent' | 'mascot_answered' | 'escalated';
 export function trackMascotEvent(type: MascotEventType, durationMs?: number) {
   try {
     const body = JSON.stringify({ type, durationMs });
@@ -75,6 +77,8 @@ export interface MascotDayStats {
   counts: Partial<Record<MascotEventType | 'ask', number>>;
   agents: Partial<Record<MascotAgent, number>>;
   interactionMs: number;
+  chatMascotMs?: number;
+  chatAgentMs?: number;
 }
 
 export async function fetchMascotStats(days = 14): Promise<MascotDayStats[] | null> {

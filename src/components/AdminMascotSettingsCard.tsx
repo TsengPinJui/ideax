@@ -45,7 +45,7 @@ const Slider: React.FC<{
   </div>
 );
 
-/** 管理員儀表板：燈泡吉祥物設定（顯示開關、對話、想你天數、果凍手感），拖滑桿時右下角的吉祥物會即時套用 */
+/** 管理員「AI功能設定與監控」：首頁小燈泡設定（顯示開關、對話、想你天數、果凍手感），拖滑桿時右下角的吉祥物會即時套用 */
 export const AdminMascotSettingsCard: React.FC = () => {
   const { mascotConfig, saveMascotConfig } = useApp();
   const [open, setOpen] = useState(false);
@@ -102,7 +102,7 @@ export const AdminMascotSettingsCard: React.FC = () => {
             <Lightbulb className="w-5 h-5" />
           </span>
           <span className="min-w-0">
-            <span id="mascot-settings-title" className="block font-black text-xs sm:text-sm text-stone-900">燈泡吉祥物設定</span>
+            <span id="mascot-settings-title" className="block font-black text-xs sm:text-sm text-stone-900">首頁小燈泡</span>
             <span className="block text-[11px] text-stone-500 font-medium">右下角 3D 吉祥物的顯示、對話與果凍手感，拖滑桿時右下角會即時預覽</span>
           </span>
         </span>
