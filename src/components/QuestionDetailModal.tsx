@@ -817,7 +817,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
     }
   };
 
-  // 訪客瀏覽規則：列表第 7～10 則僅開放預覽（只顯示前兩張圖片，其餘內容需登入）
+  // 訪客瀏覽規則：列表第 17～20 則僅開放預覽（只顯示前兩張圖片，其餘內容需登入）
   const guestPreviewOnly = isGuestUser(currentUser) && isGuestPreviewOnly(question.id);
   const guestPreviewImages = [question.coverImage, ...(question.galleryImages || [])]
     .filter((u): u is string => Boolean(u))

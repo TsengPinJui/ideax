@@ -1,10 +1,10 @@
 /**
  * 訪客（未登入）瀏覽規則
- * - 列表前 6 則：完整開放（卡片與內頁）
- * - 第 7～10 則：僅開放預覽（卡片照常顯示；內頁只顯示前兩張圖片，其餘內容需登入）
- * - 第 11 則之後：模糊遮罩，需登入才能查看
+ * - 列表前 16 則：完整開放（卡片與內頁）
+ * - 第 17～20 則：僅開放預覽（卡片照常顯示；內頁只顯示前兩張圖片，其餘內容需登入）
+ * - 第 21 則之後：模糊遮罩，「登入後查看更多」
  */
-export const GUEST_FULL_ACCESS_COUNT = 6;
+export const GUEST_FULL_ACCESS_COUNT = 16;
 export const GUEST_PREVIEW_COUNT = 4;
 export const GUEST_VISIBLE_COUNT = GUEST_FULL_ACCESS_COUNT + GUEST_PREVIEW_COUNT;
 /** 遮罩後方模糊示意的卡片數 */
