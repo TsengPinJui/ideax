@@ -13,7 +13,7 @@ export const DEFAULT_GREY_SILHOUETTE_AVATAR =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"%3E%3Ccircle cx="120" cy="74" r="46" fill="%232b2c3a"/%3E%3Cpath d="M28 214 C28 152, 68 136, 120 136 C172 136, 212 152, 212 214 Z" fill="%232b2c3a"/%3E%3C/svg%3E';
 
 /** 會員可選的預設頭像（新會員註冊時也會隨機分到其中一個） */
-export const PRESET_AVATARS: string[] = Array.from({ length: 8 }, (_, i) => `/avatars/preset-0${i + 1}.svg`);
+export const PRESET_AVATARS: string[] = Array.from({ length: 10 }, (_, i) => `/avatars/preset-${String(i + 1).padStart(2, '0')}.svg`);
 
 /** 依帳號 ID 固定分配一個預設頭像（同一個人每次都一樣） */
 export function presetAvatarFor(userId?: string): string {
