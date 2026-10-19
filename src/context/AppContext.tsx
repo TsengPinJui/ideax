@@ -1365,10 +1365,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               subcategory: seedQ.subcategory,
               subcategories: seedQ.subcategories,
               tags: seedQ.tags,
-              coverImage: seedQ.coverImage || rawQ.coverImage,
-              galleryImages: seedQ.galleryImages || rawQ.galleryImages,
+              coverImage: seedQ.coverImage,
+              galleryImages: seedQ.galleryImages,
               demoUrl: seedQ.demoUrl || rawQ.demoUrl,
               vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+              authorAvatar: seedQ.authorAvatar || rawQ.authorAvatar,
+              referencedPainPoint: seedQ.referencedPainPoint,
             }
           : {
               subcategories: rawQ.subcategories || seedQ?.subcategories,
@@ -1512,7 +1514,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (a.questionId && deletedQIds.has(a.questionId)) return false;
       if (isPurged && (isSimulatedAnswer(a) || isMockAnswerId(a.id))) return false;
       // 淘汰舊版固定數量之殘留模擬解答/討論（若不在最新 ALL_VIRTUAL_ANSWERS_SEED 中）
-      if (typeof a.id === 'string' && a.id.startsWith('ans-sim-') && !virtualAnsMap.has(a.id)) return false;
+      if (typeof a.id === 'string' && (a.id.startsWith('ans-sim-') || a.id.startsWith('ans-vp-')) && !virtualAnsMap.has(a.id)) return false;
       return true;
     };
 
@@ -2589,6 +2591,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     subcategory: seedQ.subcategory,
                     subcategories: seedQ.subcategories,
                     tags: seedQ.tags,
+                    coverImage: seedQ.coverImage,
+                    galleryImages: seedQ.galleryImages,
+                    vibeCodingData: seedQ.vibeCodingData || q.vibeCodingData,
+                    authorAvatar: seedQ.authorAvatar || q.authorAvatar,
+                    referencedPainPoint: seedQ.referencedPainPoint,
                   }
                 : {
                     subcategories: q.subcategories || seedQ?.subcategories,
@@ -2673,7 +2680,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const virtualAnsMap = new Map(ALL_VIRTUAL_ANSWERS_SEED.map((va) => [va.id, va]));
         const obsoleteSimIds: string[] = [];
         const rawCleanAns = (!isDemo ? cloudData.answers.filter((a) => !isMockAnswerId(a.id)) : cloudData.answers).filter((a) => {
-          if (typeof a?.id === 'string' && a.id.startsWith('ans-sim-') && !virtualAnsMap.has(a.id)) {
+          if (typeof a?.id === 'string' && (a.id.startsWith('ans-sim-') || a.id.startsWith('ans-vp-')) && !virtualAnsMap.has(a.id)) {
             obsoleteSimIds.push(a.id);
             return false;
           }
@@ -2919,10 +2926,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         subcategory: seedQ.subcategory,
                         subcategories: seedQ.subcategories,
                         tags: seedQ.tags,
-                        coverImage: seedQ.coverImage || rawQ.coverImage,
-                        galleryImages: seedQ.galleryImages || rawQ.galleryImages,
+                        coverImage: seedQ.coverImage,
+                        galleryImages: seedQ.galleryImages,
                         demoUrl: seedQ.demoUrl || rawQ.demoUrl,
                         vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+                        authorAvatar: seedQ.authorAvatar || rawQ.authorAvatar,
+                        referencedPainPoint: seedQ.referencedPainPoint,
                       }
                     : {
                         subcategories: rawQ.subcategories || seedQ?.subcategories,
@@ -2985,7 +2994,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const virtualAnsMap = new Map(ALL_VIRTUAL_ANSWERS_SEED.map((va) => [va.id, va]));
             const obsoleteSimIds: string[] = [];
             const rawCloudAns = (!isDemo ? cloudData.answers.filter((a) => !isMockAnswerId(a.id)) : cloudData.answers).filter((a) => {
-              if (typeof a?.id === 'string' && a.id.startsWith('ans-sim-') && !virtualAnsMap.has(a.id)) {
+              if (typeof a?.id === 'string' && (a.id.startsWith('ans-sim-') || a.id.startsWith('ans-vp-')) && !virtualAnsMap.has(a.id)) {
                 obsoleteSimIds.push(a.id);
                 return false;
               }
