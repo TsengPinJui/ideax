@@ -410,10 +410,11 @@ function MainContent() {
     return 'seek_solution';
   });
   const [initialPublishIdentity, setInitialPublishIdentity] = useState<'admin' | 'platform'>('admin');
-  // 問題市場排序方式：按照用戶前一次使用的作為下次預設（預設為 recruiting_promoted 推薦）
+  // 問題市場排序方式：預設「最新」，之後按照用戶前一次使用的作為下次預設
+  // （記憶欄位改用 v2，讓所有人先從「最新」開始）
   const [sortBy, setSortBy] = useState<QuestionSortOption>(() => {
     try {
-      const saved = localStorage.getItem('ideax_market_sort_by');
+      const saved = localStorage.getItem('ideax_market_sort_by_v2');
       if (
         saved === 'recruiting_promoted' ||
         saved === 'latest' ||
@@ -428,13 +429,13 @@ function MainContent() {
     } catch (e) {
       // ignore
     }
-    return 'recruiting_promoted';
+    return 'latest';
   });
 
   const handleSetSortBy = (option: QuestionSortOption) => {
     setSortBy(option);
     try {
-      localStorage.setItem('ideax_market_sort_by', option);
+      localStorage.setItem('ideax_market_sort_by_v2', option);
     } catch (e) {
       // ignore
     }
@@ -2604,7 +2605,7 @@ function MainContent() {
                           setSelectedSubcategory('全部');
                           setSelectedLevel('全部');
                           setSearchQuery('');
-                          setSortBy('recruiting_promoted');
+                          setSortBy('latest');
                         }
                       }}
                       className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-colors cursor-pointer"

@@ -204,7 +204,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   // 篩選與搜尋
   const [searchKw, setSearchKw] = useState('');
   const [selectedTrack, setSelectedTrack] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'support' | 'likes' | 'discussions' | 'latest'>('support');
+  const [sortBy, setSortBy] = useState<'support' | 'likes' | 'discussions' | 'latest'>('latest');
   const [viewMode, setViewMode] = useState<'large' | 'list' | 'grid'>('large');
   const [hoveredProposalId, setHoveredProposalId] = useState<string | null>(null);
 
