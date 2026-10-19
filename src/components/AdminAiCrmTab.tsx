@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AdminAssistantTickCard } from './AdminAssistantTickCard';
+import { AdminMascotSettingsCard } from './AdminMascotSettingsCard';
+import { AdminMascotStatsCard } from './AdminMascotStatsCard';
 import {
   AiCrmSystemConfig,
   AiCrmLead,
@@ -739,17 +741,17 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30 text-[11px] font-black flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                <span>AI-CRM 核心運作與 Agent 監控測試中心</span>
+                <span>小燈泡、AI-CRM 與 Agent 監控中心</span>
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold">
                 🟢 全站 Agent 引擎運作正常
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              AI-CRM 監控與 Agent 實測中控台
+              AI功能設定與監控
             </h2>
             <p className="text-xs text-stone-300 max-w-2xl leading-relaxed">
-              即時掌握客服特助、拓客代操、專家媒合、爭議調解與隱私防火牆 5 大 AI Agent 之即時運算狀態，並提供管理員端即時互動診斷與測試工具。
+              網站吉祥物「小燈泡」的設定、轉接檢查與互動統計，以及客服特助、拓客代操、專家媒合、爭議調解與隱私防火牆等 AI Agent 的運作狀態與測試工具。
             </p>
           </div>
 
@@ -834,6 +836,12 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           </div>
         </div>
       </div>
+
+      {/* 小燈泡（網站吉祥物）：設定、轉接檢查與互動統計 */}
+      <section className="space-y-3" aria-label="小燈泡設定與統計">
+        <AdminMascotSettingsCard />
+        <AdminMascotStatsCard />
+      </section>
 
       {/* 主頁籤切換欄 */}
       <div className="flex items-center gap-1.5 bg-stone-100/80 p-1.5 rounded-2xl border border-stone-200 overflow-x-auto text-xs font-bold">

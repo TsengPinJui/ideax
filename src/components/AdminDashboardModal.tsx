@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { AdminMascotStatsCard } from './AdminMascotStatsCard';
-import { AdminMascotSettingsCard } from './AdminMascotSettingsCard';
 import { useApp } from '../context/AppContext';
 import { SubscriptionTier } from '../types';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
@@ -491,7 +489,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         />
 
         {/* 吉祥物互動統計 */}
-        <AdminMascotStatsCard />
 
         {/* 1. 平台獲利數據與核心運營指標 */}
         <div>
@@ -931,8 +928,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           )}
         </div>
 
-        {/* 3. 燈泡吉祥物設定（顯示、對話、想你天數、果凍手感） */}
-        <AdminMascotSettingsCard />
 
         {/* 4. 痛點過審、推薦碼、痛點採用全自動發放監控中心 (三軌自動化流水狀態) */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50/70 via-teal-50/50 to-amber-50/70 border border-emerald-300 space-y-3.5 shadow-2xs">

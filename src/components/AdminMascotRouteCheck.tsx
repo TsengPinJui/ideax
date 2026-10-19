@@ -86,7 +86,7 @@ export const AdminMascotRouteCheck: React.FC = () => {
               <>
                 <p>轉接給：<span className="font-black text-stone-900">{result.label}</span>
                   <span className="text-stone-400">（{result.routedBy === 'keyword' ? '關鍵字直接判斷' : result.routedBy === 'ai' ? 'AI 判斷' : '預設'}）</span></p>
-                {result.agent !== 'none' && <p>實際回答的 Dify 應用：<span className="font-bold text-stone-900">{result.difyAppName || '—'}</span>（{result.envName || '未設定'}）</p>}
+                {result.agent !== 'none' && result.agent !== 'mascot' && <p>實際回答的 Dify 應用：<span className="font-bold text-stone-900">{result.difyAppName || '—'}</span>（{result.envName || '未設定'}）</p>}
                 {'answer' in result && (
                   <p className="whitespace-pre-wrap">回答{result.latencyMs ? `（${(result.latencyMs / 1000).toFixed(1)} 秒）` : ''}：{result.answer || '（沒有回應）'}</p>
                 )}

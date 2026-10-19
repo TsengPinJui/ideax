@@ -159544,7 +159544,7 @@ var MASCOT_AGENTS = {
 };
 var KEYWORDS = {
   cs: /登入|登錄|登出|密碼|帳號|帳戶|账户|账号|個人資料|頭像|暱稱|綁定|手機號|信箱|e-?mail|註冊|驗證|實名|點數|儲值|加值|退費|退款|付款|扣款|刷卡|發票|提領|出金|匯款|撥款|放款|驗收|方案|訂閱|會員|價格|費用|收費|抽成|手續費|懸賞規則|分級|\bL[0-4]\b|成為專家|專家認證|申請專家|專家申請|創星季|參賽|報名|規則|條款|怎麼用|如何使用|操作|教學|刪文|通知|錯誤|bug|當機|閃退|無法|不能|打不開|客服|工單|爭議|糾紛|檢舉|詐騙|停權|封鎖|隱私|個資/i,
-  market_advisor: /找.{0,15}專家|推薦.{0,10}專家|專家推薦|合適的專家|適合的專家|媒合|獵頭|延攬|誰能解|誰可以幫|幫我分類|分類一下|歸類|標籤|題目價值|值多少|建議懸賞|懸賞多少|該定多少|定多少|分析報告|深度報告|診斷|調解建議|和解方案|需求蔓延|履約|市場分析|市場趨勢|有興趣|主題/i,
+  market_advisor: /找.{0,15}專家|推薦.{0,10}專家|專家推薦|合適的專家|適合的專家|媒合|獵頭|延攬|誰能解|誰可以幫|幫我分類|分類一下|歸類|標籤|題目價值|值多少|建議懸賞|懸賞多少|該定多少|定多少|分析報告|深度報告|診斷|調解建議|和解方案|需求蔓延|履約|市場分析|市場趨勢/i,
   aicrm: /接案|找案子|案源|商機|好題|高賞|高額懸賞|適合我.*題|推薦.*(題目|案子)|成案|意向|破冰|話術|跟進|追蹤客戶|客戶猶豫|發案方|實收|淨利|收益|來賺|賺錢|代操|拓客|潛在客戶|提案切入|切入方針/i
 };
 function keywordMatches(message2) {
@@ -159631,6 +159631,58 @@ none = \u8207 IdeaX \u5E73\u53F0\u3001\u63D0\u554F\u89E3\u984C\u3001\u627E\u5C08
   for (const a of ["cs", "market_advisor", "aicrm"]) if (hits.includes(a)) return { agent: a, by: "keyword" };
   return { agent: "cs", by: "default" };
 }
+var CHAT_RE = /^(你好|您好|妳好|嗨|哈囉|安安|hi|hello|hey|yo|早安|午安|晚安|早|謝謝|感謝|謝啦|掰掰|再見|bye)|你是誰|妳是誰|你叫什麼|你幾歲|你住(在)?哪|你(好|很|真)可愛|好可愛|陪我聊|聊聊天|聊天|好無聊|無聊|哈哈|笑死|我好累|好累|加油|心情|你會什麼|你可以做什麼|你喜歡/i;
+async function planMascotRoute(message2, generateText) {
+  const hits = keywordMatches(message2);
+  if (!hits.length && CHAT_RE.test(message2)) return { agent: "mascot", escalateTo: null, by: "keyword" };
+  if (hits.length === 1 && hits[0] === "market_advisor") return { agent: "market_advisor", escalateTo: null, by: "keyword" };
+  if (hits.length && !hits.includes("market_advisor")) return { agent: "mascot", escalateTo: "cs", by: "keyword" };
+  const prompt = `\u8ACB\u5224\u65B7\u4EE5\u4E0B\u4F7F\u7528\u8005\u8A0A\u606F\u5C6C\u65BC\u54EA\u4E00\u985E\uFF0C\u53EA\u56DE\u7B54\u4E00\u500B\u4EE3\u78BC\uFF1A
+chat = \u6253\u62DB\u547C\u3001\u9592\u804A\u3001\u804A\u5FC3\u60C5\u3001\u554F\u5C0F\u71C8\u6CE1\u81EA\u5DF1\u7684\u4E8B
+cs = \u548C IdeaX \u5E73\u53F0\u6709\u95DC\u7684\u554F\u984C\uFF08\u5E33\u865F\u3001\u9EDE\u6578\u3001\u61F8\u8CDE\u3001\u64A5\u6B3E\u3001\u9000\u6B3E\u3001\u6703\u54E1\u3001\u898F\u5247\u3001\u64CD\u4F5C\u3001\u932F\u8AA4\u56DE\u5831\u3001\u4E00\u822C\u5E73\u53F0\u7591\u554F\uFF09
+market_advisor = \u8ACB\u5E02\u5834\u9867\u554F\u8655\u7406\uFF1A\u5E6B\u81EA\u5DF1\u7684\u984C\u76EE\u5206\u985E\u3001\u8A55\u4F30\u50F9\u503C\u8207\u5EFA\u8B70\u61F8\u8CDE\u3001\u5C65\u7D04\u7CFE\u7D1B\u7684\u8ABF\u89E3\u5EFA\u8B70
+none = \u8207 IdeaX \u7121\u95DC\u3001\u9700\u8981\u771F\u5BE6\u8CC7\u6599\u6216\u5C08\u696D\u5224\u65B7\u7684\u554F\u984C\uFF08\u65B0\u805E\u3001\u5929\u6C23\u3001\u80A1\u50F9\u3001\u91AB\u7642\u6216\u6CD5\u5F8B\u500B\u4EBA\u8AEE\u8A62\u3001\u4EE3\u5BEB\u4F5C\u696D\u6216\u7A0B\u5F0F\u3001\u5176\u4ED6\u7DB2\u7AD9\uFF09
+
+\u4F7F\u7528\u8005\u8A0A\u606F\uFF1A\u300C${message2.slice(0, 500)}\u300D`;
+  try {
+    const text = await Promise.race([
+      generateText(prompt, "\u4F60\u662F\u5206\u6D41\u5668\uFF0C\u53EA\u8F38\u51FA chat\u3001cs\u3001market_advisor \u6216 none \u5176\u4E2D\u4E00\u500B\u4EE3\u78BC\uFF0C\u4E0D\u8981\u8F38\u51FA\u5176\u4ED6\u6587\u5B57\u3002"),
+      new Promise((r2) => setTimeout(() => r2(null), 6e3))
+    ]);
+    const m2 = String(text || "").trim().toLowerCase().match(/\b(market_advisor|chat|cs|none)\b/);
+    if (m2) {
+      if (m2[1] === "chat") return { agent: "mascot", escalateTo: null, by: "ai" };
+      if (m2[1] === "cs") return { agent: "mascot", escalateTo: "cs", by: "ai" };
+      if (m2[1] === "market_advisor") return { agent: "market_advisor", escalateTo: null, by: "ai" };
+      return { agent: "none", escalateTo: null, by: "ai" };
+    }
+  } catch {
+  }
+  return { agent: "mascot", escalateTo: "cs", by: "default" };
+}
+async function mascotSelfAnswer(message2, generateText, timeoutMs = 25e3) {
+  const system = `\u4F60\u662F IdeaX \u5275\u9EDE\u5B50\u5E73\u53F0\u7684\u5409\u7965\u7269\u300C\u5C0F\u71C8\u6CE1\u300D\uFF0C\u4E00\u9846\u6703\u767C\u5149\u7684\u679C\u51CD\u71C8\u6CE1\uFF0C\u4F4F\u5728\u7DB2\u7AD9\u53F3\u4E0B\u89D2\u3002\u500B\u6027\u958B\u6717\u3001\u71B1\u5FC3\u3001\u6709\u9EDE\u6015\u9AD8\uFF0C\u559C\u6B61\u65B0\u9EDE\u5B50\uFF0C\u770B\u5230\u5927\u5BB6\u4F86\u627E\u4F60\u6703\u5F88\u958B\u5FC3\u3002
+\u4F60\u53EF\u4EE5\u505A\u5169\u4EF6\u4E8B\uFF1A
+1. \u8F15\u9B06\u804A\u5929\uFF1A\u6253\u62DB\u547C\u3001\u804A\u5FC3\u60C5\u3001\u9F13\u52F5\u4F7F\u7528\u8005\u3001\u4ECB\u7D39\u81EA\u5DF1\uFF08\u4F60\u662F IdeaX \u7684\u5409\u7965\u7269\uFF0C\u53EF\u4EE5\u966A\u804A\uFF0C\u4E5F\u53EF\u4EE5\u5E6B\u5FD9\u627E\u5C0D\u7684 AI \u52A9\u7406\uFF09\u3002
+2. \u56DE\u7B54\u5E73\u53F0\u7684\u7C21\u55AE\u554F\u984C\uFF1A\u53EA\u80FD\u6839\u64DA\u4E0B\u65B9\u5E73\u53F0\u898F\u5247\u56DE\u7B54\uFF0C\u898F\u5247\u88E1\u6709\u5B8C\u6574\u7B54\u6848\u624D\u56DE\u7B54\u3002
+\u898F\u5247\uFF1A
+- \u9700\u8981\u67E5\u4F7F\u7528\u8005\u81EA\u5DF1\u7684\u5E33\u6236\u3001\u9EDE\u6578\u3001\u4EA4\u6613\u3001\u8A02\u55AE\uFF0C\u9700\u8981\u4EBA\u5DE5\u8655\u7406\uFF0C\u6216\u4E0B\u65B9\u898F\u5247\u6C92\u6709\u5BEB\u5230\u7684\u5E73\u53F0\u554F\u984C\uFF0C\u53EA\u8F38\u51FA CANNOT_ANSWER\uFF08\u6703\u4EA4\u7D66\u5B98\u65B9\u5BA2\u670D\uFF09\u3002
+- \u8207 IdeaX \u7121\u95DC\u3001\u9700\u8981\u771F\u5BE6\u8CC7\u6599\u6216\u5C08\u696D\u5224\u65B7\u7684\u554F\u984C\uFF08\u65B0\u805E\u3001\u5929\u6C23\u3001\u80A1\u50F9\u3001\u91AB\u7642\u3001\u6CD5\u5F8B\u3001\u4EE3\u5BEB\u4F5C\u696D\u6216\u7A0B\u5F0F\uFF09\uFF0C\u53EA\u8F38\u51FA CANNOT_ANSWER\u3002
+- \u4E0D\u53EF\u4EE5\u634F\u9020\u4EFB\u4F55\u6578\u5B57\u3001\u898F\u5247\u3001\u4EBA\u540D\u3001\u6848\u4EF6\u6216\u529F\u80FD\u3002
+- \u7528\u7E41\u9AD4\u4E2D\u6587\u3001\u89AA\u5207\u53E3\u8A9E\uFF0C120 \u5B57\u4EE5\u5167\uFF0C\u53EF\u4EE5\u7528 1 \u500B\u8868\u60C5\u7B26\u865F\u3002
+${PROXY_FACTS}`;
+  try {
+    const text = await Promise.race([
+      generateText(`\u4F7F\u7528\u8005\u8AAA\uFF1A\u300C${message2.slice(0, 600)}\u300D`, system),
+      new Promise((r2) => setTimeout(() => r2(null), timeoutMs))
+    ]);
+    const t2 = String(text || "").trim();
+    if (!t2 || /CANNOT_ANSWER/i.test(t2)) return null;
+    return t2;
+  } catch {
+    return null;
+  }
+}
 function mascotAgentKeyInfo(agent) {
   for (const k of MASCOT_AGENTS[agent].envKeys) {
     const v = process.env[k];
@@ -159666,7 +159718,7 @@ function mascotAgentKey(agent) {
   }
   return "";
 }
-var EVENT_TYPES = ["impression", "click", "drag", "open", "ask", "collapse", "expand", "session", "sad", "comfort", "unanswered"];
+var EVENT_TYPES = ["impression", "click", "drag", "open", "ask", "collapse", "expand", "session", "sad", "comfort", "unanswered", "chat_mascot", "chat_agent", "mascot_answered", "escalated"];
 async function getDb3() {
   if (!hasAdminCredentials) return null;
   const { getFirestore: getFirestore3, FieldValue: FieldValue4 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
@@ -159684,9 +159736,9 @@ async function recordMascotEvent(input) {
   if (!conn) return false;
   const { db, FieldValue: FieldValue4 } = conn;
   const patch = { [`counts.${type}`]: FieldValue4.increment(1), updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
-  if (type === "session") {
+  if (type === "session" || type === "chat_mascot" || type === "chat_agent") {
     const ms = Math.max(0, Math.min(30 * 60 * 1e3, Math.floor(Number(input.durationMs) || 0)));
-    patch.interactionMs = FieldValue4.increment(ms);
+    patch[type === "session" ? "interactionMs" : type === "chat_mascot" ? "chatMascotMs" : "chatAgentMs"] = FieldValue4.increment(ms);
   }
   if (type === "ask" && input.agent && input.agent in MASCOT_AGENTS) {
     patch[`agents.${input.agent}`] = FieldValue4.increment(1);
@@ -159706,7 +159758,7 @@ async function getMascotStats(days = 14) {
   return {
     days: snaps.map((s2, i2) => {
       const d = s2.exists ? s2.data() || {} : {};
-      return { day: ids[i2], counts: d.counts || {}, agents: d.agents || {}, interactionMs: d.interactionMs || 0 };
+      return { day: ids[i2], counts: d.counts || {}, agents: d.agents || {}, interactionMs: d.interactionMs || 0, chatMascotMs: d.chatMascotMs || 0, chatAgentMs: d.chatAgentMs || 0 };
     })
   };
 }
@@ -162356,16 +162408,18 @@ app.post("/api/mascot/route", async (req, res) => {
       });
       return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, actions: guard.actions });
     }
-    let { agent, by } = await classifyMascotQuestion(guard.message, generateRawTextWithGemini);
-    if (agent === "aicrm") agent = "cs";
-    if (agent === "none") {
+    const plan = await planMascotRoute(guard.message, generateRawTextWithGemini);
+    if (plan.agent === "none") {
       void recordMascotEvent({ type: "ask" }).catch(() => {
       });
       void recordMascotEvent({ type: "unanswered" }).catch(() => {
       });
-      return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: by });
+      return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: plan.by });
     }
-    res.json({ success: true, agent, agentLabel: MASCOT_AGENTS[agent].label, routedBy: by, available: !!mascotAgentKey(agent) });
+    if (plan.agent === "mascot") {
+      return res.json({ success: true, agent: "mascot", agentLabel: "\u5C0F\u71C8\u6CE1", escalateTo: plan.escalateTo, routedBy: plan.by, available: true });
+    }
+    res.json({ success: true, agent: plan.agent, agentLabel: MASCOT_AGENTS[plan.agent].label, routedBy: plan.by, available: !!mascotAgentKey(plan.agent) });
   } catch (err) {
     console.error("[Mascot Route]", err?.message || err);
     res.status(500).json({ success: false, error: "\u66AB\u6642\u7121\u6CD5\u8F49\u63A5\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66" });
@@ -162380,9 +162434,29 @@ app.post("/api/mascot/ask", async (req, res) => {
     if (guard.action === "reply") {
       void recordMascotEvent({ type: "ask" }).catch(() => {
       });
-      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, source: "guard", actions: guard.actions });
+      return res.json({ success: true, outOfScope: true, reply: guard.reply, guarded: guard.reason, source: "guard", actions: guard.actions, handler: "mascot" });
     }
     const message2 = guard.message;
+    if (req.body?.agent === "mascot") {
+      const self2 = await mascotSelfAnswer(message2, generateRawTextWithGemini);
+      if (self2) {
+        void recordMascotEvent({ type: "ask" }).catch(() => {
+        });
+        void recordMascotEvent({ type: "mascot_answered" }).catch(() => {
+        });
+        return res.json({ success: true, reply: redactMascotReply(self2), agentLabel: "\u5C0F\u71C8\u6CE1", source: "mascot_self", handler: "mascot" });
+      }
+      if (req.body?.escalateTo === "cs") {
+        void recordMascotEvent({ type: "escalated" }).catch(() => {
+        });
+        return res.json({ success: true, escalate: "cs", agentLabel: MASCOT_AGENTS.cs.label, available: !!mascotAgentKey("cs") });
+      }
+      void recordMascotEvent({ type: "ask" }).catch(() => {
+      });
+      void recordMascotEvent({ type: "unanswered" }).catch(() => {
+      });
+      return res.json({ success: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, agentLabel: "\u5C0F\u71C8\u6CE1", source: "mascot_self", handler: "mascot" });
+    }
     const conversationIds = req.body?.conversationIds && typeof req.body.conversationIds === "object" ? req.body.conversationIds : {};
     const visitorId = String(req.body?.visitorId || "guest").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) || "guest";
     let preRouted = typeof req.body?.agent === "string" && req.body.agent in MASCOT_AGENTS ? req.body.agent : null;
@@ -162442,7 +162516,7 @@ app.post("/api/mascot/ask", async (req, res) => {
     });
     if (unanswered) void recordMascotEvent({ type: "unanswered" }).catch(() => {
     });
-    res.json({ success: true, reply, agent, agentLabel: replyLabel, routedBy: by, conversationId, source });
+    res.json({ success: true, reply, agent, agentLabel: replyLabel, routedBy: by, conversationId, source, handler: "agent" });
   } catch (err) {
     console.error("[Mascot Ask]", err?.message || err);
     res.status(500).json({ success: false, error: "\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66" });
@@ -162486,9 +162560,18 @@ app.post("/api/admin/mascot-route-test", async (req, res) => {
     const guardLabel = { others: "\uFF08\u8B77\u6B04\uFF1A\u4E0D\u63D0\u4F9B\u4ED6\u4EBA\u8CC7\u6599\uFF09", own_account: "\uFF08\u8B77\u6B04\uFF1A\u5F15\u5C0E\u81EA\u884C\u67E5\u770B\u5E33\u76EE\uFF09", paid_feature: "\uFF08\u8B77\u6B04\uFF1A\u4ED8\u8CBB\u529F\u80FD\u8ACB\u5230\u7DB2\u7AD9\u4ECB\u9762\u4F7F\u7528\uFF09" };
     if (guard.action === "reply") return res.json({ success: true, agent: "none", label: guardLabel[guard.reason], routedBy: "guard", answer: guard.reply, actions: guard.actions });
     const message2 = guard.message;
-    let { agent, by } = await classifyMascotQuestion(message2, generateRawTextWithGemini);
-    if (agent === "aicrm") agent = "cs";
-    if (agent === "none") return res.json({ success: true, agent: "none", label: "\uFF08\u4E0D\u8F49\u63A5\uFF0C\u56DE\u8986\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF09", routedBy: by });
+    const plan = await planMascotRoute(message2, generateRawTextWithGemini);
+    const by = plan.by;
+    if (plan.agent === "none") return res.json({ success: true, agent: "none", label: "\uFF08\u4E0D\u8F49\u63A5\uFF0C\u56DE\u8986\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF09", routedBy: by });
+    let agent;
+    if (plan.agent === "mascot") {
+      const t0 = Date.now();
+      const self2 = req.body?.ask ? await mascotSelfAnswer(message2, generateRawTextWithGemini) : null;
+      if (!req.body?.ask) return res.json({ success: true, agent: "mascot", label: plan.escalateTo ? "\u5C0F\u71C8\u6CE1\u5148\u56DE\u7B54\uFF0C\u7B54\u4E0D\u4E86\u518D\u8F49\u5B98\u65B9\u5BA2\u670D\u7279\u52A9" : "\u5C0F\u71C8\u6CE1\u81EA\u5DF1\u56DE\u7B54\uFF08\u804A\u5929\uFF09", routedBy: by });
+      if (self2) return res.json({ success: true, agent: "mascot", label: "\u5C0F\u71C8\u6CE1\u81EA\u5DF1\u56DE\u7B54", routedBy: by, answer: redactMascotReply(self2), latencyMs: Date.now() - t0 });
+      if (!plan.escalateTo) return res.json({ success: true, agent: "mascot", label: "\u5C0F\u71C8\u6CE1\uFF08\u7B54\u4E0D\u51FA\u4F86\uFF0C\u56DE\u8986\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF09", routedBy: by, answer: MASCOT_OUT_OF_SCOPE_REPLY });
+      agent = "cs";
+    } else agent = plan.agent;
     const info = mascotAgentKeyInfo(agent);
     const out = { success: true, agent, label: MASCOT_AGENTS[agent].label, routedBy: by, envName: info.envName, difyAppName: await fetchDifyAppName(info.key) };
     if (req.body?.ask && info.key) {
