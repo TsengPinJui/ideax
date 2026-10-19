@@ -12,6 +12,17 @@ export const DEACTIVATED_USER_AVATAR =
 export const DEFAULT_GREY_SILHOUETTE_AVATAR =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"%3E%3Ccircle cx="120" cy="74" r="46" fill="%232b2c3a"/%3E%3Cpath d="M28 214 C28 152, 68 136, 120 136 C172 136, 212 152, 212 214 Z" fill="%232b2c3a"/%3E%3C/svg%3E';
 
+/** 會員可選的預設頭像（新會員註冊時也會隨機分到其中一個） */
+export const PRESET_AVATARS: string[] = Array.from({ length: 8 }, (_, i) => `/avatars/preset-0${i + 1}.svg`);
+
+/** 依帳號 ID 固定分配一個預設頭像（同一個人每次都一樣） */
+export function presetAvatarFor(userId?: string): string {
+  if (!userId) return PRESET_AVATARS[0];
+  let h = 0;
+  for (let i = 0; i < userId.length; i++) h = (h * 31 + userId.charCodeAt(i)) >>> 0;
+  return PRESET_AVATARS[h % PRESET_AVATARS.length];
+}
+
 export const isGuestUser = (u: any): boolean => {
   if (!u || !u.id) return true;
   if (u.isGuest === true) return true;
@@ -835,7 +846,7 @@ export function getDefaultAvatarForUser(userId?: string, role?: string, accountT
   if (userId.startsWith('b') || role === 'enterprise' || accountType === 'enterprise') {
     return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=150&auto=format&fit=crop&q=80';
   }
-  return DEFAULT_GREY_SILHOUETTE_AVATAR;
+  return presetAvatarFor(userId);
 }
 
 /**
@@ -877,7 +888,7 @@ export function resolveUserAvatar(
     // 3. 從傳入的 usersList 中查找該帳號
     if (usersList && usersList.length > 0) {
       const matched = usersList.find((u) => u.id === userId || (aliasId && u.id === aliasId));
-      if (matched && matched.avatar && matched.avatar.trim() && !matched.avatar.includes('logo-bulb')) {
+      if (matched && matched.avatar && matched.avatar.trim() && !matched.avatar.includes('logo-bulb') && matched.avatar !== DEFAULT_GREY_SILHOUETTE_AVATAR) {
         return matched.avatar;
       }
     }
@@ -888,7 +899,7 @@ export function resolveUserAvatar(
         const savedCurrentRaw = localStorage.getItem('ideax_user') || localStorage.getItem('ideax_current_user');
         if (savedCurrentRaw) {
           const cur = JSON.parse(savedCurrentRaw);
-          if (cur && (cur.id === userId || (aliasId && cur.id === aliasId)) && cur.avatar && !cur.avatar.includes('logo-bulb')) {
+          if (cur && (cur.id === userId || (aliasId && cur.id === aliasId)) && cur.avatar && !cur.avatar.includes('logo-bulb') && cur.avatar !== DEFAULT_GREY_SILHOUETTE_AVATAR) {
             return cur.avatar;
           }
         }

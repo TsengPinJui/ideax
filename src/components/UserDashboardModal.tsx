@@ -37,7 +37,7 @@ import {
   buildContractFromProposalItem, 
   downloadContractFile 
 } from '../utils/contractGenerator';
-import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP, saveCustomUserProfile, getDefaultAvatarForUser } from '../utils/userDisplay';
+import { resolveUserDisplayName, resolveUserAvatar, isUserAccountDeactivated, getUserNameColorClass, restoreCanonicalUserIdentity, USER_ALIAS_MAP, saveCustomUserProfile, getDefaultAvatarForUser, PRESET_AVATARS, presetAvatarFor } from '../utils/userDisplay';
 import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUtils';
 import { syncUserToFirestore } from '../services/firestoreSync';
 import { updateFirebaseUserPassword } from '../services/firebaseAuth';
@@ -856,6 +856,21 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
   }, [currentUser.id]);
 
   // 處理用戶/管理員頭像上傳：限制 6MB 內，Canvas 壓縮為正方形 (一次只存一張)
+  // 選用平台提供的預設頭像（與上傳照片走同一套儲存流程）
+  const applyPresetAvatar = (url: string) => {
+    setAvatarError(null);
+    setAvatar(url);
+    saveCustomUserProfile(currentUser.id, { avatar: url });
+    setCurrentUser((prev) => ({ ...prev, avatar: url }));
+    const aliasId = USER_ALIAS_MAP[currentUser.id];
+    setAvailableUsers((prev) =>
+      prev.map((u) => (u.id === currentUser.id || (aliasId && u.id === aliasId) ? { ...u, avatar: url } : u))
+    );
+    syncUserToFirestore({ ...currentUser, avatar: url }).catch(() => {});
+    setMsg('頭像已更換');
+    setTimeout(() => setMsg(null), 2500);
+  };
+
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -6976,7 +6991,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div className="flex items-center gap-3">
                       <div className="relative shrink-0 group">
                         <img
-                          src={avatar || currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                          src={avatar || currentUser.avatar || presetAvatarFor(currentUser.id)}
                           alt={currentUser.name}
                           className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl object-cover ring-2 ring-purple-400 shadow-md"
                         />
@@ -7088,7 +7103,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div className="flex items-center gap-3">
                       <div className="relative group shrink-0">
                         <img
-                          src={avatar || currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                          src={avatar || currentUser.avatar || presetAvatarFor(currentUser.id)}
                           alt={currentUser.name}
                           className="w-14 h-14 rounded-2xl object-cover ring-2 ring-purple-300 shadow-2xs"
                         />
@@ -7552,7 +7567,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     <div className="flex items-center gap-3">
                       <div className="relative group shrink-0">
                         <img
-                          src={avatar || currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                          src={avatar || currentUser.avatar || presetAvatarFor(currentUser.id)}
                           alt={currentUser.name}
                           className="w-14 h-14 rounded-2xl object-cover ring-2 ring-stone-200 shadow-2xs"
                         />
@@ -7583,6 +7598,31 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                         <Upload className="w-3.5 h-3.5 text-amber-600" />
                         <span>更換頭像照片 (限 6MB)</span>
                       </button>
+                    </div>
+                  </div>
+
+                  {/* 預設頭像：不想上傳照片的人可以直接選一個 */}
+                  <div className="p-3.5 rounded-2xl bg-white border border-stone-200">
+                    <h5 className="text-xs font-bold text-stone-900">或選一個預設頭像</h5>
+                    <div className="mt-2.5 flex flex-wrap gap-2.5">
+                      {PRESET_AVATARS.map((url, i) => {
+                        const selected = (avatar || currentUser.avatar) === url;
+                        return (
+                          <button
+                            key={url}
+                            type="button"
+                            onClick={() => applyPresetAvatar(url)}
+                            title={`預設頭像 ${i + 1}`}
+                            aria-label={`使用預設頭像 ${i + 1}`}
+                            aria-pressed={selected}
+                            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden transition-all cursor-pointer ${
+                              selected ? 'ring-[3px] ring-amber-500 ring-offset-2' : 'ring-1 ring-stone-200 hover:ring-amber-300 hover:scale-105'
+                            }`}
+                          >
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
