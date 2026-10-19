@@ -133,6 +133,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // 吉祥物互動統計：只有伺服器能寫；管理員可讀
+    match /mascot_stats/{day} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // 撥款申請：只有伺服器能寫；管理員可讀
     match /payout_requests/{id} {
       allow read: if isAdmin();
@@ -291,7 +297,7 @@ service cloud.firestore {
     // 注意：Firestore 規則是「任一條允許即放行」，因此萬用規則必須排除上方受保護的集合
     match /{collectionId}/{document=**} {
       allow read, write: if !(collectionId in ['admins', 'user_private', 'transactions', 'conversations', 'notifications',
-        'points_ledger', 'points_escrow', 'questions', 'answers', 'users', 'payout_requests', 'answer_secrets', 'platform_settings',
+        'points_ledger', 'points_escrow', 'questions', 'answers', 'users', 'payout_requests', 'answer_secrets', 'platform_settings', 'mascot_stats',
         'competition_private_submissions', 'competition_accounts', 'competition_participant_registrations',
         'competition_judge_applications', 'competition_support_records', 'competition_audit_logs']);
     }

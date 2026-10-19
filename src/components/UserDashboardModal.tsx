@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { AdminMascotStatsCard } from './AdminMascotStatsCard';
 import { useApp } from '../context/AppContext';
 import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData, Transaction, Question } from '../types';
 import { LEVEL_CONFIGS, isMockTransactionId, isRealRegisteredUser } from '../data/mockData';
@@ -3195,6 +3196,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   totalViewsCount={totalViewsCount || 0}
                   onlineUsersCount={liveOnlineUsersCount || 1}
                 />
+
+                {/* 吉祥物互動統計 */}
+                <AdminMascotStatsCard />
 
                 {/* 第二排：總註冊用戶 ＋ 認證專家 (雙欄並排) */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">

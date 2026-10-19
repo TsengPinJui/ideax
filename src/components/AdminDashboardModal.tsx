@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AdminMascotStatsCard } from './AdminMascotStatsCard';
 import { useApp } from '../context/AppContext';
 import { SubscriptionTier } from '../types';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
@@ -530,6 +531,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           totalViewsCount={siteVisitsCount || 0}
           onlineUsersCount={onlineUsersCount || 1}
         />
+
+        {/* 吉祥物互動統計 */}
+        <AdminMascotStatsCard />
 
         {/* 1. 平台獲利數據與核心運營指標 */}
         <div>

@@ -12,6 +12,7 @@ import { runAssistantTick } from './server/assistantCron';
 import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/pointsLedger';
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
+import { classifyMascotQuestion, getMascotStats, MASCOT_AGENTS, mascotAgentKey, recordMascotEvent } from './server/mascot';
 import { verifyAuthToken } from './server/competitionService';
 
 dotenv.config();
@@ -40,6 +41,8 @@ app.use(['/api/ai', '/api/agent'], rateLimit({ windowMs: 10 * 60 * 1000, max: 40
 app.use(['/api/auth/send-email-code', '/api/auth/send-sms-code', '/api/auth/send-welcome-email'], rateLimit({ windowMs: 10 * 60 * 1000, max: 5, name: 'send-code' }));
 app.use('/api/points', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'points' }));
 app.use('/api/answers', rateLimit({ windowMs: 60 * 1000, max: 30, name: 'answers' }));
+app.use('/api/mascot/ask', rateLimit({ windowMs: 60 * 1000, max: 12, name: 'mascot-ask' }));
+app.use('/api/mascot/event', rateLimit({ windowMs: 60 * 1000, max: 60, name: 'mascot-event' }));
 app.use('/api/auth/password-login', rateLimit({ windowMs: 10 * 60 * 1000, max: 10, name: 'password-login' }));
 app.use(['/api/auth/verify-email-code', '/api/auth/verify-sms-code', '/api/auth/reset-password-with-code'], rateLimit({ windowMs: 10 * 60 * 1000, max: 20, name: 'verify-code' }));
 
@@ -3157,6 +3160,63 @@ app.post('/api/points/op', async (req: Request, res: Response) => {
     const status = err instanceof PointsError ? err.status : 500;
     if (status >= 500) console.error('[Points]', err?.message || err);
     res.status(status).json({ success: false, error: err?.message || '點數處理失敗' });
+  }
+});
+
+// 吉祥物：內建 AI 判斷問題類型，轉給三個 Dify 助理之一回答
+app.post('/api/mascot/ask', async (req: Request, res: Response) => {
+  try {
+    const message = String(req.body?.message || '').trim().slice(0, 800);
+    if (!message) return res.status(400).json({ success: false, error: '請輸入問題' });
+    const conversationIds = (req.body?.conversationIds && typeof req.body.conversationIds === 'object') ? req.body.conversationIds : {};
+    const visitorId = String(req.body?.visitorId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) || 'guest';
+    const { agent, by } = await classifyMascotQuestion(message, generateRawTextWithGemini);
+    const meta = MASCOT_AGENTS[agent];
+    const apiKey = mascotAgentKey(agent);
+    let reply = '';
+    let conversationId: string | undefined;
+    let source = 'dify';
+    if (apiKey) {
+      const r = await callDifyStreamingAgent({
+        apiKey,
+        query: message,
+        inputs: { platform_name: 'IdeaX', 平台名稱: 'IdeaX', entry: 'mascot' },
+        conversationId: typeof conversationIds[agent] === 'string' ? conversationIds[agent] : undefined,
+        user: `mascot_${visitorId}`,
+        timeoutMs: 25000,
+      }).catch(() => null);
+      if (r?.text) {
+        reply = r.text;
+        conversationId = r.conversationId;
+      }
+    }
+    if (!reply) {
+      source = 'gemini';
+      reply = (await generateRawTextWithGemini(message, `${meta.persona}請用繁體中文、口語親切地回答，150 字以內。`)) || '我現在有點忙不過來，請稍後再問我一次，或到「客服中心」留言給我們喔！';
+    }
+    void recordMascotEvent({ type: 'ask', agent }).catch(() => {});
+    res.json({ success: true, reply, agent, agentLabel: meta.label, routedBy: by, conversationId, source });
+  } catch (err: any) {
+    console.error('[Mascot Ask]', err?.message || err);
+    res.status(500).json({ success: false, error: '暫時無法回答，請稍後再試' });
+  }
+});
+
+// 吉祥物互動統計（不需登入；只累加當日計數）
+app.post('/api/mascot/event', async (req: Request, res: Response) => {
+  try {
+    const ok = await recordMascotEvent(req.body || {});
+    res.json({ success: ok });
+  } catch {
+    res.json({ success: false });
+  }
+});
+
+app.get('/api/admin/mascot-stats', async (req: Request, res: Response) => {
+  try {
+    res.json({ success: true, ...(await getMascotStats(Number(req.query.days) || 14)) });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '讀取失敗' });
   }
 });
 
