@@ -13,7 +13,8 @@ export interface MascotEngineOptions {
   glow: HTMLElement; rays: Element; alarm: HTMLElement; puddle: HTMLElement; drops: HTMLElement; pool: HTMLElement;
   tuning?: Partial<MascotTuning>; bubbleDefault?: string;
   getInsets?: () => { bottom: number; right: number };
-  onEvent?: (type: 'click' | 'drag' | 'comfort' | 'dropped' | 'glow') => void;
+  /** impact 會帶撞擊速度（px/s）；scared 進入驚嚇；zap 驚嚇中燈光閃一下 */
+  onEvent?: (type: 'click' | 'drag' | 'comfort' | 'dropped' | 'glow' | 'scared' | 'calm' | 'zap' | 'impact', data?: number) => void;
 }
 export interface MascotStage { x: number; y: number; lean?: number; look?: 'around' }
 export interface MascotEngine {
@@ -43,7 +44,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
   const cleanups = [];
   const on = (target, type, fn, opts) => { target.addEventListener(type, fn, opts); cleanups.push(() => target.removeEventListener(type, fn, opts)); };
   const later = (fn, ms) => { const t = setTimeout(() => { if (!destroyed) fn(); }, ms); cleanups.push(() => clearTimeout(t)); };
-  const emit = (type) => { try { o.onEvent && o.onEvent(type); } catch {} };
+  const emit = (type, data) => { try { o.onEvent && o.onEvent(type, data); } catch {} };
   let insets = { bottom: 14, right: 6 };
   const readInsets = () => { try { const v = o.getInsets && o.getInsets(); if (v) insets = { bottom: Math.max(8, v.bottom), right: Math.max(4, v.right) }; } catch {} };
   readInsets();
@@ -408,6 +409,8 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (m === 'sad' && S.mood !== 'sad') S.sadSince = performance.now();
     if (m !== 'sad' && m !== 'scared') S.sadLie = false;
     if (m === 'happy' && S.mood !== 'happy') emit('glow'); // 亮起來（外層播放發亮音效）
+    if (m === 'scared' && S.mood !== 'scared') emit('scared'); // 嚇到（外層播放觸電聲＋電流聲）
+    if (m !== 'scared' && S.mood === 'scared') emit('calm'); // 不嚇了（外層停掉電流聲）
     S.mood = m; S.moodUntil = ms ? performance.now() + ms : 0;
     S.glowTarget = { happy: 1, sad: 0.03, think: 0.5, dizzy: 0.08, scared: 0.6, shy: 0.28 }[m] ?? 0.15;
     S.pose = { happy: 'up', sad: 'cry', dizzy: 'fallen', scared: 'panic', shy: 'scratch' }[m] || 'idle';
@@ -591,10 +594,10 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (S.mode === 'fly' || S.mode === 'fallen') {
       S.vy += 2400 * dt; S.x += S.vx * dt; S.y += S.vy * dt;
       const mz = msize(); const left = mz.w * 0.35, right = vw - mz.w * 0.35, floor = vh - insets.bottom, ceil = mz.h * 0.9;
-      const bounce = (sp) => { S.squashV += Math.min(14, sp * 0.006); };
+      const bounce = (sp) => { S.squashV += Math.min(14, sp * 0.006); if (sp > 420) emit('impact', sp); }; // 撞到牆或地面：玻璃哐當聲
       if (S.x < left) { S.x = left; bounce(Math.abs(S.vx)); S.vx = -S.vx * 0.55; S.tumbleV *= -0.6; }
       if (S.x > right) { S.x = right; bounce(Math.abs(S.vx)); S.vx = -S.vx * 0.55; S.tumbleV *= -0.6; }
-      if (S.y < ceil) { S.y = ceil; S.vy = Math.abs(S.vy) * 0.4; }
+      if (S.y < ceil) { if (Math.abs(S.vy) > 420) emit('impact', Math.abs(S.vy)); S.y = ceil; S.vy = Math.abs(S.vy) * 0.4; }
       if (S.y > floor) {
         const impact = Math.abs(S.vy); S.y = floor; bounce(impact);
         S.vy = impact > 260 ? -impact * 0.45 : 0; S.vx *= 0.82;
@@ -665,7 +668,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (S.mood === 'idle') gt = 0.14 + Math.sin(now / 900) * 0.06;
     if (S.mood === 'think') gt = 0.3 + (Math.sin(now / 90) > 0.3 ? 0.35 : 0);
     if (S.mood === 'happy') gt = S.jumpY < -10 ? 1.3 : 0.95;
-    if (S.mood === 'scared') { if (now > S.flickerAt) { S.flickerOn = !S.flickerOn; S.flickerAt = now + 40 + Math.random() * 110; } S.glow = S.flickerOn ? 1 : 0.04; }
+    if (S.mood === 'scared') { if (now > S.flickerAt) { S.flickerOn = !S.flickerOn; S.flickerAt = now + 40 + Math.random() * 110; if (S.flickerOn) emit('zap'); } S.glow = S.flickerOn ? 1 : 0.04; }
     else { if (S.mood === 'sad' && Math.random() < 0.006) S.glow = 0.16; S.glow += (gt - S.glow) * Math.min(1, dt * (gt > S.glow ? 9 : 4)); }
 
     // ── 套用到 3D 模型 ──
