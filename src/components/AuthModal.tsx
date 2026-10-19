@@ -141,6 +141,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     subscriptionPlans,
     addTestAccount,
     checkUserDeactivationStatus,
+    pendingSocialLogin,
+    clearPendingSocialLogin,
   } = useApp();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot_password'>(initialMode);
@@ -660,6 +662,49 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  // 社群登入完成後的共同流程（彈出視窗或手機整頁跳轉回來都走這裡）
+  const completeSocialLogin = async (provider: 'google' | 'facebook', fbUser: any) => {
+    const label = provider === 'google' ? 'Google' : 'Facebook';
+    const firestoreUser = await getUserFromFirestore(fbUser.uid);
+    const existing =
+      firestoreUser ||
+      availableUsers.find(
+        (u) => u.id === fbUser.uid || u.authUid === fbUser.uid || (!!fbUser.email && u.email?.toLowerCase() === fbUser.email.toLowerCase())
+      );
+    if (existing) {
+      // 安全性：管理員帳號只能以白名單內的已驗證 Email 登入
+      if (existing.role === 'admin' && !(fbUser.email && isAllowlistedAdminEmail(fbUser.email))) {
+        setErrorMsg('此帳號需使用已授權的管理員 Email 登入。');
+        return;
+      }
+      const checkRes = checkUserDeactivationStatus(existing);
+      if (!checkRes.canLogin) {
+        setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已註銷。'));
+        return;
+      }
+      const effectiveUser = checkRes.restoredUser || existing;
+      switchAccount(effectiveUser.id);
+      setSuccessMsg(`${label} 登入成功。`);
+      setTimeout(() => onClose(), 400);
+      return;
+    }
+    // 新用戶：帶入社群授權資訊，引導完成註冊
+    setAuthUid(fbUser.uid);
+    setRegAuthProvider(provider);
+    setRegName(fbUser.displayName || `${label} 用戶`);
+    setRegRealLegalName(fbUser.displayName || '');
+    setRegEmail(fbUser.email || '');
+    setRegUsername(fbUser.email ? fbUser.email.split('@')[0] : `${provider === 'google' ? 'google' : 'fb'}_${fbUser.uid.slice(0, 8)}`);
+    setMode('register');
+    setRegStep(1);
+    setSuccessMsg(`${label} 授權成功！請繼續完成註冊程序。`);
+  };
+
+  const isCancelledSocialLogin = (err: any) =>
+    err?.code === 'auth/popup-closed-by-user' ||
+    err?.code === 'auth/cancelled-popup-request' ||
+    String(err?.message || '').includes('您已取消');
+
   // Google Fast Login
   const handleGoogleAuth = async () => {
     setErrorMsg(null);
@@ -667,42 +712,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsLoading(true);
     try {
       const googleUser = await loginWithFirebaseGoogle();
-      const firestoreUser = await getUserFromFirestore(googleUser.uid);
-      const existing = firestoreUser || availableUsers.find((u) => u.id === googleUser.uid || u.email?.toLowerCase() === googleUser.email?.toLowerCase());
-      if (existing) {
-        // 安全性：管理員帳號只能以白名單內的已驗證 Email 登入
-        if (existing.role === 'admin' && !(googleUser.email && isAllowlistedAdminEmail(googleUser.email))) {
-          setErrorMsg('此帳號需使用已授權的管理員 Email 登入。');
-          setIsLoading(false);
-          return;
-        }
-        const checkRes = checkUserDeactivationStatus(existing);
-        if (!checkRes.canLogin) {
-          setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已註銷。'));
-          return;
-        }
-        const effectiveUser = checkRes.restoredUser || existing;
-        switchAccount(effectiveUser.id);
-        setSuccessMsg('登入成功。');
-        setTimeout(() => onClose(), 400);
-      } else {
-        // 新用戶：設置 Google 授權資訊，引導進入身分選擇與專屬後續程序
-        setAuthUid(googleUser.uid);
-        setRegAuthProvider('google');
-        setRegName(googleUser.displayName || 'Google 用戶');
-        setRegRealLegalName(googleUser.displayName || '');
-        setRegEmail(googleUser.email || '');
-        setRegUsername(googleUser.email ? googleUser.email.split('@')[0] : `google_${googleUser.uid.slice(0, 8)}`);
-        setMode('register');
-        setRegStep(1);
-        setSuccessMsg('Google授權成功！請繼續完成註冊程序');
-      }
+      await completeSocialLogin('google', googleUser);
     } catch (err: any) {
-      console.warn('Google auth error fallback:', err);
-      const mockGoogleUser = availableUsers.find((u) => u.id === 'user-1') || availableUsers[0];
-      setCurrentUser(mockGoogleUser);
-      setSuccessMsg('登入成功。');
-      setTimeout(() => onClose(), 400);
+      console.warn('Google auth error:', err);
+      // 安全性：登入失敗或取消時只顯示訊息，絕不自動切換成任何帳號
+      if (!isCancelledSocialLogin(err)) {
+        setErrorMsg('Google 登入失敗：' + (err?.message || '請確認網路連線或稍後再試。'));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -715,99 +731,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsLoading(true);
     try {
       const fbUser = await loginWithFirebaseFacebook();
-      const firestoreUser = await getUserFromFirestore(fbUser.uid);
-      const existing =
-        firestoreUser ||
-        availableUsers.find(
-          (u) =>
-            u.id === fbUser.uid ||
-            (fbUser.email && u.email?.toLowerCase() === fbUser.email.toLowerCase())
-        );
-      if (existing) {
-        // 安全性：管理員帳號只能以白名單內的已驗證 Email 登入
-        if (existing.role === 'admin' && !(fbUser.email && isAllowlistedAdminEmail(fbUser.email))) {
-          setErrorMsg('此帳號需使用已授權的管理員 Email 登入。');
-          setIsLoading(false);
-          return;
-        }
-        const checkRes = checkUserDeactivationStatus(existing);
-        if (!checkRes.canLogin) {
-          setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已註銷。'));
-          return;
-        }
-        const effectiveUser = checkRes.restoredUser || existing;
-        switchAccount(effectiveUser.id);
-        setSuccessMsg('Facebook 登入成功。');
-        setTimeout(() => onClose(), 400);
-      } else {
-        // 新用戶：設置 Facebook 授權資訊，引導進入身分選擇與專屬後續程序
-        setAuthUid(fbUser.uid);
-        setRegAuthProvider('facebook');
-        setRegName(fbUser.displayName || 'Facebook 用戶');
-        setRegRealLegalName(fbUser.displayName || '');
-        setRegEmail(fbUser.email || '');
-        setRegUsername(fbUser.email ? fbUser.email.split('@')[0] : `fb_${fbUser.uid.slice(0, 8)}`);
-        setMode('register');
-        setRegStep(1);
-        setSuccessMsg('Facebook 授權成功！請選擇您的平台身分以完成註冊程序。');
-      }
+      await completeSocialLogin('facebook', fbUser);
     } catch (err: any) {
       console.warn('Facebook auth error:', err);
-      if (
-        err?.code === 'auth/account-exists-with-different-credential' ||
-        err?.message?.includes('此 Facebook 帳號綁定的 Email')
-      ) {
-        const conflictEmail = err?.email || err?.customData?.email;
-        const existing = conflictEmail
-          ? availableUsers.find(
-              (u) => u.email?.toLowerCase() === conflictEmail.toLowerCase()
-            )
-          : null;
-
-        if (existing) {
-          // 安全性：管理員帳號只能以白名單內的已驗證 Email 登入
-          if (existing.role === 'admin') {
-            setErrorMsg('此帳號需使用已授權的管理員 Email 登入。');
-            setIsLoading(false);
-            return;
-          }
-          const checkRes = checkUserDeactivationStatus(existing);
-          if (!checkRes.canLogin) {
-            setErrorMsg('登入失敗：' + (checkRes.errorReason || '此帳號已超過 7 日反悔期並已註銷。'));
-            return;
-          }
-          const effectiveUser = checkRes.restoredUser || existing;
-          switchAccount(effectiveUser.id);
-          setSuccessMsg(`Facebook 授權成功！已為您自動登入現有帳號（${effectiveUser.name}）。若欲建立兩個獨立帳號，請參閱下方提示開啟。`);
-          setTimeout(() => onClose(), 600);
-          return;
-        } else if (conflictEmail) {
-          // 允許註冊第二個獨立帳號
-          setAuthUid(`fb_${Date.now()}`);
-          setRegAuthProvider('facebook');
-          setRegName('Facebook 用戶');
-          setRegEmail(conflictEmail);
-          setRegUsername(`fb_${conflictEmail.split('@')[0]}_${Math.floor(Math.random() * 1000)}`);
-          setMode('register');
-          setRegStep(1);
-          setSuccessMsg('Facebook 授權成功！已為您建立第二個獨立帳號，請選擇平台身分。');
-          return;
-        }
+      // 安全性：Email 已被其他登入方式使用時，不可直接登入那個帳號（未驗證是本人）
+      if (!isCancelledSocialLogin(err)) {
+        setErrorMsg('Facebook 登入失敗：' + (err?.message || '請確認網路連線或稍後再試。'));
       }
-      if (
-        err?.code === 'auth/popup-closed-by-user' ||
-        err?.code === 'auth/cancelled-popup-request' ||
-        err?.message?.includes('您已取消')
-      ) {
-        if (latestAlert?.type === 'success' || mode === 'register') {
-          return;
-        }
-      }
-      setErrorMsg('Facebook 登入失敗：' + (err.message || '請確認網路連線或稍後再試。'));
     } finally {
       setIsLoading(false);
     }
   };
+
+  // 手機整頁跳轉回來：完成社群登入
+  useEffect(() => {
+    if (!isOpen || !pendingSocialLogin) return;
+    const outcome = pendingSocialLogin;
+    clearPendingSocialLogin();
+    if ('error' in outcome) {
+      setErrorMsg(`${outcome.provider === 'google' ? 'Google' : 'Facebook'} 登入失敗：${outcome.error}`);
+      return;
+    }
+    setIsLoading(true);
+    void completeSocialLogin(outcome.provider, outcome.user)
+      .catch((err: any) => setErrorMsg('登入失敗：' + (err?.message || '請稍後再試。')))
+      .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, pendingSocialLogin]);
 
   // Helper to get or create reCAPTCHA verifier for Phone Auth
   const getOrCreateRecaptcha = (containerId: string) => {

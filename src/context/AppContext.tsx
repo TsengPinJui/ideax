@@ -125,6 +125,7 @@ import { CenterToastData } from '../components/CenterToast';
 import { getCachedRealTrafficStats } from '../components/AdminSiteTrafficChart';
 import { PwaNotificationService } from '../services/pwaNotificationService';
 import { onAuthStateChanged } from 'firebase/auth';
+import { consumeSocialRedirectResult, type SocialRedirectOutcome } from '../services/firebaseAuth';
 import { auth as firebaseAuthInstance } from '../services/firebase';
 import { getMyAuthUid, setMyAppUserId, updateAuthUidDirectory } from '../services/authIdentity';
 import { fetchAnswerContents, pointsOp, PointsOpPayload } from '../services/pointsApi';
@@ -340,6 +341,9 @@ interface AppContextType {
   promoteQuestion: (questionId: string) => boolean;
   /** 正式點數模式：送出打賞撥款申請到伺服器（回傳 false 表示非正式模式，由畫面自行處理） */
   submitTipPayoutRequest: (amount: number, note: string, onFail?: () => void, source?: 'tips' | 'earnings' | 'combined') => boolean;
+  /** 手機社群登入整頁跳轉回來後的結果，由登入視窗接手完成登入或註冊 */
+  pendingSocialLogin: SocialRedirectOutcome | null;
+  clearPendingSocialLogin: () => void;
   incrementQuestionViews: (questionId: string, amount?: number) => void;
 
   // 痛點附議 (+1) 與 提問同問 (舉手) 與 討論按讚 (大拇指)
@@ -651,6 +655,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsAuthModalOpen(false);
     setAuthModalInterceptReason(undefined);
   };
+
+  // 手機社群登入：整頁跳轉回來時取得結果，打開登入視窗完成登入或註冊
+  const [pendingSocialLogin, setPendingSocialLogin] = useState<SocialRedirectOutcome | null>(null);
+  const clearPendingSocialLogin = () => setPendingSocialLogin(null);
+  useEffect(() => {
+    let cancelled = false;
+    void consumeSocialRedirectResult().then((outcome) => {
+      if (cancelled || !outcome) return;
+      setPendingSocialLogin(outcome);
+      setAuthModalMode('login');
+      setAuthModalMethod('email');
+      setIsAuthModalOpen(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Center Toast State (中央浮動彈出提示)
   const [centerToast, setCenterToast] = useState<CenterToastData | null>(null);
@@ -9529,6 +9550,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isQuestionBookmarked,
         promoteQuestion,
         submitTipPayoutRequest,
+        pendingSocialLogin,
+        clearPendingSocialLogin,
         incrementQuestionViews,
         secondedQuestionIds,
         toggleSecondQuestion,
