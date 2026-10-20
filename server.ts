@@ -3460,6 +3460,49 @@ function detectCampusLandmark(text: string): CampusLandmarkMeta | null {
   return null;
 }
 
+/** 從使用者的話裡挑出職務（規則版，AI 沒回應時使用）；記錄條件與判斷「是否還缺職務」共用 */
+function extractRolesFromText(text: string): string[] {
+  // 職務：去掉地區、地標名稱、薪資、工作型態等字樣後剩下的部分
+  let cleanedForRole = text
+    .replace(/[一二兩三四五六七八九十\d]{1,2}\s*年(?:多|半)?(?:以上)?(?:的)?(?:經驗|資歷|年資)?/g, ' ')
+    .replace(/(?:目標公司|限定公司|指定公司|目標企業|想進|想去|限定)[：:]?\s*[^、,，\n]+/g, ' ')
+    .replace(/工作型態：[^、,，]+|地區：[^、,，]+|工作範圍：[^、,，]+|國家：[^、,，]+|學歷：[^、,，]+|經歷：[^、,，]+|薪資：[^、,，]+|薪水：[^、,，]+|求職網：[^、,，]+/g, ' ')
+    .replace(/us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|¥|rm|月新台幣|新台幣|台幣|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣|twd|usd/gi, ' ')
+    .replace(/工作環境|環境好|環境佳|環境|福利好|福利|待遇好|待遇|行業|產業|優先|重視|在意|最好|好的|佳/g, ' ')
+    .replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*(?:新?台幣|台幣|美元|美金|usd|twd|ntd)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, ' ')
+    .replace(/(?:全家|7-11|7-eleven|統一超商|萊爾富|ok超商|超商|便利商店|早餐店|咖啡廳|手搖飲|速食店|飲料店)/gi, ' ')
+    .replace(/\d+\s*(?:m|米|公尺|km|公里)?\s*(?:以?內|半徑|周圍|周邊|距離)/gi, ' ')
+    .replace(/\b\d+\s*m\b|\bm內\b/gi, ' ');
+
+  // 移除地標與大學名稱，避免如「中正大學」被拆解成「中正」、「總統府」被拆解當作職務
+  for (const lm of TAIWAN_CAMPUS_LANDMARKS) {
+    cleanedForRole = cleanedForRole.replace(lm.pattern, ' ');
+  }
+
+  cleanedForRole = cleanedForRole
+    .replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, ' ')
+    .replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, 'g') : /$^/g, ' ')
+    .replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, ' ')
+    .replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外|民雄|三峽|淡水|公館|士林|大安|中壢|壽豐|埔里|西屯/g, ' ')
+    .replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, ' ')
+    .replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, ' ')
+    .replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, ' ')
+    .trim();
+
+  // 1. 句子裡有明說職位（「正在招募數位行銷企劃」「應徵前端工程師一職」「職位：店長」）就直接用
+  const cue = text.match(/(?:招募|招聘|徵求|應徵|申請|擔任|職位|職缺|職稱|想當|想做)[：:\s]*(?:的)?[「『"“]?([^\s，。,、；;！!？?「」『』"“”]{2,14}?)(?:[」』"”]|一職|職位|職缺|的工作|的職缺|，|。|,|、|；|$)/);
+  const cueRole = cue && !/(機會|團隊|貴公司|公司|人才|夥伴|中)$/.test(cue[1]) ? cue[1].replace(/^(一位|一名|新的)/, '') : '';
+  // 2. 否則從剩下的字詞挑；像「非常榮幸」「我深信」這種句子片段不算職務
+  const SENTENCE_NOISE = /[我您你他她貴想]|榮幸|非常|深信|相信|過往|過去|之前|以前|做過|轉行|轉職|推薦|因此|所以|希望|感謝|謝謝|能夠|能有|機會|自薦|履歷|理念|認同|關注|一直|以來|領域|經驗|對接|需求|主動|投遞/;
+  return cueRole
+    ? [cueRole]
+    : text.length > 60
+    ? [] // 長篇自我介紹、又沒明說職位：不要亂猜，讓使用者補充職務
+    : cleanedForRole
+        .split(/\s+/)
+        .filter((w) => w.length >= 2 && w.length <= 14 && !SENTENCE_NOISE.test(w) && !/^(跳過|略過|不拘|大學|科大|學校|附近|中正|總統府|早餐店|全家|超商|店員|m內|和全家)$/.test(w));
+}
+
 /** 把已經確定的條件整理成一行一項（工作型態、地區、職務、薪資、學歷、經歷） */
 function buildJobConditionSummary(
   text: string,
@@ -3506,35 +3549,7 @@ function buildJobConditionSummary(
     else if (/^(不限|不拘|無)$/.test(c)) lines.push('目標公司：不拘');
   }
 
-  // 職務：去掉地區、地標名稱、薪資、工作型態等字樣後剩下的部分
-  let cleanedForRole = text
-    .replace(/(?:目標公司|限定公司|指定公司|目標企業|想進|想去|限定)[：:]?\s*[^、,，\n]+/g, ' ')
-    .replace(/工作型態：[^、,，]+|地區：[^、,，]+|工作範圍：[^、,，]+|國家：[^、,，]+|學歷：[^、,，]+|經歷：[^、,，]+|薪資：[^、,，]+|薪水：[^、,，]+|求職網：[^、,，]+/g, ' ')
-    .replace(/us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|¥|rm|月新台幣|新台幣|台幣|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣|twd|usd/gi, ' ')
-    .replace(/工作環境|環境好|環境佳|環境|福利好|福利|待遇好|待遇|行業|產業|優先|重視|在意|最好|好的|佳/g, ' ')
-    .replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*(?:新?台幣|台幣|美元|美金|usd|twd|ntd)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, ' ')
-    .replace(/(?:全家|7-11|7-eleven|統一超商|萊爾富|ok超商|超商|便利商店|早餐店|咖啡廳|手搖飲|速食店|飲料店)/gi, ' ')
-    .replace(/\d+\s*(?:m|米|公尺|km|公里)?\s*(?:以?內|半徑|周圍|周邊|距離)/gi, ' ')
-    .replace(/\b\d+\s*m\b|\bm內\b/gi, ' ');
-
-  // 移除地標與大學名稱，避免如「中正大學」被拆解成「中正」、「總統府」被拆解當作職務
-  for (const lm of TAIWAN_CAMPUS_LANDMARKS) {
-    cleanedForRole = cleanedForRole.replace(lm.pattern, ' ');
-  }
-
-  cleanedForRole = cleanedForRole
-    .replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, ' ')
-    .replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, 'g') : /$^/g, ' ')
-    .replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, ' ')
-    .replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外|民雄|三峽|淡水|公館|士林|大安|中壢|壽豐|埔里|西屯/g, ' ')
-    .replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, ' ')
-    .replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, ' ')
-    .replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, ' ')
-    .trim();
-
-  const role = cleanedForRole
-    .split(/\s+/)
-    .filter((w) => w.length >= 2 && !/^(跳過|略過|不拘|大學|科大|學校|附近|中正|總統府|早餐店|全家|超商|店員|m內|和全家)$/.test(w));
+  const role = extractRolesFromText(text);
   if (role.length) lines.push(`職務：${uniq(role).slice(0, 3).join('、')}`);
 
   // 薪資
@@ -3549,7 +3564,7 @@ function buildJobConditionSummary(
   // 學歷、經歷（有講才列）
   const edu = pick(/碩士以上|博士|碩士|(?<!我的|我念的|我們|念的)大學(?!附近)|專科以下|專科|高中職|國立大學|公立頂大背景|技職科大背景|私立大學/);
   if (edu && !campus) lines.push(`學歷：${edu}`);
-  const exp = pick(/無經驗|新鮮人|應屆|二度就業|\d+\s*~\s*\d+\s*年|\d+\s*年以上|資深|初階|中階|跨領域轉職/);
+  const exp = pick(/無經驗|新鮮人|應屆|二度就業|\d+\s*~\s*\d+\s*年|\d+\s*年以上|[一二兩三四五六七八九十\d]{1,2}\s*年(?:多|半)?(?:以上)?(?:的)?(?:經驗|資歷|年資)|(?:做過|做了|待過)[一二兩三四五六七八九十\d]{1,2}\s*年|資深|初階|中階|跨領域轉職|轉行|轉職/);
   if (exp) lines.push(`經歷：${exp}`);
   return lines;
 }
@@ -3582,6 +3597,9 @@ app.get('/api/fx', async (_req: Request, res: Response) => {
  * 優先讓 Gemini 來判斷語意，深刻理解地點、地標、職務、工作型態、薪資，
  * 轉為結構化條件後讓用戶在介面確認或補充。
  */
+/** 最近一次 AI 語意整理失敗的原因（回傳給前端除錯用，不含金鑰） */
+let lastIntakeAiNote = '';
+
 async function parseJobIntakeWithGemini(params: {
   rawMessage: string;
   previousBrief: string;
@@ -3590,7 +3608,7 @@ async function parseJobIntakeWithGemini(params: {
   userBaseCity: string;
 }): Promise<any> {
   const ai = getGeminiClient();
-  if (!ai) return null;
+  if (!ai) { lastIntakeAiNote = '伺服器沒有設定 Gemini 金鑰'; return null; }
 
   const prompt = `你是一個極度敏銳、理解力高超的「求職語意理解與結構化條件分析」專家。
 使用者的最新輸入訊息：
@@ -3678,8 +3696,13 @@ async function parseJobIntakeWithGemini(params: {
 }
 `;
 
-  const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
-  for (const model of modelsToTry) {
+  // flash-lite 先試；不行再用 3.8-flash（思考程度調低，回得比較快）
+  const modelsToTry: Array<{ model: string; timeoutMs: number; thinking?: any }> = [
+    { model: 'gemini-3.1-flash-lite', timeoutMs: 10000 },
+    { model: 'gemini-3.8-flash', timeoutMs: 12000, thinking: { thinkingLevel: 'LOW' } },
+  ];
+  const notes: string[] = [];
+  for (const { model, timeoutMs, thinking } of modelsToTry) {
     try {
       const callPromise = ai.models.generateContent({
         model,
@@ -3687,20 +3710,38 @@ async function parseJobIntakeWithGemini(params: {
         config: {
           temperature: 0.1,
           responseMimeType: 'application/json',
+          ...(thinking ? { thinkingConfig: thinking } : {}),
         },
       });
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Intake model timeout (${model})`)), 8000)
+        setTimeout(() => reject(new Error(`timeout ${timeoutMs}ms`)), timeoutMs)
       );
       const res = await Promise.race([callPromise, timeoutPromise]);
       const parsed = extractJsonFromText(String(res.text || ''));
-      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.summaryLines)) {
+      if (parsed && typeof parsed === 'object') {
+        // 少了條列摘要也沒關係：用抽出來的欄位自己補
+        if (!Array.isArray(parsed.summaryLines) || parsed.summaryLines.length === 0) {
+          const lines: string[] = [];
+          if (parsed.jobType) lines.push(`工作型態：${parsed.jobType}`);
+          if (Array.isArray(parsed.roles) && parsed.roles.length) lines.push(`職務：${parsed.roles.join('、')}`);
+          if (Array.isArray(parsed.companies) && parsed.companies.length) lines.push(`目標公司：${parsed.companies.join('、')}`);
+          if (parsed.location) lines.push(`地區：${parsed.location}`);
+          if (parsed.salaryText) lines.push(`薪資：${parsed.salaryText}`);
+          if (parsed.experience) lines.push(`經歷：${parsed.experience}`);
+          if (parsed.education) lines.push(`學歷：${parsed.education}`);
+          parsed.summaryLines = lines;
+        }
+        parsed.__engine = model;
         return parsed;
       }
+      notes.push(`${model}: 回覆不是 JSON`);
     } catch (err: any) {
-      console.warn(`[Gemini Intake Warning] (${model}):`, err?.message || err);
+      const msg = String(err?.message || err).slice(0, 160);
+      notes.push(`${model}: ${msg}`);
+      console.warn(`[Gemini Intake Warning] (${model}):`, msg);
     }
   }
+  lastIntakeAiNote = notes.join('；');
   return null;
 }
 
@@ -3764,6 +3805,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
 
       return res.json({
         success: true,
+        intakeEngine: geminiIntake.__engine || 'ai',
         reply: resolvedReply,
         confirmedBrief,
         searchBriefIfSkipped: confirmedBrief,
@@ -3844,6 +3886,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     // ─── 2. 專業／職務領域維度 (major) ───
     const hasSpecificMajor =
       majorRoleRegex.test(fullText) ||
+      extractRolesFromText(fullText).length > 0 ||
       Boolean(filters.category && filters.category !== '全部') ||
       Boolean(filters.keyword && String(filters.keyword).trim().length > 0);
     const mentionsMajor = /我的專業|我的科系|我的專長|我學的|我念的|本行|跟我的專業|學過|我的本科|我的領域|我專精/.test(fullText);
@@ -4116,6 +4159,8 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
+      intakeEngine: 'rules',
+      aiNote: lastIntakeAiNote || undefined,
       reply: resolvedReply,
       confirmedBrief: isCoreAmbiguous ? accumulatedConcreteBrief : finalBrief,
       searchBriefIfSkipped: finalBrief,

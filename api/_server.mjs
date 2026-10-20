@@ -164638,6 +164638,17 @@ function detectCampusLandmark(text) {
   }
   return null;
 }
+function extractRolesFromText(text) {
+  let cleanedForRole = text.replace(/[一二兩三四五六七八九十\d]{1,2}\s*年(?:多|半)?(?:以上)?(?:的)?(?:經驗|資歷|年資)?/g, " ").replace(/(?:目標公司|限定公司|指定公司|目標企業|想進|想去|限定)[：:]?\s*[^、,，\n]+/g, " ").replace(/工作型態：[^、,，]+|地區：[^、,，]+|工作範圍：[^、,，]+|國家：[^、,，]+|學歷：[^、,，]+|經歷：[^、,，]+|薪資：[^、,，]+|薪水：[^、,，]+|求職網：[^、,，]+/g, " ").replace(/us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|¥|rm|月新台幣|新台幣|台幣|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣|twd|usd/gi, " ").replace(/工作環境|環境好|環境佳|環境|福利好|福利|待遇好|待遇|行業|產業|優先|重視|在意|最好|好的|佳/g, " ").replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*(?:新?台幣|台幣|美元|美金|usd|twd|ntd)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, " ").replace(/(?:全家|7-11|7-eleven|統一超商|萊爾富|ok超商|超商|便利商店|早餐店|咖啡廳|手搖飲|速食店|飲料店)/gi, " ").replace(/\d+\s*(?:m|米|公尺|km|公里)?\s*(?:以?內|半徑|周圍|周邊|距離)/gi, " ").replace(/\b\d+\s*m\b|\bm內\b/gi, " ");
+  for (const lm of TAIWAN_CAMPUS_LANDMARKS) {
+    cleanedForRole = cleanedForRole.replace(lm.pattern, " ");
+  }
+  cleanedForRole = cleanedForRole.replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, " ").replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, "g") : /$^/g, " ").replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, " ").replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外|民雄|三峽|淡水|公館|士林|大安|中壢|壽豐|埔里|西屯/g, " ").replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, " ").replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, " ").replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, " ").trim();
+  const cue = text.match(/(?:招募|招聘|徵求|應徵|申請|擔任|職位|職缺|職稱|想當|想做)[：:\s]*(?:的)?[「『"“]?([^\s，。,、；;！!？?「」『』"“”]{2,14}?)(?:[」』"”]|一職|職位|職缺|的工作|的職缺|，|。|,|、|；|$)/);
+  const cueRole = cue && !/(機會|團隊|貴公司|公司|人才|夥伴|中)$/.test(cue[1]) ? cue[1].replace(/^(一位|一名|新的)/, "") : "";
+  const SENTENCE_NOISE = /[我您你他她貴想]|榮幸|非常|深信|相信|過往|過去|之前|以前|做過|轉行|轉職|推薦|因此|所以|希望|感謝|謝謝|能夠|能有|機會|自薦|履歷|理念|認同|關注|一直|以來|領域|經驗|對接|需求|主動|投遞/;
+  return cueRole ? [cueRole] : text.length > 60 ? [] : cleanedForRole.split(/\s+/).filter((w) => w.length >= 2 && w.length <= 14 && !SENTENCE_NOISE.test(w) && !/^(跳過|略過|不拘|大學|科大|學校|附近|中正|總統府|早餐店|全家|超商|店員|m內|和全家)$/.test(w));
+}
 function buildJobConditionSummary(text, ctx) {
   const lines = [];
   const pick = (re) => {
@@ -164675,12 +164686,7 @@ function buildJobConditionSummary(text, ctx) {
     if (c && !/^(不限|不拘|無)$/.test(c)) lines.push(`\u76EE\u6A19\u516C\u53F8\uFF1A${c}`);
     else if (/^(不限|不拘|無)$/.test(c)) lines.push("\u76EE\u6A19\u516C\u53F8\uFF1A\u4E0D\u62D8");
   }
-  let cleanedForRole = text.replace(/(?:目標公司|限定公司|指定公司|目標企業|想進|想去|限定)[：:]?\s*[^、,，\n]+/g, " ").replace(/工作型態：[^、,，]+|地區：[^、,，]+|工作範圍：[^、,，]+|國家：[^、,，]+|學歷：[^、,，]+|經歷：[^、,，]+|薪資：[^、,，]+|薪水：[^、,，]+|求職網：[^、,，]+/g, " ").replace(/us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|¥|rm|月新台幣|新台幣|台幣|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣|twd|usd/gi, " ").replace(/工作環境|環境好|環境佳|環境|福利好|福利|待遇好|待遇|行業|產業|優先|重視|在意|最好|好的|佳/g, " ").replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*(?:新?台幣|台幣|美元|美金|usd|twd|ntd)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, " ").replace(/(?:全家|7-11|7-eleven|統一超商|萊爾富|ok超商|超商|便利商店|早餐店|咖啡廳|手搖飲|速食店|飲料店)/gi, " ").replace(/\d+\s*(?:m|米|公尺|km|公里)?\s*(?:以?內|半徑|周圍|周邊|距離)/gi, " ").replace(/\b\d+\s*m\b|\bm內\b/gi, " ");
-  for (const lm of TAIWAN_CAMPUS_LANDMARKS) {
-    cleanedForRole = cleanedForRole.replace(lm.pattern, " ");
-  }
-  cleanedForRole = cleanedForRole.replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, " ").replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, "g") : /$^/g, " ").replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, " ").replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外|民雄|三峽|淡水|公館|士林|大安|中壢|壽豐|埔里|西屯/g, " ").replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, " ").replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, " ").replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, " ").trim();
-  const role = cleanedForRole.split(/\s+/).filter((w) => w.length >= 2 && !/^(跳過|略過|不拘|大學|科大|學校|附近|中正|總統府|早餐店|全家|超商|店員|m內|和全家)$/.test(w));
+  const role = extractRolesFromText(text);
   if (role.length) lines.push(`\u8077\u52D9\uFF1A${uniq(role).slice(0, 3).join("\u3001")}`);
   const si = ctx.salaryInfo;
   const foreign = text.match(/薪水：([^、]+)/);
@@ -164691,7 +164697,7 @@ function buildJobConditionSummary(text, ctx) {
   } else if (/面議|不拘/.test(pick(/薪資待遇不拘|薪資不拘|面議/))) lines.push("\u85AA\u8CC7\uFF1A\u4E0D\u62D8");
   const edu = pick(/碩士以上|博士|碩士|(?<!我的|我念的|我們|念的)大學(?!附近)|專科以下|專科|高中職|國立大學|公立頂大背景|技職科大背景|私立大學/);
   if (edu && !campus) lines.push(`\u5B78\u6B77\uFF1A${edu}`);
-  const exp = pick(/無經驗|新鮮人|應屆|二度就業|\d+\s*~\s*\d+\s*年|\d+\s*年以上|資深|初階|中階|跨領域轉職/);
+  const exp = pick(/無經驗|新鮮人|應屆|二度就業|\d+\s*~\s*\d+\s*年|\d+\s*年以上|[一二兩三四五六七八九十\d]{1,2}\s*年(?:多|半)?(?:以上)?(?:的)?(?:經驗|資歷|年資)|(?:做過|做了|待過)[一二兩三四五六七八九十\d]{1,2}\s*年|資深|初階|中階|跨領域轉職|轉行|轉職/);
   if (exp) lines.push(`\u7D93\u6B77\uFF1A${exp}`);
   return lines;
 }
@@ -164718,9 +164724,13 @@ app.get("/api/fx", async (_req, res) => {
   }
   return res.json({ base: "USD", rates: FALLBACK_USD_RATES, updatedAt: "", source: "fallback" });
 });
+var lastIntakeAiNote = "";
 async function parseJobIntakeWithGemini(params) {
   const ai = getGeminiClient();
-  if (!ai) return null;
+  if (!ai) {
+    lastIntakeAiNote = "\u4F3A\u670D\u5668\u6C92\u6709\u8A2D\u5B9A Gemini \u91D1\u9470";
+    return null;
+  }
   const prompt = `\u4F60\u662F\u4E00\u500B\u6975\u5EA6\u654F\u92B3\u3001\u7406\u89E3\u529B\u9AD8\u8D85\u7684\u300C\u6C42\u8077\u8A9E\u610F\u7406\u89E3\u8207\u7D50\u69CB\u5316\u689D\u4EF6\u5206\u6790\u300D\u5C08\u5BB6\u3002
 \u4F7F\u7528\u8005\u7684\u6700\u65B0\u8F38\u5165\u8A0A\u606F\uFF1A
 """${params.rawMessage}"""
@@ -164806,29 +164816,50 @@ async function parseJobIntakeWithGemini(params) {
   "completedConditionKeys": ["jobType", "region", "company", "education", "experience", "location", "salary"]
 }
 `;
-  const modelsToTry = ["gemini-3.1-flash-lite", "gemini-3.8-flash"];
-  for (const model of modelsToTry) {
+  const modelsToTry = [
+    { model: "gemini-3.1-flash-lite", timeoutMs: 1e4 },
+    { model: "gemini-3.8-flash", timeoutMs: 12e3, thinking: { thinkingLevel: "LOW" } }
+  ];
+  const notes = [];
+  for (const { model, timeoutMs, thinking } of modelsToTry) {
     try {
       const callPromise = ai.models.generateContent({
         model,
         contents: prompt,
         config: {
           temperature: 0.1,
-          responseMimeType: "application/json"
+          responseMimeType: "application/json",
+          ...thinking ? { thinkingConfig: thinking } : {}
         }
       });
       const timeoutPromise = new Promise(
-        (_, reject) => setTimeout(() => reject(new Error(`Intake model timeout (${model})`)), 8e3)
+        (_, reject) => setTimeout(() => reject(new Error(`timeout ${timeoutMs}ms`)), timeoutMs)
       );
       const res = await Promise.race([callPromise, timeoutPromise]);
       const parsed = extractJsonFromText(String(res.text || ""));
-      if (parsed && typeof parsed === "object" && Array.isArray(parsed.summaryLines)) {
+      if (parsed && typeof parsed === "object") {
+        if (!Array.isArray(parsed.summaryLines) || parsed.summaryLines.length === 0) {
+          const lines = [];
+          if (parsed.jobType) lines.push(`\u5DE5\u4F5C\u578B\u614B\uFF1A${parsed.jobType}`);
+          if (Array.isArray(parsed.roles) && parsed.roles.length) lines.push(`\u8077\u52D9\uFF1A${parsed.roles.join("\u3001")}`);
+          if (Array.isArray(parsed.companies) && parsed.companies.length) lines.push(`\u76EE\u6A19\u516C\u53F8\uFF1A${parsed.companies.join("\u3001")}`);
+          if (parsed.location) lines.push(`\u5730\u5340\uFF1A${parsed.location}`);
+          if (parsed.salaryText) lines.push(`\u85AA\u8CC7\uFF1A${parsed.salaryText}`);
+          if (parsed.experience) lines.push(`\u7D93\u6B77\uFF1A${parsed.experience}`);
+          if (parsed.education) lines.push(`\u5B78\u6B77\uFF1A${parsed.education}`);
+          parsed.summaryLines = lines;
+        }
+        parsed.__engine = model;
         return parsed;
       }
+      notes.push(`${model}: \u56DE\u8986\u4E0D\u662F JSON`);
     } catch (err) {
-      console.warn(`[Gemini Intake Warning] (${model}):`, err?.message || err);
+      const msg = String(err?.message || err).slice(0, 160);
+      notes.push(`${model}: ${msg}`);
+      console.warn(`[Gemini Intake Warning] (${model}):`, msg);
     }
   }
+  lastIntakeAiNote = notes.join("\uFF1B");
   return null;
 }
 app.post("/api/job-explorer/intake", async (req, res) => {
@@ -164873,6 +164904,7 @@ ${questionText}` : questionText;
       const confirmedBrief = (geminiIntake.confirmedBrief || rawMessage).trim();
       return res.json({
         success: true,
+        intakeEngine: geminiIntake.__engine || "ai",
         reply: resolvedReply2,
         confirmedBrief,
         searchBriefIfSkipped: confirmedBrief,
@@ -164925,7 +164957,7 @@ ${questionText}` : questionText;
     const isTaiwanWide = !hasSpecificCity && /台灣|臺灣|全台/.test(fullText) && !/台灣與國外/.test(fullText);
     const isLocationMissing = !hasSpecificCity && !isTaiwanWide && !skippedDims.has("location");
     const isLocationAmbiguous = Boolean(mentionsNearby && isLocationMissing && !campusLandmark);
-    const hasSpecificMajor = majorRoleRegex.test(fullText) || Boolean(filters.category && filters.category !== "\u5168\u90E8") || Boolean(filters.keyword && String(filters.keyword).trim().length > 0);
+    const hasSpecificMajor = majorRoleRegex.test(fullText) || extractRolesFromText(fullText).length > 0 || Boolean(filters.category && filters.category !== "\u5168\u90E8") || Boolean(filters.keyword && String(filters.keyword).trim().length > 0);
     const mentionsMajor = /我的專業|我的科系|我的專長|我學的|我念的|本行|跟我的專業|學過|我的本科|我的領域|我專精/.test(fullText);
     const isMajorMissing = !hasSpecificMajor && !skippedDims.has("major");
     const isMajorAmbiguous = mentionsMajor && isMajorMissing;
@@ -165139,6 +165171,8 @@ ${summaryText}
     }
     return res.json({
       success: true,
+      intakeEngine: "rules",
+      aiNote: lastIntakeAiNote || void 0,
       reply: resolvedReply,
       confirmedBrief: isCoreAmbiguous ? accumulatedConcreteBrief : finalBrief,
       searchBriefIfSkipped: finalBrief,

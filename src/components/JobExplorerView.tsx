@@ -2689,8 +2689,7 @@ export const JobExplorerView: React.FC = () => {
                             <>
                               <Sparkles className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
                               <div className="flex items-center gap-1.5 font-bold text-indigo-950">
-                                <span>理解中...</span>
-                                <span className="text-[11px] text-indigo-600 font-normal">（Gemini 深度剖析條件與語意）</span>
+                                <span>AI正在整理語義…</span>
                               </div>
                             </>
                           )}
