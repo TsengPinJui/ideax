@@ -246,7 +246,7 @@ export async function callDifyStreamingAgent(params: {
 }
 
 // Helper to generate content with fallback models and retry for 503 / high demand spikes
-const CANDIDATE_MODELS = ['gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+const CANDIDATE_MODELS = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
 let isGeminiAuthDisabled = false;
 
 function isGeminiAuthError(err: any): boolean {
@@ -3376,10 +3376,83 @@ function parseSalaryText(text: string): { period: 'month' | 'hour' | 'year'; amo
   return null;
 }
 
+/** 台灣各大專院校與主要地標／科技園區對應之縣市與地區（用於地點意圖精確理解） */
+interface CampusLandmarkMeta {
+  pattern: RegExp;
+  city: string;
+  district: string;
+  label: string;
+}
+
+const TAIWAN_CAMPUS_LANDMARKS: CampusLandmarkMeta[] = [
+  { pattern: /中正大學|中正大/i, city: '嘉義縣', district: '民雄鄉', label: '嘉義縣民雄鄉（中正大學周邊）' },
+  { pattern: /陽明交通大學|陽明交大|交通大學|交大|清華大學|清大/i, city: '新竹市', district: '東區', label: '新竹市東區（清交／竹科周邊）' },
+  { pattern: /成功大學|成大/i, city: '台南市', district: '東區', label: '台南市東區（成功大學周邊）' },
+  { pattern: /台灣大學|臺灣大學|台大|臺大/i, city: '台北市', district: '大安區', label: '台北市大安區（台灣大學／公館商圈）' },
+  { pattern: /政治大學|政大/i, city: '台北市', district: '文山區', label: '台北市文山區（政治大學周邊）' },
+  { pattern: /中央大學|中大/i, city: '桃園市', district: '中壢區', label: '桃園市中壢區（中央大學周邊）' },
+  { pattern: /中興大學|興大/i, city: '台中市', district: '南區', label: '台中市南區（中興大學周邊）' },
+  { pattern: /中山大學/i, city: '高雄市', district: '鼓山區', label: '高雄市鼓山區（中山大學／西子灣周邊）' },
+  { pattern: /台北大學|北大/i, city: '新北市', district: '三峽區', label: '新北市三峽區（台北大學周邊）' },
+  { pattern: /海洋大學|海大/i, city: '基隆市', district: '中正區', label: '基隆市中正區（海洋大學周邊）' },
+  { pattern: /東華大學|東華/i, city: '花蓮縣', district: '壽豐鄉', label: '花蓮縣壽豐鄉（東華大學周邊）' },
+  { pattern: /暨南大學|暨南國際大學|暨大/i, city: '南投縣', district: '埔里鎮', label: '南投縣埔里鎮（暨南大學周邊）' },
+  { pattern: /嘉義大學|嘉大/i, city: '嘉義市', district: '東區', label: '嘉義市（嘉義大學周邊）' },
+  { pattern: /高雄大學|高大/i, city: '高雄市', district: '楠梓區', label: '高雄市楠梓區（高雄大學周邊）' },
+  { pattern: /宜蘭大學|宜大/i, city: '宜蘭縣', district: '宜蘭市', label: '宜蘭縣宜蘭市（宜蘭大學周邊）' },
+  { pattern: /台科大|臺灣科技大學|台灣科技大學/i, city: '台北市', district: '大安區', label: '台北市大安區（台科大周邊）' },
+  { pattern: /北科大|台北科技大學|臺北科技大學/i, city: '台北市', district: '大安區', label: '台北市大安區（北科大周邊）' },
+  { pattern: /高科大|高雄科技大學|高科/i, city: '高雄市', district: '三民區', label: '高雄市（高科大周邊）' },
+  { pattern: /虎尾科大|虎科大|虎科/i, city: '雲林縣', district: '虎尾鎮', label: '雲林縣虎尾鎮（虎尾科大周邊）' },
+  { pattern: /雲林科技大學|雲科大|雲科/i, city: '雲林縣', district: '斗六市', label: '雲林縣斗六市（雲科大周邊）' },
+  { pattern: /屏東科技大學|屏科大|屏科/i, city: '屏東縣', district: '內埔鄉', label: '屏東縣內埔鄉（屏科大周邊）' },
+  { pattern: /勤益科大|勤益科技大學/i, city: '台中市', district: '太平區', label: '台中市太平區（勤益科大周邊）' },
+  { pattern: /輔仁大學|輔大/i, city: '新北市', district: '新莊區', label: '新北市新莊區（輔仁大學周邊）' },
+  { pattern: /淡江大學|淡大/i, city: '新北市', district: '淡水區', label: '新北市淡水區（淡江大學周邊）' },
+  { pattern: /文化大學|文大/i, city: '台北市', district: '士林區', label: '台北市士林區（文化大學周邊）' },
+  { pattern: /逢甲大學|逢甲/i, city: '台中市', district: '西屯區', label: '台中市西屯區（逢甲大學／逢甲商圈周邊）' },
+  { pattern: /東海大學|東大/i, city: '台中市', district: '西屯區', label: '台中市西屯區（東海大學周邊）' },
+  { pattern: /中原大學|中原/i, city: '桃園市', district: '中壢區', label: '桃園市中壢區（中原大學周邊）' },
+  { pattern: /元智大學|元智/i, city: '桃園市', district: '中壢區', label: '桃園市中壢區（元智大學周邊）' },
+  { pattern: /世新大學|世新/i, city: '台北市', district: '文山區', label: '台北市文山區（世新大學周邊）' },
+  { pattern: /實踐大學|實踐/i, city: '台北市', district: '中山區', label: '台北市中山區（實踐大學周邊）' },
+  { pattern: /銘傳大學|銘傳/i, city: '台北市', district: '士林區', label: '台北市士林區（銘傳大學周邊）' },
+  { pattern: /長庚大學|長庚/i, city: '桃園市', district: '龜山區', label: '桃園市龜山區（長庚大學周邊）' },
+  { pattern: /高醫|高雄醫學大學/i, city: '高雄市', district: '三民區', label: '高雄市三民區（高醫周邊）' },
+  { pattern: /中國醫|中國醫藥大學/i, city: '台中市', district: '北區', label: '台中市北區（中國醫藥大學周邊）' },
+  { pattern: /北醫|台北醫學大學/i, city: '台北市', district: '信義區', label: '台北市信義區（北醫周邊）' },
+  { pattern: /慈濟大學|慈濟/i, city: '花蓮縣', district: '花蓮市', label: '花蓮縣花蓮市（慈濟大學周邊）' },
+  { pattern: /朝陽科大|朝陽科技大學/i, city: '台中市', district: '霧峰區', label: '台中市霧峰區（朝陽科大周邊）' },
+  { pattern: /靜宜大學|靜宜/i, city: '台中市', district: '沙鹿區', label: '台中市沙鹿區（靜宜大學周邊）' },
+  { pattern: /南台科大|南臺科技大學/i, city: '台南市', district: '永康區', label: '台南市永康區（南台科大周邊）' },
+  { pattern: /崑山科大|崑山科技大學/i, city: '台南市', district: '永康區', label: '台南市永康區（崑山科大周邊）' },
+  { pattern: /義守大學|義守/i, city: '高雄市', district: '大樹區', label: '高雄市大樹區（義守大學周邊）' },
+  { pattern: /新竹科學園區|竹科/i, city: '新竹市', district: '東區', label: '新竹市東區（竹科周邊）' },
+  { pattern: /中部科學園區|中科/i, city: '台中市', district: '西屯區', label: '中部科學園區（中科周邊）' },
+  { pattern: /南部科學園區|南科/i, city: '台南市', district: '新市區', label: '南部科學園區（南科周邊）' },
+  { pattern: /內湖科技園區|內湖科學園區|內科/i, city: '台北市', district: '內湖區', label: '台北市內湖區（內科周邊）' },
+  { pattern: /南港軟體園區|南軟/i, city: '台北市', district: '南港區', label: '台北市南港區（南軟周邊）' },
+  { pattern: /台元科技園區|台元/i, city: '新竹縣', district: '竹北市', label: '新竹縣竹北市（台元科技園區周邊）' },
+  { pattern: /華亞科技園區|華亞科/i, city: '桃園市', district: '龜山區', label: '桃園市龜山區（華亞科技園區周邊）' },
+  { pattern: /總統府/i, city: '台北市', district: '中正區', label: '台北市中正區（總統府周邊）' },
+  { pattern: /台北車站|北車/i, city: '台北市', district: '中正區', label: '台北市中正區（台北車站周邊）' },
+  { pattern: /台北101|臺北101|信義商圈/i, city: '台北市', district: '信義區', label: '台北市信義區（台北101周邊）' },
+  { pattern: /板橋車站/i, city: '新北市', district: '板橋區', label: '新北市板橋區（板橋車站周邊）' },
+];
+
+function detectCampusLandmark(text: string): CampusLandmarkMeta | null {
+  for (const item of TAIWAN_CAMPUS_LANDMARKS) {
+    if (item.pattern.test(text)) {
+      return item;
+    }
+  }
+  return null;
+}
+
 /** 把已經確定的條件整理成一行一項（工作型態、地區、職務、薪資、學歷、經歷） */
 function buildJobConditionSummary(
   text: string,
-  ctx: { inferredJobType: string; inferredFrom: string; isTaiwanWide: boolean; mentionsAbroad: boolean; salaryInfo: ReturnType<typeof parseSalaryText> },
+  ctx: { inferredJobType: string; inferredFrom: string; isTaiwanWide: boolean; mentionsAbroad: boolean; salaryInfo: ReturnType<typeof parseSalaryText>; campusLandmark?: CampusLandmarkMeta | null },
 ): string[] {
   const lines: string[] = [];
   const pick = (re: RegExp) => { const m = text.match(re); return m ? m[0] : ''; };
@@ -3387,12 +3460,18 @@ function buildJobConditionSummary(
   const jt = pick(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時/);
   if (jt) lines.push(`工作型態：${jt === '全職' ? '正職' : jt}`);
   else if (ctx.inferredJobType) lines.push(`工作型態：${ctx.inferredJobType}（依${ctx.inferredFrom}判斷）`);
+
   // 地區
+  const campus = ctx.campusLandmark || detectCampusLandmark(text);
   const cities = text.match(/台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端/g);
   const uniq = (a: string[]) => Array.from(new Set(a));
-  if (cities && cities.length) lines.push(`地區：${uniq(cities.map((c) => (c === '遠端' ? '遠端工作' : /[市縣]$/.test(c) ? c : c))).join('、')}`);
-  else if (ctx.isTaiwanWide) lines.push('地區：台灣（不限縣市）');
-  else if (ctx.mentionsAbroad) {
+  if (campus) {
+    lines.push(`地區：${campus.label}`);
+  } else if (cities && cities.length) {
+    lines.push(`地區：${uniq(cities.map((c) => (c === '遠端' ? '遠端工作' : /[市縣]$/.test(c) ? c : c))).join('、')}`);
+  } else if (ctx.isTaiwanWide) {
+    lines.push('地區：台灣（不限縣市）');
+  } else if (ctx.mentionsAbroad) {
     const countries = text.match(/日本|新加坡|香港|澳門|中國大陸|美國|加拿大|英國|德國|法國|澳洲|紐西蘭|韓國|馬來西亞|越南|泰國|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|國外|海外/g);
     const abroadCities = text.match(new RegExp(ABROAD_CITY_RE.source, 'g'));
     // 國家後面括號列出選到的城市，例如「日本（東京、大阪）、新加坡」
@@ -3406,23 +3485,47 @@ function buildJobConditionSummary(
     const list = [...parts, ...cs.filter((x) => !used.has(x))];
     if (list.length) lines.push(`地區：${list.join('、')}`);
   }
-  // 職務：去掉地區、薪資、工作型態等字樣後剩下的部分
-  const role = text
+
+  // 目標公司
+  // 目標公司
+  const compMatch = text.match(/(?:目標公司|限定公司|指定公司|目標企業|想進|想去|限定)[：:]?\s*([^、,，\n]+)/);
+  if (compMatch) {
+    const c = compMatch[1].trim();
+    if (c && !/^(不限|不拘|無)$/.test(c)) lines.push(`目標公司：${c}`);
+    else if (/^(不限|不拘|無)$/.test(c)) lines.push('目標公司：不拘');
+  }
+
+  // 職務：去掉地區、地標名稱、薪資、工作型態等字樣後剩下的部分
+  let cleanedForRole = text
+    .replace(/(?:目標公司|限定公司|指定公司|目標企業|想進|想去|限定)[：:]?\s*[^、,，\n]+/g, ' ')
     .replace(/工作型態：[^、,，]+|地區：[^、,，]+|工作範圍：[^、,，]+|國家：[^、,，]+|學歷：[^、,，]+|經歷：[^、,，]+|薪資：[^、,，]+|薪水：[^、,，]+|求職網：[^、,，]+/g, ' ')
-    .replace(/us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|¥|rm|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣/gi, ' ')
+    .replace(/us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|¥|rm|月新台幣|新台幣|台幣|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣|twd|usd/gi, ' ')
     .replace(/工作環境|環境好|環境佳|環境|福利好|福利|待遇好|待遇|行業|產業|優先|重視|在意|最好|好的|佳/g, ' ')
-    .replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, ' ')
+    .replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*(?:新?台幣|台幣|美元|美金|usd|twd|ntd)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, ' ')
+    .replace(/(?:全家|7-11|7-eleven|統一超商|萊爾富|ok超商|超商|便利商店|早餐店|咖啡廳|手搖飲|速食店|飲料店)/gi, ' ')
+    .replace(/\d+\s*(?:m|米|公尺|km|公里)?\s*(?:以?內|半徑|周圍|周邊|距離)/gi, ' ')
+    .replace(/\b\d+\s*m\b|\bm內\b/gi, ' ');
+
+  // 移除地標與大學名稱，避免如「中正大學」被拆解成「中正」、「總統府」被拆解當作職務
+  for (const lm of TAIWAN_CAMPUS_LANDMARKS) {
+    cleanedForRole = cleanedForRole.replace(lm.pattern, ' ');
+  }
+
+  cleanedForRole = cleanedForRole
     .replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, ' ')
     .replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, 'g') : /$^/g, ' ')
     .replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, ' ')
-    .replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外/g, ' ')
+    .replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外|民雄|三峽|淡水|公館|士林|大安|中壢|壽豐|埔里|西屯/g, ' ')
     .replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, ' ')
     .replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, ' ')
     .replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, ' ')
-    .trim()
+    .trim();
+
+  const role = cleanedForRole
     .split(/\s+/)
-    .filter((w) => w.length >= 2 && !/^(跳過|略過|不拘)$/.test(w));
+    .filter((w) => w.length >= 2 && !/^(跳過|略過|不拘|大學|科大|學校|附近|中正|總統府|早餐店|全家|超商|店員|m內|和全家)$/.test(w));
   if (role.length) lines.push(`職務：${uniq(role).slice(0, 3).join('、')}`);
+
   // 薪資
   const si = ctx.salaryInfo;
   const foreign = text.match(/薪水：([^、]+)/);
@@ -3431,9 +3534,10 @@ function buildJobConditionSummary(
     const label = si.period === 'hour' ? '時薪' : si.period === 'year' ? '年薪' : '月薪';
     lines.push(`薪資：${label} ${si.amount.toLocaleString('en-US')} 元以上`);
   } else if (/面議|不拘/.test(pick(/薪資待遇不拘|薪資不拘|面議/))) lines.push('薪資：不拘');
+
   // 學歷、經歷（有講才列）
-  const edu = pick(/碩士以上|博士|碩士|(?<!我的|我念的|我們|念的)大學(?!附近)|專科以下|專科|高中職|公立頂大背景|技職科大背景|私立綜合大學/);
-  if (edu) lines.push(`學歷：${edu}`);
+  const edu = pick(/碩士以上|博士|碩士|(?<!我的|我念的|我們|念的)大學(?!附近)|專科以下|專科|高中職|國立大學|公立頂大背景|技職科大背景|私立大學/);
+  if (edu && !campus) lines.push(`學歷：${edu}`);
   const exp = pick(/無經驗|新鮮人|應屆|二度就業|\d+\s*~\s*\d+\s*年|\d+\s*年以上|資深|初階|中階|跨領域轉職/);
   if (exp) lines.push(`經歷：${exp}`);
   return lines;
@@ -3463,6 +3567,132 @@ app.get('/api/fx', async (_req: Request, res: Response) => {
   return res.json({ base: 'USD', rates: FALLBACK_USD_RATES, updatedAt: '', source: 'fallback' });
 });
 
+/**
+ * 優先讓 Gemini 來判斷語意，深刻理解地點、地標、職務、工作型態、薪資，
+ * 轉為結構化條件後讓用戶在介面確認或補充。
+ */
+async function parseJobIntakeWithGemini(params: {
+  rawMessage: string;
+  previousBrief: string;
+  conversationHistory: string[];
+  skippedDimensions: string[];
+  userBaseCity: string;
+}): Promise<any> {
+  const ai = getGeminiClient();
+  if (!ai) return null;
+
+  const prompt = `你是一個極度敏銳、理解力高超的「求職語意理解與結構化條件分析」專家。
+使用者的最新輸入訊息：
+"""${params.rawMessage}"""
+
+先前累積條件或對話脈絡：
+"""${params.previousBrief || (params.conversationHistory.length ? params.conversationHistory.join('、') : '無')}"""
+
+使用者已明確略過的維度：
+"""${params.skippedDimensions.join('、') || '無'}"""
+
+【核心語意理解與實體抽取要求（務必深刻洞察，絕不可粗暴字面拆詞！）】：
+1. 【地點與地標 (locations)】：
+   - 使用者說「總統府附近」，地點必須歸納為「台北市中正區（總統府周邊）」，「總統府」是地標絕對不是職務！
+   - 使用者說「中正大學附近」，地點必須歸納為「嘉義縣民雄鄉（中正大學周邊）」，「中正大學」是地標校園絕對不是職務！
+   - 「全家100m內」、「捷運公館站旁」、「竹科附近」等屬於空間範圍、參照店家與距離條件，請完整歸納到地點描述中，絕不可拆碎混入職務！
+   - 找職缺時【先不要預設台灣】，若使用者未提及地點，且未指定國外，請在 location 填 null，city 填 "全部"（當用戶後續確定送出搜尋時才預設台灣）。若提及國外國家（如日本、新加坡、美國、國外等），填入該國或城市。
+2. 【職務名稱 (roles)】：
+   - 精確抓出使用者真正想找的職務、職位或想要的工作角色，例如「KTV服務生」、「早餐店店員」、「軟體工程師」等。
+   - 嚴格禁止把地標名（如總統府、成大、台北市）、店家參照物（如全家、超商）、距離詞（如100m內、附近、周邊）當作職務！
+   - 若使用者只說了地點或學校（例如「中正大學附近」）而完全沒有提及任何職務，roles 必須為空陣列 []，絕不可拿地名或校名（如中正）當作職務！
+3. 【目標公司／限定公司 (companies)】：
+   - 識別使用者是否指定目標公司或特定企業（例如：「台積電」、「聯發科」、「Google」、「星巴克」、「麥當勞」、「誠品」等），若有填入 companies 陣列。
+   - 若使用者表示「不限定公司」、「不限公司」、「各家都可以」或完全未提及公司，companies 設為空陣列 []。
+   - 在 summaryLines 中：若有指定目標公司，條列 "目標公司：..."；若使用者明確指定不限公司，可條列 "目標公司：不拘"。
+4. 【薪資與幣別 (salary)】：
+   - 識別薪資數字、幣別與計薪週期：
+     - salaryCurrency: 幣別代碼（如 "TWD", "USD", "JPY", "EUR", "CNY", "GBP", "SGD", "HKD" 等，若提及台幣或未指明國外貨幣則為 "TWD"，美金/美元為 "USD"）
+     - salaryPeriod: "月薪" | "年薪" | "時薪"
+     - minSalary: 純整數（例如 8000000、38000、220 等，若無薪資要求則填 0）
+     - salaryText: 完整文字（例如 "月薪 8,000,000 TWD 以上"）
+   - 嚴禁將薪資、數字或幣別（如「月新台幣」、「月薪台幣」、「美元」、「8000000」）混入職務名稱中！
+5. 【工作經歷年資 (experience)】：
+   - 識別年資要求，例如 0（無經驗或新鮮人）、1、2、3、5 年以上等。experienceYears 填入純數字（無要求則填 0），experience 填描述文字。
+6. 【工作型態 (jobType)】：
+   - 識別是否指定「正職」、「兼職」（含打工、工讀、計時）、「實習」或「皆可」。若使用者完全未提及，設為 null。
+7. 【結構化標籤 (conditionTags)】：
+   - 將整理好的各個條件轉成互動標籤物件陣列，供前端進行標籤化呈現、修改、新增與刪除：
+     - type: "role" | "company" | "salary" | "experience" | "location" | "jobType" | "education"
+     - label: 顯示名稱（如 "職務", "限定公司", "薪資", "年資", "工作型態", "地區", "學歷"）
+     - value: 標籤顯示文字（例如 "灣區高級工程師"、"Google"、"月薪 8,000,000 TWD 以上"）
+     - numValue: 若是薪水或年資，提供純數字
+     - salaryCurrency: 若是薪資，填入幣別代碼
+     - salaryPeriod: 若是薪資，填入 "月薪" | "年薪" | "時薪"
+     - experienceYears: 若是年資，填入純數字
+8. 【條列摘要 (summaryLines)】：
+   - 請輸出簡潔且高水準的條列清單（只列出目前已確定的條件），例如：
+     - "工作型態：正職"
+     - "職務：高級工程師"
+     - "薪資：月薪 8,000,000 TWD 以上"
+     - "地區：美國加州灣區"
+     - "目標公司：Google"
+
+請務必嚴格輸出合法的 JSON 物件（不要 markdown 符號）：
+{
+  "companies": ["公司名稱1"],
+  "roles": ["職務名1"],
+  "location": "結構化地點描述，若無則 null",
+  "city": "縣市名（如：台北市、嘉義縣），若無則全部",
+  "jobType": "正職" | "兼職" | "實習" | "皆可" | null,
+  "salaryText": "薪資要求描述，若無則 null",
+  "salaryCurrency": "TWD" | "USD" | "JPY" | "EUR" | "CNY" | "GBP" | "SGD" | "HKD",
+  "salaryPeriod": "月薪" | "年薪" | "時薪",
+  "minSalary": 0,
+  "education": "學歷要求，若無則 null",
+  "experience": "經歷要求，若無則 null",
+  "experienceYears": 0,
+  "conditionTags": [
+    {
+      "id": "tag-role",
+      "type": "role",
+      "label": "職務",
+      "value": "職務名稱"
+    }
+  ],
+  "carePoints": ["workEnvironment", "benefits", "industry", "salary", "distance"],
+  "summaryLines": ["工作型態：...", "職務：...", "薪資：..."],
+  "confirmedBrief": "用於送出搜尋的精煉摘要字串",
+  "missingDimension": "jobType" | "major" | "location" | "company" | "salary" | null,
+  "clarificationQuestion": "親切且準確的一句話回覆與追問",
+  "suggestedChips": [
+    {"label": "按鈕文字", "value": "回填文字", "type": "維度類型"}
+  ],
+  "completedConditionKeys": ["jobType", "region", "company", "education", "experience", "location", "salary"]
+}
+`;
+
+  const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+  for (const model of modelsToTry) {
+    try {
+      const callPromise = ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+        },
+      });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Intake model timeout (${model})`)), 8000)
+      );
+      const res = await Promise.race([callPromise, timeoutPromise]);
+      const parsed = extractJsonFromText(String(res.text || ''));
+      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.summaryLines)) {
+        return parsed;
+      }
+    } catch (err: any) {
+      console.warn(`[Gemini Intake Warning] (${model}):`, err?.message || err);
+    }
+  }
+  return null;
+}
+
 app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
   try {
     const rawMessage = String(req.body?.message || '').trim().slice(0, 600);
@@ -3482,7 +3712,72 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
 
     const skippedDims = new Set<string>(skippedDimensionsInput);
 
-    // 彙整完整對話脈絡（包含歷史訊息、已累積條件、本次輸入）
+    // ─── 優先使用 Gemini 進行深度語意理解與實體抽取 ───
+    const geminiIntake = await parseJobIntakeWithGemini({
+      rawMessage,
+      previousBrief,
+      conversationHistory,
+      skippedDimensions: Array.from(skippedDims),
+      userBaseCity,
+    });
+
+    if (geminiIntake) {
+      const summaryText = Array.isArray(geminiIntake.summaryLines) && geminiIntake.summaryLines.length > 0
+        ? geminiIntake.summaryLines.map((l: string) => `• ${l}`).join('\n')
+        : '';
+      const questionText = geminiIntake.clarificationQuestion || '請問您期望找正職還是兼職？';
+      const resolvedReply = summaryText
+        ? `已記錄：\n${summaryText}\n${questionText}`
+        : questionText;
+
+      const isAmb = Boolean(geminiIntake.missingDimension);
+      const activeGroup = isAmb ? {
+        dimension: geminiIntake.missingDimension,
+        title: geminiIntake.missingDimension === 'jobType' ? '💼 正職／兼職' :
+               geminiIntake.missingDimension === 'major' ? '💻 職務方向確認' :
+               geminiIntake.missingDimension === 'location' ? '📍 工作地區確認' : '💰 期望待遇',
+        question: questionText,
+        isHighlighted: true,
+        chips: Array.isArray(geminiIntake.suggestedChips) && geminiIntake.suggestedChips.length > 0
+          ? geminiIntake.suggestedChips
+          : [
+              { label: '正職', value: '工作型態：正職', type: 'jobType' },
+              { label: '兼職／工讀', value: '工作型態：兼職工讀', type: 'jobType' },
+              { label: '實習', value: '工作型態：實習', type: 'jobType' },
+              { label: '正職兼職都可以', value: '工作型態：正職兼職皆可', type: 'jobType' },
+              { label: '跳過', value: '跳過', type: 'skip:jobType' },
+            ],
+      } : null;
+
+      const confirmedBrief = (geminiIntake.confirmedBrief || rawMessage).trim();
+
+      return res.json({
+        success: true,
+        reply: resolvedReply,
+        confirmedBrief,
+        searchBriefIfSkipped: confirmedBrief,
+        isAmbiguous: isAmb,
+        hasMoreQuestions: isAmb,
+        currentDimension: geminiIntake.missingDimension || null,
+        missingDimensions: geminiIntake.missingDimension ? [geminiIntake.missingDimension] : [],
+        dimensionGroups: activeGroup ? [activeGroup] : [],
+        ambiguousTypes: geminiIntake.missingDimension ? [geminiIntake.missingDimension] : [],
+        clarificationQuestion: questionText,
+        suggestedChips: activeGroup ? activeGroup.chips : [],
+        skippedDimensions: Array.from(skippedDims),
+        completedConditionKeys: Array.isArray(geminiIntake.completedConditionKeys) ? geminiIntake.completedConditionKeys : [],
+        extractedFilters: {
+          keyword: filters.keyword || (Array.isArray(geminiIntake.roles) ? geminiIntake.roles.join(' ') : ''),
+          company: Array.isArray(geminiIntake.companies) && geminiIntake.companies.length > 0 ? geminiIntake.companies.join('、') : (filters.company || ''),
+          city: geminiIntake.city || '全部',
+          category: filters.category || '全部',
+          minSalary: Number(geminiIntake.minSalary) || 0,
+        },
+        carePoints: Array.isArray(geminiIntake.carePoints) ? geminiIntake.carePoints : filters.carePoints || [],
+      });
+    }
+
+    // 若 Gemini 暫不可用，以本機規則引擎備援
     const allSegments = [...conversationHistory, previousBrief, rawMessage]
       .join(' 、 ')
       .split(/[、,，\n]+/)
@@ -3493,7 +3788,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     // ─── 各維度關鍵字檢測正則 ───
     const cityRegex = /台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江|遠端|remote|雙北|桃竹|中彰投|雲嘉南|高屏/i;
     const majorRoleRegex = /資訊|軟體|前端|後端|全端|工程師|工程|電機|電子|機械|化工|會計|財會|財務|企管|商管|行銷|企劃|小編|社群|文史|外語|日文|英文|設計|美編|ui|ux|餐飲|門市|零售|店長|服務員|吧台|內場|外場|護理|醫療|藥師|傳播|音樂|心理|社工|金融|法律|法務|土木|建築|行政|助理|人事|人資|hr|客服|業務|銷售|專案|pm|產品|生管|品管|倉儲|物流|司機|駕駛|作業員|技術員|研究|分析|資料|ai|雲端|devops|qa|測試|保全|清潔|幼教|老師|教師|講師|翻譯|編輯|攝影|剪輯|公關|採購|總務|秘書/i;
-    const collegeRegex = /台大|清大|交大|成大|政大|師大|輔大|淡江|文化|逢甲|東海|中興|中山|中央|高科|中正|台科|北科|銘傳|實踐|世新|元智|長庚|高醫|中國醫|東華|暨南|北醫|慈濟|高師|彰師|公立頂大|技職科大|私立綜合大學|私立大學|碩士|博士|專科|高中職/i;
+    const collegeRegex = /台大|清大|交大|成大|政大|師大|輔大|淡江|文化|逢甲|東海|中興|中山|中央|高科|中正|台科|北科|銘傳|實踐|世新|元智|長庚|高醫|中國醫|東華|暨南|北醫|慈濟|高師|彰師|國立大學|公立頂大|技職科大|私立大學|碩士|博士|專科|高中職/i;
     // 實習、工讀、兼職屬於「正職／兼職」條件，不算經歷
     const expRegex = /無經驗|新鮮人|應屆|二度就業|1~3\s*年|3~5\s*年|\d+\s*年以上|\d+\s*~\s*\d+\s*年|資深|初階|中階|跨領域轉職/i;
     const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
@@ -3527,12 +3822,13 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const isJobTypeMissing = !hasJobType && !skippedDims.has('jobType');
 
     // ─── 1. 工作地點維度 (location) ───
-    const hasSpecificCity = cityRegex.test(fullText) || Boolean(filters.city && filters.city !== '全部');
+    const campusLandmark = detectCampusLandmark(fullText);
+    const hasSpecificCity = cityRegex.test(fullText) || Boolean(campusLandmark) || Boolean(filters.city && filters.city !== '全部');
     const mentionsNearby = /附近|這附近|我附近|周邊|離家近|就近|方圓|家裡附近|離我近|周遭|隔壁|走路可到|騎車可到|通勤近|近一點/.test(fullText);
     // 只說「台灣／全台」沒指定縣市：視為全台不限縣市，不再追問地點
     const isTaiwanWide = !hasSpecificCity && /台灣|臺灣|全台/.test(fullText) && !/台灣與國外/.test(fullText);
     const isLocationMissing = !hasSpecificCity && !isTaiwanWide && !skippedDims.has('location');
-    const isLocationAmbiguous = mentionsNearby && isLocationMissing;
+    const isLocationAmbiguous = Boolean(mentionsNearby && isLocationMissing && !campusLandmark);
 
     // ─── 2. 專業／職務領域維度 (major) ───
     const hasSpecificMajor =
@@ -3575,6 +3871,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
 
       const hasConcreteToken =
         cityRegex.test(s) ||
+        Boolean(detectCampusLandmark(s)) ||
         majorRoleRegex.test(s) ||
         collegeRegex.test(s) ||
         expRegex.test(s) ||
@@ -3594,6 +3891,10 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
           concreteConditions.push(s);
         }
       }
+    }
+
+    if (campusLandmark && !concreteConditions.some((c) => c.includes(campusLandmark.label))) {
+      concreteConditions.unshift(`地區：${campusLandmark.label}`);
     }
 
     const accumulatedConcreteBrief = concreteConditions.join('、');
@@ -3673,9 +3974,10 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
         question: `您提到了「我的大學」，請問您的畢業學校類型或學歷條件是？`,
         isHighlighted: true,
         chips: [
+          { label: '🏛️ 國立大學', value: '學歷：國立大學', type: 'college' },
           { label: '🏛️ 公立頂大背景', value: '學歷：公立頂大背景', type: 'college' },
           { label: '⚙️ 技職科大背景', value: '學歷：技職科大背景', type: 'college' },
-          { label: '🎓 私立綜合大學', value: '學歷：私立綜合大學', type: 'college' },
+          { label: '🎓 私立大學', value: '學歷：私立大學', type: 'college' },
           { label: '📚 碩士以上', value: '學歷：碩士以上', type: 'college' },
           { label: '🎓 大學', value: '學歷：大學', type: 'college' },
           { label: '🏫 高中職／專科', value: '學歷：專科以下', type: 'college' },
@@ -3723,7 +4025,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
       ambiguousGroups.push({
         dimension: 'major',
         title: '💻 職務方向確認',
-        question: `請問您想找哪一類專業領域或職務方向？`,
+        question: campusLandmark ? `已確認地點在${campusLandmark.label}！請問您想找哪一類職務或專業方向？` : `請問您想找哪一類專業領域或職務方向？`,
         isHighlighted: true,
         chips: [
           { label: '💻 軟體／AI工程', value: '類別：軟體／AI工程', type: 'major' },
@@ -3741,13 +4043,16 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const isCoreAmbiguous = Boolean(activeGroup);
     const dynamicChips = activeGroup ? activeGroup.chips : [];
 
-    // 計算四大快速條件（學歷、經歷、地區、薪水）哪些已經填寫或跳過
-    const completedConditionKeys: Array<'jobType' | 'region' | 'education' | 'experience' | 'location' | 'salary'> = [];
+    // 計算快速條件哪些已經填寫或跳過
+    const completedConditionKeys: Array<'jobType' | 'region' | 'company' | 'education' | 'experience' | 'location' | 'salary'> = [];
     if (!isJobTypeMissing) completedConditionKeys.push('jobType');
     // 台灣／國外：講到國家、國外，或講到台灣縣市，就算已指定（對話中提到的直接帶入）
     const mentionsAbroad = abroadRegex.test(fullText);
     if (mentionsAbroad || taiwanScopeRegex.test(fullText) || /工作範圍/.test(fullText) || hasSpecificCity || skippedDims.has('region')) {
       completedConditionKeys.push('region');
+    }
+    if (/目標公司|限定公司|指定公司|不限公司|不拘公司/.test(fullText) || skippedDims.has('company') || Boolean(filters.company)) {
+      completedConditionKeys.push('company');
     }
     if (!isCollegeMissing) completedConditionKeys.push('education');
     if (!isExperienceMissing) completedConditionKeys.push('experience');
@@ -3757,16 +4062,24 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
 
     // ─── 自動提取結構化篩選條件 (extractedFilters) ───
     let extractedCity = filters.city || '全部';
-    const cityMatch = fullText.match(/(台北市|新北市|桃園市|新竹市|台中市|台南市|高雄市)/);
-    if (cityMatch) extractedCity = cityMatch[1];
-    else if (/遠端|remote/i.test(fullText)) extractedCity = '遠端工作';
+    if (campusLandmark) {
+      extractedCity = campusLandmark.city;
+    } else {
+      const cityMatch = fullText.match(/(台北市|新北市|桃園市|新竹市|台中市|台南市|高雄市|基隆市|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|嘉義市|屏東縣|宜蘭縣|花蓮縣|台東縣)/);
+      if (cityMatch) extractedCity = cityMatch[1];
+      else if (/遠端|remote/i.test(fullText)) extractedCity = '遠端工作';
+    }
 
     let extractedMinSalary = Number(filters.minSalary) || 0;
     if (salaryInfo && salaryInfo.period === 'month') extractedMinSalary = salaryInfo.amount;
 
-    // ─── 生成清晰回覆 ───
-    const briefExtras = [inferredJobType ? `工作型態：${inferredJobType}` : '', isTaiwanWide ? '地區：台灣不限縣市' : ''].filter(Boolean);
-    const finalBrief = [accumulatedConcreteBrief || (briefExtras.length ? '' : `${userBaseCity} 最新招募職缺`), ...briefExtras].filter(Boolean).join('、');
+    // ─── 生成清晰回覆（不預先預設台灣，當用戶並未特別說要國外或是某個台灣以外的國家時才在送出搜尋時預設台灣） ───
+    const briefExtras = [
+      inferredJobType ? `工作型態：${inferredJobType}` : '',
+      campusLandmark ? `地區：${campusLandmark.label}` : '',
+      isTaiwanWide ? '地區：台灣（不限縣市）' : '',
+    ].filter(Boolean);
+    const finalBrief = [accumulatedConcreteBrief || (briefExtras.length ? '' : '最新在招職缺'), ...briefExtras].filter(Boolean).join('、');
     let resolvedReply = '';
     // 結構化整理已確定的條件（已確定的不再追問）
     const summaryLines = buildJobConditionSummary(fullText, {
@@ -3775,6 +4088,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
       isTaiwanWide,
       mentionsAbroad,
       salaryInfo,
+      campusLandmark,
     });
     const summaryText = summaryLines.length ? summaryLines.map((l) => `• ${l}`).join('\n') : '';
     if (activeGroup) {
@@ -4111,7 +4425,7 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
 5. 每筆摘要 30 字內。
 ${JOB_JSON_SPEC}`;
         const r = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
           contents: prompt,
           config: { tools: [{ googleSearch: {} }], temperature: 0.2 },
         });
@@ -4287,7 +4601,7 @@ app.post('/api/job-explorer/search', async (req: Request, res: Response) => {
     const bgGoogleSearchPromise = ai
       ? ai.models
           .generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.8-flash',
             contents: bgSearchPrompt,
             config: {
               tools: [{ googleSearch: {} }],
@@ -4391,7 +4705,7 @@ ${difyObsText ? `\n【搜尋原始連結資料】：\n${difyObsText}` : ''}
   ]
 }`;
           const fastRes = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.8-flash',
             contents: extractPrompt,
             config: { responseMimeType: 'application/json', temperature: 0.1 },
           });
@@ -4422,7 +4736,7 @@ ${difyObsText ? `\n【搜尋原始連結資料】：\n${difyObsText}` : ''}
     if (combinedRawJobs.length < 3 && ai) {
       try {
         const expandRes = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
           contents: `請使用 Google Search 即時檢索 Yes123、1111人力銀行、Cake、Yourator、104人力銀行、518熊班 上與「${rawQuery}」相關且「當下正在開放招募中」的最新真實職缺（請至少列出 6 ~ 15 筆，來源平台多元化，絕不限單一網站，且絕對不可包含已關閉、已結束、已下架或不存在的職缺）。只輸出 JSON：{"jobs":[{"title":"...","company":"...","location":"...","city":"...","experience":"...","experienceYears":0,"education":"...","educationLevel":2,"salaryText":"...","salaryMin":32000,"salaryMax":50000,"industry":"...","category":"...","workEnvironment":"...","benefits":"...","description":"...","sourcePlatform":"Yes123 或 1111 或 Cake 或 104 或 518","url":"...","aiScore":92,"postedAtText":"今日刊登"}]}`,
           config: {
             tools: [{ googleSearch: {} }],

@@ -29,14 +29,14 @@ export const ABROAD_SITES_BY_COUNTRY: Record<string, string[]> = {
 };
 
 /** 依「台灣／國外」與勾選的國家，列出可選的求職網 */
-export function jobSiteOptions(region: '台灣' | '國外' | '台灣與國外', countries: string[]): { domestic: string[]; abroad: string[] } {
+export function jobSiteOptions(region: '全部' | '台灣' | '國外' | '台灣與國外', countries: string[]): { domestic: string[]; abroad: string[] } {
   const domestic = region === '國外' ? [] : TAIWAN_JOB_SITES;
   let abroad: string[] = [];
   if (region !== '台灣') {
     const list = countries.length ? countries : Object.keys(ABROAD_SITES_BY_COUNTRY);
     abroad = Array.from(new Set([...ABROAD_GENERAL_SITES, ...list.flatMap((c) => ABROAD_SITES_BY_COUNTRY[c] || [])]));
     // 國內外都要時，通用平台已經在國內那排出現就不重複列
-    if (region === '台灣與國外') abroad = abroad.filter((s) => !domestic.includes(s));
+    if (region === '台灣與國外' || region === '全部') abroad = abroad.filter((s) => !domestic.includes(s));
   }
   return { domestic, abroad };
 }

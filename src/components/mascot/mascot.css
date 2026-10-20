@@ -71,3 +71,6 @@
 .ixm-peek-new svg { filter: drop-shadow(0 0 6px rgba(255, 194, 26, .9)); }
 @keyframes ixmPeekNew { 0%, 100% { box-shadow: 0 0 0 3px rgba(252, 211, 77, .25), 0 0 10px rgba(255, 194, 26, .35); } 50% { box-shadow: 0 0 0 4px rgba(252, 211, 77, .5), 0 0 22px rgba(255, 194, 26, .75); } }
 @media (prefers-reduced-motion: reduce) { .ixm-peek-new { animation: none; } }
+/* 訊息框裡的跳舞鍵 */
+.ixm-dance { color: #d97706; }
+.ixm-dance:hover { background: #fef3c7; color: #b45309; }

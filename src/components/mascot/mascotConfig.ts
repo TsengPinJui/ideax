@@ -91,9 +91,18 @@ export function cheerMascot(text?: string) {
 /** 匯職缺過程讓右下角小燈泡自動現身陪伴 */
 export const MASCOT_SEARCH_ACCOMPANY_EVENT = 'ideax:mascot-search-accompany';
 
-export function accompanyDuringSearch(text = '搜搜正在忙的時候讓小燈泡來陪你玩吧~ \\(≧▽≦)/') {
+export function accompanyDuringSearch(text = '搜搜正在幫你找好工作，先來跟我玩吧 !') {
   try {
     window.dispatchEvent(new CustomEvent(MASCOT_SEARCH_ACCOMPANY_EVENT, { detail: { text } }));
+  } catch {}
+}
+
+/** 讓小燈泡跳波浪舞事件 */
+export const MASCOT_WAVE_DANCE_EVENT = 'ideax:mascot-wave-dance';
+
+export function waveDanceMascot(text = '～♪ 看我跳波浪舞！～♬', durationMs = 5000) {
+  try {
+    window.dispatchEvent(new CustomEvent(MASCOT_WAVE_DANCE_EVENT, { detail: { text, durationMs } }));
   } catch {}
 }
 
