@@ -3380,6 +3380,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const expRegex = /無經驗|新鮮人|應屆|實習|工讀|兼職|二度就業|1~3\s*年|3~5\s*年|\d+\s*年以上|\d+\s*~\s*\d+\s*年|資深|初階|中階|跨領域轉職/i;
     const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
     const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
+    const jobTypeRegex = /正職|全職|兼職|工讀|打工|實習|約聘|派遣|計時|part[\s-]?time|full[\s-]?time|intern/i;
 
     // 檢測是否略過特定維度
     if (/地點不拘|地區不拘|不限地點|全台皆可|全台灣地區皆可/.test(fullText)) skippedDims.add('location');
@@ -3388,6 +3389,11 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     if (/工作經歷不拘|經歷不拘|經驗不拘|年資不拘|不限經驗/.test(fullText)) skippedDims.add('experience');
     if (/工作型態不拘|型態不拘|環境不拘|性格不拘|個性不拘/.test(fullText)) skippedDims.add('personality');
     if (/薪資待遇不拘|薪資不拘|待遇不拘|薪水不拘|面議即可/.test(fullText)) skippedDims.add('salary');
+    if (/正職兼職都可|正職兼職皆可|全職兼職皆可|工作類型不拘/.test(fullText)) skippedDims.add('jobType');
+
+    // ─── 0. 正職／兼職 (jobType)：沒說的話第一個先問這個 ───
+    const hasJobType = jobTypeRegex.test(fullText);
+    const isJobTypeMissing = !hasJobType && !skippedDims.has('jobType');
 
     // ─── 1. 工作地點維度 (location) ───
     const hasSpecificCity = cityRegex.test(fullText) || Boolean(filters.city && filters.city !== '全部');
@@ -3441,6 +3447,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
         expRegex.test(s) ||
         personalityRegex.test(s) ||
         salaryRegex.test(s) ||
+        jobTypeRegex.test(s) ||
         /不拘/.test(s);
       const isPureVagueWrapper =
         !hasConcreteToken &&
@@ -3468,6 +3475,22 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     }
 
     const ambiguousGroups: DimensionGroup[] = [];
+
+    if (isJobTypeMissing) {
+      ambiguousGroups.push({
+        dimension: 'jobType',
+        title: '💼 正職／兼職',
+        question: '請問您要找正職還是兼職？',
+        isHighlighted: true,
+        chips: [
+          { label: '正職', value: '工作型態：正職', type: 'jobType' },
+          { label: '兼職／工讀', value: '工作型態：兼職工讀', type: 'jobType' },
+          { label: '實習', value: '工作型態：實習', type: 'jobType' },
+          { label: '正職兼職都可以', value: '工作型態：正職兼職皆可', type: 'jobType' },
+          { label: '跳過', value: '跳過', type: 'skip:jobType' },
+        ],
+      });
+    }
 
     if (isLocationAmbiguous) {
       ambiguousGroups.push({
@@ -3563,7 +3586,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     }
 
     // 若使用者僅輸入如「我想找工作」、「有什麼職缺推薦」等完全無具體條件之句子，且尚未略過職務方向
-    if (ambiguousGroups.length === 0 && concreteConditions.length === 0 && isMajorMissing) {
+    if (ambiguousGroups.every((g) => g.dimension === 'jobType') && concreteConditions.filter((c) => !jobTypeRegex.test(c)).length === 0 && isMajorMissing) {
       ambiguousGroups.push({
         dimension: 'major',
         title: '💻 職務方向確認',
@@ -3586,7 +3609,8 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const dynamicChips = activeGroup ? activeGroup.chips : [];
 
     // 計算四大快速條件（學歷、經歷、地區、薪水）哪些已經填寫或跳過
-    const completedConditionKeys: Array<'education' | 'experience' | 'location' | 'salary'> = [];
+    const completedConditionKeys: Array<'jobType' | 'education' | 'experience' | 'location' | 'salary'> = [];
+    if (!isJobTypeMissing) completedConditionKeys.push('jobType');
     if (!isCollegeMissing) completedConditionKeys.push('education');
     if (!isExperienceMissing) completedConditionKeys.push('experience');
     if (!isLocationMissing) completedConditionKeys.push('location');
@@ -3758,6 +3782,12 @@ function normalizeJobItem(
   };
 }
 
+/** 找兼職時，加上台灣兼職／打工平台 */
+function partTimeHint(query: string): string {
+  if (!/兼職|工讀|打工|計時|part[\s-]?time/i.test(query)) return '';
+  return '\n【本次是找兼職】請優先檢索台灣兼職／打工平台：小雞上工（chickpt.com.tw）、Worky（worky.com.tw）、518熊班、Yes123 打工、1111 兼職，再補充其他求職網站的兼職職缺；薪資請盡量寫時薪。';
+}
+
 /** 職缺網址驗證後再輸出：確認不了的改給搜尋連結（urlKind = 'search'），確定已下架的不顯示，已確認的排前面 */
 async function finalizeJobs(rawJobs: any[], g: GroundingInfo | GroundingInfo[] | null, filters: any, startIdx: number) {
   const checks = await verifyJobUrls(
@@ -3835,7 +3865,7 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
     if (ai) {
       try {
         const batch1Prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 即時檢索台灣主流求職網站（包含 Yes123、104人力銀行、1111人力銀行、Cake、Yourator、518熊班、企業官網）上符合以下條件且「當下正在開放招募中」的真實公開職缺：
-條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}
+條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}
 
 【嚴格規定】：
 1. 精簡輸出 5 ~ 7 筆當下有效真實職缺，來源平台多元化（不限於 104，務必包含 Yes123、Cake、1111 等）。
@@ -3903,7 +3933,7 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
     // ─── Batch 2: 深度擴充檢索（再檢索 6 ~ 9 筆更多平台職缺） ───
     if (ai) {
       try {
-        const batch2Prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 擴大檢索台灣求職網（特別側重 Cake、Yourator、1111人力銀行、Yes123、518熊班）上與「${rawQuery}」相關且「當下正在開放招募中」的更多真實職缺。
+        const batch2Prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 擴大檢索台灣求職網（特別側重 Cake、Yourator、1111人力銀行、Yes123、518熊班）上與「${rawQuery}」相關且「當下正在開放招募中」的更多真實職缺。${partTimeHint(rawQuery)}
 【嚴格規定】：
 1. 列出 6 ~ 9 筆不同的在招職缺，優先挑選非 104 的跨平台站點。
 2. 絕對不可包含已結束、已關閉或已下架的職缺。
@@ -4042,7 +4072,7 @@ app.post('/api/job-explorer/search', async (req: Request, res: Response) => {
     const groundingInfos: GroundingInfo[] = [];
 
     const bgSearchPrompt = `請使用 Google Search 即時檢索台灣主流求職網站（包含 104人力銀行、1111人力銀行、Cake、Yourator、Yes123、518熊班、LinkedIn 或各大企業官方招募官網）上符合以下條件且「當下正在開放招募中」的真實公開職缺：
-搜尋條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}
+搜尋條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}
 
 【最高嚴格規定（違反即視為無效）】：
 1. **來源平台多元化（不限 104）**：請廣泛檢索台灣各大求職管道，包含 Yes123、1111人力銀行、Cake (CakeResume)、Yourator、518熊班、LinkedIn 或企業官方徵才官網，不可只局限單一網站！

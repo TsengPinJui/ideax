@@ -160961,6 +160961,9 @@ var PLATFORMS = [
   { name: "Yourator", host: /(^|\.)yourator\.co$/i, detail: /^\/companies\/[^/]+\/jobs\/\d+/i, site: "yourator.co" },
   { name: "Yes123", host: /(^|\.)yes123\.com\.tw$/i, detail: /job_refer_comp_job_detail|[?&](p_id|job_id)=/i, site: "yes123.com.tw" },
   { name: "518\u718A\u73ED", host: /(^|\.)518\.com\.tw$/i, detail: /^\/job-[\w-]+\.html/i, site: "518.com.tw" },
+  // 兼職／打工平台
+  { name: "\u5C0F\u96DE\u4E0A\u5DE5", host: /(^|\.)chickpt\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: "chickpt.com.tw" },
+  { name: "Worky", host: /(^|\.)worky\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: "worky.com.tw" },
   { name: "LinkedIn", host: /(^|\.)linkedin\.com$/i, detail: /^\/jobs\/view\/[\w-]*\d+/i, search: (kw) => `https://www.linkedin.com/jobs/search/?keywords=${kw}`, site: "linkedin.com" }
 ];
 var LIST_PAGE = /\/(jobs\/search|search|joblist|job-index\.html|jobs\/?$)|[?&](keyword|ks|q|term|key_word)=/i;
@@ -163948,12 +163951,16 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     const expRegex = /無經驗|新鮮人|應屆|實習|工讀|兼職|二度就業|1~3\s*年|3~5\s*年|\d+\s*年以上|\d+\s*~\s*\d+\s*年|資深|初階|中階|跨領域轉職/i;
     const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
     const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
+    const jobTypeRegex = /正職|全職|兼職|工讀|打工|實習|約聘|派遣|計時|part[\s-]?time|full[\s-]?time|intern/i;
     if (/地點不拘|地區不拘|不限地點|全台皆可|全台灣地區皆可/.test(fullText)) skippedDims.add("location");
     if (/專業不拘|職務不拘|職務類別不拘|科系不拘|不限職務|不限專業/.test(fullText)) skippedDims.add("major");
     if (/學校科系不拘|學校科系與學歷不拘|學歷不拘|不限學歷/.test(fullText)) skippedDims.add("college");
     if (/工作經歷不拘|經歷不拘|經驗不拘|年資不拘|不限經驗/.test(fullText)) skippedDims.add("experience");
     if (/工作型態不拘|型態不拘|環境不拘|性格不拘|個性不拘/.test(fullText)) skippedDims.add("personality");
     if (/薪資待遇不拘|薪資不拘|待遇不拘|薪水不拘|面議即可/.test(fullText)) skippedDims.add("salary");
+    if (/正職兼職都可|正職兼職皆可|全職兼職皆可|工作類型不拘/.test(fullText)) skippedDims.add("jobType");
+    const hasJobType = jobTypeRegex.test(fullText);
+    const isJobTypeMissing = !hasJobType && !skippedDims.has("jobType");
     const hasSpecificCity = cityRegex.test(fullText) || Boolean(filters.city && filters.city !== "\u5168\u90E8");
     const mentionsNearby = /附近|這附近|我附近|周邊|離家近|就近|方圓|家裡附近|離我近|周遭|隔壁|走路可到|騎車可到|通勤近|近一點/.test(fullText);
     const isLocationMissing = !hasSpecificCity && !skippedDims.has("location");
@@ -163982,7 +163989,7 @@ app.post("/api/job-explorer/intake", async (req, res) => {
       const s2 = seg.trim();
       if (!s2) continue;
       if (/^(跳過|略過|skip|不用|不用了|略過問題)$/i.test(s2)) continue;
-      const hasConcreteToken = cityRegex.test(s2) || majorRoleRegex.test(s2) || collegeRegex.test(s2) || expRegex.test(s2) || personalityRegex.test(s2) || salaryRegex.test(s2) || /不拘/.test(s2);
+      const hasConcreteToken = cityRegex.test(s2) || majorRoleRegex.test(s2) || collegeRegex.test(s2) || expRegex.test(s2) || personalityRegex.test(s2) || salaryRegex.test(s2) || jobTypeRegex.test(s2) || /不拘/.test(s2);
       const isPureVagueWrapper = !hasConcreteToken && (/我的大學|我的專業|我的性格|我的個性|我家附近|找附近|有什麼好推薦|最新職缺推薦|離家近一點|我想找工作/.test(s2) || /^(近期|最新|推薦|今天|這幾天)?(附近)?(有什麼)?(好工作|職缺|工作|工作機會|正職|兼職)(推薦|嗎|呢)?$/i.test(s2));
       if (!isPureVagueWrapper) {
         const key = s2.toLowerCase();
@@ -163994,6 +164001,21 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     }
     const accumulatedConcreteBrief = concreteConditions.join("\u3001");
     const ambiguousGroups = [];
+    if (isJobTypeMissing) {
+      ambiguousGroups.push({
+        dimension: "jobType",
+        title: "\u{1F4BC} \u6B63\u8077\uFF0F\u517C\u8077",
+        question: "\u8ACB\u554F\u60A8\u8981\u627E\u6B63\u8077\u9084\u662F\u517C\u8077\uFF1F",
+        isHighlighted: true,
+        chips: [
+          { label: "\u6B63\u8077", value: "\u5DE5\u4F5C\u578B\u614B\uFF1A\u6B63\u8077", type: "jobType" },
+          { label: "\u517C\u8077\uFF0F\u5DE5\u8B80", value: "\u5DE5\u4F5C\u578B\u614B\uFF1A\u517C\u8077\u5DE5\u8B80", type: "jobType" },
+          { label: "\u5BE6\u7FD2", value: "\u5DE5\u4F5C\u578B\u614B\uFF1A\u5BE6\u7FD2", type: "jobType" },
+          { label: "\u6B63\u8077\u517C\u8077\u90FD\u53EF\u4EE5", value: "\u5DE5\u4F5C\u578B\u614B\uFF1A\u6B63\u8077\u517C\u8077\u7686\u53EF", type: "jobType" },
+          { label: "\u8DF3\u904E", value: "\u8DF3\u904E", type: "skip:jobType" }
+        ]
+      });
+    }
     if (isLocationAmbiguous) {
       ambiguousGroups.push({
         dimension: "location",
@@ -164082,7 +164104,7 @@ app.post("/api/job-explorer/intake", async (req, res) => {
         ]
       });
     }
-    if (ambiguousGroups.length === 0 && concreteConditions.length === 0 && isMajorMissing) {
+    if (ambiguousGroups.every((g) => g.dimension === "jobType") && concreteConditions.filter((c) => !jobTypeRegex.test(c)).length === 0 && isMajorMissing) {
       ambiguousGroups.push({
         dimension: "major",
         title: "\u{1F4BB} \u8077\u52D9\u65B9\u5411\u78BA\u8A8D",
@@ -164103,6 +164125,7 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     const isCoreAmbiguous = Boolean(activeGroup);
     const dynamicChips = activeGroup ? activeGroup.chips : [];
     const completedConditionKeys = [];
+    if (!isJobTypeMissing) completedConditionKeys.push("jobType");
     if (!isCollegeMissing) completedConditionKeys.push("education");
     if (!isExperienceMissing) completedConditionKeys.push("experience");
     if (!isLocationMissing) completedConditionKeys.push("location");
@@ -164245,6 +164268,10 @@ function normalizeJobItem(j, idx, groundingChunksMap, groundingUrls, filters) {
     postedAtText: String(j.postedAtText || (idx === 0 ? "\u4ECA\u65E5\u520A\u767B" : idx <= 2 ? `${idx}\u5929\u524D` : "\u8FD1\u671F\u520A\u767B"))
   };
 }
+function partTimeHint(query2) {
+  if (!/兼職|工讀|打工|計時|part[\s-]?time/i.test(query2)) return "";
+  return "\n\u3010\u672C\u6B21\u662F\u627E\u517C\u8077\u3011\u8ACB\u512A\u5148\u6AA2\u7D22\u53F0\u7063\u517C\u8077\uFF0F\u6253\u5DE5\u5E73\u53F0\uFF1A\u5C0F\u96DE\u4E0A\u5DE5\uFF08chickpt.com.tw\uFF09\u3001Worky\uFF08worky.com.tw\uFF09\u3001518\u718A\u73ED\u3001Yes123 \u6253\u5DE5\u30011111 \u517C\u8077\uFF0C\u518D\u88DC\u5145\u5176\u4ED6\u6C42\u8077\u7DB2\u7AD9\u7684\u517C\u8077\u8077\u7F3A\uFF1B\u85AA\u8CC7\u8ACB\u76E1\u91CF\u5BEB\u6642\u85AA\u3002";
+}
 async function finalizeJobs(rawJobs, g, filters, startIdx) {
   const checks = await verifyJobUrls(
     rawJobs.map((j) => ({ title: String(j.title || ""), company: String(j.company || ""), url: String(j.url || ""), sourcePlatform: String(j.sourcePlatform || "") })),
@@ -164307,7 +164334,7 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
     if (ai) {
       try {
         const batch1Prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u5373\u6642\u6AA2\u7D22\u53F0\u7063\u4E3B\u6D41\u6C42\u8077\u7DB2\u7AD9\uFF08\u5305\u542B Yes123\u3001104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake\u3001Yourator\u3001518\u718A\u73ED\u3001\u4F01\u696D\u5B98\u7DB2\uFF09\u4E0A\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\uFF1A
-\u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}
+\u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}${partTimeHint(rawQuery)}
 
 \u3010\u56B4\u683C\u898F\u5B9A\u3011\uFF1A
 1. \u7CBE\u7C21\u8F38\u51FA 5 ~ 7 \u7B46\u7576\u4E0B\u6709\u6548\u771F\u5BE6\u8077\u7F3A\uFF0C\u4F86\u6E90\u5E73\u53F0\u591A\u5143\u5316\uFF08\u4E0D\u9650\u65BC 104\uFF0C\u52D9\u5FC5\u5305\u542B Yes123\u3001Cake\u30011111 \u7B49\uFF09\u3002
@@ -164367,7 +164394,7 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
     }
     if (ai) {
       try {
-        const batch2Prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u64F4\u5927\u6AA2\u7D22\u53F0\u7063\u6C42\u8077\u7DB2\uFF08\u7279\u5225\u5074\u91CD Cake\u3001Yourator\u30011111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED\uFF09\u4E0A\u8207\u300C${rawQuery}\u300D\u76F8\u95DC\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u66F4\u591A\u771F\u5BE6\u8077\u7F3A\u3002
+        const batch2Prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u64F4\u5927\u6AA2\u7D22\u53F0\u7063\u6C42\u8077\u7DB2\uFF08\u7279\u5225\u5074\u91CD Cake\u3001Yourator\u30011111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED\uFF09\u4E0A\u8207\u300C${rawQuery}\u300D\u76F8\u95DC\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u66F4\u591A\u771F\u5BE6\u8077\u7F3A\u3002${partTimeHint(rawQuery)}
 \u3010\u56B4\u683C\u898F\u5B9A\u3011\uFF1A
 1. \u5217\u51FA 6 ~ 9 \u7B46\u4E0D\u540C\u7684\u5728\u62DB\u8077\u7F3A\uFF0C\u512A\u5148\u6311\u9078\u975E 104 \u7684\u8DE8\u5E73\u53F0\u7AD9\u9EDE\u3002
 2. \u7D55\u5C0D\u4E0D\u53EF\u5305\u542B\u5DF2\u7D50\u675F\u3001\u5DF2\u95DC\u9589\u6216\u5DF2\u4E0B\u67B6\u7684\u8077\u7F3A\u3002
@@ -164486,7 +164513,7 @@ app.post("/api/job-explorer/search", async (req, res) => {
     let groundingUrls = [];
     const groundingInfos = [];
     const bgSearchPrompt = `\u8ACB\u4F7F\u7528 Google Search \u5373\u6642\u6AA2\u7D22\u53F0\u7063\u4E3B\u6D41\u6C42\u8077\u7DB2\u7AD9\uFF08\u5305\u542B 104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake\u3001Yourator\u3001Yes123\u3001518\u718A\u73ED\u3001LinkedIn \u6216\u5404\u5927\u4F01\u696D\u5B98\u65B9\u62DB\u52DF\u5B98\u7DB2\uFF09\u4E0A\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\uFF1A
-\u641C\u5C0B\u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}
+\u641C\u5C0B\u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}${partTimeHint(rawQuery)}
 
 \u3010\u6700\u9AD8\u56B4\u683C\u898F\u5B9A\uFF08\u9055\u53CD\u5373\u8996\u70BA\u7121\u6548\uFF09\u3011\uFF1A
 1. **\u4F86\u6E90\u5E73\u53F0\u591A\u5143\u5316\uFF08\u4E0D\u9650 104\uFF09**\uFF1A\u8ACB\u5EE3\u6CDB\u6AA2\u7D22\u53F0\u7063\u5404\u5927\u6C42\u8077\u7BA1\u9053\uFF0C\u5305\u542B Yes123\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake (CakeResume)\u3001Yourator\u3001518\u718A\u73ED\u3001LinkedIn \u6216\u4F01\u696D\u5B98\u65B9\u5FB5\u624D\u5B98\u7DB2\uFF0C\u4E0D\u53EF\u53EA\u5C40\u9650\u55AE\u4E00\u7DB2\u7AD9\uFF01

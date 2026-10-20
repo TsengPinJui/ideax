@@ -110,7 +110,7 @@ const EXPLORER_QUICK_PRESETS = [
   },
 ];
 
-export type QuickConditionKey = 'education' | 'experience' | 'location' | 'salary';
+export type QuickConditionKey = 'jobType' | 'education' | 'experience' | 'location' | 'salary';
 
 export const QUICK_CONDITION_STEPS: Array<{
   key: QuickConditionKey;
@@ -118,6 +118,18 @@ export const QUICK_CONDITION_STEPS: Array<{
   question: string;
   options: Array<{ label: string; value: string; isSkip?: boolean }>;
 }> = [
+  {
+    key: 'jobType',
+    label: '正職／兼職',
+    question: '請問您要找正職還是兼職？',
+    options: [
+      { label: '正職', value: '工作型態：正職' },
+      { label: '兼職／工讀', value: '工作型態：兼職工讀' },
+      { label: '實習', value: '工作型態：實習' },
+      { label: '正職兼職都可以', value: '工作型態：正職兼職皆可' },
+      { label: '跳過', value: '跳過', isSkip: true },
+    ],
+  },
   {
     key: 'education',
     label: '學歷',
@@ -370,7 +382,7 @@ export const JobExplorerView: React.FC = () => {
     stepKey: QuickConditionKey,
     opt: { label: string; value: string; isSkip?: boolean }
   ) => {
-    const stepOrder: QuickConditionKey[] = ['education', 'experience', 'location', 'salary'];
+    const stepOrder: QuickConditionKey[] = ['jobType', 'education', 'experience', 'location', 'salary'];
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== msgId) return m;
@@ -737,7 +749,7 @@ export const JobExplorerView: React.FC = () => {
       }
 
       // 若是從點選追問選項進入確認階段，自動展開下一個尚未選擇的條件（學歷、經歷、地區、薪水）
-      const stepOrder: QuickConditionKey[] = ['education', 'experience', 'location', 'salary'];
+      const stepOrder: QuickConditionKey[] = ['jobType', 'education', 'experience', 'location', 'salary'];
       const nextAutoConditionKey =
         !isAmb && customText !== undefined
           ? stepOrder.find((k) => !completedKeys.includes(k)) || null
@@ -1378,7 +1390,7 @@ export const JobExplorerView: React.FC = () => {
                                     })}
 
                                     <span className="text-[11px] text-stone-500 font-medium">
-                                      （或直接輸入補充條件，或點右上搜尋開始）
+                                      （或直接在上方輸入補充條件，或點右上搜尋開始）
                                     </span>
                                   </div>
 
