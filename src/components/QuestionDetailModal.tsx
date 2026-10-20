@@ -235,7 +235,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
       if (res && res.success && res.data) {
         if (addNotification) {
           addNotification({
-            title: '✨ AI 分析與標籤歸類完成',
+            title: '白喵已完成分析與貼標籤',
             message: `問題《${question.title.slice(0, 16)}...》已由 AI 智能匹配分類至「${res.data.category} · ${res.data.subcategory || ''}」，並配置標籤：#${(res.data.tags || []).join(' #')}`,
             type: 'system',
           });
@@ -1499,10 +1499,12 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/50 border border-amber-200 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-amber-400 text-stone-900 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 fill-stone-900" />
+                {/* 市場顧問白喵：戴眼鏡拿紙筆幫你整理重點 */}
+                <BaiMiao action="mediate" size={52} className="-my-2 shrink-0" />
+                <div>
+                  <h4 className="font-bold text-sm text-stone-900">AI摘要</h4>
+                  <p className="text-[10px] text-stone-500">市場顧問白喵幫你整理的重點</p>
                 </div>
-                <h4 className="font-bold text-sm text-stone-900">AI摘要</h4>
               </div>
               <div className="flex items-center gap-2">
                 {effectiveAiAnalysis.marketFitRating && (
