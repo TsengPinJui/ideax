@@ -161844,7 +161844,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "2.10.3";
+var APP_VERSION = "2.10.4";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -165458,6 +165458,11 @@ var isJobActive = (j) => {
   const combined = `${j.title} ${j.company} ${j.description || ""} ${j.salaryText || ""} ${j.postedAtText || ""}`;
   return !closedPatternGlobal.test(combined);
 };
+var DIFY_SOURCE_RULES = `\u3010\u641C\u5C0B\u898F\u5B9A\u3011
+1. \u53F0\u7063\u8077\u7F3A\u8ACB\u5206\u958B\u641C\u5C0B\u4E0D\u540C\u7DB2\u7AD9\uFF08\u4F8B\u5982\u5206\u5225\u7528\u300Csite:104.com.tw\u300D\u300Csite:1111.com.tw\u300D\u300Csite:yes123.com.tw\u300D\u300Csite:518.com.tw\u300D\u300Csite:cake.me\u300D\u300Csite:yourator.co\u300D\uFF09\uFF0C\u7D50\u679C\u8981\u5206\u6563\u5728\u4E0D\u540C\u7DB2\u7AD9\u3002
+2. \u540C\u4E00\u500B\u7DB2\u7AD9\u6700\u591A\u5217 4 \u7B46\uFF0C\u540C\u4E00\u5BB6\u516C\u53F8\u6700\u591A 2 \u7B46\u3002
+3. \u53EA\u8981\u8FD1 30 \u5929\u5167\u4ECD\u5728\u520A\u767B\u7684\u8077\u7F3A\uFF1B\u520A\u767B\u65E5\u671F\u592A\u820A\u3001\u9801\u9762\u5BEB\u5DF2\u95DC\u9589\u6216\u5DF2\u622A\u6B62\u7684\u4E0D\u8981\u5217\u3002
+4. url \u53EA\u80FD\u586B\u55AE\u4E00\u8077\u7F3A\u7684\u5167\u9801\u7DB2\u5740\uFF0C\u627E\u4E0D\u5230\u5C31\u586B\u7A7A\u5B57\u4E32\uFF0C\u4E0D\u8981\u586B\u641C\u5C0B\u7D50\u679C\u9801\u3002`;
 function extractCompletedJobObjects(text) {
   const k = text.indexOf('"jobs"');
   if (k < 0) return [];
@@ -165691,7 +165696,8 @@ ${JOB_JSON_SPEC}`;
       };
       const out = await callDifyStreamingAgent({
         apiKey: explorerKey,
-        query: `${rawQuery}\uFF08\u8ACB\u76E1\u91CF\u5217\u51FA 8 \u7B46\u4EE5\u4E0A\u7B26\u5408\u689D\u4EF6\u3001\u76EE\u524D\u4ECD\u5728\u62DB\u52DF\u7684\u771F\u5BE6\u8077\u7F3A\uFF0C\u9644\u8077\u7F3A\u7DB2\u5740\uFF0C\u4E26\u4EE5 JSON \u683C\u5F0F\u8F38\u51FA\uFF09`,
+        query: `${rawQuery}\uFF08\u8ACB\u76E1\u91CF\u5217\u51FA 8 \u7B46\u4EE5\u4E0A\u7B26\u5408\u689D\u4EF6\u3001\u76EE\u524D\u4ECD\u5728\u62DB\u52DF\u7684\u771F\u5BE6\u8077\u7F3A\uFF0C\u9644\u8077\u7F3A\u7DB2\u5740\uFF0C\u4E26\u4EE5 JSON \u683C\u5F0F\u8F38\u51FA\uFF09
+${DIFY_SOURCE_RULES}`,
         inputs: {},
         user: "job_explorer_stream",
         // 搜搜要上網搜尋，常常超過半分鐘；前端最多等 80 秒（派小燈泡後會繼續收），這裡給 120 秒
