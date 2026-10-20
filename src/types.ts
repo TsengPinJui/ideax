@@ -53,6 +53,7 @@ export type AppTab =
 
 export type AboutSection = 
   | 'list'
+  | 'ip_agents'                     // 原創IP與Agent角色介紹專區
   | 'contact'                       // 聯絡我們與客服中心
   | 'download_app'                  // 下載APP專區
   | 'solver_terms'                  // 接案服務條款（解答者條款）

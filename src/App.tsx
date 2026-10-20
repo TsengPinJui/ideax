@@ -742,7 +742,6 @@ function MainContent() {
     }
   }, []);
 
-  // Specific sub-view flag when submitting answer to a question in full page mode
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [submitInitialType, setSubmitInitialType] = useState<'discussion' | 'solution'>('solution');
   const [aboutPageSection, setAboutPageSection] = useState<string>('others');
@@ -2059,6 +2058,11 @@ function MainContent() {
                   <CreateIdeasZoneView
                     onSelectProposal={(proposal) => openIdeaDetail(proposal.id)}
                     onOpenCreateProposal={() => {
+                      window.history.pushState(
+                        { ideaxMain: true, tab: 'star_season', subView: 'submit' },
+                        '',
+                        '/challenge/submit'
+                      );
                       setActiveTab('star_season');
                       setTimeout(() => {
                         window.dispatchEvent(
@@ -2066,7 +2070,7 @@ function MainContent() {
                             detail: { subView: 'submit' },
                           })
                         );
-                      }, 0);
+                      }, 50);
                     }}
                     onCloseZone={() => {
                       setSpecialZone('all');

@@ -23,7 +23,7 @@ export function createSousou(canvas, opts = {}) {
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 60);
-  camera.position.set(0, 1.75, 12.5);
+  camera.position.set(0, 1.72, 11.0);
   camera.lookAt(0, 1.45, 0);
 
   scene.add(new THREE.HemisphereLight(0xeef3ff, 0x2a3350, 0.7));
@@ -688,7 +688,12 @@ export function createSousou(canvas, opts = {}) {
     if (Math.abs(look.x - lx) > 0.02 || Math.abs(look.y - ly) > 0.02) { look.x = lx; look.y = ly; faceDirty = 1; }
     if (faceDirty) { drawFace(); faceDirty = 0; }
 
-    renderer.render(scene, camera);
+    try {
+      const gl = renderer.getContext();
+      if (gl && !gl.isContextLost()) {
+        renderer.render(scene, camera);
+      }
+    } catch {}
   }
 
   function resize() {

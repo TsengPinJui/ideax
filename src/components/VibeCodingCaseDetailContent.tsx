@@ -711,7 +711,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
       </div>
 
       {/* 3. 作品介紹 & 內嵌互動預覽區（桌面版大空間滿寬、手機版滿版寬度自適應高度） */}
-      <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
+      <section id="case-intro" className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
         <h3 className="text-base font-bold text-stone-900">
           作品介紹
         </h3>
@@ -805,7 +805,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
         {/* Left Column (8 cols) */}
         <div className="lg:col-span-8 space-y-5">
           {/* 主要功能 */}
-          <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
+          <section id="case-features" className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
             <h3 className="text-base font-bold text-stone-900">
               主要功能
             </h3>
@@ -828,7 +828,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
           </section>
 
           {/* 使用方式 */}
-          <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
+          <section id="case-usage" className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
             <h3 className="text-base font-bold text-stone-900">
               使用方式
             </h3>
@@ -919,7 +919,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
           </section>
 
           {/* 技術與工具 */}
-          <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
+          <section id="case-tech" className="p-5 rounded-xl bg-white border border-stone-200 space-y-3">
             <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
               <Cpu className="w-4 h-4 text-indigo-600" />
               <span>技術架構</span>
@@ -968,7 +968,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
       </div>
 
       {/* 4. 社群留言與回饋 */}
-      <section className="p-5 rounded-xl bg-white border border-stone-200 space-y-4">
+      <section id="case-discussions" className="p-5 rounded-xl bg-white border border-stone-200 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm sm:text-base font-bold text-stone-900 flex items-center gap-2">
             <MessageCircle className="w-4 h-4 text-indigo-600" />

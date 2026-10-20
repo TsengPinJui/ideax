@@ -5,6 +5,7 @@ import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 import { HelpTooltip } from './HelpTooltip';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 import { isGuestUser } from '../utils/userDisplay';
+import { BaiMiaoTaskBanner } from './mascot/BaiMiaoSceneWidget';
 import {
   Sparkles,
   Search,
@@ -346,6 +347,19 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* 付費獵頭專屬動作：白喵拿出望遠鏡眺望尋才 */}
+        <BaiMiaoTaskBanner
+          scene="headhunter_telescope"
+          compact
+          customTaskStatus={
+            isSearching
+              ? '白喵正在舉起望遠鏡全力掃描全站智庫，逐一比對專長與歷史實績，為您獵尋最契合的 4 位專家...'
+              : results && results.length > 0
+              ? `白喵用望遠鏡幫您鎖定了 ${results.length} 位高契合度領域專家！快往下查看白喵的推薦理由吧～`
+              : '白喵已拿出專業望遠鏡準備就緒！輸入您的痛點或條件，白喵立刻為您執行獵頭物色！'
+          }
+        />
 
         {/* Search Input Box */}
         <div className="space-y-3">

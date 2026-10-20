@@ -27,7 +27,7 @@ function supportsWebGL() {
   }
 }
 
-const sizeFor = () => (window.innerWidth < 640 ? 118 : 168);
+const sizeFor = () => (window.innerWidth < 640 ? 138 : 196);
 
 export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
   const { mascotConfig } = useApp();
@@ -42,7 +42,7 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
     mode: 'parked' as 'parked' | 'flying' | 'returning' | 'hover' | 'dashing',
     dash: null as null | { x0: number; y0: number; x1: number; y1: number; t: number; dur: number; toDock: boolean; done: () => void },
     trail: [] as { x: number; y: number; t: number }[],
-    x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, retarget: 0, size: 168, lastHeading: 0,
+    x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, retarget: 0, size: 196, lastHeading: 0,
     resultCount: 0, timers: [] as number[], launched: false,
   });
   state.current.resultCount = resultCount;

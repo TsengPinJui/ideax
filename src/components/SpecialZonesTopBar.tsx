@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useEffect } from 'react';
 import { SpecialZone, Question } from '../types';
 import { useApp } from '../context/AppContext';
 import { Sparkles } from 'lucide-react';
+import { SpecialZoneBorderBaiMiao } from './mascot/BaiMiaoSceneWidget';
 
 interface SpecialZonesTopBarProps {
   currentZone: SpecialZone;
@@ -193,25 +194,29 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
   const currentZoneObj = zones.find((z) => z.id === currentZone) || zones[0];
 
   return (
-    <div
-      id="special-zones-navigation-bar"
-      className={`w-full max-w-full rounded-xl sm:rounded-2xl bg-white/95 sm:bg-gradient-to-b sm:from-white sm:to-stone-50/80 border border-stone-200/90 shadow-2xs sm:shadow-sm p-1.5 sm:p-3 transition-all ${className}`}
-    >
-      {/* 電腦版頂部標題說明與當前專區狀態指示 */}
-      <div className="hidden sm:flex items-center justify-between gap-2 pb-2 mb-2 border-b border-stone-200/70">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <div className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-700 flex items-center justify-center shrink-0">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+    <div className={`w-full max-w-full ${className}`}>
+      {/* 首頁專區選擇上方：市場顧問 Agent「白喵」在主題專區邊框上開心漫步、單腳接地揮手「嗨！」與側躺打瞌睡 */}
+      <SpecialZoneBorderBaiMiao />
+
+      <div
+        id="special-zones-navigation-bar"
+        className="w-full max-w-full rounded-xl sm:rounded-2xl bg-white/95 sm:bg-gradient-to-b sm:from-white sm:to-stone-50/80 border border-stone-200/90 shadow-2xs sm:shadow-sm p-1.5 sm:p-3 transition-all"
+      >
+        {/* 電腦版頂部標題說明與當前專區狀態指示 */}
+        <div className="hidden sm:flex items-center justify-between gap-2 pb-2 mb-2 border-b border-stone-200/70">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-700 flex items-center justify-center shrink-0">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            </div>
+            <span className="text-xs sm:text-sm font-black text-stone-800 tracking-tight whitespace-nowrap">
+              主題專區
+            </span>
+            {/* 當前專區 Badge */}
+            <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 truncate max-w-[140px] sm:max-w-none">
+              當前：{currentZoneObj?.label || '全部問題'}
+            </span>
           </div>
-          <span className="text-xs sm:text-sm font-black text-stone-800 tracking-tight whitespace-nowrap">
-            主題專區
-          </span>
-          {/* 當前專區 Badge */}
-          <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 truncate max-w-[140px] sm:max-w-none">
-            當前：{currentZoneObj?.label || '全部問題'}
-          </span>
         </div>
-      </div>
 
       {/* 1. 電腦版與平板版版面 (sm: 及以上)：五欄均分網格，完整展示各主題名稱與詳細副標 */}
       <div className={`hidden sm:grid gap-2 w-full ${zones.length > 5 ? 'sm:grid-cols-3 lg:grid-cols-6' : 'sm:grid-cols-5'}`}>
@@ -289,6 +294,7 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );

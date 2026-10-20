@@ -357,9 +357,9 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
       </nav>
 
       {/* 主要提案頁面內容容器 */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-6">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-5 sm:pt-7 space-y-6">
         {/* 1. 提案頂部標題區塊 */}
-        <section className="bg-white rounded-3xl p-5 sm:p-8 border border-stone-200/90 shadow-sm space-y-4">
+        <section id="module-header" className="bg-white rounded-3xl p-5 sm:p-8 border border-stone-200/90 shadow-sm space-y-4">
           {/* 賽道與階段標籤 */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-xs font-black px-3 py-1 rounded-full ${
@@ -463,7 +463,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
         ) : (
         <>
         {/* 2. ［注資創星幣］橫條 */}
-        <section className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 rounded-3xl p-5 sm:p-6 border-2 border-amber-300 shadow-sm space-y-3">
+        <section id="module-support" className="bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 rounded-3xl p-5 sm:p-6 border-2 border-amber-300 shadow-sm space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
               <div className="font-black text-stone-900 text-sm sm:text-base flex items-center gap-2">
@@ -511,7 +511,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
 
         {/* 3. 關聯痛點與引用痛點資訊 (支援點擊雙向跳轉) */}
         {(proposal.sourcePainPointTitle || proposal.referencedPainPoint) && (
-          <section className="bg-emerald-50/80 rounded-3xl p-5 sm:p-6 border border-emerald-200 space-y-2.5">
+          <section id="module-painpoint" className="bg-emerald-50/80 rounded-3xl p-5 sm:p-6 border border-emerald-200 space-y-2.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-emerald-900 font-black text-sm">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -745,7 +745,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
         )}
 
         {/* 5. 提案核心摘要與詳細內容或企畫書 */}
-        <section className="bg-white rounded-3xl p-5 sm:p-8 border border-stone-200/90 shadow-sm space-y-6">
+        <section id="module-sections" className="bg-white rounded-3xl p-5 sm:p-8 border border-stone-200/90 shadow-sm space-y-6">
           <div>
             <h3 className="text-sm font-black text-stone-900 mb-2 flex items-center gap-2">
               <FileText className="w-4 h-4 text-amber-600" />
@@ -979,7 +979,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
         </section>
 
         {/* 6. 社群留言與回饋討論串 */}
-        <section className="bg-white rounded-3xl p-5 sm:p-8 border border-stone-200/90 shadow-sm space-y-5">
+        <section id="module-comments" className="bg-white rounded-3xl p-5 sm:p-8 border border-stone-200/90 shadow-sm space-y-5">
           <div className="flex items-center justify-between border-b border-stone-100 pb-3">
             <h3 className="font-black text-stone-900 text-base flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-amber-600" />

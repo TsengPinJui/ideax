@@ -8,37 +8,30 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
   className = '',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
+  const blobRef = useRef<HTMLDivElement>(null);
   const targetPos = useRef<{ x: number; y: number }>({ x: 50, y: 35 });
   const currentPos = useRef<{ x: number; y: number }>({ x: 50, y: 35 });
-  const [interactiveBlobStyle, setInteractiveBlobStyle] = useState<React.CSSProperties>({
-    left: '50%',
-    top: '35%',
-  });
 
-  // 平滑跟隨滑鼠/觸控的液態水滴物理緩動 (Lerp physics)
+  // 僅在滑鼠於 Hero 區域移動時平滑更新 DOM 座標，完全不觸發 React 重繪
   useEffect(() => {
-    let animId: number;
-    const lerp = () => {
+    let rafId: number | null = null;
+
+    const updatePosition = () => {
       const dx = targetPos.current.x - currentPos.current.x;
       const dy = targetPos.current.y - currentPos.current.y;
-      currentPos.current.x += dx * 0.08;
-      currentPos.current.y += dy * 0.08;
-
-      setInteractiveBlobStyle({
-        left: `${currentPos.current.x}%`,
-        top: `${currentPos.current.y}%`,
-      });
-
-      animId = requestAnimationFrame(lerp);
+      if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
+        currentPos.current.x += dx * 0.12;
+        currentPos.current.y += dy * 0.12;
+        if (blobRef.current) {
+          blobRef.current.style.left = `${currentPos.current.x}%`;
+          blobRef.current.style.top = `${currentPos.current.y}%`;
+        }
+        rafId = requestAnimationFrame(updatePosition);
+      } else {
+        rafId = null;
+      }
     };
 
-    animId = requestAnimationFrame(lerp);
-    return () => cancelAnimationFrame(animId);
-  }, []);
-
-  // 監聽滑鼠移動
-  useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
@@ -51,12 +44,20 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
         targetPos.current = { x, y };
-        setMousePos({ x, y });
+        if (blobRef.current) {
+          blobRef.current.style.opacity = '0.45';
+        }
+        if (rafId === null) {
+          rafId = requestAnimationFrame(updatePosition);
+        }
       }
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   return (
@@ -164,10 +165,12 @@ export const YellowLiquidHeroBackground: React.FC<YellowLiquidHeroBackgroundProp
 
       {/* 7. 滑鼠/觸控互動跟隨液態波紋 (Interactive Viscous Ripple) - 輕透靈動 */}
       <div
+        ref={blobRef}
         className="absolute w-[260px] sm:w-[380px] h-[260px] sm:h-[380px] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-yellow-200/30 via-amber-200/35 to-yellow-300/25 blur-2xl rounded-full transition-opacity duration-500 ease-out animate-liquid-morph-1 pointer-events-none"
         style={{
-          ...interactiveBlobStyle,
-          opacity: mousePos ? 0.45 : 0.2,
+          left: '50%',
+          top: '35%',
+          opacity: 0.2,
         }}
       />
 

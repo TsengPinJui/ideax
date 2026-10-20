@@ -152,6 +152,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
               </li>
               <li>
                 <button
+                  onClick={() => onNavClick('about', 'ip_agents')}
+                  className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span>原創IP與Agent</span>
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => onNavClick('about', 'tiers')}
                   className="hover:text-white transition-colors text-left cursor-pointer"
                 >

@@ -1081,7 +1081,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
 
         <form onSubmit={handleSubmit} id="star-tour-proposal-editor" className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 space-y-6 shadow-xs text-xs">
           {/* 1. 提案階段選擇（嚴格依照競賽時程開放與關閉） */}
-          <div className="space-y-2">
+          <div id="form-module-stage" className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="block text-stone-800 font-black text-sm">
                 1. 投件參賽階段 *
@@ -1190,7 +1190,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           </div>
 
           {/* 2. 相關領域標注與標題 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div id="form-module-title" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {formStage === 'pain_point' ? (
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -1455,7 +1455,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
 
           {/* 6. 若為提案：補充資料 (技術可行性、市場分析與定位、商業模式與財務預測...) */}
           {formStage === 'solution' && (
-            <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+            <div id="form-module-details" className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
               <div className="font-bold text-stone-900 flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs sm:text-sm">
                   <FileText className="w-4 h-4 text-amber-600" />
@@ -1574,7 +1574,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           </div>
 
           {/* 8. 簡報附件與推廣大使推薦碼 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div id="form-module-attachments" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-stone-800 font-bold mb-1">
                 提案簡報 / 計畫附件 (PDF/PPT, 20MB以內，選填)

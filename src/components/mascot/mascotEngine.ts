@@ -713,7 +713,12 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     stepSparks(dt);
     sparkMat.uniforms.uScale.value = renderer.getPixelRatio() * msize().h;
     drawFace();
-    renderer.render(scene, camera);
+    try {
+      const gl = renderer.getContext();
+      if (gl && !gl.isContextLost()) {
+        renderer.render(scene, camera);
+      }
+    } catch {}
 
     // ── DOM 位置與光暈 ──
     const shake = S.mood === 'scared' && !reduceMotion ? (Math.random() - 0.5) * 4 : 0;

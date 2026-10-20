@@ -5,6 +5,7 @@ import { HelpTooltip } from './HelpTooltip';
 import { AiHeadhunterModal } from './AiHeadhunterModal';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 import { isGuestUser } from '../utils/userDisplay';
+import { BaiMiaoTaskBanner } from './mascot/BaiMiaoSceneWidget';
 import {
   ShieldCheck,
   Star,
@@ -201,6 +202,11 @@ export const SolversView: React.FC<SolversViewProps> = ({
               className="w-full pl-8 pr-3 py-1.5 rounded-full bg-stone-100/80 focus:bg-white border border-transparent focus:border-amber-400 text-xs font-medium outline-hidden focus:ring-2 focus:ring-amber-500/20 transition-all"
             />
           </div>
+        </div>
+
+        {/* 市場顧問白喵無縫出現 */}
+        <div className="pt-1 flex justify-end">
+          <BaiMiaoTaskBanner scene="headhunter_telescope" compact />
         </div>
       </div>
 

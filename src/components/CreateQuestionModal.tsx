@@ -9,6 +9,7 @@ import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { PainPointAutocompleteInput } from './PainPointAutocompleteInput';
 import { PublishingOverlayModal } from './PublishingOverlayModal';
+import { BaiMiaoTaskBanner } from './mascot/BaiMiaoSceneWidget';
 import {
   X,
   Sparkles,
@@ -742,6 +743,19 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
 
       {/* Form */}
       <form onSubmit={handleSubmit} className={`p-2.5 sm:p-6 space-y-4 sm:space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
+        {/* 市場顧問 Agent「白喵」在提案編輯頁面各個字卡模組間穿梭、協助自動分類與貼標籤 */}
+        <BaiMiaoTaskBanner
+          scene="proposal_shuttle"
+          compact
+          customTaskStatus={
+            isAnalyzingWithAi
+              ? '白喵正在各個字卡模組間高速穿梭，為您的提案進行 AI 語意分類、複雜度評估與精準貼標籤...'
+              : tagsInput.trim()
+              ? `白喵已在字卡模組間穿梭完畢！目前為您貼上標籤：${tagsInput}`
+              : '白喵正在提案編輯頁的各個字卡模組間穿梭巡視！填寫標題與內容後，白喵會幫您分析分類並貼標籤喔～'
+          }
+        />
+
         {/* 管理員專用：發布身分切換（管理員身分 vs 平台身分） */}
         {currentUser?.role === 'admin' && (
           <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-amber-50/60 to-purple-50 border border-purple-200 shadow-2xs space-y-2.5">

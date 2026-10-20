@@ -86,6 +86,7 @@ import { VibeCodingCaseDetailContent } from './VibeCodingCaseDetailContent';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
 import { isSampleContent } from '../utils/sampleContent';
 import { isGuestPreviewOnly } from '../utils/guestAccess';
+import { BaiMiaoTaskBanner } from './mascot/BaiMiaoSceneWidget';
 
 interface QuestionDetailModalProps {
   question: Question;
@@ -1587,6 +1588,22 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
           {/* Expanded Content Area */}
           {isReportExpanded && (
             <div className="p-3.5 sm:p-4 pt-0 space-y-3.5 border-t border-white/10 animate-in fade-in duration-200">
+              {/* 付費報告專屬動作：白喵單手拿出放大鏡、單手撐地趴在地上看 */}
+              <div className="pt-3">
+                <BaiMiaoTaskBanner
+                  scene="report_magnifier"
+                  compact
+                  darkTheme
+                  customTaskStatus={
+                    isGeneratingReport
+                      ? '白喵正在單手撐地趴在地上、單手拿著放大鏡深挖市場數據與商業邊界，正在為您撰寫三階段深度分析報告...'
+                      : isReportUnlocked
+                      ? '白喵已趴地用放大鏡幫您把這份《市場顧問深度分析報告》的所有細節都檢視完畢囉！快下載或閱讀下方策略吧～'
+                      : '白喵正單手撐地趴在地上、單手拿出放大鏡為您深挖本題痛點核心癥結！解鎖即可查看白喵整理的完整三階段落地報告～'
+                  }
+                />
+              </div>
+
               {/* Top Action Bar if Unlocked */}
               {isReportUnlocked && (
                 <div className="pt-3 flex items-center justify-between gap-3 flex-wrap">
