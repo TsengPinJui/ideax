@@ -4381,6 +4381,13 @@ const isJobActive = (j: any): boolean => {
  * 從還在串流中的 JSON 文字裡，取出「jobs」陣列中已經完整的職缺物件（後面還沒傳完的先不管）。
  * 搜搜（Dify）邊搜邊回覆時，就能每湊滿幾筆先送到前端。
  */
+/** 每次派搜搜（Dify）都附上的來源規定：不然搜尋結果幾乎都是 104，也常有舊職缺 */
+const DIFY_SOURCE_RULES = `【搜尋規定】
+1. 台灣職缺請分開搜尋不同網站（例如分別用「site:104.com.tw」「site:1111.com.tw」「site:yes123.com.tw」「site:518.com.tw」「site:cake.me」「site:yourator.co」），結果要分散在不同網站。
+2. 同一個網站最多列 4 筆，同一家公司最多 2 筆。
+3. 只要近 30 天內仍在刊登的職缺；刊登日期太舊、頁面寫已關閉或已截止的不要列。
+4. url 只能填單一職缺的內頁網址，找不到就填空字串，不要填搜尋結果頁。`;
+
 function extractCompletedJobObjects(text: string): any[] {
   const k = text.indexOf('"jobs"');
   if (k < 0) return [];
@@ -4608,7 +4615,7 @@ ${JOB_JSON_SPEC}`;
       };
       const out = await callDifyStreamingAgent({
         apiKey: explorerKey,
-        query: `${rawQuery}（請盡量列出 8 筆以上符合條件、目前仍在招募的真實職缺，附職缺網址，並以 JSON 格式輸出）`,
+        query: `${rawQuery}（請盡量列出 8 筆以上符合條件、目前仍在招募的真實職缺，附職缺網址，並以 JSON 格式輸出）\n${DIFY_SOURCE_RULES}`,
         inputs: {},
         user: 'job_explorer_stream',
         // 搜搜要上網搜尋，常常超過半分鐘；前端最多等 80 秒（派小燈泡後會繼續收），這裡給 120 秒
