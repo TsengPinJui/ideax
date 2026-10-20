@@ -19,7 +19,7 @@ export const AGENT_PERSONAS: AgentPersona[] = [
     name: '小燈泡',
     title: '調節器 Agent',
     avatar: '/avatars/agent-bulb.webp',
-    bio: 'IdeaX 的站內嚮導。聽懂你想問什麼，再把問題轉給最適合的助理處理。',
+    bio: '天生領袖氣質，是團隊的主心骨，當燈泡亮起就是又有 idea 了！💡 也是 IdeaX 的站內嚮導。聽懂你想問什麼，再把問題轉給最適合的助理處理。',
     domain: '網站程式',
   },
   {
@@ -37,7 +37,7 @@ export const AGENT_PERSONAS: AgentPersona[] = [
     name: '白喵',
     title: '市場顧問 Agent',
     avatar: '/avatars/agent-baimiao.webp',
-    bio: '哈基米！剛被 IdeaX 聘為市場顧問，負責分析報告、找專家、獵人頭、貼標籤，偶爾還會被 call 去當和事佬。',
+    bio: '哈基米！一隻不會被好奇心害死的貓，除了到處聽八卦，就是呼呼大睡～剛被 IdeaX 聘為市場顧問，負責分析報告、找專家、獵人頭、貼標籤，偶爾還會被 call 去當和事佬。',
     domain: '專業問題',
   },
 ];

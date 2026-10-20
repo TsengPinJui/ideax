@@ -1483,7 +1483,7 @@ export async function confirmFinalAwardByAdmin(params: {
   return { success: true, message: `已成功確認名次 (第 ${params.finalRank} 名) 與相關獎勵核准！` };
 }
 
-const DATABASE_PROPOSALS_SEED_VERSION = 'v2026_10_20_db_v11';
+const DATABASE_PROPOSALS_SEED_VERSION = 'v2026_10_21_db_v12';
 // 原創 IP 角色的貼文：角色改名或改職稱時，已存在的貼文也跟著更新作者名稱
 const agentAuthorFields = (x: any) =>
   typeof x?.id === 'string' && x.id.includes('-agent-') && x.authorName

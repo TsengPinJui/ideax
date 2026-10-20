@@ -151366,7 +151366,7 @@ var AGENT_PERSONAS = [
     name: "\u5C0F\u71C8\u6CE1",
     title: "\u8ABF\u7BC0\u5668 Agent",
     avatar: "/avatars/agent-bulb.webp",
-    bio: "IdeaX \u7684\u7AD9\u5167\u56AE\u5C0E\u3002\u807D\u61C2\u4F60\u60F3\u554F\u4EC0\u9EBC\uFF0C\u518D\u628A\u554F\u984C\u8F49\u7D66\u6700\u9069\u5408\u7684\u52A9\u7406\u8655\u7406\u3002",
+    bio: "\u5929\u751F\u9818\u8896\u6C23\u8CEA\uFF0C\u662F\u5718\u968A\u7684\u4E3B\u5FC3\u9AA8\uFF0C\u7576\u71C8\u6CE1\u4EAE\u8D77\u5C31\u662F\u53C8\u6709 idea \u4E86\uFF01\u{1F4A1} \u4E5F\u662F IdeaX \u7684\u7AD9\u5167\u56AE\u5C0E\u3002\u807D\u61C2\u4F60\u60F3\u554F\u4EC0\u9EBC\uFF0C\u518D\u628A\u554F\u984C\u8F49\u7D66\u6700\u9069\u5408\u7684\u52A9\u7406\u8655\u7406\u3002",
     domain: "\u7DB2\u7AD9\u7A0B\u5F0F"
   },
   {
@@ -151384,7 +151384,7 @@ var AGENT_PERSONAS = [
     name: "\u767D\u55B5",
     title: "\u5E02\u5834\u9867\u554F Agent",
     avatar: "/avatars/agent-baimiao.webp",
-    bio: "\u54C8\u57FA\u7C73\uFF01\u525B\u88AB IdeaX \u8058\u70BA\u5E02\u5834\u9867\u554F\uFF0C\u8CA0\u8CAC\u5206\u6790\u5831\u544A\u3001\u627E\u5C08\u5BB6\u3001\u7375\u4EBA\u982D\u3001\u8CBC\u6A19\u7C64\uFF0C\u5076\u723E\u9084\u6703\u88AB call \u53BB\u7576\u548C\u4E8B\u4F6C\u3002",
+    bio: "\u54C8\u57FA\u7C73\uFF01\u4E00\u96BB\u4E0D\u6703\u88AB\u597D\u5947\u5FC3\u5BB3\u6B7B\u7684\u8C93\uFF0C\u9664\u4E86\u5230\u8655\u807D\u516B\u5366\uFF0C\u5C31\u662F\u547C\u547C\u5927\u7761\uFF5E\u525B\u88AB IdeaX \u8058\u70BA\u5E02\u5834\u9867\u554F\uFF0C\u8CA0\u8CAC\u5206\u6790\u5831\u544A\u3001\u627E\u5C08\u5BB6\u3001\u7375\u4EBA\u982D\u3001\u8CBC\u6A19\u7C64\uFF0C\u5076\u723E\u9084\u6703\u88AB call \u53BB\u7576\u548C\u4E8B\u4F6C\u3002",
     domain: "\u5C08\u696D\u554F\u984C"
   }
 ];
@@ -157798,7 +157798,7 @@ async function confirmFinalAwardByAdmin(params) {
   await batch.commit();
   return { success: true, message: `\u5DF2\u6210\u529F\u78BA\u8A8D\u540D\u6B21 (\u7B2C ${params.finalRank} \u540D) \u8207\u76F8\u95DC\u734E\u52F5\u6838\u51C6\uFF01` };
 }
-var DATABASE_PROPOSALS_SEED_VERSION = "v2026_10_20_db_v11";
+var DATABASE_PROPOSALS_SEED_VERSION = "v2026_10_21_db_v12";
 var agentAuthorFields = (x2) => typeof x2?.id === "string" && x2.id.includes("-agent-") && x2.authorName ? { authorName: x2.authorName, ...x2.authorTitle ? { authorTitle: x2.authorTitle } : {} } : {};
 var isDatabaseSeedInProgress = false;
 var isDatabaseSeedDone = false;

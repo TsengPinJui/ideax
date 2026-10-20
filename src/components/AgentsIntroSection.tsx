@@ -9,6 +9,8 @@ import { Sparkles, MapPin, Briefcase, Clock, X, IdCard } from 'lucide-react';
 type Agent = {
   name: string;
   title: string;
+  /** 職稱下方的一行補充（例如 007 的三件法寶） */
+  tagline?: string;
   img?: string;
   /** 創點國虛擬身分證（小圖、原圖） */
   idCard?: { thumb: string; full: string };
@@ -24,7 +26,7 @@ const AGENTS: Agent[] = [
     title: '調節器 Agent',
     img: '/agents/xiaodengpao.webp',
     idCard: { thumb: '/agents/idcard-xiaodengpao-thumb.webp', full: '/agents/idcard-xiaodengpao.webp' },
-    intro: 'IdeaX 的站內嚮導。聽懂你想問什麼，再把問題轉給最適合的助理處理。',
+    intro: '天生領袖氣質，是團隊的主心骨，當燈泡亮起就是又有 idea 了！💡 也是 IdeaX 的站內嚮導。聽懂你想問什麼，再把問題轉給最適合的助理處理。',
     duties: ['站內導覽與功能說明', '聽懂需求、分派給合適的 Agent', '客服問題的第一線接待'],
     spots: ['全站右下角'],
     accent: 'from-amber-100 to-yellow-50 border-amber-200',
@@ -44,18 +46,39 @@ const AGENTS: Agent[] = [
     title: '市場顧問 Agent',
     img: '/agents/baimiao.webp',
     idCard: { thumb: '/agents/idcard-baimiao-thumb.webp', full: '/agents/idcard-baimiao.webp' },
-    intro: '哈基米！剛被 IdeaX 聘為市場顧問，負責分析報告、找專家、獵人頭、貼標籤，偶爾還會被 call 去當和事佬。',
+    intro: '哈基米！一隻不會被好奇心害死的貓，除了到處聽八卦，就是呼呼大睡～剛被 IdeaX 聘為市場顧問，負責分析報告、找專家、獵人頭、貼標籤，偶爾還會被 call 去當和事佬。',
     duties: ['題目自動分類與貼標籤', '智慧獵頭、專家媒合', '付費深度分析報告', '交易爭議調解（和事佬）'],
     spots: ['首頁主題專區上方', '提案編輯頁', '付費獵頭', '付費分析報告', '聊天室調解'],
     accent: 'from-yellow-100 to-orange-50 border-yellow-200',
   },
+  {
+    name: '頂多慧（多慧）',
+    title: '官方客服 Agent',
+    img: '/agents/duohui.webp',
+    idCard: { thumb: '/agents/idcard-duohui-thumb.webp', full: '/agents/idcard-duohui.webp' },
+    intro: '精靈族的貓頭鷹，看起來聰明、喜歡與不同的人交流。IdeaX 的 25hr 官方客服（超時工作中…），有任何問題都可以來找多慧！',
+    duties: ['回答站上各種問題、操作引導', '點數託管與驗收撥款說明', '交付爭議與退款政策', '會員方案與認證流程'],
+    spots: ['客服頁'],
+    accent: 'from-emerald-100 to-green-50 border-emerald-200',
+  },
+  {
+    name: '007',
+    title: 'AI CRM Agent',
+    tagline: '雷達・軍師・私人特助',
+    img: '/agents/agent007.webp',
+    idCard: { thumb: '/agents/idcard-agent007-thumb.webp', full: '/agents/idcard-agent007.webp' },
+    intro: '人機族的 AI CRM Agent，集雷達、軍師、特助三件法寶於一身：可以探測客戶動態、謀定策略、管理任務。',
+    duties: ['雷達：案件巡航、掃描市場與潛在機會', '軍師：客群與成案意向分析、提供策略', '特助：任務管理、建議最佳跟進時機'],
+    spots: ['AI-CRM 功能頁'],
+    accent: 'from-violet-100 to-purple-50 border-violet-200',
+  },
 ];
 
-// 還沒有角色形象的 Agent（未來會有 IP）
-const UPCOMING: Pick<Agent, 'name' | 'title' | 'duties'>[] = [
-  { name: '官方客服', title: '客服 Agent', duties: ['點數託管與驗收撥款說明', '交付爭議與退款政策', '會員方案與認證流程'] },
-  { name: 'AICRM', title: '三合一 Agent（雷達＆軍師＆特助）', duties: ['案件雷達巡航', '成案意向分析', '建議最佳跟進時機'] },
-];
+// 預備角色：還沒分派任務、名字和身分證
+const RESERVE = {
+  img: '/agents/bear.webp',
+  intro: '創點國的神秘成員。個子高大、有點憨厚，擅長幫人把想法落地，懂很多技術。',
+};
 
 // 點小圖放大看身分證；Esc 或點背景關閉
 const IdCardViewer: React.FC<{ agent: Agent; onClose: () => void }> = ({ agent, onClose }) => {
@@ -115,9 +138,10 @@ export const AgentsIntroSection: React.FC = () => {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="text-base font-black text-stone-900">{a.name}</h3>
-              <div className="mt-0.5 inline-flex items-center gap-1 text-xs font-bold text-stone-700">
-                <Briefcase className="w-3.5 h-3.5 shrink-0" />
-                {a.title}
+              <div className="mt-0.5 flex items-start gap-1 text-xs font-bold text-stone-700 leading-snug">
+                <Briefcase className="w-3.5 h-3.5 shrink-0 mt-px" />
+                {/* 長職稱只在「、」或「（」換行，不要從字中間斷開 */}
+                <span>{a.title.split(/(?<=、)|(?=（)/).map((part) => <span key={part} className="inline-block">{part}</span>)}</span>
               </div>
             </div>
             {a.idCard && (
@@ -135,6 +159,7 @@ export const AgentsIntroSection: React.FC = () => {
               </button>
             )}
           </div>
+          {a.tagline && <div className="-mt-1 text-[11px] font-black tracking-wide text-violet-700">{a.tagline}</div>}
           <p className="text-xs text-stone-600 leading-relaxed">{a.intro}</p>
           <ul className="text-xs text-stone-700 space-y-1">
             {a.duties.map((d) => (
@@ -153,19 +178,15 @@ export const AgentsIntroSection: React.FC = () => {
       ))}
     </div>
 
-    <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6">
-      <h3 className="text-sm font-black text-stone-900 flex items-center gap-1.5"><Clock className="w-4 h-4 text-stone-500" />其他 Agent（角色設計中，未來會有 IP）</h3>
-      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {UPCOMING.map((a) => (
-          <div key={a.name} className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-4 flex gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-stone-200/80 flex items-center justify-center text-2xl font-black text-stone-400 shrink-0">?</div>
-            <div>
-              <div className="text-sm font-black text-stone-900">{a.name}</div>
-              <div className="text-xs font-bold text-stone-600">{a.title}</div>
-              <div className="mt-1 text-[11px] text-stone-500">{a.duties.join('、')}</div>
-            </div>
-          </div>
-        ))}
+    <div className="rounded-3xl border border-dashed border-stone-300 bg-gradient-to-br from-stone-50 to-red-50/40 p-5 sm:p-6">
+      <h3 className="text-sm font-black text-stone-900 flex items-center gap-1.5"><Clock className="w-4 h-4 text-stone-500" />預備角色（待命中，尚未分派任務）</h3>
+      <div className="mt-3 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+        <img src={RESERVE.img} alt="預備角色：創點國的神秘成員" loading="lazy" className="h-44 w-auto object-contain drop-shadow-sm shrink-0" />
+        <div className="text-center sm:text-left">
+          <div className="text-base font-black text-stone-900">？？？</div>
+          <div className="mt-0.5 text-xs font-bold text-stone-500">名字與職位即將公布</div>
+          <p className="mt-2 text-sm text-stone-600 leading-relaxed">{RESERVE.intro}</p>
+        </div>
       </div>
     </div>
     {viewing && <IdCardViewer agent={viewing} onClose={() => setViewing(null)} />}
