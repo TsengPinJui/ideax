@@ -158713,7 +158713,11 @@ var PROTECTED_QUESTION_FIELDS = /* @__PURE__ */ new Set([
   "updateLogs",
   "specialZone",
   "isStarSeason",
-  "isDelisted"
+  "isDelisted",
+  "externalLink",
+  "fileLink",
+  "techArchitecture",
+  "publishedPlatforms"
 ]);
 async function isContentOwner(docData, uid) {
   if (!docData || !uid) return false;

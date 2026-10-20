@@ -69,6 +69,7 @@ const PROTECTED_QUESTION_FIELDS = new Set([
   'withheldBounty', 'postType', 'level', 'deadline', 'phases', 'isOfficial', 'publishIdentity',
   'status', 'isFeatured', 'disputeStatus', 'appName', 'youtubeUrl', 'coverImage', 'galleryImages',
   'demoUrl', 'previewMode', 'fileUrl', 'updateLogs', 'specialZone', 'isStarSeason', 'isDelisted',
+  'externalLink', 'fileLink', 'techArchitecture', 'publishedPlatforms',
 ]);
 
 /** 是否為內容發布者：比對 authorAuthUid、authorId，或透過會員資料的 authUid 對照 */
