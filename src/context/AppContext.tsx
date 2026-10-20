@@ -4248,20 +4248,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (cleanAmount <= 0) {
       return { success: false, message: '支持數額必須大於 0！' };
     }
-    const effectiveBalance = isRaceMode
-      ? Math.max(currentUser.balance || 0, 10000)
-      : (currentUser.balance || 0);
-    if ((isRaceMode || paymentSource === 'wallet') && effectiveBalance < cleanAmount) {
-      const unit = isRaceMode ? '創星幣' : '點';
-      return { success: false, message: `${unit}餘額不足！您目前有 ${effectiveBalance.toLocaleString()} ${unit}，需 ${cleanAmount.toLocaleString()} ${unit}。` };
+    // 打賞一律使用真實點數（不論是否在創星季期間；創星幣只用於創星季提案注資）
+    const effectiveBalance = currentUser.balance || 0;
+    if (paymentSource === 'wallet' && effectiveBalance < cleanAmount) {
+      return { success: false, message: `點數餘額不足！您目前有 ${effectiveBalance.toLocaleString()} 點，需 ${cleanAmount.toLocaleString()} 點。` };
     }
 
     const q = questions.find((item) => item.id === questionId);
     if (!q) {
       return { success: false, message: '找不到目標題目或作品！' };
     }
-    if (!isRaceMode && q.authorId === currentUser.id) {
-      return { success: false, message: '正式模式下無法打賞給自己發布的貼文！' };
+    if (q.authorId === currentUser.id) {
+      return { success: false, message: '無法打賞給自己發布的貼文！' };
     }
 
     const tipId = `tip-${Date.now()}`;
@@ -4276,7 +4274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     // 1. 扣除打賞者（讀者）點數餘額（若為線上支付則不扣點數餘額）
-    const newReaderBalance = (!isRaceMode && paymentSource === 'direct')
+    const newReaderBalance = (paymentSource === 'direct')
       ? (currentUser.balance || 0)
       : Math.max(0, effectiveBalance - cleanAmount);
     const updatedReader = { ...currentUser, balance: newReaderBalance };
