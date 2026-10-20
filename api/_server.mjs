@@ -151375,7 +151375,7 @@ var AGENT_PERSONAS = [
     name: "\u641C\u641C",
     title: "\u63A2\u7D22\u8005 Agent\u3001\u5075\u67E5\u8207\u50B3\u4EE4",
     avatar: "/avatars/agent-sousou.webp",
-    bio: "\u99D5\u8457\u7B4B\u6597\u96F2\u8DD1\u904D\u570B\u5167\u5916\u6C42\u8077\u7DB2\uFF0C\u5E6B\u4F60\u628A\u7B26\u5408\u689D\u4EF6\u7684\u8077\u7F3A\u4E00\u6B21\u627E\u9F4A\u3002",
+    bio: "\u8A71\u4E0D\u591A\uFF0C\u57F7\u884C\u6548\u7387\u8D85\u9AD8\uFF0C\u63A5\u5230\u4EFB\u52D9\u77AC\u9593\u98DB\u5230\u4E5D\u9704\u96F2\u5929\u4E4B\u5916\uFF5E\u6700\u559C\u6B61\u548C\u597D\u5925\u4F34\u98DB\u5929\u96F2\u9A30\u96F2\u99D5\u9727\uFF08\u5728\u7DB2\u4E0A\u885D\u6D6A\uFF09\uFF01\u99D5\u8457\u7B4B\u6597\u96F2\u8DD1\u904D\u570B\u5167\u5916\u6C42\u8077\u7DB2\uFF0C\u5E6B\u4F60\u628A\u7B26\u5408\u689D\u4EF6\u7684\u8077\u7F3A\u4E00\u6B21\u627E\u9F4A\u3002",
     domain: "\u65E5\u5E38\u7591\u96E3"
   },
   {
@@ -157798,7 +157798,7 @@ async function confirmFinalAwardByAdmin(params) {
   await batch.commit();
   return { success: true, message: `\u5DF2\u6210\u529F\u78BA\u8A8D\u540D\u6B21 (\u7B2C ${params.finalRank} \u540D) \u8207\u76F8\u95DC\u734E\u52F5\u6838\u51C6\uFF01` };
 }
-var DATABASE_PROPOSALS_SEED_VERSION = "v2026_10_21_db_v12";
+var DATABASE_PROPOSALS_SEED_VERSION = "v2026_10_21_db_v13";
 var agentAuthorFields = (x2) => typeof x2?.id === "string" && x2.id.includes("-agent-") && x2.authorName ? { authorName: x2.authorName, ...x2.authorTitle ? { authorTitle: x2.authorTitle } : {} } : {};
 var isDatabaseSeedInProgress = false;
 var isDatabaseSeedDone = false;

@@ -96,3 +96,6 @@ export function accompanyDuringSearch(text = '搜搜正在忙的時候讓小燈�
     window.dispatchEvent(new CustomEvent(MASCOT_SEARCH_ACCOMPANY_EVENT, { detail: { text } }));
   } catch {}
 }
+
+/** 打開某一篇貼文（例如小燈泡提醒的新提案）；App 找得到這篇才會打開 */
+export const OPEN_QUESTION_EVENT = 'ideax:open-question';

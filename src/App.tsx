@@ -20,8 +20,6 @@ import { GuestBoardGateBlurOverlay } from './components/GuestBoardGateBlurOverla
 import { isGuestUser } from './utils/userDisplay';
 import { CreateIdeasZoneView } from './components/CreateIdeasZoneView';
 import { SpecialZonesTopBar } from './components/SpecialZonesTopBar';
-import { DraggableStarSeasonFloat } from './components/challenge/DraggableStarSeasonFloat';
-import { DraggableChuangdianziFloat } from './components/challenge/DraggableChuangdianziFloat';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobilePwaDownloadWidget } from './components/MobilePwaDownloadWidget';
@@ -1070,6 +1068,22 @@ function MainContent() {
       window.removeEventListener('ideax_select_special_zone', handleSelectSpecialZone);
     };
   }, []);
+
+  // 小燈泡提醒新提案：點泡泡直接打開那篇貼文
+  useEffect(() => {
+    const onOpenQuestion = (e: Event) => {
+      const id = String((e as CustomEvent).detail?.id || '');
+      const found = id ? questions.find((q) => q.id === id) : undefined;
+      if (!found) return;
+      setSelectedSolver(null);
+      setSelectedQuestion(found);
+      setActiveTab('question_detail');
+      try { window.history.pushState(null, '', `/?question=${found.id}`); } catch {}
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('ideax:open-question', onOpenQuestion);
+    return () => window.removeEventListener('ideax:open-question', onOpenQuestion);
+  }, [questions]);
 
   // 小燈泡對話框的功能捷徑：只打開網站頁面（白名單），需要登入的頁面先請訪客登入
   useEffect(() => {
@@ -3518,39 +3532,6 @@ function MainContent() {
       {/* 右下角 3D 燈泡吉祥物（管理員可在儀表板調整或關閉；創星季獨立站不顯示） */}
       <MascotHost hidden={activeTab === 'star_season'} />
 
-      {/* 舊網站獨立創星季懸浮按鈕：可拖動、可貼齊隱藏到邊框、可隨時再叫出（使用創星季圖片，不用燈泡） */}
-      {activeTab !== 'star_season' && (
-        <DraggableStarSeasonFloat
-          onNavigate={() => {
-            setSelectedQuestion(null);
-            setSelectedSolver(null);
-            setActiveTab('star_season');
-            try {
-              if (typeof window !== 'undefined') {
-                window.history.pushState(null, '', '/challenge');
-              }
-            } catch {}
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-        />
-      )}
-
-      {/* 競賽網站獨立「逛逛IdeaX創點子」懸浮按鈕：說明【逛逛IdeaX創點子】，橘色外框，logo-chuangdianzi-text，帶到創點子首頁 */}
-      {activeTab === 'star_season' && (
-        <DraggableChuangdianziFloat
-          onNavigate={() => {
-            setSelectedQuestion(null);
-            setSelectedSolver(null);
-            setActiveTab('explore');
-            try {
-              if (typeof window !== 'undefined') {
-                window.history.pushState(null, '', '/');
-              }
-            } catch {}
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-        />
-      )}
 
       {/* 專家評分回饋彈窗 */}
       <RatingModal />
