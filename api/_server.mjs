@@ -31974,15 +31974,15 @@ Content-Type: ${partContentType}\r
        * @param append headers to append/overwrite with
        * @returns the base headers instance with merged `Headers`
        */
-      static mergeHeaders(base2, ...append) {
-        base2 = base2 instanceof Headers ? base2 : new Headers(base2);
+      static mergeHeaders(base3, ...append) {
+        base3 = base3 instanceof Headers ? base3 : new Headers(base3);
         for (const headers of append) {
           const add = headers instanceof Headers ? headers : new Headers(headers);
           add.forEach((value, key) => {
-            key === "set-cookie" ? base2.append(key, value) : base2.set(key, value);
+            key === "set-cookie" ? base3.append(key, value) : base3.set(key, value);
           });
         }
-        return base2;
+        return base3;
       }
     };
     exports.Gaxios = Gaxios;
@@ -32451,15 +32451,15 @@ var require_bignumber = __commonJS({
           };
         })();
         div = /* @__PURE__ */ (function() {
-          function multiply(x2, k, base2) {
+          function multiply(x2, k, base3) {
             var m2, temp, xlo, xhi, carry = 0, i2 = x2.length, klo = k % SQRT_BASE, khi = k / SQRT_BASE | 0;
             for (x2 = x2.slice(); i2--; ) {
               xlo = x2[i2] % SQRT_BASE;
               xhi = x2[i2] / SQRT_BASE | 0;
               m2 = khi * xlo + xhi * klo;
               temp = klo * xlo + m2 % SQRT_BASE * SQRT_BASE + carry;
-              carry = (temp / base2 | 0) + (m2 / SQRT_BASE | 0) + khi * xhi;
-              x2[i2] = temp % base2;
+              carry = (temp / base3 | 0) + (m2 / SQRT_BASE | 0) + khi * xhi;
+              x2[i2] = temp % base3;
             }
             if (carry) x2 = [carry].concat(x2);
             return x2;
@@ -32478,16 +32478,16 @@ var require_bignumber = __commonJS({
             }
             return cmp;
           }
-          function subtract(a, b, aL, base2) {
+          function subtract(a, b, aL, base3) {
             var i2 = 0;
             for (; aL--; ) {
               a[aL] -= i2;
               i2 = a[aL] < b[aL] ? 1 : 0;
-              a[aL] = i2 * base2 + a[aL] - b[aL];
+              a[aL] = i2 * base3 + a[aL] - b[aL];
             }
             for (; !a[0] && a.length > 1; a.splice(0, 1)) ;
           }
-          return function(x2, y, dp, rm, base2) {
+          return function(x2, y, dp, rm, base3) {
             var cmp, e2, i2, more, n, prod, prodL, q, qc, rem, remL, rem0, xi, xL, yc0, yL, yz, s2 = x2.s == y.s ? 1 : -1, xc = x2.c, yc = y.c;
             if (!xc || !xc[0] || !yc || !yc[0]) {
               return new BigNumber2(
@@ -32502,8 +32502,8 @@ var require_bignumber = __commonJS({
             qc = q.c = [];
             e2 = x2.e - y.e;
             s2 = dp + e2 + 1;
-            if (!base2) {
-              base2 = BASE;
+            if (!base3) {
+              base3 = BASE;
               e2 = bitFloor(x2.e / LOG_BASE) - bitFloor(y.e / LOG_BASE);
               s2 = s2 / LOG_BASE | 0;
             }
@@ -32517,10 +32517,10 @@ var require_bignumber = __commonJS({
               yL = yc.length;
               i2 = 0;
               s2 += 2;
-              n = mathfloor(base2 / (yc[0] + 1));
+              n = mathfloor(base3 / (yc[0] + 1));
               if (n > 1) {
-                yc = multiply(yc, n, base2);
-                xc = multiply(xc, n, base2);
+                yc = multiply(yc, n, base3);
+                xc = multiply(xc, n, base3);
                 yL = yc.length;
                 xL = xc.length;
               }
@@ -32531,22 +32531,22 @@ var require_bignumber = __commonJS({
               yz = yc.slice();
               yz = [0].concat(yz);
               yc0 = yc[0];
-              if (yc[1] >= base2 / 2) yc0++;
+              if (yc[1] >= base3 / 2) yc0++;
               do {
                 n = 0;
                 cmp = compare2(yc, rem, yL, remL);
                 if (cmp < 0) {
                   rem0 = rem[0];
-                  if (yL != remL) rem0 = rem0 * base2 + (rem[1] || 0);
+                  if (yL != remL) rem0 = rem0 * base3 + (rem[1] || 0);
                   n = mathfloor(rem0 / yc0);
                   if (n > 1) {
-                    if (n >= base2) n = base2 - 1;
-                    prod = multiply(yc, n, base2);
+                    if (n >= base3) n = base3 - 1;
+                    prod = multiply(yc, n, base3);
                     prodL = prod.length;
                     remL = rem.length;
                     while (compare2(prod, rem, prodL, remL) == 1) {
                       n--;
-                      subtract(prod, yL < prodL ? yz : yc, prodL, base2);
+                      subtract(prod, yL < prodL ? yz : yc, prodL, base3);
                       prodL = prod.length;
                       cmp = 1;
                     }
@@ -32558,12 +32558,12 @@ var require_bignumber = __commonJS({
                     prodL = prod.length;
                   }
                   if (prodL < remL) prod = [0].concat(prod);
-                  subtract(rem, prod, remL, base2);
+                  subtract(rem, prod, remL, base3);
                   remL = rem.length;
                   if (cmp == -1) {
                     while (compare2(yc, rem, yL, remL) < 1) {
                       n++;
-                      subtract(rem, yL < remL ? yz : yc, remL, base2);
+                      subtract(rem, yL < remL ? yz : yc, remL, base3);
                       remL = rem.length;
                     }
                   }
@@ -32582,7 +32582,7 @@ var require_bignumber = __commonJS({
               more = rem[0] != null;
               if (!qc[0]) qc.splice(0, 1);
             }
-            if (base2 == BASE) {
+            if (base3 == BASE) {
               for (i2 = 1, s2 = qc[0]; s2 >= 10; s2 /= 10, i2++) ;
               round(q, dp + (q.e = i2 + e2 * LOG_BASE - 1) + 1, rm, more);
             } else {
@@ -32653,20 +32653,20 @@ var require_bignumber = __commonJS({
         parseNumeric = /* @__PURE__ */ (function() {
           var basePrefix = /^(-?)0([xbo])(?=\w[\w.]*$)/i, dotAfter = /^([^.]+)\.$/, dotBefore = /^\.([^.]+)$/, isInfinityOrNaN = /^-?(Infinity|NaN)$/, whitespaceOrPlus = /^\s*\+(?=[\w.])|^\s+|\s+$/g;
           return function(x2, str, isNum, b) {
-            var base2, s2 = isNum ? str : str.replace(whitespaceOrPlus, "");
+            var base3, s2 = isNum ? str : str.replace(whitespaceOrPlus, "");
             if (isInfinityOrNaN.test(s2)) {
               x2.s = isNaN(s2) ? null : s2 < 0 ? -1 : 1;
             } else {
               if (!isNum) {
                 s2 = s2.replace(basePrefix, function(m2, p1, p2) {
-                  base2 = (p2 = p2.toLowerCase()) == "x" ? 16 : p2 == "b" ? 2 : 8;
-                  return !b || b == base2 ? p1 : m2;
+                  base3 = (p2 = p2.toLowerCase()) == "x" ? 16 : p2 == "b" ? 2 : 8;
+                  return !b || b == base3 ? p1 : m2;
                 });
                 if (b) {
-                  base2 = b;
+                  base3 = b;
                   s2 = s2.replace(dotAfter, "$1").replace(dotBefore, "0.$1");
                 }
-                if (str != s2) return new BigNumber2(s2, base2);
+                if (str != s2) return new BigNumber2(s2, base3);
               }
               if (BigNumber2.DEBUG) {
                 throw Error(bignumberError + "Not a" + (b ? " base " + b : "") + " number: " + str);
@@ -32994,7 +32994,7 @@ var require_bignumber = __commonJS({
           return y;
         };
         P2.multipliedBy = P2.times = function(y, b) {
-          var c, e2, i2, j, k, m2, xcL, xlo, xhi, ycL, ylo, yhi, zc, base2, sqrtBase, x2 = this, xc = x2.c, yc = (y = new BigNumber2(y, b)).c;
+          var c, e2, i2, j, k, m2, xcL, xlo, xhi, ycL, ylo, yhi, zc, base3, sqrtBase, x2 = this, xc = x2.c, yc = (y = new BigNumber2(y, b)).c;
           if (!xc || !yc || !xc[0] || !yc[0]) {
             if (!x2.s || !y.s || xc && !xc[0] && !yc || yc && !yc[0] && !xc) {
               y.c = y.e = y.s = null;
@@ -33022,7 +33022,7 @@ var require_bignumber = __commonJS({
             ycL = i2;
           }
           for (i2 = xcL + ycL, zc = []; i2--; zc.push(0)) ;
-          base2 = BASE;
+          base3 = BASE;
           sqrtBase = SQRT_BASE;
           for (i2 = ycL; --i2 >= 0; ) {
             c = 0;
@@ -33033,8 +33033,8 @@ var require_bignumber = __commonJS({
               xhi = xc[k] / sqrtBase | 0;
               m2 = yhi * xlo + xhi * ylo;
               xlo = ylo * xlo + m2 % sqrtBase * sqrtBase + zc[j] + c;
-              c = (xlo / base2 | 0) + (m2 / sqrtBase | 0) + yhi * xhi;
-              zc[j--] = xlo % base2;
+              c = (xlo / base3 | 0) + (m2 / sqrtBase | 0) + yhi * xhi;
+              zc[j--] = xlo % base3;
             }
             zc[j] = c;
           }
@@ -62137,9 +62137,9 @@ var require_semver = __commonJS({
           // This probably shouldn't be used publicly.
           // 1.0.0 'pre' would become 1.0.0-0 which is the wrong direction.
           case "pre": {
-            const base2 = Number(identifierBase) ? 1 : 0;
+            const base3 = Number(identifierBase) ? 1 : 0;
             if (this.prerelease.length === 0) {
-              this.prerelease = [base2];
+              this.prerelease = [base3];
             } else {
               let i2 = this.prerelease.length;
               while (--i2 >= 0) {
@@ -62152,11 +62152,11 @@ var require_semver = __commonJS({
                 if (identifier === this.prerelease.join(".") && identifierBase === false) {
                   throw new Error("invalid increment argument: identifier already exists");
                 }
-                this.prerelease.push(base2);
+                this.prerelease.push(base3);
               }
             }
             if (identifier) {
-              let prerelease = [identifier, base2];
+              let prerelease = [identifier, base3];
               if (identifierBase === false) {
                 prerelease = [identifier];
               }
@@ -73118,12 +73118,12 @@ var require_call_credentials = __commonJS({
         this.creds = creds;
       }
       async generateMetadata(options2) {
-        const base2 = new metadata_1.Metadata();
+        const base3 = new metadata_1.Metadata();
         const generated = await Promise.all(this.creds.map((cred) => cred.generateMetadata(options2)));
         for (const gen of generated) {
-          base2.merge(gen);
+          base3.merge(gen);
         }
-        return base2;
+        return base3;
       }
       compose(other) {
         return new _ComposedCallCredentials(this.creds.concat([other]));
@@ -109048,11 +109048,11 @@ var ClientSDK = class {
   _createRequest(context, conf, options2) {
     var _a2, _b, _c, _d, _e;
     const { method, path: path4, query: query2, headers: opHeaders, security } = conf;
-    const base2 = (_a2 = conf.baseURL) !== null && _a2 !== void 0 ? _a2 : this._baseURL;
-    if (!base2) {
+    const base3 = (_a2 = conf.baseURL) !== null && _a2 !== void 0 ? _a2 : this._baseURL;
+    if (!base3) {
       return ERR(new InvalidRequestError("No base URL provided for operation"));
     }
-    const baseURL = new URL(base2);
+    const baseURL = new URL(base3);
     let reqURL;
     if (path4) {
       baseURL.pathname = baseURL.pathname.replace(/\/+$/, "") + "/";
@@ -120322,15 +120322,15 @@ var Inst = class Inst2 {
       }
       return false;
     }
-    let base2 = 0;
+    let base3 = 0;
     let n = len >> 1;
     while (n > 1) {
       const half = n >> 1;
-      base2 += this.runes[base2 + half << 1] <= r2 ? half : 0;
+      base3 += this.runes[base3 + half << 1] <= r2 ? half : 0;
       n -= half;
     }
-    base2 += this.runes[base2 << 1] <= r2 ? 1 : 0;
-    const m2 = base2 - 1;
+    base3 += this.runes[base3 << 1] <= r2 ? 1 : 0;
+    const m2 = base3 - 1;
     return m2 >= 0 && r2 <= this.runes[m2 << 1 | 1];
   }
   matchRunePos(r2) {
@@ -120348,15 +120348,15 @@ var Inst = class Inst2 {
       }
       return -1;
     }
-    let base2 = 0;
+    let base3 = 0;
     let n = len >> 1;
     while (n > 1) {
       const half = n >> 1;
-      base2 += this.runes[base2 + half << 1] <= r2 ? half : 0;
+      base3 += this.runes[base3 + half << 1] <= r2 ? half : 0;
       n -= half;
     }
-    base2 += this.runes[base2 << 1] <= r2 ? 1 : 0;
-    const m2 = base2 - 1;
+    base3 += this.runes[base3 << 1] <= r2 ? 1 : 0;
+    const m2 = base3 - 1;
     return m2 >= 0 && r2 <= this.runes[m2 << 1 | 1] ? m2 : -1;
   }
   /**
@@ -160652,8 +160652,8 @@ async function loadFeeRateResolver(db) {
   }
   return (tier) => {
     const fromCustom = custom && !Array.isArray(custom) ? custom[tier]?.platformFeeRate : Array.isArray(custom) ? custom.find((p) => p?.id === tier)?.platformFeeRate : void 0;
-    const base2 = SUBSCRIPTION_PLANS[tier]?.platformFeeRate ?? SUBSCRIPTION_PLANS.free.platformFeeRate;
-    const r2 = typeof fromCustom === "number" ? fromCustom : base2;
+    const base3 = SUBSCRIPTION_PLANS[tier]?.platformFeeRate ?? SUBSCRIPTION_PLANS.free.platformFeeRate;
+    const r2 = typeof fromCustom === "number" ? fromCustom : base3;
     return Math.max(-0.2, Math.min(0.5, Number(r2) || 0));
   };
 }
@@ -161204,8 +161204,8 @@ async function fetchDifyAppName(key) {
       const title = sData?.site?.title;
       return typeof title === "string" && title ? title : null;
     }
-    const base2 = (process.env.DIFY_API_BASE_URL || "https://api.dify.ai/v1").replace(/\/+$/, "");
-    const r2 = await fetch(`${base2}/info`, { headers: { Authorization: `Bearer ${key}` }, signal: controller.signal });
+    const base3 = (process.env.DIFY_API_BASE_URL || "https://api.dify.ai/v1").replace(/\/+$/, "");
+    const r2 = await fetch(`${base3}/info`, { headers: { Authorization: `Bearer ${key}` }, signal: controller.signal });
     if (!r2.ok) return null;
     const d = await r2.json().catch(() => null);
     return typeof d?.name === "string" && d.name ? d.name : null;
@@ -161691,6 +161691,53 @@ var FALLBACK_USD_RATES = {
   GBP: 0.79,
   EUR: 0.92
 };
+
+// src/utils/jobDedupe.ts
+var COMPANY_SUFFIX = /(股份有限公司|有限公司|有限責任公司|股份公司|台灣分公司|臺灣分公司|分公司|總公司|集團|公司|co\.?,?\s*ltd\.?|company|corporation|corp\.?|inc\.?|ltd\.?|llc|gmbh|limited|pte\.?|plc|k\.?k\.?|株式会社|（股）|\(股\))/gi;
+var TITLE_NOISE = /(急徵|誠徵|徵才|熱烈招募|招募中|高薪|急|徵|【[^】]*】|\[[^\]]*\]|（[^）]*）|\([^)]*\))/g;
+function base2(s2) {
+  return String(s2 || "").replace(/[！-～]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248)).replace(/　/g, " ").replace(/臺/g, "\u53F0").toLowerCase();
+}
+function normalizeCompany(name4) {
+  return base2(name4).replace(COMPANY_SUFFIX, "").replace(/[\s\-_.,，、·•'"’()（）]/g, "");
+}
+function normalizeTitle(title) {
+  return base2(title).replace(TITLE_NOISE, "").replace(/[\s\-_/|.,，、·•'"’:：+＋&＆]/g, "");
+}
+function normalizeJobUrl(url) {
+  const raw = String(url || "").trim();
+  if (!/^https?:\/\//i.test(raw)) return "";
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.toLowerCase().replace(/^(www|m|tw)\./, "");
+    const path4 = u.pathname.replace(/\/+$/, "").toLowerCase();
+    const keep = ["jk", "jobid", "job_id", "currentjobid", "id", "jobno", "job"];
+    const params = [...u.searchParams.entries()].filter(([k]) => keep.includes(k.toLowerCase())).map(([k, v]) => `${k.toLowerCase()}=${v}`).sort().join("&");
+    if (!path4 || path4 === "/" || /\/(search|jobs?)$/i.test(path4) && !params) return "";
+    return `${host}${path4}${params ? `?${params}` : ""}`;
+  } catch {
+    return "";
+  }
+}
+function jobDedupeKeys(job) {
+  const keys = [];
+  const u = normalizeJobUrl(job.url || "");
+  if (u) keys.push(`u:${u}`);
+  const c = normalizeCompany(job.company || "");
+  const t2 = normalizeTitle(job.title || "");
+  if (c && t2) keys.push(`ct:${c}|${t2}`);
+  return keys;
+}
+function seenJobBefore(seen, job) {
+  const keys = jobDedupeKeys(job);
+  if (!keys.length) return false;
+  if (keys.some((k) => seen.has(k))) {
+    keys.forEach((k) => seen.add(k));
+    return true;
+  }
+  keys.forEach((k) => seen.add(k));
+  return false;
+}
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -165402,12 +165449,7 @@ ${JOB_JSON_SPEC}`;
         });
         const parsed = extractJsonFromText(String(r2.text || ""));
         if (!Array.isArray(parsed?.jobs) || parsed.jobs.length === 0) return;
-        const fresh = parsed.jobs.filter(isJobActive).filter((j) => {
-          const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-          if (globalSeen.has(k)) return false;
-          globalSeen.add(k);
-          return true;
-        });
+        const fresh = parsed.jobs.filter(isJobActive).filter((j) => !seenJobBefore(globalSeen, j));
         if (fresh.length === 0) return;
         const grounding = groundingFrom(r2);
         const chunks = [];
@@ -165456,9 +165498,7 @@ ${JOB_JSON_SPEC}`;
       let chain = Promise.resolve();
       const take = (list) => {
         for (const j of list.filter(isJobActive)) {
-          const key = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-          if (globalSeen.has(key)) continue;
-          globalSeen.add(key);
+          if (seenJobBefore(globalSeen, j)) continue;
           pending.push(j);
         }
       };
