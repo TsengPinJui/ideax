@@ -15,7 +15,7 @@ import { LoginError, migratePrivateProfiles, passwordLogin } from './server/priv
 import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
 import { classifyMascotQuestion, extractUdifyAppCode, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken } from './server/competitionService';
-import { groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './server/jobUrlVerify';
+import { diagnoseJobUrl, groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './server/jobUrlVerify';
 import { ALL_JOB_SITES, COMPANY_SITE, MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
 import { FALLBACK_USD_RATES } from './src/data/currency';
 import { seenJobBefore } from './src/utils/jobDedupe';
@@ -3746,6 +3746,16 @@ async function parseJobIntakeWithGemini(params: {
   return null;
 }
 
+// 職缺連結檢查：回報「連結錯誤」時，打開 /api/job-explorer/check-link?url=…&title=…&company=… 看每一步的結果
+app.get('/api/job-explorer/check-link', async (req: Request, res: Response) => {
+  const url = String(req.query.url || '').slice(0, 500);
+  const title = String(req.query.title || '').slice(0, 80);
+  const company = String(req.query.company || '').slice(0, 80);
+  if (!url) return res.status(400).json({ ok: false, error: '請帶上 url' });
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(await diagnoseJobUrl(url, title, company));
+});
+
 // 前端定期問目前的版本：開著很久沒重新整理的頁面（例如手機上的 APP）才知道要更新
 app.get('/api/version', (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -4464,7 +4474,9 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
     const groups: Array<{ label: string; focus: string; count: string }> = [];
     if (!abroadOnly) {
       groups.push(
-        { label: '主要人力銀行', focus: '104人力銀行、1111人力銀行、Yes123、518熊班', count: '12 ~ 15' },
+        // 104 單獨一組，其他人力銀行另一組：不然幾乎都只找到 104
+        { label: '104人力銀行', focus: '只能從 104人力銀行（104.com.tw）找', count: '8 ~ 10' },
+        { label: '1111／Yes123／518', focus: '只能從 1111人力銀行、Yes123、518熊班 找（不要列 104 的職缺）', count: '10 ~ 12' },
         { label: '新創與外商平台', focus: 'Cake、Yourator、Meet.jobs、Glints、LinkedIn、Indeed 台灣', count: '12 ~ 15' },
         { label: '企業官網', focus: '各公司官網的徵才頁（careers／人才招募頁），包含上市櫃公司、外商與中小企業', count: '10 ~ 15' },
         { label: '公部門與產業平台', focus: '台灣就業通、事求人（公職）、國營事業招考、各縣市就業服務站，以及這個職務所屬產業的專業求職網站或公會徵才', count: '8 ~ 12' },
@@ -4502,6 +4514,8 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
 3. "url" 必須是「單一職缺」的內頁網址（例如 104.com.tw/job/xxxx、1111.com.tw/job/123456、linkedin.com/jobs/view/123456），直接照搜尋結果裡的網址填，不要填搜尋結果頁、職缺列表頁或公司首頁；找不到該職缺內頁時留空字串，不要自己編網址。
 4. "sourcePlatform" 寫職缺實際所在的網站名稱（例如 104人力銀行、LinkedIn、公司官網）。
 5. 每筆摘要 30 字內。
+6. 只要「近 30 天內仍在刊登」的職缺；看到刊登或更新日期太舊、或頁面寫已截止的，不要列。
+7. 同一個網站最多列 5 筆，盡量分散在不同網站與不同公司。
 ${JOB_JSON_SPEC}`;
         const r = await ai.models.generateContent({
           model: 'gemini-3.8-flash',

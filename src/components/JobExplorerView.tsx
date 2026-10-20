@@ -33,6 +33,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { SousouFlyer } from './sousou/SousouFlyer';
+import { useApp } from '../context/AppContext';
 import { InlineConditionTag } from './jobExplorer/InlineConditionTag';
 import { seenJobBefore } from '../utils/jobDedupe';
 import { accompanyDuringSearch, cheerMascot } from './mascot/mascotConfig';
@@ -675,6 +676,26 @@ export const JobExplorerView: React.FC = () => {
   // 自然語言對話（僅在對話進行時展開，可隨時收合）
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // 管理員：職缺卡片上多一顆「檢查連結」，看這個連結每一步的檢查結果
+  const { currentUser: appUser } = useApp();
+  const isAdminViewer = appUser?.role === 'admin' || appUser?.id === 'user-admin';
+  const checkLinkButton = (job: JobListing) =>
+    isAdminViewer && job.url ? (
+      <span
+        role="button"
+        tabIndex={0}
+        title="（管理員）檢查這個連結為什麼會被選中"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const q = new URLSearchParams({ url: job.url, title: job.title || '', company: job.company || '' });
+          window.open(`/api/job-explorer/check-link?${q.toString()}`, '_blank', 'noopener');
+        }}
+        className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-600 hover:bg-stone-200 cursor-pointer"
+      >
+        檢查連結
+      </span>
+    ) : null;
 
   // ─── 保留這次的搜尋結果：點職缺連結出去、頁面被重新整理或 APP 重開，回來時結果還在（存在這台裝置，6 小時內有效） ───
   const PERSIST_KEY = 'ideax_job_explorer_session_v1';
@@ -2988,6 +3009,7 @@ export const JobExplorerView: React.FC = () => {
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-50 text-[#1e3a8a] border border-blue-200">
                         {job.sourcePlatform || '全網求職'}
                       </span>
+                      {checkLinkButton(job)}
                       {job.urlKind === 'search' ? (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 flex items-center gap-0.5" title="找不到這筆職缺的原始頁面，點擊會開啟搜尋結果">
                           搜尋職缺
@@ -3071,6 +3093,7 @@ export const JobExplorerView: React.FC = () => {
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-50 text-[#1e3a8a] border border-blue-200">
                         {job.sourcePlatform || '全網求職'}
                       </span>
+                      {checkLinkButton(job)}
                       {job.urlKind === 'search' ? (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800" title="找不到這筆職缺的原始頁面，點擊會開啟搜尋結果">
                           搜尋職缺
