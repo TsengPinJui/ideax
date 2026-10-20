@@ -62,6 +62,8 @@ interface ProposalDetailFullPageProps {
   allProposals?: StarSeasonProposal[];
   onSelectProposal?: (proposal: StarSeasonProposal) => void;
   isFromCreateIdeas?: boolean;
+  /** 支持用的幣別：創點子提案用點數打賞（points），創星季用創星幣（star，預設） */
+  supportCurrency?: 'points' | 'star';
 }
 
 export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
@@ -83,6 +85,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   allProposals = [],
   onSelectProposal,
   isFromCreateIdeas: isFromCreateIdeasProp = false,
+  supportCurrency = 'star',
 }) => {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [shared, setShared] = useState(false);
@@ -176,7 +179,8 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
   }, [isFromCreateIdeasProp]);
   const isFromCreate = isFromCreateIdeas;
   // 創點子的提案用「點數」打賞；創星幣只在創星季競賽使用
-  const supportUnit = isFromCreate ? '點' : '創星幣';
+  const usePoints = supportCurrency === 'points';
+  const supportUnit = usePoints ? '點' : '創星幣';
 
   // 分享出去（帶文字說明推薦引言，直通 LINE、FB、IG、Threads 等社群；降級時複製純網址）
 
@@ -185,8 +189,8 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
     // 從創點子進來的提案：分享創點子的獨立提案頁網址
     const canonicalUrl = isFromCreateIdeasProp ? `${getBaseUrl()}/ideas/${encodeURIComponent(proposal.id)}` : getProposalShareUrl(proposal.id);
     const trackInfo = STAR_SEASON_TRACKS[proposal.track] || STAR_SEASON_TRACKS.ai_applications;
-    const shareTitle = isFromCreate ? `【IdeaX 創點子】${proposal.title}` : `【IdeaX 創星季】${proposal.title}`;
-    const shareText = isFromCreate
+    const shareTitle = usePoints ? `【IdeaX 創點子】${proposal.title}` : `【IdeaX 創星季】${proposal.title}`;
+    const shareText = usePoints
       ? `【IdeaX 創點子 • 創新提案】${proposal.title}\n✦ 提案摘要：${proposal.summary || '邀請您一同來看看這個創新提案！'}\n`
       : `【IdeaX 創星季 • 創新提案】${proposal.title}\n✦ 賽道領域：${trackInfo.name}\n✦ 目前注資創星幣：${(proposal.supportPoints || (proposal as any).raisedPoints || 0).toLocaleString()} 創星幣\n✦ 提案摘要：${proposal.summary || '邀請您一同探索青年跨領域創新解方，為高潛力提案注資創星幣！'}\n`;
 
@@ -454,7 +458,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             )}
             <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-6 text-center">
               <h3 className="text-base sm:text-lg font-black text-stone-900">登入即可查看完整內容</h3>
-              <p className="mt-1.5 text-xs sm:text-sm text-stone-500">{isFromCreate ? '提案內容、點數打賞與留言討論需登入後瀏覽。' : '提案內容、注資創星幣與留言討論需登入後瀏覽。'}</p>
+              <p className="mt-1.5 text-xs sm:text-sm text-stone-500">{usePoints ? '提案內容、點數打賞與留言討論需登入後瀏覽。' : '提案內容、注資創星幣與留言討論需登入後瀏覽。'}</p>
               <button
                 type="button"
                 onClick={() => onOpenAuth?.()}
@@ -472,7 +476,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
             <div>
               <div className="font-black text-stone-900 text-sm sm:text-base flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>{isFromCreate ? '用點數打賞支持你認同的創新提案' : '注資創星幣支持你認同的創新提案'}</span>
+                <span>{usePoints ? '用點數打賞支持你認同的創新提案' : '注資創星幣支持你認同的創新提案'}</span>
               </div>
               <div className="text-xs text-stone-500 mt-0.5">
                 為優質作品表達認同與期待，推升點子排名與人氣指數
@@ -489,7 +493,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
           <div className="flex items-center justify-between text-xs text-stone-600 bg-white/70 px-3.5 py-2.5 rounded-xl border border-amber-200/60">
             <span className="flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-stone-500" />
-              <span>{isFromCreate ? '打賞人次' : '注資人次'}：<strong className="text-stone-900 font-mono font-bold">{proposal.supporterCount || 0}</strong> 人</span>
+              <span>{usePoints ? '打賞人次' : '注資人次'}：<strong className="text-stone-900 font-mono font-bold">{proposal.supporterCount || 0}</strong> 人</span>
             </span>
             <span className="text-[11px] text-amber-900 font-bold flex items-center gap-1">
               <span>刊登狀態：</span>
@@ -507,7 +511,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                 className="w-full py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
               >
                 <Coins className="w-4 h-4 text-amber-950" />
-                <span>{isFromCreate ? '打賞點數' : '注資創星幣'}</span>
+                <span>{usePoints ? '打賞點數' : '注資創星幣'}</span>
               </button>
             </div>
           )}
@@ -610,7 +614,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                           {refP.postType === 'vibecoding_app' ? '💻 軟體提案' : '💡 創新提案'}
                         </span>
                         <span className="text-[11px] font-mono font-bold text-amber-700">
-                          🪙 {(refP.supportPoints || (isFromCreate ? 0 : 500)).toLocaleString()} {supportUnit}
+                          🪙 {(refP.supportPoints || (usePoints ? 0 : 500)).toLocaleString()} {supportUnit}
                         </span>
                       </div>
                       <h4 className="font-bold text-xs sm:text-sm text-stone-900 group-hover:text-amber-600 transition-colors line-clamp-2">
@@ -927,10 +931,10 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
               </div>
               <div>
                 <h3 className="font-black text-stone-900 text-sm sm:text-base">
-                  {isFromCreate ? '近期打賞紀錄' : '近期注資創星幣紀錄'} ({simulatedTipsList.length})
+                  {usePoints ? '近期打賞紀錄' : '近期注資創星幣紀錄'} ({simulatedTipsList.length})
                 </h3>
                 <p className="text-[11px] text-stone-600">
-                  {isFromCreate ? '來自會員的點數打賞與鼓勵留言' : '來自社群專家、投資人與會員的創星幣注資與鼓勵留言'}
+                  {usePoints ? '來自會員的點數打賞與鼓勵留言' : '來自社群專家、投資人與會員的創星幣注資與鼓勵留言'}
                 </p>
               </div>
             </div>
@@ -941,7 +945,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                 className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
               >
                 <Coins className="w-3.5 h-3.5" />
-                <span>{isFromCreate ? '打賞點數' : '注資創星幣'}</span>
+                <span>{usePoints ? '打賞點數' : '注資創星幣'}</span>
               </button>
             )}
           </div>
@@ -965,7 +969,7 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
                       </span>
                     </div>
                     <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-mono font-black text-[11px] shrink-0">
-                      +🪙 {(isFromCreate ? tip.amount : tip.amount * 10).toLocaleString()} {supportUnit}
+                      +🪙 {(usePoints ? tip.amount : tip.amount * 10).toLocaleString()} {supportUnit}
                     </span>
                   </div>
                   {tip.message && (

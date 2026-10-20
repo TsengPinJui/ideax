@@ -524,6 +524,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         allProposals={activeProposals}
         onSelectProposal={(p) => (detailProposalId !== undefined ? onSelectProposal(p) : handleOpenProposalInCreateIdeas(p))}
         isFromCreateIdeas={true}
+        supportCurrency="points"
         onBack={handleBackFromProposalDetail}
         onToggleLike={(pid) => {
           const target = proposalsList.find((p) => p.id === pid) || liveProposal;
