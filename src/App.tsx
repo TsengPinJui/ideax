@@ -29,6 +29,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { RatingModal } from './components/RatingModal';
 import { HelpTooltip } from './components/HelpTooltip';
 import { AppOnboardingGuide, ONBOARDING_STORAGE_KEY } from './components/AppOnboardingGuide';
+import { NewVersionNotice } from './components/NewVersionNotice';
 import { FloatingOnboardingCompass } from './components/FloatingOnboardingCompass';
 import { GoogleSitelinksModal } from './components/GoogleSitelinksModal';
 import { Category, ProblemLevel, Question, Solver, AppTab, QuestionSortOption, PostType, SpecialZone, UserDashboardTab, MarketViewMode } from './types';
@@ -3528,6 +3529,9 @@ function MainContent() {
 
       {/* 發布內容後詢問是否開啟通知 */}
       <NotificationOptInPrompt />
+
+      {/* 有新版本時提醒更新（開很久沒重新整理的頁面或手機 APP） */}
+      <NewVersionNotice />
 
       {/* 右下角 3D 燈泡吉祥物（管理員可在儀表板調整或關閉；創星季獨立站不顯示） */}
       <MascotHost hidden={activeTab === 'star_season'} />
