@@ -1573,13 +1573,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
 
             <div className="flex items-center gap-2 shrink-0">
               {/* 市場顧問白喵趴著拿放大鏡研究報告 */}
-              <BaiMiao
-                action="inspect"
-                size={64}
-                bubbleSide="left"
-                bubble={isGeneratingReport ? { text: '白喵正在分析報告', busy: true } : null}
-                className="-my-3"
-              />
+              <BaiMiao action="inspect" size={64} className="-my-3" />
               <span className="text-xs text-stone-400 hidden sm:inline-block">
                 {isReportExpanded ? '點擊收合' : '點擊展開報告'}
               </span>
@@ -1627,9 +1621,9 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
               )}
 
               {isGeneratingReport && (
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 animate-pulse">
-                  <Sparkles className="w-4 h-4 animate-spin text-amber-400 shrink-0" />
-                  <span>IdeaX AI 智庫引擎正在為本題痛點量身撰寫深度分析與三階段解題架構...</span>
+                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+                  <BaiMiao action="inspect" size={52} className="-my-1 shrink-0" />
+                  <span className="animate-pulse">白喵正在分析報告，幫你寫深度分析與三階段解題方向…</span>
                 </div>
               )}
 

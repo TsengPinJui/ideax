@@ -204,10 +204,15 @@ export const SolversView: React.FC<SolversViewProps> = ({
           </div>
         </div>
 
-        {/* 市場顧問白喵拿望遠鏡幫你找專家 */}
-        <div className="pt-1 flex justify-end">
-          <BaiMiao action="binoculars" size={72} bubbleSide="left" bubble={{ text: '想找專家？白喵幫你獵人頭！' }} />
-        </div>
+        {/* 市場顧問白喵拿望遠鏡幫你找專家：點這列就打開 AI 獵頭 */}
+        <button
+          type="button"
+          onClick={() => setIsHeadhunterOpen(true)}
+          className="mt-1 w-full flex items-center gap-2 rounded-2xl bg-amber-50/70 hover:bg-amber-100/70 border border-amber-200/70 px-2 py-1 text-left cursor-pointer transition-colors"
+        >
+          <BaiMiao action="binoculars" size={60} className="-my-1 shrink-0" />
+          <span className="text-xs text-amber-900 font-bold leading-snug">想找專家？點這裡，白喵拿望遠鏡幫你獵人頭！</span>
+        </button>
       </div>
 
       {/* Solvers Grid & Guest Gate */}
