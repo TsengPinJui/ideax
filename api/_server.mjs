@@ -161613,7 +161613,7 @@ async function findJobPageViaListings(title, company, listPages, platformName) {
   const kw = encodeURIComponent(`${company} ${title}`.trim());
   if (pl?.name === "LinkedIn") pages.push(`https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${kw}&start=0`);
   else if (pl?.search) pages.push(pl.search(kw));
-  if (!pl || pl.name === "104\u4EBA\u529B\u9280\u884C") {
+  if (pl?.name === "104\u4EBA\u529B\u9280\u884C") {
     const u = await find104Job(title, company);
     if (u) return u;
   }
@@ -161641,6 +161641,44 @@ async function verifyJobUrls(jobs, g, budgetMs = 12e3, concurrency = 8) {
   const all = Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, worker));
   await Promise.race([all, new Promise((r2) => setTimeout(r2, budgetMs))]);
   return [...out];
+}
+async function diagnoseJobUrl(url, title, company) {
+  const u = safeUrl(url);
+  const platform = platformOf(url);
+  if (!u || !platform) return { ok: false, error: "\u53EA\u80FD\u6AA2\u67E5\u5DF2\u77E5\u6C42\u8077\u5E73\u53F0\u7684\u8077\u7F3A\u7DB2\u5740" };
+  const out = { ok: true, url, platform: platform.name, looksLikeJobPage: looksLikeJobPage(url) };
+  try {
+    const r2 = await fetchWithTimeout(url, { method: "GET", redirect: "follow" }, 6e3);
+    const html = r2.ok ? (await r2.text()).slice(0, 4e5) : "";
+    const text = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/\s+/g, "");
+    out.page = { status: r2.status, finalUrl: r2.url, textLength: text.length, closedWords: CLOSED_PAGE.test(text), matchesJob: pageMatchesJob(text, title, company) };
+  } catch (e2) {
+    out.page = { error: String(e2?.message || e2).slice(0, 120) };
+  }
+  const m104 = url.match(/104\.com\.tw\/job\/([a-z0-9]+)/i);
+  if (m104) {
+    try {
+      const r2 = await fetchWithTimeout(`https://www.104.com.tw/job/ajax/content/${m104[1]}`, { headers: { Referer: `https://www.104.com.tw/job/${m104[1]}`, Accept: "application/json" } }, 6e3);
+      const j = r2.ok ? await r2.json().catch(() => null) : null;
+      const h2 = j?.data?.header || {};
+      out.api104 = {
+        status: r2.status,
+        topKeys: j ? Object.keys(j) : [],
+        dataKeys: j?.data ? Object.keys(j.data) : [],
+        headerKeys: Object.keys(h2),
+        jobName: h2.jobName,
+        custName: h2.custName,
+        isClosed: h2.isClosed,
+        appearDate: h2.appearDate,
+        switch: j?.data?.switch,
+        error: j?.error
+      };
+    } catch (e2) {
+      out.api104 = { error: String(e2?.message || e2).slice(0, 120) };
+    }
+  }
+  out.final = await verifyJobUrl({ title, company, url, sourcePlatform: platform.name }, null);
+  return out;
 }
 
 // src/data/jobSites.ts
@@ -161763,7 +161801,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "2.10.0";
+var APP_VERSION = "2.10.1";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -164888,6 +164926,14 @@ async function parseJobIntakeWithGemini(params) {
   lastIntakeAiNote = notes.join("\uFF1B");
   return null;
 }
+app.get("/api/job-explorer/check-link", async (req, res) => {
+  const url = String(req.query.url || "").slice(0, 500);
+  const title = String(req.query.title || "").slice(0, 80);
+  const company = String(req.query.company || "").slice(0, 80);
+  if (!url) return res.status(400).json({ ok: false, error: "\u8ACB\u5E36\u4E0A url" });
+  res.setHeader("Cache-Control", "no-store");
+  res.json(await diagnoseJobUrl(url, title, company));
+});
 app.get("/api/version", (_req, res) => {
   res.setHeader("Cache-Control", "no-store, max-age=0");
   res.json({ version: APP_VERSION });
@@ -165468,7 +165514,9 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
     const groups = [];
     if (!abroadOnly) {
       groups.push(
-        { label: "\u4E3B\u8981\u4EBA\u529B\u9280\u884C", focus: "104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED", count: "12 ~ 15" },
+        // 104 單獨一組，其他人力銀行另一組：不然幾乎都只找到 104
+        { label: "104\u4EBA\u529B\u9280\u884C", focus: "\u53EA\u80FD\u5F9E 104\u4EBA\u529B\u9280\u884C\uFF08104.com.tw\uFF09\u627E", count: "8 ~ 10" },
+        { label: "1111\uFF0FYes123\uFF0F518", focus: "\u53EA\u80FD\u5F9E 1111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED \u627E\uFF08\u4E0D\u8981\u5217 104 \u7684\u8077\u7F3A\uFF09", count: "10 ~ 12" },
         { label: "\u65B0\u5275\u8207\u5916\u5546\u5E73\u53F0", focus: "Cake\u3001Yourator\u3001Meet.jobs\u3001Glints\u3001LinkedIn\u3001Indeed \u53F0\u7063", count: "12 ~ 15" },
         { label: "\u4F01\u696D\u5B98\u7DB2", focus: "\u5404\u516C\u53F8\u5B98\u7DB2\u7684\u5FB5\u624D\u9801\uFF08careers\uFF0F\u4EBA\u624D\u62DB\u52DF\u9801\uFF09\uFF0C\u5305\u542B\u4E0A\u5E02\u6AC3\u516C\u53F8\u3001\u5916\u5546\u8207\u4E2D\u5C0F\u4F01\u696D", count: "10 ~ 15" },
         { label: "\u516C\u90E8\u9580\u8207\u7522\u696D\u5E73\u53F0", focus: "\u53F0\u7063\u5C31\u696D\u901A\u3001\u4E8B\u6C42\u4EBA\uFF08\u516C\u8077\uFF09\u3001\u570B\u71DF\u4E8B\u696D\u62DB\u8003\u3001\u5404\u7E23\u5E02\u5C31\u696D\u670D\u52D9\u7AD9\uFF0C\u4EE5\u53CA\u9019\u500B\u8077\u52D9\u6240\u5C6C\u7522\u696D\u7684\u5C08\u696D\u6C42\u8077\u7DB2\u7AD9\u6216\u516C\u6703\u5FB5\u624D", count: "8 ~ 12" }
@@ -165505,6 +165553,8 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
 3. "url" \u5FC5\u9808\u662F\u300C\u55AE\u4E00\u8077\u7F3A\u300D\u7684\u5167\u9801\u7DB2\u5740\uFF08\u4F8B\u5982 104.com.tw/job/xxxx\u30011111.com.tw/job/123456\u3001linkedin.com/jobs/view/123456\uFF09\uFF0C\u76F4\u63A5\u7167\u641C\u5C0B\u7D50\u679C\u88E1\u7684\u7DB2\u5740\u586B\uFF0C\u4E0D\u8981\u586B\u641C\u5C0B\u7D50\u679C\u9801\u3001\u8077\u7F3A\u5217\u8868\u9801\u6216\u516C\u53F8\u9996\u9801\uFF1B\u627E\u4E0D\u5230\u8A72\u8077\u7F3A\u5167\u9801\u6642\u7559\u7A7A\u5B57\u4E32\uFF0C\u4E0D\u8981\u81EA\u5DF1\u7DE8\u7DB2\u5740\u3002
 4. "sourcePlatform" \u5BEB\u8077\u7F3A\u5BE6\u969B\u6240\u5728\u7684\u7DB2\u7AD9\u540D\u7A31\uFF08\u4F8B\u5982 104\u4EBA\u529B\u9280\u884C\u3001LinkedIn\u3001\u516C\u53F8\u5B98\u7DB2\uFF09\u3002
 5. \u6BCF\u7B46\u6458\u8981 30 \u5B57\u5167\u3002
+6. \u53EA\u8981\u300C\u8FD1 30 \u5929\u5167\u4ECD\u5728\u520A\u767B\u300D\u7684\u8077\u7F3A\uFF1B\u770B\u5230\u520A\u767B\u6216\u66F4\u65B0\u65E5\u671F\u592A\u820A\u3001\u6216\u9801\u9762\u5BEB\u5DF2\u622A\u6B62\u7684\uFF0C\u4E0D\u8981\u5217\u3002
+7. \u540C\u4E00\u500B\u7DB2\u7AD9\u6700\u591A\u5217 5 \u7B46\uFF0C\u76E1\u91CF\u5206\u6563\u5728\u4E0D\u540C\u7DB2\u7AD9\u8207\u4E0D\u540C\u516C\u53F8\u3002
 ${JOB_JSON_SPEC}`;
         const r2 = await ai.models.generateContent({
           model: "gemini-3.8-flash",

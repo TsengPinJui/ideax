@@ -438,8 +438,8 @@ async function findJobPageViaListings(title: string, company: string, listPages:
   const kw = encodeURIComponent(`${company} ${title}`.trim());
   if (pl?.name === 'LinkedIn') pages.push(`https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${kw}&start=0`);
   else if (pl?.search) pages.push(pl.search(kw));
-  // 台灣職缺不知道來源時，先查 104
-  if (!pl || pl.name === '104人力銀行') {
+  // 只有確定是 104 的職缺才去 104 找（之前來源不明也去 104 找，結果幾乎都變成 104）
+  if (pl?.name === '104人力銀行') {
     const u = await find104Job(title, company);
     if (u) return u;
   }
@@ -473,4 +473,43 @@ export async function verifyJobUrls<T extends { title: string; company: string; 
   const all = Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, worker));
   await Promise.race([all, new Promise((r) => setTimeout(r, budgetMs))]);
   return [...out];
+}
+
+/**
+ * 連結檢查（給管理員或使用者回報問題時用）：一步步列出這個職缺網址的檢查結果，
+ * 方便知道「為什麼給了這個連結」。只接受已知求職平台的網址，不回傳頁面內容。
+ */
+export async function diagnoseJobUrl(url: string, title: string, company: string) {
+  const u = safeUrl(url);
+  const platform = platformOf(url);
+  if (!u || !platform) return { ok: false, error: '只能檢查已知求職平台的職缺網址' };
+  const out: Record<string, any> = { ok: true, url, platform: platform.name, looksLikeJobPage: looksLikeJobPage(url) };
+  try {
+    const r = await fetchWithTimeout(url, { method: 'GET', redirect: 'follow' }, 6000);
+    const html = r.ok ? (await r.text()).slice(0, 400_000) : '';
+    const text = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/\s+/g, '');
+    out.page = { status: r.status, finalUrl: r.url, textLength: text.length, closedWords: CLOSED_PAGE.test(text), matchesJob: pageMatchesJob(text, title, company) };
+  } catch (e: any) {
+    out.page = { error: String(e?.message || e).slice(0, 120) };
+  }
+  const m104 = url.match(/104\.com\.tw\/job\/([a-z0-9]+)/i);
+  if (m104) {
+    try {
+      const r = await fetchWithTimeout(`https://www.104.com.tw/job/ajax/content/${m104[1]}`, { headers: { Referer: `https://www.104.com.tw/job/${m104[1]}`, Accept: 'application/json' } }, 6000);
+      const j: any = r.ok ? await r.json().catch(() => null) : null;
+      const h = j?.data?.header || {};
+      out.api104 = {
+        status: r.status,
+        topKeys: j ? Object.keys(j) : [],
+        dataKeys: j?.data ? Object.keys(j.data) : [],
+        headerKeys: Object.keys(h),
+        jobName: h.jobName, custName: h.custName, isClosed: h.isClosed, appearDate: h.appearDate,
+        switch: j?.data?.switch, error: j?.error,
+      };
+    } catch (e: any) {
+      out.api104 = { error: String(e?.message || e).slice(0, 120) };
+    }
+  }
+  out.final = await verifyJobUrl({ title, company, url, sourcePlatform: platform.name }, null);
+  return out;
 }
