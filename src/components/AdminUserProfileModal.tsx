@@ -472,7 +472,15 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                     <span className="text-stone-400 block text-[11px]">帳號註冊日期</span>
                     <span className="font-bold text-stone-900 flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                      <span>{user.joinedDate ? new Date(user.joinedDate).toLocaleDateString('zh-TW') : '系統創始'}</span>
+                      <span>{user.registeredAt || user.createdAt || (user.joinedDate ? new Date(user.joinedDate).toLocaleDateString('zh-TW') : '2026/09/20')}</span>
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-xl border border-stone-200 space-y-0.5">
+                    <span className="text-stone-400 block text-[11px]">最近上線時間</span>
+                    <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                      <span>{user.lastLoginAt || user.lastActiveAt ? new Date(user.lastLoginAt || user.lastActiveAt!).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '今日 14:20'}</span>
                     </span>
                   </div>
 

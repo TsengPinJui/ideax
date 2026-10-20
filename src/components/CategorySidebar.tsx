@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Trophy,
   Terminal,
+  Compass,
 } from 'lucide-react';
 
 interface CategorySidebarProps {
@@ -42,6 +43,7 @@ interface CategorySidebarProps {
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
   onNavigateToAbout?: (section?: string) => void;
+  onNavigateToJobExplorer?: () => void;
   onNavigateToSolvers?: () => void;
   onNavigateToLeaderboard?: () => void;
   onOpenNotifications?: () => void;
@@ -64,6 +66,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
   searchQuery = '',
   onSearchQueryChange,
   onNavigateToAbout,
+  onNavigateToJobExplorer,
   onNavigateToSolvers,
   onNavigateToLeaderboard,
   onOpenNotifications,
@@ -268,11 +271,39 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
 
         {/* Scrollable List */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-3.5">
-          {/* 🌟 核心功能入口：認證專家智庫 & 交易榮譽榜 */}
+          {/* 🌟 核心功能入口：全網搜職、認證專家智庫 & 交易榮譽榜 */}
           <div className="space-y-2 pb-1">
             <div className="text-[11px] font-bold text-stone-500 px-1 flex items-center justify-between">
-              <span>🌟 專家智庫與榮譽榜</span>
+              <span>全網搜職、專家智庫與榮譽榜</span>
             </div>
+
+            {/* ⓪ 全網搜職 (專家智庫上方) */}
+            <button
+              onClick={() => {
+                if (onNavigateToJobExplorer) onNavigateToJobExplorer();
+                onClose();
+              }}
+              className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer group ${
+                activeTab === 'job_explorer'
+                  ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-200 shadow-2xs'
+                  : 'bg-white hover:bg-blue-50/40 border-stone-200 hover:border-blue-300'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                  <Compass className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-blue-700 transition-colors flex items-center gap-1.5">
+                    <span>全網搜職</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-blue-100 text-blue-800 border border-blue-200">
+                      跨平台找工作
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-blue-600 transition-colors shrink-0" />
+            </button>
 
             {/* ① 認證專家智庫 */}
             <button
@@ -293,9 +324,6 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 <div>
                   <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-emerald-700 transition-colors flex items-center gap-1.5">
                     <span>認證專家智庫</span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
-                      智庫
-                    </span>
                   </div>
                   <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">
                     實名審核與方案實績嚴選顧問

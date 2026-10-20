@@ -21,11 +21,27 @@ export function lazyNamed<T extends ComponentType<any>>(
   options: { fallback?: React.ReactNode } = {}
 ): T & { preload: () => Promise<unknown> } {
   let promise: Promise<Record<string, any>> | null = null;
+  const loadWithRetry = async (retries = 3): Promise<Record<string, any>> => {
+    try {
+      return await loader();
+    } catch (err) {
+      promise = null;
+      if (retries > 0) {
+        await new Promise((r) => setTimeout(r, 700));
+        return loadWithRetry(retries - 1);
+      }
+      throw err;
+    }
+  };
   const load = () => {
-    if (!promise) promise = loader();
+    if (!promise) promise = loadWithRetry();
     return promise;
   };
-  const LazyComponent = lazy(() => load().then((mod) => ({ default: mod[exportName] as T })));
+  const LazyComponent = lazy(() =>
+    load()
+      .then((mod) => ({ default: mod[exportName] as T }))
+      .catch(() => ({ default: (() => null) as unknown as T }))
+  );
 
   const Wrapped = ((props: any) => (
     <Suspense fallback={options.fallback === undefined ? <LazyFallback /> : options.fallback}>

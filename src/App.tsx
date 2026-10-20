@@ -9,6 +9,7 @@ import { QuestionCard } from './components/QuestionCard';
 import { QuestionDetailModal } from './components/QuestionDetailModal';
 import { SubmitAnswerModal } from './components/SubmitAnswerModal';
 import { SolversView } from './components/SolversView';
+import { JobExplorerView } from './components/JobExplorerView';
 import { MechanismView } from './components/MechanismView';
 import { AboutUsView } from './components/AboutUsView';
 import { AboutUsModal } from './components/AboutUsModal';
@@ -72,6 +73,18 @@ const CATEGORIES: Category[] = [
   '學術探討',
   '日常疑難',
 ];
+
+/** 創點子提案獨立頁網址：/ideas/:id */
+function parseIdeaDetailPath(): string | null {
+  if (typeof window === 'undefined') return null;
+  const m = window.location.pathname.match(/^\/ideas\/([^/?#]+)\/?$/i);
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return m[1];
+  }
+}
 
 function MainContent() {
   const {
@@ -140,6 +153,7 @@ function MainContent() {
 
         // 0. 創點子/探索問題/痛點集/VibeCoding/L0討論區 子網址
         const normalizedPath = targetPath.replace(/\/+$/, '');
+        if (parseIdeaDetailPath()) return 'explore';
         if (
           normalizedPath === '/explore' ||
           normalizedPath === '/painpoints' ||
@@ -202,6 +216,18 @@ function MainContent() {
         // 2. 找專家子網址: /solvers
         if (targetPath.includes('/solvers') || search.includes('tab=solvers') || hash.includes('solvers')) {
           return 'solvers';
+        }
+
+        // 2.1 全網搜職子網址: /jobs, /job-explorer
+        if (
+          targetPath.includes('/jobs') ||
+          targetPath.includes('/job-explorer') ||
+          search.includes('tab=job_explorer') ||
+          search.includes('tab=jobs') ||
+          hash.includes('job_explorer') ||
+          hash.includes('jobs')
+        ) {
+          return 'job_explorer';
         }
 
         // 2.5 我的案件獨立網址: /my-projects, /my_projects, /my-cases, /my_cases
@@ -331,6 +357,7 @@ function MainContent() {
           return 'vibecoding';
         }
         if (
+          pathname.startsWith('/ideas/') ||
           pathname.includes('/createideas') ||
           pathname.includes('/create-ideas') ||
           search.includes('zone=create_ideas') ||
@@ -442,6 +469,49 @@ function MainContent() {
   };
 
   const [userProfileVersion, setUserProfileVersion] = useState(0);
+
+  // 創點子提案獨立頁（/ideas/:id）：開啟時不顯示首頁 Hero 與專區列，整頁只放提案內容
+  const [createIdeasDetailId, setCreateIdeasDetailId] = useState<string | null>(() => parseIdeaDetailPath());
+  const openIdeaDetail = (proposalId: string) => {
+    try {
+      const fromList = !parseIdeaDetailPath();
+      window.history.pushState({ ideaId: proposalId, ideaFromList: fromList || Boolean(window.history.state?.ideaFromList) }, '', `/ideas/${encodeURIComponent(proposalId)}`);
+    } catch {}
+    setSelectedQuestion(null);
+    setSpecialZone('create_ideas');
+    setActiveTab('explore');
+    setCreateIdeasDetailId(proposalId);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
+  const scrollToIdeasSearch = () => {
+    let tries = 0;
+    const go = () => {
+      const el = document.getElementById('create-ideas-search');
+      if (el) el.scrollIntoView({ behavior: 'auto', block: 'center' });
+      else if (tries++ < 20) setTimeout(go, 50);
+    };
+    setTimeout(go, 30);
+  };
+  // 離開創點子（切到其他分頁或專區）時關閉提案頁
+  useEffect(() => {
+    if (createIdeasDetailId && (activeTab !== 'explore' || specialZone !== 'create_ideas')) setCreateIdeasDetailId(null);
+  }, [activeTab, specialZone]);
+
+  /** 從提案頁返回：回到創點子列表的搜尋區 */
+  const backToIdeasSearch = () => {
+    setCreateIdeasDetailId(null);
+    setSpecialZone('create_ideas');
+    setActiveTab('explore');
+    try {
+      if (window.history.state?.ideaFromList) {
+        // 從列表點進來的：用瀏覽器上一頁回去，避免多一筆歷史紀錄
+        window.history.back();
+      } else {
+        window.history.pushState({ zone: 'create_ideas' }, '', '/?zone=create_ideas');
+      }
+    } catch {}
+    scrollToIdeasSearch();
+  };
 
   // 首次使用引導教學狀態（手動由頁尾、平台介紹或導覽點擊啟動）
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
@@ -749,6 +819,10 @@ function MainContent() {
             window.history.pushState({ tab: 'solvers' }, '', '/solvers');
             updateSEOForSubpage('solvers');
           }
+        } else if (activeTab === 'job_explorer') {
+          if (curPath !== '/jobs' && curPath !== '/job-explorer') {
+            window.history.pushState({ tab: 'job_explorer' }, '', '/jobs');
+          }
         } else if (activeTab === 'chat') {
           if (curPath !== '/chat') {
             window.history.pushState({ tab: 'chat' }, '', '/chat');
@@ -781,7 +855,9 @@ function MainContent() {
             }
             updateSEOForSubpage('l0_discussion');
           } else if (specialZone === 'create_ideas') {
-            if (curPath !== '/create-ideas' && curPath !== '/createideas' && !window.location.search.includes('zone=create_ideas')) {
+            if (curPath.startsWith('/ideas/')) {
+              // 提案獨立頁：網址由開啟提案時設定
+            } else if (curPath !== '/create-ideas' && curPath !== '/createideas' && !window.location.search.includes('zone=create_ideas')) {
               window.history.pushState({ zone: 'create_ideas' }, '', '/?zone=create_ideas');
             }
           } else if (curPath === '/explore') {
@@ -990,6 +1066,7 @@ function MainContent() {
       setSelectedSolver(null);
       if (to === 'explore') setActiveTab('explore');
       else if (to === 'solvers') setActiveTab('solvers');
+      else if (to === 'job_explorer') setActiveTab('job_explorer');
       else if (to === 'headhunter') {
         try { sessionStorage.setItem('ideax_open_headhunter', '1'); } catch {}
         setActiveTab('solvers');
@@ -1023,6 +1100,20 @@ function MainContent() {
 
     const parseAndOpenQuestion = () => {
       let targetQId: string | null = null;
+
+      const ideaId = parseIdeaDetailPath();
+      setCreateIdeasDetailId(ideaId);
+      if (ideaId) {
+        setSelectedQuestion(null);
+        setSpecialZone('create_ideas');
+        setActiveTab('explore');
+        return;
+      }
+      if (window.history.state?.zone === 'create_ideas' || new URLSearchParams(window.location.search).get('zone') === 'create_ideas') {
+        // 從提案頁按上一頁回到列表時，停在搜尋區
+        const el = document.getElementById('create-ideas-search');
+        if (!el) setTimeout(() => document.getElementById('create-ideas-search')?.scrollIntoView({ block: 'center' }), 120);
+      }
       
       const path = window.location.pathname;
       const normalizedPath = (path || '').toLowerCase().replace(/\/+$/, '');
@@ -1202,6 +1293,13 @@ function MainContent() {
           setActiveTab('create_question');
         } else if (normalizedPath === '/solvers' || tabParam === 'solvers') {
           setActiveTab('solvers');
+        } else if (
+          normalizedPath === '/jobs' ||
+          normalizedPath === '/job-explorer' ||
+          tabParam === 'job_explorer' ||
+          tabParam === 'jobs'
+        ) {
+          setActiveTab('job_explorer');
         } else if (
           normalizedPath === '/my-projects' ||
           normalizedPath === '/my_projects' ||
@@ -1813,9 +1911,7 @@ function MainContent() {
             }
             setUserDashboardTab(tab);
             setActiveTab('user_dashboard');
-            if (tab === 'overview') {
-              setDashboardResetCount((prev) => prev + 1);
-            }
+            setDashboardResetCount((prev) => prev + 1);
             if (scrollSection) {
               setTimeout(() => {
                 const el = document.getElementById(scrollSection);
@@ -1874,8 +1970,27 @@ function MainContent() {
 
       {/* Main Full-Page Views */}
       <main className="flex-1 pb-16 lg:pb-0">
+        {/* 創點子提案獨立頁（/ideas/:id） */}
+        {activeTab === 'explore' && createIdeasDetailId && (
+          <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 pb-12 sm:pb-16">
+            <CreateIdeasZoneView
+              detailProposalId={createIdeasDetailId}
+              onSelectProposal={(proposal) => openIdeaDetail(proposal.id)}
+              onBackFromDetail={backToIdeasSearch}
+              onOpenCreateProposal={() => {
+                setCreateIdeasDetailId(null);
+                setActiveTab('star_season');
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView: 'submit' } }));
+                }, 0);
+              }}
+              onOpenAuth={() => openAuthModal('login')}
+            />
+          </div>
+        )}
+
         {/* 1. Explore Tab: Market Grid & Hero */}
-        {activeTab === 'explore' && (
+        {activeTab === 'explore' && !createIdeasDetailId && (
           <div className="relative">
             {/* Hero Section (探索問題上方區域往下延伸，具備溫潤微金流體光與緊湊銜接) */}
             <div className="relative bg-gradient-to-b from-amber-50/70 via-amber-50/30 to-stone-50/40 pb-1 sm:pb-2">
@@ -1942,23 +2057,7 @@ function MainContent() {
                 )}
                 {specialZone === 'create_ideas' && (
                   <CreateIdeasZoneView
-                    onSelectProposal={(proposal) => {
-                      try {
-                        sessionStorage.setItem('ideax_from_create_ideas', 'true');
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('proposalId', proposal.id);
-                        url.searchParams.set('zone', 'create_ideas');
-                        window.history.pushState({ proposalId: proposal.id }, '', url.toString());
-                      } catch {}
-                      setActiveTab('star_season');
-                      setTimeout(() => {
-                        window.dispatchEvent(
-                          new CustomEvent('ideax_challenge_navigate', {
-                            detail: { subView: 'proposal', proposalId: proposal.id },
-                          })
-                        );
-                      }, 0);
-                    }}
+                    onSelectProposal={(proposal) => openIdeaDetail(proposal.id)}
                     onOpenCreateProposal={() => {
                       setActiveTab('star_season');
                       setTimeout(() => {
@@ -2743,6 +2842,9 @@ function MainContent() {
             </div>
           </div>
         )}
+
+        {/* 1.9 Job Explorer Tab: 全網搜職 (探險家 AI) */}
+        {activeTab === 'job_explorer' && <JobExplorerView />}
 
         {/* 2. Solvers Tab: Certified Experts */}
         {activeTab === 'solvers' && (

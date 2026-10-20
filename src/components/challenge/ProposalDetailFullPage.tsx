@@ -29,7 +29,7 @@ import {
   STAR_SEASON_TRACKS,
   getProposalCardAuthorText,
 } from '../../types/competition';
-import { getProposalShareUrl } from '../../services/seoService';
+import { getProposalShareUrl, getBaseUrl } from '../../services/seoService';
 import { shareOrCopyUrl, copyPureUrl } from '../../utils/shareUtils';
 import { getUserNameColorClass } from '../../utils/userDisplay';
 import { useApp } from '../../context/AppContext';
@@ -180,7 +180,8 @@ export const ProposalDetailFullPage: React.FC<ProposalDetailFullPageProps> = ({
 
   // 2. 分享出去（帶文字說明推薦引言，直通 LINE、FB、IG、Threads 等社群）
   const handleShareWithText = async () => {
-    const canonicalUrl = getProposalShareUrl(proposal.id);
+    // 從創點子進來的提案：分享創點子的獨立提案頁網址
+    const canonicalUrl = isFromCreateIdeasProp ? `${getBaseUrl()}/ideas/${encodeURIComponent(proposal.id)}` : getProposalShareUrl(proposal.id);
     const trackInfo = STAR_SEASON_TRACKS[proposal.track] || STAR_SEASON_TRACKS.ai_applications;
     const shareTitle = `【IdeaX 創星季】${proposal.title}`;
     const shareText = `【IdeaX 創星季 • 創新提案】${proposal.title}\n✦ 賽道領域：${trackInfo.name}\n✦ 目前注資創星幣：${(proposal.supportPoints || (proposal as any).raisedPoints || 0).toLocaleString()} 創星幣\n✦ 提案摘要：${proposal.summary || '邀請您一同探索青年跨領域創新解方，為高潛力提案注資創星幣！'}\n`;

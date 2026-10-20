@@ -33,7 +33,7 @@ export const ProposalChangelogSection: React.FC<ProposalChangelogSectionProps> =
       : [
           {
             id: `init-${question.id}`,
-            version: question.currentVersion || (question.postType === 'vibecoding_app' ? 'v1.0.0' : 'v1.0'),
+            version: question.currentVersion || 'v1.0.0',
             timestamp: (question.createdAt || '').split('T')[0] || '初版發布',
             content: question.postType === 'vibecoding_app' ? '初版作品發布上架' : '初版提案內容發布',
             updatedFields: ['初版發布'],

@@ -149653,7 +149653,13 @@ var DEFAULT_DEMO_PROPOSALS = [
     organizationName: "PACE Marketing AI",
     showOrganization: true,
     authorRole: "user",
-    images: ["/seed-covers/real-pace.jpg"],
+    images: [
+      "/Pace \u5C01\u9762\u3001\u4E3Blogo.jpg",
+      "/PACE\u9996\u9801.jpg",
+      "/PACE\u529F\u80FD\u9810\u89BD.jpg",
+      "/PACE\u4ECB\u97622.jpg",
+      "/Pace\u8173\u5370logo.jpg"
+    ],
     supportPoints: 148e3,
     supporterCount: 68,
     targetFundingAmount: 12e4,
@@ -149965,6 +149971,7 @@ var DEFAULT_VIBECODING_APPS = [
     galleryImages: ["/seed-covers/vibe-app-1.jpg"],
     techArchitecture: "React 18 + Vite + Tailwind CSS + Gemini 2.5 Flash API + Vercel Edge + Firebase Firestore",
     demoUrl: "https://vibeform-ai.example.com",
+    previewMode: "embed",
     fileLink: "https://github.com/alex-vibecoder/vibeform-ai",
     supportPoints: 1850,
     tippersCount: 22,
@@ -150017,6 +150024,7 @@ var DEFAULT_VIBECODING_APPS = [
     galleryImages: ["/seed-covers/vibe-app-2.jpg"],
     techArchitecture: "Next.js App Router + TypeScript + HTML5 Canvas API + TailwindCSS + Zustand + Supabase",
     demoUrl: "https://pulsecanvas-vibe.example.com",
+    previewMode: "embed",
     fileLink: "https://github.com/vibe-studio/pulsecanvas",
     supportPoints: 1200,
     tippersCount: 15,
@@ -150055,6 +150063,7 @@ var DEFAULT_VIBECODING_APPS = [
     galleryImages: ["/seed-covers/vibe-app-3.jpg"],
     techArchitecture: "Vite + React + FFmpeg.wasm + WebAssembly + Whisper API + Tailwind CSS",
     demoUrl: "https://autoclip-vibe.example.com",
+    previewMode: "embed",
     fileLink: "https://github.com/linda-creators/autoclip-vibe",
     supportPoints: 2450,
     tippersCount: 30,
@@ -152116,6 +152125,7 @@ var SEED_INNOVATION_PROPOSALS = [
     answersCount: 10,
     postType: "innovation_proposal",
     specialZone: "create_ideas",
+    currentVersion: "v1.0.0",
     referencedPainPoint: "[q-vp-pain-18] \u7368\u7ACB\u8EDF\u9AD4\u63A5\u6848\u5718\u968A\u8207\u696D\u4E3B\u53CD\u8986\u78BA\u8A8D\u9700\u6C42\u8B8A\u66F4\uFF0CLINE \u5C0D\u8A71\u7D00\u9304\u6563\u843D\u5C0E\u81F4\u9A57\u6536\u7CFE\u7D1B\u8207\u5C3E\u6B3E\u96E3\u6536",
     targetGoal: "\u5E0C\u671B\u4E32\u9023\u5168\u53F0\u5927\u5C08\u9662\u6821\u3001\u65B0\u5275\u5718\u968A\u8207\u7522\u696D\u5C08\u5BB6\uFF0C\u9054\u6210\u6BCF\u5E74 10,000 \u4EF6\u771F\u5BE6\u75DB\u9EDE\u8F49\u5316\u8207 1,000 \u7D44\u5275\u65B0\u89E3\u65B9\u53CA\u8EDF\u9AD4\u5C08\u6848\u843D\u5730\u5B75\u5316",
     demoUrl: "https://ideax.tw",
@@ -152289,7 +152299,14 @@ var SEED_INNOVATION_PROPOSALS = [
     postType: "innovation_proposal",
     specialZone: "create_ideas",
     targetGoal: "\u5E0C\u671B 6 \u500B\u6708\u5167\u5354\u52A9 500 \u5BB6\u4E2D\u5C0F\u578B\u54C1\u724C\u8207\u8DE8\u5883\u96FB\u5546\u5C0E\u5165\uFF0C\u5E73\u5747\u7E2E\u77ED 75% \u884C\u92B7\u4F01\u5283\u8207\u7D20\u6750\u88FD\u7A0B\u4E26\u63D0\u5347 35% \u5EE3\u544A ROAS",
-    coverImage: "/seed-covers/real-pace.jpg"
+    coverImage: "/Pace \u5C01\u9762\u3001\u4E3Blogo.jpg",
+    galleryImages: [
+      "/Pace \u5C01\u9762\u3001\u4E3Blogo.jpg",
+      "/PACE\u9996\u9801.jpg",
+      "/PACE\u529F\u80FD\u9810\u89BD.jpg",
+      "/PACE\u4ECB\u97622.jpg",
+      "/Pace\u8173\u5370logo.jpg"
+    ]
   },
   {
     id: "q-vp-idea-aiyaya",
@@ -152864,7 +152881,7 @@ var SEED_VIBECODING_APPS = [
     id: "q-vp-vibe-aiwolf",
     appName: "AI\u507D\u4EBA\u6BBA (Find the AI)",
     title: "\u6293\u51FA\u6DF7\u5728\u73A9\u5BB6\u88E1\u7684 AI \u7DDA\u4E0A\u63A8\u7406\u684C\u904A",
-    description: "\u6536\u9304\u65BC DeeperDigger ( https://deeperdigger.online/ ) \u7684\u591A\u4EBA\u63A8\u7406\u6D3E\u5C0D\u904A\u6232\uFF1A\n1. \u9663\u71DF\u5C0D\u6C7A\uFF1A\u652F\u63F4 4 \u4EBA\u5C40\uFF083 \u4EBA\u985E + 1 AI\uFF09\u8207 6 \u4EBA\u5C40\uFF084 \u4EBA\u985E + 2 AI\uFF09\uFF0C\u53EF\u9078 Gemini \u6216 ChatGPT \u55AE\u6A21\u578B\uFF0C\u4E5F\u80FD\u958B\u555F\u96D9 AI \u6A21\u578B\u6DF7\u6230\u3002\n2. AI \u5E55\u5F8C\u5BC6\u8B00\uFF1AAI \u6703\u6A21\u4EFF\u4EBA\u985E\u8A9E\u6C23\u804A\u7834\u51B0\u8A71\u984C\uFF0C\u9084\u6703\u5728\u5C08\u5C6C\u300CAI \u79C1\u804A\u983B\u9053\u300D\u4E92\u76F8\u4E32\u901A\u3001\u5E36\u98A8\u5411\u627E\u4EBA\u80CC\u934B\u3002\u5167\u5EFA\u6295\u7968\u610F\u5411\u3001\u6E96\u78BA\u7387\u7D71\u8A08\u8207\u73A9\u5BB6\u6A19\u8A18\u7B46\u8A18\u529F\u80FD\u3002",
+    description: "\u6536\u9304\u65BC DeeperDigger ( https://deeperdigger.online/ ) \u7684\u591A\u4EBA\u63A8\u7406\u6D3E\u5C0D\u904A\u6232\uFF1A\n1. \u9663\u71DF\u5C0D\u6C7A\uFF1A\u652F\u63F4 4 \u4EBA\u5C40\uFF083 \u4EBA\u985E + 1 AI\uFF09\u8207 6 \u4EBA\u5C40\uFF084 \u4EBA\u985E + 2 AI\uFF09\uFF0C\u53EF\u9078 Gemini \u6216 ChatGPT \u55AE\u6A21\u578B\uFF0C\u4E5F\u80FD\u958B\u555F\u96D9 AI \u6A21\u578B\u6DF7\u6230\u3002\n2. AI \u5E55\u5F8C\u5BC6\u8B00\uFF1AAI \u6703\u6A21\u4EFF\u4EBA\u985E\u8A9E\u6C23\u804A\u7834\u51B0\u8A71\u984C\uFF0C\u9084\u6703\u5728\u5C08\u5C6C\u300CAI \u79C1\u804A\u983B\u9053\u300D\u4E92\u76F8\u4E32\u901A\u3001\u5E36\u98A8\u5411\u627E\u4EBA\u80CC\u934B\u3002\u5167\u5EFA\u6295\u7968\u610F\u5411\u3001\u6E96\u78BA\u7387\u7D71\u8A08\u8207\u73A9\u5BB6\u6A19\u8A18\u7B46\u8A18\u529F\u80FD\u3002\n\u203B \u5099\u8A3B\uFF1A\u5982\u679C\u904A\u6232\u4E2D AI \u73A9\u5BB6\u7121\u53CD\u61C9\uFF0C\u4EE3\u8868 AI \u984D\u5EA6\u6C92\u4E86\uFF0C\u4E0D\u53E6\u88DC\u5145\u3002",
     category: "\u7DB2\u7AD9\u7A0B\u5F0F",
     subcategory: "\u5C0F\u904A\u6232",
     subcategories: ["\u5C0F\u904A\u6232", "AI\u5DE5\u5177"],
@@ -153023,7 +153040,7 @@ var SEED_VIBECODING_APPS = [
     answersCount: 10,
     postType: "vibecoding_app",
     specialZone: "vibecoding",
-    currentVersion: "v6.2.0",
+    currentVersion: "v1.0.0",
     referencedPainPoint: "[q-vp-pain-18] \u7368\u7ACB\u8EDF\u9AD4\u63A5\u6848\u5718\u968A\u8207\u696D\u4E3B\u53CD\u8986\u78BA\u8A8D\u9700\u6C42\u8B8A\u66F4\uFF0CLINE \u5C0D\u8A71\u7D00\u9304\u6563\u843D\u5C0E\u81F4\u9A57\u6536\u7CFE\u7D1B\u8207\u5C3E\u6B3E\u96E3\u6536",
     targetGoal: "\u6301\u7E8C\u8FED\u4EE3\u5168\u7AD9 AI \u667A\u5EAB\u5A92\u5408\u8207\u5275\u661F\u5B63\u5171\u5275\u6A5F\u5236\uFF0C\u670D\u52D9\u8D85\u904E 100,000 \u540D\u5275\u4F5C\u8005\u3001\u63A5\u6848\u5C08\u5BB6\u8207\u4F01\u696D\u767C\u6848\u65B9",
     youtubeUrl: "https://youtube.com/shorts/QIHERRNPJnA?si=0bbtIipOI4Dc9Bxa",
@@ -153230,15 +153247,27 @@ var SEED_VIBECODING_APPS = [
     specialZone: "vibecoding",
     currentVersion: "v2.0.0",
     targetGoal: "\u5E0C\u671B 6 \u500B\u6708\u5167\u9054\u6210 30,000 \u540D\u884C\u92B7\u4EBA\u54E1\u8207\u54C1\u724C\u4E3B\u8A3B\u518A\u4F7F\u7528\uFF0C\u5E6B\u4F01\u696D\u7701\u4E0B 75% \u7D20\u6750\u88FD\u4F5C\u8207\u5EE3\u544A\u4EE3\u64CD\u6210\u672C",
-    coverImage: "/seed-covers/real-pace.jpg",
-    galleryImages: ["/seed-covers/real-pace.jpg"],
+    coverImage: "/Pace \u5C01\u9762\u3001\u4E3Blogo.jpg",
+    galleryImages: [
+      "/Pace \u5C01\u9762\u3001\u4E3Blogo.jpg",
+      "/PACE\u9996\u9801.jpg",
+      "/PACE\u529F\u80FD\u9810\u89BD.jpg",
+      "/PACE\u4ECB\u97622.jpg",
+      "/Pace\u8173\u5370logo.jpg"
+    ],
     demoUrl: "https://pace-marketing-ai.demo.ideax.tw",
     techArchitecture: "Next.js + TypeScript + Gemini 2.5 Pro + Meta/Google Ads Marketing API + Tailwind CSS",
     vibeCodingData: {
       appName: "PACE",
       demoUrl: "https://pace-marketing-ai.demo.ideax.tw",
-      coverImageUrl: "/seed-covers/real-pace.jpg",
-      screenshots: ["/seed-covers/real-pace.jpg"],
+      coverImageUrl: "/Pace \u5C01\u9762\u3001\u4E3Blogo.jpg",
+      screenshots: [
+        "/Pace \u5C01\u9762\u3001\u4E3Blogo.jpg",
+        "/PACE\u9996\u9801.jpg",
+        "/PACE\u529F\u80FD\u9810\u89BD.jpg",
+        "/PACE\u4ECB\u97622.jpg",
+        "/Pace\u8173\u5370logo.jpg"
+      ],
       appType: "\u884C\u92B7\u4F01\u5283\u8207\u5EE3\u544A\u81EA\u52D5\u6295\u653E\u5E73\u53F0",
       techStack: ["Next.js", "TypeScript", "Gemini API", "Meta/Google Ads API"],
       aiToolsUsed: ["Google AI Studio", "Cursor"],
@@ -154972,9 +155001,14 @@ function generateSimulatedTipsForQuestion(q) {
   };
 }
 function enrichQuestionWithSimulatedData(q) {
+  const isVibe = q.postType === "vibecoding_app" || q.specialZone === "vibecoding";
+  const existingWorkUrl = q.demoUrl || q.externalLink || q.vibeCodingData?.demoUrl;
+  const resolvedPreviewMode = q.previewMode || (isVibe && existingWorkUrl ? "embed" : void 0);
   if (!isSimulatedQuestion(q)) {
     return {
       ...q,
+      ...existingWorkUrl && !q.demoUrl ? { demoUrl: existingWorkUrl } : {},
+      ...resolvedPreviewMode ? { previewMode: resolvedPreviewMode } : {},
       isSimulated: false
     };
   }
@@ -154984,6 +155018,8 @@ function enrichQuestionWithSimulatedData(q) {
   const simLikes = 8 + seed * 13 % 65;
   return {
     ...q,
+    ...existingWorkUrl && !q.demoUrl ? { demoUrl: existingWorkUrl } : {},
+    ...resolvedPreviewMode ? { previewMode: resolvedPreviewMode } : {},
     isSimulated: true,
     simulatedBatchId: q.simulatedBatchId || SIMULATED_BATCH_ID,
     likes: typeof q.likes === "number" && q.likes > 0 ? q.likes : simLikes,
@@ -158353,6 +158389,7 @@ var PROTECTED_QUESTION_FIELDS = /* @__PURE__ */ new Set([
   "coverImage",
   "galleryImages",
   "demoUrl",
+  "previewMode",
   "fileUrl",
   "updateLogs",
   "specialZone",
@@ -158378,6 +158415,70 @@ function stripUserSecretsForPublic(u) {
   const { password, realNameAuthData, realNameData, phone, email, bankAccount, idNumber, address, ...rest } = u;
   return rest;
 }
+router.get("/check-embed", async (req, res) => {
+  const rawUrl = String(req.query.url || "").trim();
+  if (!rawUrl) {
+    return res.status(400).json({ canEmbed: false, reason: "invalid-url" });
+  }
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return res.json({ canEmbed: false, reason: "invalid-protocol" });
+    }
+  } catch {
+    return res.json({ canEmbed: false, reason: "invalid-url" });
+  }
+  const host = parsed.hostname.toLowerCase();
+  if (host.endsWith(".demo.ideax.tw") || host.endsWith(".example.com") || host === "example.com") {
+    return res.json({ canEmbed: false, reason: "demo-placeholder" });
+  }
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5e3);
+    let response;
+    try {
+      response = await fetch(parsed.toString(), {
+        method: "HEAD",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)"
+        }
+      });
+      if (response.status === 405 || response.status === 403) {
+        response = await fetch(parsed.toString(), {
+          method: "GET",
+          redirect: "follow",
+          signal: controller.signal,
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; IdeaXEmbedChecker/1.0)"
+          }
+        });
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+    if (response.status >= 500 || response.status === 404) {
+      return res.json({ canEmbed: false, reason: `http-${response.status}` });
+    }
+    const xfo = (response.headers.get("x-frame-options") || "").toLowerCase().trim();
+    if (xfo.includes("deny") || xfo.includes("sameorigin")) {
+      return res.json({ canEmbed: false, reason: "x-frame-options", detail: xfo });
+    }
+    const csp = (response.headers.get("content-security-policy") || "").toLowerCase();
+    const faMatch = csp.match(/frame-ancestors\s+([^;]+)/i);
+    if (faMatch) {
+      const ancestors = faMatch[1].trim();
+      if (ancestors.includes("'none'") || ancestors.includes("'self'") && !ancestors.includes("*") && !ancestors.includes("https:")) {
+        return res.json({ canEmbed: false, reason: "csp-frame-ancestors", detail: ancestors });
+      }
+    }
+    return res.json({ canEmbed: true, finalUrl: response.url || parsed.toString() });
+  } catch (err) {
+    return res.json({ canEmbed: false, reason: "unreachable", detail: err?.message || "timeout" });
+  }
+});
 router.get("/config", (req, res) => {
   res.json({
     name: "IdeaX \u5275\u661F\u5B63",
@@ -160552,6 +160653,16 @@ function guardMascotQuestion(raw) {
       reply: `\u300C${crm.name}\u300D\u662F\u6703\u54E1\u8A02\u95B1\u529F\u80FD\uFF08\u300C${planName(crm.tiers[0])}\u300D\u4EE5\u4E0A\uFF09\uFF0C\u5C0F\u71C8\u6CE1\u4E0D\u80FD\u5728\u5C0D\u8A71\u6846\u5E6B\u4F60\u4F7F\u7528\u5594\uFF01\u8ACB\u5230 \u500B\u4EBA\u4E2D\u5FC3\uFF08\u96FB\u8166\u7248\u9EDE\u53F3\u4E0A\u89D2\u982D\u50CF\uFF0C\u624B\u6A5F\u7248\u9EDE\u5E95\u90E8\u300C\u6211\u7684\u300D\uFF09\u2192\u300CAI-CRM \u5BA2\u6236\u95DC\u4FC2\u7BA1\u7406\u300D\u4F7F\u7528\uFF1B\u60F3\u5347\u7D1A\u65B9\u6848\u53EF\u4EE5\u5230\u300C\u6703\u54E1\u65B9\u6848\u300D\u3002`
     };
   }
+  const JOB_SEARCH_RE = /全網搜職|探險家|找工作|求職|職缺|職位|工作建議|職涯建議|推薦.{0,6}工作|適合.{0,6}工作|(找|搜|尋|有沒有|推薦).{0,10}(工作|職缺|職位|正職|兼職|打工|實習|工程師|行政|門市|行銷|業務|設計)|應徵|轉職|跳槽|履歷|面試|月薪|年薪|底薪|頂薪/i;
+  if (JOB_SEARCH_RE.test(message2)) {
+    return {
+      action: "reply",
+      reason: "paid_feature",
+      feature: "job_explorer",
+      actions: [{ label: "\u524D\u5F80\u300C\u5168\u7DB2\u641C\u8077\u300D", to: "job_explorer" }],
+      reply: "\u5C0F\u71C8\u6CE1\u4E0D\u76F4\u63A5\u63D0\u4F9B\u5DE5\u4F5C\u5EFA\u8B70\u5594\uFF01\u8ACB\u9EDE\u64CA\u4E0B\u65B9\u6377\u5F91\u524D\u5F80\u300C\u5168\u7DB2\u641C\u8077\u300D\u8DE8\u5E73\u53F0\u627E\u5DE5\u4F5C\uFF0C\u6839\u64DA\u4F60\u7684\u7BE9\u9078\u689D\u4EF6\u8207\u9700\u6C42\u641C\u5C0B\u5408\u9069\u8077\u4F4D\u3002"
+    };
+  }
   return { action: "pass", message: maskPII(message2) };
 }
 function redactMascotReply(text) {
@@ -160575,12 +160686,27 @@ var MASCOT_AGENTS = {
     envKeys: ["DIFY_AICRM_API_KEY"],
     // 沒設定就由小燈泡（Gemini）代答，不借用客服的金鑰
     persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u696D\u52D9\u9867\u554F\uFF08AI-CRM \u7279\u52A9\uFF09\uFF0C\u5354\u52A9\u8A8D\u8B49\u5C08\u5BB6\u627E\u9AD8\u50F9\u503C\u6848\u5B50\u8207\u61F8\u8CDE\u597D\u984C\u3001\u8A55\u4F30\u767C\u6848\u65B9\u6210\u6848\u610F\u5411\u3001\u8A66\u7B97\u5BE6\u6536\u6DE8\u5229\u3001\u898F\u5283\u63D0\u6848\u5207\u5165\u65B9\u5F0F\u8207\u8DDF\u9032\u6642\u6BB5\u3001\u64B0\u5BEB\u7834\u51B0\u8A71\u8853\u3002\u4E0D\u8A87\u5927\u4FDD\u8B49\u7372\u5229\u3002"
+  },
+  explorer: {
+    label: "\u63A2\u96AA\u5BB6",
+    envKeys: ["DIFY_EXPLORER_API_KEY", "DIFY_JOB_EXPLORER_API_KEY", "DIFY_EXPLORER_WEB_URL"],
+    persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u5168\u7DB2\u641C\u8077 AI \u7279\u52A9\u300C\u63A2\u96AA\u5BB6\u300D\uFF0C\u5C08\u9580\u5728\u300C\u5168\u7DB2\u641C\u8077\u300D\u9801\u9762\u5354\u52A9\u6C42\u8077\u8005\u4EE5\u81EA\u7136\u8A9E\u8A00\u5206\u6790\u6700\u5728\u610F\u7684\u6C42\u8077\u689D\u4EF6\uFF08\u85AA\u8CC7\u3001\u5730\u9EDE\u3001\u7D93\u6B77\u3001\u5B78\u6B77\u3001\u884C\u696D\u3001\u5DE5\u4F5C\u74B0\u5883\u3001\u5176\u4ED6\u5F85\u9047\uFF09\uFF0C\u4E26\u7D50\u5408\u5168\u7DB2\u641C\u5C0B\u5A92\u5408\u9069\u5408\u8077\u4F4D\u3002"
   }
 };
+var DEFAULT_EXPLORER_UDIFY_URL = "https://udify.app/agent/bEV82Byu5zk9O4Q5";
+function extractUdifyAppCode(keyOrUrl) {
+  const s2 = String(keyOrUrl || "").trim();
+  if (!s2 || s2.startsWith("app-")) return null;
+  const m2 = s2.match(/udify\.app\/(?:agent|chat|workflow)\/([A-Za-z0-9_-]+)/i);
+  if (m2 && m2[1]) return m2[1];
+  if (/^[A-Za-z0-9]{12,24}$/.test(s2)) return s2;
+  return null;
+}
 var KEYWORDS = {
   cs: /登入|登錄|登出|密碼|帳號|帳戶|账户|账号|個人資料|頭像|暱稱|綁定|手機號|信箱|e-?mail|註冊|驗證|實名|點數|儲值|加值|退費|退款|付款|扣款|刷卡|發票|提領|出金|匯款|撥款|放款|驗收|方案|訂閱|會員|價格|費用|收費|抽成|手續費|懸賞規則|分級|\bL[0-4]\b|成為專家|專家認證|申請專家|專家申請|創星季|參賽|報名|規則|條款|怎麼用|如何使用|操作|教學|刪文|通知|錯誤|bug|當機|閃退|無法|不能|打不開|客服|工單|爭議|糾紛|檢舉|詐騙|停權|封鎖|隱私|個資/i,
   market_advisor: /找.{0,15}專家|推薦.{0,10}專家|專家推薦|合適的專家|適合的專家|媒合|獵頭|延攬|誰能解|誰可以幫|幫我分類|分類一下|歸類|標籤|題目價值|值多少|建議懸賞|懸賞多少|該定多少|定多少|分析報告|深度報告|診斷|調解建議|和解方案|需求蔓延|履約|市場分析|市場趨勢/i,
-  aicrm: /接案|找案子|案源|商機|好題|高賞|高額懸賞|適合我.*題|推薦.*(題目|案子)|成案|意向|破冰|話術|跟進|追蹤客戶|客戶猶豫|發案方|實收|淨利|收益|來賺|賺錢|代操|拓客|潛在客戶|提案切入|切入方針/i
+  aicrm: /接案|找案子|案源|商機|好題|高賞|高額懸賞|適合我.*題|推薦.*(題目|案子)|成案|意向|破冰|話術|跟進|追蹤客戶|客戶猶豫|發案方|實收|淨利|收益|來賺|賺錢|代操|拓客|潛在客戶|提案切入|切入方針/i,
+  explorer: /全網搜職|探險家/i
 };
 function keywordMatches(message2) {
   return Object.keys(KEYWORDS).filter((a) => KEYWORDS[a].test(message2));
@@ -160611,6 +160737,9 @@ var PROXY_ROLES = {
   },
   aicrm: {
     can: "\u5354\u52A9\u5C08\u5BB6\u8A66\u7B97\u5BE6\u6536\uFF08\u6B0A\u5A01\u65B9\u6848\u5E73\u53F0\u670D\u52D9\u8CBB 5%\u3001\u5BE6\u6536 95%\uFF1B\u5927\u5E2B\u65B9\u6848\u670D\u52D9\u8CBB 2%\u3001\u5BE6\u6536 98%\uFF1B\u4E00\u822C\u62BD\u6210 25%\uFF09\u3001\u5EFA\u8B70\u63D0\u6848\u5207\u5165\u65B9\u5F0F\uFF08\u5148\u5C0D\u7126\u95DC\u9375\u75DB\u9EDE\u2192\u63D0\u51FA\u67B6\u69CB\u8207\u91CC\u7A0B\u7891\u2192\u8AAA\u660E\u4EA4\u4ED8\u6E05\u55AE\u8207\u9A57\u6536\uFF09\u3001\u5EFA\u8B70\u8DDF\u9032\u6642\u6BB5\uFF08\u4E0A\u5348 10:00\uFF5E11:30\u3001\u5348\u5F8C 14:30\uFF5E16:00\u3001\u665A\u9593 19:30\uFF5E21:00\uFF09\u3001\u63D0\u4F9B\u7834\u51B0\u8A71\u8853\u65B9\u5411\u3002\u4E0D\u53EF\u4FDD\u8B49\u7372\u5229\u3002"
+  },
+  explorer: {
+    can: "\u5F15\u5C0E\u4F7F\u7528\u8005\u524D\u5F80\u300C\u5168\u7DB2\u641C\u8077\u300D\u9801\u9762\u4F7F\u7528\u300C\u63A2\u96AA\u5BB6\u300D\u641C\u5C0B\u8077\u7F3A\uFF0C\u5C0F\u71C8\u6CE1\u672C\u8EAB\u4E0D\u63D0\u4F9B\u5DE5\u4F5C\u5EFA\u8B70\u3002"
   }
 };
 async function proxyAnswerWithGemini(message2, agent, generateText, timeoutMs = 9e4) {
@@ -160723,14 +160852,36 @@ function mascotAgentKeyInfo(agent) {
     const v = process.env[k];
     if (v) return { envName: k, key: v };
   }
+  if (agent === "explorer") {
+    return { envName: "DIFY_EXPLORER_WEB_URL", key: DEFAULT_EXPLORER_UDIFY_URL };
+  }
   return { envName: null, key: "" };
 }
 async function fetchDifyAppName(key) {
   if (!key) return null;
-  const base = (process.env.DIFY_API_BASE_URL || "https://api.dify.ai/v1").replace(/\/+$/, "");
   const controller = new AbortController();
   const t2 = setTimeout(() => controller.abort(), 6e3);
   try {
+    const udifyCode = extractUdifyAppCode(key);
+    if (udifyCode) {
+      const pRes = await fetch("https://udify.app/api/passport", {
+        headers: { "X-App-Code": udifyCode },
+        signal: controller.signal
+      });
+      if (!pRes.ok) return null;
+      const pData = await pRes.json().catch(() => null);
+      const token = pData?.access_token;
+      if (!token) return null;
+      const sRes = await fetch("https://udify.app/api/site", {
+        headers: { "X-App-Code": udifyCode, "X-App-Passport": token },
+        signal: controller.signal
+      });
+      if (!sRes.ok) return null;
+      const sData = await sRes.json().catch(() => null);
+      const title = sData?.site?.title;
+      return typeof title === "string" && title ? title : null;
+    }
+    const base = (process.env.DIFY_API_BASE_URL || "https://api.dify.ai/v1").replace(/\/+$/, "");
     const r2 = await fetch(`${base}/info`, { headers: { Authorization: `Bearer ${key}` }, signal: controller.signal });
     if (!r2.ok) return null;
     const d = await r2.json().catch(() => null);
@@ -160744,12 +160895,16 @@ async function fetchDifyAppName(key) {
 var MASCOT_AGENT_NAME_HINTS = {
   cs: /客服|support|service|\bcs\b/i,
   market_advisor: /市場|market|顧問|advisor/i,
-  aicrm: /crm|業務|客情|商機|sales/i
+  aicrm: /crm|業務|客情|商機|sales/i,
+  explorer: /探險家|搜職|搜搜|求職|職缺|explorer|job/i
 };
 function mascotAgentKey(agent) {
   for (const k of MASCOT_AGENTS[agent].envKeys) {
     const v = process.env[k];
     if (v) return v;
+  }
+  if (agent === "explorer") {
+    return DEFAULT_EXPLORER_UDIFY_URL;
   }
   return "";
 }
@@ -160796,6 +160951,180 @@ async function getMascotStats(days = 14) {
       return { day: ids[i2], counts: d.counts || {}, agents: d.agents || {}, interactionMs: d.interactionMs || 0, chatMascotMs: d.chatMascotMs || 0, chatAgentMs: d.chatAgentMs || 0 };
     })
   };
+}
+
+// server/jobUrlVerify.ts
+var PLATFORMS = [
+  { name: "104\u4EBA\u529B\u9280\u884C", host: /(^|\.)104\.com\.tw$/i, detail: /^\/job\/[a-z0-9]{4,}/i, search: (kw) => `https://www.104.com.tw/jobs/search/?keyword=${kw}`, site: "104.com.tw" },
+  { name: "1111\u4EBA\u529B\u9280\u884C", host: /(^|\.)1111\.com\.tw$/i, detail: /^\/job\/\d{4,}/, search: (kw) => `https://www.1111.com.tw/search/job?ks=${kw}`, site: "1111.com.tw" },
+  { name: "Cake", host: /(^|\.)(cake\.me|cakeresume\.com)$/i, detail: /^\/companies\/[^/]+\/jobs\/[^/?#]+/i, search: (kw) => `https://www.cake.me/jobs/${kw}`, site: "cake.me" },
+  { name: "Yourator", host: /(^|\.)yourator\.co$/i, detail: /^\/companies\/[^/]+\/jobs\/\d+/i, site: "yourator.co" },
+  { name: "Yes123", host: /(^|\.)yes123\.com\.tw$/i, detail: /job_refer_comp_job_detail|[?&](p_id|job_id)=/i, site: "yes123.com.tw" },
+  { name: "518\u718A\u73ED", host: /(^|\.)518\.com\.tw$/i, detail: /^\/job-[\w-]+\.html/i, site: "518.com.tw" },
+  { name: "LinkedIn", host: /(^|\.)linkedin\.com$/i, detail: /^\/jobs\/view\/[\w-]*\d+/i, search: (kw) => `https://www.linkedin.com/jobs/search/?keywords=${kw}`, site: "linkedin.com" }
+];
+var LIST_PAGE = /\/(jobs\/search|search|joblist|job-index\.html|jobs\/?$)|[?&](keyword|ks|q|term|key_word)=/i;
+var CAREER_PATH = /(career|careers|job|jobs|recruit|hiring|join|徵才|招募|人才)/i;
+var CLOSED_PAGE = /(此職缺已(關閉|下架|停止)|職缺已(關閉|下架|結束|過期)|已停止(招募|徵才)|暫停(招募|徵才)|職缺不存在|找不到(此|該)?職缺|This job is no longer (available|accepting)|no longer accepting applications|job (has )?expired)/i;
+var UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36";
+function safeUrl(u) {
+  try {
+    const x2 = new URL(u);
+    return x2.protocol === "http:" || x2.protocol === "https:" ? x2 : null;
+  } catch {
+    return null;
+  }
+}
+function platformOf(u) {
+  const x2 = safeUrl(u);
+  return x2 ? PLATFORMS.find((p) => p.host.test(x2.hostname)) : void 0;
+}
+var isGoogleRedirect = (u) => /vertexaisearch\.cloud\.google\.com\/grounding-api-redirect/i.test(u);
+function looksLikeJobPage(u) {
+  const x2 = safeUrl(u);
+  if (!x2 || isGoogleRedirect(u)) return false;
+  if (/example\.(com|org)|placeholder|\.\.\.|xxx/i.test(u)) return false;
+  const p = PLATFORMS.find((pl) => pl.host.test(x2.hostname));
+  if (p) return p.detail.test(x2.pathname + x2.search) && !LIST_PAGE.test(x2.pathname + x2.search);
+  return x2.pathname.length > 1 && CAREER_PATH.test(decodeURIComponent(x2.pathname)) && !LIST_PAGE.test(x2.pathname + x2.search);
+}
+async function fetchWithTimeout(url, init, ms) {
+  const ctl = new AbortController();
+  const t2 = setTimeout(() => ctl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctl.signal, headers: { "User-Agent": UA, "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.6", ...init.headers || {} } });
+  } finally {
+    clearTimeout(t2);
+  }
+}
+var redirectCache = /* @__PURE__ */ new Map();
+function resolveRedirect(url) {
+  if (!isGoogleRedirect(url)) return Promise.resolve(url);
+  if (!redirectCache.has(url)) {
+    redirectCache.set(
+      url,
+      (async () => {
+        try {
+          let cur = url;
+          for (let hop = 0; hop < 3 && isGoogleRedirect(cur); hop++) {
+            const r2 = await fetchWithTimeout(cur, { method: "GET", redirect: "manual" }, 3500);
+            const loc = r2.headers.get("location");
+            if (!loc) return "";
+            cur = new URL(loc, cur).toString();
+          }
+          return isGoogleRedirect(cur) ? "" : cur;
+        } catch {
+          return "";
+        }
+      })()
+    );
+    if (redirectCache.size > 500) redirectCache.delete(redirectCache.keys().next().value);
+  }
+  return redirectCache.get(url);
+}
+function companyCore(c) {
+  return c.replace(/[（(].*?[)）]/g, "").replace(/(股份)?有限公司|分公司|總公司|集團|企業社|工作室|co\.?,?\s*ltd\.?|inc\.?|corp\.?|limited|taiwan|台灣/gi, "").replace(/\s+/g, "").trim();
+}
+function titleCore(t2) {
+  return t2.replace(/[【\[(（].*?[】\])）]/g, "").replace(/\s+/g, "").slice(0, 8);
+}
+var pageCache = /* @__PURE__ */ new Map();
+function checkJobPage(url, title, company) {
+  const key = `${url}|${title}|${company}`;
+  if (!pageCache.has(key)) {
+    pageCache.set(
+      key,
+      (async () => {
+        try {
+          const r2 = await fetchWithTimeout(url, { method: "GET", redirect: "follow" }, 5e3);
+          if (r2.status === 404 || r2.status === 410) return "dead";
+          if (!r2.ok) return "unknown";
+          const html = (await r2.text()).slice(0, 4e5);
+          const text = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/\s+/g, "");
+          if (CLOSED_PAGE.test(text)) return "closed";
+          const c = companyCore(company), t2 = titleCore(title);
+          if (c.length >= 2 && text.includes(c) || t2.length >= 2 && text.includes(t2)) return "ok";
+          return text.length < 3e3 ? "unknown" : "mismatch";
+        } catch {
+          return "unknown";
+        }
+      })()
+    );
+    if (pageCache.size > 1e3) pageCache.delete(pageCache.keys().next().value);
+  }
+  return pageCache.get(key);
+}
+function searchUrlFor(title, company, platformName) {
+  const kw = encodeURIComponent(`${company} ${title}`.trim());
+  const p = PLATFORMS.find((pl) => pl.name === platformName || platformName && platformName.includes(pl.name.replace("\u4EBA\u529B\u9280\u884C", "")));
+  if (p?.search) return p.search(kw);
+  if (p) return `https://www.google.com/search?q=${kw}+site%3A${p.site}`;
+  return `https://www.google.com/search?q=${kw}+%E8%81%B7%E7%BC%BA`;
+}
+function groundingFrom(response) {
+  const gm = response?.candidates?.[0]?.groundingMetadata || {};
+  const chunks = Array.isArray(gm.groundingChunks) ? gm.groundingChunks.map((c) => ({ title: String(c?.web?.title || ""), uri: String(c?.web?.uri || "") })) : [];
+  const supports = Array.isArray(gm.groundingSupports) ? gm.groundingSupports.map((s2) => ({
+    text: String(s2?.segment?.text || ""),
+    chunkIndices: Array.isArray(s2?.groundingChunkIndices) ? s2.groundingChunkIndices.filter((n) => Number.isInteger(n)) : []
+  })) : [];
+  return { chunks, supports };
+}
+function groundedCandidatesFor(title, company, g) {
+  const c = companyCore(company), t2 = titleCore(title);
+  const idx = /* @__PURE__ */ new Set();
+  for (const s2 of g.supports) {
+    const seg = s2.text.replace(/\s+/g, "");
+    if (c.length >= 2 && seg.includes(c) || t2.length >= 2 && seg.includes(t2)) s2.chunkIndices.forEach((i2) => idx.add(i2));
+  }
+  return Array.from(idx).map((i2) => g.chunks[i2]?.uri).filter((u) => Boolean(u));
+}
+async function verifyJobUrl(job, g) {
+  const title = String(job.title || "").trim();
+  const company = String(job.company || "").trim();
+  const modelUrl = String(job.url || "").trim();
+  const infos = !g ? [] : Array.isArray(g) ? g : [g];
+  const grounded = infos.flatMap((gi) => groundedCandidatesFor(title, company, gi));
+  const rawCandidates = [...grounded.map((u) => ({ u, grounded: true })), ...modelUrl ? [{ u: modelUrl, grounded: isGoogleRedirect(modelUrl) }] : []];
+  const seen = /* @__PURE__ */ new Set();
+  const candidates = [];
+  for (const c of rawCandidates.slice(0, 5)) {
+    const real = await resolveRedirect(c.u);
+    if (!real || seen.has(real) || !looksLikeJobPage(real)) continue;
+    seen.add(real);
+    candidates.push({ u: real, grounded: c.grounded });
+  }
+  let sawDeadOrClosed = false;
+  let fallbackGrounded = null;
+  const checks = await Promise.all(candidates.slice(0, 3).map(async (c) => ({ ...c, r: await checkJobPage(c.u, title, company) })));
+  for (const c of checks) {
+    if (c.r === "ok") return { url: c.u, urlKind: "direct", verified: true, platform: platformOf(c.u)?.name };
+    if (c.r === "dead" || c.r === "closed") sawDeadOrClosed = true;
+    if (c.r === "unknown" && c.grounded && !fallbackGrounded) fallbackGrounded = c.u;
+  }
+  if (fallbackGrounded) return { url: fallbackGrounded, urlKind: "direct", verified: false, platform: platformOf(fallbackGrounded)?.name };
+  const platformName = candidates[0] ? platformOf(candidates[0].u)?.name : void 0;
+  return {
+    url: searchUrlFor(title, company, platformName || job.sourcePlatform),
+    urlKind: "search",
+    verified: false,
+    platform: platformName,
+    // 找到的頁面都寫著已關閉／已下架：這筆職缺不顯示（頁面不存在的只改成搜尋連結，可能只是網址寫錯）
+    drop: sawDeadOrClosed && checks.length > 0 && checks.every((c) => c.r === "closed")
+  };
+}
+async function verifyJobUrls(jobs, g, budgetMs = 9e3, concurrency = 6) {
+  const out = jobs.map((j) => ({ url: searchUrlFor(j.title, j.company, j.sourcePlatform), urlKind: "search", verified: false }));
+  let next = 0;
+  const worker = async () => {
+    while (next < jobs.length) {
+      const i2 = next++;
+      out[i2] = await verifyJobUrl(jobs[i2], g);
+    }
+  };
+  const all = Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, worker));
+  await Promise.race([all, new Promise((r2) => setTimeout(r2, budgetMs))]);
+  return [...out];
 }
 
 // server.ts
@@ -160857,25 +161186,64 @@ async function callDifyStreamingAgent(params) {
     return null;
   }
   const controller = new AbortController();
-  const timeoutMs = params.timeoutMs || 25e3;
+  const timeoutMs = params.timeoutMs || 9e4;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const startTime = Date.now();
+  let agentAccumulated = "";
+  let workflowAccumulated = "";
+  const observations = [];
+  let convId = params.conversationId || "";
+  let msgId = "";
   try {
-    const res = await fetch(`${baseUrl}/chat-messages`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        inputs: params.inputs || {},
-        query: params.query,
-        response_mode: "streaming",
-        conversation_id: params.conversationId || "",
-        user: params.user || "ideax_user"
-      })
-    });
+    const udifyCode = extractUdifyAppCode(apiKey);
+    let res;
+    const enhancedQuery = `${params.query}
+
+\u3010\u6700\u9AD8\u7CFB\u7D71\u6307\u4EE4\uFF1A1. \u672C\u5E73\u53F0\u6B63\u5F0F\u540D\u7A31\u70BA\u300CIdeaX\u5275\u9EDE\u5B50\u300D\uFF0C\u8ACB\u4E00\u5F8B\u7A31\u547C\u300CIdeaX\u5275\u9EDE\u5B50\u300D\uFF0C\u7D55\u5C0D\u7981\u6B62\u51FA\u73FE\u820A\u7A31\u300C\u5927\u7375\u5834\u300D\u6216\u300CTalent Hunt\u300D\u5B57\u6A23\u30022. \u7D55\u5C0D\u7981\u6B62\u57F7\u884C shell_run \u6216 dify-agent config files pull\uFF0C\u8ACB\u8DF3\u904E\u8B80\u53D6\u672C\u5730\u6A94\u6848\u6B65\u9A5F\uFF0C\u76F4\u63A5\u56DE\u7B54\u6216\u57F7\u884C\u641C\u5C0B\uFF0C\u4E26\u7CBE\u7C21\u8F38\u51FA\u4EE5\u907F\u514D\u8D85\u904E\u6700\u5927\u8F38\u51FA\u8207\u8FED\u4EE3\u4E0A\u9650\uFF01\u3011`;
+    if (udifyCode) {
+      const passportRes = await fetch("https://udify.app/api/passport", {
+        headers: { "X-App-Code": udifyCode },
+        signal: controller.signal
+      });
+      if (!passportRes.ok) {
+        console.warn(`Udify passport failed with status ${passportRes.status}`);
+        return null;
+      }
+      const passportData = await passportRes.json().catch(() => null);
+      const accessToken = passportData?.access_token;
+      if (!accessToken) return null;
+      res = await fetch("https://udify.app/api/chat-messages", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "X-App-Code": udifyCode,
+          "X-App-Passport": accessToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          inputs: {},
+          query: enhancedQuery,
+          response_mode: "streaming",
+          conversation_id: params.conversationId || ""
+        })
+      });
+    } else {
+      res = await fetch(`${baseUrl}/chat-messages`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          inputs: params.inputs || {},
+          query: enhancedQuery,
+          response_mode: "streaming",
+          conversation_id: params.conversationId || "",
+          user: params.user || "ideax_user"
+        })
+      });
+    }
     if (!res.ok || !res.body) {
       const errBody = await res.text().catch(() => "");
       console.warn(`Dify API responded with status ${res.status}: ${errBody}`);
@@ -160883,10 +161251,6 @@ async function callDifyStreamingAgent(params) {
     }
     const reader = res.body.getReader();
     const decoder2 = new TextDecoder();
-    let agentAccumulated = "";
-    let workflowAccumulated = "";
-    let convId = params.conversationId || "";
-    let msgId = "";
     let buffer = "";
     while (true) {
       const { done, value } = await reader.read();
@@ -160899,10 +161263,16 @@ async function callDifyStreamingAgent(params) {
         if (!trimmed.startsWith("data: ")) continue;
         try {
           const data = JSON.parse(trimmed.slice(6));
+          if (data.event === "error") {
+            console.warn("[Dify Stream Error Event]", data.message || data.code);
+            break;
+          }
           if (data.event === "agent_message" && data.answer) {
             agentAccumulated += data.answer;
           } else if (data.event === "message" && data.answer) {
             workflowAccumulated += data.answer;
+          } else if (data.event === "agent_thought" && data.observation) {
+            observations.push(String(data.observation));
           }
           if (data.conversation_id) convId = data.conversation_id;
           if (data.message_id) msgId = data.message_id;
@@ -160910,16 +161280,30 @@ async function callDifyStreamingAgent(params) {
         }
       }
     }
-    const finalText = agentAccumulated.trim() || workflowAccumulated.trim();
+    const finalText = (agentAccumulated.trim() || workflowAccumulated.trim()).replace(/大獵場\s*[（(]\s*Talent\s*Hunt\s*[)）]/gi, "IdeaX\u5275\u9EDE\u5B50").replace(/大獵場/g, "IdeaX\u5275\u9EDE\u5B50").replace(/Talent\s*Hunt/gi, "IdeaX\u5275\u9EDE\u5B50");
     const latencyMs = Date.now() - startTime;
     return {
       text: finalText,
+      observations,
       conversationId: convId,
       messageId: msgId,
       latencyMs
     };
   } catch (e2) {
-    console.warn("callDifyStreamingAgent error:", e2?.message || e2);
+    const partialText = agentAccumulated.trim() || workflowAccumulated.trim();
+    if (partialText) {
+      return {
+        text: partialText,
+        observations,
+        conversationId: convId,
+        messageId: msgId,
+        latencyMs: Date.now() - startTime
+      };
+    }
+    const isAbort = e2?.name === "AbortError" || /aborted/i.test(String(e2?.message || ""));
+    if (!isAbort) {
+      console.warn("callDifyStreamingAgent warning:", e2?.message || e2);
+    }
     return null;
   } finally {
     clearTimeout(timer);
@@ -161915,109 +162299,88 @@ function extractJsonFromText(text) {
   return null;
 }
 app.post("/api/admin/test-dify-agent", async (req, res) => {
-  const { agentType, query: query2, inputs } = req.body;
-  const difyBaseUrl = (process.env.DIFY_API_BASE_URL || "https://api.dify.ai/v1").replace(/\/+$/, "");
-  let apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || "";
-  if (agentType === "cs_agent") {
-    apiKey = process.env.DIFY_CS_API_KEY || process.env.DIFY_API_KEY || "";
-  } else if (agentType === "aicrm_agent") {
-    apiKey = process.env.DIFY_AICRM_API_KEY || "";
-  } else if (agentType === "market_advisor") {
-    apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || "";
+  const { agentType, query: query2, inputs, customKey } = req.body;
+  let apiKey = String(customKey || "").trim();
+  if (!apiKey) {
+    if (agentType === "cs_agent") {
+      apiKey = process.env.DIFY_CS_API_KEY || process.env.DIFY_API_KEY || "";
+    } else if (agentType === "aicrm_agent") {
+      apiKey = process.env.DIFY_AICRM_API_KEY || "";
+    } else if (agentType === "market_advisor") {
+      apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || "";
+    } else if (agentType === "explorer_agent") {
+      apiKey = mascotAgentKey("explorer");
+    } else {
+      apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || "";
+    }
   }
-  const agentLabel = agentType === "aicrm_agent" ? "AICRM \u696D\u52D9\u9867\u554F" : agentType === "cs_agent" ? "\u5B98\u65B9\u5BA2\u670D\u7279\u52A9" : "\u5E02\u5834\u9867\u554F";
+  const agentLabel = agentType === "aicrm_agent" ? "AICRM \u696D\u52D9\u9867\u554F" : agentType === "cs_agent" ? "\u5B98\u65B9\u5BA2\u670D\u7279\u52A9" : agentType === "explorer_agent" ? "\u5168\u7DB2\u641C\u8077 Agent (\u63A2\u96AA\u5BB6/\u641C\u641C)" : "\u5E02\u5834\u9867\u554F";
   const startTime = Date.now();
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 2e4);
+  res.status(200);
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache");
+  const heartbeat = setInterval(() => {
+    try {
+      if (!res.writableEnded) res.write(" ");
+    } catch {
+    }
+  }, 12e3);
+  const sendJson = (payload) => {
+    clearInterval(heartbeat);
+    if (!res.writableEnded) {
+      res.end(JSON.stringify(payload));
+    }
+  };
   try {
-    const difyRes = await fetch(`${difyBaseUrl}/chat-messages`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        inputs: inputs || {},
-        query: query2 || "\u6E2C\u8A66\u9023\u7DDA",
-        response_mode: "streaming",
-        user: `admin_live_tester_${Date.now()}`
-      })
+    const difyResult = await callDifyStreamingAgent({
+      apiKey,
+      query: query2 || "\u6E2C\u8A66\u9023\u7DDA",
+      inputs: inputs || {},
+      user: `admin_live_tester_${Date.now()}`,
+      timeoutMs: agentType === "explorer_agent" ? 12e4 : 45e3
     });
-    clearTimeout(timeoutId);
-    if (!difyRes.ok || !difyRes.body) {
-      console.warn(`Dify API service error (${difyRes.status}), falling back to Gemini`);
-      const geminiText = await generateRawTextWithGemini(
-        query2 || "\u8ACB\u4F9D\u6307\u4EE4\u8F38\u51FA\u5206\u6790\u5831\u544A",
-        `\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u5C08\u5C6C AI Agent\u300C${agentLabel}\u300D\u3002\u8ACB\u4F9D\u64DA\u4F7F\u7528\u8005\u7684\u63D0\u793A\u8A5E\u7522\u51FA\u5C08\u696D\u3001\u7D50\u69CB\u5316\u3001\u53EF\u76F4\u63A5\u843D\u5730\u7684\u6DF1\u5165\u56DE\u8986\u3002\u82E5\u63D0\u793A\u8A5E\u8981\u6C42 JSON\uFF0C\u8ACB\u4EE5\u5B8C\u6574\u5408\u898F\u4E4B JSON \u7A0B\u5F0F\u78BC\u5340\u584A\u8F38\u51FA\u3002`
-      );
-      const latencyMs2 = Date.now() - startTime;
-      return res.json({
+    if (difyResult && difyResult.text) {
+      const maskedKey = apiKey.length > 14 ? apiKey.substring(0, 12) + "..." + apiKey.substring(apiKey.length - 4) : apiKey;
+      return sendJson({
         success: true,
-        source: "gemini-fallback",
-        agentKey: `${agentLabel} (Google Gemini \u5099\u63F4)`,
-        notice: `\u{1F4A1} \u5075\u6E2C\u5230 Dify \u4F3A\u670D\u5668\u670D\u52D9\u4E2D\u65B7 (\u72C0\u614B\u78BC: ${difyRes.status})\uFF0C\u7CFB\u7D71\u5DF2\u7ACB\u5373\u7121\u7E2B\u5207\u63DB\u70BA Google Gemini \u5099\u63F4\u5F15\u64CE\uFF01`,
-        latencyMs: latencyMs2,
-        messageId: `gemini-msg-${Date.now()}`,
-        conversationId: `gemini-conv-${Date.now()}`,
-        rawOutput: geminiText || "Gemini \u5099\u63F4\u5F15\u64CE\u5DF2\u7522\u51FA\u5206\u6790\u7D50\u679C\u3002",
-        parsedJson: extractJsonFromText(geminiText || "")
+        source: "dify-api",
+        agentKey: maskedKey,
+        latencyMs: difyResult.latencyMs || Date.now() - startTime,
+        messageId: difyResult.messageId || `dify-msg-${Date.now()}`,
+        conversationId: difyResult.conversationId || `dify-conv-${Date.now()}`,
+        rawOutput: difyResult.text,
+        parsedJson: extractJsonFromText(difyResult.text)
       });
     }
-    const reader = difyRes.body.getReader();
-    const decoder2 = new TextDecoder();
-    let agentAccumulated = "";
-    let workflowAccumulated = "";
-    let buffer = "";
-    let messageId = "";
-    let conversationId = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder2.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data: ")) continue;
-        try {
-          const data = JSON.parse(trimmed.slice(6));
-          if (data.message_id) messageId = data.message_id;
-          if (data.conversation_id) conversationId = data.conversation_id;
-          if (data.event === "agent_message" && data.answer) {
-            agentAccumulated += data.answer;
-          } else if (data.event === "message" && data.answer) {
-            workflowAccumulated += data.answer;
-          }
-        } catch {
-        }
-      }
-    }
-    const latencyMs = Date.now() - startTime;
-    const finalAnswer = agentAccumulated.trim() || workflowAccumulated.trim();
-    return res.json({
-      success: true,
-      source: "dify-api",
-      agentKey: apiKey.substring(0, 7) + "..." + apiKey.substring(apiKey.length - 4),
-      latencyMs,
-      messageId,
-      conversationId,
-      rawOutput: finalAnswer,
-      parsedJson: extractJsonFromText(finalAnswer)
-    });
-  } catch (err) {
-    clearTimeout(timeoutId);
-    console.warn("Dify API connection failed or timed out (>20s), falling back to Gemini:", err.message);
+    console.warn(`Dify API empty or timed out for ${agentType}, falling back to Gemini`);
     const geminiText = await generateRawTextWithGemini(
       query2 || "\u8ACB\u4F9D\u6307\u4EE4\u8F38\u51FA\u5206\u6790\u5831\u544A",
       `\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u5C08\u5C6C AI Agent\u300C${agentLabel}\u300D\u3002\u8ACB\u4F9D\u64DA\u4F7F\u7528\u8005\u7684\u63D0\u793A\u8A5E\u7522\u51FA\u5C08\u696D\u3001\u7D50\u69CB\u5316\u3001\u53EF\u76F4\u63A5\u843D\u5730\u7684\u6DF1\u5165\u56DE\u8986\u3002\u82E5\u63D0\u793A\u8A5E\u8981\u6C42 JSON\uFF0C\u8ACB\u4EE5\u5B8C\u6574\u5408\u898F\u4E4B JSON \u7A0B\u5F0F\u78BC\u5340\u584A\u8F38\u51FA\u3002`
     );
     const latencyMs = Date.now() - startTime;
-    return res.json({
+    return sendJson({
       success: true,
       source: "gemini-fallback",
       agentKey: `${agentLabel} (Google Gemini \u5099\u63F4)`,
-      notice: "\u{1F4A1} \u5075\u6E2C\u5230 Dify \u4F3A\u670D\u5668\u9023\u7DDA\u903E\u6642\uFF08\u8D85\u904E 20 \u79D2\uFF09\u6216\u9023\u7DDA\u7570\u5E38\uFF0C\u7CFB\u7D71\u5DF2\u81EA\u52D5\u7121\u7E2B\u6539\u7528 Google Gemini \u5099\u63F4\u5F15\u64CE\uFF01",
+      notice: agentType === "explorer_agent" ? "\u{1F4A1} \u641C\u641C\u4F3C\u4E4E\u65B7\u7DDA\u6216\u8D85\u904E 2 \u5206\u9418\u7121\u53CD\u61C9\uFF0C\u5DF2\u7531\u5167\u5EFA\u5C0F\u71C8\u6CE1 (Google Gemini) \u5099\u63F4\u63A5\u624B\uFF01" : "\u{1F4A1} \u5075\u6E2C\u5230 Dify \u4F3A\u670D\u5668\u9023\u7DDA\u903E\u6642\u6216\u7570\u5E38\uFF0C\u7CFB\u7D71\u5DF2\u81EA\u52D5\u7121\u7E2B\u6539\u7528 Google Gemini \u5099\u63F4\u5F15\u64CE\uFF01",
+      latencyMs,
+      messageId: `gemini-fallback-${Date.now()}`,
+      conversationId: `gemini-fallback-${Date.now()}`,
+      rawOutput: geminiText || "Gemini \u5099\u63F4\u5F15\u64CE\u5DF2\u7522\u51FA\u5206\u6790\u7D50\u679C\u3002",
+      parsedJson: extractJsonFromText(geminiText || "")
+    });
+  } catch (err) {
+    console.warn("Dify API connection failed, falling back to Gemini:", err?.message);
+    const geminiText = await generateRawTextWithGemini(
+      query2 || "\u8ACB\u4F9D\u6307\u4EE4\u8F38\u51FA\u5206\u6790\u5831\u544A",
+      `\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u5C08\u5C6C AI Agent\u300C${agentLabel}\u300D\u3002\u8ACB\u4F9D\u64DA\u4F7F\u7528\u8005\u7684\u63D0\u793A\u8A5E\u7522\u51FA\u5C08\u696D\u3001\u7D50\u69CB\u5316\u3001\u53EF\u76F4\u63A5\u843D\u5730\u7684\u6DF1\u5165\u56DE\u8986\u3002\u82E5\u63D0\u793A\u8A5E\u8981\u6C42 JSON\uFF0C\u8ACB\u4EE5\u5B8C\u6574\u5408\u898F\u4E4B JSON \u7A0B\u5F0F\u78BC\u5340\u584A\u8F38\u51FA\u3002`
+    );
+    const latencyMs = Date.now() - startTime;
+    return sendJson({
+      success: true,
+      source: "gemini-fallback",
+      agentKey: `${agentLabel} (Google Gemini \u5099\u63F4)`,
+      notice: "\u{1F4A1} \u5075\u6E2C\u5230 Dify \u4F3A\u670D\u5668\u9023\u7DDA\u903E\u6642\u6216\u9023\u7DDA\u7570\u5E38\uFF0C\u7CFB\u7D71\u5DF2\u81EA\u52D5\u7121\u7E2B\u6539\u7528 Google Gemini \u5099\u63F4\u5F15\u64CE\uFF01",
       latencyMs,
       messageId: `gemini-fallback-${Date.now()}`,
       conversationId: `gemini-fallback-${Date.now()}`,
@@ -163563,6 +163926,775 @@ app.post("/api/mascot/event", async (req, res) => {
     res.json({ success: ok });
   } catch {
     res.json({ success: false });
+  }
+});
+app.post("/api/job-explorer/intake", async (req, res) => {
+  try {
+    const rawMessage = String(req.body?.message || "").trim().slice(0, 600);
+    const filters = req.body?.filters || {};
+    const previousBrief = String(req.body?.previousBrief || "").trim().slice(0, 600);
+    const conversationHistory = Array.isArray(req.body?.conversationHistory) ? req.body.conversationHistory.map((s2) => String(s2 || "").trim()).filter(Boolean) : [];
+    const skippedDimensionsInput = Array.isArray(req.body?.skippedDimensions) ? req.body.skippedDimensions.map((s2) => String(s2 || "").trim()).filter(Boolean) : [];
+    const userBaseCity = String(filters.userBaseCity || "\u53F0\u5317\u5E02").trim();
+    if (!rawMessage) {
+      return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u641C\u5C0B\u689D\u4EF6" });
+    }
+    const skippedDims = new Set(skippedDimensionsInput);
+    const allSegments = [...conversationHistory, previousBrief, rawMessage].join(" \u3001 ").split(/[、,，\n]+/).map((s2) => s2.trim()).filter(Boolean);
+    const fullText = [...conversationHistory, previousBrief, rawMessage].join(" ").toLowerCase();
+    const cityRegex = /台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江|遠端|remote|雙北|桃竹|中彰投|雲嘉南|高屏/i;
+    const majorRoleRegex = /資訊|軟體|前端|後端|全端|工程師|工程|電機|電子|機械|化工|會計|財會|財務|企管|商管|行銷|企劃|小編|社群|文史|外語|日文|英文|設計|美編|ui|ux|餐飲|門市|零售|店長|服務員|吧台|內場|外場|護理|醫療|藥師|傳播|音樂|心理|社工|金融|法律|法務|土木|建築|行政|助理|人事|人資|hr|客服|業務|銷售|專案|pm|產品|生管|品管|倉儲|物流|司機|駕駛|作業員|技術員|研究|分析|資料|ai|雲端|devops|qa|測試|保全|清潔|幼教|老師|教師|講師|翻譯|編輯|攝影|剪輯|公關|採購|總務|秘書/i;
+    const collegeRegex = /台大|清大|交大|成大|政大|師大|輔大|淡江|文化|逢甲|東海|中興|中山|中央|高科|中正|台科|北科|銘傳|實踐|世新|元智|長庚|高醫|中國醫|東華|暨南|北醫|慈濟|高師|彰師|公立頂大|技職科大|私立綜合大學|私立大學|碩士|博士|專科|高中職/i;
+    const expRegex = /無經驗|新鮮人|應屆|實習|工讀|兼職|二度就業|1~3\s*年|3~5\s*年|\d+\s*年以上|\d+\s*~\s*\d+\s*年|資深|初階|中階|跨領域轉職/i;
+    const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
+    const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
+    if (/地點不拘|地區不拘|不限地點|全台皆可|全台灣地區皆可/.test(fullText)) skippedDims.add("location");
+    if (/專業不拘|職務不拘|職務類別不拘|科系不拘|不限職務|不限專業/.test(fullText)) skippedDims.add("major");
+    if (/學校科系不拘|學校科系與學歷不拘|學歷不拘|不限學歷/.test(fullText)) skippedDims.add("college");
+    if (/工作經歷不拘|經歷不拘|經驗不拘|年資不拘|不限經驗/.test(fullText)) skippedDims.add("experience");
+    if (/工作型態不拘|型態不拘|環境不拘|性格不拘|個性不拘/.test(fullText)) skippedDims.add("personality");
+    if (/薪資待遇不拘|薪資不拘|待遇不拘|薪水不拘|面議即可/.test(fullText)) skippedDims.add("salary");
+    const hasSpecificCity = cityRegex.test(fullText) || Boolean(filters.city && filters.city !== "\u5168\u90E8");
+    const mentionsNearby = /附近|這附近|我附近|周邊|離家近|就近|方圓|家裡附近|離我近|周遭|隔壁|走路可到|騎車可到|通勤近|近一點/.test(fullText);
+    const isLocationMissing = !hasSpecificCity && !skippedDims.has("location");
+    const isLocationAmbiguous = mentionsNearby && isLocationMissing;
+    const hasSpecificMajor = majorRoleRegex.test(fullText) || Boolean(filters.category && filters.category !== "\u5168\u90E8") || Boolean(filters.keyword && String(filters.keyword).trim().length > 0);
+    const mentionsMajor = /我的專業|我的科系|我的專長|我學的|我念的|本行|跟我的專業|學過|我的本科|我的領域|我專精/.test(fullText);
+    const isMajorMissing = !hasSpecificMajor && !skippedDims.has("major");
+    const isMajorAmbiguous = mentionsMajor && isMajorMissing;
+    const hasSpecificCollege = collegeRegex.test(fullText);
+    const mentionsCollege = /我的大學|我的學校|我念的大學|我們學校|我大學|我的母校|母校|我畢業的學校|我讀的學校/.test(fullText);
+    const isCollegeMissing = !hasSpecificCollege && !skippedDims.has("college");
+    const isCollegeAmbiguous = mentionsCollege && isCollegeMissing;
+    const hasSpecificExp = expRegex.test(fullText);
+    const mentionsVagueMy = /我的背景|我的經歷|我的能力|我的經驗|我的年資|我的條件/.test(fullText);
+    const isExperienceMissing = !hasSpecificExp && !skippedDims.has("experience");
+    const isExpAmbiguous = mentionsVagueMy && isExperienceMissing;
+    const hasSpecificPersonality = personalityRegex.test(fullText);
+    const mentionsPersonality = /我的性格|我的個性|我的特質|適合我性格|適合我個性|適合我特質|適合我的|符合我的個性|依我的性格|看我性格|我的脾氣|我個人特質/.test(fullText);
+    const isPersonalityMissing = !hasSpecificPersonality && !skippedDims.has("personality");
+    const isPersonalityAmbiguous = mentionsPersonality && isPersonalityMissing;
+    const hasSpecificSalary = salaryRegex.test(fullText) || Number(filters.minSalary) > 0;
+    const isSalaryMissing = !hasSpecificSalary && !skippedDims.has("salary");
+    const concreteConditions = [];
+    const seenCond = /* @__PURE__ */ new Set();
+    for (const seg of allSegments) {
+      const s2 = seg.trim();
+      if (!s2) continue;
+      if (/^(跳過|略過|skip|不用|不用了|略過問題)$/i.test(s2)) continue;
+      const hasConcreteToken = cityRegex.test(s2) || majorRoleRegex.test(s2) || collegeRegex.test(s2) || expRegex.test(s2) || personalityRegex.test(s2) || salaryRegex.test(s2) || /不拘/.test(s2);
+      const isPureVagueWrapper = !hasConcreteToken && (/我的大學|我的專業|我的性格|我的個性|我家附近|找附近|有什麼好推薦|最新職缺推薦|離家近一點|我想找工作/.test(s2) || /^(近期|最新|推薦|今天|這幾天)?(附近)?(有什麼)?(好工作|職缺|工作|工作機會|正職|兼職)(推薦|嗎|呢)?$/i.test(s2));
+      if (!isPureVagueWrapper) {
+        const key = s2.toLowerCase();
+        if (!seenCond.has(key)) {
+          seenCond.add(key);
+          concreteConditions.push(s2);
+        }
+      }
+    }
+    const accumulatedConcreteBrief = concreteConditions.join("\u3001");
+    const ambiguousGroups = [];
+    if (isLocationAmbiguous) {
+      ambiguousGroups.push({
+        dimension: "location",
+        title: "\u{1F4CD} \u5DE5\u4F5C\u5730\u5340\u78BA\u8A8D",
+        question: `\u60A8\u63D0\u5230\u4E86\u300C\u9644\u8FD1\u300D\uFF0C\u70BA\u4E86\u5E6B\u60A8\u7CBE\u78BA\u641C\u5C0B\uFF0C\u8ACB\u554F\u60A8\u7684\u78BA\u5207\u7E23\u5E02\u6216\u5DE5\u4F5C\u5730\u5340\u662F\uFF1F`,
+        isHighlighted: true,
+        chips: [
+          { label: `\u{1F4CD} \u76EE\u524D\u57CE\u5E02\uFF08${userBaseCity}\uFF09`, value: `\u5730\u5340\uFF1A${userBaseCity}`, type: "location" },
+          { label: "\u{1F4CD} \u53F0\u5317\u5E02", value: "\u5730\u5340\uFF1A\u53F0\u5317\u5E02", type: "location" },
+          { label: "\u{1F4CD} \u65B0\u5317\u5E02", value: "\u5730\u5340\uFF1A\u65B0\u5317\u5E02", type: "location" },
+          { label: "\u{1F4CD} \u6843\u5712\u5E02", value: "\u5730\u5340\uFF1A\u6843\u5712\u5E02", type: "location" },
+          { label: "\u{1F4CD} \u65B0\u7AF9\u5E02", value: "\u5730\u5340\uFF1A\u65B0\u7AF9\u5E02", type: "location" },
+          { label: "\u{1F4CD} \u53F0\u4E2D\u5E02", value: "\u5730\u5340\uFF1A\u53F0\u4E2D\u5E02", type: "location" },
+          { label: "\u{1F4CD} \u53F0\u5357\u5E02", value: "\u5730\u5340\uFF1A\u53F0\u5357\u5E02", type: "location" },
+          { label: "\u{1F4CD} \u9AD8\u96C4\u5E02", value: "\u5730\u5340\uFF1A\u9AD8\u96C4\u5E02", type: "location" },
+          { label: "\u{1F310} \u5168\u9060\u7AEF\u5DE5\u4F5C", value: "\u5730\u5340\uFF1A\u9060\u7AEF\u5DE5\u4F5C", type: "location" },
+          { label: "\u8DF3\u904E", value: "\u8DF3\u904E", type: "skip:location" }
+        ]
+      });
+    }
+    if (isMajorAmbiguous) {
+      ambiguousGroups.push({
+        dimension: "major",
+        title: "\u{1F4BB} \u5C08\u696D\u9818\u57DF\u8207\u8077\u52D9\u65B9\u5411\u78BA\u8A8D",
+        question: `\u60A8\u63D0\u5230\u4E86\u300C\u6211\u7684\u5C08\u696D\u300D\uFF0C\u8ACB\u554F\u60A8\u7684\u5177\u9AD4\u79D1\u7CFB\u6216\u60F3\u627E\u7684\u8077\u52D9\u65B9\u5411\u662F\uFF1F`,
+        isHighlighted: true,
+        chips: [
+          { label: "\u{1F4BB} \u8CC7\u8A0A\uFF0F\u8EDF\u9AD4\u5DE5\u7A0B", value: "\u985E\u5225\uFF1A\u8EDF\u9AD4\uFF0FAI\u5DE5\u7A0B", type: "major" },
+          { label: "\u{1F4CA} \u5546\u7BA1\uFF0F\u884C\u92B7\u4F01\u5283", value: "\u985E\u5225\uFF1A\u884C\u92B7\uFF0F\u4F01\u5283\uFF0F\u793E\u7FA4", type: "major" },
+          { label: "\u{1F3A8} \u8A2D\u8A08\uFF0FUIUX", value: "\u985E\u5225\uFF1A\u8A2D\u8A08\uFF0FUIUX", type: "major" },
+          { label: "\u2615 \u9910\u98F2\uFF0F\u9580\u5E02\u96F6\u552E", value: "\u985E\u5225\uFF1A\u9580\u5E02\uFF0F\u9910\u98F2\uFF0F\u96F6\u552E", type: "major" },
+          { label: "\u{1F4BC} \u884C\u653F\uFF0F\u4EBA\u8CC7\u8CA1\u6703", value: "\u985E\u5225\uFF1A\u884C\u653F\uFF0F\u4EBA\u8CC7\uFF0F\u8CA1\u6703", type: "major" },
+          { label: "\u{1F310} \u5916\u8A9E\uFF0F\u6587\u53F2\u50B3\u64AD", value: "\u5916\u8A9E\u8207\u6587\u53F2\u50B3\u64AD\u5C08\u696D", type: "major" },
+          { label: "\u{1F91D} \u696D\u52D9\uFF0F\u5546\u52D9\u958B\u767C", value: "\u985E\u5225\uFF1A\u696D\u52D9\uFF0F\u5546\u52D9\u958B\u767C", type: "major" },
+          { label: "\u2699\uFE0F \u88FD\u9020\uFF0F\u5DE5\u7A0B\u6280\u8853", value: "\u88FD\u9020\u7814\u767C\u8207\u5DE5\u7A0B\u6280\u8853", type: "major" },
+          { label: "\u8DF3\u904E", value: "\u8DF3\u904E", type: "skip:major" }
+        ]
+      });
+    }
+    if (isCollegeAmbiguous) {
+      ambiguousGroups.push({
+        dimension: "college",
+        title: "\u{1F393} \u5927\u5B78\u8207\u5B78\u6B77\u80CC\u666F\u78BA\u8A8D",
+        question: `\u60A8\u63D0\u5230\u4E86\u300C\u6211\u7684\u5927\u5B78\u300D\uFF0C\u8ACB\u554F\u60A8\u7684\u7562\u696D\u5B78\u6821\u985E\u578B\u6216\u5B78\u6B77\u689D\u4EF6\u662F\uFF1F`,
+        isHighlighted: true,
+        chips: [
+          { label: "\u{1F3DB}\uFE0F \u516C\u7ACB\u9802\u5927\u80CC\u666F", value: "\u5B78\u6B77\uFF1A\u516C\u7ACB\u9802\u5927\u80CC\u666F", type: "college" },
+          { label: "\u2699\uFE0F \u6280\u8077\u79D1\u5927\u80CC\u666F", value: "\u5B78\u6B77\uFF1A\u6280\u8077\u79D1\u5927\u80CC\u666F", type: "college" },
+          { label: "\u{1F393} \u79C1\u7ACB\u7D9C\u5408\u5927\u5B78", value: "\u5B78\u6B77\uFF1A\u79C1\u7ACB\u7D9C\u5408\u5927\u5B78", type: "college" },
+          { label: "\u{1F4DA} \u78A9\u58EB\u4EE5\u4E0A", value: "\u5B78\u6B77\uFF1A\u78A9\u58EB\u4EE5\u4E0A", type: "college" },
+          { label: "\u{1F393} \u5927\u5B78", value: "\u5B78\u6B77\uFF1A\u5927\u5B78", type: "college" },
+          { label: "\u{1F3EB} \u9AD8\u4E2D\u8077\uFF0F\u5C08\u79D1", value: "\u5B78\u6B77\uFF1A\u5C08\u79D1\u4EE5\u4E0B", type: "college" },
+          { label: "\u8DF3\u904E", value: "\u8DF3\u904E", type: "skip:college" }
+        ]
+      });
+    }
+    if (isPersonalityAmbiguous) {
+      ambiguousGroups.push({
+        dimension: "personality",
+        title: "\u{1F9D8} \u6027\u683C\u7279\u8CEA\u8207\u5DE5\u4F5C\u74B0\u5883\u78BA\u8A8D",
+        question: `\u60A8\u63D0\u5230\u4E86\u300C\u6211\u7684\u6027\u683C\u300D\uFF0C\u8ACB\u554F\u60A8\u7684\u6027\u683C\u7279\u8CEA\u6216\u5DE5\u4F5C\u578B\u614B\u504F\u597D\u662F\uFF1F`,
+        isHighlighted: true,
+        chips: [
+          { label: "\u{1F9D8} \u5167\u5411\uFF0F\u504F\u597D\u7368\u7ACB\u5C08\u6CE8", value: "\u500B\u6027\u5167\u5411\u3001\u504F\u597D\u7368\u7ACB\u4F5C\u696D\u4E0D\u9762\u5C0D\u5BA2\u4EBA", type: "personality" },
+          { label: "\u{1F91D} \u5916\u5411\uFF0F\u5584\u65BC\u6E9D\u901A\u5354\u4F5C", value: "\u500B\u6027\u5916\u5411\u3001\u5584\u65BC\u6E9D\u901A\u8207\u5718\u968A\u5354\u4F5C", type: "personality" },
+          { label: "\u{1F4CB} \u7D30\u5FC3\uFF0F\u64C5\u9577\u6587\u66F8\u884C\u653F", value: "\u500B\u6027\u7D30\u5FC3\u3001\u64C5\u9577\u884C\u653F\u6D41\u7A0B\u8207\u8CC7\u6599\u6574\u7406", type: "personality" },
+          { label: "\u{1F680} \u7A4D\u6975\uFF0F\u5177\u6311\u6230\u4F01\u5716\u5FC3", value: "\u500B\u6027\u7A4D\u6975\u6297\u58D3\u3001\u8FFD\u6C42\u9AD8\u734E\u91D1\u8207\u6210\u9577", type: "personality" },
+          { label: "\u{1F33F} \u91CD\u8996\u6E96\u6642\u4E0B\u73ED\uFF0F\u898B\u7D05\u4F11", value: "\u91CD\u8996\u5DE5\u4F5C\u751F\u6D3B\u5E73\u8861\u3001\u9031\u4F11\u4E8C\u65E5\u898B\u7D05\u4F11", type: "personality" },
+          { label: "\u8DF3\u904E", value: "\u8DF3\u904E", type: "skip:personality" }
+        ]
+      });
+    }
+    if (isExpAmbiguous) {
+      ambiguousGroups.push({
+        dimension: "experience",
+        title: "\u{1F4BC} \u5DE5\u4F5C\u7D93\u6B77\u8207\u5E74\u8CC7\u78BA\u8A8D",
+        question: `\u8ACB\u554F\u60A8\u7684\u5DE5\u4F5C\u7D93\u6B77\u6216\u76EE\u524D\u6C42\u8077\u8EAB\u5206\u662F\uFF1F`,
+        isHighlighted: true,
+        chips: [
+          { label: "\u{1F331} \u7121\u7D93\u9A57\uFF0F\u65B0\u9BAE\u4EBA", value: "\u7D93\u6B77\uFF1A\u7121\u7D93\u9A57\u53EF\u3001\u793E\u6703\u65B0\u9BAE\u4EBA", type: "experience" },
+          { label: "\u{1F4BC} 1~3 \u5E74\u5BE6\u52D9\u7D93\u9A57", value: "\u7D93\u6B77\uFF1A1~3 \u5E74\u5DE5\u4F5C\u7D93\u9A57", type: "experience" },
+          { label: "\u{1F3AF} 3~5 \u5E74\u4EE5\u4E0A\u8CC7\u6DF1", value: "\u7D93\u6B77\uFF1A3~5 \u5E74\u4EE5\u4E0A\u5DE5\u4F5C\u7D93\u9A57", type: "experience" },
+          { label: "\u{1F504} \u8DE8\u9818\u57DF\u8F49\u8077\u8005", value: "\u7D93\u6B77\uFF1A\u8DE8\u9818\u57DF\u8F49\u8077\u53EF", type: "experience" },
+          { label: "\u23F0 \u5B78\u751F\u517C\u8077\uFF0F\u5F48\u6027\u5DE5\u8B80", value: "\u7D93\u6B77\uFF1A\u517C\u8077\u5DE5\u8B80\u3001\u6392\u73ED\u5F48\u6027", type: "experience" },
+          { label: "\u8DF3\u904E", value: "\u8DF3\u904E", type: "skip:experience" }
+        ]
+      });
+    }
+    if (ambiguousGroups.length === 0 && concreteConditions.length === 0 && isMajorMissing) {
+      ambiguousGroups.push({
+        dimension: "major",
+        title: "\u{1F4BB} \u8077\u52D9\u65B9\u5411\u78BA\u8A8D",
+        question: `\u8ACB\u554F\u60A8\u60F3\u627E\u54EA\u4E00\u985E\u5C08\u696D\u9818\u57DF\u6216\u8077\u52D9\u65B9\u5411\uFF1F`,
+        isHighlighted: true,
+        chips: [
+          { label: "\u{1F4BB} \u8EDF\u9AD4\uFF0FAI\u5DE5\u7A0B", value: "\u985E\u5225\uFF1A\u8EDF\u9AD4\uFF0FAI\u5DE5\u7A0B", type: "major" },
+          { label: "\u{1F4CA} \u884C\u92B7\uFF0F\u4F01\u5283\uFF0F\u793E\u7FA4", value: "\u985E\u5225\uFF1A\u884C\u92B7\uFF0F\u4F01\u5283\uFF0F\u793E\u7FA4", type: "major" },
+          { label: "\u{1F3A8} \u8A2D\u8A08\uFF0FUIUX", value: "\u985E\u5225\uFF1A\u8A2D\u8A08\uFF0FUIUX", type: "major" },
+          { label: "\u2615 \u9580\u5E02\uFF0F\u9910\u98F2\uFF0F\u96F6\u552E", value: "\u985E\u5225\uFF1A\u9580\u5E02\uFF0F\u9910\u98F2\uFF0F\u96F6\u552E", type: "major" },
+          { label: "\u{1F4BC} \u884C\u653F\uFF0F\u4EBA\u8CC7\uFF0F\u8CA1\u6703", value: "\u985E\u5225\uFF1A\u884C\u653F\uFF0F\u4EBA\u8CC7\uFF0F\u8CA1\u6703", type: "major" },
+          { label: "\u{1F91D} \u696D\u52D9\uFF0F\u5546\u52D9\u958B\u767C", value: "\u985E\u5225\uFF1A\u696D\u52D9\uFF0F\u5546\u52D9\u958B\u767C", type: "major" },
+          { label: "\u8DF3\u904E", value: "\u8DF3\u904E", type: "skip:major" }
+        ]
+      });
+    }
+    const activeGroup = ambiguousGroups[0] || null;
+    const isCoreAmbiguous = Boolean(activeGroup);
+    const dynamicChips = activeGroup ? activeGroup.chips : [];
+    const completedConditionKeys = [];
+    if (!isCollegeMissing) completedConditionKeys.push("education");
+    if (!isExperienceMissing) completedConditionKeys.push("experience");
+    if (!isLocationMissing) completedConditionKeys.push("location");
+    if (!isSalaryMissing) completedConditionKeys.push("salary");
+    let extractedCity = filters.city || "\u5168\u90E8";
+    const cityMatch = fullText.match(/(台北市|新北市|桃園市|新竹市|台中市|台南市|高雄市)/);
+    if (cityMatch) extractedCity = cityMatch[1];
+    else if (/遠端|remote/i.test(fullText)) extractedCity = "\u9060\u7AEF\u5DE5\u4F5C";
+    let extractedMinSalary = Number(filters.minSalary) || 0;
+    const salMatch = fullText.match(/月薪\s*(\d{2,6})|(\d{2})\s*k/i);
+    if (salMatch) {
+      if (salMatch[1]) extractedMinSalary = Number(salMatch[1]);
+      else if (salMatch[2]) extractedMinSalary = Number(salMatch[2]) * 1e3;
+    }
+    const finalBrief = accumulatedConcreteBrief || `${userBaseCity} \u6700\u65B0\u62DB\u52DF\u8077\u7F3A`;
+    let resolvedReply = "";
+    if (activeGroup) {
+      resolvedReply = accumulatedConcreteBrief ? `\u5DF2\u8A18\u9304\uFF1A${accumulatedConcreteBrief}\u3002
+${activeGroup.question}` : activeGroup.question;
+    } else {
+      resolvedReply = `\u5DF2\u70BA\u60A8\u8A2D\u5B9A\u641C\u5C0B\u689D\u4EF6\uFF1A${finalBrief}\u3002\u78BA\u8A8D\u4F9D\u6B64\u689D\u4EF6\u641C\u5C0B\u55CE\uFF1F`;
+    }
+    return res.json({
+      success: true,
+      reply: resolvedReply,
+      confirmedBrief: isCoreAmbiguous ? accumulatedConcreteBrief : finalBrief,
+      searchBriefIfSkipped: finalBrief,
+      isAmbiguous: isCoreAmbiguous,
+      hasMoreQuestions: isCoreAmbiguous,
+      currentDimension: activeGroup ? activeGroup.dimension : null,
+      missingDimensions: ambiguousGroups.map((g) => g.dimension),
+      dimensionGroups: activeGroup ? [activeGroup] : [],
+      ambiguousTypes: ambiguousGroups.map((g) => g.dimension),
+      clarificationQuestion: resolvedReply,
+      suggestedChips: dynamicChips,
+      skippedDimensions: Array.from(skippedDims),
+      completedConditionKeys,
+      extractedFilters: {
+        keyword: filters.keyword || "",
+        city: extractedCity,
+        category: filters.category || "\u5168\u90E8",
+        minSalary: extractedMinSalary
+      },
+      carePoints: filters.carePoints || []
+    });
+  } catch (err) {
+    console.error("[Job Explorer Intake]", err?.message || err);
+    return res.status(500).json({ success: false, error: "\u8ACB\u7A0D\u5F8C\u518D\u8A66" });
+  }
+});
+function normalizeJobItem(j, idx, groundingChunksMap, groundingUrls, filters) {
+  const title = String(j.title || "").trim();
+  const company = String(j.company || "").trim();
+  const encodedKw = encodeURIComponent(`${company} ${title}`);
+  const rawUrl = String(j.url || "").trim();
+  let detectedPlatform = String(j.sourcePlatform || "").trim();
+  const lowerUrl = rawUrl.toLowerCase();
+  if (lowerUrl.includes("yes123.com.tw")) {
+    detectedPlatform = "Yes123";
+  } else if (lowerUrl.includes("104.com.tw")) {
+    detectedPlatform = "104\u4EBA\u529B\u9280\u884C";
+  } else if (lowerUrl.includes("1111.com.tw")) {
+    detectedPlatform = "1111\u4EBA\u529B\u9280\u884C";
+  } else if (lowerUrl.includes("cake.me") || lowerUrl.includes("cakeresume.com")) {
+    detectedPlatform = "Cake";
+  } else if (lowerUrl.includes("yourator.co")) {
+    detectedPlatform = "Yourator";
+  } else if (lowerUrl.includes("518.com.tw")) {
+    detectedPlatform = "518\u718A\u73ED";
+  } else if (lowerUrl.includes("linkedin.com")) {
+    detectedPlatform = "LinkedIn";
+  } else if (lowerUrl.includes("vertexaisearch.cloud.google.com")) {
+    const matchedChunk = groundingChunksMap.find((c) => c.uri === rawUrl);
+    if (matchedChunk) {
+      const t2 = matchedChunk.title.toLowerCase();
+      if (t2.includes("yes123")) detectedPlatform = "Yes123";
+      else if (t2.includes("104")) detectedPlatform = "104\u4EBA\u529B\u9280\u884C";
+      else if (t2.includes("1111")) detectedPlatform = "1111\u4EBA\u529B\u9280\u884C";
+      else if (t2.includes("cake")) detectedPlatform = "Cake";
+      else if (t2.includes("yourator")) detectedPlatform = "Yourator";
+      else if (t2.includes("518")) detectedPlatform = "518\u718A\u73ED";
+      else if (t2.includes("linkedin")) detectedPlatform = "LinkedIn";
+      else if (!detectedPlatform) detectedPlatform = matchedChunk.title.slice(0, 15);
+    }
+  }
+  if (!detectedPlatform || detectedPlatform === "undefined") {
+    detectedPlatform = "\u5168\u7DB2\u771F\u5BE6\u6C42\u8077";
+  }
+  const isVertexRedirect = rawUrl.includes("vertexaisearch.cloud.google.com");
+  const isLegitDirectUrl = rawUrl.startsWith("http") && !rawUrl.includes("/job/...") && !rawUrl.endsWith("/job/") && !rawUrl.includes("example.com") && !rawUrl.includes("placeholder");
+  let validUrl = "";
+  if (isVertexRedirect || isLegitDirectUrl) {
+    validUrl = rawUrl;
+  } else if (groundingUrls.length > 0) {
+    const matched = groundingUrls.find((u) => u.toLowerCase().includes(company.toLowerCase())) || groundingUrls[idx % groundingUrls.length];
+    validUrl = matched || "";
+  }
+  if (!validUrl) {
+    if (detectedPlatform === "Cake") {
+      validUrl = `https://www.cake.me/jobs?q=${encodedKw}`;
+    } else if (detectedPlatform === "Yes123") {
+      validUrl = `https://www.yes123.com.tw/admin/job_refer_comp_job.asp?key_word=${encodedKw}`;
+    } else if (detectedPlatform === "1111\u4EBA\u529B\u9280\u884C") {
+      validUrl = `https://www.1111.com.tw/search/job?ks=${encodedKw}`;
+    } else if (detectedPlatform === "Yourator") {
+      validUrl = `https://www.yourator.co/jobs?term=${encodedKw}`;
+    } else if (detectedPlatform === "518\u718A\u73ED") {
+      validUrl = `https://www.518.com.tw/job-index.html?key=${encodedKw}`;
+    } else if (detectedPlatform === "104\u4EBA\u529B\u9280\u884C") {
+      validUrl = `https://www.104.com.tw/jobs/search/?keyword=${encodedKw}`;
+    } else {
+      validUrl = `https://www.google.com/search?q=${encodedKw}+\u8077\u7F3A+\u5FB5\u624D`;
+    }
+  }
+  const loc = String(j.location || (filters.city && filters.city !== "\u5168\u90E8" ? filters.city : ""));
+  const city = String(j.city || (loc ? loc.slice(0, 3) : ""));
+  return {
+    id: String(j.id || `job-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`),
+    title,
+    company,
+    location: loc,
+    city,
+    distanceKm: typeof j.distanceKm === "number" && j.distanceKm > 0 ? j.distanceKm : 0,
+    experience: String(j.experience || "\u7D93\u6B77\u4E0D\u62D8"),
+    experienceYears: typeof j.experienceYears === "number" ? j.experienceYears : 0,
+    education: String(j.education || "\u5B78\u6B77\u4E0D\u62D8"),
+    educationLevel: typeof j.educationLevel === "number" ? j.educationLevel : 1,
+    salaryText: String(j.salaryText || "\u5F85\u9047\u9762\u8B70"),
+    salaryMin: Number(j.salaryMin) || 0,
+    salaryMax: Number(j.salaryMax) || Number(j.salaryMin) || 0,
+    industry: String(j.industry || ""),
+    category: String(j.category || ""),
+    workEnvironment: String(j.workEnvironment || ""),
+    benefits: String(j.benefits || ""),
+    description: String(j.description || ""),
+    sourcePlatform: detectedPlatform,
+    url: validUrl,
+    aiScore: typeof j.aiScore === "number" ? j.aiScore : Math.max(70, 98 - idx * 1),
+    postedAt: j.postedAt || new Date(Date.now() - idx * 36e5 * 3).toISOString(),
+    postedAtText: String(j.postedAtText || (idx === 0 ? "\u4ECA\u65E5\u520A\u767B" : idx <= 2 ? `${idx}\u5929\u524D` : "\u8FD1\u671F\u520A\u767B"))
+  };
+}
+async function finalizeJobs(rawJobs, g, filters, startIdx) {
+  const checks = await verifyJobUrls(
+    rawJobs.map((j) => ({ title: String(j.title || ""), company: String(j.company || ""), url: String(j.url || ""), sourcePlatform: String(j.sourcePlatform || "") })),
+    g
+  );
+  const kept = rawJobs.map((j, i2) => ({ j, v: checks[i2] })).filter((x2) => !x2.v.drop);
+  kept.sort((a, b) => Number(b.v.urlKind === "direct") - Number(a.v.urlKind === "direct"));
+  return kept.map(({ j, v }, i2) => {
+    const n = normalizeJobItem(j, startIdx + i2, [], [], filters);
+    return { ...n, url: v.url, urlKind: v.urlKind, urlVerified: v.verified, sourcePlatform: v.platform || n.sourcePlatform };
+  });
+}
+var closedPatternGlobal = /已關閉|已結束|已下架|停止徵才|暫停徵才|職缺不存在|頁面不存在|已過期|已額滿|截止|closed|expired|no longer available|404/i;
+var isJobActive = (j) => {
+  if (!j || !j.title || !j.company) return false;
+  const combined = `${j.title} ${j.company} ${j.description || ""} ${j.salaryText || ""} ${j.postedAtText || ""}`;
+  return !closedPatternGlobal.test(combined);
+};
+app.post("/api/job-explorer/search-stream", async (req, res) => {
+  const rawQuery = String(req.body?.query || "").trim().slice(0, 600);
+  const filters = req.body?.filters || {};
+  if (!rawQuery) {
+    return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u641C\u5C0B\u689D\u4EF6" });
+  }
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+  const sendEvent = (payload) => {
+    res.write(`data: ${JSON.stringify(payload)}
+
+`);
+    res.flush?.();
+  };
+  const sseHeartbeat = setInterval(() => {
+    try {
+      if (!res.writableEnded) res.write(": ping\n\n");
+    } catch {
+    }
+  }, 15e3);
+  res.on("close", () => clearInterval(sseHeartbeat));
+  const ai = getGeminiClient();
+  const filterContext = [
+    filters.city && filters.city !== "\u5168\u90E8" ? `\u5730\u5340\uFF1A${filters.city}` : "",
+    filters.category && filters.category !== "\u5168\u90E8" ? `\u985E\u5225\uFF1A${filters.category}` : "",
+    filters.minSalary ? `\u6700\u4F4E\u6708\u85AA\uFF1A${filters.minSalary}\u5143\u4EE5\u4E0A` : ""
+  ].filter(Boolean).join("\u3001");
+  const globalSeen = /* @__PURE__ */ new Set();
+  let totalYielded = 0;
+  const explorerKey = mascotAgentKey("explorer");
+  const difyBatchPromise = explorerKey ? callDifyStreamingAgent({
+    apiKey: explorerKey,
+    query: `${rawQuery}\uFF08\u8ACB\u53EA\u7CBE\u7C21\u5217\u51FA 3 \u7B46\u6700\u5951\u5408\u7684\u5728\u62DB\u771F\u5BE6\u8077\u7F3A\u4E26\u4EE5 JSON \u683C\u5F0F\u8F38\u51FA\uFF09`,
+    inputs: {},
+    user: "job_explorer_stream",
+    // 搜搜要上網搜尋，常常超過半分鐘；之前 26 秒就中斷，Dify 那邊收到問題卻來不及回覆（管理後台測試給 120 秒所以正常）
+    timeoutMs: 12e4
+  }).catch(() => null) : Promise.resolve(null);
+  try {
+    if (ai) {
+      try {
+        const batch1Prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u5373\u6642\u6AA2\u7D22\u53F0\u7063\u4E3B\u6D41\u6C42\u8077\u7DB2\u7AD9\uFF08\u5305\u542B Yes123\u3001104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake\u3001Yourator\u3001518\u718A\u73ED\u3001\u4F01\u696D\u5B98\u7DB2\uFF09\u4E0A\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\uFF1A
+\u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}
+
+\u3010\u56B4\u683C\u898F\u5B9A\u3011\uFF1A
+1. \u7CBE\u7C21\u8F38\u51FA 5 ~ 7 \u7B46\u7576\u4E0B\u6709\u6548\u771F\u5BE6\u8077\u7F3A\uFF0C\u4F86\u6E90\u5E73\u53F0\u591A\u5143\u5316\uFF08\u4E0D\u9650\u65BC 104\uFF0C\u52D9\u5FC5\u5305\u542B Yes123\u3001Cake\u30011111 \u7B49\uFF09\u3002
+2. \u7D55\u5C0D\u7981\u6B62\u5DF2\u95DC\u9589\u3001\u5DF2\u7D50\u675F\u6216\u5DF2\u4E0B\u67B6\u7684\u904E\u671F\u8077\u7F3A\uFF01
+3. "url" \u5FC5\u9808\u662F\u6AA2\u7D22\u5230\u7684\u8A72\u8077\u7F3A\u76F4\u63A5\u7DB2\u5740\u6216 Grounding \u7DB2\u5740\u3002
+4. \u6BCF\u7B46\u6458\u8981\u63A7\u5236\u5728 35 \u5B57\u5167\uFF0C\u56B4\u683C\u907F\u514D\u8D85\u9577\u3002
+\u53EA\u8F38\u51FA JSON\uFF1A
+{
+  "reply": "\u3010IdeaX\u5275\u9EDE\u5B50\u3011\u5DF2\u70BA\u60A8\u5373\u6642\u627E\u5230\u9996\u6279\u5728\u62DB\u771F\u5BE6\u8077\u7F3A\uFF01",
+  "carePoints": ["workEnvironment", "benefits", "salary", "industry"],
+  "jobs": [
+    {
+      "title": "\u771F\u5BE6\u8077\u7F3A\u540D\u7A31",
+      "company": "\u771F\u5BE6\u516C\u53F8\u540D\u7A31",
+      "location": "\u5DE5\u4F5C\u5730\u9EDE",
+      "city": "\u7E23\u5E02",
+      "experience": "\u7D93\u6B77\u8981\u6C42",
+      "education": "\u5B78\u6B77\u8981\u6C42",
+      "salaryText": "\u6708\u85AA\u5F85\u9047",
+      "salaryMin": 32000,
+      "sourcePlatform": "Yes123 \u6216 104 \u6216 1111 \u6216 Cake \u6216 518 \u6216 \u4F01\u696D\u5B98\u7DB2",
+      "url": "\u771F\u5BE6\u76F4\u63A5\u61C9\u5FB5\u7DB2\u5740",
+      "description": "\u5DE5\u4F5C\u6458\u8981"
+    }
+  ]
+}`;
+        const b1Res = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: batch1Prompt,
+          config: { tools: [{ googleSearch: {} }], temperature: 0.15 }
+        });
+        const b1Chunks = b1Res?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        const b1Map = Array.isArray(b1Chunks) ? b1Chunks.map((c) => ({ title: String(c?.web?.title || ""), uri: String(c?.web?.uri || "") })).filter((m2) => m2.uri.startsWith("http")) : [];
+        const b1Urls = b1Map.map((m2) => m2.uri);
+        const b1Json = extractJsonFromText(String(b1Res.text || ""));
+        if (Array.isArray(b1Json?.jobs) && b1Json.jobs.length > 0) {
+          const freshB1 = b1Json.jobs.filter(isJobActive).filter((j) => {
+            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+            if (globalSeen.has(k)) return false;
+            globalSeen.add(k);
+            return true;
+          });
+          const mappedB1 = await finalizeJobs(freshB1, groundingFrom(b1Res), filters, totalYielded);
+          totalYielded += mappedB1.length;
+          sendEvent({
+            type: "batch",
+            batchIndex: 1,
+            isFirstBatch: true,
+            jobs: mappedB1,
+            reply: b1Json.reply || `\u3010IdeaX\u5275\u9EDE\u5B50\u3011\u5DF2\u70BA\u60A8\u5373\u6642\u6AA2\u7D22\u51FA\u7B2C 1 \u6279 ${mappedB1.length} \u7B46\u958B\u653E\u4E2D\u7684\u771F\u5BE6\u8077\u7F3A\uFF01`,
+            carePoints: Array.isArray(b1Json.carePoints) ? b1Json.carePoints : []
+          });
+        }
+      } catch (e1) {
+        console.warn("[Search Stream Batch 1 Error]", e1);
+      }
+    }
+    if (ai) {
+      try {
+        const batch2Prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u64F4\u5927\u6AA2\u7D22\u53F0\u7063\u6C42\u8077\u7DB2\uFF08\u7279\u5225\u5074\u91CD Cake\u3001Yourator\u30011111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED\uFF09\u4E0A\u8207\u300C${rawQuery}\u300D\u76F8\u95DC\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u66F4\u591A\u771F\u5BE6\u8077\u7F3A\u3002
+\u3010\u56B4\u683C\u898F\u5B9A\u3011\uFF1A
+1. \u5217\u51FA 6 ~ 9 \u7B46\u4E0D\u540C\u7684\u5728\u62DB\u8077\u7F3A\uFF0C\u512A\u5148\u6311\u9078\u975E 104 \u7684\u8DE8\u5E73\u53F0\u7AD9\u9EDE\u3002
+2. \u7D55\u5C0D\u4E0D\u53EF\u5305\u542B\u5DF2\u7D50\u675F\u3001\u5DF2\u95DC\u9589\u6216\u5DF2\u4E0B\u67B6\u7684\u8077\u7F3A\u3002
+3. "url" \u5FC5\u9808\u662F\u771F\u5BE6\u76F4\u63A5\u7DB2\u5740\u3002
+4. \u6BCF\u7B46\u6458\u8981\u63A7\u5236\u5728 35 \u5B57\u5167\u3002
+\u53EA\u8F38\u51FA JSON\uFF1A
+{
+  "reply": "\u5DF2\u64F4\u5145\u6574\u5408\u7B2C\u4E8C\u6279\u8DE8\u5E73\u53F0\u5728\u62DB\u8077\u7F3A\uFF01",
+  "jobs": [
+    {
+      "title": "\u771F\u5BE6\u8077\u7F3A\u540D\u7A31",
+      "company": "\u771F\u5BE6\u516C\u53F8\u540D\u7A31",
+      "location": "\u5DE5\u4F5C\u5730\u9EDE",
+      "city": "\u7E23\u5E02",
+      "experience": "\u7D93\u6B77\u8981\u6C42",
+      "education": "\u5B78\u6B77\u8981\u6C42",
+      "salaryText": "\u6708\u85AA\u5F85\u9047",
+      "salaryMin": 32000,
+      "sourcePlatform": "Cake \u6216 Yourator \u6216 1111 \u6216 Yes123 \u6216 518 \u6216 \u4F01\u696D\u5B98\u7DB2",
+      "url": "\u771F\u5BE6\u76F4\u63A5\u61C9\u5FB5\u7DB2\u5740",
+      "description": "\u5DE5\u4F5C\u6458\u8981"
+    }
+  ]
+}`;
+        const b2Res = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: batch2Prompt,
+          config: { tools: [{ googleSearch: {} }], temperature: 0.2 }
+        });
+        const b2Chunks = b2Res?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        const b2Map = Array.isArray(b2Chunks) ? b2Chunks.map((c) => ({ title: String(c?.web?.title || ""), uri: String(c?.web?.uri || "") })).filter((m2) => m2.uri.startsWith("http")) : [];
+        const b2Urls = b2Map.map((m2) => m2.uri);
+        const b2Json = extractJsonFromText(String(b2Res.text || ""));
+        if (Array.isArray(b2Json?.jobs) && b2Json.jobs.length > 0) {
+          const freshB2 = b2Json.jobs.filter(isJobActive).filter((j) => {
+            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+            if (globalSeen.has(k)) return false;
+            globalSeen.add(k);
+            return true;
+          });
+          const mappedB2 = await finalizeJobs(freshB2, groundingFrom(b2Res), filters, totalYielded);
+          totalYielded += mappedB2.length;
+          sendEvent({
+            type: "batch",
+            batchIndex: 2,
+            isFirstBatch: totalYielded === mappedB2.length,
+            jobs: mappedB2,
+            reply: `\u5DF2\u6574\u5408\u7B2C\u4E8C\u6279 ${mappedB2.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF01`
+          });
+        }
+      } catch (e2) {
+        console.warn("[Search Stream Batch 2 Error]", e2);
+      }
+    }
+    try {
+      const difyOut = await difyBatchPromise;
+      if (difyOut && difyOut.text) {
+        const difyJson = extractJsonFromText(difyOut.text);
+        if (Array.isArray(difyJson?.jobs) && difyJson.jobs.length > 0) {
+          const freshB3 = difyJson.jobs.filter(isJobActive).filter((j) => {
+            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+            if (globalSeen.has(k)) return false;
+            globalSeen.add(k);
+            return true;
+          });
+          if (freshB3.length > 0) {
+            const mappedB3 = await finalizeJobs(freshB3, null, filters, totalYielded);
+            totalYielded += mappedB3.length;
+            sendEvent({
+              type: "batch",
+              batchIndex: 3,
+              isFirstBatch: totalYielded === mappedB3.length,
+              jobs: mappedB3,
+              reply: `\u5DF2\u6574\u5408\u7B2C\u4E09\u6279\u63A2\u96AA\u5BB6\u641C\u641C\u7CBE\u9078 ${mappedB3.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF01`
+            });
+          }
+        }
+      }
+    } catch {
+    }
+    sendEvent({
+      type: "done",
+      totalYielded,
+      reply: `\u3010IdeaX\u5275\u9EDE\u5B50\u3011\u5168\u7DB2\u8077\u7F3A\u5206\u6279\u6AA2\u7D22\u5B8C\u6210\uFF0C\u5171\u7D71\u4E00\u6574\u5408\u986F\u793A ${totalYielded} \u7B46\u7576\u4E0B\u958B\u653E\u61C9\u5FB5\u4E4B\u771F\u5BE6\u8077\u7F3A\uFF01`
+    });
+    res.end();
+  } catch (err) {
+    sendEvent({
+      type: "done",
+      totalYielded
+    });
+    res.end();
+  }
+});
+app.post("/api/job-explorer/search", async (req, res) => {
+  const rawQuery = String(req.body?.query || "").trim().slice(0, 600);
+  const filters = req.body?.filters || {};
+  const convId = typeof req.body?.conversationId === "string" ? req.body.conversationId : void 0;
+  const useGeminiFallback = Boolean(req.body?.useGeminiFallback);
+  if (!rawQuery) {
+    return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u641C\u5C0B\u689D\u4EF6" });
+  }
+  try {
+    const explorerKey = mascotAgentKey("explorer");
+    let difyReply = "";
+    let difyObsText = "";
+    let nextConvId = convId;
+    const filterContext = [
+      filters.city && filters.city !== "\u5168\u90E8" ? `\u5730\u5340\uFF1A${filters.city}` : "",
+      filters.category && filters.category !== "\u5168\u90E8" ? `\u985E\u5225\uFF1A${filters.category}` : "",
+      filters.minSalary ? `\u6700\u4F4E\u6708\u85AA\uFF1A${filters.minSalary}\u5143\u4EE5\u4E0A` : ""
+    ].filter(Boolean).join("\u3001");
+    const ai = getGeminiClient();
+    let preFetchedParsed = null;
+    let groundingChunksMap = [];
+    let groundingUrls = [];
+    const groundingInfos = [];
+    const bgSearchPrompt = `\u8ACB\u4F7F\u7528 Google Search \u5373\u6642\u6AA2\u7D22\u53F0\u7063\u4E3B\u6D41\u6C42\u8077\u7DB2\u7AD9\uFF08\u5305\u542B 104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake\u3001Yourator\u3001Yes123\u3001518\u718A\u73ED\u3001LinkedIn \u6216\u5404\u5927\u4F01\u696D\u5B98\u65B9\u62DB\u52DF\u5B98\u7DB2\uFF09\u4E0A\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\uFF1A
+\u641C\u5C0B\u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}
+
+\u3010\u6700\u9AD8\u56B4\u683C\u898F\u5B9A\uFF08\u9055\u53CD\u5373\u8996\u70BA\u7121\u6548\uFF09\u3011\uFF1A
+1. **\u4F86\u6E90\u5E73\u53F0\u591A\u5143\u5316\uFF08\u4E0D\u9650 104\uFF09**\uFF1A\u8ACB\u5EE3\u6CDB\u6AA2\u7D22\u53F0\u7063\u5404\u5927\u6C42\u8077\u7BA1\u9053\uFF0C\u5305\u542B Yes123\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake (CakeResume)\u3001Yourator\u3001518\u718A\u73ED\u3001LinkedIn \u6216\u4F01\u696D\u5B98\u65B9\u5FB5\u624D\u5B98\u7DB2\uFF0C\u4E0D\u53EF\u53EA\u5C40\u9650\u55AE\u4E00\u7DB2\u7AD9\uFF01
+2. **\u7D55\u5C0D\u7981\u6B62\u5DF2\u95DC\u9589\uFF0F\u4E0B\u67B6\uFF0F\u904E\u671F\u8077\u7F3A**\uFF1A\u7D55\u5C0D\u4E0D\u53EF\u4F7F\u7528\u5DF2\u95DC\u9589\u3001\u5DF2\u7D50\u675F\u3001\u5DF2\u4E0B\u67B6\u3001\u505C\u6B62\u5FB5\u624D\u3001\u5DF2\u984D\u6EFF\u6216\u9801\u9762\u4E0D\u5B58\u5728\u7684\u904E\u671F\u8077\u7F3A\uFF01\u6BCF\u4E00\u7B46\u90FD\u5FC5\u9808\u662F\u7576\u4E0B\u6709\u6548\u3001\u6B63\u5728\u62DB\u52DF\u4E2D\u7684\u6700\u65B0\u8077\u7F3A\u3002
+3. **\u771F\u5BE6\u4F01\u696D\u8207\u6709\u6548\u76F4\u63A5\u7DB2\u5740**\uFF1A\u53EA\u80FD\u5217\u51FA\u771F\u5BE6\u5B58\u5728\u7684\u4F01\u696D\u8207\u7576\u4E0B\u5B58\u5728\u7684\u8077\u7F3A\uFF0C\u7D55\u4E0D\u53EF\u865B\u69CB\u5047\u8077\u7F3A\u3002"url" \u5FC5\u9808\u662F Google Search \u6AA2\u7D22\u5230\u7684\u8A72\u8077\u7F3A\u76F4\u63A5\u7DB2\u5740\u6216 Grounding \u7DB2\u5740\uFF0C\u7D55\u5C0D\u4E0D\u53EF\u81EA\u884C\u586B\u5BEB\u81C6\u6E2C\u7684\u5047 ID \u6216 placeholder\u3002
+4. **\u6578\u91CF\u8981\u6C42**\uFF1A\u8ACB\u76E1\u53EF\u80FD\u5217\u51FA 6 ~ 25 \u500B\u4E0D\u540C\u7684\u771F\u5BE6\u6709\u6548\u8077\u7F3A\uFF08\u6700\u5C11 3 \u500B\u4EE5\u4E0A\uFF0C\u6700\u591A\u53EF\u9054 100 \u500B\uFF09\u3002
+5. \u53EA\u8F38\u51FA\u5408\u6CD5\u7684 JSON \u7269\u4EF6\uFF08\u4E0D\u8981 markdown \u7B26\u865F\uFF09\uFF0C\u683C\u5F0F\u5982\u4E0B\uFF1A
+{
+  "reply": "\u7528\u4E00\u53E5\u89AA\u5207\u71B1\u60C5\u7684\u8A71\uFF0835\u5B57\u5167\uFF09\u8AAA\u660E\u70BA\u7528\u6236\u641C\u5C0B\u5230\u7684\u6210\u679C\u8207\u4EAE\u9EDE",
+  "carePoints": ["workEnvironment", "benefits", "industry", "salary"],
+  "jobs": [
+    {
+      "id": "\u552F\u4E00ID",
+      "title": "\u771F\u5BE6\u8077\u7F3A\u540D\u7A31",
+      "company": "\u771F\u5BE6\u516C\u53F8\u540D\u7A31",
+      "location": "\u7E23\u5E02\u8207\u884C\u653F\u5340\uFF08\u5982\uFF1A\u53F0\u5357\u5E02\u6771\u5340\uFF09",
+      "city": "\u7E23\u5E02\u540D\u7A31\uFF08\u5982\uFF1A\u53F0\u5357\u5E02\uFF09",
+      "distanceKm": 2.5,
+      "experience": "\u7D93\u6B77\u8981\u6C42\uFF08\u5982\uFF1A\u7D93\u6B77\u4E0D\u62D8\u30011\u5E74\u4EE5\u4E0A\uFF09",
+      "experienceYears": 1,
+      "education": "\u5B78\u6B77\u8981\u6C42\uFF08\u5982\uFF1A\u5C08\u79D1\u3001\u5927\u5B78\u3001\u9AD8\u4E2D\u8077\u3001\u5B78\u6B77\u4E0D\u62D8\uFF09",
+      "educationLevel": 3,
+      "salaryText": "\u85AA\u8CC7\u5F85\u9047\uFF08\u5982\uFF1A\u6708\u85AA32,000~42,000\u5143 \u6216 \u5F85\u9047\u9762\u8B70\uFF09",
+      "salaryMin": 32000,
+      "salaryMax": 42000,
+      "industry": "\u884C\u696D\u985E\u5225",
+      "category": "\u8077\u52D9\u5206\u985E",
+      "workEnvironment": "\u5DE5\u4F5C\u74B0\u5883\u8207\u6392\u73ED\u63CF\u8FF0",
+      "benefits": "\u798F\u5229\u8207\u5F85\u9047\u63CF\u8FF0",
+      "description": "\u5DE5\u4F5C\u5167\u5BB9\u91CD\u9EDE\u6458\u8981",
+      "sourcePlatform": "\u4F86\u6E90\u5E73\u53F0\uFF08\u5982\uFF1AYes123\u3001104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake\u3001Yourator\u3001518\u718A\u73ED \u6216 \u4F01\u696D\u5B98\u7DB2\uFF09",
+      "url": "\u771F\u5BE6\u5916\u90E8\u6C42\u8077\u7DB2\u8077\u7F3A\u76F4\u63A5\u7DB2\u5740",
+      "aiScore": 95,
+      "postedAt": "2026-10-19",
+      "postedAtText": "\u4ECA\u65E5\u520A\u767B"
+    }
+  ]
+}`;
+    const bgGoogleSearchPromise = ai ? ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: bgSearchPrompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        temperature: 0.2
+      }
+    }).then((response) => {
+      groundingInfos.push(groundingFrom(response));
+      const chunks = response?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      if (Array.isArray(chunks)) {
+        groundingChunksMap = chunks.map((c) => ({
+          title: String(c?.web?.title || ""),
+          uri: String(c?.web?.uri || "")
+        })).filter((item) => item.uri.startsWith("http"));
+        groundingUrls = groundingChunksMap.map((item) => item.uri);
+      }
+      const rawText = String(response.text || "").trim();
+      const parsed = extractJsonFromText(rawText);
+      if (parsed && Array.isArray(parsed.jobs)) {
+        preFetchedParsed = parsed;
+      }
+    }).catch((err) => {
+      console.warn("[Job Explorer Google Search Error]", err);
+    }) : Promise.resolve();
+    let difyPromise = Promise.resolve(null);
+    if (!useGeminiFallback && explorerKey) {
+      difyPromise = callDifyStreamingAgent({
+        apiKey: explorerKey,
+        query: `${rawQuery}\uFF08\u8ACB\u7CBE\u7C21\u5217\u51FA 3 ~ 6 \u7B46\u771F\u5BE6\u8077\u7F3A\u91CD\u9EDE\uFF0C\u6BCF\u7B46\u6458\u8981\u63A7\u5236\u65BC 45 \u5B57\u5167\uFF0C\u907F\u514D\u8D85\u51FA\u9577\u5EA6\u9650\u5236\uFF09`,
+        inputs: {},
+        user: "job_explorer_user",
+        conversationId: convId,
+        timeoutMs: 1e5
+      }).catch((e2) => {
+        console.warn("[Job Explorer Dify Error]", e2?.message || e2);
+        return null;
+      });
+    }
+    const [difyRes] = await Promise.all([
+      difyPromise,
+      bgGoogleSearchPromise
+    ]);
+    if (difyRes && difyRes.text && difyRes.text.trim()) {
+      difyReply = difyRes.text.trim();
+      if (Array.isArray(difyRes.observations) && difyRes.observations.length > 0) {
+        difyObsText = difyRes.observations.join("\n").slice(0, 3e3);
+      }
+      nextConvId = difyRes.conversationId || convId;
+    }
+    let difyParsedJobs = [];
+    if (difyReply) {
+      const directJson = extractJsonFromText(difyReply);
+      if (Array.isArray(directJson?.jobs) && directJson.jobs.length > 0) {
+        difyParsedJobs = directJson.jobs;
+      } else if (ai) {
+        try {
+          const extractPrompt = `\u8ACB\u5F9E\u4EE5\u4E0B\u300C\u641C\u641C\u300DAgent \u56DE\u50B3\u7684\u6C42\u8077\u641C\u5C0B\u7D50\u679C\u4E2D\uFF0C\u63D0\u53D6\u51FA\u6240\u6709\u63D0\u5230\u7684\u771F\u5BE6\u6709\u6548\u8077\u7F3A\u4E26\u8F49\u70BA JSON \u9663\u5217\uFF08\u56B4\u683C\u5254\u9664\u4EFB\u4F55\u6A19\u793A\u70BA\u5DF2\u95DC\u9589\u3001\u5DF2\u7D50\u675F\u3001\u5DF2\u4E0B\u67B6\u6216\u4E0D\u5B58\u5728\u7684\u8077\u7F3A\uFF1B\u4E0D\u8981\u865B\u69CB\uFF0C\u4E0D\u8981\u8F38\u51FA markdown\uFF09\uFF1A
+\u3010\u641C\u641C\u56DE\u8986\u3011\uFF1A
+${difyReply}
+${difyObsText ? `
+\u3010\u641C\u5C0B\u539F\u59CB\u9023\u7D50\u8CC7\u6599\u3011\uFF1A
+${difyObsText}` : ""}
+
+\u8F38\u51FA\u683C\u5F0F\uFF1A
+{
+  "jobs": [
+    {
+      "id": "dify-job-1",
+      "title": "\u8077\u7F3A\u540D\u7A31",
+      "company": "\u516C\u53F8\u540D\u7A31",
+      "location": "\u7E23\u5E02\u8207\u884C\u653F\u5340",
+      "city": "\u7E23\u5E02\u540D\u7A31",
+      "distanceKm": 2.0,
+      "experience": "\u7D93\u6B77\u8981\u6C42",
+      "experienceYears": 0,
+      "education": "\u5B78\u6B77\u8981\u6C42",
+      "educationLevel": 2,
+      "salaryText": "\u85AA\u8CC7\u5F85\u9047\u6587\u5B57",
+      "salaryMin": 30000,
+      "salaryMax": 38000,
+      "industry": "\u884C\u696D\u985E\u5225",
+      "category": "\u8077\u52D9\u5206\u985E",
+      "workEnvironment": "\u5DE5\u4F5C\u74B0\u5883\u63CF\u8FF0",
+      "benefits": "\u5F85\u9047\u798F\u5229\u63CF\u8FF0",
+      "description": "\u5DE5\u4F5C\u91CD\u9EDE\u6458\u8981",
+      "sourcePlatform": "\u4F86\u6E90\u5E73\u53F0",
+      "url": "\u8077\u7F3A\u76F4\u63A5\u9023\u7D50\uFF08\u82E5\u7121\u5247\u7559\u7A7A\u5B57\u4E32\uFF09",
+      "aiScore": 98,
+      "postedAt": "2026-10-19",
+      "postedAtText": "\u4ECA\u65E5\u520A\u767B"
+    }
+  ]
+}`;
+          const fastRes = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: extractPrompt,
+            config: { responseMimeType: "application/json", temperature: 0.1 }
+          });
+          const fastJson = extractJsonFromText(String(fastRes.text || "{}"));
+          if (Array.isArray(fastJson?.jobs)) {
+            difyParsedJobs = fastJson.jobs;
+          }
+        } catch (extractErr) {
+          console.warn("[Dify Job Extraction Error]", extractErr);
+        }
+      }
+    }
+    const closedPattern = /已關閉|已結束|已下架|停止徵才|暫停徵才|職缺不存在|頁面不存在|已過期|已額滿|截止|closed|expired|no longer available|404/i;
+    const isValidActiveJob = (j) => {
+      if (!j || !j.title || !j.company) return false;
+      const combinedText = `${j.title} ${j.company} ${j.description || ""} ${j.salaryText || ""} ${j.postedAtText || ""}`;
+      return !closedPattern.test(combinedText);
+    };
+    const combinedRawJobs = [
+      ...difyParsedJobs.filter(isValidActiveJob),
+      ...Array.isArray(preFetchedParsed?.jobs) ? preFetchedParsed.jobs.filter(isValidActiveJob) : []
+    ];
+    if (combinedRawJobs.length < 3 && ai) {
+      try {
+        const expandRes = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: `\u8ACB\u4F7F\u7528 Google Search \u5373\u6642\u6AA2\u7D22 Yes123\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake\u3001Yourator\u3001104\u4EBA\u529B\u9280\u884C\u3001518\u718A\u73ED \u4E0A\u8207\u300C${rawQuery}\u300D\u76F8\u95DC\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u6700\u65B0\u771F\u5BE6\u8077\u7F3A\uFF08\u8ACB\u81F3\u5C11\u5217\u51FA 6 ~ 15 \u7B46\uFF0C\u4F86\u6E90\u5E73\u53F0\u591A\u5143\u5316\uFF0C\u7D55\u4E0D\u9650\u55AE\u4E00\u7DB2\u7AD9\uFF0C\u4E14\u7D55\u5C0D\u4E0D\u53EF\u5305\u542B\u5DF2\u95DC\u9589\u3001\u5DF2\u7D50\u675F\u3001\u5DF2\u4E0B\u67B6\u6216\u4E0D\u5B58\u5728\u7684\u8077\u7F3A\uFF09\u3002\u53EA\u8F38\u51FA JSON\uFF1A{"jobs":[{"title":"...","company":"...","location":"...","city":"...","experience":"...","experienceYears":0,"education":"...","educationLevel":2,"salaryText":"...","salaryMin":32000,"salaryMax":50000,"industry":"...","category":"...","workEnvironment":"...","benefits":"...","description":"...","sourcePlatform":"Yes123 \u6216 1111 \u6216 Cake \u6216 104 \u6216 518","url":"...","aiScore":92,"postedAtText":"\u4ECA\u65E5\u520A\u767B"}]}`,
+          config: {
+            tools: [{ googleSearch: {} }],
+            temperature: 0.2
+          }
+        });
+        groundingInfos.push(groundingFrom(expandRes));
+        const expandChunks = expandRes?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        if (Array.isArray(expandChunks)) {
+          const moreChunks = expandChunks.map((c) => ({
+            title: String(c?.web?.title || ""),
+            uri: String(c?.web?.uri || "")
+          })).filter((item) => item.uri.startsWith("http"));
+          groundingChunksMap.push(...moreChunks);
+          groundingUrls.push(...moreChunks.map((m2) => m2.uri));
+        }
+        const expandJson = extractJsonFromText(String(expandRes.text || ""));
+        if (Array.isArray(expandJson?.jobs)) {
+          combinedRawJobs.push(...expandJson.jobs.filter(isValidActiveJob));
+        }
+      } catch (expandErr) {
+        console.warn("[Job Explorer Expand Search Error]", expandErr);
+      }
+    }
+    const seenKeys = /* @__PURE__ */ new Set();
+    const dedupedRaw = combinedRawJobs.filter((j) => {
+      if (!isValidActiveJob(j)) return false;
+      const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+      if (seenKeys.has(k)) return false;
+      seenKeys.add(k);
+      return true;
+    }).slice(0, 40);
+    const jobs = await finalizeJobs(dedupedRaw, groundingInfos, filters, 0);
+    const replyMsg = difyReply || preFetchedParsed?.reply || `\u5DF2\u70BA\u60A8\u5F9E\u5404\u5927\u6C42\u8077\u5E73\u53F0\uFF08Yes123\u3001104\u30011111\u3001Cake\u3001Yourator \u7B49\uFF09\u5373\u6642\u6AA2\u7D22\u51FA ${jobs.length} \u7B46\u7576\u4E0B\u958B\u653E\u62DB\u52DF\u4E2D\u7684\u771F\u5BE6\u8077\u7F3A\uFF01`;
+    return res.json({
+      success: true,
+      reply: replyMsg,
+      conversationId: nextConvId,
+      carePoints: Array.isArray(preFetchedParsed?.carePoints) && preFetchedParsed.carePoints.length > 0 ? preFetchedParsed.carePoints : filters.carePoints || [],
+      jobs
+    });
+  } catch (err) {
+    console.error("[Job Explorer Search]", err?.message || err);
+    return res.status(500).json({
+      success: false,
+      error: "\u641C\u5C0B\u5FD9\u788C\u4E2D\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66",
+      jobs: []
+    });
   }
 });
 app.get("/api/admin/mascot-agents", async (_req, res) => {

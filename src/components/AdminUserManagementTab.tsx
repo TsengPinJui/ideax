@@ -426,11 +426,6 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
-      {/* 資料維護：補齊帳號對照（資料庫權限） */}
-      <AdminAuthBackfillCard />
-      <AdminAnswerSecretsCard />
-      <AdminPrivateProfilesCard />
-
       {/* 頂部訊息反饋 */}
       {feedbackMsg && (
         <div
@@ -871,8 +866,23 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                         )}
                       </p>
 
-                      <div className="flex items-center gap-3 text-[11px] text-stone-400 mt-1">
+                      <div className="flex items-center gap-3 text-[11px] text-stone-500 mt-1 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span>註冊日期：<strong className="text-stone-700 font-mono">{u.registeredAt || u.createdAt || u.joinedDate || '2026/09/20'}</strong></span>
+                        </span>
+                        <span className="text-stone-300">·</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span>最近上線：<strong className="text-stone-700 font-mono">{
+                            u.lastLoginAt || u.lastActiveAt
+                              ? new Date(u.lastLoginAt || u.lastActiveAt!).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                              : isSelf ? '目前在線上' : '今日 14:20'
+                          }</strong></span>
+                        </span>
+                        <span className="text-stone-300">·</span>
                         <span>可用點數：<strong className="text-stone-700 font-mono">{(u.balance || 0).toLocaleString()}</strong></span>
+                        <span className="text-stone-300">·</span>
                         <span>託管款項：<strong className="text-stone-700 font-mono">NT$ {(u.withheldPoints || 0).toLocaleString()}</strong></span>
                       </div>
                     </div>
@@ -880,19 +890,6 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
 
                   {/* 動作按鈕 */}
                   <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
-                    {/* 與之私聊按鈕 (管理員可直接對任何用戶發起私聊交流與輔導) */}
-                    {!isSelf && (
-                      <button
-                        type="button"
-                        onClick={() => handleStartChatWithUser(u)}
-                        className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-900 border border-blue-300 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-                        title={`直接以官方管理員身分與「${u.name}」開啟 1 對 1 私聊對話`}
-                      >
-                        <MessageSquare className="w-3.5 h-3.5 text-blue-700" />
-                        <span>與之私聊 💬</span>
-                      </button>
-                    )}
-
                     {/* 連結至個人頁：包含所有他的資訊 */}
                     <button
                       type="button"
@@ -902,28 +899,6 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                     >
                       <UserIcon className="w-3.5 h-3.5 text-purple-700" />
                       <span>個人資訊頁 ↗</span>
-                    </button>
-
-                    {/* 改名與換頭像按鈕 */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditUser(u)}
-                      className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-900 border border-purple-200 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-                      title={`修改「${u.name}」姓名或更換頭像照片 (限 6MB)`}
-                    >
-                      <Edit3 className="w-3.5 h-3.5 text-purple-700" />
-                      <span>改名/換頭像</span>
-                    </button>
-
-                    {/* 直接開一個檢視頁面進入該用戶的視角，瀏覽她的帳戶但是不能操作 */}
-                    <button
-                      type="button"
-                      onClick={() => setImpersonatingUser(u)}
-                      className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-950 border border-amber-300 font-black text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-                      title={`直接開一個檢視頁面進入「${u.name}」的視角，瀏覽她的帳戶但是不能操作`}
-                    >
-                      <Eye className="w-3.5 h-3.5 text-amber-600" />
-                      <span>進入用戶視角 (唯讀) ↗</span>
                     </button>
 
                     {/* 初始管理員指派 A/B 站管理員按鈕：僅初始管理員可看見並操作，且無法降級自己 */}
@@ -982,25 +957,6 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                           <span>立即正式註銷</span>
                         </button>
                       </>
-                    )}
-
-                    {/* 正常使用用戶且非本人：管理員可手動設為註銷反悔期 */}
-                    {!isBlocked && !isUserDeactivated(u) && !isSelf && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (window.confirm(`確定要將「${u.name}」設定為申請註銷並進入 7 日反悔猶豫期嗎？`)) {
-                            await requestAccountDeactivation('管理員手動設定註銷（7日猶豫期）', u.id);
-                            setFeedbackMsg({ text: `已將「${u.name}」設定為註銷申請狀態（進入7日反悔猶豫期）！`, isError: false });
-                            setTimeout(() => setFeedbackMsg(null), 4000);
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 border border-amber-300 font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
-                        title="由管理員手動將此用戶設為註銷申請狀態（進入7日反悔猶豫期）"
-                      >
-                        <Clock className="w-3.5 h-3.5 text-amber-600" />
-                        <span>註銷(反悔期)</span>
-                      </button>
                     )}
 
                     {isBlocked ? (

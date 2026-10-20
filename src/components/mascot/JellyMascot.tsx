@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
-import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
+import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
 import { playBabble, playClank, playGlowSound, playShock, playZap, startCurrent, stopBabble, stopCurrent, unlockMascotAudio } from './mascotSound';
 import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
 
@@ -130,6 +130,21 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
     window.addEventListener('pagehide', onHide);
     return () => { window.clearInterval(t); window.removeEventListener('pagehide', onHide); flushSession(); flushChat(); };
   }, [flushSession, flushChat]);
+
+  // 全網搜職時自動現身並說：「搜搜正在忙的時候讓小燈泡來陪你玩吧~ \(≧▽≦)/」
+  useEffect(() => {
+    const onSearchAccompany = (e: Event) => {
+      const speech = (e as CustomEvent).detail?.text || '搜搜正在忙的時候讓小燈泡來陪你玩吧~ \\(≧▽≦)/';
+      writeLS(COLLAPSED_KEY, '0');
+      setCollapsed(false);
+      markActive();
+      setTimeout(() => {
+        engineRef.current?.cheer(speech);
+      }, 150);
+    };
+    window.addEventListener(MASCOT_SEARCH_ACCOMPANY_EVENT, onSearchAccompany);
+    return () => window.removeEventListener(MASCOT_SEARCH_ACCOMPANY_EVENT, onSearchAccompany);
+  }, [markActive]);
 
   // 建立 / 拆除 3D 引擎（收起時整個拆掉，釋放 GPU）
   useEffect(() => {

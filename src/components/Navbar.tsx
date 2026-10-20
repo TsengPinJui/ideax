@@ -572,8 +572,25 @@ export const Navbar: React.FC<NavbarProps> = ({
             <IdeaXLogo variant="bulb" size="lg" />
           </div>
 
-          {/* Navigation Links: 簡潔俐落無冗餘邊框 */}
-          <nav className="hidden md:flex items-center gap-1.5 text-sm font-medium ml-1">
+          {/* Navigation Links: 左上角全網搜職 & 找專家 */}
+          <nav className="flex items-center gap-1 sm:gap-1.5 text-sm font-medium ml-0.5 sm:ml-1">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('job_explorer');
+                setSelectedQuestion(null);
+                setSelectedSolver(null);
+              }}
+              className={`px-3 py-1.5 lg:px-3.5 lg:py-2 rounded-full transition-all cursor-pointer text-xs sm:text-sm lg:text-[15px] flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'job_explorer'
+                  ? 'bg-[#1e3a8a] text-white font-bold shadow-2xs'
+                  : 'text-stone-700 hover:bg-blue-50/70 hover:text-[#1e3a8a] font-semibold'
+              }`}
+              title="全網搜職"
+            >
+              <Compass className={`w-4 h-4 lg:w-4.5 lg:h-4.5 shrink-0 ${activeTab === 'job_explorer' ? 'text-blue-200' : 'text-blue-600'}`} />
+              <span>全網搜職</span>
+            </button>
             {/* 「探索」按鈕已移除：點左上角 Logo 即回到首頁列表 */}
             {!isRaceMode && (
               <button
@@ -583,7 +600,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setSelectedQuestion(null);
                   setSelectedSolver(null);
                 }}
-                className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full transition-all cursor-pointer text-xs sm:text-sm lg:text-[15px] flex items-center gap-1.5 ${
+                className={`hidden md:flex px-3 py-1.5 lg:px-4 lg:py-2 rounded-full transition-all cursor-pointer text-xs sm:text-sm lg:text-[15px] items-center gap-1.5 ${
                   activeTab === 'solvers'
                     ? 'bg-emerald-50 text-emerald-900 font-bold ring-1 ring-emerald-300/80 shadow-2xs'
                     : 'text-stone-600 hover:bg-stone-100 hover:text-stone-950 font-semibold'
@@ -1957,6 +1974,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             setSelectedQuestion(null);
             setSelectedSolver(null);
           }
+        }}
+        onNavigateToJobExplorer={() => {
+          setActiveTab('job_explorer');
+          setSelectedQuestion(null);
+          setSelectedSolver(null);
         }}
         onNavigateToSolvers={() => {
           setActiveTab('solvers');

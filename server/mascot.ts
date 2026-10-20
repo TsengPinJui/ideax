@@ -5,7 +5,7 @@ import { getApps } from 'firebase-admin/app';
 import firebaseConfigJson from '../firebase-applet-config.json';
 import { hasAdminCredentials } from './competitionService';
 
-export type MascotAgent = 'cs' | 'market_advisor' | 'aicrm';
+export type MascotAgent = 'cs' | 'market_advisor' | 'aicrm' | 'explorer';
 
 export const MASCOT_AGENTS: Record<MascotAgent, { label: string; envKeys: string[]; persona: string }> = {
   cs: {
@@ -23,7 +23,23 @@ export const MASCOT_AGENTS: Record<MascotAgent, { label: string; envKeys: string
     envKeys: ['DIFY_AICRM_API_KEY'], // 沒設定就由小燈泡（Gemini）代答，不借用客服的金鑰
     persona: '你是「創點子 IdeaX」業務顧問（AI-CRM 特助），協助認證專家找高價值案子與懸賞好題、評估發案方成案意向、試算實收淨利、規劃提案切入方式與跟進時段、撰寫破冰話術。不誇大保證獲利。',
   },
+  explorer: {
+    label: '探險家',
+    envKeys: ['DIFY_EXPLORER_API_KEY', 'DIFY_JOB_EXPLORER_API_KEY', 'DIFY_EXPLORER_WEB_URL'],
+    persona: '你是「創點子 IdeaX」全網搜職 AI 特助「探險家」，專門在「全網搜職」頁面協助求職者以自然語言分析最在意的求職條件（薪資、地點、經歷、學歷、行業、工作環境、其他待遇），並結合全網搜尋媒合適合職位。',
+  },
 };
+
+export const DEFAULT_EXPLORER_UDIFY_URL = 'https://udify.app/agent/bEV82Byu5zk9O4Q5';
+
+export function extractUdifyAppCode(keyOrUrl: string): string | null {
+  const s = String(keyOrUrl || '').trim();
+  if (!s || s.startsWith('app-')) return null;
+  const m = s.match(/udify\.app\/(?:agent|chat|workflow)\/([A-Za-z0-9_-]+)/i);
+  if (m && m[1]) return m[1];
+  if (/^[A-Za-z0-9]{12,24}$/.test(s)) return s;
+  return null;
+}
 
 /**
  * 關鍵字分流（依三位助理的實際職責）：
@@ -35,6 +51,7 @@ const KEYWORDS: Record<MascotAgent, RegExp> = {
   cs: /登入|登錄|登出|密碼|帳號|帳戶|账户|账号|個人資料|頭像|暱稱|綁定|手機號|信箱|e-?mail|註冊|驗證|實名|點數|儲值|加值|退費|退款|付款|扣款|刷卡|發票|提領|出金|匯款|撥款|放款|驗收|方案|訂閱|會員|價格|費用|收費|抽成|手續費|懸賞規則|分級|\bL[0-4]\b|成為專家|專家認證|申請專家|專家申請|創星季|參賽|報名|規則|條款|怎麼用|如何使用|操作|教學|刪文|通知|錯誤|bug|當機|閃退|無法|不能|打不開|客服|工單|爭議|糾紛|檢舉|詐騙|停權|封鎖|隱私|個資/i,
   market_advisor: /找.{0,15}專家|推薦.{0,10}專家|專家推薦|合適的專家|適合的專家|媒合|獵頭|延攬|誰能解|誰可以幫|幫我分類|分類一下|歸類|標籤|題目價值|值多少|建議懸賞|懸賞多少|該定多少|定多少|分析報告|深度報告|診斷|調解建議|和解方案|需求蔓延|履約|市場分析|市場趨勢/i,
   aicrm: /接案|找案子|案源|商機|好題|高賞|高額懸賞|適合我.*題|推薦.*(題目|案子)|成案|意向|破冰|話術|跟進|追蹤客戶|客戶猶豫|發案方|實收|淨利|收益|來賺|賺錢|代操|拓客|潛在客戶|提案切入|切入方針/i,
+  explorer: /全網搜職|探險家/i,
 };
 
 function keywordMatches(message: string): MascotAgent[] {
@@ -80,6 +97,9 @@ const PROXY_ROLES: Record<MascotAgent, { can: string }> = {
   },
   aicrm: {
     can: '協助專家試算實收（權威方案平台服務費 5%、實收 95%；大師方案服務費 2%、實收 98%；一般抽成 25%）、建議提案切入方式（先對焦關鍵痛點→提出架構與里程碑→說明交付清單與驗收）、建議跟進時段（上午 10:00～11:30、午後 14:30～16:00、晚間 19:30～21:00）、提供破冰話術方向。不可保證獲利。',
+  },
+  explorer: {
+    can: '引導使用者前往「全網搜職」頁面使用「探險家」搜尋職缺，小燈泡本身不提供工作建議。',
   },
 };
 
@@ -228,16 +248,39 @@ export function mascotAgentKeyInfo(agent: MascotAgent): { envName: string | null
     const v = process.env[k];
     if (v) return { envName: k, key: v };
   }
+  if (agent === 'explorer') {
+    return { envName: 'DIFY_EXPLORER_WEB_URL', key: DEFAULT_EXPLORER_UDIFY_URL };
+  }
   return { envName: null, key: '' };
 }
 
-/** 用金鑰向 Dify 查這把金鑰屬於哪個應用（名稱），確認沒有接錯 */
+/** 用金鑰或 udify Web URL 向 Dify 查這把金鑰屬於哪個應用（名稱），確認沒有接錯 */
 export async function fetchDifyAppName(key: string): Promise<string | null> {
   if (!key) return null;
-  const base = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 6000);
   try {
+    const udifyCode = extractUdifyAppCode(key);
+    if (udifyCode) {
+      const pRes = await fetch('https://udify.app/api/passport', {
+        headers: { 'X-App-Code': udifyCode },
+        signal: controller.signal,
+      });
+      if (!pRes.ok) return null;
+      const pData: any = await pRes.json().catch(() => null);
+      const token = pData?.access_token;
+      if (!token) return null;
+      const sRes = await fetch('https://udify.app/api/site', {
+        headers: { 'X-App-Code': udifyCode, 'X-App-Passport': token },
+        signal: controller.signal,
+      });
+      if (!sRes.ok) return null;
+      const sData: any = await sRes.json().catch(() => null);
+      const title = sData?.site?.title;
+      return typeof title === 'string' && title ? title : null;
+    }
+
+    const base = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
     const r = await fetch(`${base}/info`, { headers: { Authorization: `Bearer ${key}` }, signal: controller.signal });
     if (!r.ok) return null;
     const d: any = await r.json().catch(() => null);
@@ -254,12 +297,16 @@ export const MASCOT_AGENT_NAME_HINTS: Record<MascotAgent, RegExp> = {
   cs: /客服|support|service|\bcs\b/i,
   market_advisor: /市場|market|顧問|advisor/i,
   aicrm: /crm|業務|客情|商機|sales/i,
+  explorer: /探險家|搜職|搜搜|求職|職缺|explorer|job/i,
 };
 
 export function mascotAgentKey(agent: MascotAgent): string {
   for (const k of MASCOT_AGENTS[agent].envKeys) {
     const v = process.env[k];
     if (v) return v;
+  }
+  if (agent === 'explorer') {
+    return DEFAULT_EXPLORER_UDIFY_URL;
   }
   return '';
 }

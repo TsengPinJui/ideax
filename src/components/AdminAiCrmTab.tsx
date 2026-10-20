@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AdminAssistantTickCard } from './AdminAssistantTickCard';
 import { AdminMascotSettingsCard } from './AdminMascotSettingsCard';
-import { AdminMascotStatsCard } from './AdminMascotStatsCard';
+import { AdminMascotRouteCheck } from './AdminMascotRouteCheck';
 import {
   AiCrmSystemConfig,
   AiCrmLead,
@@ -25,6 +25,7 @@ import {
 import {
   Sparkles,
   Bot,
+  Lightbulb,
   CheckCircle2,
   Clock,
   Send,
@@ -54,6 +55,7 @@ import {
   KeyRound,
   Globe,
   SlidersHorizontal,
+  Briefcase,
 } from 'lucide-react';
 import {
   callDifyClientDirect,
@@ -187,11 +189,11 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
   // Agent Test Bench Sub-Tab: 1:客服特助, 2:拓客代操, 3:爭議調解, 4:專家媒合, 5:隱私防火牆, 6:Dify直連即時實測
   const [activeTesterId, setActiveTesterId] = useState<
-    'dify_direct_console' | 'support_agent' | 'crm_agent' | 'mediation_agent' | 'matching_agent' | 'safety_shield' | 'assistant_tick'
+    'dify_direct_console' | 'mascot_route_check' | 'support_agent' | 'crm_agent' | 'mediation_agent' | 'matching_agent' | 'safety_shield' | 'assistant_tick'
   >('dify_direct_console');
 
   // 0. Dify 全功能直連實測台狀態
-  const [difyTestAgentType, setDifyTestAgentType] = useState<'market_advisor' | 'aicrm_agent' | 'cs_agent'>('aicrm_agent');
+  const [difyTestAgentType, setDifyTestAgentType] = useState<'market_advisor' | 'aicrm_agent' | 'cs_agent' | 'explorer_agent'>('aicrm_agent');
   const [difyTestQuery, setDifyTestQuery] = useState(
     '你是 AICRM Agent，請對全站待認領高額案件進行 24hr 巡航雷達掃描，剖析客戶核心痛點、預算心理與防備點，輸出 0~100% 成案意向指數 (Intent Score) 與推薦最適跟進時段。請以 JSON 輸出。'
   );
@@ -203,6 +205,9 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
   const [showDifyConfigDrawer, setShowDifyConfigDrawer] = useState(false);
   const [difyForm, setDifyForm] = useState<DifyConfig>(getDifyConfig);
   const [difyConfigSavedNotice, setDifyConfigSavedNotice] = useState<string | null>(null);
+  const [explorerPresetCategory, setExplorerPresetCategory] = useState<'all' | 'strictness' | 'semantics' | 'parameters'>('all');
+  const [explorerMultiBatchMode, setExplorerMultiBatchMode] = useState(true);
+  const [explorerBatchProgressText, setExplorerBatchProgressText] = useState<string>('');
 
   // 1. 客服特助 Agent 測試狀態
   const [supportPrompt, setSupportPrompt] = useState('請問提問者發布問題後，點數何時會扣除與撥款給專家？');
@@ -366,7 +371,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
   };
 
   // 0. 執行 Dify Direct API 全通道直連實測（瀏覽器 CORS 直連，支援 www.ideax.tw 靜態部屬與雲端代理）
-  const handleTestDirectDify = async (queryOverride?: string, agentTypeOverride?: 'market_advisor' | 'aicrm_agent' | 'cs_agent') => {
+  const handleTestDirectDify = async (queryOverride?: string, agentTypeOverride?: 'market_advisor' | 'aicrm_agent' | 'cs_agent' | 'explorer_agent') => {
     const q = queryOverride || difyTestQuery;
     const targetAgent = agentTypeOverride || difyTestAgentType;
     setDifyTesting(true);
@@ -374,6 +379,112 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
     const startTime = Date.now();
 
     try {
+      // 若為搜職 Agent，先進行條件明確性排查（籠統提「附近」未指明位置、或「我的大學/專業/性格」未明說者主動向用戶確認）
+      if (targetAgent === 'explorer_agent') {
+        setExplorerBatchProgressText('🔍 正在檢驗搜尋條件明確性（排查附近或我的...籠統條件）...');
+        const intakeRes = await fetch('/api/job-explorer/intake', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: q, filters: {} }),
+        }).catch(() => null);
+
+        const intakeData = intakeRes ? await intakeRes.json().catch(() => null) : null;
+        if (intakeData?.isAmbiguous) {
+          setExplorerBatchProgressText('⚠️ 條件尚不明確，已啟動用戶確認追問機制');
+          setDifyLiveResponse({
+            success: true,
+            source: 'ambiguity-intake-guard',
+            agentKey: 'Explorer Agent 需求釐清確認調節器 (Intake Regulator)',
+            notice: `⚠️ 系統成功攔截籠統條件！檢測到【${(intakeData.ambiguousTypes || []).join(', ')}】等不清不楚的條件（例如詢問附近但未指定確切位置、或提到我的大學/專業/性格但未明說）。已暫停直接搜尋，改為向用戶提出具體確認！`,
+            latencyMs: Date.now() - startTime,
+            rawOutput: JSON.stringify(intakeData, null, 2),
+            parsedJson: {
+              reply: intakeData.reply,
+              clarificationQuestion: intakeData.clarificationQuestion,
+              suggestedChips: intakeData.suggestedChips,
+              isAmbiguous: true,
+              ambiguousTypes: intakeData.ambiguousTypes,
+            },
+          });
+          return;
+        }
+      }
+
+      // 若為搜職 Agent 且開啟「分批多次串流整合模式」，直接呼叫多批次串流端點，前端即時聚合顯示！
+      if (targetAgent === 'explorer_agent' && explorerMultiBatchMode) {
+        setExplorerBatchProgressText('🚀 正在啟動多批次串流分流檢索（防止單次輸出超長）...');
+        try {
+          const streamRes = await fetch('/api/job-explorer/search-stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: q, filters: {} }),
+          });
+
+          if (streamRes.ok && streamRes.body) {
+            const reader = streamRes.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            let accumulatedJobs: any[] = [];
+            const seen = new Set<string>();
+            let lastReply = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const parts = buffer.split('\n\n');
+              buffer = parts.pop() || '';
+
+              for (const part of parts) {
+                const trimmed = part.trim();
+                if (!trimmed.startsWith('data: ')) continue;
+                try {
+                  const event = JSON.parse(trimmed.slice(6));
+                  if (event.type === 'batch' && Array.isArray(event.jobs)) {
+                    for (const j of event.jobs) {
+                      const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+                      if (!seen.has(k)) {
+                        seen.add(k);
+                        accumulatedJobs.push(j);
+                      }
+                    }
+                    lastReply = event.reply || lastReply;
+                    setExplorerBatchProgressText(`✓ 已送達第 ${event.batchIndex} 批職缺（目前累計整合 ${accumulatedJobs.length} 筆）...`);
+                    setDifyLiveResponse({
+                      success: true,
+                      source: 'multi-batch-stream',
+                      agentKey: 'Explorer Multi-Batch Stream (零長度超限)',
+                      notice: `⚡ 已啟用「分批次多次串流整合」：後端分批即時檢索、前端逐批聚合，已整合第 ${event.batchIndex} 批（共 ${accumulatedJobs.length} 筆真實職缺），徹底避免長度超限！`,
+                      latencyMs: Date.now() - startTime,
+                      rawOutput: JSON.stringify({ reply: lastReply, totalJobs: accumulatedJobs.length, jobs: accumulatedJobs }, null, 2),
+                      parsedJson: { reply: lastReply, jobs: accumulatedJobs },
+                    });
+                  } else if (event.type === 'done') {
+                    setExplorerBatchProgressText(`✓ 全網職缺多批次檢索整合完成，共 ${accumulatedJobs.length} 筆真實職缺！`);
+                    setDifyLiveResponse({
+                      success: true,
+                      source: 'multi-batch-stream',
+                      agentKey: 'Explorer Multi-Batch Stream (整合完成)',
+                      notice: `🎉 多批次分開回傳與前端整合檢索完成！共彙整 ${accumulatedJobs.length} 筆當下開放應徵之跨平台真實職缺（Yes123、Cake、1111、104等），無長度限制問題。`,
+                      latencyMs: Date.now() - startTime,
+                      rawOutput: JSON.stringify({ reply: event.reply || lastReply, totalJobs: accumulatedJobs.length, jobs: accumulatedJobs }, null, 2),
+                      parsedJson: { reply: event.reply || lastReply, jobs: accumulatedJobs },
+                    });
+                  }
+                } catch {}
+              }
+            }
+
+            if (accumulatedJobs.length > 0) {
+              setDifyTesting(false);
+              return;
+            }
+          }
+        } catch (streamErr) {
+          console.warn('Admin multi-batch stream error, falling back to direct:', streamErr);
+        }
+      }
+
       // 步驟 1：優先透過瀏覽器發起 CORS 串流直連 Dify 官方 API（https://api.dify.ai/v1）
       // 徹底解決在 www.ideax.tw 等靜態托管環境下沒有 Node 後端 (/api/...) 導致 404 的問題！
       let directSuccess = false;
@@ -382,7 +493,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
           agentType: targetAgent,
           query: q,
           user: `admin_tester_${Date.now()}`,
-          timeoutMs: 35000,
+          timeoutMs: targetAgent === 'explorer_agent' ? 120000 : 35000,
         });
 
         if (directResult && directResult.success) {
@@ -397,21 +508,26 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
       } catch (browserDirectErr: any) {
         console.warn('Browser direct Dify call encountered issue, attempting server proxy fallback:', browserDirectErr?.message || browserDirectErr);
 
-        // 步驟 2：若瀏覽器直連受限（例如外掛攔截），嘗試透過 Node Express 代理端點呼叫
+        // 步驟 2：若瀏覽器直連受限（例如 udify.app Web 端點或外掛攔截），透過 Node Express 代理端點呼叫
         let serverSuccess = false;
         try {
+          const customKey =
+            targetAgent === 'explorer_agent'
+              ? difyConfig.explorerKey || difyConfig.explorerWebUrl
+              : undefined;
           const res = await fetch('/api/admin/test-dify-agent', {
             method: 'POST',
             headers: await getAuthHeaders(),
             body: JSON.stringify({
               agentType: targetAgent,
               query: q,
+              customKey,
             }),
           });
           if (res.ok) {
-            const contentType = res.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-              const data = await res.json();
+            const rawRespText = await res.text();
+            if (rawRespText && rawRespText.trim()) {
+              const data = JSON.parse(rawRespText.trim());
               if (data && data.success) {
                 setDifyLiveResponse(data);
                 serverSuccess = true;
@@ -837,11 +953,8 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
         </div>
       </div>
 
-      {/* 小燈泡（網站吉祥物）：設定、轉接檢查與互動統計 */}
-      <section className="space-y-3" aria-label="小燈泡設定與統計">
-        <AdminMascotSettingsCard />
-        <AdminMascotStatsCard />
-      </section>
+      {/* 小燈泡（網站吉祥物）：設定、轉接檢查與互動統計（預設收合） */}
+      <AdminMascotSettingsCard />
 
       {/* 主頁籤切換欄 */}
       <div className="flex items-center gap-1.5 bg-stone-100/80 p-1.5 rounded-2xl border border-stone-200 overflow-x-auto text-xs font-bold">
@@ -920,6 +1033,19 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
 
             <button
               type="button"
+              onClick={() => setActiveTesterId('mascot_route_check')}
+              className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                activeTesterId === 'mascot_route_check'
+                  ? 'bg-amber-100 text-amber-950 border border-amber-400 font-black shadow-2xs ring-2 ring-amber-300'
+                  : 'text-stone-600 hover:bg-stone-50'
+              }`}
+            >
+              <Lightbulb className="w-4 h-4 text-amber-600" />
+              <span>小燈泡轉接檢查</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTesterId('matching_agent')}
               className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTesterId === 'matching_agent'
@@ -957,6 +1083,24 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
               <span>3. AI 特助伺服器值班</span>
             </button>
           </div>
+
+          {/* 測試器：小燈泡轉接檢查 */}
+          {activeTesterId === 'mascot_route_check' && (
+            <div className="bg-white rounded-3xl border border-amber-300/80 p-5 sm:p-7 shadow-xs space-y-4">
+              <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
+                    <Lightbulb className="w-5 h-5 text-amber-600" />
+                    <span>首頁小燈泡 Agent 轉接檢查與測試</span>
+                  </h3>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    驗證三位助理（客服、全網搜職、AI-CRM）的金鑰配置、Dify 應用對應，並實測一句話分流與問答。
+                  </p>
+                </div>
+              </div>
+              <AdminMascotRouteCheck />
+            </div>
+          )}
 
           {/* 測試器 3: AI 特助伺服器值班（手動執行一次） */}
           {activeTesterId === 'assistant_tick' && <AdminAssistantTickCard />}
@@ -1022,7 +1166,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      💼 AICRM Agent
+                      💼 AICRM 三合一Agent(雷達&軍師&特助)
                     </button>
                     <button
                       type="button"
@@ -1055,6 +1199,22 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       }`}
                     >
                       🤖 官方客服 Agent
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDifyTestAgentType('explorer_agent');
+                        const defaultPrompt = '請幫我搜尋台南市餐飲門市人員的真實職缺，月薪 32,000 元以上，特別在意工作環境與福利待遇。';
+                        setDifyTestQuery(defaultPrompt);
+                        setDifyLiveResponse(null);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        difyTestAgentType === 'explorer_agent'
+                          ? 'bg-[#1e3a8a] text-white shadow-xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      🧭 全網搜職 Agent
                     </button>
                   </div>
                 </div>
@@ -1141,6 +1301,34 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
                       />
                     </div>
+
+                    {/* Explorer Web URL */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-300 mb-1">
+                        6. DIFY_EXPLORER_WEB_URL (全網搜職 Agent 獨立網址 / 預設端點)
+                      </label>
+                      <input
+                        type="text"
+                        value={difyForm.explorerWebUrl}
+                        onChange={(e) => setDifyForm({ ...difyForm, explorerWebUrl: e.target.value })}
+                        placeholder="https://udify.app/agent/bEV82Byu5zk9O4Q5"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
+                      />
+                    </div>
+
+                    {/* Explorer Agent Key */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-300 mb-1">
+                        7. DIFY_EXPLORER_API_KEY (全網搜職 Agent 金鑰，選填)
+                      </label>
+                      <input
+                        type="text"
+                        value={difyForm.explorerKey}
+                        onChange={(e) => setDifyForm({ ...difyForm, explorerKey: e.target.value })}
+                        placeholder="app-xxxxxxxxxxxxxxxxxxxxxxxx 或留空使用上方 Web 端點"
+                        className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-700 text-stone-100 font-mono text-xs focus:border-amber-400 outline-none"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2">
@@ -1188,9 +1376,10 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                   <span className="text-xs font-black text-stone-800 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                     <span>
-                      {difyTestAgentType === 'aicrm_agent' && '💼 AICRM Agent實測 Prompt範本：'}
+                      {difyTestAgentType === 'aicrm_agent' && '💼 AICRM 三合一Agent(雷達&軍師&特助) 實測 Prompt 範本：'}
                       {difyTestAgentType === 'market_advisor' && '📊 市場顧問專屬實測 Prompt 範本（五大業務核心）：'}
                       {difyTestAgentType === 'cs_agent' && '🤖 官方客服專屬實測 Prompt 範本（高頻 FAQ 與機制）：'}
+                      {difyTestAgentType === 'explorer_agent' && '🧭 全網搜職 Agent（搜搜）專屬實測 Prompt 範本（跨平台找工作）：'}
                     </span>
                   </span>
                   <span className="text-[11px] text-stone-400">點擊範本立即載入提示詞</span>
@@ -1372,7 +1561,228 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     })}
                   </div>
                 )}
+                {difyTestAgentType === 'explorer_agent' && (
+                  <div className="space-y-3 animate-in fade-in duration-150">
+                    {/* 維度分類切換標籤 */}
+                    <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold pb-1">
+                      <span className="text-stone-500 font-medium mr-1">測試維度篩選：</span>
+                      {[
+                        { id: 'all', label: '全部維度 (12)' },
+                        { id: 'strictness', label: '🎯 需求嚴格程度 (4)' },
+                        { id: 'semantics', label: '💬 語意明確程度 (3)' },
+                        { id: 'parameters', label: '⚙️ Agent 關鍵參數 (5)' },
+                      ].map((dim) => (
+                        <button
+                          key={dim.id}
+                          type="button"
+                          onClick={() => setExplorerPresetCategory(dim.id as any)}
+                          className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                            explorerPresetCategory === dim.id
+                              ? 'bg-blue-900 text-white shadow-2xs font-black'
+                              : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
+                          }`}
+                        >
+                          {dim.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {[
+                        // 1. 需求嚴格程度
+                        {
+                          dim: 'strictness',
+                          badge: '嚴苛高薪門檻',
+                          badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
+                          label: '🎯 雙北雲端架構師（多重硬性指標）',
+                          desc: '月薪 90K+、經歷 5 年+、Kubernetes+AWS，嚴厲要求不可已下架',
+                          query: '請幫我搜尋台北市或新北市的「資深雲端架構師／DevOps 工程師」真實職缺。嚴格條件：月薪 90,000 元以上、經歷要求 5 年以上、具備 Kubernetes 與 AWS 實務經驗。特別規定：絕對不行使用已關閉、已結束或已下架的職缺，並列出真實有效的求職網網址。',
+                          paramsTag: '薪資≥90K / 經歷≥5年 / 嚴格在招',
+                        },
+                        {
+                          dim: 'strictness',
+                          badge: '寬鬆無門檻',
+                          badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                          label: '🌱 全台無經驗友善（門檻極低寬鬆）',
+                          desc: '全台不拘、無經驗可、學歷不拘、今日刊登，測試 Agent 對寬鬆條件的召回率',
+                          query: '全台灣地區皆可，搜尋適合社會新鮮人、無經驗可、學歷不拘的行政助理或客服人員職缺，月薪 30,000 元以上，請列出至少 8 筆當下開放應徵中的最新職缺。',
+                          paramsTag: '無經驗可 / 學歷不拘 / 今日刊登',
+                        },
+                        {
+                          dim: 'strictness',
+                          badge: '稀缺邊界條件',
+                          badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+                          label: '🏝️ 花東離島偏遠（冷門與相鄰擴展）',
+                          desc: '花東地區軟體/資訊維護職缺，考驗冷門條件與自動兜底檢索',
+                          query: '請搜尋花蓮縣或台東地區的資訊工程師、系統維護或可全遠端工作的軟體職缺，待遇面議或 40,000 元以上。若該地區職缺稀少，請自動擴展相鄰縣市或完全遠端之當下有效職缺，至少提供 3 筆真實職缺。',
+                          paramsTag: '偏遠地區 / 遠端兜底 / 最少3筆',
+                        },
+                        {
+                          dim: 'strictness',
+                          badge: '兼職彈性排班',
+                          badgeColor: 'bg-lime-100 text-lime-800 border-lime-300',
+                          label: '⏰ 台南門市彈性兼職（時薪200+ / 學生與二度就業）',
+                          desc: '時薪制、日班、自由排班、學生或二度就業友善',
+                          query: '搜尋台南市東區或中西區的餐飲或超商門市兼職／工讀人員職缺。條件：時薪 200 元以上、排班彈性、歡迎學生或二度就業。請列出當下正在開放應徵中的真實職缺，包含 Yes123 或 518 等平台真實網址。',
+                          paramsTag: '時薪200+ / 彈性排班 / 門市人員',
+                        },
+
+                        // 2. 語意明確程度
+                        {
+                          dim: 'semantics',
+                          badge: '高度明確結構',
+                          badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+                          label: '📐 台北前端工程師（結構化參數齊全）',
+                          desc: '規格、技術棧、薪資區間、在意項目全數指明，測試參數解析精準度',
+                          query: '地區：台北市信義區或大安區\n職務：資深 React / TypeScript 前端工程師\n月薪期望：65,000 ~ 85,000 元\n工作經歷：2 ~ 4 年\n在意條件：重視團隊技術氛圍、彈性上下班、年終獎金\n請精確輸出符合上述各維度的當下開放招募職缺。',
+                          paramsTag: '明確座標 / 具體技術棧 / 結構化輸入',
+                        },
+                        {
+                          dim: 'semantics',
+                          badge: '自然口語對話',
+                          badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
+                          label: '💬 南部轉職社群小編（日常對話式輸入）',
+                          desc: '使用日常自然口吻、無格式標籤，測試 Agent 對口語需求的情感與關鍵字提取',
+                          query: '我想在高雄或台南找一份跟社群行銷或 IG 小編有關的正式工作，我剛從文組畢業想轉職，薪水希望不要太低至少能有 3 萬 5 以上，休假希望是見紅休，有哪幾家公司現在有開缺？',
+                          paramsTag: '口語化敘述 / 軟性條件 / 轉職情境',
+                        },
+                        {
+                          dim: 'semantics',
+                          badge: '模糊語意探索',
+                          badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+                          label: '🌫️ 個性內向文職探索（無具體職稱推薦）',
+                          desc: '缺乏明確職稱，僅描述個人特質與模糊方向，測試 Agent 職業推導與相近推薦',
+                          query: '我最近想在台中找工作，但我個性比較內向，不想要一直面對陌生客人或打電話業務，比較喜歡安靜打字、整理資料或處理系統後台，有什麼適合我且現在正在找人的正職工作嗎？',
+                          paramsTag: '無特定職稱 / 人格特質導向 / 語意推論',
+                        },
+                        {
+                          dim: 'semantics',
+                          badge: '籠統位置排查',
+                          badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+                          label: '📍 附近工作排查（未指明確切位置）',
+                          desc: '僅提到「附近」但未具體指定縣市行政區，測試系統是否主動追問確認確切位置',
+                          query: '我家附近有什麼最新職缺推薦？我想找離家近一點的工作。',
+                          paramsTag: '籠統位置 / 附近攔截 / 主動追問確認',
+                        },
+                        {
+                          dim: 'semantics',
+                          badge: '籠統指涉排查',
+                          badgeColor: 'bg-pink-100 text-pink-800 border-pink-300',
+                          label: '🎓 我的大學與專業（不清不楚向用戶確認）',
+                          desc: '提到「我的大學、我的專業與性格」但完全未指明內容，測試系統是否主動向用戶確認具體資訊',
+                          query: '我想依我的大學跟我的專業，找適合我的性格的工作，有什麼好推薦？',
+                          paramsTag: '未明指涉 / 我的大學與專業 / 觸發確認機制',
+                        },
+
+                        // 3. Agent 關鍵參數與特徵
+                        {
+                          dim: 'parameters',
+                          badge: '跨平台來源',
+                          badgeColor: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-300',
+                          label: '🌐 跨平台真實求職（Yes123 / Cake / 1111 / 104 / 518）',
+                          desc: '廣泛檢索全網各大求職站真實職缺，要求直接真實頁面網址，拒絕單一平台局限',
+                          query: '請幫我全網搜尋新北市或台北市的「數位行銷企劃」或「專案經理 PM」真實職缺。來源平台要求多元化：請同時列出來自 Yes123、Cake、Yourator、1111人力銀行、104人力銀行 等各站當下開放應徵的職缺，每筆都必須是該站真實存在且有效的直接應徵連結。',
+                          paramsTag: '多站來源 / Yes123+Cake+1111+104 / 跨站真實連結',
+                        },
+                        {
+                          dim: 'parameters',
+                          badge: '防下架檢驗',
+                          badgeColor: 'bg-red-100 text-red-800 border-red-300',
+                          label: '🛡️ 雙北 UI/UX 設計師（防過期/404下架過濾）',
+                          desc: '指定熱門職缺，嚴厲約束絕對不可包含停止徵才、已額滿或已關閉之過期職缺',
+                          query: '請搜尋台北市與新北市「UI / UX 產品設計師」的真實職缺。特別檢驗約束：請逐筆驗證職缺連結與徵才狀態，絕對不可包含已額滿、停止招募、頁面 404 或已結束徵才的職缺！每一筆都必須保證當下可即刻投遞。',
+                          paramsTag: '有效性校驗 / 嚴禁過期 / 即時開放中',
+                        },
+                        {
+                          dim: 'parameters',
+                          badge: '大數量提取',
+                          badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+                          label: '📦 台北餐飲門市主管（3 ~ 100 筆批量壓力）',
+                          desc: '要求檢索 15 ~ 30 筆真實職缺，測試 Agent 提取數量上限與結構化能力',
+                          query: '搜尋台北市各大知名連鎖餐飲品牌的門市主管、店長或儲備幹部職缺。請進行深度全網檢索，盡可能列出 15 ~ 30 筆不同的當下開放職缺，包含完整公司名稱、薪資待遇、經歷要求與真實連結。',
+                          paramsTag: '批量檢索 (15~30筆) / 完整格式驗證',
+                        },
+                        {
+                          dim: 'parameters',
+                          badge: '多在意維度排序',
+                          badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
+                          label: '⚖️ 新竹軟體測試 QA（福利在意度權重評分）',
+                          desc: '提供三種不同權重的在意指標，測試 Agent 職缺 aiScore 契合度評分演算法',
+                          query: '新竹市或竹北地區的軟體測試工程師（QA / SDET），月薪 50,000 元以上。求職者在意權重排序：1. 工時正常不常態加班、2. 提供完整專業培訓、3. 辦公室交通便利好停車。請根據這三項在意條件在 JSON 中給出精準 aiScore 與推薦原因。',
+                          paramsTag: '在意權重多指標 / aiScore 評分比對',
+                        },
+                        {
+                          dim: 'parameters',
+                          badge: '薪資數值敏感',
+                          badgeColor: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                          label: '💰 桃竹倉儲物流主管（拒絕面議、精確區間）',
+                          desc: '強制要求薪資必須有明確公開數字（不得僅填待遇面議），測試薪資解析器',
+                          query: '搜尋桃園市或新竹縣的倉儲物流主管／供應鏈管理職缺。薪資嚴格限制：必須有明確公開之月薪數字，且月薪介於 45,000 至 65,000 元之間，請勿列出僅標示「待遇面議」而無具體金額的職缺。',
+                          paramsTag: '明確薪資區間 / 排除純面議 / 數值解析',
+                        },
+                      ]
+                        .filter((p) => explorerPresetCategory === 'all' || p.dim === explorerPresetCategory)
+                        .map((preset, idx) => {
+                          const isSelected = difyTestQuery === preset.query;
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setDifyTestQuery(preset.query);
+                              }}
+                              className={`p-3 rounded-2xl border text-left transition-all cursor-pointer space-y-1.5 group shadow-2xs hover:shadow-xs ${
+                                isSelected
+                                  ? 'bg-blue-100/90 border-blue-500 ring-2 ring-blue-500/30'
+                                  : 'bg-blue-50/40 hover:bg-blue-100/60 border-blue-200/80'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span className={`text-xs font-black line-clamp-1 ${isSelected ? 'text-blue-950' : 'text-stone-900 group-hover:text-blue-900'}`}>{preset.label}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${preset.badgeColor}`}>{preset.badge}</span>
+                              </div>
+                              <p className="text-[11px] text-stone-500 leading-tight">{preset.desc}</p>
+                              <div className="pt-1 flex items-center">
+                                <span className="text-[10px] font-mono text-stone-400 bg-white/80 px-1.5 py-0.5 rounded border border-stone-200/60">
+                                  {preset.paramsTag}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* 搜職 Agent 專屬：分批多次串流整合開關與說明 */}
+              {difyTestAgentType === 'explorer_agent' && (
+                <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-black text-blue-950 flex items-center gap-1.5">
+                        <span>分批多次回傳與前端整合模式 (Multi-Batch Progressive Integration)</span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                          推薦開啟
+                        </span>
+                      </span>
+                      <p className="text-[11px] text-stone-600 leading-tight">
+                        由後端自動分 2 ~ 3 批次快速回傳（每批 3 ~ 6 筆），前端逐批累計整合顯示，徹底根除「超過最大輸出長度／迭代上限」問題！
+                      </p>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs font-bold text-stone-800 cursor-pointer self-end sm:self-auto shrink-0 bg-white px-3 py-1.5 rounded-xl border border-blue-200 shadow-2xs">
+                    <input
+                      type="checkbox"
+                      checked={explorerMultiBatchMode}
+                      onChange={(e) => setExplorerMultiBatchMode(e.target.checked)}
+                      className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer w-4 h-4"
+                    />
+                    <span>分批多次整合</span>
+                  </label>
+                </div>
+              )}
 
               {/* 輸入自訂 Query 與觸發 */}
               <div className="space-y-2">
@@ -1387,6 +1797,48 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                   className="w-full text-xs p-3 rounded-xl border border-stone-300 focus:border-amber-500 outline-none bg-stone-50 font-mono leading-relaxed"
                 />
 
+                {/* 搜職條件確認卡片：先讓用戶確認以此條件搜尋再開始 */}
+                {difyTestAgentType === 'explorer_agent' && (
+                  <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300/90 text-stone-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
+                    <div className="space-y-0.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-stone-900">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>已就緒之測試條件（確認後啟動）：</span>
+                      </div>
+                      <p className="text-[11px] text-stone-600 font-mono truncate pl-5">
+                        {difyTestQuery}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleTestDirectDify()}
+                      disabled={difyTesting || !difyTestQuery.trim()}
+                      className="px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 active:scale-95 text-white font-black text-xs cursor-pointer flex items-center gap-1.5 shadow-sm shrink-0"
+                    >
+                      {difyTesting ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>分批檢索中...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-300 stroke-[3]" />
+                          <span>確認以此條件開始測試</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* 串流批次進度即時提示 */}
+                {difyTesting && explorerBatchProgressText && (
+                  <div className="p-2.5 rounded-xl bg-blue-900/10 border border-blue-400 text-blue-900 text-xs flex items-center gap-2 animate-pulse">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-700" />
+                    <span className="font-bold">{explorerBatchProgressText}</span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-[11px] text-stone-500">
                     目標 Agent 金鑰：
@@ -1394,7 +1846,9 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       {difyTestAgentType === 'market_advisor'
                         ? 'Market Advisor Agent (市場顧問)'
                         : difyTestAgentType === 'aicrm_agent'
-                        ? 'AICRM Agent'
+                        ? 'AICRM 三合一Agent(雷達&軍師&特助)'
+                        : difyTestAgentType === 'explorer_agent'
+                        ? 'Explorer Agent (全網搜職 Agent / 搜搜)'
                         : 'CS Agent (官方客服)'}
                     </code>
                   </span>
@@ -1408,7 +1862,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     {difyTesting ? (
                       <>
                         <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Dify 串流呼叫中...</span>
+                        <span>串流呼叫中...</span>
                       </>
                     ) : (
                       <>
@@ -1859,6 +2313,155 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                                   </div>
                                 </div>
                               ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 4.4 模糊需求追問確認卡片 (parsed.isAmbiguous) */}
+                        {parsed && parsed.isAmbiguous && (
+                          <div className="bg-amber-950/30 rounded-3xl border border-amber-500/50 p-5 space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-500/30 pb-3">
+                              <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                                <AlertCircle className="w-4 h-4 text-amber-400" />
+                                <span>需求條件尚不明確・已啟動用戶確認追問機制：</span>
+                              </span>
+                              {parsed.ambiguousTypes && (
+                                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 self-start sm:self-auto">
+                                  待確認：{(parsed.ambiguousTypes as string[]).join(' / ')}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="p-3.5 rounded-2xl bg-stone-900/80 border border-amber-500/30 space-y-1.5">
+                              <p className="text-xs text-amber-200 font-bold leading-relaxed">
+                                {parsed.reply || parsed.clarificationQuestion}
+                              </p>
+                              <p className="text-[11px] text-stone-400">
+                                系統檢測到包含如「附近」無指明確切縣市、或提到「我的大學/專業/性格」等籠統詞彙，已安全攔截並要求確認。
+                              </p>
+                            </div>
+
+                            {Array.isArray(parsed.suggestedChips) && parsed.suggestedChips.length > 0 && (
+                              <div className="space-y-2">
+                                <span className="text-[11px] font-bold text-stone-300">
+                                  💡 快捷補充選項（點選後直接填入測試輸入框）：
+                                </span>
+                                <div className="flex flex-wrap gap-2">
+                                  {parsed.suggestedChips.map((chip: any, cIdx: number) => (
+                                    <button
+                                      key={cIdx}
+                                      type="button"
+                                      onClick={() => {
+                                        setDifyTestQuery((prev) => `${prev} ${chip.value}`.trim());
+                                      }}
+                                      className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-amber-500 hover:text-stone-950 border border-stone-700 text-stone-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                                    >
+                                      <span>{chip.label}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 4.5 全網真實職缺聚合列表 (parsed.jobs) */}
+                        {parsed && parsed.jobs && Array.isArray(parsed.jobs) && parsed.jobs.length > 0 && (
+                          <div className="space-y-3.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-800 pb-3">
+                              <div className="space-y-0.5">
+                                <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                                  <Briefcase className="w-4 h-4 text-amber-400" />
+                                  <span>全網在招真實職缺（分批整合完成，共 {parsed.jobs.length} 筆）：</span>
+                                </span>
+                                <p className="text-[11px] text-stone-400">
+                                  來源跨 Yes123、Cake、1111、Yourator、104、518 及企業官網，每一筆皆具備即時直接網址。
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyText(JSON.stringify(parsed.jobs, null, 2), 'jobs-json')}
+                                className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 self-start sm:self-auto"
+                              >
+                                {difyCopiedText === 'jobs-json' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                <span>{difyCopiedText === 'jobs-json' ? '已複製 JSON' : '複製職缺 JSON'}</span>
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {parsed.jobs.map((job: any, jIdx: number) => {
+                                const platform = job.sourcePlatform || '全網真實求職';
+                                const isCake = platform.toLowerCase().includes('cake');
+                                const isYes123 = platform.toLowerCase().includes('yes123');
+                                const is1111 = platform.toLowerCase().includes('1111');
+                                const isYourator = platform.toLowerCase().includes('yourator');
+                                const is104 = platform.toLowerCase().includes('104');
+                                const is518 = platform.toLowerCase().includes('518');
+
+                                const badgeClass = isCake
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                  : isYes123
+                                  ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                                  : is1111
+                                  ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
+                                  : isYourator
+                                  ? 'bg-teal-500/20 text-teal-300 border-teal-500/40'
+                                  : is104
+                                  ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                                  : is518
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : 'bg-stone-800 text-stone-300 border-stone-700';
+
+                                return (
+                                  <div
+                                    key={job.id || jIdx}
+                                    className="p-4 rounded-2xl bg-stone-900 border border-stone-800 hover:border-amber-400/50 transition-all flex flex-col justify-between space-y-3"
+                                  >
+                                    <div className="space-y-1.5">
+                                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${badgeClass}`}>
+                                          {platform}
+                                        </span>
+                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                                          在招中
+                                        </span>
+                                      </div>
+
+                                      <h5 className="text-sm font-black text-white line-clamp-1">{job.title}</h5>
+                                      <p className="text-xs text-amber-300/90 font-medium line-clamp-1">{job.company}</p>
+
+                                      <div className="flex items-center gap-1.5 text-[11px] text-stone-400 pt-1">
+                                        <span>{job.location || job.city || '工作地點'}</span>
+                                        <span>•</span>
+                                        <span>{job.experience || '經歷不拘'}</span>
+                                        <span>•</span>
+                                        <span>{job.education || '學歷不拘'}</span>
+                                      </div>
+
+                                      {job.description && (
+                                        <p className="text-[11px] text-stone-400 line-clamp-2 leading-relaxed pt-1">
+                                          {job.description}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    <div className="pt-2 border-t border-stone-800 flex items-center justify-between gap-2">
+                                      <span className="text-xs font-black text-amber-400">{job.salaryText || '待遇面議'}</span>
+                                      {job.url && (
+                                        <a
+                                          href={job.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-[11px] flex items-center gap-1 transition-all shadow-xs"
+                                        >
+                                          <span>直達職缺</span>
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}

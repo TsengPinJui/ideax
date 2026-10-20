@@ -48,7 +48,8 @@ export type AppTab =
   | 'my_projects'
   | 'ai_crm'
   | 'membership'
-  | 'topup';
+  | 'topup'
+  | 'job_explorer';
 
 export type AboutSection = 
   | 'list'
@@ -591,6 +592,10 @@ export interface User {
   pendingEarnings?: number; // 待結算/託管中收益 NT$
   reputation: number; // 信用值 / 聲望
   joinedDate: string;
+  registeredAt?: string; // 註冊日期時間 (ISO 或 YYYY-MM-DD)
+  createdAt?: string; // 帳號建立時間
+  lastLoginAt?: string; // 最近登入時間 (ISO)
+  lastActiveAt?: string; // 最近上線/活躍時間 (ISO)
   updatedAt?: string;
   bio?: string;
   email: string;

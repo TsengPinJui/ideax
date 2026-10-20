@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Lightbulb, RotateCcw, Save } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { AdminMascotRouteCheck } from './AdminMascotRouteCheck';
+import { AdminMascotStatsCard } from './AdminMascotStatsCard';
 import {
   DEFAULT_MASCOT_CONFIG,
   MASCOT_LIMITS,
@@ -45,7 +45,7 @@ const Slider: React.FC<{
   </div>
 );
 
-/** 管理員「AI功能設定與監控」：首頁小燈泡設定（顯示開關、對話、想你天數、果凍手感），拖滑桿時右下角的吉祥物會即時套用 */
+/** 管理員「AI功能設定與監控」：首頁小燈泡設定與互動統計（預設收合） */
 export const AdminMascotSettingsCard: React.FC = () => {
   const { mascotConfig, saveMascotConfig } = useApp();
   const [open, setOpen] = useState(false);
@@ -82,49 +82,36 @@ export const AdminMascotSettingsCard: React.FC = () => {
     }
   };
 
-  const status = [
-    mascotConfig.enabled ? '顯示中' : '已關閉',
-    mascotConfig.showOnMobile ? '含手機' : '僅電腦',
-    mascotConfig.chatEnabled ? '對話開啟' : '對話關閉',
-    mascotConfig.soundEnabled ? '音效開' : '音效關',
-  ];
-
   return (
     <section className="p-3.5 sm:p-4.5 rounded-2xl bg-gradient-to-br from-amber-50/80 via-white to-stone-50 border border-amber-200/90 shadow-2xs space-y-3" aria-labelledby="mascot-settings-title">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left select-none group"
+        className="w-full flex items-center justify-between gap-3 text-left select-none group cursor-pointer"
       >
         <span className="flex items-center gap-2.5 min-w-0">
           <span className="w-9 h-9 rounded-xl bg-amber-400 text-stone-900 flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
             <Lightbulb className="w-5 h-5" />
           </span>
           <span className="min-w-0">
-            <span id="mascot-settings-title" className="block font-black text-xs sm:text-sm text-stone-900">首頁小燈泡</span>
-            <span className="block text-[11px] text-stone-500 font-medium">右下角 3D 吉祥物的顯示、對話與果凍手感，拖滑桿時右下角會即時預覽</span>
+            <span id="mascot-settings-title" className="block font-black text-xs sm:text-sm text-stone-900">首頁小燈泡（設定與互動統計）</span>
+            <span className="block text-[11px] text-stone-500 font-medium">點擊展開右下角 3D 吉祥物的顯示、對話、果凍手感與互動統計數據</span>
           </span>
         </span>
-        <span className="flex items-center gap-1.5 flex-wrap sm:justify-end">
-          {status.map((s) => (
-            <span key={s} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-amber-200 text-amber-900">{s}</span>
-          ))}
+        <span className="flex items-center shrink-0 pr-1">
           <ChevronDown className={`w-4 h-4 text-stone-500 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
         </span>
       </button>
 
       {open && (
-        <div className="space-y-4 pt-1">
+        <div className="space-y-4 pt-2 border-t border-amber-200/60">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Toggle label="全站顯示" hint="關閉後所有人都看不到" checked={draft.enabled} onChange={(v) => update({ enabled: v })} />
             <Toggle label="手機也顯示" hint="小螢幕會站在底部導覽列上方" checked={draft.showOnMobile} onChange={(v) => update({ showOnMobile: v })} />
             <Toggle label="開放提問" hint="AI 分流給三位 Dify 助理" checked={draft.chatEnabled} onChange={(v) => update({ chatEnabled: v })} />
             <Toggle label="音效" hint="開燈發亮、玻璃說話、觸電與撞擊聲" checked={draft.soundEnabled} onChange={(v) => update({ soundEnabled: v })} />
           </div>
-
-          {/* 轉接檢查：三位助理的金鑰對應哪個 Dify 應用、測試分流 */}
-          <AdminMascotRouteCheck />
 
           <div className="space-y-3 p-3 rounded-xl bg-white border border-stone-200">
             <p className="text-xs font-black text-stone-900">果凍手感</p>
@@ -178,6 +165,9 @@ export const AdminMascotSettingsCard: React.FC = () => {
             {dirty && !msg && <span className="text-xs text-amber-700 font-bold">有尚未儲存的變更</span>}
             {msg && <span className="text-xs text-emerald-700 font-bold" role="status">{msg}</span>}
           </div>
+
+          {/* 互動統計整合在同一收合區塊內 */}
+          <AdminMascotStatsCard />
         </div>
       )}
     </section>

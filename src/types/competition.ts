@@ -656,8 +656,12 @@ export function getProposalCardAuthorText(proposal?: {
   }
 
   // 卡片上固定顯示團隊名稱，機構/學校名稱則由團隊自主選擇是否於卡片上公開顯示
-  const isOrgVisible = Boolean((proposal.showOrganization ?? proposal.showSchool ?? false) && org);
-  const displayText = isOrgVisible && org ? `${org} ｜ ${team}` : team;
+  // 名稱可能被重複串接（例如「IdeaX創點子團隊 ｜ IdeaX創點子團隊 ｜ IdeaX創點子團隊」），拆開去掉重複再組回
+  const dedupeParts = (t: string) => Array.from(new Set(t.split(/[｜|]/).map((x) => x.trim()).filter(Boolean))).join(' ｜ ');
+  team = dedupeParts(team) || '參賽團隊';
+  org = dedupeParts(org);
+  const isOrgVisible = Boolean((proposal.showOrganization ?? proposal.showSchool ?? false) && org && org !== team);
+  const displayText = isOrgVisible && org ? dedupeParts(`${org} ｜ ${team}`) : team;
 
   return { teamName: team, organizationName: org, displayText, isOrgVisible };
 }
