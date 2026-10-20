@@ -3311,20 +3311,21 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                   <span className="text-[10px] text-stone-500 font-medium">履約偏差分析與雙軌和解</span>
                 </div>
               </div>
-              {/* 和事佬白喵：坐下、戴眼鏡、拿紙筆記下雙方說法 */}
-              <BaiMiao
-                action="mediate"
-                size={78}
-                bubbleSide="left"
-                bubble={isAnalyzingMediation ? { text: '白喵正在整理雙方說法、擬和解方案', busy: true } : { text: '交給我，我來當和事佬～' }}
-                className="-my-3 ml-auto mr-1 hidden min-[400px]:block"
-              />
+
               <button
                 onClick={() => setIsMediationModalOpen(false)}
                 className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* 和事佬白喵：坐下、戴眼鏡、拿紙筆記下雙方說法 */}
+            <div className="flex items-center gap-2 rounded-2xl bg-amber-50/70 border border-amber-200/70 px-2 py-1" role="status" aria-live="polite">
+              <BaiMiao action="mediate" size={64} className="-my-1 shrink-0" />
+              <span className="text-xs text-amber-900 font-bold leading-snug">
+                {isAnalyzingMediation ? '白喵正在整理雙方說法、擬和解方案…' : '交給白喵吧！我會把雙方的說法記下來，幫你們找到和解方案～'}
+              </span>
             </div>
 
             <div className="space-y-2 text-xs text-stone-600 leading-relaxed">

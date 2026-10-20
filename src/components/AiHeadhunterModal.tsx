@@ -340,20 +340,6 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
           </div>
 
           <div className="flex items-start gap-1 shrink-0">
-            {/* 市場顧問白喵拿望遠鏡幫你找人 */}
-            <BaiMiao
-              action={results && results.length > 0 && !isSearching ? 'cheer' : 'binoculars'}
-              size={84}
-              bubbleSide="left"
-              bubble={
-                isSearching
-                  ? { text: '白喵正在幫你找專家', busy: true }
-                  : results && results.length > 0
-                  ? { text: `找到 ${results.length} 位人選！` }
-                  : null
-              }
-              className="-my-2 hidden min-[380px]:block"
-            />
             <button
               type="button"
               onClick={onClose}
@@ -362,6 +348,18 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
+        </div>
+
+        {/* 市場顧問白喵拿望遠鏡幫你找人，旁邊顯示任務狀態 */}
+        <div className="flex items-center gap-2 rounded-2xl bg-amber-50/70 border border-amber-200/70 px-2 py-1" role="status" aria-live="polite">
+          <BaiMiao action={results && results.length > 0 && !isSearching ? 'cheer' : 'binoculars'} size={64} className="-my-1 shrink-0" />
+          <span className="text-xs text-amber-900 font-bold leading-snug">
+            {isSearching
+              ? '白喵正在拿望遠鏡幫你找專家…'
+              : results && results.length > 0
+              ? `白喵幫你找到 ${results.length} 位人選，往下看推薦理由吧！`
+              : '白喵已經拿出望遠鏡，輸入條件後馬上幫你找人！'}
+          </span>
         </div>
 
         {/* Search Input Box */}

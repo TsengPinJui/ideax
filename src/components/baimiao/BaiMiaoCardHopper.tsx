@@ -27,6 +27,8 @@ export const BaiMiaoCardHopper: React.FC<Props> = ({ cardsSelector, status }) =>
   const [action, setAction] = useState<BaiMiaoAction>('idle');
   const [facing, setFacing] = useState(1);
   const [tip, setTip] = useState<string | null>(null);
+  // 白喵太靠近外框上緣時，訊息框改放旁邊（不然會被切掉）
+  const [nearTop, setNearTop] = useState(false);
   const S = useRef({ x: 0, y: 0, idx: -1, side: 1, hopping: false, placed: false });
   const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -42,11 +44,18 @@ export const BaiMiaoCardHopper: React.FC<Props> = ({ cardsSelector, status }) =>
     // 字卡左右邊緣、坐在字卡上緣
     const spotFor = (el: HTMLElement, side: number) => {
       const h = host.getBoundingClientRect(), r = el.getBoundingClientRect(), sz = cat.offsetWidth;
-      const narrow = h.width < 640;
-      const x = side > 0 ? r.right - h.left - sz * (narrow ? 0.85 : 0.4) : r.left - h.left - sz * (narrow ? 0.15 : 0.6);
-      return { x, y: r.top - h.top - sz * 0.9 };
+      // 外框會捲動（例如彈出視窗裡的表單）時，超出邊界會被切掉：改停在字卡內側，並加上捲動距離
+      const scrolls = /(auto|scroll|hidden)/.test(getComputedStyle(host).overflowY);
+      const inside = scrolls || h.width < 640;
+      const x = (side > 0 ? r.right - h.left - sz * (inside ? 0.9 : 0.4) : r.left - h.left - sz * (inside ? 0.1 : 0.6)) + host.scrollLeft;
+      const y = r.top - h.top - sz * 0.9 + host.scrollTop;
+      return { x, y: scrolls ? Math.max(0, y) : y };
     };
-    const place = () => { cat.style.transform = `translate3d(${Math.round(S.current.x)}px, ${Math.round(S.current.y)}px, 0)`; };
+    const place = () => {
+      cat.style.transform = `translate3d(${Math.round(S.current.x)}px, ${Math.round(S.current.y)}px, 0)`;
+      const top = S.current.y - host.scrollTop < 60;
+      setNearTop((prev) => (prev === top ? prev : top));
+    };
 
     const hopTo = (i: number, list: HTMLElement[]) => {
       const st = S.current;
@@ -109,7 +118,14 @@ export const BaiMiaoCardHopper: React.FC<Props> = ({ cardsSelector, status }) =>
   return (
     <div ref={layerRef} className="pointer-events-none absolute inset-0 z-20" aria-hidden={!bubble}>
       <div ref={catRef} className="absolute left-0 top-0 will-change-transform" style={{ width: size, height: size, transform: 'translate3d(-999px,-999px,0)' }}>
-        <BaiMiao action={status ? 'idle' : action} facing={facing} size={size} bubble={bubble} bubbleAlign={S.current.side > 0 ? 'end' : 'start'} />
+        <BaiMiao
+          action={status ? 'idle' : action}
+          facing={facing}
+          size={size}
+          bubble={bubble}
+          bubbleSide={nearTop ? (S.current.side > 0 ? 'left' : 'right') : 'top'}
+          bubbleAlign={S.current.side > 0 ? 'end' : 'start'}
+        />
       </div>
     </div>
   );
