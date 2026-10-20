@@ -3892,7 +3892,7 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
   const difyBatchPromise = explorerKey
     ? callDifyStreamingAgent({
         apiKey: explorerKey,
-        query: `${rawQuery}（請只精簡列出 3 筆最契合的在招真實職缺並以 JSON 格式輸出）`,
+        query: `${rawQuery}（請盡量列出 8 筆以上符合條件、目前仍在招募的真實職缺，附職缺網址，並以 JSON 格式輸出）`,
         inputs: {},
         user: 'job_explorer_stream',
         // 搜搜要上網搜尋，常常超過半分鐘；之前 26 秒就中斷，Dify 那邊收到問題卻來不及回覆（管理後台測試給 120 秒所以正常）
@@ -3901,139 +3901,79 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
     : Promise.resolve(null);
 
   try {
-    // ─── Batch 1: 首發即時檢索（精選 5 ~ 7 筆核心職缺，超快回傳，零長度超限） ───
-    if (ai) {
+    // ─── 多組來源同時搜尋（各自完成就先回傳），盡可能找到更多符合條件的職缺 ───
+    const JOB_JSON_SPEC = `只輸出 JSON：
+{
+  "jobs": [
+    {
+      "title": "真實職缺名稱",
+      "company": "真實公司名稱",
+      "location": "工作地點",
+      "city": "縣市或城市",
+      "experience": "經歷要求",
+      "education": "學歷要求",
+      "salaryText": "薪資待遇",
+      "salaryMin": 32000,
+      "sourcePlatform": "來源平台",
+      "url": "職缺頁網址",
+      "description": "工作摘要（30 字內）"
+    }
+  ]
+}`;
+    const isPartTime = Boolean(partTimeHint(rawQuery));
+    const isAbroad = Boolean(regionHint(rawQuery));
+    const groups: Array<{ label: string; focus: string; count: string }> = [
+      { label: '主要人力銀行', focus: '104人力銀行、1111人力銀行、Yes123、518熊班', count: '12 ~ 15' },
+      { label: '新創與企業官網', focus: 'Cake、Yourator、LinkedIn，以及各公司官網的徵才頁', count: '12 ~ 15' },
+      { label: '相近職稱', focus: '把條件裡的職稱換成相近或同義的職稱（例如「門市人員」也找「門市專員、店員、儲備幹部」），在各大求職網站搜尋', count: '10 ~ 15' },
+    ];
+    if (isPartTime) groups.push({ label: '兼職平台', focus: '小雞上工、Worky、518熊班兼職、Yes123 打工、1111 兼職', count: '12 ~ 15' });
+    if (isAbroad) groups.push({ label: '國外求職平台', focus: 'LinkedIn、Indeed、Glassdoor 與職缺所在國家的主要求職網站', count: '12 ~ 15' });
+
+    let batchNo = 0;
+    const runGroup = async (g: { label: string; focus: string; count: string }) => {
+      if (!ai) return;
       try {
-        const batch1Prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 即時檢索台灣主流求職網站（包含 Yes123、104人力銀行、1111人力銀行、Cake、Yourator、518熊班、企業官網）上符合以下條件且「當下正在開放招募中」的真實公開職缺：
+        const prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 搜尋符合以下條件、而且目前仍在招募的真實公開職缺。
 條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
+這次請以這些來源為主：${g.focus}。
 
-【嚴格規定】：
-1. 精簡輸出 5 ~ 7 筆當下有效真實職缺，來源平台多元化（不限於 104，務必包含 Yes123、Cake、1111 等）。
-2. 絕對禁止已關閉、已結束或已下架的過期職缺！
-3. "url" 必須是檢索到的該職缺直接網址或 Grounding 網址。
-4. 每筆摘要控制在 35 字內，嚴格避免超長。
-只輸出 JSON：
-{
-  "reply": "【IdeaX創點子】已為您即時找到首批在招真實職缺！",
-  "carePoints": ["workEnvironment", "benefits", "salary", "industry"],
-  "jobs": [
-    {
-      "title": "真實職缺名稱",
-      "company": "真實公司名稱",
-      "location": "工作地點",
-      "city": "縣市",
-      "experience": "經歷要求",
-      "education": "學歷要求",
-      "salaryText": "月薪待遇",
-      "salaryMin": 32000,
-      "sourcePlatform": "Yes123 或 104 或 1111 或 Cake 或 518 或 企業官網",
-      "url": "真實直接應徵網址",
-      "description": "工作摘要"
-    }
-  ]
-}`;
-        const b1Res = await ai.models.generateContent({
+規定：
+1. 盡量列出 ${g.count} 筆不同公司或不同職缺，越多越好，但每一筆都必須真的符合條件。
+2. 不可包含已關閉、已下架或過期的職缺，不可虛構公司或職缺。
+3. "url" 填搜尋到的職缺頁網址；不確定時留空字串，不要自己編網址。
+4. 每筆摘要 30 字內。
+${JOB_JSON_SPEC}`;
+        const r = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
-          contents: batch1Prompt,
-          config: { tools: [{ googleSearch: {} }], temperature: 0.15 },
-        });
-
-        const b1Chunks = (b1Res as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks;
-        const b1Map: Array<{ title: string; uri: string }> = Array.isArray(b1Chunks)
-          ? b1Chunks
-              .map((c: any) => ({ title: String(c?.web?.title || ''), uri: String(c?.web?.uri || '') }))
-              .filter((m) => m.uri.startsWith('http'))
-          : [];
-        const b1Urls = b1Map.map((m) => m.uri);
-        const b1Json = extractJsonFromText(String(b1Res.text || ''));
-
-        if (Array.isArray(b1Json?.jobs) && b1Json.jobs.length > 0) {
-          const freshB1 = b1Json.jobs.filter(isJobActive).filter((j: any) => {
-            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-            if (globalSeen.has(k)) return false;
-            globalSeen.add(k);
-            return true;
-          });
-          const mappedB1 = await finalizeJobs(freshB1, groundingFrom(b1Res), filters, totalYielded);
-          totalYielded += mappedB1.length;
-          sendEvent({
-            type: 'batch',
-            batchIndex: 1,
-            isFirstBatch: true,
-            jobs: mappedB1,
-            reply: b1Json.reply || `【IdeaX創點子】已為您即時檢索出第 1 批 ${mappedB1.length} 筆開放中的真實職缺！`,
-            carePoints: Array.isArray(b1Json.carePoints) ? b1Json.carePoints : [],
-          });
-        }
-      } catch (e1) {
-        console.warn('[Search Stream Batch 1 Error]', e1);
-      }
-    }
-
-    // ─── Batch 2: 深度擴充檢索（再檢索 6 ~ 9 筆更多平台職缺） ───
-    if (ai) {
-      try {
-        const batch2Prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 擴大檢索台灣求職網（特別側重 Cake、Yourator、1111人力銀行、Yes123、518熊班）上與「${rawQuery}」相關且「當下正在開放招募中」的更多真實職缺。${partTimeHint(rawQuery)}${regionHint(rawQuery)}
-【嚴格規定】：
-1. 列出 6 ~ 9 筆不同的在招職缺，優先挑選非 104 的跨平台站點。
-2. 絕對不可包含已結束、已關閉或已下架的職缺。
-3. "url" 必須是真實直接網址。
-4. 每筆摘要控制在 35 字內。
-只輸出 JSON：
-{
-  "reply": "已擴充整合第二批跨平台在招職缺！",
-  "jobs": [
-    {
-      "title": "真實職缺名稱",
-      "company": "真實公司名稱",
-      "location": "工作地點",
-      "city": "縣市",
-      "experience": "經歷要求",
-      "education": "學歷要求",
-      "salaryText": "月薪待遇",
-      "salaryMin": 32000,
-      "sourcePlatform": "Cake 或 Yourator 或 1111 或 Yes123 或 518 或 企業官網",
-      "url": "真實直接應徵網址",
-      "description": "工作摘要"
-    }
-  ]
-}`;
-        const b2Res = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: batch2Prompt,
+          contents: prompt,
           config: { tools: [{ googleSearch: {} }], temperature: 0.2 },
         });
-
-        const b2Chunks = (b2Res as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks;
-        const b2Map: Array<{ title: string; uri: string }> = Array.isArray(b2Chunks)
-          ? b2Chunks
-              .map((c: any) => ({ title: String(c?.web?.title || ''), uri: String(c?.web?.uri || '') }))
-              .filter((m) => m.uri.startsWith('http'))
-          : [];
-        const b2Urls = b2Map.map((m) => m.uri);
-        const b2Json = extractJsonFromText(String(b2Res.text || ''));
-
-        if (Array.isArray(b2Json?.jobs) && b2Json.jobs.length > 0) {
-          const freshB2 = b2Json.jobs.filter(isJobActive).filter((j: any) => {
-            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-            if (globalSeen.has(k)) return false;
-            globalSeen.add(k);
-            return true;
-          });
-          const mappedB2 = await finalizeJobs(freshB2, groundingFrom(b2Res), filters, totalYielded);
-          totalYielded += mappedB2.length;
-          sendEvent({
-            type: 'batch',
-            batchIndex: 2,
-            isFirstBatch: totalYielded === mappedB2.length,
-            jobs: mappedB2,
-            reply: `已整合第二批 ${mappedB2.length} 筆職缺（累計 ${totalYielded} 筆）！`,
-          });
-        }
-      } catch (e2) {
-        console.warn('[Search Stream Batch 2 Error]', e2);
+        const parsed = extractJsonFromText(String(r.text || ''));
+        if (!Array.isArray(parsed?.jobs) || parsed.jobs.length === 0) return;
+        const fresh = parsed.jobs.filter(isJobActive).filter((j: any) => {
+          const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+          if (globalSeen.has(k)) return false;
+          globalSeen.add(k);
+          return true;
+        });
+        if (fresh.length === 0) return;
+        const mapped = await finalizeJobs(fresh, groundingFrom(r), filters, totalYielded);
+        if (mapped.length === 0) return;
+        totalYielded += mapped.length;
+        batchNo += 1;
+        sendEvent({
+          type: 'batch',
+          batchIndex: batchNo,
+          isFirstBatch: batchNo === 1,
+          jobs: mapped,
+          reply: `已從${g.label}找到 ${mapped.length} 筆職缺（累計 ${totalYielded} 筆），繼續搜尋中…`,
+        });
+      } catch (eg) {
+        console.warn(`[Search Stream ${g.label} Error]`, eg);
       }
-    }
+    };
+    await Promise.all(groups.map(runGroup));
 
     // ─── Batch 3: 整合 Dify 探險家搜搜精選職缺（若有） ───
     try {
@@ -4050,12 +3990,13 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
           if (freshB3.length > 0) {
             const mappedB3 = await finalizeJobs(freshB3, null, filters, totalYielded);
             totalYielded += mappedB3.length;
+            batchNo += 1;
             sendEvent({
               type: 'batch',
-              batchIndex: 3,
+              batchIndex: batchNo,
               isFirstBatch: totalYielded === mappedB3.length,
               jobs: mappedB3,
-              reply: `已整合第三批探險家搜搜精選 ${mappedB3.length} 筆職缺（累計 ${totalYielded} 筆）！`,
+              reply: `搜搜另外找到 ${mappedB3.length} 筆職缺（累計 ${totalYielded} 筆）！`,
             });
           }
         }
@@ -4066,7 +4007,7 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
     sendEvent({
       type: 'done',
       totalYielded,
-      reply: `【IdeaX創點子】全網職缺分批檢索完成，共統一整合顯示 ${totalYielded} 筆當下開放應徵之真實職缺！`,
+      reply: totalYielded > 0 ? `搜尋完成，共找到 ${totalYielded} 筆符合條件的職缺。` : '這次沒有找到符合條件的職缺，可以放寬一些條件再試試。',
     });
     res.end();
   } catch (err: any) {

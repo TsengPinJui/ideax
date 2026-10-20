@@ -222,16 +222,27 @@ export async function verifyJobUrl(
   const rawCandidates = [...grounded.map((u) => ({ u, grounded: true })), ...(modelUrl ? [{ u: modelUrl, grounded: isGoogleRedirect(modelUrl) }] : [])];
   const seen = new Set<string>();
   const candidates: Array<{ u: string; grounded: boolean }> = [];
-  for (const c of rawCandidates.slice(0, 5)) {
+  const listPages: string[] = []; // 引用來源是職缺清單或搜尋結果頁：之後從裡面找這筆職缺的內頁
+  for (const c of rawCandidates.slice(0, 6)) {
     const real = await resolveRedirect(c.u);
-    if (!real || seen.has(real) || !looksLikeJobPage(real)) continue;
+    if (!real || seen.has(real)) continue;
     seen.add(real);
-    candidates.push({ u: real, grounded: c.grounded });
+    if (looksLikeJobPage(real)) candidates.push({ u: real, grounded: c.grounded });
+    else if (platformOf(real) && listPages.length < 2) listPages.push(real);
   }
 
   let sawDeadOrClosed = false;
   let fallbackGrounded: string | null = null;
-  const checks = await Promise.all(candidates.slice(0, 3).map(async (c) => ({ ...c, r: await checkJobPage(c.u, title, company) })));
+  const checks = await Promise.all(
+    candidates.slice(0, 3).map(async (c) => {
+      let r = await checkJobPage(c.u, title, company);
+      if (r === 'unknown' || r === 'mismatch') {
+        const r104 = await check104Job(c.u, title, company);
+        if (r104) r = r104;
+      }
+      return { ...c, r };
+    })
+  );
   for (const c of checks) {
     if (c.r === 'ok') return { url: c.u, urlKind: 'direct', verified: true, platform: platformOf(c.u)?.name };
     if (c.r === 'dead' || c.r === 'closed') sawDeadOrClosed = true;
@@ -240,7 +251,10 @@ export async function verifyJobUrl(
   }
   if (fallbackGrounded) return { url: fallbackGrounded, urlKind: 'direct', verified: false, platform: platformOf(fallbackGrounded)?.name };
 
-  const platformName = candidates[0] ? platformOf(candidates[0].u)?.name : undefined;
+  const platformName = candidates[0] ? platformOf(candidates[0].u)?.name : listPages[0] ? platformOf(listPages[0])?.name : undefined;
+  const found = await findJobPageViaListings(title, company, listPages, platformName || job.sourcePlatform);
+  if (found) return { url: found, urlKind: 'direct', verified: true, platform: platformOf(found)?.name };
+
   return {
     url: searchUrlFor(title, company, platformName || job.sourcePlatform),
     urlKind: 'search',
@@ -251,12 +265,122 @@ export async function verifyJobUrl(
   };
 }
 
+// ───────────── 找職缺內頁：從清單頁、平台搜尋結果裡找 ─────────────
+
+function decodeEntities(t: string): string {
+  return t.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+}
+
+/** 在一段 HTML（或頁面裡的 JSON 資料）中，找職稱／公司名稱附近的職缺內頁連結 */
+export function pickJobLinkFromHtml(html: string, baseUrl: string, title: string, company: string): string | null {
+  const text = decodeEntities(html);
+  const c = companyCore(company), t = titleCore(title);
+  if (c.length < 2 && t.length < 2) return null;
+  let best: { url: string; score: number } | null = null;
+  const urlRe = /(?:https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s"'<>\\]*)?|\/[a-z0-9_-]+\/[^\s"'<>\\]{3,}/gi;
+  let m: RegExpExecArray | null;
+  let n = 0;
+  while ((m = urlRe.exec(text)) && n++ < 4000) {
+    let u = m[0];
+    try {
+      u = new URL(u.startsWith('//') ? `https:${u}` : u, baseUrl).toString();
+    } catch {
+      continue;
+    }
+    if (!looksLikeJobPage(u)) continue;
+    // 連結附近有沒有出現職稱、公司名稱；越近分數越高（同一頁有很多職缺時才不會配錯）
+    const near = (needle: string) => {
+      if (needle.length < 2) return 0;
+      const from = Math.max(0, m!.index - 600), win = text.slice(from, m!.index + 600);
+      let best = -1, i = win.indexOf(needle);
+      while (i !== -1) { const dist = Math.abs(from + i - m!.index); if (best < 0 || dist < best) best = dist; i = win.indexOf(needle, i + 1); }
+      return best < 0 ? 0 : 2 + (600 - best) / 600;
+    };
+    const score = near(t) + near(c);
+    let clean = u.split('#')[0];
+    if (/104\.com\.tw\/job\//i.test(clean)) clean = clean.split('?')[0];
+    if (score >= 2 && (!best || score > best.score)) best = { url: clean, score };
+  }
+  return best ? best.url : null;
+}
+
+/** 104 職缺：用 104 自己的職缺資料確認職稱與公司（104 頁面是前端渲染，抓 HTML 看不到內容） */
+async function check104Job(url: string, title: string, company: string): Promise<PageCheck | null> {
+  const m = url.match(/104\.com\.tw\/job\/([a-z0-9]+)/i);
+  if (!m) return null;
+  try {
+    const r = await fetchWithTimeout(`https://www.104.com.tw/job/ajax/content/${m[1]}`, { headers: { Referer: `https://www.104.com.tw/job/${m[1]}`, Accept: 'application/json' } }, 5000);
+    if (r.status === 404) return 'dead';
+    if (!r.ok) return null;
+    const j: any = await r.json().catch(() => null);
+    const h = j?.data?.header;
+    if (!h) return j?.error ? 'dead' : null;
+    if (h.isClosed || /關閉|下架/.test(String(j?.data?.switch || ''))) return 'closed';
+    const name = String(h.jobName || '').replace(/\s+/g, ''), cust = String(h.custName || '').replace(/\s+/g, '');
+    const c = companyCore(company), t = titleCore(title);
+    return (c.length >= 2 && cust.includes(c)) || (t.length >= 2 && name.includes(t)) ? 'ok' : 'mismatch';
+  } catch {
+    return null;
+  }
+}
+
+/** 104 搜尋：用 104 的搜尋資料找到公司＋職稱相符的職缺內頁 */
+async function find104Job(title: string, company: string): Promise<string | null> {
+  const kw = encodeURIComponent(`${company} ${title}`.trim());
+  const c = companyCore(company), t = titleCore(title);
+  const endpoints = [
+    `https://www.104.com.tw/jobs/search/api/jobs?keyword=${kw}&page=1&pagesize=20&order=15`,
+    `https://www.104.com.tw/jobs/search/list?ro=0&keyword=${kw}&order=15&page=1`,
+  ];
+  for (const ep of endpoints) {
+    try {
+      const r = await fetchWithTimeout(ep, { headers: { Referer: 'https://www.104.com.tw/jobs/search/', Accept: 'application/json' } }, 5000);
+      if (!r.ok) continue;
+      const j: any = await r.json().catch(() => null);
+      const list: any[] = Array.isArray(j?.data) ? j.data : Array.isArray(j?.data?.list) ? j.data.list : [];
+      for (const it of list) {
+        const name = String(it.jobName || '').replace(/\s+/g, ''), cust = String(it.custName || '').replace(/\s+/g, '');
+        const link = String(it?.link?.job || it.jobLink || '');
+        if (!link) continue;
+        if ((c.length >= 2 && cust.includes(c)) && (t.length < 2 || name.includes(t) || t.includes(name.slice(0, 4)))) {
+          const u = new URL(link.startsWith('//') ? `https:${link}` : link, 'https://www.104.com.tw').toString();
+          return u.split('?')[0];
+        }
+      }
+    } catch {}
+  }
+  return null;
+}
+
+/** 從清單頁／平台搜尋結果找這筆職缺的內頁 */
+async function findJobPageViaListings(title: string, company: string, listPages: string[], platformName?: string): Promise<string | null> {
+  const pages = [...listPages];
+  const pl = PLATFORMS.find((p) => p.name === platformName || (platformName && platformName.includes(p.name.replace('人力銀行', ''))));
+  const kw = encodeURIComponent(`${company} ${title}`.trim());
+  if (pl?.search) pages.push(pl.search(kw));
+  // 台灣職缺不知道來源時，先查 104
+  if (!pl || pl.name === '104人力銀行') {
+    const u = await find104Job(title, company);
+    if (u) return u;
+  }
+  for (const page of pages.slice(0, 3)) {
+    try {
+      const r = await fetchWithTimeout(page, { method: 'GET', redirect: 'follow' }, 6000);
+      if (!r.ok) continue;
+      const html = (await r.text()).slice(0, 1_500_000);
+      const u = pickJobLinkFromHtml(html, page, title, company);
+      if (u) return u;
+    } catch {}
+  }
+  return null;
+}
+
 /** 一次驗證多筆（限制同時連線數與總時間；逾時的改給搜尋連結） */
 export async function verifyJobUrls<T extends { title: string; company: string; url?: string; sourcePlatform?: string }>(
   jobs: T[],
   g: GroundingInfo | GroundingInfo[] | null,
-  budgetMs = 9000,
-  concurrency = 6
+  budgetMs = 12000,
+  concurrency = 8
 ): Promise<VerifiedUrl[]> {
   const out: VerifiedUrl[] = jobs.map((j) => ({ url: searchUrlFor(j.title, j.company, j.sourcePlatform), urlKind: 'search', verified: false }));
   let next = 0;

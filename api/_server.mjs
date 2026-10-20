@@ -161098,22 +161098,35 @@ async function verifyJobUrl(job, g) {
   const rawCandidates = [...grounded.map((u) => ({ u, grounded: true })), ...modelUrl ? [{ u: modelUrl, grounded: isGoogleRedirect(modelUrl) }] : []];
   const seen = /* @__PURE__ */ new Set();
   const candidates = [];
-  for (const c of rawCandidates.slice(0, 5)) {
+  const listPages = [];
+  for (const c of rawCandidates.slice(0, 6)) {
     const real = await resolveRedirect(c.u);
-    if (!real || seen.has(real) || !looksLikeJobPage(real)) continue;
+    if (!real || seen.has(real)) continue;
     seen.add(real);
-    candidates.push({ u: real, grounded: c.grounded });
+    if (looksLikeJobPage(real)) candidates.push({ u: real, grounded: c.grounded });
+    else if (platformOf(real) && listPages.length < 2) listPages.push(real);
   }
   let sawDeadOrClosed = false;
   let fallbackGrounded = null;
-  const checks = await Promise.all(candidates.slice(0, 3).map(async (c) => ({ ...c, r: await checkJobPage(c.u, title, company) })));
+  const checks = await Promise.all(
+    candidates.slice(0, 3).map(async (c) => {
+      let r2 = await checkJobPage(c.u, title, company);
+      if (r2 === "unknown" || r2 === "mismatch") {
+        const r104 = await check104Job(c.u, title, company);
+        if (r104) r2 = r104;
+      }
+      return { ...c, r: r2 };
+    })
+  );
   for (const c of checks) {
     if (c.r === "ok") return { url: c.u, urlKind: "direct", verified: true, platform: platformOf(c.u)?.name };
     if (c.r === "dead" || c.r === "closed") sawDeadOrClosed = true;
     if (c.r === "unknown" && c.grounded && !fallbackGrounded) fallbackGrounded = c.u;
   }
   if (fallbackGrounded) return { url: fallbackGrounded, urlKind: "direct", verified: false, platform: platformOf(fallbackGrounded)?.name };
-  const platformName = candidates[0] ? platformOf(candidates[0].u)?.name : void 0;
+  const platformName = candidates[0] ? platformOf(candidates[0].u)?.name : listPages[0] ? platformOf(listPages[0])?.name : void 0;
+  const found = await findJobPageViaListings(title, company, listPages, platformName || job.sourcePlatform);
+  if (found) return { url: found, urlKind: "direct", verified: true, platform: platformOf(found)?.name };
   return {
     url: searchUrlFor(title, company, platformName || job.sourcePlatform),
     urlKind: "search",
@@ -161123,7 +161136,110 @@ async function verifyJobUrl(job, g) {
     drop: sawDeadOrClosed && checks.length > 0 && checks.every((c) => c.r === "closed")
   };
 }
-async function verifyJobUrls(jobs, g, budgetMs = 9e3, concurrency = 6) {
+function decodeEntities(t2) {
+  return t2.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\\u002F/gi, "/").replace(/\\\//g, "/");
+}
+function pickJobLinkFromHtml(html, baseUrl, title, company) {
+  const text = decodeEntities(html);
+  const c = companyCore(company), t2 = titleCore(title);
+  if (c.length < 2 && t2.length < 2) return null;
+  let best = null;
+  const urlRe = /(?:https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s"'<>\\]*)?|\/[a-z0-9_-]+\/[^\s"'<>\\]{3,}/gi;
+  let m2;
+  let n = 0;
+  while ((m2 = urlRe.exec(text)) && n++ < 4e3) {
+    let u = m2[0];
+    try {
+      u = new URL(u.startsWith("//") ? `https:${u}` : u, baseUrl).toString();
+    } catch {
+      continue;
+    }
+    if (!looksLikeJobPage(u)) continue;
+    const near = (needle) => {
+      if (needle.length < 2) return 0;
+      const from = Math.max(0, m2.index - 600), win = text.slice(from, m2.index + 600);
+      let best2 = -1, i2 = win.indexOf(needle);
+      while (i2 !== -1) {
+        const dist = Math.abs(from + i2 - m2.index);
+        if (best2 < 0 || dist < best2) best2 = dist;
+        i2 = win.indexOf(needle, i2 + 1);
+      }
+      return best2 < 0 ? 0 : 2 + (600 - best2) / 600;
+    };
+    const score = near(t2) + near(c);
+    let clean = u.split("#")[0];
+    if (/104\.com\.tw\/job\//i.test(clean)) clean = clean.split("?")[0];
+    if (score >= 2 && (!best || score > best.score)) best = { url: clean, score };
+  }
+  return best ? best.url : null;
+}
+async function check104Job(url, title, company) {
+  const m2 = url.match(/104\.com\.tw\/job\/([a-z0-9]+)/i);
+  if (!m2) return null;
+  try {
+    const r2 = await fetchWithTimeout(`https://www.104.com.tw/job/ajax/content/${m2[1]}`, { headers: { Referer: `https://www.104.com.tw/job/${m2[1]}`, Accept: "application/json" } }, 5e3);
+    if (r2.status === 404) return "dead";
+    if (!r2.ok) return null;
+    const j = await r2.json().catch(() => null);
+    const h2 = j?.data?.header;
+    if (!h2) return j?.error ? "dead" : null;
+    if (h2.isClosed || /關閉|下架/.test(String(j?.data?.switch || ""))) return "closed";
+    const name4 = String(h2.jobName || "").replace(/\s+/g, ""), cust = String(h2.custName || "").replace(/\s+/g, "");
+    const c = companyCore(company), t2 = titleCore(title);
+    return c.length >= 2 && cust.includes(c) || t2.length >= 2 && name4.includes(t2) ? "ok" : "mismatch";
+  } catch {
+    return null;
+  }
+}
+async function find104Job(title, company) {
+  const kw = encodeURIComponent(`${company} ${title}`.trim());
+  const c = companyCore(company), t2 = titleCore(title);
+  const endpoints = [
+    `https://www.104.com.tw/jobs/search/api/jobs?keyword=${kw}&page=1&pagesize=20&order=15`,
+    `https://www.104.com.tw/jobs/search/list?ro=0&keyword=${kw}&order=15&page=1`
+  ];
+  for (const ep of endpoints) {
+    try {
+      const r2 = await fetchWithTimeout(ep, { headers: { Referer: "https://www.104.com.tw/jobs/search/", Accept: "application/json" } }, 5e3);
+      if (!r2.ok) continue;
+      const j = await r2.json().catch(() => null);
+      const list = Array.isArray(j?.data) ? j.data : Array.isArray(j?.data?.list) ? j.data.list : [];
+      for (const it of list) {
+        const name4 = String(it.jobName || "").replace(/\s+/g, ""), cust = String(it.custName || "").replace(/\s+/g, "");
+        const link = String(it?.link?.job || it.jobLink || "");
+        if (!link) continue;
+        if (c.length >= 2 && cust.includes(c) && (t2.length < 2 || name4.includes(t2) || t2.includes(name4.slice(0, 4)))) {
+          const u = new URL(link.startsWith("//") ? `https:${link}` : link, "https://www.104.com.tw").toString();
+          return u.split("?")[0];
+        }
+      }
+    } catch {
+    }
+  }
+  return null;
+}
+async function findJobPageViaListings(title, company, listPages, platformName) {
+  const pages = [...listPages];
+  const pl = PLATFORMS.find((p) => p.name === platformName || platformName && platformName.includes(p.name.replace("\u4EBA\u529B\u9280\u884C", "")));
+  const kw = encodeURIComponent(`${company} ${title}`.trim());
+  if (pl?.search) pages.push(pl.search(kw));
+  if (!pl || pl.name === "104\u4EBA\u529B\u9280\u884C") {
+    const u = await find104Job(title, company);
+    if (u) return u;
+  }
+  for (const page of pages.slice(0, 3)) {
+    try {
+      const r2 = await fetchWithTimeout(page, { method: "GET", redirect: "follow" }, 6e3);
+      if (!r2.ok) continue;
+      const html = (await r2.text()).slice(0, 15e5);
+      const u = pickJobLinkFromHtml(html, page, title, company);
+      if (u) return u;
+    } catch {
+    }
+  }
+  return null;
+}
+async function verifyJobUrls(jobs, g, budgetMs = 12e3, concurrency = 8) {
   const out = jobs.map((j) => ({ url: searchUrlFor(j.title, j.company, j.sourcePlatform), urlKind: "search", verified: false }));
   let next = 0;
   const worker = async () => {
@@ -164363,131 +164479,84 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
   const explorerKey = mascotAgentKey("explorer");
   const difyBatchPromise = explorerKey ? callDifyStreamingAgent({
     apiKey: explorerKey,
-    query: `${rawQuery}\uFF08\u8ACB\u53EA\u7CBE\u7C21\u5217\u51FA 3 \u7B46\u6700\u5951\u5408\u7684\u5728\u62DB\u771F\u5BE6\u8077\u7F3A\u4E26\u4EE5 JSON \u683C\u5F0F\u8F38\u51FA\uFF09`,
+    query: `${rawQuery}\uFF08\u8ACB\u76E1\u91CF\u5217\u51FA 8 \u7B46\u4EE5\u4E0A\u7B26\u5408\u689D\u4EF6\u3001\u76EE\u524D\u4ECD\u5728\u62DB\u52DF\u7684\u771F\u5BE6\u8077\u7F3A\uFF0C\u9644\u8077\u7F3A\u7DB2\u5740\uFF0C\u4E26\u4EE5 JSON \u683C\u5F0F\u8F38\u51FA\uFF09`,
     inputs: {},
     user: "job_explorer_stream",
     // 搜搜要上網搜尋，常常超過半分鐘；之前 26 秒就中斷，Dify 那邊收到問題卻來不及回覆（管理後台測試給 120 秒所以正常）
     timeoutMs: 12e4
   }).catch(() => null) : Promise.resolve(null);
   try {
-    if (ai) {
+    const JOB_JSON_SPEC = `\u53EA\u8F38\u51FA JSON\uFF1A
+{
+  "jobs": [
+    {
+      "title": "\u771F\u5BE6\u8077\u7F3A\u540D\u7A31",
+      "company": "\u771F\u5BE6\u516C\u53F8\u540D\u7A31",
+      "location": "\u5DE5\u4F5C\u5730\u9EDE",
+      "city": "\u7E23\u5E02\u6216\u57CE\u5E02",
+      "experience": "\u7D93\u6B77\u8981\u6C42",
+      "education": "\u5B78\u6B77\u8981\u6C42",
+      "salaryText": "\u85AA\u8CC7\u5F85\u9047",
+      "salaryMin": 32000,
+      "sourcePlatform": "\u4F86\u6E90\u5E73\u53F0",
+      "url": "\u8077\u7F3A\u9801\u7DB2\u5740",
+      "description": "\u5DE5\u4F5C\u6458\u8981\uFF0830 \u5B57\u5167\uFF09"
+    }
+  ]
+}`;
+    const isPartTime = Boolean(partTimeHint(rawQuery));
+    const isAbroad = Boolean(regionHint(rawQuery));
+    const groups = [
+      { label: "\u4E3B\u8981\u4EBA\u529B\u9280\u884C", focus: "104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED", count: "12 ~ 15" },
+      { label: "\u65B0\u5275\u8207\u4F01\u696D\u5B98\u7DB2", focus: "Cake\u3001Yourator\u3001LinkedIn\uFF0C\u4EE5\u53CA\u5404\u516C\u53F8\u5B98\u7DB2\u7684\u5FB5\u624D\u9801", count: "12 ~ 15" },
+      { label: "\u76F8\u8FD1\u8077\u7A31", focus: "\u628A\u689D\u4EF6\u88E1\u7684\u8077\u7A31\u63DB\u6210\u76F8\u8FD1\u6216\u540C\u7FA9\u7684\u8077\u7A31\uFF08\u4F8B\u5982\u300C\u9580\u5E02\u4EBA\u54E1\u300D\u4E5F\u627E\u300C\u9580\u5E02\u5C08\u54E1\u3001\u5E97\u54E1\u3001\u5132\u5099\u5E79\u90E8\u300D\uFF09\uFF0C\u5728\u5404\u5927\u6C42\u8077\u7DB2\u7AD9\u641C\u5C0B", count: "10 ~ 15" }
+    ];
+    if (isPartTime) groups.push({ label: "\u517C\u8077\u5E73\u53F0", focus: "\u5C0F\u96DE\u4E0A\u5DE5\u3001Worky\u3001518\u718A\u73ED\u517C\u8077\u3001Yes123 \u6253\u5DE5\u30011111 \u517C\u8077", count: "12 ~ 15" });
+    if (isAbroad) groups.push({ label: "\u570B\u5916\u6C42\u8077\u5E73\u53F0", focus: "LinkedIn\u3001Indeed\u3001Glassdoor \u8207\u8077\u7F3A\u6240\u5728\u570B\u5BB6\u7684\u4E3B\u8981\u6C42\u8077\u7DB2\u7AD9", count: "12 ~ 15" });
+    let batchNo = 0;
+    const runGroup = async (g) => {
+      if (!ai) return;
       try {
-        const batch1Prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u5373\u6642\u6AA2\u7D22\u53F0\u7063\u4E3B\u6D41\u6C42\u8077\u7DB2\u7AD9\uFF08\u5305\u542B Yes123\u3001104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake\u3001Yourator\u3001518\u718A\u73ED\u3001\u4F01\u696D\u5B98\u7DB2\uFF09\u4E0A\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\uFF1A
+        const prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u641C\u5C0B\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u3001\u800C\u4E14\u76EE\u524D\u4ECD\u5728\u62DB\u52DF\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\u3002
 \u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
+\u9019\u6B21\u8ACB\u4EE5\u9019\u4E9B\u4F86\u6E90\u70BA\u4E3B\uFF1A${g.focus}\u3002
 
-\u3010\u56B4\u683C\u898F\u5B9A\u3011\uFF1A
-1. \u7CBE\u7C21\u8F38\u51FA 5 ~ 7 \u7B46\u7576\u4E0B\u6709\u6548\u771F\u5BE6\u8077\u7F3A\uFF0C\u4F86\u6E90\u5E73\u53F0\u591A\u5143\u5316\uFF08\u4E0D\u9650\u65BC 104\uFF0C\u52D9\u5FC5\u5305\u542B Yes123\u3001Cake\u30011111 \u7B49\uFF09\u3002
-2. \u7D55\u5C0D\u7981\u6B62\u5DF2\u95DC\u9589\u3001\u5DF2\u7D50\u675F\u6216\u5DF2\u4E0B\u67B6\u7684\u904E\u671F\u8077\u7F3A\uFF01
-3. "url" \u5FC5\u9808\u662F\u6AA2\u7D22\u5230\u7684\u8A72\u8077\u7F3A\u76F4\u63A5\u7DB2\u5740\u6216 Grounding \u7DB2\u5740\u3002
-4. \u6BCF\u7B46\u6458\u8981\u63A7\u5236\u5728 35 \u5B57\u5167\uFF0C\u56B4\u683C\u907F\u514D\u8D85\u9577\u3002
-\u53EA\u8F38\u51FA JSON\uFF1A
-{
-  "reply": "\u3010IdeaX\u5275\u9EDE\u5B50\u3011\u5DF2\u70BA\u60A8\u5373\u6642\u627E\u5230\u9996\u6279\u5728\u62DB\u771F\u5BE6\u8077\u7F3A\uFF01",
-  "carePoints": ["workEnvironment", "benefits", "salary", "industry"],
-  "jobs": [
-    {
-      "title": "\u771F\u5BE6\u8077\u7F3A\u540D\u7A31",
-      "company": "\u771F\u5BE6\u516C\u53F8\u540D\u7A31",
-      "location": "\u5DE5\u4F5C\u5730\u9EDE",
-      "city": "\u7E23\u5E02",
-      "experience": "\u7D93\u6B77\u8981\u6C42",
-      "education": "\u5B78\u6B77\u8981\u6C42",
-      "salaryText": "\u6708\u85AA\u5F85\u9047",
-      "salaryMin": 32000,
-      "sourcePlatform": "Yes123 \u6216 104 \u6216 1111 \u6216 Cake \u6216 518 \u6216 \u4F01\u696D\u5B98\u7DB2",
-      "url": "\u771F\u5BE6\u76F4\u63A5\u61C9\u5FB5\u7DB2\u5740",
-      "description": "\u5DE5\u4F5C\u6458\u8981"
-    }
-  ]
-}`;
-        const b1Res = await ai.models.generateContent({
+\u898F\u5B9A\uFF1A
+1. \u76E1\u91CF\u5217\u51FA ${g.count} \u7B46\u4E0D\u540C\u516C\u53F8\u6216\u4E0D\u540C\u8077\u7F3A\uFF0C\u8D8A\u591A\u8D8A\u597D\uFF0C\u4F46\u6BCF\u4E00\u7B46\u90FD\u5FC5\u9808\u771F\u7684\u7B26\u5408\u689D\u4EF6\u3002
+2. \u4E0D\u53EF\u5305\u542B\u5DF2\u95DC\u9589\u3001\u5DF2\u4E0B\u67B6\u6216\u904E\u671F\u7684\u8077\u7F3A\uFF0C\u4E0D\u53EF\u865B\u69CB\u516C\u53F8\u6216\u8077\u7F3A\u3002
+3. "url" \u586B\u641C\u5C0B\u5230\u7684\u8077\u7F3A\u9801\u7DB2\u5740\uFF1B\u4E0D\u78BA\u5B9A\u6642\u7559\u7A7A\u5B57\u4E32\uFF0C\u4E0D\u8981\u81EA\u5DF1\u7DE8\u7DB2\u5740\u3002
+4. \u6BCF\u7B46\u6458\u8981 30 \u5B57\u5167\u3002
+${JOB_JSON_SPEC}`;
+        const r2 = await ai.models.generateContent({
           model: "gemini-2.5-flash",
-          contents: batch1Prompt,
-          config: { tools: [{ googleSearch: {} }], temperature: 0.15 }
-        });
-        const b1Chunks = b1Res?.candidates?.[0]?.groundingMetadata?.groundingChunks;
-        const b1Map = Array.isArray(b1Chunks) ? b1Chunks.map((c) => ({ title: String(c?.web?.title || ""), uri: String(c?.web?.uri || "") })).filter((m2) => m2.uri.startsWith("http")) : [];
-        const b1Urls = b1Map.map((m2) => m2.uri);
-        const b1Json = extractJsonFromText(String(b1Res.text || ""));
-        if (Array.isArray(b1Json?.jobs) && b1Json.jobs.length > 0) {
-          const freshB1 = b1Json.jobs.filter(isJobActive).filter((j) => {
-            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-            if (globalSeen.has(k)) return false;
-            globalSeen.add(k);
-            return true;
-          });
-          const mappedB1 = await finalizeJobs(freshB1, groundingFrom(b1Res), filters, totalYielded);
-          totalYielded += mappedB1.length;
-          sendEvent({
-            type: "batch",
-            batchIndex: 1,
-            isFirstBatch: true,
-            jobs: mappedB1,
-            reply: b1Json.reply || `\u3010IdeaX\u5275\u9EDE\u5B50\u3011\u5DF2\u70BA\u60A8\u5373\u6642\u6AA2\u7D22\u51FA\u7B2C 1 \u6279 ${mappedB1.length} \u7B46\u958B\u653E\u4E2D\u7684\u771F\u5BE6\u8077\u7F3A\uFF01`,
-            carePoints: Array.isArray(b1Json.carePoints) ? b1Json.carePoints : []
-          });
-        }
-      } catch (e1) {
-        console.warn("[Search Stream Batch 1 Error]", e1);
-      }
-    }
-    if (ai) {
-      try {
-        const batch2Prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u64F4\u5927\u6AA2\u7D22\u53F0\u7063\u6C42\u8077\u7DB2\uFF08\u7279\u5225\u5074\u91CD Cake\u3001Yourator\u30011111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED\uFF09\u4E0A\u8207\u300C${rawQuery}\u300D\u76F8\u95DC\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u66F4\u591A\u771F\u5BE6\u8077\u7F3A\u3002${partTimeHint(rawQuery)}${regionHint(rawQuery)}
-\u3010\u56B4\u683C\u898F\u5B9A\u3011\uFF1A
-1. \u5217\u51FA 6 ~ 9 \u7B46\u4E0D\u540C\u7684\u5728\u62DB\u8077\u7F3A\uFF0C\u512A\u5148\u6311\u9078\u975E 104 \u7684\u8DE8\u5E73\u53F0\u7AD9\u9EDE\u3002
-2. \u7D55\u5C0D\u4E0D\u53EF\u5305\u542B\u5DF2\u7D50\u675F\u3001\u5DF2\u95DC\u9589\u6216\u5DF2\u4E0B\u67B6\u7684\u8077\u7F3A\u3002
-3. "url" \u5FC5\u9808\u662F\u771F\u5BE6\u76F4\u63A5\u7DB2\u5740\u3002
-4. \u6BCF\u7B46\u6458\u8981\u63A7\u5236\u5728 35 \u5B57\u5167\u3002
-\u53EA\u8F38\u51FA JSON\uFF1A
-{
-  "reply": "\u5DF2\u64F4\u5145\u6574\u5408\u7B2C\u4E8C\u6279\u8DE8\u5E73\u53F0\u5728\u62DB\u8077\u7F3A\uFF01",
-  "jobs": [
-    {
-      "title": "\u771F\u5BE6\u8077\u7F3A\u540D\u7A31",
-      "company": "\u771F\u5BE6\u516C\u53F8\u540D\u7A31",
-      "location": "\u5DE5\u4F5C\u5730\u9EDE",
-      "city": "\u7E23\u5E02",
-      "experience": "\u7D93\u6B77\u8981\u6C42",
-      "education": "\u5B78\u6B77\u8981\u6C42",
-      "salaryText": "\u6708\u85AA\u5F85\u9047",
-      "salaryMin": 32000,
-      "sourcePlatform": "Cake \u6216 Yourator \u6216 1111 \u6216 Yes123 \u6216 518 \u6216 \u4F01\u696D\u5B98\u7DB2",
-      "url": "\u771F\u5BE6\u76F4\u63A5\u61C9\u5FB5\u7DB2\u5740",
-      "description": "\u5DE5\u4F5C\u6458\u8981"
-    }
-  ]
-}`;
-        const b2Res = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: batch2Prompt,
+          contents: prompt,
           config: { tools: [{ googleSearch: {} }], temperature: 0.2 }
         });
-        const b2Chunks = b2Res?.candidates?.[0]?.groundingMetadata?.groundingChunks;
-        const b2Map = Array.isArray(b2Chunks) ? b2Chunks.map((c) => ({ title: String(c?.web?.title || ""), uri: String(c?.web?.uri || "") })).filter((m2) => m2.uri.startsWith("http")) : [];
-        const b2Urls = b2Map.map((m2) => m2.uri);
-        const b2Json = extractJsonFromText(String(b2Res.text || ""));
-        if (Array.isArray(b2Json?.jobs) && b2Json.jobs.length > 0) {
-          const freshB2 = b2Json.jobs.filter(isJobActive).filter((j) => {
-            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-            if (globalSeen.has(k)) return false;
-            globalSeen.add(k);
-            return true;
-          });
-          const mappedB2 = await finalizeJobs(freshB2, groundingFrom(b2Res), filters, totalYielded);
-          totalYielded += mappedB2.length;
-          sendEvent({
-            type: "batch",
-            batchIndex: 2,
-            isFirstBatch: totalYielded === mappedB2.length,
-            jobs: mappedB2,
-            reply: `\u5DF2\u6574\u5408\u7B2C\u4E8C\u6279 ${mappedB2.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF01`
-          });
-        }
-      } catch (e2) {
-        console.warn("[Search Stream Batch 2 Error]", e2);
+        const parsed = extractJsonFromText(String(r2.text || ""));
+        if (!Array.isArray(parsed?.jobs) || parsed.jobs.length === 0) return;
+        const fresh = parsed.jobs.filter(isJobActive).filter((j) => {
+          const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+          if (globalSeen.has(k)) return false;
+          globalSeen.add(k);
+          return true;
+        });
+        if (fresh.length === 0) return;
+        const mapped = await finalizeJobs(fresh, groundingFrom(r2), filters, totalYielded);
+        if (mapped.length === 0) return;
+        totalYielded += mapped.length;
+        batchNo += 1;
+        sendEvent({
+          type: "batch",
+          batchIndex: batchNo,
+          isFirstBatch: batchNo === 1,
+          jobs: mapped,
+          reply: `\u5DF2\u5F9E${g.label}\u627E\u5230 ${mapped.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF0C\u7E7C\u7E8C\u641C\u5C0B\u4E2D\u2026`
+        });
+      } catch (eg) {
+        console.warn(`[Search Stream ${g.label} Error]`, eg);
       }
-    }
+    };
+    await Promise.all(groups.map(runGroup));
     try {
       const difyOut = await difyBatchPromise;
       if (difyOut && difyOut.text) {
@@ -164502,12 +164571,13 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
           if (freshB3.length > 0) {
             const mappedB3 = await finalizeJobs(freshB3, null, filters, totalYielded);
             totalYielded += mappedB3.length;
+            batchNo += 1;
             sendEvent({
               type: "batch",
-              batchIndex: 3,
+              batchIndex: batchNo,
               isFirstBatch: totalYielded === mappedB3.length,
               jobs: mappedB3,
-              reply: `\u5DF2\u6574\u5408\u7B2C\u4E09\u6279\u63A2\u96AA\u5BB6\u641C\u641C\u7CBE\u9078 ${mappedB3.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF01`
+              reply: `\u641C\u641C\u53E6\u5916\u627E\u5230 ${mappedB3.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF01`
             });
           }
         }
@@ -164517,7 +164587,7 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
     sendEvent({
       type: "done",
       totalYielded,
-      reply: `\u3010IdeaX\u5275\u9EDE\u5B50\u3011\u5168\u7DB2\u8077\u7F3A\u5206\u6279\u6AA2\u7D22\u5B8C\u6210\uFF0C\u5171\u7D71\u4E00\u6574\u5408\u986F\u793A ${totalYielded} \u7B46\u7576\u4E0B\u958B\u653E\u61C9\u5FB5\u4E4B\u771F\u5BE6\u8077\u7F3A\uFF01`
+      reply: totalYielded > 0 ? `\u641C\u5C0B\u5B8C\u6210\uFF0C\u5171\u627E\u5230 ${totalYielded} \u7B46\u7B26\u5408\u689D\u4EF6\u7684\u8077\u7F3A\u3002` : "\u9019\u6B21\u6C92\u6709\u627E\u5230\u7B26\u5408\u689D\u4EF6\u7684\u8077\u7F3A\uFF0C\u53EF\u4EE5\u653E\u5BEC\u4E00\u4E9B\u689D\u4EF6\u518D\u8A66\u8A66\u3002"
     });
     res.end();
   } catch (err) {

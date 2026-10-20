@@ -21,6 +21,7 @@ import {
   AlertCircle,
   HelpCircle,
 } from 'lucide-react';
+import { SousouFlyer } from './sousou/SousouFlyer';
 import { accompanyDuringSearch } from './mascot/mascotConfig';
 
 export type JobViewMode = 'large_card' | 'list' | 'small_card';
@@ -1099,8 +1100,12 @@ export const JobExplorerView: React.FC = () => {
     return job.description || job.workEnvironment || job.benefits || job.industry || '';
   };
 
+  const latestBotId = [...messages].reverse().find((m) => m.role === 'bot')?.id;
+
   return (
     <div className="min-h-screen bg-stone-50 pb-16">
+      {/* 探索者搜搜：平常停在左下角，搜尋時騰雲駕霧飛來飛去 */}
+      <SousouFlyer searching={isSearching} resultCount={jobs.length} />
       <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 space-y-3.5">
         {/* 頂部主區塊：搜尋輸入框維持在最上方，下方為篩選面板與對話確認區 */}
         <div className="bg-white rounded-2xl border border-stone-200/90 p-2.5 sm:p-3 shadow-2xs space-y-2.5">
@@ -1411,6 +1416,9 @@ export const JobExplorerView: React.FC = () => {
                 <div className="space-y-2">
                   <div className="max-h-72 overflow-y-auto space-y-2 px-1">
                     {messages.map((m) => {
+                      // 只有最新一則機器人訊息可以操作；新增條件後，舊的「確認依此條件搜尋嗎？」直接收起來，只留最新的條件組合
+                      const isLatestBot = m.id === latestBotId;
+                      if (m.role === 'bot' && !isLatestBot && !m.confirmed && !m.hasMoreQuestions && !m.isAmbiguous && m.pendingBrief) return null;
                       const activeStep = m.activeConditionKey
                         ? QUICK_CONDITION_STEPS.find((s) => s.key === m.activeConditionKey) || null
                         : null;
@@ -1431,6 +1439,7 @@ export const JobExplorerView: React.FC = () => {
 
                             {/* 模糊條件追問選項（含「跳過」選項，加上上方補充提示） */}
                             {m.role === 'bot' &&
+                              isLatestBot &&
                               !m.confirmed &&
                               (m.hasMoreQuestions || m.isAmbiguous) &&
                               m.suggestedChips &&
@@ -1465,6 +1474,7 @@ export const JobExplorerView: React.FC = () => {
 
                             {/* 確認以此條件搜尋 ＋ 新增其他條件按鍵：學歷、經歷、地區、薪水（點擊後進入下一個條件選擇） */}
                             {m.role === 'bot' &&
+                              isLatestBot &&
                               !m.confirmed &&
                               !m.hasMoreQuestions &&
                               !m.isAmbiguous &&
