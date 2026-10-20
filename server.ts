@@ -18,6 +18,7 @@ import { verifyAuthToken } from './server/competitionService';
 import { groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './server/jobUrlVerify';
 import { ALL_JOB_SITES, COMPANY_SITE, MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
 import { FALLBACK_USD_RATES } from './src/data/currency';
+import { seenJobBefore } from './src/utils/jobDedupe';
 /** 國外主要城市（例如東京、舊金山灣區），用來辨識條件裡的國外城市 */
 const ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join('|'));
 
@@ -4457,12 +4458,8 @@ ${JOB_JSON_SPEC}`;
         });
         const parsed = extractJsonFromText(String(r.text || ''));
         if (!Array.isArray(parsed?.jobs) || parsed.jobs.length === 0) return;
-        const fresh = parsed.jobs.filter(isJobActive).filter((j: any) => {
-          const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-          if (globalSeen.has(k)) return false;
-          globalSeen.add(k);
-          return true;
-        });
+        // 去重複：比對網址與整理過的公司＋職稱
+        const fresh = parsed.jobs.filter(isJobActive).filter((j: any) => !seenJobBefore(globalSeen, j));
         if (fresh.length === 0) return;
         // 分批回傳：小燈泡（本地 Gemini）每 2 筆一批同時驗證網址，哪一批先驗證好就先送到前端
         const grounding = groundingFrom(r);
@@ -4510,9 +4507,7 @@ ${JOB_JSON_SPEC}`;
       let chain: Promise<void> = Promise.resolve();
       const take = (list: any[]) => {
         for (const j of list.filter(isJobActive)) {
-          const key = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-          if (globalSeen.has(key)) continue;
-          globalSeen.add(key);
+          if (seenJobBefore(globalSeen, j)) continue;
           pending.push(j);
         }
       };

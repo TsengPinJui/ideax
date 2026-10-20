@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { SousouFlyer } from './sousou/SousouFlyer';
 import { InlineConditionTag } from './jobExplorer/InlineConditionTag';
+import { seenJobBefore } from '../utils/jobDedupe';
 import { accompanyDuringSearch, cheerMascot } from './mascot/mascotConfig';
 
 export type JobViewMode = 'large_card' | 'list' | 'small_card';
@@ -799,6 +800,7 @@ export const JobExplorerView: React.FC = () => {
   }, [savedJobsMap]);
 
   const toggleSaveJob = (e: React.MouseEvent, job: JobListing) => {
+    if (arrivalOrder) userBrowsingRef.current = true;
     e.preventDefault();
     e.stopPropagation();
     setSavedJobsMap((prev) => {
@@ -1123,6 +1125,31 @@ export const JobExplorerView: React.FC = () => {
   };
   const searchSessionRef = useRef<SearchSession | null>(null);
   const [arrivalOrder, setArrivalOrder] = useState(false); // 搜尋中照抵達順序顯示，全部跑完再排序
+  // 搜尋中使用者已經在看結果（捲動、收藏、點職缺、自己選排序）：跑完就不自動重排，改成讓他自己點
+  const userBrowsingRef = useRef(false);
+  const [readyToSort, setReadyToSort] = useState(false);
+  useEffect(() => {
+    if (!arrivalOrder) return;
+    const mark = () => { if (searchSessionRef.current && searchSessionRef.current.jobs.length > 0) userBrowsingRef.current = true; };
+    const onKey = (e: KeyboardEvent) => { if (/^(PageDown|PageUp|ArrowDown|ArrowUp|End|Home| )$/.test(e.key)) mark(); };
+    const onDown = (e: PointerEvent) => { if ((e.target as HTMLElement | null)?.closest?.('a[href^="http"]')) mark(); };
+    window.addEventListener('wheel', mark, { passive: true });
+    window.addEventListener('touchmove', mark, { passive: true });
+    window.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onDown, true);
+    return () => {
+      window.removeEventListener('wheel', mark);
+      window.removeEventListener('touchmove', mark);
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onDown, true);
+    };
+  }, [arrivalOrder]);
+  const applyFinalSort = () => {
+    setArrivalOrder(false);
+    setReadyToSort(false);
+    setSortBy('recommended');
+    setSortOrder('desc');
+  };
 
   const updateBotMsg = (sess: SearchSession, patch: Partial<ChatMessage>) => {
     setMessages((prev) => prev.map((m) => (m.id === sess.botMsgId ? { ...m, ...patch } : m)));
@@ -1141,15 +1168,15 @@ export const JobExplorerView: React.FC = () => {
     if (sess.finished) return;
     sess.finished = true;
     sess.timers.forEach((t) => window.clearTimeout(t));
-    setArrivalOrder(false); // 全部跑完：整理排序
-    setSortBy('recommended');
-    setSortOrder('desc');
+    // 全部跑完：使用者還沒動就直接整理排序；已經在看了就不打斷，讓他自己點「依推薦排序」
+    if (!userBrowsingRef.current || sess.jobs.length === 0) applyFinalSort();
+    else setReadyToSort(true);
     setIsSearching(false);
     setIsGeminiFallbackSearching(false);
     const n = sess.jobs.length;
     setSearchProgressText(n ? `檢索整合完成，共 ${n} 筆真實職缺` : '');
     if (note !== undefined) updateBotMsg(sess, { text: note });
-    else if (n) updateBotMsg(sess, { text: `找好了！共整合 ${n} 筆正在招募的職缺，已依推薦程度排序。`, searchActions: undefined });
+    else if (n) updateBotMsg(sess, { text: `找好了！共整合 ${n} 筆正在招募的職缺${userBrowsingRef.current ? '。' : '，已依推薦程度排序。'}`, searchActions: undefined });
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
   };
 
@@ -1176,9 +1203,8 @@ export const JobExplorerView: React.FC = () => {
     const fresh: JobListing[] = [];
     for (const j of list) {
       if (sess.jobs.length + fresh.length >= MAX_JOBS) break;
-      const key = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-      if (sess.seen.has(key)) continue;
-      sess.seen.add(key);
+      // 搜搜和小燈泡找到同一筆（網址相同，或公司＋職稱整理後相同）就只留一筆
+      if (seenJobBefore(sess.seen, j)) continue;
       fresh.push(j);
     }
     if (!fresh.length) return;
@@ -1268,6 +1294,8 @@ export const JobExplorerView: React.FC = () => {
       difyGot: false, difyDone: false, difyRunning: false, geminiStarted: false, geminiDone: false, paused: false, finished: false,
     };
     searchSessionRef.current = sess;
+    userBrowsingRef.current = false;
+    setReadyToSort(false);
     setJobs([]);
     setStreamingBatchCount(0);
     setArrivalOrder(true);
@@ -1669,6 +1697,10 @@ export const JobExplorerView: React.FC = () => {
   ]);
 
   const handleSortClick = (key: JobSortKey) => {
+    // 使用者自己選了排序：馬上照他選的排，之後也不再自動重排
+    if (arrivalOrder) userBrowsingRef.current = true;
+    setArrivalOrder(false);
+    setReadyToSort(false);
     if (sortBy === key) {
       setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
     } else {
@@ -2806,6 +2838,21 @@ export const JobExplorerView: React.FC = () => {
               已統一顯示 {filteredAndSortedJobs.length} 筆
             </span>
           </div>
+        )}
+
+        {/* 全部找齊了，但使用者正在看結果：不自動重排，讓他自己點 */}
+        {!isSearching && readyToSort && arrivalOrder && filteredAndSortedJobs.length > 0 && (
+          <button
+            type="button"
+            onClick={applyFinalSort}
+            className="w-full p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center justify-between gap-3 hover:bg-emerald-100 transition-colors cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              已全部找齊（共 {filteredAndSortedJobs.length} 筆），目前照找到的順序排列
+            </span>
+            <span className="shrink-0 px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-black">點這裡依推薦排序</span>
+          </button>
         )}
 
         {/* 職缺列表區 */}
