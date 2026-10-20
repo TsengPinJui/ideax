@@ -31,6 +31,7 @@ import {
   MapPin,
   Calendar,
   GraduationCap,
+  Info,
 } from 'lucide-react';
 import { SousouFlyer } from './sousou/SousouFlyer';
 import { useApp } from '../context/AppContext';
@@ -2967,6 +2968,14 @@ export const JobExplorerView: React.FC = () => {
             </span>
             <span className="shrink-0 px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-black">點這裡依推薦排序</span>
           </button>
+        )}
+
+        {/* 提示：部分求職網沒辦法附上正確網址 */}
+        {filteredAndSortedJobs.length > 0 && !showSavedOnly && (
+          <p className="flex items-start gap-1.5 px-1 text-[11px] sm:text-xs text-stone-500 leading-relaxed">
+            <Info className="w-3.5 h-3.5 mt-px shrink-0 text-stone-400" />
+            <span>提示：部分求職網站可能無法附上正確網址，建議以關鍵字再到該網站搜索一次，就能找到該職缺啦！</span>
+          </p>
         )}
 
         {/* 職缺列表區 */}
