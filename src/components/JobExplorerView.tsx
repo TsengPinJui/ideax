@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { CURRENCIES, CurrencyCode, FALLBACK_USD_RATES, convert, detectCurrency, formatMoney } from '../data/currency';
+import { jobSiteOptions, MAJOR_CITIES_BY_COUNTRY, formatCountryScope, citiesForCountries, abroadSalaryOptions } from '../data/jobSites';
 import {
   Search,
   SlidersHorizontal,
@@ -111,7 +113,7 @@ const EXPLORER_QUICK_PRESETS = [
   },
 ];
 
-export type QuickConditionKey = 'jobType' | 'region' | 'education' | 'experience' | 'location' | 'salary';
+export type QuickConditionKey = 'jobType' | 'region' | 'education' | 'experience' | 'location' | 'salary' | 'priority';
 
 /** 選「國外」或「不限」時可以勾選的國家／地區 */
 export const JOB_COUNTRIES = ['日本', '新加坡', '香港', '中國大陸', '韓國', '馬來西亞', '越南', '澳洲', '紐西蘭', '美國', '加拿大', '英國', '德國', '全球遠端'];
@@ -151,6 +153,15 @@ function salaryOptionsFor(isHourly: boolean): Array<{ label: string; value: stri
 /** 這則對話的條件是不是兼職／計時（薪水改用時薪） */
 const isHourlyContext = (text: string) => /兼職|工讀|打工|計時|part[\s-]?time/i.test(text);
 const REGION_BOTH_VALUE = '工作範圍：台灣與國外皆可';
+/** 這則對話是不是只找國外（薪水就不用台灣的最低工資與月薪級距） */
+const isAbroadOnlyContext = (m: { selectedConditionMap?: Partial<Record<string, string>>; baseBrief?: string; pendingBrief?: string }) => {
+  const region = m.selectedConditionMap?.region;
+  if (region) return region === REGION_ABROAD_VALUE;
+  const text = `${m.baseBrief || ''} ${m.pendingBrief || ''}`;
+  return /工作範圍：國外/.test(text) || (!/台灣|臺灣|國內/.test(text) && JOB_COUNTRIES.some((c) => text.includes(c)));
+};
+const countriesInContext = (m: { selectedCountries?: string[]; baseBrief?: string; pendingBrief?: string }) =>
+  m.selectedCountries && m.selectedCountries.length ? m.selectedCountries : JOB_COUNTRIES.filter((c) => `${m.baseBrief || ''} ${m.pendingBrief || ''}`.includes(c));
 const regionIncludesAbroad = (v?: string) => v === REGION_ABROAD_VALUE || v === REGION_BOTH_VALUE;
 
 /** 匯職缺會搜尋的平台（說明面板用；和後端搜尋分組一致） */
@@ -247,6 +258,12 @@ export const QUICK_CONDITION_STEPS: Array<{
     question: '請問您期望的薪水待遇是？',
     options: salaryOptionsFor(false),
   },
+  {
+    key: 'priority',
+    label: '優先顯示',
+    question: '最後，您最在意哪幾項？依序點選排出優先順序（可選 1～3 項）',
+    options: [],
+  },
 ];
 
 export interface DimensionGroup {
@@ -277,6 +294,7 @@ interface ChatMessage {
   completedConditionKeys?: QuickConditionKey[];
   selectedConditionMap?: Partial<Record<QuickConditionKey, string>>;
   selectedCountries?: string[];
+  selectedCities?: string[];
 }
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -323,6 +341,49 @@ export const JobExplorerView: React.FC = () => {
   const [jobTypeFilter, setJobTypeFilter] = useState<'全部' | '正職' | '兼職' | '實習'>('全部');
   const [regionFilter, setRegionFilter] = useState<'台灣' | '國外' | '台灣與國外'>('台灣');
   const [countryFilter, setCountryFilter] = useState<string[]>([]);
+  const [abroadCityFilter, setAbroadCityFilter] = useState<string[]>([]);
+  // 只找國外：薪資用當地幣別（存選項文字），不套台灣的月薪門檻
+  const [abroadSalaryFilter, setAbroadSalaryFilter] = useState('');
+  // 顯示幣別：職缺薪資依當前匯率換算（記在這台裝置）
+  const [displayCurrency, setDisplayCurrency] = useState<CurrencyCode>(() => {
+    try {
+      const v = localStorage.getItem('ideax_job_currency') as CurrencyCode | null;
+      if (v && CURRENCIES.some((c) => c.code === v)) return v;
+    } catch {}
+    return 'TWD';
+  });
+  const [fxRates, setFxRates] = useState<Partial<Record<CurrencyCode, number>>>(FALLBACK_USD_RATES);
+  const [fxUpdatedAt, setFxUpdatedAt] = useState('');
+  useEffect(() => {
+    try { localStorage.setItem('ideax_job_currency', displayCurrency); } catch {}
+  }, [displayCurrency]);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/fx')
+      .then((r) => r.json())
+      .then((d) => { if (alive && d?.rates) { setFxRates(d.rates); setFxUpdatedAt(d.source === 'live' ? String(d.updatedAt || '') : ''); } })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  /** 職缺薪資換成顯示幣別（跟原幣別一樣就不顯示換算） */
+  const convertedSalary = (job: { salaryText: string; salaryMin: number; salaryMax: number; location?: string }) => {
+    const from = detectCurrency(job.salaryText, job.location || '');
+    if (from === displayCurrency) return '';
+    const lo = job.salaryMin > 0 ? job.salaryMin : 0, hi = job.salaryMax > 0 ? job.salaryMax : 0;
+    if (!lo && !hi) return '';
+    const a = formatMoney(convert(lo || hi, from, displayCurrency, fxRates), displayCurrency);
+    const b = hi && lo && hi !== lo ? formatMoney(convert(hi, from, displayCurrency, fxRates), displayCurrency) : '';
+    return `約 ${a}${b ? `～${b}` : ''}`;
+  };
+  /** 薪資選項旁邊加上換算金額 */
+  const approxIn = (amount: number, from: CurrencyCode) =>
+    from === displayCurrency ? '' : `（約 ${formatMoney(convert(amount, from, displayCurrency, fxRates), displayCurrency)}）`;
+  // 求職網：預設全選；這裡只記使用者取消勾選的
+  const [excludedSites, setExcludedSites] = useState<string[]>([]);
+  const siteOptions = useMemo(() => jobSiteOptions(regionFilter, countryFilter), [regionFilter, countryFilter]);
+  const allSiteOptions = useMemo(() => Array.from(new Set([...siteOptions.domestic, ...siteOptions.abroad])), [siteOptions]);
+  const chosenSites = allSiteOptions.filter((x) => !excludedSites.includes(x));
+  const isSiteFiltered = chosenSites.length > 0 && chosenSites.length < allSiteOptions.length;
   const isHourlyFilter = jobTypeFilter === '兼職';
   /** 篩選條件組成的搜尋說明（正職／兼職、範圍、時薪） */
   const filterBriefParts = (): string[] => {
@@ -330,9 +391,11 @@ export const JobExplorerView: React.FC = () => {
     if (jobTypeFilter !== '全部') parts.push(`工作型態：${jobTypeFilter === '兼職' ? '兼職工讀' : jobTypeFilter}`);
     if (regionFilter !== '台灣') {
       const v = regionFilter === '國外' ? '工作範圍：國外' : '工作範圍：台灣與國外皆可';
-      parts.push(countryFilter.length ? `${v}（${countryFilter.join('、')}）` : v);
+      parts.push(countryFilter.length ? `${v}（${formatCountryScope(countryFilter, abroadCityFilter)}）` : v);
     }
-    if (isHourlyFilter && minSalaryFilter > 0) parts.push(`薪水：時薪 ${minSalaryFilter} 元以上`);
+    if (regionFilter === '國外') { if (abroadSalaryFilter) parts.push(abroadSalaryFilter); }
+    else if (isHourlyFilter && minSalaryFilter > 0) parts.push(`薪水：時薪 ${minSalaryFilter} 元以上`);
+    if (isSiteFiltered) parts.push(`求職網：${chosenSites.join('、')}`);
     return parts;
   };
   const [maxExpFilter, setMaxExpFilter] = useState<number | 'all'>('all');
@@ -448,17 +511,18 @@ export const JobExplorerView: React.FC = () => {
   };
 
   // 條件依固定順序組成搜尋說明；「台灣／國外」選了國外時，把勾選的國家放在括號裡
-  const QUICK_STEP_ORDER: QuickConditionKey[] = ['jobType', 'region', 'education', 'experience', 'location', 'salary'];
+  const QUICK_STEP_ORDER: QuickConditionKey[] = ['jobType', 'region', 'education', 'experience', 'location', 'salary', 'priority'];
   const composeConditionBrief = (
     m: ChatMessage,
     map: Partial<Record<QuickConditionKey, string>>,
-    countries: string[]
+    countries: string[],
+    cities: string[] = m.selectedCities || []
   ) => {
     const base = (m.baseBrief ?? m.pendingBrief ?? '').trim();
     const parts = QUICK_STEP_ORDER.map((k) => {
       const v = map[k];
       if (!v) return '';
-      if (k === 'region' && regionIncludesAbroad(v) && countries.length > 0) return `${v}（${countries.join('、')}）`;
+      if (k === 'region' && regionIncludesAbroad(v) && countries.length > 0) return `${v}（${formatCountryScope(countries, cities)}）`;
       return v;
     }).filter(Boolean);
     return [base, ...parts].filter(Boolean).join('、') || `${userBaseCity} 最新招募職缺`;
@@ -521,14 +585,41 @@ export const JobExplorerView: React.FC = () => {
         if (m.id !== msgId) return m;
         const cur = m.selectedCountries || [];
         const countries = cur.includes(country) ? cur.filter((c) => c !== country) : [...cur, country];
-        const updatedBrief = composeConditionBrief(m, m.selectedConditionMap || {}, countries);
+        const cities = citiesForCountries(countries, m.selectedCities || []);
+        const updatedBrief = composeConditionBrief(m, m.selectedConditionMap || {}, countries, cities);
         setPendingConfirmedBrief(updatedBrief);
         return {
           ...m,
           selectedCountries: countries,
+          selectedCities: cities,
           pendingBrief: updatedBrief,
           text: `已為您設定搜尋條件：${updatedBrief}。確認依此條件搜尋嗎？`,
         };
+      })
+    );
+  };
+
+  // 國外城市（依勾選的國家）
+  const handleToggleAbroadCity = (msgId: string, city: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const cur = m.selectedCities || [];
+        const cities = cur.includes(city) ? cur.filter((c) => c !== city) : [...cur, city];
+        const updatedBrief = composeConditionBrief(m, m.selectedConditionMap || {}, m.selectedCountries || [], cities);
+        setPendingConfirmedBrief(updatedBrief);
+        return { ...m, selectedCities: cities, pendingBrief: updatedBrief, text: `已為您設定搜尋條件：${updatedBrief}。確認依此條件搜尋嗎？` };
+      })
+    );
+  };
+
+  // 優先顯示排好了（或跳過）：收起來
+  const handleFinishPriority = (msgId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const done = (m.completedConditionKeys || []).includes('priority') ? m.completedConditionKeys || [] : [...(m.completedConditionKeys || []), 'priority' as QuickConditionKey];
+        return { ...m, completedConditionKeys: done, activeConditionKey: null };
       })
     );
   };
@@ -608,10 +699,12 @@ export const JobExplorerView: React.FC = () => {
             city: selectedCity,
             userBaseCity,
             category: selectedCategory,
-            minSalary: isHourlyFilter ? 0 : minSalaryFilter,
+            minSalary: isHourlyFilter || regionFilter === '國外' ? 0 : minSalaryFilter,
             maxExperienceYears: maxExpFilter,
             maxEducationLevel: maxEduFilter,
             carePoints: userCarePoints,
+            // 全選時不限制（搜最廣）；有取消勾選才只搜選到的求職網
+            sites: isSiteFiltered ? chosenSites : [],
           },
         }),
       });
@@ -865,11 +958,20 @@ export const JobExplorerView: React.FC = () => {
       }
 
       // 若是從點選追問選項進入確認階段，自動展開下一個尚未選擇的條件（學歷、經歷、地區、薪水）
-      const stepOrder: QuickConditionKey[] = ['jobType', 'region', 'education', 'experience', 'location', 'salary'];
-      const nextAutoConditionKey =
-        !isAmb && customText !== undefined
-          ? stepOrder.find((k) => !completedKeys.includes(k)) || null
-          : null;
+      // 優先顯示：使用者有講（或已在篩選設定）就不再問
+      // 只看可以排序的三項（行業、工作環境、其他待遇）；講到月薪、距離不算
+      const RANKABLE: CarePointKey[] = ['industry', 'workEnvironment', 'benefits'];
+      const hasPriority = [...(Array.isArray(data?.carePoints) ? data.carePoints : []), ...detected, ...userCarePoints].some((k: CarePointKey) => RANKABLE.includes(k));
+      if (hasPriority && !completedKeys.includes('priority')) completedKeys.push('priority');
+      const stepOrder: QuickConditionKey[] = ['jobType', 'region', 'education', 'experience', 'location', 'salary', 'priority'];
+      // 點選項進來的：依序打開下一個沒填的條件；直接打字的：已講清楚的不再問，只在最後問「優先顯示」
+      const nextAutoConditionKey = isAmb
+        ? null
+        : customText !== undefined
+        ? stepOrder.find((k) => !completedKeys.includes(k)) || null
+        : !completedKeys.includes('priority')
+        ? 'priority'
+        : null;
 
       setMessages((prev) => [
         ...prev,
@@ -927,14 +1029,15 @@ export const JobExplorerView: React.FC = () => {
     if (keyword.trim()) count++;
     if (selectedCity !== '全部') count++;
     if (selectedCategory !== '全部') count++;
-    if (minSalaryFilter > 0) count++;
+    if (minSalaryFilter > 0 || abroadSalaryFilter) count++;
     if (jobTypeFilter !== '全部') count++;
     if (regionFilter !== '台灣') count++;
+    if (isSiteFiltered) count++;
     if (maxExpFilter !== 'all') count++;
     if (maxEduFilter !== 'all') count++;
     if (userCarePoints.length > 0) count++;
     return count;
-  }, [keyword, selectedCity, selectedCategory, minSalaryFilter, maxExpFilter, maxEduFilter, userCarePoints, jobTypeFilter, regionFilter]);
+  }, [keyword, selectedCity, selectedCategory, minSalaryFilter, maxExpFilter, maxEduFilter, userCarePoints, jobTypeFilter, regionFilter, isSiteFiltered, abroadSalaryFilter]);
 
   // 合併目前列表（或僅顯示收藏職缺）並進行篩選與排序
   const filteredAndSortedJobs = useMemo(() => {
@@ -956,11 +1059,13 @@ export const JobExplorerView: React.FC = () => {
       }
 
       let bonus = 0;
-      if (userCarePoints.includes('salary') && job.salaryMax > 0) bonus += Math.min(12, Math.floor(job.salaryMax / 12000));
-      if (userCarePoints.includes('distance') && dist > 0) bonus += Math.max(0, 10 - dist * 0.5);
-      if (userCarePoints.includes('workEnvironment') && job.workEnvironment) bonus += 6;
-      if (userCarePoints.includes('benefits') && job.benefits) bonus += 6;
-      if (userCarePoints.includes('industry') && job.industry) bonus += 6;
+      // 依使用者排的順序加權：第 1 順位 ×3、第 2 順位 ×2、第 3 順位 ×1
+      const w = (k: CarePointKey) => { const i = userCarePoints.indexOf(k); return i < 0 ? 0 : Math.max(1, 3 - i); };
+      if (w('salary') && job.salaryMax > 0) bonus += Math.min(12, Math.floor(job.salaryMax / 12000)) * w('salary') / 2;
+      if (w('distance') && dist > 0) bonus += Math.max(0, 10 - dist * 0.5) * w('distance') / 2;
+      if (w('workEnvironment') && job.workEnvironment) bonus += 4 * w('workEnvironment');
+      if (w('benefits') && job.benefits) bonus += 4 * w('benefits');
+      if (w('industry') && job.industry) bonus += 4 * w('industry');
 
       return {
         ...job,
@@ -982,7 +1087,9 @@ export const JobExplorerView: React.FC = () => {
       if (selectedCategory !== '全部' && job.category && job.category !== selectedCategory && !job.industry.includes(selectedCategory)) {
         return false;
       }
-      if (minSalaryFilter > 0 && job.salaryMax > 0 && job.salaryMax < minSalaryFilter) {
+      const jobCur = detectCurrency(job.salaryText, job.location || '');
+      const maxInTwd = jobCur === 'TWD' ? job.salaryMax : convert(job.salaryMax, jobCur, 'TWD', fxRates);
+      if (minSalaryFilter > 0 && job.salaryMax > 0 && maxInTwd < minSalaryFilter) {
         return false;
       }
       if (maxExpFilter !== 'all' && job.experienceYears > maxExpFilter) {
@@ -1070,6 +1177,7 @@ export const JobExplorerView: React.FC = () => {
     keyword,
     sortBy,
     sortOrder,
+    fxRates,
   ]);
 
   const handleSortClick = (key: JobSortKey) => {
@@ -1092,7 +1200,10 @@ export const JobExplorerView: React.FC = () => {
     setMinSalaryFilter(0);
     setJobTypeFilter('全部');
     setRegionFilter('台灣');
+    setExcludedSites([]);
     setCountryFilter([]);
+    setAbroadCityFilter([]);
+    setAbroadSalaryFilter('');
     setMaxExpFilter('all');
     setMaxEduFilter('all');
     setUserCarePoints([]);
@@ -1256,6 +1367,8 @@ export const JobExplorerView: React.FC = () => {
                   value={regionFilter}
                   onChange={(e) => {
                     const v = e.target.value as typeof regionFilter;
+                    // 只找國外：薪資改用當地幣別，台幣門檻清掉；回到台灣則清掉國外薪資
+                    if (v === '國外') setMinSalaryFilter(0); else setAbroadSalaryFilter('');
                     setRegionFilter(v);
                     if (v === '台灣') setCountryFilter([]);
                     if (v === '國外') setSelectedCity('全部');
@@ -1299,6 +1412,24 @@ export const JobExplorerView: React.FC = () => {
                   <option value="行政／人資／財會">行政／人資／財會</option>
                 </select>
 
+                {regionFilter === '國外' ? (
+                  <select
+                    value={abroadSalaryFilter}
+                    onChange={(e) => setAbroadSalaryFilter(e.target.value)}
+                    className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
+                    title="國外職缺用當地幣別；選一個國家時會列出當地常見的薪資級距"
+                  >
+                    <option value="">薪資：不限（當地幣別）</option>
+                    {abroadSalaryOptions(countryFilter, isHourlyFilter)
+                      .filter((o) => !o.isSkip && o.value !== '薪資待遇不拘')
+                      .map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                          {o.amount && o.cur ? approxIn(o.amount, o.cur as CurrencyCode) : ''}
+                        </option>
+                      ))}
+                  </select>
+                ) : (
                 <select
                   value={minSalaryFilter}
                   onChange={(e) => setMinSalaryFilter(Number(e.target.value))}
@@ -1312,9 +1443,11 @@ export const JobExplorerView: React.FC = () => {
                     <option key={v} value={v}>
                       {isHourlyFilter ? `時薪 ${v} 元以上` : `${v.toLocaleString('en-US')} 元以上`}
                       {i === 0 ? '（最低工資）' : ''}
+                      {approxIn(v, 'TWD')}
                     </option>
                   ))}
                 </select>
+                )}
 
                 <select
                   value={String(maxExpFilter)}
@@ -1352,7 +1485,12 @@ export const JobExplorerView: React.FC = () => {
                         key={c}
                         type="button"
                         aria-pressed={on}
-                        onClick={() => setCountryFilter((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))}
+                        onClick={() => {
+                          const next = countryFilter.includes(c) ? countryFilter.filter((x) => x !== c) : [...countryFilter, c];
+                          setCountryFilter(next);
+                          setAbroadCityFilter((prev) => citiesForCountries(next, prev));
+                          setAbroadSalaryFilter('');
+                        }}
                         className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
                           on ? 'bg-[#1e3a8a] text-white border-[#1e3a8a]' : 'bg-white hover:bg-blue-50/50 text-stone-600 border-stone-200'
                         }`}
@@ -1364,22 +1502,115 @@ export const JobExplorerView: React.FC = () => {
                 </div>
               )}
 
+              {/* 國外：依勾選的國家列出主要城市（可複選，不選就是全國） */}
+              {regionFilter !== '台灣' && countryFilter.some((c) => (MAJOR_CITIES_BY_COUNTRY[c] || []).length > 0) && (
+                <div className="space-y-1">
+                  <span className="text-xs font-semibold text-stone-500">城市（可複選，不選就是全國）：</span>
+                  {countryFilter.filter((c) => (MAJOR_CITIES_BY_COUNTRY[c] || []).length > 0).map((c) => (
+                    <div key={c} className="flex items-start gap-1.5 flex-wrap">
+                      <span className="text-[11px] font-bold text-stone-400 pt-1 min-w-[3.5rem] shrink-0">{c}</span>
+                      {MAJOR_CITIES_BY_COUNTRY[c].map((city) => {
+                        const on = abroadCityFilter.includes(city);
+                        return (
+                          <button
+                            key={city}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => setAbroadCityFilter((prev) => (prev.includes(city) ? prev.filter((x) => x !== city) : [...prev, city]))}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                              on ? 'bg-[#1e3a8a] text-white border-[#1e3a8a]' : 'bg-white hover:bg-blue-50/50 text-stone-600 border-stone-200'
+                            }`}
+                          >
+                            {city}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 顯示幣別：職缺薪資依當前匯率換算 */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-stone-500">顯示幣別：</span>
+                <select
+                  value={displayCurrency}
+                  onChange={(e) => setDisplayCurrency(e.target.value as CurrencyCode)}
+                  className="px-3 py-1.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.name}（{c.code}）</option>
+                  ))}
+                </select>
+                <span className="text-[11px] text-stone-400">
+                  不同幣別的薪資會依{fxUpdatedAt ? '當前' : '參考'}匯率換算成{CURRENCIES.find((c) => c.code === displayCurrency)?.name}，僅供參考
+                </span>
+              </div>
+
+              {/* 求職網：國內、國外各一排，可複選，預設全選 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-stone-500">求職網（可複選，預設全選）：</span>
+                  <button
+                    type="button"
+                    onClick={() => setExcludedSites([])}
+                    className="text-[11px] font-bold text-[#1e3a8a] hover:underline cursor-pointer"
+                  >
+                    全選
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExcludedSites(allSiteOptions)}
+                    className="text-[11px] font-bold text-stone-500 hover:underline cursor-pointer"
+                  >
+                    全不選
+                  </button>
+                  {chosenSites.length === 0 && <span className="text-[11px] text-amber-700">（都沒選時會搜尋全部求職網）</span>}
+                </div>
+                {([['國內', siteOptions.domestic], ['國外', siteOptions.abroad]] as Array<[string, string[]]>)
+                  .filter(([, list]) => list.length > 0)
+                  .map(([label, list]) => (
+                    <div key={label} className="flex items-start gap-1.5 flex-wrap">
+                      <span className="text-[11px] font-bold text-stone-400 pt-1 w-7 shrink-0">{label}</span>
+                      {list.map((site) => {
+                        const on = !excludedSites.includes(site);
+                        return (
+                          <button
+                            key={site}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => setExcludedSites((prev) => (prev.includes(site) ? prev.filter((x) => x !== site) : [...prev, site]))}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                              on ? 'bg-[#1e3a8a] text-white border-[#1e3a8a]' : 'bg-white hover:bg-blue-50/50 text-stone-500 border-stone-200'
+                            }`}
+                          >
+                            {site}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-semibold text-stone-500">優先顯示：</span>
+                  <span className="text-xs font-semibold text-stone-500">優先顯示（依點選順序排序）：</span>
                   {(['industry', 'workEnvironment', 'benefits'] as CarePointKey[]).map((key) => {
-                    const active = userCarePoints.includes(key);
+                    const rank = (userCarePoints.filter((k) => k === 'industry' || k === 'workEnvironment' || k === 'benefits') as CarePointKey[]).indexOf(key);
+                    const active = rank >= 0;
                     return (
                       <button
                         key={key}
                         type="button"
                         onClick={() => toggleCarePoint(key)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                        title="依點選順序排出優先順位"
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer inline-flex items-center gap-1 ${
                           active
                             ? 'bg-[#1e3a8a] text-white border-[#1e3a8a]'
                             : 'bg-white hover:bg-blue-50/50 text-stone-600 border-stone-200'
                         }`}
                       >
+                        {active && <span className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 text-[10px] font-black flex items-center justify-center">{rank + 1}</span>}
                         {CARE_POINT_META[key].fieldLabel}
                       </button>
                     );
@@ -1525,18 +1756,61 @@ export const JobExplorerView: React.FC = () => {
                               m.pendingBrief && (
                                 <div className="mt-2.5 pt-2 border-t border-blue-200/70 space-y-2.5">
                                   {/* 當點選「學歷、經歷、地區、薪水」任一條件或自動進入下一條件時，顯示該條件選項與「跳過」 */}
-                                  {activeStep && (
+                                  {activeStep && activeStep.key === 'priority' && (
+                                    <div className="p-2.5 rounded-xl bg-white/95 border border-blue-200/80 space-y-2">
+                                      <div className="text-[11px] font-bold text-[#1e3a8a]">{activeStep.question}</div>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {(['industry', 'workEnvironment', 'benefits'] as CarePointKey[]).map((key) => {
+                                          const rank = (userCarePoints.filter((k) => k === 'industry' || k === 'workEnvironment' || k === 'benefits') as CarePointKey[]).indexOf(key);
+                                          return (
+                                            <button
+                                              key={key}
+                                              type="button"
+                                              aria-pressed={rank >= 0}
+                                              disabled={isSearching || isRegulating}
+                                              onClick={() => toggleCarePoint(key)}
+                                              className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-bold transition-all cursor-pointer active:scale-95 inline-flex items-center gap-1 ${
+                                                rank >= 0 ? 'bg-[#1e3a8a] text-white border-[#1e3a8a]' : 'bg-amber-50/70 hover:bg-amber-100 border-amber-200 text-stone-800'
+                                              }`}
+                                            >
+                                              {rank >= 0 && <span className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 text-[10px] font-black flex items-center justify-center">{rank + 1}</span>}
+                                              {CARE_POINT_META[key].fieldLabel}
+                                            </button>
+                                          );
+                                        })}
+                                        <button
+                                          type="button"
+                                          disabled={isSearching || isRegulating}
+                                          onClick={() => handleFinishPriority(m.id)}
+                                          className="px-3 py-1.5 rounded-lg text-[11px] font-black bg-amber-400 hover:bg-amber-300 text-stone-950 border border-amber-500 cursor-pointer active:scale-95"
+                                        >
+                                          {userCarePoints.some((k) => k === 'industry' || k === 'workEnvironment' || k === 'benefits') ? '完成' : '跳過'}
+                                        </button>
+                                      </div>
+                                      {userCarePoints.some((k) => k === 'industry' || k === 'workEnvironment' || k === 'benefits') && (
+                                        <p className="text-[11px] text-stone-500">
+                                          優先順序：{userCarePoints.filter((k) => k === 'industry' || k === 'workEnvironment' || k === 'benefits').map((k) => CARE_POINT_META[k]?.fieldLabel || k).join(' ＞ ')}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  {activeStep && activeStep.key !== 'priority' && (
                                     <div className="p-2.5 rounded-xl bg-white/95 border border-blue-200/80 space-y-2">
                                       <div className="text-[11px] font-bold text-[#1e3a8a]">
                                         {activeStep.question}
                                       </div>
                                       <div className="flex flex-wrap gap-1.5">
                                         {(activeStep.key === 'salary'
-                                          ? salaryOptionsFor(
-                                              isHourlyContext(
-                                                `${m.selectedConditionMap?.jobType || ''} ${m.baseBrief || ''} ${m.pendingBrief || ''}`
+                                          ? isAbroadOnlyContext(m)
+                                            ? abroadSalaryOptions(
+                                                countriesInContext(m),
+                                                isHourlyContext(`${m.selectedConditionMap?.jobType || ''} ${m.baseBrief || ''} ${m.pendingBrief || ''}`)
                                               )
-                                            )
+                                            : salaryOptionsFor(
+                                                isHourlyContext(
+                                                  `${m.selectedConditionMap?.jobType || ''} ${m.baseBrief || ''} ${m.pendingBrief || ''}`
+                                                )
+                                              )
                                           : activeStep.options
                                         ).map((opt, idx) => (
                                           <button
@@ -1590,6 +1864,36 @@ export const JobExplorerView: React.FC = () => {
                                                   </button>
                                                 );
                                               })}
+                                            </div>
+                                            {(m.selectedCountries || []).some((c) => (MAJOR_CITIES_BY_COUNTRY[c] || []).length > 0) && (
+                                              <div className="space-y-1">
+                                                <div className="text-[11px] font-bold text-[#1e3a8a]">主要城市（可複選，不選就是全國）</div>
+                                                {(m.selectedCountries || []).filter((c) => (MAJOR_CITIES_BY_COUNTRY[c] || []).length > 0).map((c) => (
+                                                  <div key={c} className="flex flex-wrap items-center gap-1.5">
+                                                    <span className="text-[11px] font-bold text-stone-500 min-w-[3.5rem]">{c}</span>
+                                                    {MAJOR_CITIES_BY_COUNTRY[c].map((city) => {
+                                                      const on = (m.selectedCities || []).includes(city);
+                                                      return (
+                                                        <button
+                                                          key={city}
+                                                          type="button"
+                                                          aria-pressed={on}
+                                                          disabled={isSearching || isRegulating}
+                                                          onClick={() => handleToggleAbroadCity(m.id, city)}
+                                                          className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1 ${
+                                                            on ? 'bg-[#1e3a8a] text-white border-[#1e3a8a]' : 'bg-white hover:bg-blue-50 border-blue-200 text-stone-800'
+                                                          }`}
+                                                        >
+                                                          {on && <Check className="w-3 h-3 stroke-[3]" />}
+                                                          {city}
+                                                        </button>
+                                                      );
+                                                    })}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                            <div className="flex flex-wrap gap-1.5">
                                               <button
                                                 type="button"
                                                 disabled={isSearching || isRegulating}
@@ -1908,6 +2212,7 @@ export const JobExplorerView: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <span className="text-[15px] font-bold text-[#e87722]">
                         {job.salaryText}
+                        {convertedSalary(job) && <span className="ml-1 text-[11px] font-semibold text-stone-500">（{convertedSalary(job)}）</span>}
                       </span>
                       {job.postedAtText && (
                         <span className="text-[10px] text-stone-400 font-medium">
@@ -1998,6 +2303,7 @@ export const JobExplorerView: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <div className="text-sm sm:text-base font-bold text-[#e87722]">
                         {job.salaryText}
+                        {convertedSalary(job) && <span className="ml-1 text-[11px] font-semibold text-stone-500">（{convertedSalary(job)}）</span>}
                       </div>
                       {job.postedAtText && (
                         <span className="text-[11px] text-stone-400 font-medium">
@@ -2088,6 +2394,7 @@ export const JobExplorerView: React.FC = () => {
                   <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0">
                     <span className="text-sm sm:text-base font-bold text-[#e87722]">
                       {job.salaryText}
+                      {convertedSalary(job) && <span className="ml-1 text-[11px] font-semibold text-stone-500">（{convertedSalary(job)}）</span>}
                     </span>
                     {job.postedAtText && (
                       <span className="text-[11px] text-stone-400 font-medium">

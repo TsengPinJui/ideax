@@ -15,7 +15,11 @@ import { LoginError, migratePrivateProfiles, passwordLogin } from './server/priv
 import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
 import { classifyMascotQuestion, extractUdifyAppCode, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken } from './server/competitionService';
-import { groundingFrom, verifyJobUrls, type GroundingInfo } from './server/jobUrlVerify';
+import { groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './server/jobUrlVerify';
+import { ALL_JOB_SITES, COMPANY_SITE, MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
+import { FALLBACK_USD_RATES } from './src/data/currency';
+/** 國外主要城市（例如東京、舊金山灣區），用來辨識條件裡的國外城市 */
+const ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join('|'));
 
 dotenv.config();
 
@@ -3348,7 +3352,10 @@ app.post('/api/mascot/event', async (req: Request, res: Response) => {
 // 匯職缺 Stage 1：系統既有調節器 Gemini 先釐清並與用戶確認求職需求，確認後再轉給「探險家」Agent
 // ─── 匯職缺：條件解析小工具 ───
 /** 從文字抓出薪資（月薪 6 萬、60000、60k、時薪 200、年薪 80 萬） */
+const FOREIGN_CURRENCY_RE = /us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|rm\s?\d|円|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣|令吉|依當地行情/i;
 function parseSalaryText(text: string): { period: 'month' | 'hour' | 'year'; amount: number } | null {
+  // 國外幣別（或依當地行情）不用台幣標準解析
+  if (FOREIGN_CURRENCY_RE.test(text)) return null;
   const t = text.replace(/,/g, '');
   const num = (v: string, unit?: string) => {
     const n = Number(v);
@@ -3386,14 +3393,27 @@ function buildJobConditionSummary(
   if (cities && cities.length) lines.push(`地區：${uniq(cities.map((c) => (c === '遠端' ? '遠端工作' : /[市縣]$/.test(c) ? c : c))).join('、')}`);
   else if (ctx.isTaiwanWide) lines.push('地區：台灣（不限縣市）');
   else if (ctx.mentionsAbroad) {
-    const countries = text.match(/日本|新加坡|香港|澳門|中國大陸|美國|加拿大|英國|德國|法國|澳洲|紐西蘭|韓國|馬來西亞|越南|泰國|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|國外|海外/g);
-    if (countries) lines.push(`地區：${uniq(countries).join('、')}`);
+    const countries = text.match(/日本|新加坡|香港|澳門|中國大陸|美國|加拿大|英國|德國|法國|澳洲|紐西蘭|韓國|馬來西亞|越南|泰國|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|國外|海外/g);
+    const abroadCities = text.match(new RegExp(ABROAD_CITY_RE.source, 'g'));
+    // 國家後面括號列出選到的城市，例如「日本（東京、大阪）、新加坡」
+    const cs = uniq(abroadCities || []);
+    const used = new Set<string>();
+    const parts = uniq((countries || []).filter((c) => !/國外|海外/.test(c) || (countries || []).length === 1)).map((c) => {
+      const mine = cs.filter((x) => (MAJOR_CITIES_BY_COUNTRY[c] || []).includes(x));
+      mine.forEach((x) => used.add(x));
+      return mine.length ? `${c}（${mine.join('、')}）` : c;
+    });
+    const list = [...parts, ...cs.filter((x) => !used.has(x))];
+    if (list.length) lines.push(`地區：${list.join('、')}`);
   }
   // 職務：去掉地區、薪資、工作型態等字樣後剩下的部分
   const role = text
-    .replace(/工作型態：[^、,，\s]+|地區：[^、,，\s]+|工作範圍：[^、,，\s]+|國家：[^、,，\s]+|學歷：[^、,，\s]+|經歷：[^、,，\s]+|薪資：[^、,，\s]+/g, ' ')
+    .replace(/工作型態：[^、,，]+|地區：[^、,，]+|工作範圍：[^、,，]+|國家：[^、,，]+|學歷：[^、,，]+|經歷：[^、,，]+|薪資：[^、,，]+|薪水：[^、,，]+|求職網：[^、,，]+/g, ' ')
+    .replace(/us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|¥|rm|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣/gi, ' ')
+    .replace(/工作環境|環境好|環境佳|環境|福利好|福利|待遇好|待遇|行業|產業|優先|重視|在意|最好|好的|佳/g, ' ')
     .replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, ' ')
     .replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, ' ')
+    .replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, 'g') : /$^/g, ' ')
     .replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, ' ')
     .replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外/g, ' ')
     .replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, ' ')
@@ -3405,7 +3425,9 @@ function buildJobConditionSummary(
   if (role.length) lines.push(`職務：${uniq(role).slice(0, 3).join('、')}`);
   // 薪資
   const si = ctx.salaryInfo;
-  if (si) {
+  const foreign = text.match(/薪水：([^、]+)/);
+  if (FOREIGN_CURRENCY_RE.test(text) && foreign) lines.push(`薪資：${foreign[1]}`);
+  else if (si) {
     const label = si.period === 'hour' ? '時薪' : si.period === 'year' ? '年薪' : '月薪';
     lines.push(`薪資：${label} ${si.amount.toLocaleString('en-US')} 元以上`);
   } else if (/面議|不拘/.test(pick(/薪資待遇不拘|薪資不拘|面議/))) lines.push('薪資：不拘');
@@ -3416,6 +3438,30 @@ function buildJobConditionSummary(
   if (exp) lines.push(`經歷：${exp}`);
   return lines;
 }
+
+// ─── 匯率：匯職缺換算薪資幣別用（以美元為基準，快取 6 小時；取不到時用備用匯率）───
+let fxCache: { at: number; rates: Record<string, number>; updatedAt: string } | null = null;
+app.get('/api/fx', async (_req: Request, res: Response) => {
+  const want = Object.keys(FALLBACK_USD_RATES);
+  if (fxCache && Date.now() - fxCache.at < 6 * 3600 * 1000) {
+    return res.json({ base: 'USD', rates: fxCache.rates, updatedAt: fxCache.updatedAt, source: 'live' });
+  }
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const r = await fetch('https://open.er-api.com/v6/latest/USD', { signal: ctrl.signal });
+    clearTimeout(timer);
+    const j: any = await r.json();
+    if (j?.result === 'success' && j?.rates) {
+      const rates: Record<string, number> = {};
+      for (const k of want) if (Number(j.rates[k]) > 0) rates[k] = Number(j.rates[k]);
+      fxCache = { at: Date.now(), rates, updatedAt: String(j.time_last_update_utc || new Date().toUTCString()) };
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.json({ base: 'USD', rates, updatedAt: fxCache.updatedAt, source: 'live' });
+    }
+  } catch {}
+  return res.json({ base: 'USD', rates: FALLBACK_USD_RATES, updatedAt: '', source: 'fallback' });
+});
 
 app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
   try {
@@ -3452,7 +3498,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const expRegex = /無經驗|新鮮人|應屆|二度就業|1~3\s*年|3~5\s*年|\d+\s*年以上|\d+\s*~\s*\d+\s*年|資深|初階|中階|跨領域轉職/i;
     const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
     const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
-    const abroadRegex = /國外|海外|出國|外派|日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端/;
+    const abroadRegex = new RegExp(`國外|海外|出國|外派|${ABROAD_CITY_RE.source}|日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端`);
     // 講到「台灣／全台」就算指定了工作範圍（不一定要寫成「工作範圍：台灣」）
     const taiwanScopeRegex = /工作範圍：台灣|在台灣|台灣的工作|國內|台灣|臺灣|全台/;
     const jobTypeRegex = /正職|全職|兼職|工讀|打工|實習|約聘|派遣|計時|part[\s-]?time|full[\s-]?time|intern/i;
@@ -3516,7 +3562,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const isPersonalityAmbiguous = mentionsPersonality && isPersonalityMissing;
 
     // ─── 6. 期望薪資待遇維度 (salary) ───
-    const hasSpecificSalary = salaryRegex.test(fullText) || Number(filters.minSalary) > 0;
+    const hasSpecificSalary = salaryRegex.test(fullText) || FOREIGN_CURRENCY_RE.test(fullText) || Number(filters.minSalary) > 0;
     const isSalaryMissing = !hasSpecificSalary && !skippedDims.has('salary');
 
     // ─── 萃取目前已具備具體意義的條件片段（排除純籠統問句與「跳過」） ───
@@ -4016,6 +4062,10 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
 }`;
     const isPartTime = Boolean(partTimeHint(rawQuery));
     const isAbroad = Boolean(regionHint(rawQuery));
+    // 使用者指定了求職網：只搜這些網站（每 3 個一組同時搜尋）
+    const chosenSites: string[] = Array.isArray(filters.sites)
+      ? Array.from(new Set(filters.sites.map((x: any) => String(x || '').trim()).filter((x: string) => ALL_JOB_SITES.includes(x)))).slice(0, 24) as string[]
+      : [];
     // 只找國外時，不用搜台灣在地的人力銀行與公部門
     const abroadOnly = isAbroad && !/台灣與國外皆可|台灣＋國外|台灣和國外|國內外/.test(rawQuery);
     const groups: Array<{ label: string; focus: string; count: string }> = [];
@@ -4029,12 +4079,23 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
     }
     groups.push({ label: '相近職稱', focus: '把條件裡的職稱換成相近或同義的職稱（例如「門市人員」也找「門市專員、店員、儲備幹部」），在各大求職網站搜尋', count: '10 ~ 15' });
     if (isPartTime) groups.push({ label: '兼職平台', focus: '小雞上工、Worky、518熊班兼職、Yes123 打工、1111 兼職、Tasker 出任務（接案）', count: '12 ~ 15' });
-    if (isAbroad) {
+    if (chosenSites.length) {
+      groups.length = 0;
+      for (let i = 0; i < chosenSites.length && groups.length < 8; i += 3) {
+        const sites = chosenSites.slice(i, i + 3);
+        groups.push({
+          label: sites.join('、'),
+          focus: `只能從這些網站找：${sites.map((x) => (x === COMPANY_SITE ? '各公司官網的徵才頁' : x)).join('、')}（不要列出其他網站的職缺）`,
+          count: sites.length >= 3 ? '12 ~ 15' : '10 ~ 12',
+        });
+      }
+    } else if (isAbroad) {
       groups.push({ label: '國外求職平台', focus: 'LinkedIn、Indeed、Glassdoor 與職缺所在國家的主要求職網站', count: '12 ~ 15' });
       groups.push({ label: '國外在地平台', focus: '職缺所在國家或城市的在地求職網站（例如日本 doda、Green、Daijob；香港 JobsDB、CTgoodjobs；新加坡 MyCareersFuture；遠端 We Work Remotely、Remote OK）與企業官網', count: '10 ~ 15' });
     }
 
     let batchNo = 0;
+    let idxCursor = 0;
     const runGroup = async (g: { label: string; focus: string; count: string }) => {
       if (!ai) return;
       try {
@@ -4063,17 +4124,35 @@ ${JOB_JSON_SPEC}`;
           return true;
         });
         if (fresh.length === 0) return;
-        const mapped = await finalizeJobs(fresh, groundingFrom(r), filters, totalYielded);
-        if (mapped.length === 0) return;
-        totalYielded += mapped.length;
-        batchNo += 1;
-        sendEvent({
-          type: 'batch',
-          batchIndex: batchNo,
-          isFirstBatch: batchNo === 1,
-          jobs: mapped,
-          reply: `已從${g.label}找到 ${mapped.length} 筆職缺（累計 ${totalYielded} 筆），繼續搜尋中…`,
-        });
+        // 分批回傳：每 5 筆一批同時驗證網址，哪一批先驗證好就先送到前端
+        const grounding = groundingFrom(r);
+        const chunks: any[][] = [];
+        for (let i = 0; i < fresh.length; i += 5) chunks.push(fresh.slice(i, i + 5));
+        await Promise.all(
+          chunks.map(async (chunk) => {
+            // 先保留編號範圍，同時進行的幾批職缺 id 才不會重複
+            const startIdx = idxCursor; idxCursor += chunk.length;
+            let mapped = await finalizeJobs(chunk, grounding, filters, startIdx);
+            // 有指定求職網：確認是其他網站的職缺就不顯示（企業官網、認不出平台的保留給「企業官網」）
+            if (chosenSites.length) {
+              mapped = mapped.filter((m: any) => {
+                const p = platformOf(String(m.url || ''))?.name;
+                if (p) return chosenSites.includes(p);
+                return chosenSites.includes(COMPANY_SITE) || m.urlKind === 'search';
+              });
+            }
+            if (mapped.length === 0) return;
+            totalYielded += mapped.length;
+            batchNo += 1;
+            sendEvent({
+              type: 'batch',
+              batchIndex: batchNo,
+              isFirstBatch: batchNo === 1,
+              jobs: mapped,
+              reply: `已從${g.label}找到 ${mapped.length} 筆職缺（累計 ${totalYielded} 筆），繼續搜尋中…`,
+            });
+          })
+        );
       } catch (eg) {
         console.warn(`[Search Stream ${g.label} Error]`, eg);
       }
@@ -4093,7 +4172,14 @@ ${JOB_JSON_SPEC}`;
             return true;
           });
           if (freshB3.length > 0) {
-            const mappedB3 = await finalizeJobs(freshB3, null, filters, totalYielded);
+            let mappedB3 = await finalizeJobs(freshB3, null, filters, idxCursor); idxCursor += freshB3.length;
+            if (chosenSites.length) {
+              mappedB3 = mappedB3.filter((m: any) => {
+                const p = platformOf(String(m.url || ''))?.name;
+                if (p) return chosenSites.includes(p);
+                return chosenSites.includes(COMPANY_SITE) || m.urlKind === 'search';
+              });
+            }
             totalYielded += mappedB3.length;
             batchNo += 1;
             sendEvent({

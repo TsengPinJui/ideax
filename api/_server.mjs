@@ -161297,7 +161297,80 @@ async function verifyJobUrls(jobs, g, budgetMs = 12e3, concurrency = 8) {
   return [...out];
 }
 
+// src/data/jobSites.ts
+var COMPANY_SITE = "\u4F01\u696D\u5B98\u7DB2";
+var TAIWAN_JOB_SITES = [
+  "104\u4EBA\u529B\u9280\u884C",
+  "1111\u4EBA\u529B\u9280\u884C",
+  "Yes123",
+  "518\u718A\u73ED",
+  "Cake",
+  "Yourator",
+  "Meet.jobs",
+  "Glints",
+  "LinkedIn",
+  "Indeed",
+  "\u53F0\u7063\u5C31\u696D\u901A",
+  "\u4E8B\u6C42\u4EBA",
+  "\u5C0F\u96DE\u4E0A\u5DE5",
+  "Worky",
+  "Tasker\u51FA\u4EFB\u52D9",
+  COMPANY_SITE
+];
+var ABROAD_GENERAL_SITES = ["LinkedIn", "Indeed", "Glassdoor", COMPANY_SITE];
+var ABROAD_SITES_BY_COUNTRY = {
+  \u65E5\u672C: ["doda", "Green", "Daijob", "\u30EA\u30AF\u30CA\u30D3NEXT"],
+  \u65B0\u52A0\u5761: ["MyCareersFuture", "JobStreet"],
+  \u9999\u6E2F: ["JobsDB", "CTgoodjobs"],
+  \u4E2D\u570B\u5927\u9678: ["BOSS\u76F4\u8058", "\u524D\u7A0B\u7121\u6182"],
+  \u97D3\u570B: ["Saramin", "JobKorea"],
+  \u99AC\u4F86\u897F\u4E9E: ["JobStreet"],
+  \u8D8A\u5357: [],
+  \u6FB3\u6D32: ["SEEK"],
+  \u7D10\u897F\u862D: ["SEEK"],
+  \u7F8E\u570B: ["ZipRecruiter", "Wellfound"],
+  \u52A0\u62FF\u5927: ["Job Bank"],
+  \u82F1\u570B: ["Reed"],
+  \u5FB7\u570B: ["StepStone"],
+  \u5168\u7403\u9060\u7AEF: ["We Work Remotely", "Remote OK", "Wellfound"]
+};
+var ALL_JOB_SITES = Array.from(
+  /* @__PURE__ */ new Set([...TAIWAN_JOB_SITES, ...ABROAD_GENERAL_SITES, ...Object.values(ABROAD_SITES_BY_COUNTRY).flat()])
+);
+var MAJOR_CITIES_BY_COUNTRY = {
+  \u65E5\u672C: ["\u6771\u4EAC", "\u5927\u962A", "\u540D\u53E4\u5C4B", "\u798F\u5CA1", "\u4EAC\u90FD", "\u6A6B\u6FF1"],
+  \u4E2D\u570B\u5927\u9678: ["\u4E0A\u6D77", "\u5317\u4EAC", "\u6DF1\u5733", "\u5EE3\u5DDE", "\u676D\u5DDE", "\u8607\u5DDE"],
+  \u97D3\u570B: ["\u9996\u723E", "\u91DC\u5C71", "\u4EC1\u5DDD"],
+  \u99AC\u4F86\u897F\u4E9E: ["\u5409\u9686\u5761", "\u6AB3\u57CE", "\u65B0\u5C71"],
+  \u8D8A\u5357: ["\u80E1\u5FD7\u660E\u5E02", "\u6CB3\u5167"],
+  \u6FB3\u6D32: ["\u96EA\u68A8", "\u58A8\u723E\u672C", "\u5E03\u91CC\u65AF\u672C", "\u4F2F\u65AF"],
+  \u7D10\u897F\u862D: ["\u5967\u514B\u862D", "\u5A01\u9748\u9813"],
+  \u7F8E\u570B: ["\u7D10\u7D04", "\u820A\u91D1\u5C71\u7063\u5340", "\u897F\u96C5\u5716", "\u6D1B\u6749\u78EF", "\u6CE2\u58EB\u9813", "\u5967\u65AF\u6C40"],
+  \u52A0\u62FF\u5927: ["\u591A\u502B\u591A", "\u6EAB\u54E5\u83EF", "\u8499\u7279\u5A41"],
+  \u82F1\u570B: ["\u502B\u6566", "\u66FC\u5FB9\u65AF\u7279", "\u611B\u4E01\u5821"],
+  \u5FB7\u570B: ["\u67CF\u6797", "\u6155\u5C3C\u9ED1", "\u6CD5\u862D\u514B\u798F", "\u6F22\u5821"]
+};
+
+// src/data/currency.ts
+var FALLBACK_USD_RATES = {
+  USD: 1,
+  TWD: 32.5,
+  JPY: 150,
+  CNY: 7.2,
+  HKD: 7.8,
+  SGD: 1.35,
+  KRW: 1380,
+  MYR: 4.6,
+  VND: 25e3,
+  AUD: 1.52,
+  NZD: 1.66,
+  CAD: 1.37,
+  GBP: 0.79,
+  EUR: 0.92
+};
+
 // server.ts
+var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
 import_dotenv.default.config();
 process.on("uncaughtException", (err) => {
   if (err && (err.code === "ECONNRESET" || err.code === "EPIPE")) {
@@ -164098,7 +164171,9 @@ app.post("/api/mascot/event", async (req, res) => {
     res.json({ success: false });
   }
 });
+var FOREIGN_CURRENCY_RE = /us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|rm\s?\d|円|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣|令吉|依當地行情/i;
 function parseSalaryText(text) {
+  if (FOREIGN_CURRENCY_RE.test(text)) return null;
   const t2 = text.replace(/,/g, "");
   const num = (v, unit) => {
     const n = Number(v);
@@ -164132,13 +164207,24 @@ function buildJobConditionSummary(text, ctx) {
   if (cities && cities.length) lines.push(`\u5730\u5340\uFF1A${uniq(cities.map((c) => c === "\u9060\u7AEF" ? "\u9060\u7AEF\u5DE5\u4F5C" : /[市縣]$/.test(c) ? c : c)).join("\u3001")}`);
   else if (ctx.isTaiwanWide) lines.push("\u5730\u5340\uFF1A\u53F0\u7063\uFF08\u4E0D\u9650\u7E23\u5E02\uFF09");
   else if (ctx.mentionsAbroad) {
-    const countries = text.match(/日本|新加坡|香港|澳門|中國大陸|美國|加拿大|英國|德國|法國|澳洲|紐西蘭|韓國|馬來西亞|越南|泰國|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|國外|海外/g);
-    if (countries) lines.push(`\u5730\u5340\uFF1A${uniq(countries).join("\u3001")}`);
+    const countries = text.match(/日本|新加坡|香港|澳門|中國大陸|美國|加拿大|英國|德國|法國|澳洲|紐西蘭|韓國|馬來西亞|越南|泰國|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|國外|海外/g);
+    const abroadCities = text.match(new RegExp(ABROAD_CITY_RE.source, "g"));
+    const cs = uniq(abroadCities || []);
+    const used = /* @__PURE__ */ new Set();
+    const parts = uniq((countries || []).filter((c) => !/國外|海外/.test(c) || (countries || []).length === 1)).map((c) => {
+      const mine = cs.filter((x2) => (MAJOR_CITIES_BY_COUNTRY[c] || []).includes(x2));
+      mine.forEach((x2) => used.add(x2));
+      return mine.length ? `${c}\uFF08${mine.join("\u3001")}\uFF09` : c;
+    });
+    const list = [...parts, ...cs.filter((x2) => !used.has(x2))];
+    if (list.length) lines.push(`\u5730\u5340\uFF1A${list.join("\u3001")}`);
   }
-  const role = text.replace(/工作型態：[^、,，\s]+|地區：[^、,，\s]+|工作範圍：[^、,，\s]+|國家：[^、,，\s]+|學歷：[^、,，\s]+|經歷：[^、,，\s]+|薪資：[^、,，\s]+/g, " ").replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, " ").replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, " ").replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, " ").replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外/g, " ").replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, " ").replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, " ").replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, " ").trim().split(/\s+/).filter((w) => w.length >= 2 && !/^(跳過|略過|不拘)$/.test(w));
+  const role = text.replace(/工作型態：[^、,，]+|地區：[^、,，]+|工作範圍：[^、,，]+|國家：[^、,，]+|學歷：[^、,，]+|經歷：[^、,，]+|薪資：[^、,，]+|薪水：[^、,，]+|求職網：[^、,，]+/g, " ").replace(/us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|¥|rm|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣/gi, " ").replace(/工作環境|環境好|環境佳|環境|福利好|福利|待遇好|待遇|行業|產業|優先|重視|在意|最好|好的|佳/g, " ").replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, " ").replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, " ").replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, "g") : /$^/g, " ").replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, " ").replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外/g, " ").replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, " ").replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, " ").replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, " ").trim().split(/\s+/).filter((w) => w.length >= 2 && !/^(跳過|略過|不拘)$/.test(w));
   if (role.length) lines.push(`\u8077\u52D9\uFF1A${uniq(role).slice(0, 3).join("\u3001")}`);
   const si = ctx.salaryInfo;
-  if (si) {
+  const foreign = text.match(/薪水：([^、]+)/);
+  if (FOREIGN_CURRENCY_RE.test(text) && foreign) lines.push(`\u85AA\u8CC7\uFF1A${foreign[1]}`);
+  else if (si) {
     const label = si.period === "hour" ? "\u6642\u85AA" : si.period === "year" ? "\u5E74\u85AA" : "\u6708\u85AA";
     lines.push(`\u85AA\u8CC7\uFF1A${label} ${si.amount.toLocaleString("en-US")} \u5143\u4EE5\u4E0A`);
   } else if (/面議|不拘/.test(pick(/薪資待遇不拘|薪資不拘|面議/))) lines.push("\u85AA\u8CC7\uFF1A\u4E0D\u62D8");
@@ -164148,6 +164234,29 @@ function buildJobConditionSummary(text, ctx) {
   if (exp) lines.push(`\u7D93\u6B77\uFF1A${exp}`);
   return lines;
 }
+var fxCache = null;
+app.get("/api/fx", async (_req, res) => {
+  const want = Object.keys(FALLBACK_USD_RATES);
+  if (fxCache && Date.now() - fxCache.at < 6 * 3600 * 1e3) {
+    return res.json({ base: "USD", rates: fxCache.rates, updatedAt: fxCache.updatedAt, source: "live" });
+  }
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5e3);
+    const r2 = await fetch("https://open.er-api.com/v6/latest/USD", { signal: ctrl.signal });
+    clearTimeout(timer);
+    const j = await r2.json();
+    if (j?.result === "success" && j?.rates) {
+      const rates = {};
+      for (const k of want) if (Number(j.rates[k]) > 0) rates[k] = Number(j.rates[k]);
+      fxCache = { at: Date.now(), rates, updatedAt: String(j.time_last_update_utc || (/* @__PURE__ */ new Date()).toUTCString()) };
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.json({ base: "USD", rates, updatedAt: fxCache.updatedAt, source: "live" });
+    }
+  } catch {
+  }
+  return res.json({ base: "USD", rates: FALLBACK_USD_RATES, updatedAt: "", source: "fallback" });
+});
 app.post("/api/job-explorer/intake", async (req, res) => {
   try {
     const rawMessage = String(req.body?.message || "").trim().slice(0, 600);
@@ -164168,7 +164277,7 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     const expRegex = /無經驗|新鮮人|應屆|二度就業|1~3\s*年|3~5\s*年|\d+\s*年以上|\d+\s*~\s*\d+\s*年|資深|初階|中階|跨領域轉職/i;
     const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
     const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
-    const abroadRegex = /國外|海外|出國|外派|日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端/;
+    const abroadRegex = new RegExp(`\u570B\u5916|\u6D77\u5916|\u51FA\u570B|\u5916\u6D3E|${ABROAD_CITY_RE.source}|\u65E5\u672C|\u6771\u4EAC|\u5927\u962A|\u65B0\u52A0\u5761|\u9999\u6E2F|\u6FB3\u9580|\u4E2D\u570B\u5927\u9678|\u5927\u9678|\u4E0A\u6D77|\u5317\u4EAC|\u6DF1\u5733|\u5EE3\u5DDE|\u7F8E\u570B|\u7D10\u7D04|\u77FD\u8C37|\u52A0\u62FF\u5927|\u6EAB\u54E5\u83EF|\u591A\u502B\u591A|\u82F1\u570B|\u502B\u6566|\u5FB7\u570B|\u67CF\u6797|\u6CD5\u570B|\u6FB3\u6D32|\u96EA\u68A8|\u58A8\u723E\u672C|\u7D10\u897F\u862D|\u97D3\u570B|\u9996\u723E|\u99AC\u4F86\u897F\u4E9E|\u5409\u9686\u5761|\u8D8A\u5357|\u6CF0\u570B|\u66FC\u8C37|\u83F2\u5F8B\u8CD3|\u5370\u5C3C|\u8377\u862D|\u6B50\u6D32|\u5317\u7F8E|\u6771\u5357\u4E9E|\u5168\u7403\u9060\u7AEF`);
     const taiwanScopeRegex = /工作範圍：台灣|在台灣|台灣的工作|國內|台灣|臺灣|全台/;
     const jobTypeRegex = /正職|全職|兼職|工讀|打工|實習|約聘|派遣|計時|part[\s-]?time|full[\s-]?time|intern/i;
     if (/地點不拘|地區不拘|不限地點|全台皆可|全台灣地區皆可/.test(fullText)) skippedDims.add("location");
@@ -164204,7 +164313,7 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     const mentionsPersonality = /我的性格|我的個性|我的特質|適合我性格|適合我個性|適合我特質|適合我的|符合我的個性|依我的性格|看我性格|我的脾氣|我個人特質/.test(fullText);
     const isPersonalityMissing = !hasSpecificPersonality && !skippedDims.has("personality");
     const isPersonalityAmbiguous = mentionsPersonality && isPersonalityMissing;
-    const hasSpecificSalary = salaryRegex.test(fullText) || Number(filters.minSalary) > 0;
+    const hasSpecificSalary = salaryRegex.test(fullText) || FOREIGN_CURRENCY_RE.test(fullText) || Number(filters.minSalary) > 0;
     const isSalaryMissing = !hasSpecificSalary && !skippedDims.has("salary");
     const concreteConditions = [];
     const seenCond = /* @__PURE__ */ new Set();
@@ -164613,6 +164722,7 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
 }`;
     const isPartTime = Boolean(partTimeHint(rawQuery));
     const isAbroad = Boolean(regionHint(rawQuery));
+    const chosenSites = Array.isArray(filters.sites) ? Array.from(new Set(filters.sites.map((x2) => String(x2 || "").trim()).filter((x2) => ALL_JOB_SITES.includes(x2)))).slice(0, 24) : [];
     const abroadOnly = isAbroad && !/台灣與國外皆可|台灣＋國外|台灣和國外|國內外/.test(rawQuery);
     const groups = [];
     if (!abroadOnly) {
@@ -164625,11 +164735,22 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
     }
     groups.push({ label: "\u76F8\u8FD1\u8077\u7A31", focus: "\u628A\u689D\u4EF6\u88E1\u7684\u8077\u7A31\u63DB\u6210\u76F8\u8FD1\u6216\u540C\u7FA9\u7684\u8077\u7A31\uFF08\u4F8B\u5982\u300C\u9580\u5E02\u4EBA\u54E1\u300D\u4E5F\u627E\u300C\u9580\u5E02\u5C08\u54E1\u3001\u5E97\u54E1\u3001\u5132\u5099\u5E79\u90E8\u300D\uFF09\uFF0C\u5728\u5404\u5927\u6C42\u8077\u7DB2\u7AD9\u641C\u5C0B", count: "10 ~ 15" });
     if (isPartTime) groups.push({ label: "\u517C\u8077\u5E73\u53F0", focus: "\u5C0F\u96DE\u4E0A\u5DE5\u3001Worky\u3001518\u718A\u73ED\u517C\u8077\u3001Yes123 \u6253\u5DE5\u30011111 \u517C\u8077\u3001Tasker \u51FA\u4EFB\u52D9\uFF08\u63A5\u6848\uFF09", count: "12 ~ 15" });
-    if (isAbroad) {
+    if (chosenSites.length) {
+      groups.length = 0;
+      for (let i2 = 0; i2 < chosenSites.length && groups.length < 8; i2 += 3) {
+        const sites = chosenSites.slice(i2, i2 + 3);
+        groups.push({
+          label: sites.join("\u3001"),
+          focus: `\u53EA\u80FD\u5F9E\u9019\u4E9B\u7DB2\u7AD9\u627E\uFF1A${sites.map((x2) => x2 === COMPANY_SITE ? "\u5404\u516C\u53F8\u5B98\u7DB2\u7684\u5FB5\u624D\u9801" : x2).join("\u3001")}\uFF08\u4E0D\u8981\u5217\u51FA\u5176\u4ED6\u7DB2\u7AD9\u7684\u8077\u7F3A\uFF09`,
+          count: sites.length >= 3 ? "12 ~ 15" : "10 ~ 12"
+        });
+      }
+    } else if (isAbroad) {
       groups.push({ label: "\u570B\u5916\u6C42\u8077\u5E73\u53F0", focus: "LinkedIn\u3001Indeed\u3001Glassdoor \u8207\u8077\u7F3A\u6240\u5728\u570B\u5BB6\u7684\u4E3B\u8981\u6C42\u8077\u7DB2\u7AD9", count: "12 ~ 15" });
       groups.push({ label: "\u570B\u5916\u5728\u5730\u5E73\u53F0", focus: "\u8077\u7F3A\u6240\u5728\u570B\u5BB6\u6216\u57CE\u5E02\u7684\u5728\u5730\u6C42\u8077\u7DB2\u7AD9\uFF08\u4F8B\u5982\u65E5\u672C doda\u3001Green\u3001Daijob\uFF1B\u9999\u6E2F JobsDB\u3001CTgoodjobs\uFF1B\u65B0\u52A0\u5761 MyCareersFuture\uFF1B\u9060\u7AEF We Work Remotely\u3001Remote OK\uFF09\u8207\u4F01\u696D\u5B98\u7DB2", count: "10 ~ 15" });
     }
     let batchNo = 0;
+    let idxCursor = 0;
     const runGroup = async (g) => {
       if (!ai) return;
       try {
@@ -164658,17 +164779,33 @@ ${JOB_JSON_SPEC}`;
           return true;
         });
         if (fresh.length === 0) return;
-        const mapped = await finalizeJobs(fresh, groundingFrom(r2), filters, totalYielded);
-        if (mapped.length === 0) return;
-        totalYielded += mapped.length;
-        batchNo += 1;
-        sendEvent({
-          type: "batch",
-          batchIndex: batchNo,
-          isFirstBatch: batchNo === 1,
-          jobs: mapped,
-          reply: `\u5DF2\u5F9E${g.label}\u627E\u5230 ${mapped.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF0C\u7E7C\u7E8C\u641C\u5C0B\u4E2D\u2026`
-        });
+        const grounding = groundingFrom(r2);
+        const chunks = [];
+        for (let i2 = 0; i2 < fresh.length; i2 += 5) chunks.push(fresh.slice(i2, i2 + 5));
+        await Promise.all(
+          chunks.map(async (chunk) => {
+            const startIdx = idxCursor;
+            idxCursor += chunk.length;
+            let mapped = await finalizeJobs(chunk, grounding, filters, startIdx);
+            if (chosenSites.length) {
+              mapped = mapped.filter((m2) => {
+                const p = platformOf(String(m2.url || ""))?.name;
+                if (p) return chosenSites.includes(p);
+                return chosenSites.includes(COMPANY_SITE) || m2.urlKind === "search";
+              });
+            }
+            if (mapped.length === 0) return;
+            totalYielded += mapped.length;
+            batchNo += 1;
+            sendEvent({
+              type: "batch",
+              batchIndex: batchNo,
+              isFirstBatch: batchNo === 1,
+              jobs: mapped,
+              reply: `\u5DF2\u5F9E${g.label}\u627E\u5230 ${mapped.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF0C\u7E7C\u7E8C\u641C\u5C0B\u4E2D\u2026`
+            });
+          })
+        );
       } catch (eg) {
         console.warn(`[Search Stream ${g.label} Error]`, eg);
       }
@@ -164686,7 +164823,15 @@ ${JOB_JSON_SPEC}`;
             return true;
           });
           if (freshB3.length > 0) {
-            const mappedB3 = await finalizeJobs(freshB3, null, filters, totalYielded);
+            let mappedB3 = await finalizeJobs(freshB3, null, filters, idxCursor);
+            idxCursor += freshB3.length;
+            if (chosenSites.length) {
+              mappedB3 = mappedB3.filter((m2) => {
+                const p = platformOf(String(m2.url || ""))?.name;
+                if (p) return chosenSites.includes(p);
+                return chosenSites.includes(COMPANY_SITE) || m2.urlKind === "search";
+              });
+            }
             totalYielded += mappedB3.length;
             batchNo += 1;
             sendEvent({
