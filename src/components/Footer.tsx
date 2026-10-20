@@ -10,6 +10,7 @@ import {
   Layers,
   Lightbulb,
   Sparkles,
+  Users,
 } from 'lucide-react';
 import { IdeaXLogo } from './IdeaXLogo';
 import { AppTab, AboutSection } from '../types';
@@ -155,7 +156,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
                   onClick={() => onNavClick('about', 'ip_agents')}
                   className="hover:text-amber-300 transition-colors text-left font-bold text-amber-400 cursor-pointer flex items-center gap-1"
                 >
-                  <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+                  <Users className="w-3 h-3 text-amber-400 shrink-0" />
                   <span>原創IP與Agent</span>
                 </button>
               </li>

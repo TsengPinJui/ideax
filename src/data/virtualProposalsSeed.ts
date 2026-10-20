@@ -3,6 +3,7 @@ import { ProposalComment } from '../types/competition';
 import { DEFAULT_VIBECODING_APPS } from './vibeCodingData';
 import { SEED_TIME_ANCHOR_MS } from './seedTime';
 import { SEED_THREADS } from './seedThreads';
+import { AGENT_PERSONAS, AGENT_PAIN_POINTS, AGENT_INNOVATION_PROPOSALS, AGENT_L0_DISCUSSIONS } from './agentPersonaSeed';
 
 export interface VirtualPersona {
   id: string;
@@ -62,6 +63,9 @@ export const VIRTUAL_PERSONAS: VirtualPersona[] = [
   { id: 'u-vc-41', username: 'vc_aaron_ko', name: '外掛開發者阿倫', title: '瀏覽器擴充功能開發者', avatar: '/avatars/vc-41.svg', bio: '專注開發提升研究員與知識工作者效率的 Chrome 插件。', domain: '網站程式' },
   { id: 'u-vc-42', username: 'vc_cathy_hsiao', name: '蕭雅云', title: '診所數位轉型顧問', avatar: '/avatars/vc-42.svg', bio: '優化診所約診爽約率、病患衛教追蹤與自費療程溝通。', domain: '專業問題' },
 ];
+
+// 原創 IP 角色帳號（小燈泡、搜搜、白喵）接在 42 位創作者後面，編號 43 起
+VIRTUAL_PERSONAS.push(...AGENT_PERSONAS);
 
 export const SIMULATED_BATCH_ID = 'ideax_virtual_seed_v2';
 
@@ -3848,6 +3852,11 @@ export function enrichQuestionWithSimulatedData(q: Question): Question {
     tipsHistory: q.tipsHistory && q.tipsHistory.length > 0 ? q.tipsHistory : simTips.tipsHistory,
   };
 }
+
+// 原創 IP 角色發的痛點、提案與日常討論
+SEED_PAIN_POINTS.push(...AGENT_PAIN_POINTS);
+SEED_INNOVATION_PROPOSALS.push(...AGENT_INNOVATION_PROPOSALS);
+SEED_L0_DISCUSSIONS.push(...AGENT_L0_DISCUSSIONS);
 
 const RAW_VIRTUAL_PROPOSALS_SEED: Question[] = [
   ...SEED_VIBECODING_APPS,

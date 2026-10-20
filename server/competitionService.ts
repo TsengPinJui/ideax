@@ -1483,7 +1483,7 @@ export async function confirmFinalAwardByAdmin(params: {
   return { success: true, message: `已成功確認名次 (第 ${params.finalRank} 名) 與相關獎勵核准！` };
 }
 
-const DATABASE_PROPOSALS_SEED_VERSION = 'v2026_10_20_db_v8';
+const DATABASE_PROPOSALS_SEED_VERSION = 'v2026_10_20_db_v9';
 let isDatabaseSeedInProgress = false;
 let isDatabaseSeedDone = false;
 
