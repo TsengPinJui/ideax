@@ -3380,6 +3380,8 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const expRegex = /無經驗|新鮮人|應屆|實習|工讀|兼職|二度就業|1~3\s*年|3~5\s*年|\d+\s*年以上|\d+\s*~\s*\d+\s*年|資深|初階|中階|跨領域轉職/i;
     const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
     const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
+    const abroadRegex = /國外|海外|出國|外派|日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端/;
+    const taiwanScopeRegex = /工作範圍：台灣|在台灣|台灣的工作|國內/;
     const jobTypeRegex = /正職|全職|兼職|工讀|打工|實習|約聘|派遣|計時|part[\s-]?time|full[\s-]?time|intern/i;
 
     // 檢測是否略過特定維度
@@ -3609,11 +3611,17 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const dynamicChips = activeGroup ? activeGroup.chips : [];
 
     // 計算四大快速條件（學歷、經歷、地區、薪水）哪些已經填寫或跳過
-    const completedConditionKeys: Array<'jobType' | 'education' | 'experience' | 'location' | 'salary'> = [];
+    const completedConditionKeys: Array<'jobType' | 'region' | 'education' | 'experience' | 'location' | 'salary'> = [];
     if (!isJobTypeMissing) completedConditionKeys.push('jobType');
+    // 台灣／國外：講到國家、國外，或講到台灣縣市，就算已指定（對話中提到的直接帶入）
+    const mentionsAbroad = abroadRegex.test(fullText);
+    if (mentionsAbroad || taiwanScopeRegex.test(fullText) || /工作範圍/.test(fullText) || hasSpecificCity || skippedDims.has('region')) {
+      completedConditionKeys.push('region');
+    }
     if (!isCollegeMissing) completedConditionKeys.push('education');
     if (!isExperienceMissing) completedConditionKeys.push('experience');
-    if (!isLocationMissing) completedConditionKeys.push('location');
+    // 只找國外時不用再問台灣縣市
+    if (!isLocationMissing || (mentionsAbroad && !/台灣與國外/.test(fullText))) completedConditionKeys.push('location');
     if (!isSalaryMissing) completedConditionKeys.push('salary');
 
     // ─── 自動提取結構化篩選條件 (extractedFilters) ───
@@ -3782,6 +3790,37 @@ function normalizeJobItem(
   };
 }
 
+/** 各國家／地區常用的求職平台 */
+const COUNTRY_JOB_PLATFORMS: Array<[RegExp, string, string]> = [
+  [/日本|東京|大阪/, '日本', 'doda、リクナビNEXT、Indeed Japan、Daijob、GaijinPot Jobs'],
+  [/新加坡/, '新加坡', 'MyCareersFuture、JobStreet Singapore、LinkedIn'],
+  [/香港|澳門/, '香港', 'JobsDB Hong Kong、CTgoodjobs'],
+  [/中國大陸|大陸|上海|北京|深圳|廣州/, '中國大陸', 'BOSS直聘、智聯招聘、前程無憂（51job）'],
+  [/韓國|首爾/, '韓國', 'Saramin、JobKorea'],
+  [/馬來西亞|吉隆坡/, '馬來西亞', 'JobStreet Malaysia、Hiredly'],
+  [/越南/, '越南', 'VietnamWorks、TopCV'],
+  [/澳洲|雪梨|墨爾本/, '澳洲', 'SEEK、Indeed Australia'],
+  [/紐西蘭/, '紐西蘭', 'SEEK NZ、Trade Me Jobs'],
+  [/美國|紐約|矽谷/, '美國', 'LinkedIn、Indeed、Glassdoor'],
+  [/加拿大|溫哥華|多倫多/, '加拿大', 'Job Bank、Indeed Canada、LinkedIn'],
+  [/英國|倫敦/, '英國', 'Reed、Totaljobs、Indeed UK'],
+  [/德國|柏林/, '德國', 'StepStone、XING、LinkedIn'],
+  [/全球遠端/, '全球遠端', 'We Work Remotely、Remote OK、LinkedIn'],
+];
+
+/** 找國外（或台灣＋國外）的工作時，告訴搜尋要用國際與當地的求職平台 */
+function regionHint(query: string): string {
+  const both = /台灣與國外皆可|台灣＋國外|台灣和國外|國內外/.test(query);
+  const countries = COUNTRY_JOB_PLATFORMS.filter(([re]) => re.test(query));
+  const abroad = both || countries.length > 0 || /國外|海外|出國|外派|歐洲|北美|東南亞/.test(query);
+  if (!abroad) return '';
+  const scope = both ? '台灣與國外的職缺都要找' : '本次要找國外的職缺，不要只搜尋台灣的求職網站';
+  const where = countries.length
+    ? countries.map(([, name, sites]) => `${name}：${sites}`).join('；')
+    : 'LinkedIn、Indeed、Glassdoor，以及職缺所在國家的主要求職網站';
+  return `\n【地區範圍】${scope}。請檢索國際與當地求職平台（${where}${both ? '；台灣則用 104、1111、Cake、Yourator 等' : ''}），location 請寫「國家／城市」，薪資照原幣別寫。`;
+}
+
 /** 找兼職時，加上台灣兼職／打工平台 */
 function partTimeHint(query: string): string {
   if (!/兼職|工讀|打工|計時|part[\s-]?time/i.test(query)) return '';
@@ -3865,7 +3904,7 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
     if (ai) {
       try {
         const batch1Prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 即時檢索台灣主流求職網站（包含 Yes123、104人力銀行、1111人力銀行、Cake、Yourator、518熊班、企業官網）上符合以下條件且「當下正在開放招募中」的真實公開職缺：
-條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}
+條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
 
 【嚴格規定】：
 1. 精簡輸出 5 ~ 7 筆當下有效真實職缺，來源平台多元化（不限於 104，務必包含 Yes123、Cake、1111 等）。
@@ -3933,7 +3972,7 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
     // ─── Batch 2: 深度擴充檢索（再檢索 6 ~ 9 筆更多平台職缺） ───
     if (ai) {
       try {
-        const batch2Prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 擴大檢索台灣求職網（特別側重 Cake、Yourator、1111人力銀行、Yes123、518熊班）上與「${rawQuery}」相關且「當下正在開放招募中」的更多真實職缺。${partTimeHint(rawQuery)}
+        const batch2Prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 擴大檢索台灣求職網（特別側重 Cake、Yourator、1111人力銀行、Yes123、518熊班）上與「${rawQuery}」相關且「當下正在開放招募中」的更多真實職缺。${partTimeHint(rawQuery)}${regionHint(rawQuery)}
 【嚴格規定】：
 1. 列出 6 ~ 9 筆不同的在招職缺，優先挑選非 104 的跨平台站點。
 2. 絕對不可包含已結束、已關閉或已下架的職缺。
@@ -4072,7 +4111,7 @@ app.post('/api/job-explorer/search', async (req: Request, res: Response) => {
     const groundingInfos: GroundingInfo[] = [];
 
     const bgSearchPrompt = `請使用 Google Search 即時檢索台灣主流求職網站（包含 104人力銀行、1111人力銀行、Cake、Yourator、Yes123、518熊班、LinkedIn 或各大企業官方招募官網）上符合以下條件且「當下正在開放招募中」的真實公開職缺：
-搜尋條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}
+搜尋條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
 
 【最高嚴格規定（違反即視為無效）】：
 1. **來源平台多元化（不限 104）**：請廣泛檢索台灣各大求職管道，包含 Yes123、1111人力銀行、Cake (CakeResume)、Yourator、518熊班、LinkedIn 或企業官方徵才官網，不可只局限單一網站！

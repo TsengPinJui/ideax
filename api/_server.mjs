@@ -160964,6 +160964,13 @@ var PLATFORMS = [
   // 兼職／打工平台
   { name: "\u5C0F\u96DE\u4E0A\u5DE5", host: /(^|\.)chickpt\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: "chickpt.com.tw" },
   { name: "Worky", host: /(^|\.)worky\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: "worky.com.tw" },
+  // 國際／海外求職平台
+  { name: "Indeed", host: /(^|\.)indeed\.(com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/i, detail: /viewjob|\/rc\/clk|[?&]jk=|\/job\//i, search: (kw) => `https://www.indeed.com/jobs?q=${kw}`, site: "indeed.com" },
+  { name: "Glassdoor", host: /(^|\.)glassdoor\./i, detail: /job-listing|\/job\/|jobListingId=/i, site: "glassdoor.com" },
+  { name: "JobStreet", host: /(^|\.)jobstreet\./i, detail: /\/job\/\d+/i, site: "jobstreet.com" },
+  { name: "JobsDB", host: /(^|\.)jobsdb\./i, detail: /\/job\/\d+/i, site: "jobsdb.com" },
+  { name: "SEEK", host: /(^|\.)seek\.(com\.au|co\.nz)$/i, detail: /\/job\/\d+/i, site: "seek.com.au" },
+  { name: "MyCareersFuture", host: /(^|\.)mycareersfuture\.gov\.sg$/i, detail: /\/job\//i, site: "mycareersfuture.gov.sg" },
   { name: "LinkedIn", host: /(^|\.)linkedin\.com$/i, detail: /^\/jobs\/view\/[\w-]*\d+/i, search: (kw) => `https://www.linkedin.com/jobs/search/?keywords=${kw}`, site: "linkedin.com" }
 ];
 var LIST_PAGE = /\/(jobs\/search|search|joblist|job-index\.html|jobs\/?$)|[?&](keyword|ks|q|term|key_word)=/i;
@@ -163951,6 +163958,8 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     const expRegex = /無經驗|新鮮人|應屆|實習|工讀|兼職|二度就業|1~3\s*年|3~5\s*年|\d+\s*年以上|\d+\s*~\s*\d+\s*年|資深|初階|中階|跨領域轉職/i;
     const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
     const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
+    const abroadRegex = /國外|海外|出國|外派|日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端/;
+    const taiwanScopeRegex = /工作範圍：台灣|在台灣|台灣的工作|國內/;
     const jobTypeRegex = /正職|全職|兼職|工讀|打工|實習|約聘|派遣|計時|part[\s-]?time|full[\s-]?time|intern/i;
     if (/地點不拘|地區不拘|不限地點|全台皆可|全台灣地區皆可/.test(fullText)) skippedDims.add("location");
     if (/專業不拘|職務不拘|職務類別不拘|科系不拘|不限職務|不限專業/.test(fullText)) skippedDims.add("major");
@@ -164126,9 +164135,13 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     const dynamicChips = activeGroup ? activeGroup.chips : [];
     const completedConditionKeys = [];
     if (!isJobTypeMissing) completedConditionKeys.push("jobType");
+    const mentionsAbroad = abroadRegex.test(fullText);
+    if (mentionsAbroad || taiwanScopeRegex.test(fullText) || /工作範圍/.test(fullText) || hasSpecificCity || skippedDims.has("region")) {
+      completedConditionKeys.push("region");
+    }
     if (!isCollegeMissing) completedConditionKeys.push("education");
     if (!isExperienceMissing) completedConditionKeys.push("experience");
-    if (!isLocationMissing) completedConditionKeys.push("location");
+    if (!isLocationMissing || mentionsAbroad && !/台灣與國外/.test(fullText)) completedConditionKeys.push("location");
     if (!isSalaryMissing) completedConditionKeys.push("salary");
     let extractedCity = filters.city || "\u5168\u90E8";
     const cityMatch = fullText.match(/(台北市|新北市|桃園市|新竹市|台中市|台南市|高雄市)/);
@@ -164268,6 +164281,32 @@ function normalizeJobItem(j, idx, groundingChunksMap, groundingUrls, filters) {
     postedAtText: String(j.postedAtText || (idx === 0 ? "\u4ECA\u65E5\u520A\u767B" : idx <= 2 ? `${idx}\u5929\u524D` : "\u8FD1\u671F\u520A\u767B"))
   };
 }
+var COUNTRY_JOB_PLATFORMS = [
+  [/日本|東京|大阪/, "\u65E5\u672C", "doda\u3001\u30EA\u30AF\u30CA\u30D3NEXT\u3001Indeed Japan\u3001Daijob\u3001GaijinPot Jobs"],
+  [/新加坡/, "\u65B0\u52A0\u5761", "MyCareersFuture\u3001JobStreet Singapore\u3001LinkedIn"],
+  [/香港|澳門/, "\u9999\u6E2F", "JobsDB Hong Kong\u3001CTgoodjobs"],
+  [/中國大陸|大陸|上海|北京|深圳|廣州/, "\u4E2D\u570B\u5927\u9678", "BOSS\u76F4\u8058\u3001\u667A\u806F\u62DB\u8058\u3001\u524D\u7A0B\u7121\u6182\uFF0851job\uFF09"],
+  [/韓國|首爾/, "\u97D3\u570B", "Saramin\u3001JobKorea"],
+  [/馬來西亞|吉隆坡/, "\u99AC\u4F86\u897F\u4E9E", "JobStreet Malaysia\u3001Hiredly"],
+  [/越南/, "\u8D8A\u5357", "VietnamWorks\u3001TopCV"],
+  [/澳洲|雪梨|墨爾本/, "\u6FB3\u6D32", "SEEK\u3001Indeed Australia"],
+  [/紐西蘭/, "\u7D10\u897F\u862D", "SEEK NZ\u3001Trade Me Jobs"],
+  [/美國|紐約|矽谷/, "\u7F8E\u570B", "LinkedIn\u3001Indeed\u3001Glassdoor"],
+  [/加拿大|溫哥華|多倫多/, "\u52A0\u62FF\u5927", "Job Bank\u3001Indeed Canada\u3001LinkedIn"],
+  [/英國|倫敦/, "\u82F1\u570B", "Reed\u3001Totaljobs\u3001Indeed UK"],
+  [/德國|柏林/, "\u5FB7\u570B", "StepStone\u3001XING\u3001LinkedIn"],
+  [/全球遠端/, "\u5168\u7403\u9060\u7AEF", "We Work Remotely\u3001Remote OK\u3001LinkedIn"]
+];
+function regionHint(query2) {
+  const both = /台灣與國外皆可|台灣＋國外|台灣和國外|國內外/.test(query2);
+  const countries = COUNTRY_JOB_PLATFORMS.filter(([re]) => re.test(query2));
+  const abroad = both || countries.length > 0 || /國外|海外|出國|外派|歐洲|北美|東南亞/.test(query2);
+  if (!abroad) return "";
+  const scope = both ? "\u53F0\u7063\u8207\u570B\u5916\u7684\u8077\u7F3A\u90FD\u8981\u627E" : "\u672C\u6B21\u8981\u627E\u570B\u5916\u7684\u8077\u7F3A\uFF0C\u4E0D\u8981\u53EA\u641C\u5C0B\u53F0\u7063\u7684\u6C42\u8077\u7DB2\u7AD9";
+  const where2 = countries.length ? countries.map(([, name4, sites]) => `${name4}\uFF1A${sites}`).join("\uFF1B") : "LinkedIn\u3001Indeed\u3001Glassdoor\uFF0C\u4EE5\u53CA\u8077\u7F3A\u6240\u5728\u570B\u5BB6\u7684\u4E3B\u8981\u6C42\u8077\u7DB2\u7AD9";
+  return `
+\u3010\u5730\u5340\u7BC4\u570D\u3011${scope}\u3002\u8ACB\u6AA2\u7D22\u570B\u969B\u8207\u7576\u5730\u6C42\u8077\u5E73\u53F0\uFF08${where2}${both ? "\uFF1B\u53F0\u7063\u5247\u7528 104\u30011111\u3001Cake\u3001Yourator \u7B49" : ""}\uFF09\uFF0Clocation \u8ACB\u5BEB\u300C\u570B\u5BB6\uFF0F\u57CE\u5E02\u300D\uFF0C\u85AA\u8CC7\u7167\u539F\u5E63\u5225\u5BEB\u3002`;
+}
 function partTimeHint(query2) {
   if (!/兼職|工讀|打工|計時|part[\s-]?time/i.test(query2)) return "";
   return "\n\u3010\u672C\u6B21\u662F\u627E\u517C\u8077\u3011\u8ACB\u512A\u5148\u6AA2\u7D22\u53F0\u7063\u517C\u8077\uFF0F\u6253\u5DE5\u5E73\u53F0\uFF1A\u5C0F\u96DE\u4E0A\u5DE5\uFF08chickpt.com.tw\uFF09\u3001Worky\uFF08worky.com.tw\uFF09\u3001518\u718A\u73ED\u3001Yes123 \u6253\u5DE5\u30011111 \u517C\u8077\uFF0C\u518D\u88DC\u5145\u5176\u4ED6\u6C42\u8077\u7DB2\u7AD9\u7684\u517C\u8077\u8077\u7F3A\uFF1B\u85AA\u8CC7\u8ACB\u76E1\u91CF\u5BEB\u6642\u85AA\u3002";
@@ -164334,7 +164373,7 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
     if (ai) {
       try {
         const batch1Prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u5373\u6642\u6AA2\u7D22\u53F0\u7063\u4E3B\u6D41\u6C42\u8077\u7DB2\u7AD9\uFF08\u5305\u542B Yes123\u3001104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake\u3001Yourator\u3001518\u718A\u73ED\u3001\u4F01\u696D\u5B98\u7DB2\uFF09\u4E0A\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\uFF1A
-\u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}${partTimeHint(rawQuery)}
+\u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
 
 \u3010\u56B4\u683C\u898F\u5B9A\u3011\uFF1A
 1. \u7CBE\u7C21\u8F38\u51FA 5 ~ 7 \u7B46\u7576\u4E0B\u6709\u6548\u771F\u5BE6\u8077\u7F3A\uFF0C\u4F86\u6E90\u5E73\u53F0\u591A\u5143\u5316\uFF08\u4E0D\u9650\u65BC 104\uFF0C\u52D9\u5FC5\u5305\u542B Yes123\u3001Cake\u30011111 \u7B49\uFF09\u3002
@@ -164394,7 +164433,7 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
     }
     if (ai) {
       try {
-        const batch2Prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u64F4\u5927\u6AA2\u7D22\u53F0\u7063\u6C42\u8077\u7DB2\uFF08\u7279\u5225\u5074\u91CD Cake\u3001Yourator\u30011111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED\uFF09\u4E0A\u8207\u300C${rawQuery}\u300D\u76F8\u95DC\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u66F4\u591A\u771F\u5BE6\u8077\u7F3A\u3002${partTimeHint(rawQuery)}
+        const batch2Prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u64F4\u5927\u6AA2\u7D22\u53F0\u7063\u6C42\u8077\u7DB2\uFF08\u7279\u5225\u5074\u91CD Cake\u3001Yourator\u30011111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED\uFF09\u4E0A\u8207\u300C${rawQuery}\u300D\u76F8\u95DC\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u66F4\u591A\u771F\u5BE6\u8077\u7F3A\u3002${partTimeHint(rawQuery)}${regionHint(rawQuery)}
 \u3010\u56B4\u683C\u898F\u5B9A\u3011\uFF1A
 1. \u5217\u51FA 6 ~ 9 \u7B46\u4E0D\u540C\u7684\u5728\u62DB\u8077\u7F3A\uFF0C\u512A\u5148\u6311\u9078\u975E 104 \u7684\u8DE8\u5E73\u53F0\u7AD9\u9EDE\u3002
 2. \u7D55\u5C0D\u4E0D\u53EF\u5305\u542B\u5DF2\u7D50\u675F\u3001\u5DF2\u95DC\u9589\u6216\u5DF2\u4E0B\u67B6\u7684\u8077\u7F3A\u3002
@@ -164513,7 +164552,7 @@ app.post("/api/job-explorer/search", async (req, res) => {
     let groundingUrls = [];
     const groundingInfos = [];
     const bgSearchPrompt = `\u8ACB\u4F7F\u7528 Google Search \u5373\u6642\u6AA2\u7D22\u53F0\u7063\u4E3B\u6D41\u6C42\u8077\u7DB2\u7AD9\uFF08\u5305\u542B 104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake\u3001Yourator\u3001Yes123\u3001518\u718A\u73ED\u3001LinkedIn \u6216\u5404\u5927\u4F01\u696D\u5B98\u65B9\u62DB\u52DF\u5B98\u7DB2\uFF09\u4E0A\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\uFF1A
-\u641C\u5C0B\u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}${partTimeHint(rawQuery)}
+\u641C\u5C0B\u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
 
 \u3010\u6700\u9AD8\u56B4\u683C\u898F\u5B9A\uFF08\u9055\u53CD\u5373\u8996\u70BA\u7121\u6548\uFF09\u3011\uFF1A
 1. **\u4F86\u6E90\u5E73\u53F0\u591A\u5143\u5316\uFF08\u4E0D\u9650 104\uFF09**\uFF1A\u8ACB\u5EE3\u6CDB\u6AA2\u7D22\u53F0\u7063\u5404\u5927\u6C42\u8077\u7BA1\u9053\uFF0C\u5305\u542B Yes123\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake (CakeResume)\u3001Yourator\u3001518\u718A\u73ED\u3001LinkedIn \u6216\u4F01\u696D\u5B98\u65B9\u5FB5\u624D\u5B98\u7DB2\uFF0C\u4E0D\u53EF\u53EA\u5C40\u9650\u55AE\u4E00\u7DB2\u7AD9\uFF01
