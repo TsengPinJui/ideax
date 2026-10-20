@@ -1223,6 +1223,8 @@ export const JobExplorerView: React.FC = () => {
     geminiDone: boolean;
     paused: boolean;
     finished: boolean;
+    /** 各自找到幾筆（去掉重複後） */
+    found: { dify: number; gemini: number };
   };
   const searchSessionRef = useRef<SearchSession | null>(null);
   const [arrivalOrder, setArrivalOrder] = useState(false); // 搜尋中照抵達順序顯示，全部跑完再排序
@@ -1265,6 +1267,14 @@ export const JobExplorerView: React.FC = () => {
   };
   useEffect(() => () => stopSearchSession(searchSessionRef.current), []);
 
+  /** 「搜搜找到 8 筆、小燈泡找到 4 筆職缺」 */
+  const foundSummary = (sess: SearchSession) => {
+    const parts: string[] = [];
+    if (sess.found.dify > 0) parts.push(`搜搜找到 ${sess.found.dify} 筆`);
+    if (sess.found.gemini > 0) parts.push(`小燈泡找到 ${sess.found.gemini} 筆`);
+    return parts.length ? `${parts.join('、')}職缺` : `找到 ${sess.jobs.length} 筆職缺`;
+  };
+
   const finishSearchSession = (sess: SearchSession, note?: string) => {
     if (sess.finished) return;
     sess.finished = true;
@@ -1275,9 +1285,9 @@ export const JobExplorerView: React.FC = () => {
     setIsSearching(false);
     setIsGeminiFallbackSearching(false);
     const n = sess.jobs.length;
-    setSearchProgressText(n ? `檢索整合完成，共 ${n} 筆真實職缺` : '');
+    setSearchProgressText(n ? `${foundSummary(sess)}，共 ${n} 筆` : '');
     if (note !== undefined) updateBotMsg(sess, { text: note });
-    else if (n) updateBotMsg(sess, { text: `找好了！共整合 ${n} 筆正在招募的職缺${userBrowsingRef.current ? '。' : '，已依推薦程度排序。'}`, searchActions: undefined });
+    else if (n) updateBotMsg(sess, { text: `找好了！${foundSummary(sess)}${userBrowsingRef.current ? '。' : '，已依推薦程度排序。'}`, searchActions: undefined });
     window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
   };
 
@@ -1311,12 +1321,13 @@ export const JobExplorerView: React.FC = () => {
     if (!fresh.length) return;
     if (src === 'dify') sess.difyGot = true;
     sess.jobs = [...sess.jobs, ...fresh];
+    sess.found[src] += fresh.length;
     setJobs([...sess.jobs]);
     setStreamingBatchCount((c) => c + 1);
     const who = src === 'dify' ? '搜搜' : '小燈泡';
-    setSearchProgressText(`${who}又帶回 ${fresh.length} 筆（累計 ${sess.jobs.length} 筆）…`);
+    setSearchProgressText(`${who}又帶回 ${fresh.length} 筆（${foundSummary(sess)}）…`);
     // 有消息了：收起「要不要繼續等」的詢問
-    updateBotMsg(sess, { text: `${who}帶回 ${fresh.length} 筆職缺，目前累計 ${sess.jobs.length} 筆，還在繼續找…`, searchActions: undefined });
+    updateBotMsg(sess, { text: `${foundSummary(sess)}，還在繼續找…`, searchActions: undefined });
   };
 
   const runSearchStream = async (sess: SearchSession, src: 'dify' | 'gemini') => {
@@ -1393,6 +1404,7 @@ export const JobExplorerView: React.FC = () => {
       id: Date.now(), brief: opts.brief, botMsgId: opts.botMsgId, filters: opts.filters,
       jobs: [], seen: new Set(), controllers: [], timers: [],
       difyGot: false, difyDone: false, difyRunning: false, geminiStarted: false, geminiDone: false, paused: false, finished: false,
+      found: { dify: 0, gemini: 0 },
     };
     searchSessionRef.current = sess;
     userBrowsingRef.current = false;
