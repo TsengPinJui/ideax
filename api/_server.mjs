@@ -161754,6 +161754,10 @@ async function callDifyStreamingAgent(params) {
   const controller = new AbortController();
   const timeoutMs = params.timeoutMs || 9e4;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  if (params.signal) {
+    if (params.signal.aborted) controller.abort();
+    else params.signal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
   const startTime = Date.now();
   let agentAccumulated = "";
   let workflowAccumulated = "";
@@ -161835,8 +161839,16 @@ async function callDifyStreamingAgent(params) {
           }
           if (data.event === "agent_message" && data.answer) {
             agentAccumulated += data.answer;
+            try {
+              params.onText?.(agentAccumulated);
+            } catch {
+            }
           } else if (data.event === "message" && data.answer) {
             workflowAccumulated += data.answer;
+            try {
+              params.onText?.(workflowAccumulated);
+            } catch {
+            }
           } else if (data.event === "agent_thought" && data.observation) {
             observations.push(String(data.observation));
           }
@@ -165246,9 +165258,46 @@ var isJobActive = (j) => {
   const combined = `${j.title} ${j.company} ${j.description || ""} ${j.salaryText || ""} ${j.postedAtText || ""}`;
   return !closedPatternGlobal.test(combined);
 };
+function extractCompletedJobObjects(text) {
+  const k = text.indexOf('"jobs"');
+  if (k < 0) return [];
+  const start = text.indexOf("[", k);
+  if (start < 0) return [];
+  const out = [];
+  let depth = 0, inStr = false, esc = false, objStart = -1;
+  for (let i2 = start + 1; i2 < text.length; i2++) {
+    const c = text[i2];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') {
+      inStr = true;
+      continue;
+    }
+    if (c === "{") {
+      if (depth === 0) objStart = i2;
+      depth++;
+    } else if (c === "}") {
+      depth--;
+      if (depth === 0 && objStart >= 0) {
+        try {
+          out.push(JSON.parse(text.slice(objStart, i2 + 1)));
+        } catch {
+        }
+        objStart = -1;
+      }
+    } else if (c === "]" && depth === 0) break;
+  }
+  return out;
+}
 app.post("/api/job-explorer/search-stream", async (req, res) => {
   const rawQuery = String(req.body?.query || "").trim().slice(0, 600);
   const filters = req.body?.filters || {};
+  const source = req.body?.source === "dify" || req.body?.source === "gemini" ? req.body.source : "both";
+  const MAX_JOBS = 100;
   if (!rawQuery) {
     return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u641C\u5C0B\u689D\u4EF6" });
   }
@@ -165268,7 +165317,11 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
     } catch {
     }
   }, 15e3);
-  res.on("close", () => clearInterval(sseHeartbeat));
+  const clientGone = new AbortController();
+  res.on("close", () => {
+    clearInterval(sseHeartbeat);
+    clientGone.abort();
+  });
   const ai = getGeminiClient();
   const filterContext = [
     filters.city && filters.city !== "\u5168\u90E8" ? `\u5730\u5340\uFF1A${filters.city}` : "",
@@ -165278,14 +165331,6 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
   const globalSeen = /* @__PURE__ */ new Set();
   let totalYielded = 0;
   const explorerKey = mascotAgentKey("explorer");
-  const difyBatchPromise = explorerKey ? callDifyStreamingAgent({
-    apiKey: explorerKey,
-    query: `${rawQuery}\uFF08\u8ACB\u76E1\u91CF\u5217\u51FA 8 \u7B46\u4EE5\u4E0A\u7B26\u5408\u689D\u4EF6\u3001\u76EE\u524D\u4ECD\u5728\u62DB\u52DF\u7684\u771F\u5BE6\u8077\u7F3A\uFF0C\u9644\u8077\u7F3A\u7DB2\u5740\uFF0C\u4E26\u4EE5 JSON \u683C\u5F0F\u8F38\u51FA\uFF09`,
-    inputs: {},
-    user: "job_explorer_stream",
-    // 搜搜要上網搜尋，常常超過半分鐘；之前 26 秒就中斷，Dify 那邊收到問題卻來不及回覆（管理後台測試給 120 秒所以正常）
-    timeoutMs: 12e4
-  }).catch(() => null) : Promise.resolve(null);
   try {
     const JOB_JSON_SPEC = `\u53EA\u8F38\u51FA JSON\uFF1A
 {
@@ -165337,7 +165382,7 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
     let batchNo = 0;
     let idxCursor = 0;
     const runGroup = async (g) => {
-      if (!ai) return;
+      if (!ai || clientGone.signal.aborted || totalYielded >= MAX_JOBS) return;
       try {
         const prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u532F\u8077\u7F3A\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u641C\u5C0B\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u3001\u800C\u4E14\u76EE\u524D\u4ECD\u5728\u62DB\u52DF\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\u3002
 \u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
@@ -165366,7 +165411,7 @@ ${JOB_JSON_SPEC}`;
         if (fresh.length === 0) return;
         const grounding = groundingFrom(r2);
         const chunks = [];
-        for (let i2 = 0; i2 < fresh.length; i2 += 5) chunks.push(fresh.slice(i2, i2 + 5));
+        for (let i2 = 0; i2 < fresh.length; i2 += 2) chunks.push(fresh.slice(i2, i2 + 2));
         await Promise.all(
           chunks.map(async (chunk) => {
             const startIdx = idxCursor;
@@ -165379,15 +165424,17 @@ ${JOB_JSON_SPEC}`;
                 return chosenSites.includes(COMPANY_SITE) || m2.urlKind === "search";
               });
             }
-            if (mapped.length === 0) return;
+            mapped = mapped.slice(0, Math.max(0, MAX_JOBS - totalYielded));
+            if (mapped.length === 0 || clientGone.signal.aborted) return;
             totalYielded += mapped.length;
             batchNo += 1;
             sendEvent({
               type: "batch",
+              source: "gemini",
               batchIndex: batchNo,
               isFirstBatch: batchNo === 1,
               jobs: mapped,
-              reply: `\u5DF2\u5F9E${g.label}\u627E\u5230 ${mapped.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF0C\u7E7C\u7E8C\u641C\u5C0B\u4E2D\u2026`
+              reply: `\u5C0F\u71C8\u6CE1\u5F9E${g.label}\u5E36\u56DE ${mapped.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF0C\u7E7C\u7E8C\u627E\u2026`
             });
           })
         );
@@ -165395,45 +165442,88 @@ ${JOB_JSON_SPEC}`;
         console.warn(`[Search Stream ${g.label} Error]`, eg);
       }
     };
-    await Promise.all(groups.map(runGroup));
-    try {
-      const difyOut = await difyBatchPromise;
-      if (difyOut && difyOut.text) {
-        const difyJson = extractJsonFromText(difyOut.text);
-        if (Array.isArray(difyJson?.jobs) && difyJson.jobs.length > 0) {
-          const freshB3 = difyJson.jobs.filter(isJobActive).filter((j) => {
-            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-            if (globalSeen.has(k)) return false;
-            globalSeen.add(k);
-            return true;
-          });
-          if (freshB3.length > 0) {
-            let mappedB3 = await finalizeJobs(freshB3, null, filters, idxCursor);
-            idxCursor += freshB3.length;
+    const runGemini = async () => {
+      await Promise.all(groups.map(runGroup));
+    };
+    let difyUnavailable = false;
+    const runDify = async () => {
+      if (!explorerKey) {
+        difyUnavailable = true;
+        return;
+      }
+      const pending = [];
+      let parsedCount = 0;
+      let chain = Promise.resolve();
+      const take = (list) => {
+        for (const j of list.filter(isJobActive)) {
+          const key = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+          if (globalSeen.has(key)) continue;
+          globalSeen.add(key);
+          pending.push(j);
+        }
+      };
+      const flush = (force) => {
+        while (pending.length >= 4 || force && pending.length > 0) {
+          const batch = pending.splice(0, 4);
+          const startIdx = idxCursor;
+          idxCursor += batch.length;
+          chain = chain.then(async () => {
+            if (clientGone.signal.aborted || totalYielded >= MAX_JOBS) return;
+            let mapped = await finalizeJobs(batch, null, filters, startIdx);
             if (chosenSites.length) {
-              mappedB3 = mappedB3.filter((m2) => {
+              mapped = mapped.filter((m2) => {
                 const p = platformOf(String(m2.url || ""))?.name;
                 if (p) return chosenSites.includes(p);
                 return chosenSites.includes(COMPANY_SITE) || m2.urlKind === "search";
               });
             }
-            totalYielded += mappedB3.length;
+            mapped = mapped.slice(0, Math.max(0, MAX_JOBS - totalYielded));
+            if (mapped.length === 0 || clientGone.signal.aborted) return;
+            totalYielded += mapped.length;
             batchNo += 1;
             sendEvent({
               type: "batch",
+              source: "dify",
               batchIndex: batchNo,
-              isFirstBatch: totalYielded === mappedB3.length,
-              jobs: mappedB3,
-              reply: `\u641C\u641C\u53E6\u5916\u627E\u5230 ${mappedB3.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF01`
+              isFirstBatch: batchNo === 1,
+              jobs: mapped,
+              reply: `\u641C\u641C\u5E36\u56DE ${mapped.length} \u7B46\u8077\u7F3A\uFF08\u7D2F\u8A08 ${totalYielded} \u7B46\uFF09\uFF0C\u7E7C\u7E8C\u627E\u2026`
             });
+          }).catch((e2) => console.warn("[Dify batch]", e2));
+        }
+      };
+      const out = await callDifyStreamingAgent({
+        apiKey: explorerKey,
+        query: `${rawQuery}\uFF08\u8ACB\u76E1\u91CF\u5217\u51FA 8 \u7B46\u4EE5\u4E0A\u7B26\u5408\u689D\u4EF6\u3001\u76EE\u524D\u4ECD\u5728\u62DB\u52DF\u7684\u771F\u5BE6\u8077\u7F3A\uFF0C\u9644\u8077\u7F3A\u7DB2\u5740\uFF0C\u4E26\u4EE5 JSON \u683C\u5F0F\u8F38\u51FA\uFF09`,
+        inputs: {},
+        user: "job_explorer_stream",
+        // 搜搜要上網搜尋，常常超過半分鐘；前端最多等 80 秒（派小燈泡後會繼續收），這裡給 120 秒
+        timeoutMs: 12e4,
+        signal: clientGone.signal,
+        onText: (acc) => {
+          const objs = extractCompletedJobObjects(acc);
+          if (objs.length > parsedCount) {
+            take(objs.slice(parsedCount));
+            parsedCount = objs.length;
+            flush(false);
           }
         }
+      }).catch(() => null);
+      if (out?.text) {
+        const all = extractJsonFromText(out.text);
+        if (Array.isArray(all?.jobs)) take(all.jobs);
       }
-    } catch {
-    }
+      flush(true);
+      await chain;
+    };
+    if (source === "dify") await runDify();
+    else if (source === "gemini") await runGemini();
+    else await Promise.all([runGemini(), runDify()]);
     sendEvent({
       type: "done",
+      source,
       totalYielded,
+      difyUnavailable,
       reply: totalYielded > 0 ? `\u641C\u5C0B\u5B8C\u6210\uFF0C\u5171\u627E\u5230 ${totalYielded} \u7B46\u7B26\u5408\u689D\u4EF6\u7684\u8077\u7F3A\u3002` : "\u9019\u6B21\u6C92\u6709\u627E\u5230\u7B26\u5408\u689D\u4EF6\u7684\u8077\u7F3A\uFF0C\u53EF\u4EE5\u653E\u5BEC\u4E00\u4E9B\u689D\u4EF6\u518D\u8A66\u8A66\u3002"
     });
     res.end();

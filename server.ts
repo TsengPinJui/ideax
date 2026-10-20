@@ -97,6 +97,10 @@ export async function callDifyStreamingAgent(params: {
   user?: string;
   conversationId?: string;
   timeoutMs?: number;
+  /** 外部要求中止（例如使用者暫停或離開頁面） */
+  signal?: AbortSignal;
+  /** 每收到一段回覆就回報目前累積的全文（用來邊收邊整理職缺） */
+  onText?: (accumulated: string) => void;
 }): Promise<{ text: string; observations?: string[]; conversationId?: string; messageId?: string; latencyMs: number } | null> {
   const baseUrl = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
   const apiKey =
@@ -114,6 +118,10 @@ export async function callDifyStreamingAgent(params: {
   const controller = new AbortController();
   const timeoutMs = params.timeoutMs || 90000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  if (params.signal) {
+    if (params.signal.aborted) controller.abort();
+    else params.signal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
   const startTime = Date.now();
 
   let agentAccumulated = '';
@@ -201,8 +209,10 @@ export async function callDifyStreamingAgent(params: {
           }
           if (data.event === 'agent_message' && data.answer) {
             agentAccumulated += data.answer;
+            try { params.onText?.(agentAccumulated); } catch {}
           } else if (data.event === 'message' && data.answer) {
             workflowAccumulated += data.answer;
+            try { params.onText?.(workflowAccumulated); } catch {}
           } else if (data.event === 'agent_thought' && data.observation) {
             observations.push(String(data.observation));
           }
@@ -4304,9 +4314,34 @@ const isJobActive = (j: any): boolean => {
 };
 
 // 匯職缺分批串流端點：分開回傳多次（Batch 1 首發、Batch 2 擴充），前端逐批整合呈現，零等待、絕不超過長度上限！
+/**
+ * 從還在串流中的 JSON 文字裡，取出「jobs」陣列中已經完整的職缺物件（後面還沒傳完的先不管）。
+ * 搜搜（Dify）邊搜邊回覆時，就能每湊滿幾筆先送到前端。
+ */
+function extractCompletedJobObjects(text: string): any[] {
+  const k = text.indexOf('"jobs"');
+  if (k < 0) return [];
+  const start = text.indexOf('[', k);
+  if (start < 0) return [];
+  const out: any[] = [];
+  let depth = 0, inStr = false, esc = false, objStart = -1;
+  for (let i = start + 1; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') { inStr = true; continue; }
+    if (c === '{') { if (depth === 0) objStart = i; depth++; }
+    else if (c === '}') { depth--; if (depth === 0 && objStart >= 0) { try { out.push(JSON.parse(text.slice(objStart, i + 1))); } catch {} objStart = -1; } }
+    else if (c === ']' && depth === 0) break;
+  }
+  return out;
+}
+
 app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) => {
   const rawQuery = String(req.body?.query || '').trim().slice(0, 600);
   const filters = req.body?.filters || {};
+  // dify：只派搜搜（Dify）；gemini：只派小燈泡（本地 Gemini）；both：兩邊同時（舊版前端）
+  const source: 'dify' | 'gemini' | 'both' = req.body?.source === 'dify' || req.body?.source === 'gemini' ? req.body.source : 'both';
+  const MAX_JOBS = 100;
 
   if (!rawQuery) {
     return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
@@ -4327,7 +4362,9 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
       if (!res.writableEnded) res.write(': ping\n\n');
     } catch {}
   }, 15000);
-  res.on('close', () => clearInterval(sseHeartbeat));
+  // 使用者暫停或離開頁面：停止搜搜那邊的連線，也不再送資料
+  const clientGone = new AbortController();
+  res.on('close', () => { clearInterval(sseHeartbeat); clientGone.abort(); });
 
   const ai = getGeminiClient();
   const filterContext = [
@@ -4342,17 +4379,6 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
   let totalYielded = 0;
   const explorerKey = mascotAgentKey('explorer');
 
-  // 同步在背景啟動 Dify 探險家 Agent（跳過本地檔案讀取、精簡回傳 3 筆，作為第 3 批精選補充，絕不阻塞前兩批回傳）
-  const difyBatchPromise = explorerKey
-    ? callDifyStreamingAgent({
-        apiKey: explorerKey,
-        query: `${rawQuery}（請盡量列出 8 筆以上符合條件、目前仍在招募的真實職缺，附職缺網址，並以 JSON 格式輸出）`,
-        inputs: {},
-        user: 'job_explorer_stream',
-        // 搜搜要上網搜尋，常常超過半分鐘；之前 26 秒就中斷，Dify 那邊收到問題卻來不及回覆（管理後台測試給 120 秒所以正常）
-        timeoutMs: 120000,
-      }).catch(() => null)
-    : Promise.resolve(null);
 
   try {
     // ─── 多組來源同時搜尋（各自完成就先回傳），盡可能找到更多符合條件的職缺 ───
@@ -4411,7 +4437,7 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
     let batchNo = 0;
     let idxCursor = 0;
     const runGroup = async (g: { label: string; focus: string; count: string }) => {
-      if (!ai) return;
+      if (!ai || clientGone.signal.aborted || totalYielded >= MAX_JOBS) return;
       try {
         const prompt = `你是「IdeaX創點子」平台的匯職缺系統。請使用 Google Search 搜尋符合以下條件、而且目前仍在招募的真實公開職缺。
 條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
@@ -4438,10 +4464,10 @@ ${JOB_JSON_SPEC}`;
           return true;
         });
         if (fresh.length === 0) return;
-        // 分批回傳：每 5 筆一批同時驗證網址，哪一批先驗證好就先送到前端
+        // 分批回傳：小燈泡（本地 Gemini）每 2 筆一批同時驗證網址，哪一批先驗證好就先送到前端
         const grounding = groundingFrom(r);
         const chunks: any[][] = [];
-        for (let i = 0; i < fresh.length; i += 5) chunks.push(fresh.slice(i, i + 5));
+        for (let i = 0; i < fresh.length; i += 2) chunks.push(fresh.slice(i, i + 2));
         await Promise.all(
           chunks.map(async (chunk) => {
             // 先保留編號範圍，同時進行的幾批職缺 id 才不會重複
@@ -4455,15 +4481,17 @@ ${JOB_JSON_SPEC}`;
                 return chosenSites.includes(COMPANY_SITE) || m.urlKind === 'search';
               });
             }
-            if (mapped.length === 0) return;
+            mapped = mapped.slice(0, Math.max(0, MAX_JOBS - totalYielded));
+            if (mapped.length === 0 || clientGone.signal.aborted) return;
             totalYielded += mapped.length;
             batchNo += 1;
             sendEvent({
               type: 'batch',
+              source: 'gemini',
               batchIndex: batchNo,
               isFirstBatch: batchNo === 1,
               jobs: mapped,
-              reply: `已從${g.label}找到 ${mapped.length} 筆職缺（累計 ${totalYielded} 筆），繼續搜尋中…`,
+              reply: `小燈泡從${g.label}帶回 ${mapped.length} 筆職缺（累計 ${totalYielded} 筆），繼續找…`,
             });
           })
         );
@@ -4471,47 +4499,84 @@ ${JOB_JSON_SPEC}`;
         console.warn(`[Search Stream ${g.label} Error]`, eg);
       }
     };
-    await Promise.all(groups.map(runGroup));
+    const runGemini = async () => { await Promise.all(groups.map(runGroup)); };
 
-    // ─── Batch 3: 整合 Dify 探險家搜搜精選職缺（若有） ───
-    try {
-      const difyOut = await difyBatchPromise;
-      if (difyOut && difyOut.text) {
-        const difyJson = extractJsonFromText(difyOut.text);
-        if (Array.isArray(difyJson?.jobs) && difyJson.jobs.length > 0) {
-          const freshB3 = difyJson.jobs.filter(isJobActive).filter((j: any) => {
-            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-            if (globalSeen.has(k)) return false;
-            globalSeen.add(k);
-            return true;
-          });
-          if (freshB3.length > 0) {
-            let mappedB3 = await finalizeJobs(freshB3, null, filters, idxCursor); idxCursor += freshB3.length;
+    // ─── 搜搜（Dify）：邊搜邊回覆，每湊滿 4 筆完整職缺就先驗證網址、送到前端 ───
+    let difyUnavailable = false;
+    const runDify = async () => {
+      if (!explorerKey) { difyUnavailable = true; return; }
+      const pending: any[] = [];
+      let parsedCount = 0;
+      let chain: Promise<void> = Promise.resolve();
+      const take = (list: any[]) => {
+        for (const j of list.filter(isJobActive)) {
+          const key = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+          if (globalSeen.has(key)) continue;
+          globalSeen.add(key);
+          pending.push(j);
+        }
+      };
+      const flush = (force: boolean) => {
+        while (pending.length >= 4 || (force && pending.length > 0)) {
+          const batch = pending.splice(0, 4);
+          const startIdx = idxCursor; idxCursor += batch.length;
+          chain = chain.then(async () => {
+            if (clientGone.signal.aborted || totalYielded >= MAX_JOBS) return;
+            let mapped = await finalizeJobs(batch, null, filters, startIdx);
             if (chosenSites.length) {
-              mappedB3 = mappedB3.filter((m: any) => {
+              mapped = mapped.filter((m: any) => {
                 const p = platformOf(String(m.url || ''))?.name;
                 if (p) return chosenSites.includes(p);
                 return chosenSites.includes(COMPANY_SITE) || m.urlKind === 'search';
               });
             }
-            totalYielded += mappedB3.length;
+            mapped = mapped.slice(0, Math.max(0, MAX_JOBS - totalYielded));
+            if (mapped.length === 0 || clientGone.signal.aborted) return;
+            totalYielded += mapped.length;
             batchNo += 1;
             sendEvent({
               type: 'batch',
+              source: 'dify',
               batchIndex: batchNo,
-              isFirstBatch: totalYielded === mappedB3.length,
-              jobs: mappedB3,
-              reply: `搜搜另外找到 ${mappedB3.length} 筆職缺（累計 ${totalYielded} 筆）！`,
+              isFirstBatch: batchNo === 1,
+              jobs: mapped,
+              reply: `搜搜帶回 ${mapped.length} 筆職缺（累計 ${totalYielded} 筆），繼續找…`,
             });
-          }
+          }).catch((e) => console.warn('[Dify batch]', e));
         }
+      };
+      const out = await callDifyStreamingAgent({
+        apiKey: explorerKey,
+        query: `${rawQuery}（請盡量列出 8 筆以上符合條件、目前仍在招募的真實職缺，附職缺網址，並以 JSON 格式輸出）`,
+        inputs: {},
+        user: 'job_explorer_stream',
+        // 搜搜要上網搜尋，常常超過半分鐘；前端最多等 80 秒（派小燈泡後會繼續收），這裡給 120 秒
+        timeoutMs: 120000,
+        signal: clientGone.signal,
+        onText: (acc) => {
+          const objs = extractCompletedJobObjects(acc);
+          if (objs.length > parsedCount) { take(objs.slice(parsedCount)); parsedCount = objs.length; flush(false); }
+        },
+      }).catch(() => null);
+      // 收尾：整段回覆再解析一次，補上串流時沒抓到的
+      if (out?.text) {
+        const all = extractJsonFromText(out.text);
+        if (Array.isArray(all?.jobs)) take(all.jobs);
       }
-    } catch {}
+      flush(true);
+      await chain;
+    };
+
+    if (source === 'dify') await runDify();
+    else if (source === 'gemini') await runGemini();
+    else await Promise.all([runGemini(), runDify()]);
 
     // 發送完成事件
     sendEvent({
       type: 'done',
+      source,
       totalYielded,
+      difyUnavailable,
       reply: totalYielded > 0 ? `搜尋完成，共找到 ${totalYielded} 筆符合條件的職缺。` : '這次沒有找到符合條件的職缺，可以放寬一些條件再試試。',
     });
     res.end();
