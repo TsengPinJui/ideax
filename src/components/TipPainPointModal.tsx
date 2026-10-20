@@ -31,8 +31,9 @@ export const TipPainPointModal: React.FC<TipPainPointModalProps> = ({
     availableUsers,
     tipPainPoint,
     showCenterToast,
-    isRaceMode,
   } = useApp();
+  // 創點子的打賞一律使用點數（創星幣只在創星季競賽頁使用，不走這個視窗）
+  const isRaceMode = false;
 
   const [amount, setAmount] = useState<number>(100);
   const [customAmount, setCustomAmount] = useState<string>('');

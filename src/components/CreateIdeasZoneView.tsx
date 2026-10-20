@@ -42,11 +42,12 @@ import {
   fetchUserLikedProposalIds,
   fetchProposalComments,
   postProposalComment,
-  supportProposal,
   recordProposalView,
 } from '../services/competitionClientService';
 import { ProposalComment } from '../types/competition';
 import { ProposalDetailFullPage } from './challenge/ProposalDetailFullPage';
+import { TipPainPointModal } from './TipPainPointModal';
+import type { Question } from '../types';
 import { recordProposalViewClick } from '../utils/proposalClicks';
 import { shareOrCopyUrl } from '../utils/shareUtils';
 import { auth } from '../services/firebase';
@@ -130,6 +131,8 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
     openAuthModal,
   } = useApp();
   const [showZoneHelp, setShowZoneHelp] = useState(false);
+  // 創點子提案的打賞視窗（使用點數）
+  const [tipQuestion, setTipQuestion] = useState<Question | null>(null);
   const [dbCompetitionProposals, setDbCompetitionProposals] = useState<StarSeasonProposal[]>(initialProposals || []);
 
   useEffect(() => {
@@ -515,6 +518,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
       likedProposalIds.includes(liveProposal.id) || isQuestionSeconded(liveProposal.id);
 
     return (
+      <>
       <ProposalDetailFullPage
         proposal={liveProposal}
         allProposals={activeProposals}
@@ -553,23 +557,17 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
             else showCenterToast('請先登入帳號以支持提案');
             return;
           }
-          const res = await supportProposal({ proposalId: p.id, points: 100 });
-          if (res.success) {
-            showCenterToast('🎉 已成功支持 100 點！');
-            setProposalsList((prev) =>
-              prev.map((item) =>
-                item.id === p.id
-                  ? {
-                      ...item,
-                      supportPoints: (item.supportPoints || 0) + 100,
-                      supporterCount: (item.supporterCount || 0) + 1,
-                    }
-                  : item
-              )
-            );
-          } else {
-            showCenterToast(res.message || '目前尚未開放募資投點');
+          // 創點子的提案用「點數」打賞：開啟打賞視窗，自選點數與留言
+          const q = (questions || []).find((item) => item.id === p.id);
+          if (!q) {
+            showCenterToast('這是創星季參賽提案，請到創星季頁面用創星幣支持');
+            return;
           }
+          if (q.authorId === currentUser.id) {
+            showCenterToast('無法打賞給自己發布的提案');
+            return;
+          }
+          setTipQuestion(q);
         }}
         stageInfo={{
           isPainPointStage: false,
@@ -586,6 +584,13 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         }}
         showToast={showCenterToast}
       />
+      {tipQuestion && (
+        <TipPainPointModal
+          question={(questions || []).find((q) => q.id === tipQuestion.id) || tipQuestion}
+          onClose={() => setTipQuestion(null)}
+        />
+      )}
+      </>
     );
   }
 
