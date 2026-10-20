@@ -153,6 +153,16 @@ const isHourlyContext = (text: string) => /兼職|工讀|打工|計時|part[\s-]
 const REGION_BOTH_VALUE = '工作範圍：台灣與國外皆可';
 const regionIncludesAbroad = (v?: string) => v === REGION_ABROAD_VALUE || v === REGION_BOTH_VALUE;
 
+/** 匯職缺會搜尋的平台（說明面板用；和後端搜尋分組一致） */
+const JOB_SOURCE_GROUPS: Array<{ title: string; sites: string }> = [
+  { title: '人力銀行', sites: '104人力銀行、1111人力銀行、Yes123、518熊班' },
+  { title: '新創與外商平台', sites: 'Cake、Yourator、Meet.jobs、Glints、LinkedIn、Indeed' },
+  { title: '企業官網', sites: '上市櫃公司、外商與中小企業的徵才頁' },
+  { title: '公部門與產業平台', sites: '台灣就業通、事求人（公職）、國營事業招考、各縣市就業服務站、各產業專業求職網站' },
+  { title: '兼職與接案', sites: '小雞上工、Worky、518熊班兼職、Yes123 打工、1111 兼職、Tasker 出任務' },
+  { title: '國外與遠端', sites: 'LinkedIn、Indeed、Glassdoor；日本 doda、Green、Daijob、リクナビNEXT；香港 JobsDB、CTgoodjobs；新加坡 MyCareersFuture、JobStreet；中國大陸 BOSS直聘、51job；韓國 Saramin、JobKorea；美加 ZipRecruiter、Wellfound、Job Bank；英德 Reed、StepStone；澳紐 SEEK；遠端 We Work Remotely、Remote OK' },
+];
+
 export const QUICK_CONDITION_STEPS: Array<{
   key: QuickConditionKey;
   label: string;
@@ -327,6 +337,7 @@ export const JobExplorerView: React.FC = () => {
   };
   const [maxExpFilter, setMaxExpFilter] = useState<number | 'all'>('all');
   const [maxEduFilter, setMaxEduFilter] = useState<number | 'all'>('all');
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
 
   // 收藏職缺（儲存真實職缺物件與 ID）
@@ -1178,7 +1189,40 @@ export const JobExplorerView: React.FC = () => {
               <span className="hidden sm:inline">收藏</span>
               {savedJobIds.length > 0 && <span>({savedJobIds.length})</span>}
             </button>
+
+            {/* 網站說明（問號鍵展開／收合） */}
+            <button
+              type="button"
+              onClick={() => setIsHelpOpen((v) => !v)}
+              aria-expanded={isHelpOpen}
+              aria-label="匯職缺說明"
+              title="匯職缺說明"
+              className={`p-2 rounded-xl border shrink-0 transition-colors cursor-pointer ${
+                isHelpOpen ? 'bg-[#1e3a8a] text-white border-[#1e3a8a]' : 'bg-white hover:bg-blue-50/50 text-stone-500 border-stone-200'
+              }`}
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
           </div>
+
+          {isHelpOpen && (
+            <div className="pt-2.5 border-t border-stone-100 text-xs text-stone-700 leading-relaxed space-y-2.5">
+              <p>
+                <span className="font-black text-[#1e3a8a]">匯職缺</span>：一鍵彙集跨海內外全網所有職缺。直接輸入想找的職位、地點、薪水，已經講清楚的條件不會再問；沒講的才會請你補充。
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {JOB_SOURCE_GROUPS.map((g) => (
+                  <div key={g.title} className="rounded-xl bg-stone-50 border border-stone-200/80 px-3 py-2">
+                    <div className="font-bold text-stone-900">{g.title}</div>
+                    <div className="text-stone-600">{g.sites}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-stone-500">
+                職缺會盡量直接連到該職缺的頁面；標示「搜尋職缺」的是暫時確認不了的職缺，會帶你到該平台的搜尋結果。已關閉或下架的職缺不會顯示。
+              </p>
+            </div>
+          )}
 
           {/* 2. 可收合篩選面板 */}
           {isFilterOpen && (
