@@ -131,7 +131,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
     return () => { window.clearInterval(t); window.removeEventListener('pagehide', onHide); flushSession(); flushChat(); };
   }, [flushSession, flushChat]);
 
-  // 全網搜職時自動現身並說：「搜搜正在忙的時候讓小燈泡來陪你玩吧~ \(≧▽≦)/」
+  // 匯職缺時自動現身並說：「搜搜正在忙的時候讓小燈泡來陪你玩吧~ \(≧▽≦)/」
   useEffect(() => {
     const onSearchAccompany = (e: Event) => {
       const speech = (e as CustomEvent).detail?.text || '搜搜正在忙的時候讓小燈泡來陪你玩吧~ \\(≧▽≦)/';

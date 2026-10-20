@@ -1094,7 +1094,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     <span>首頁小燈泡 Agent 轉接檢查與測試</span>
                   </h3>
                   <p className="text-xs text-stone-500 mt-0.5">
-                    驗證三位助理（客服、全網搜職、AI-CRM）的金鑰配置、Dify 應用對應，並實測一句話分流與問答。
+                    驗證三位助理（客服、匯職缺、AI-CRM）的金鑰配置、Dify 應用對應，並實測一句話分流與問答。
                   </p>
                 </div>
               </div>
@@ -1214,7 +1214,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      🧭 全網搜職 Agent
+                      🧭 匯職缺 Agent
                     </button>
                   </div>
                 </div>
@@ -1305,7 +1305,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     {/* Explorer Web URL */}
                     <div>
                       <label className="block text-[11px] font-bold text-stone-300 mb-1">
-                        6. DIFY_EXPLORER_WEB_URL (全網搜職 Agent 獨立網址 / 預設端點)
+                        6. DIFY_EXPLORER_WEB_URL (匯職缺 Agent 獨立網址 / 預設端點)
                       </label>
                       <input
                         type="text"
@@ -1319,7 +1319,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                     {/* Explorer Agent Key */}
                     <div>
                       <label className="block text-[11px] font-bold text-stone-300 mb-1">
-                        7. DIFY_EXPLORER_API_KEY (全網搜職 Agent 金鑰，選填)
+                        7. DIFY_EXPLORER_API_KEY (匯職缺 Agent 金鑰，選填)
                       </label>
                       <input
                         type="text"
@@ -1379,7 +1379,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                       {difyTestAgentType === 'aicrm_agent' && '💼 AICRM 三合一Agent(雷達&軍師&特助) 實測 Prompt 範本：'}
                       {difyTestAgentType === 'market_advisor' && '📊 市場顧問專屬實測 Prompt 範本（五大業務核心）：'}
                       {difyTestAgentType === 'cs_agent' && '🤖 官方客服專屬實測 Prompt 範本（高頻 FAQ 與機制）：'}
-                      {difyTestAgentType === 'explorer_agent' && '🧭 全網搜職 Agent（搜搜）專屬實測 Prompt 範本（跨平台找工作）：'}
+                      {difyTestAgentType === 'explorer_agent' && '🧭 匯職缺 Agent（搜搜）專屬實測 Prompt 範本（跨平台找工作）：'}
                     </span>
                   </span>
                   <span className="text-[11px] text-stone-400">點擊範本立即載入提示詞</span>
@@ -1848,7 +1848,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                         : difyTestAgentType === 'aicrm_agent'
                         ? 'AICRM 三合一Agent(雷達&軍師&特助)'
                         : difyTestAgentType === 'explorer_agent'
-                        ? 'Explorer Agent (全網搜職 Agent / 搜搜)'
+                        ? 'Explorer Agent (匯職缺 Agent / 搜搜)'
                         : 'CS Agent (官方客服)'}
                     </code>
                   </span>

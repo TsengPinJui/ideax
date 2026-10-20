@@ -88,7 +88,7 @@ export function cheerMascot(text?: string) {
   } catch {}
 }
 
-/** 全網搜職過程讓右下角小燈泡自動現身陪伴 */
+/** 匯職缺過程讓右下角小燈泡自動現身陪伴 */
 export const MASCOT_SEARCH_ACCOMPANY_EVENT = 'ideax:mascot-search-accompany';
 
 export function accompanyDuringSearch(text = '搜搜正在忙的時候讓小燈泡來陪你玩吧~ \\(≧▽≦)/') {

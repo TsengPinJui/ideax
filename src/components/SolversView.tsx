@@ -5,7 +5,7 @@ import { HelpTooltip } from './HelpTooltip';
 import { AiHeadhunterModal } from './AiHeadhunterModal';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 import { isGuestUser } from '../utils/userDisplay';
-import { BaiMiaoTaskBanner } from './mascot/BaiMiaoSceneWidget';
+import { BaiMiao } from './baimiao/BaiMiao';
 import {
   ShieldCheck,
   Star,
@@ -204,9 +204,9 @@ export const SolversView: React.FC<SolversViewProps> = ({
           </div>
         </div>
 
-        {/* 市場顧問白喵無縫出現 */}
+        {/* 市場顧問白喵拿望遠鏡幫你找專家 */}
         <div className="pt-1 flex justify-end">
-          <BaiMiaoTaskBanner scene="headhunter_telescope" compact />
+          <BaiMiao action="binoculars" size={72} bubbleSide="left" bubble={{ text: '想找專家？白喵幫你獵人頭！' }} />
         </div>
       </div>
 

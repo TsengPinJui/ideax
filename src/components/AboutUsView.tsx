@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AgentsIntroSection } from './AgentsIntroSection';
 import {
   ChevronLeft,
   ChevronRight,
@@ -63,7 +64,7 @@ interface AboutUsViewProps {
   onNavigateToStarSeason?: () => void;
 }
 
-type MainTab = 'intro' | 'download_app' | 'contact' | 'terms' | 'others';
+type MainTab = 'intro' | 'ip_agents' | 'download_app' | 'contact' | 'terms' | 'others';
 
 export const AboutUsView: React.FC<AboutUsViewProps> = ({
   initialSection = 'list',
@@ -87,6 +88,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
 
   // Determine initial state based on initialSection prop
   const [activeTab, setActiveTab] = useState<MainTab>(() => {
+    if (initialSection === 'ip_agents' || initialSection === 'agents') return 'ip_agents';
     if (initialSection === 'download_app' || initialSection === 'app' || initialSection === 'pwa') return 'download_app';
     if (initialSection === 'contact') return 'contact';
     if (
@@ -485,6 +487,23 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                 <span>平台介紹</span>
               </button>
 
+              {/* 1.5 原創 IP 與 Agent */}
+              <button
+                onClick={() => {
+                  setActiveTab('ip_agents');
+                  setSelectedOtherChapterId(null);
+                  setSelectedTermKey(null);
+                }}
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                  activeTab === 'ip_agents'
+                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/50'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>原創IP與Agent</span>
+              </button>
+
               {/* 2. 下載 APP */}
               <button
                 onClick={() => {
@@ -751,6 +770,9 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* 原創 IP 與 Agent */}
+      {activeTab === 'ip_agents' && !isSubPage && <AgentsIntroSection />}
 
       {/* ========================================================================= */}
       {/* 1. 下載 APP (直接下載鍵與安裝教學卡片) */}

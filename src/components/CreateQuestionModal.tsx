@@ -9,7 +9,7 @@ import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { PainPointAutocompleteInput } from './PainPointAutocompleteInput';
 import { PublishingOverlayModal } from './PublishingOverlayModal';
-import { BaiMiaoTaskBanner } from './mascot/BaiMiaoSceneWidget';
+import { BaiMiaoCardHopper } from './baimiao/BaiMiaoCardHopper';
 import {
   X,
   Sparkles,
@@ -742,18 +742,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className={`p-2.5 sm:p-6 space-y-4 sm:space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
-        {/* 市場顧問 Agent「白喵」在提案編輯頁面各個字卡模組間穿梭、協助自動分類與貼標籤 */}
-        <BaiMiaoTaskBanner
-          scene="proposal_shuttle"
-          compact
-          customTaskStatus={
-            isAnalyzingWithAi
-              ? '白喵正在各個字卡模組間高速穿梭，為您的提案進行 AI 語意分類、複雜度評估與精準貼標籤...'
-              : tagsInput.trim()
-              ? `白喵已在字卡模組間穿梭完畢！目前為您貼上標籤：${tagsInput}`
-              : '白喵正在提案編輯頁的各個字卡模組間穿梭巡視！填寫標題與內容後，白喵會幫您分析分類並貼標籤喔～'
-          }
+      <form onSubmit={handleSubmit} className={`relative p-2.5 sm:p-6 space-y-4 sm:space-y-5 ${!isFullPage ? 'overflow-y-auto' : ''}`}>
+        {/* 市場顧問白喵在各個字卡之間跳來跳去，幫忙分類、貼標籤時顯示進度 */}
+        <BaiMiaoCardHopper
+          cardsSelector=":scope > *"
+          status={isAnalyzingWithAi ? '白喵正在幫你分類、貼標籤' : isSubmitting ? '白喵正在幫你發布' : null}
         />
 
         {/* 管理員專用：發布身分切換（管理員身分 vs 平台身分） */}

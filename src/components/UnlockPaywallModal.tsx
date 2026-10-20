@@ -20,7 +20,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { getAnswerSpecifications } from '../utils/answerUtils';
-import { BaiMiaoTaskBanner } from './mascot/BaiMiaoSceneWidget';
+import { BaiMiao } from './baimiao/BaiMiao';
 
 interface UnlockPaywallModalProps {
   answer: Answer;
@@ -113,12 +113,11 @@ export const UnlockPaywallModal: React.FC<UnlockPaywallModalProps> = ({
 
       {/* Content */}
       <div className="p-5 sm:p-6 space-y-4">
-        {/* 付費報告解鎖：白喵單手拿出放大鏡、單手撐地趴在地上看 */}
-        <BaiMiaoTaskBanner
-          scene="report_magnifier"
-          compact
-          customTaskStatus="白喵正單手撐地趴在地上、單手拿著放大鏡為您仔細檢驗這份付費方案與報告規格，確認交付項目完整無虞！"
-        />
+        {/* 付費報告：白喵趴著拿放大鏡幫你檢查交付內容 */}
+        <div className="flex items-center gap-2 rounded-xl bg-amber-50/70 border border-amber-200/70 px-2 py-1">
+          <BaiMiao action="inspect" size={60} className="-my-1 shrink-0" />
+          <span className="text-[11px] text-amber-900 font-bold leading-snug">白喵幫你看過這份方案的交付項目了，確認後再解鎖喔～</span>
+        </div>
 
         {/* Pain Point / Free Post Notice */}
         {isPainPointOrFree && (

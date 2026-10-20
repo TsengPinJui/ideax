@@ -229,7 +229,7 @@ export async function callDifyClientDirect(params: DifyDirectCallParams): Promis
 
     const mergedPayload = {
       platform: 'IdeaX創點子',
-      reply: `【IdeaX創點子 全網搜職】已分 ${batchCount || 2} 批次檢索回傳並由前端統一整合顯示，共彙整 ${accumulatedJobs.length} 筆當下開放應徵之跨平台真實職缺！`,
+      reply: `【IdeaX創點子 匯職缺】已分 ${batchCount || 2} 批次檢索回傳並由前端統一整合顯示，共彙整 ${accumulatedJobs.length} 筆當下開放應徵之跨平台真實職缺！`,
       batchesMerged: batchCount || 2,
       totalJobs: accumulatedJobs.length,
       jobs: accumulatedJobs,
@@ -248,7 +248,7 @@ export async function callDifyClientDirect(params: DifyDirectCallParams): Promis
     };
   };
 
-  // 針對全網搜職 Agent (explorer_agent)，預設直接啟用分批多次回傳並由前端統一顯示，避免 Dify 單次工具迴圈超長報錯！
+  // 針對匯職缺 Agent (explorer_agent)，預設直接啟用分批多次回傳並由前端統一顯示，避免 Dify 單次工具迴圈超長報錯！
   if (agentType === 'explorer_agent') {
     try {
       return await runMultiBatchAggregation(params.query);
