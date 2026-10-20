@@ -288,9 +288,14 @@ export async function verifyJobUrl(
   let fallbackGrounded: string | null = null;
   const checks = await Promise.all(
     candidates.slice(0, 3).map(async (c) => {
+      // 104：頁面是前端渲染，關閉後標題還是寫著職稱和公司，只能相信 104 自己的職缺資料
+      if (/104\.com\.tw\/job\//i.test(c.u)) {
+        const r104 = await check104Job(c.u, title, company);
+        return { ...c, r: (r104 || 'unknown') as PageCheck };
+      }
       let r = await checkJobPage(c.u, title, company);
       if (r === 'unknown' || r === 'mismatch') {
-        const special = (await check104Job(c.u, title, company)) || (await checkLinkedInJob(c.u, title, company));
+        const special = await checkLinkedInJob(c.u, title, company);
         if (special) r = special;
       }
       return { ...c, r };
@@ -371,7 +376,14 @@ async function check104Job(url: string, title: string, company: string): Promise
     const j: any = await r.json().catch(() => null);
     const h = j?.data?.header;
     if (!h) return j?.error ? 'dead' : null;
-    if (h.isClosed || /關閉|下架/.test(String(j?.data?.switch || ''))) return 'closed';
+    // 104 用 switch: "off" 表示職缺已關閉（之前誤判成找「關閉」字樣，關閉的職缺會被當成還在招）
+    const sw = String(j?.data?.switch ?? '').toLowerCase();
+    if (h.isClosed || sw === 'off' || /關閉|下架/.test(sw)) return 'closed';
+    const closeDate = Date.parse(String(j?.data?.closeDate || '').replace(/\//g, '-'));
+    if (Number.isFinite(closeDate) && closeDate < Date.now()) return 'closed';
+    // 刊登／更新日期超過 60 天：多半是很久沒維護的舊職缺，不當作在招
+    const appear = Date.parse(String(h.appearDate || '').replace(/\//g, '-'));
+    if (Number.isFinite(appear) && Date.now() - appear > 60 * 86400000) return 'closed';
     const name = String(h.jobName || ''), cust = String(h.custName || '');
     return pageMatchesJob(`${cust} ${name}`.replace(/\s+/g, ''), title, company) ? 'ok' : 'mismatch';
   } catch {
@@ -418,6 +430,7 @@ async function find104Job(title: string, company: string): Promise<string | null
       const j: any = await r.json().catch(() => null);
       const list: any[] = Array.isArray(j?.data) ? j.data : Array.isArray(j?.data?.list) ? j.data.list : [];
       for (const it of list) {
+        if (String(it.switch ?? 'on').toLowerCase() === 'off') continue;
         const name = String(it.jobName || '').replace(/\s+/g, ''), cust = String(it.custName || '').replace(/\s+/g, '');
         const link = String(it?.link?.job || it.jobLink || '');
         if (!link) continue;
