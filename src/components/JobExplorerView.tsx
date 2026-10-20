@@ -2972,12 +2972,12 @@ export const JobExplorerView: React.FC = () => {
 
         {/* 提示：部分求職網沒辦法附上正確網址 */}
         {filteredAndSortedJobs.length > 0 && !showSavedOnly && (
-          <div role="note" className="flex items-start gap-2.5 rounded-2xl border-2 border-amber-300 bg-amber-50 px-3.5 py-3 shadow-2xs">
+          <div role="note" className="flex items-start gap-2.5 rounded-2xl border border-amber-300 bg-amber-50 px-3.5 py-3">
             <span className="shrink-0 w-7 h-7 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center">
               <Info className="w-4 h-4 stroke-[2.5]" />
             </span>
             <p className="text-xs sm:text-sm leading-relaxed text-amber-950">
-              <span className="font-bold">部分求職網站無法附上正確網址，建議用關鍵字到該網站再搜尋一次，應該就能找到該職缺了 !</span>
+              <span className="font-medium">部分求職網站無法附上正確網址，建議用關鍵字到該網站再搜尋一次，應該就能找到該職缺了 !</span>
             </p>
           </div>
         )}
