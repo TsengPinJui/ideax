@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BaiMiao } from './baimiao/BaiMiao';
 import { Category, ProblemLevel, Question, CATEGORY_HIERARCHY, VIBECODING_CATEGORIES, PostType, DeliveryPhase, InnovationProgressStage, INNOVATION_PROGRESS_STAGES } from '../types';
 import { useApp } from '../context/AppContext';
 import { LEVEL_CONFIGS } from '../data/mockData';
@@ -1734,12 +1735,11 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-100/40 to-stone-50 border border-amber-300/80 shadow-2xs space-y-2.5">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center font-black shadow-xs shrink-0">
-                <Sparkles className="w-3.5 h-3.5 fill-stone-950" />
-              </div>
+              {/* 市場顧問白喵：分析時拿放大鏡趴著看 */}
+              <BaiMiao action={isAnalyzingWithAi ? 'inspect' : 'idle'} size={52} className="-my-2 shrink-0" />
               <div>
-                <h4 className="text-xs font-black text-stone-900">AI Agent「市場顧問」自動分析</h4>
-                <p className="text-[10px] text-stone-500">依題意深度剖析痛點，自動帶入最佳領域、標籤與建議解題維度</p>
+                <h4 className="text-xs font-black text-stone-900">市場顧問白喵・AI 自動分析</h4>
+                <p className="text-[10px] text-stone-500">白喵幫你讀過內容，自動帶入最合適的領域、標籤與建議解題方向</p>
               </div>
             </div>
 
@@ -1752,12 +1752,12 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
               {isAnalyzingWithAi ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>市場顧問分析中...</span>
+                  <span>白喵分析中...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-3.5 h-3.5 fill-stone-950" />
-                  <span>一鍵自動分析與自動標籤</span>
+                  <span>請白喵分析並貼標籤</span>
                 </>
               )}
             </button>
