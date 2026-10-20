@@ -2421,7 +2421,8 @@ export interface RealSiteTrafficStats {
 const PAGEVIEW_BASELINE_TARGET = 2500;
 
 const activePresenceSessions = new Map<string, number>();
-const PRESENCE_TTL_MS = 65 * 1000;
+// 前端每 2 分鐘回報一次在線（之前 25 秒一次，是全站寫入量最大的來源），所以在線判斷放寬到 5 分鐘
+const PRESENCE_TTL_MS = 5 * 60 * 1000;
 
 function getUtc8PartsServer(timestampMs: number = Date.now()) {
   const utc8Ms = timestampMs + 8 * 60 * 60 * 1000;
@@ -2441,7 +2442,7 @@ function getUtc8PartsServer(timestampMs: number = Date.now()) {
 
 // 即時在線：記錄在資料庫（site_presence），所有伺服器共用；計算最近 75 秒內有心跳的人
 const PRESENCE_COLLECTION = 'site_presence';
-const PRESENCE_WINDOW_MS = 75 * 1000;
+const PRESENCE_WINDOW_MS = 5 * 60 * 1000;
 let cachedOnline = { count: 1, at: 0 };
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -2597,8 +2598,11 @@ export async function recordRealSiteVisit(
 
 export async function recordRealPresenceHeartbeat(sessionId?: string): Promise<{ onlineUsersCount: number }> {
   if (sessionId && typeof sessionId === 'string') {
-    activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
-    await withTimeout(touchPresence(sessionId), 4000).catch(() => {});
+    const sid = sessionId.slice(0, 64);
+    const prev = activePresenceSessions.get(sid) || 0;
+    activePresenceSessions.set(sid, Date.now());
+    // 同一個人 90 秒內重複回報（例如開了好幾個分頁）只寫一次資料庫
+    if (Date.now() - prev > 90 * 1000) await withTimeout(touchPresence(sessionId), 4000).catch(() => {});
   }
   return {
     onlineUsersCount: await getOnlineCount(),

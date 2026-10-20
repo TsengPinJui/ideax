@@ -14,7 +14,7 @@ import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answer
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
 import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
 import { classifyMascotQuestion, extractUdifyAppCode, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
-import { verifyAuthToken } from './server/competitionService';
+import { verifyAuthToken, adminDb, isVerifiedAdmin } from './server/competitionService';
 import { diagnoseJobUrl, groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './server/jobUrlVerify';
 import { ALL_JOB_SITES, COMPANY_SITE, MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
 import { FALLBACK_USD_RATES } from './src/data/currency';
@@ -3754,6 +3754,47 @@ app.get('/api/job-explorer/check-link', async (req: Request, res: Response) => {
   if (!url) return res.status(400).json({ ok: false, error: '請帶上 url' });
   res.setHeader('Cache-Control', 'no-store');
   res.json(await diagnoseJobUrl(url, title, company));
+});
+
+// ─── 會員「最近上線時間」：存在獨立的 user_activity，不寫進大家都在即時監聽的會員資料（不然每寫一次，所有在線的人都要重讀一次） ───
+const activityOwnerCache = new Map<string, string>(); // userId → 已確認的登入 uid
+const activityLastWrite = new Map<string, number>();
+app.post('/api/me/active', async (req: Request, res: Response) => {
+  try {
+    const au = await verifyAuthToken(req.headers.authorization as string | undefined);
+    if (!au) return res.status(401).json({ ok: false });
+    const userId = String(req.body?.userId || '').replace(/[^\w-]/g, '').slice(0, 64);
+    if (!userId) return res.status(400).json({ ok: false });
+    if (activityOwnerCache.get(userId) !== au.uid) {
+      // 只能更新自己的：會員資料上的 authUid 要是這個登入帳號
+      const snap = await adminDb.collection('users').doc(userId).get();
+      const d: any = snap.exists ? snap.data() : null;
+      if (!(userId === au.uid || d?.authUid === au.uid)) return res.status(403).json({ ok: false });
+      activityOwnerCache.set(userId, au.uid);
+      if (activityOwnerCache.size > 5000) activityOwnerCache.delete(activityOwnerCache.keys().next().value as string);
+    }
+    if (Date.now() - (activityLastWrite.get(userId) || 0) < 5 * 60 * 1000) return res.json({ ok: true, skipped: true });
+    activityLastWrite.set(userId, Date.now());
+    await adminDb.collection('user_activity').doc(userId).set({ lastActiveAt: new Date().toISOString() }, { merge: true });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ ok: false });
+  }
+});
+
+// 管理員看會員最近上線時間（打開後台會員頁時讀一次）
+app.get('/api/admin/user-activity', async (req: Request, res: Response) => {
+  try {
+    const au = await verifyAuthToken(req.headers.authorization as string | undefined);
+    if (!au || !(await isVerifiedAdmin(au.uid))) return res.status(403).json({ ok: false });
+    const snap = await adminDb.collection('user_activity').get();
+    const map: Record<string, string> = {};
+    snap.docs.forEach((d) => { const t = d.data()?.lastActiveAt; if (t) map[d.id] = String(t); });
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, activity: map });
+  } catch {
+    res.status(500).json({ ok: false });
+  }
 });
 
 // 前端定期問目前的版本：開著很久沒重新整理的頁面（例如手機上的 APP）才知道要更新

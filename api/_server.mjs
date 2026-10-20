@@ -158511,7 +158511,7 @@ async function bindAmbassadorReferralCode(userId, referralCode) {
 var INITIAL_SITE_VISITS_BASE = 1700;
 var PAGEVIEW_BASELINE_TARGET = 2500;
 var activePresenceSessions = /* @__PURE__ */ new Map();
-var PRESENCE_TTL_MS = 65 * 1e3;
+var PRESENCE_TTL_MS = 5 * 60 * 1e3;
 function getUtc8PartsServer(timestampMs = Date.now()) {
   const utc8Ms = timestampMs + 8 * 60 * 60 * 1e3;
   const d = new Date(utc8Ms);
@@ -158528,7 +158528,7 @@ function getUtc8PartsServer(timestampMs = Date.now()) {
   };
 }
 var PRESENCE_COLLECTION = "site_presence";
-var PRESENCE_WINDOW_MS = 75 * 1e3;
+var PRESENCE_WINDOW_MS = 5 * 60 * 1e3;
 var cachedOnline = { count: 1, at: 0 };
 function withTimeout(p, ms) {
   return Promise.race([p, new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
@@ -158665,8 +158665,10 @@ async function recordRealSiteVisit(sessionId, visitor = {}) {
 }
 async function recordRealPresenceHeartbeat(sessionId) {
   if (sessionId && typeof sessionId === "string") {
-    activePresenceSessions.set(sessionId.slice(0, 64), Date.now());
-    await withTimeout(touchPresence(sessionId), 4e3).catch(() => {
+    const sid = sessionId.slice(0, 64);
+    const prev = activePresenceSessions.get(sid) || 0;
+    activePresenceSessions.set(sid, Date.now());
+    if (Date.now() - prev > 90 * 1e3) await withTimeout(touchPresence(sessionId), 4e3).catch(() => {
     });
   }
   return {
@@ -161844,7 +161846,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.0.4";
+var APP_VERSION = "3.0.5";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -164976,6 +164978,45 @@ app.get("/api/job-explorer/check-link", async (req, res) => {
   if (!url) return res.status(400).json({ ok: false, error: "\u8ACB\u5E36\u4E0A url" });
   res.setHeader("Cache-Control", "no-store");
   res.json(await diagnoseJobUrl(url, title, company));
+});
+var activityOwnerCache = /* @__PURE__ */ new Map();
+var activityLastWrite = /* @__PURE__ */ new Map();
+app.post("/api/me/active", async (req, res) => {
+  try {
+    const au = await verifyAuthToken(req.headers.authorization);
+    if (!au) return res.status(401).json({ ok: false });
+    const userId = String(req.body?.userId || "").replace(/[^\w-]/g, "").slice(0, 64);
+    if (!userId) return res.status(400).json({ ok: false });
+    if (activityOwnerCache.get(userId) !== au.uid) {
+      const snap = await adminDb.collection("users").doc(userId).get();
+      const d = snap.exists ? snap.data() : null;
+      if (!(userId === au.uid || d?.authUid === au.uid)) return res.status(403).json({ ok: false });
+      activityOwnerCache.set(userId, au.uid);
+      if (activityOwnerCache.size > 5e3) activityOwnerCache.delete(activityOwnerCache.keys().next().value);
+    }
+    if (Date.now() - (activityLastWrite.get(userId) || 0) < 5 * 60 * 1e3) return res.json({ ok: true, skipped: true });
+    activityLastWrite.set(userId, Date.now());
+    await adminDb.collection("user_activity").doc(userId).set({ lastActiveAt: (/* @__PURE__ */ new Date()).toISOString() }, { merge: true });
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ ok: false });
+  }
+});
+app.get("/api/admin/user-activity", async (req, res) => {
+  try {
+    const au = await verifyAuthToken(req.headers.authorization);
+    if (!au || !await isVerifiedAdmin(au.uid)) return res.status(403).json({ ok: false });
+    const snap = await adminDb.collection("user_activity").get();
+    const map = {};
+    snap.docs.forEach((d) => {
+      const t2 = d.data()?.lastActiveAt;
+      if (t2) map[d.id] = String(t2);
+    });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ok: true, activity: map });
+  } catch {
+    res.status(500).json({ ok: false });
+  }
 });
 app.get("/api/version", (_req, res) => {
   res.setHeader("Cache-Control", "no-store, max-age=0");

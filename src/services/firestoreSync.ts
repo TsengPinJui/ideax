@@ -1757,11 +1757,11 @@ export function subscribePresenceFromFirestore(callback: (onlineCount: number) =
 
 
 /**
- * 記錄會員「最近上線時間」：登入的會員使用網站時，最多每 10 分鐘寫一次自己的 lastActiveAt。
- * （之前沒有寫進會員資料，後台「最近上線」只能顯示假時間）
+ * 記錄會員「最近上線時間」：登入的會員使用網站時，最多每 10 分鐘回報一次。
+ * 由伺服器寫到獨立的 user_activity（不寫進會員資料：會員資料大家都在即時監聽，每寫一次所有在線的人都要重讀）。
  */
 export async function touchUserLastActive(userId?: string): Promise<void> {
-  if (!userId || userId === 'user-guest' || isQuotaExhausted) return;
+  if (!userId || userId === 'user-guest') return;
   const key = `ideax_last_active_touch_${userId}`;
   try {
     const last = Number(localStorage.getItem(key) || 0);
@@ -1769,9 +1769,11 @@ export async function touchUserLastActive(userId?: string): Promise<void> {
     localStorage.setItem(key, String(Date.now()));
   } catch {}
   try {
-    await updateDoc(doc(db, 'users', userId), { lastActiveAt: new Date().toISOString() });
+    const { getAuthHeaders } = await import('./authHeader');
+    const headers = await getAuthHeaders();
+    if (!headers.Authorization) return;
+    await fetch('/api/me/active', { method: 'POST', headers, body: JSON.stringify({ userId }) });
   } catch {
-    // 沒有權限或離線：下次再試
     try { localStorage.removeItem(key); } catch {}
   }
 }
