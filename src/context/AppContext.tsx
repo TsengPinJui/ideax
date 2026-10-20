@@ -282,6 +282,8 @@ interface AppContextType {
       referencedPainPoint?: string;
       tags?: string[];
       demoUrl?: string;
+      externalLink?: string;
+      previewMode?: 'embed' | 'external';
       fileLink?: string;
       techArchitecture?: string;
       coverImage?: string;
@@ -1371,9 +1373,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
               authorAvatar: seedQ.authorAvatar || rawQ.authorAvatar,
               referencedPainPoint: seedQ.referencedPainPoint,
+              ...(seedQ.currentVersion ? { currentVersion: seedQ.currentVersion } : {}),
             }
           : {
               subcategories: rawQ.subcategories || seedQ?.subcategories,
+              ...((rawQ.id === 'q-vp-idea-ideax' || rawQ.id === 'q-vp-vibe-ideax') && (!rawQ.currentVersion || rawQ.currentVersion === 'v6.2.0')
+                ? { currentVersion: 'v1.0.0' }
+                : {}),
+              ...((rawQ.id === 'q-vp-idea-pace' || rawQ.id === 'q-vp-vibe-pace') && seedQ
+                ? {
+                    coverImage: seedQ.coverImage,
+                    galleryImages: seedQ.galleryImages,
+                    vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+                  }
+                : {}),
             }),
         // 示範資料一律使用固定的發布時間，避免雲端舊資料讓它們看起來永遠是最新
         ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
@@ -2596,9 +2609,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     vibeCodingData: seedQ.vibeCodingData || q.vibeCodingData,
                     authorAvatar: seedQ.authorAvatar || q.authorAvatar,
                     referencedPainPoint: seedQ.referencedPainPoint,
+                    ...(seedQ.currentVersion ? { currentVersion: seedQ.currentVersion } : {}),
                   }
                 : {
                     subcategories: q.subcategories || seedQ?.subcategories,
+                    ...((q.id === 'q-vp-idea-ideax' || q.id === 'q-vp-vibe-ideax') && (!q.currentVersion || q.currentVersion === 'v6.2.0')
+                      ? { currentVersion: 'v1.0.0' }
+                      : {}),
+                    ...((q.id === 'q-vp-idea-pace' || q.id === 'q-vp-vibe-pace') && seedQ
+                      ? {
+                          coverImage: seedQ.coverImage,
+                          galleryImages: seedQ.galleryImages,
+                          vibeCodingData: seedQ.vibeCodingData || q.vibeCodingData,
+                        }
+                      : {}),
                   }),
               ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
               tags: Array.isArray(seedQ?.tags || q.tags) ? (seedQ && !hasUserUpdates ? seedQ.tags : q.tags) : [],
@@ -2932,10 +2956,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
                         authorAvatar: seedQ.authorAvatar || rawQ.authorAvatar,
                         referencedPainPoint: seedQ.referencedPainPoint,
+                        ...(seedQ.currentVersion ? { currentVersion: seedQ.currentVersion } : {}),
                       }
                     : {
                         subcategories: rawQ.subcategories || seedQ?.subcategories,
+                        ...((rawQ.id === 'q-vp-idea-ideax' || rawQ.id === 'q-vp-vibe-ideax') && (!rawQ.currentVersion || rawQ.currentVersion === 'v6.2.0')
+                          ? { currentVersion: 'v1.0.0' }
+                          : {}),
+                        ...((rawQ.id === 'q-vp-idea-pace' || rawQ.id === 'q-vp-vibe-pace') && seedQ
+                          ? {
+                              coverImage: seedQ.coverImage,
+                              galleryImages: seedQ.galleryImages,
+                              vibeCodingData: seedQ.vibeCodingData || rawQ.vibeCodingData,
+                            }
+                          : {}),
                       }),
+                  ...(seedQ?.createdAt ? { createdAt: seedQ.createdAt } : {}),
                   views: highestViews,
                   viewsCount: highestViews,
                 };

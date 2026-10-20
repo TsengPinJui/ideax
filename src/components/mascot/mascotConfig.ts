@@ -75,7 +75,7 @@ export const MASCOT_PREVIEW_EVENT = 'ideax:mascot-preview';
 /** 小燈泡對話框的功能捷徑：只允許這些網站內的目的地（伺服器送來其他值會被忽略） */
 export const MASCOT_NAVIGATE_EVENT = 'ideax:mascot-navigate';
 export const MASCOT_NAV_TARGETS = new Set([
-  'explore', 'solvers', 'headhunter', 'membership', 'my_projects', 'ai_crm', 'mailto',
+  'explore', 'solvers', 'headhunter', 'membership', 'my_projects', 'ai_crm', 'job_explorer', 'mailto',
   'dash:points_receivables', 'dash:subscriptions', 'dash:profile', 'dash:real_name_auth', 'dash:expert_certification', 'dash:customer_service_report',
 ]);
 
@@ -85,5 +85,14 @@ export const MASCOT_CHEER_EVENT = 'ideax:mascot-cheer';
 export function cheerMascot(text?: string) {
   try {
     window.dispatchEvent(new CustomEvent(MASCOT_CHEER_EVENT, { detail: { text } }));
+  } catch {}
+}
+
+/** 全網搜職過程讓右下角小燈泡自動現身陪伴 */
+export const MASCOT_SEARCH_ACCOMPANY_EVENT = 'ideax:mascot-search-accompany';
+
+export function accompanyDuringSearch(text = '搜搜正在忙的時候讓小燈泡來陪你玩吧~ \\(≧▽≦)/') {
+  try {
+    window.dispatchEvent(new CustomEvent(MASCOT_SEARCH_ACCOMPANY_EVENT, { detail: { text } }));
   } catch {}
 }

@@ -42,7 +42,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { updateProposalContent } = useApp();
+  const { updateProposalContent, openAboutModal } = useApp();
   const isVibeCoding = question.postType === 'vibecoding_app';
 
   const getInitialCats = () => {
@@ -549,13 +549,39 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                 />
                 <div className="text-xs leading-relaxed flex-1">
                   <div className="font-bold text-indigo-950 flex items-center gap-1.5 flex-wrap">
-                    <span>開放內嵌網頁互動預覽（勾選即同意開放用戶在內嵌網頁互動）</span>
+                    <span>
+                      開放內嵌網頁互動預覽（已閱讀並同意
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openAboutModal?.('questioner_terms');
+                        }}
+                        className="text-indigo-700 hover:text-indigo-950 underline mx-0.5 cursor-pointer"
+                      >
+                        《提問會員服務條款》
+                      </button>
+                      與
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openAboutModal?.('general_terms');
+                        }}
+                        className="text-indigo-700 hover:text-indigo-950 underline mx-0.5 cursor-pointer"
+                      >
+                        《一般服務條款》
+                      </button>
+                      ，勾選即同意開放用戶在內嵌網頁互動）
+                    </span>
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${previewMode === 'embed' ? 'bg-indigo-600 text-white' : 'bg-stone-200 text-stone-600'}`}>
                       {previewMode === 'embed' ? '內嵌互動模式' : '外部開啟模式'}
                     </span>
                   </div>
                   <p className="text-stone-500 mt-0.5">
-                    勾選後將於作品介紹區顯示 iframe 互動預覽（若未單獨填寫嵌入預覽網址，將自動沿用外部連結網址）；若取消勾選或網站禁止內嵌，則提供「在新分頁開啟」按鈕。
+                    勾選代表您已確認擁有該外部網頁之合法授權並負完全法律責任，將於作品介紹區顯示 iframe 互動預覽（若未單獨填寫嵌入預覽網址，將自動沿用外部連結網址）；若取消勾選或網站禁止內嵌，則提供「在新分頁開啟」按鈕。
                   </p>
                 </div>
               </label>

@@ -1623,7 +1623,33 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                     />
                     <div className="text-xs leading-relaxed flex-1">
                       <div className="font-bold text-emerald-950 flex items-center gap-1.5 flex-wrap">
-                        <span>啟用嵌入預覽網址（勾選即同意開放用戶在內嵌網頁互動）</span>
+                        <span>
+                          啟用嵌入預覽網址（已閱讀並同意
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openAboutModal('questioner_terms');
+                            }}
+                            className="text-emerald-800 hover:text-emerald-950 underline mx-0.5 cursor-pointer"
+                          >
+                            《提問會員服務條款》
+                          </button>
+                          與
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openAboutModal('general_terms');
+                            }}
+                            className="text-emerald-800 hover:text-emerald-950 underline mx-0.5 cursor-pointer"
+                          >
+                            《一般服務條款》
+                          </button>
+                          ，勾選即同意開放用戶在內嵌網頁互動）
+                        </span>
                         <span
                           className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                             previewMode === 'embed'
@@ -1635,7 +1661,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                         </span>
                       </div>
                       <p className="text-stone-600 mt-0.5">
-                        勾選後將於作品內頁介紹區嵌入 iframe 互動視窗，讓訪客直接操作體驗；若取消勾選或目標網站禁止內嵌（X-Frame-Options / CSP），系統將自動切換為「在新分頁開啟」外部連結。
+                        勾選代表您已確認擁有該外部網頁之合法授權並負完全法律責任，將於作品內頁介紹區嵌入 iframe 互動視窗讓訪客直接操作體驗；若取消勾選或目標網站禁止內嵌（X-Frame-Options / CSP），系統將自動切換為「在新分頁開啟」外部連結。
                       </p>
                     </div>
                   </label>

@@ -658,59 +658,62 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
         try {
           const newPropId = res.proposalId || editingPublishedProposalId || `prop-sub-${Date.now()}`;
           const currentProps = getCompetitionProposalsForAdmin();
+          const existingProp = currentProps.find((p) => p.id === (editingPublishedProposalId || newPropId));
           const painPointObj =
             painPointProposals.find((p) => p.id === formSourcePainPointId) ||
             questions.find((q) => q.id === formSourcePainPointId);
-          saveAllCompetitionProposals([
-            {
-              id: newPropId,
-              title: formTitle.trim(),
-              stage: formStage,
-              track: effectiveTrack,
-              summary: formSummary.trim(),
-              description: effectiveDescription,
-              sections: formSections,
-              attachments: formAttachments,
-              authorId: currentUser.id,
-              authorName: showOrganizationOnCard && schoolOrOrg.trim()
-                ? `${schoolOrOrg.trim()} ｜ ${(teamName.trim() || currentUser.name || contactName)}`
-                : (teamName.trim() || currentUser.name || contactName),
-              teamName: teamName.trim() || currentUser.name || contactName,
-              schoolName: schoolOrOrg.trim() || undefined,
-              organizationName: schoolOrOrg.trim() || undefined,
-              showOrganization: showOrganizationOnCard,
-              authorAvatar: currentUser.avatar,
-              authorRole: (currentUser.role as any) || 'user',
-              sourcePainPointProposalId: formSourcePainPointId || undefined,
-              sourcePainPointTitle: painPointObj?.title || undefined,
-              images: formImages,
-              showCardImage: formImages.length > 0 ? showCardImage : undefined,
-              cardDisplayImage: (showCardImage && formImages.length > 0)
-                ? (selectedCardImage || formImages[0] || undefined)
-                : undefined,
-              externalLink: formExternalLink.trim() || undefined,
-              referencedPainPoint: formReferencedPainPoint.trim() || undefined,
-              targetGoal: formTargetGoal.trim() || undefined,
-              technicalFeasibility: formTechnicalFeasibility.trim() || undefined,
-              marketAnalysis: formMarketAnalysis.trim() || undefined,
-              businessModelFinancials: formBusinessModelFinancials.trim() || undefined,
-              tags: effectiveTags,
-              aiCategorized,
-              status: 'pending_review',
-              supportPoints: 0,
-              supporterCount: 0,
-              targetFundingAmount: 100000,
-              likeCount: 0,
-              commentsCount: 0,
-              attachmentUrl: primaryAtt?.url,
-              attachmentName: primaryAtt?.name,
-              attachmentSize: primaryAtt?.size,
-              attachmentMime: primaryAtt?.mime,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-            ...currentProps.filter((p) => p.id !== newPropId),
-          ]);
+          const updatedPropItem = {
+            id: existingProp?.id || newPropId,
+            title: formTitle.trim(),
+            stage: formStage,
+            track: effectiveTrack,
+            summary: formSummary.trim(),
+            description: effectiveDescription,
+            sections: formSections,
+            attachments: formAttachments,
+            authorId: existingProp?.authorId || currentUser.id,
+            authorName: showOrganizationOnCard && schoolOrOrg.trim()
+              ? `${schoolOrOrg.trim()} ｜ ${(teamName.trim() || currentUser.name || contactName)}`
+              : (teamName.trim() || currentUser.name || contactName),
+            teamName: teamName.trim() || currentUser.name || contactName,
+            schoolName: schoolOrOrg.trim() || undefined,
+            organizationName: schoolOrOrg.trim() || undefined,
+            showOrganization: showOrganizationOnCard,
+            authorAvatar: existingProp?.authorAvatar || currentUser.avatar,
+            authorRole: existingProp?.authorRole || (currentUser.role as any) || 'user',
+            sourcePainPointProposalId: formSourcePainPointId || undefined,
+            sourcePainPointTitle: painPointObj?.title || undefined,
+            images: formImages,
+            showCardImage: formImages.length > 0 ? showCardImage : undefined,
+            cardDisplayImage: (showCardImage && formImages.length > 0)
+              ? (selectedCardImage || formImages[0] || undefined)
+              : undefined,
+            externalLink: formExternalLink.trim() || undefined,
+            referencedPainPoint: formReferencedPainPoint.trim() || undefined,
+            targetGoal: formTargetGoal.trim() || undefined,
+            technicalFeasibility: formTechnicalFeasibility.trim() || undefined,
+            marketAnalysis: formMarketAnalysis.trim() || undefined,
+            businessModelFinancials: formBusinessModelFinancials.trim() || undefined,
+            tags: effectiveTags,
+            aiCategorized,
+            status: existingProp?.status || 'pending_review',
+            supportPoints: existingProp?.supportPoints ?? 0,
+            supporterCount: existingProp?.supporterCount ?? 0,
+            targetFundingAmount: existingProp?.targetFundingAmount ?? 100000,
+            likeCount: existingProp?.likeCount ?? 0,
+            commentsCount: existingProp?.commentsCount ?? 0,
+            attachmentUrl: primaryAtt?.url,
+            attachmentName: primaryAtt?.name,
+            attachmentSize: primaryAtt?.size,
+            attachmentMime: primaryAtt?.mime,
+            createdAt: existingProp?.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          saveAllCompetitionProposals(
+            existingProp
+              ? currentProps.map((p) => (p.id === existingProp.id ? updatedPropItem : p))
+              : [updatedPropItem, ...currentProps.filter((p) => p.id !== newPropId)]
+          );
         } catch {}
 
         // 同步寫入舊站痛點專區與對應提案

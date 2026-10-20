@@ -217,7 +217,7 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
     demoUrl: effectiveDemoUrl || undefined,
     referencedPainPoint: effectivePainPoint,
     targetGoal: effectiveTargetGoal,
-    currentVersion: isVibeApp ? currentVersion || 'v1.0.0' : 'v1.0',
+    currentVersion: currentVersion || 'v1.0.0',
     tags: effectiveTags,
   };
 
@@ -1031,9 +1031,8 @@ export const PublishEffectPreviewModal: React.FC<PublishEffectPreviewModalProps>
                     {effectiveDemoUrl && (
                       <VibeCodingEmbedPreview
                         url={effectiveDemoUrl}
-                        externalUrl={externalLink || effectiveDemoUrl}
                         previewMode={previewMode}
-                        title={displayAppName}
+                        title={displayTitle}
                       />
                     )}
 

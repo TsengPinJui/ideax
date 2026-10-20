@@ -38,6 +38,7 @@ import {
   Bot,
   Crown,
   Target,
+  Compass,
   Users,
   Lock,
   Lightbulb,
@@ -49,7 +50,6 @@ import { LEVEL_CONFIGS } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import { IdeaXLogo } from './IdeaXLogo';
 import { PlatformRolesSpectrumView } from './PlatformRolesSpectrumView';
-import { AiArchitectureDiagram } from './AiArchitectureDiagram';
 import { APP_VERSION } from '../data/versionData';
 import { triggerDirectAppDownloadOrInstall, downloadAppLauncherFile } from '../services/pwaInstaller';
 import { getPlatformFaqs } from '../services/customerSupportService';
@@ -132,13 +132,11 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       initialSection === 'other_2' ||
       initialSection === 'other_3' ||
       initialSection === 'other_4' ||
-      initialSection === 'other_5' ||
       initialSection === 'other_roles' ||
       initialSection === 'other_finance' ||
       initialSection === 'other_painpoints' ||
       initialSection === 'other_levels' ||
-      initialSection === 'other_membership' ||
-      initialSection === 'other_ai'
+      initialSection === 'other_membership'
     ) {
       return initialSection;
     }
@@ -175,12 +173,10 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       initialSection === 'other_2' ||
       initialSection === 'other_3' ||
       initialSection === 'other_4' ||
-      initialSection === 'other_5' ||
       initialSection === 'other_roles' ||
       initialSection === 'other_painpoints' ||
       initialSection === 'other_levels' ||
-      initialSection === 'other_membership' ||
-      initialSection === 'other_ai'
+      initialSection === 'other_membership'
     ) {
       setActiveTab('others');
       setSelectedOtherChapterId(initialSection);
@@ -365,13 +361,6 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
       title: '會員方案與權益',
       summary: '達人、權威與大師方案之服務費減免與專屬特權。',
       badge: '會員權益',
-    },
-    {
-      id: 'other_ai',
-      num: '06',
-      title: '智能協同系統',
-      summary: 'AICRM 24hr 雷達&軍師&特助、精準媒合與安全防護。',
-      badge: '智能賦能',
     },
   ];
 
@@ -1886,228 +1875,6 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                       <p className="font-mono font-bold text-stone-900">$1,980/月 或 $19,800/年</p>
                       <p className="text-stone-600 text-[11px]">極低 2% 服務費，98% 實收入帳 ＋ 24hr AI客服特助與 AI-CRM。</p>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 說明 6: AI 智慧引擎賦能與高效協同系統 */}
-              {(selectedOtherChapterId === 'other_ai' || selectedOtherChapterId === 'other_5') && (
-                <div className="p-5 sm:p-7 space-y-6 animate-in fade-in">
-                  {/* Header Title */}
-                  <div className="border-b border-stone-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200 inline-flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                          <span>說明六 • AI 智慧賦能</span>
-                        </span>
-                        <span className="text-[11px] font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md">
-                          全流程生態體系
-                        </span>
-                      </div>
-                      <h3 className="text-base sm:text-xl font-black text-stone-900 mt-2 flex items-center gap-2 tracking-tight">
-                        AI 智慧引擎賦能與高效協同系統
-                      </h3>
-                    </div>
-                    <span className="text-xs text-stone-500 hidden sm:inline-block">
-                      人機協同 • 智能代操 • 交易安全
-                    </span>
-                  </div>
-
-                  {/* 雙引擎高可用無縫備援機制說明框 */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-stone-100 border border-amber-500/30 space-y-1.5">
-                    <div className="flex items-center gap-2 text-xs font-black text-stone-900">
-                      <Zap className="w-4 h-4 text-amber-600" />
-                      <span>雙引擎無縫切換與高可用架構保障</span>
-                    </div>
-                    <p className="text-[11px] sm:text-xs text-stone-700 leading-relaxed">
-                      當 Dify 伺服器發生連線逾時（超過 20 秒）、服務中斷（502/503/404 等異常），系統會立即無縫切換為 Google Gemini 備援引擎 執行推論與分析。不要沒回傳就切換，僅以連線狀態判定，因為有些指令需要多一點時間，確保 24 小時智慧服務零中斷。
-                    </p>
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-                    創點子 IdeaX 打造全方位的 AI Agent 智慧賦能矩陣，為發案提問者、智庫解答專家及交易保障提供精準、高效且安全的人機協同體驗：
-                  </p>
-
-                  {/* 核心架構三大 Agent 與安全防護 */}
-                  <div className="space-y-5">
-                    {/* Agent 1: AICRM 24hr 雷達&軍師&特助 */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-3 shadow-2xs hover:border-amber-300 transition-all">
-                      <div className="flex items-center justify-between gap-2 border-b border-amber-200/60 pb-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black">
-                            <Crown className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <h4 className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-                              <span>1. 💼 AICRM 24hr 雷達&軍師&特助</span>
-                            </h4>
-                            <span className="text-[10px] text-amber-800 font-bold">專屬賦能解答專家 • 拓展商機與智能代操</span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-200 text-stone-900 border border-amber-300 shrink-0">
-                          大師 / 權威方案專屬
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                        <div className="p-3 bg-white/90 rounded-xl border border-amber-100 space-y-1">
-                          <span className="font-bold text-amber-950 block text-[11px] flex items-center gap-1">
-                            <span>📡 24hr 巡航雷達</span>
-                          </span>
-                          <p className="text-stone-600 text-[11px] leading-relaxed">
-                            全天候自動掃描全站待認領與高額懸賞案件，深度分析客戶痛點與成案意向指數 (0~100%)，精準推薦最佳聯繫時段。
-                          </p>
-                        </div>
-
-                        <div className="p-3 bg-white/90 rounded-xl border border-amber-100 space-y-1">
-                          <span className="font-bold text-amber-950 block text-[11px] flex items-center gap-1">
-                            <span>💰 收益試算與提案方針</span>
-                          </span>
-                          <p className="text-stone-600 text-[11px] leading-relaxed">
-                            即時試算大師 (98%) 與權威 (95%) 實收淨利，並自動生成三階段破局切入方針與交付里程碑規劃。
-                          </p>
-                        </div>
-
-                        <div className="p-3 bg-white/90 rounded-xl border border-amber-100 space-y-1">
-                          <span className="font-bold text-amber-950 block text-[11px] flex items-center gap-1">
-                            <span>🤖 24hr 特助代操與破冰</span>
-                          </span>
-                          <p className="text-stone-600 text-[11px] leading-relaxed">
-                            專家離線時由特助自主接待維繫客戶，並根據客戶心理學產出 3 款直擊痛點的破冰話術（沉穩顧問/專業精闢/熱情親和）。
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Agent 2: 市場顧問 Agent */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-purple-50/60 border border-purple-200 space-y-3 shadow-2xs hover:border-purple-300 transition-all">
-                      <div className="flex items-center justify-between gap-2 border-b border-purple-200/60 pb-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-xl bg-purple-900 text-white flex items-center justify-center font-black">
-                            <Scale className="w-4 h-4 text-amber-400" />
-                          </div>
-                          <div>
-                            <h4 className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-                              <span>2. 📊 市場顧問 Agent</span>
-                            </h4>
-                            <span className="text-[10px] text-purple-800 font-bold">精準媒合 • 履約仲裁 • 市場情報</span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200 shrink-0">
-                          全體發案方與智庫標配
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                        <div className="p-3 bg-white/90 rounded-xl border border-purple-100 space-y-1">
-                          <span className="font-bold text-purple-950 block text-[11px] flex items-center gap-1">
-                            <span>🎯 題目分類與標籤萃取</span>
-                          </span>
-                          <p className="text-stone-600 text-[11px] leading-relaxed">
-                            發布問題時即時識別所屬領域、萃取關鍵標籤，並建議合理的懸賞難度等級 (L0~L4) 與市場定價行情。
-                          </p>
-                        </div>
-
-                        <div className="p-3 bg-white/90 rounded-xl border border-purple-100 space-y-1">
-                          <span className="font-bold text-purple-950 block text-[11px] flex items-center gap-1">
-                            <span>🏆 智慧獵頭與專家媒合</span>
-                          </span>
-                          <p className="text-stone-600 text-[11px] leading-relaxed">
-                            根據需求痛點比對智庫專家資歷與評價，主動向契合度最高的實名專家推播題目，大幅縮短等待解答週期。
-                          </p>
-                        </div>
-
-                        <div className="p-3 bg-white/90 rounded-xl border border-purple-100 space-y-1">
-                          <span className="font-bold text-purple-950 block text-[11px] flex items-center gap-1">
-                            <span>⚖️ 爭議調解與雙軌和解書</span>
-                          </span>
-                          <p className="text-stone-600 text-[11px] leading-relaxed">
-                            專案若有驗收爭議，自動調閱原始約定、交付成果與對話紀錄，中立判定責任並產出具約束力之《雙軌和解協議書》。
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Agent 3: 官方客服Agent */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3 shadow-2xs hover:border-stone-300 transition-all">
-                      <div className="flex items-center justify-between gap-2 border-b border-stone-200/80 pb-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-xl bg-stone-800 text-white flex items-center justify-center font-black">
-                            <Bot className="w-4 h-4 text-purple-300" />
-                          </div>
-                          <div>
-                            <h4 className="font-black text-stone-900 text-sm flex items-center gap-1.5">
-                              <span>3. 🤖 官方客服Agent</span>
-                            </h4>
-                            <span className="text-[10px] text-stone-500 font-bold">24hr 全站指引 • 機制 FAQ • 智慧工單升級</span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
-                          全體會員免費即時支援
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                        <div className="p-3 bg-white rounded-xl border border-stone-200 space-y-1">
-                          <span className="font-bold text-stone-900 block text-[11px] flex items-center gap-1">
-                            <span>💬 全站機制與常見問題解答</span>
-                          </span>
-                          <p className="text-stone-600 text-[11px] leading-relaxed">
-                            全天候即時解答第三方價金託管、驗收撥款時程、專家認證審核、儲值與提領流程等各類操作指引。
-                          </p>
-                        </div>
-
-                        <div className="p-3 bg-white rounded-xl border border-stone-200 space-y-1">
-                          <span className="font-bold text-stone-900 block text-[11px] flex items-center gap-1">
-                            <span>🎫 智慧導流與專人工單升級</span>
-                          </span>
-                          <p className="text-stone-600 text-[11px] leading-relaxed">
-                            遇特殊帳務或深層複雜諮詢時，自動整理問題重點並無縫轉交由官方真人客服專案處理，保障服務品質。
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 安全與隱私防火牆 */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-5 h-5 text-emerald-700" />
-                        <h4 className="font-black text-stone-900 text-sm">
-                          4. 🛡️ 雙重隱私與交易安全守護體系
-                        </h4>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                        <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-1">
-                          <span className="font-bold text-emerald-950 block text-[11px]">🔒 私密個資自動遮蔽</span>
-                          <p className="text-stone-600 text-[11px] leading-relaxed">
-                            對話與留言中自動識別並脫敏遮蔽電話、LINE、身分證及銀行帳戶等聯絡方式，防範私下交易衍生詐騙風險。
-                          </p>
-                        </div>
-                        <div className="p-3 bg-white rounded-xl border border-emerald-100 space-y-1">
-                          <span className="font-bold text-emerald-950 block text-[11px]">🤝 人機協同最終把關</span>
-                          <p className="text-stone-600 text-[11px] leading-relaxed">
-                            AI 專注於高效輔助與數據洞察，所有合約簽署、定價授權與資金放款均由用戶與專家親自確認，確保完全掌控權。
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 核心原則與價值理念卡 */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-stone-50 to-amber-50 border border-purple-200/70 space-y-1.5 text-xs text-stone-700">
-                    <div className="flex items-center gap-2 font-black text-stone-900">
-                      <Sparkles className="w-4 h-4 text-purple-600" />
-                      <span>IdeaX 核心理念：以科技賦能專家，用智慧守護交易</span>
-                    </div>
-                    <p className="text-[11px] sm:text-xs text-stone-600 leading-relaxed">
-                      透過 24 小時不間斷的智能代理與人機協同架構，發案者能以最短時間獲得高質量解答，專家能最大化發揮專業商業價值，實現高效、公平且放心的知識協作生態。
-                    </p>
-                  </div>
-
-                  {/* 平台全景架構與 AI/Agent 協同功能圖 */}
-                  <div className="pt-2">
-                    <AiArchitectureDiagram />
                   </div>
                 </div>
               )}

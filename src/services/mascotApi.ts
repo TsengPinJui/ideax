@@ -1,7 +1,7 @@
 import { getAuthHeaders } from './authHeader';
 
-/** 吉祥物：提問（伺服器以內建 AI 分流給三個 Dify 助理）與互動統計 */
-export type MascotAgent = 'cs' | 'market_advisor' | 'aicrm';
+/** 吉祥物：提問（伺服器以內建 AI 分流給 Dify 助理）與互動統計 */
+export type MascotAgent = 'cs' | 'market_advisor' | 'aicrm' | 'explorer';
 
 const VISITOR_KEY = 'ideax_mascot_visitor';
 export function mascotVisitorId(): string {

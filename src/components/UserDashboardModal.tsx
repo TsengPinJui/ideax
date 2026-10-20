@@ -640,7 +640,10 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
   // Sub tab for Questions Management
   const [questionSubTab, setQuestionSubTab] = useState<'my_questions' | 'bookmarked_questions' | 'client_questions'>('my_questions');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(!initialTab || initialTab === 'overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 640) return false;
+    return !initialTab || initialTab === 'overview';
+  });
 
   const [activeTab, setActiveTab] = useState<UserDashboardTab>(() => {
     return initialTab || 'overview';
@@ -672,7 +675,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       }, 150);
     } else if (!initialTab || initialTab === 'overview') {
       setActiveTab('overview');
-      setMobileMenuOpen(true);
+      setMobileMenuOpen(typeof window !== 'undefined' ? window.innerWidth < 640 : true);
     } else {
       setActiveTab(initialTab);
       setMobileMenuOpen(false);

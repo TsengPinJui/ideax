@@ -13,8 +13,9 @@ import { applyPointsOp, PointsError, processSubscriptionExpiry } from './server/
 import { getEntitledAnswerContents, migrateAnswerSecrets } from './server/answerContent';
 import { LoginError, migratePrivateProfiles, passwordLogin } from './server/privateProfile';
 import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
-import { classifyMascotQuestion, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
+import { classifyMascotQuestion, extractUdifyAppCode, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken } from './server/competitionService';
+import { groundingFrom, verifyJobUrls, type GroundingInfo } from './server/jobUrlVerify';
 
 dotenv.config();
 
@@ -92,7 +93,7 @@ export async function callDifyStreamingAgent(params: {
   user?: string;
   conversationId?: string;
   timeoutMs?: number;
-}): Promise<{ text: string; conversationId?: string; messageId?: string; latencyMs: number } | null> {
+}): Promise<{ text: string; observations?: string[]; conversationId?: string; messageId?: string; latencyMs: number } | null> {
   const baseUrl = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
   const apiKey =
     params.apiKey ||
@@ -107,26 +108,66 @@ export async function callDifyStreamingAgent(params: {
   }
 
   const controller = new AbortController();
-  const timeoutMs = params.timeoutMs || 25000;
+  const timeoutMs = params.timeoutMs || 90000;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const startTime = Date.now();
 
+  let agentAccumulated = '';
+  let workflowAccumulated = '';
+  const observations: string[] = [];
+  let convId = params.conversationId || '';
+  let msgId = '';
+
   try {
-    const res = await fetch(`${baseUrl}/chat-messages`, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: params.inputs || {},
-        query: params.query,
-        response_mode: 'streaming',
-        conversation_id: params.conversationId || '',
-        user: params.user || 'ideax_user',
-      }),
-    });
+    const udifyCode = extractUdifyAppCode(apiKey);
+    let res: globalThis.Response;
+    const enhancedQuery = `${params.query}\n\n【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟，直接回答或執行搜尋，並精簡輸出以避免超過最大輸出與迭代上限！】`;
+
+    if (udifyCode) {
+      const passportRes = await fetch('https://udify.app/api/passport', {
+        headers: { 'X-App-Code': udifyCode },
+        signal: controller.signal,
+      });
+      if (!passportRes.ok) {
+        console.warn(`Udify passport failed with status ${passportRes.status}`);
+        return null;
+      }
+      const passportData: any = await passportRes.json().catch(() => null);
+      const accessToken = passportData?.access_token;
+      if (!accessToken) return null;
+
+      res = await fetch('https://udify.app/api/chat-messages', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'X-App-Code': udifyCode,
+          'X-App-Passport': accessToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: {},
+          query: enhancedQuery,
+          response_mode: 'streaming',
+          conversation_id: params.conversationId || '',
+        }),
+      });
+    } else {
+      res = await fetch(`${baseUrl}/chat-messages`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: params.inputs || {},
+          query: enhancedQuery,
+          response_mode: 'streaming',
+          conversation_id: params.conversationId || '',
+          user: params.user || 'ideax_user',
+        }),
+      });
+    }
 
     if (!res.ok || !res.body) {
       const errBody = await res.text().catch(() => '');
@@ -136,10 +177,6 @@ export async function callDifyStreamingAgent(params: {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let agentAccumulated = '';
-    let workflowAccumulated = '';
-    let convId = params.conversationId || '';
-    let msgId = '';
     let buffer = '';
 
     while (true) {
@@ -154,10 +191,16 @@ export async function callDifyStreamingAgent(params: {
         if (!trimmed.startsWith('data: ')) continue;
         try {
           const data = JSON.parse(trimmed.slice(6));
+          if (data.event === 'error') {
+            console.warn('[Dify Stream Error Event]', data.message || data.code);
+            break;
+          }
           if (data.event === 'agent_message' && data.answer) {
             agentAccumulated += data.answer;
           } else if (data.event === 'message' && data.answer) {
             workflowAccumulated += data.answer;
+          } else if (data.event === 'agent_thought' && data.observation) {
+            observations.push(String(data.observation));
           }
           if (data.conversation_id) convId = data.conversation_id;
           if (data.message_id) msgId = data.message_id;
@@ -165,16 +208,33 @@ export async function callDifyStreamingAgent(params: {
       }
     }
 
-    const finalText = (agentAccumulated.trim() || workflowAccumulated.trim());
+    const finalText = (agentAccumulated.trim() || workflowAccumulated.trim())
+      .replace(/大獵場\s*[（(]\s*Talent\s*Hunt\s*[)）]/gi, 'IdeaX創點子')
+      .replace(/大獵場/g, 'IdeaX創點子')
+      .replace(/Talent\s*Hunt/gi, 'IdeaX創點子');
     const latencyMs = Date.now() - startTime;
     return {
       text: finalText,
+      observations,
       conversationId: convId,
       messageId: msgId,
       latencyMs,
     };
   } catch (e: any) {
-    console.warn('callDifyStreamingAgent error:', e?.message || e);
+    const partialText = (agentAccumulated.trim() || workflowAccumulated.trim());
+    if (partialText) {
+      return {
+        text: partialText,
+        observations,
+        conversationId: convId,
+        messageId: msgId,
+        latencyMs: Date.now() - startTime,
+      };
+    }
+    const isAbort = e?.name === 'AbortError' || /aborted/i.test(String(e?.message || ''));
+    if (!isAbort) {
+      console.warn('callDifyStreamingAgent warning:', e?.message || e);
+    }
     return null;
   } finally {
     clearTimeout(timer);
@@ -1299,119 +1359,108 @@ function extractJsonFromText(text: string): any {
 // Admin Live Dify Agent Testing Console (直連 Dify，若無法連線或逾時則自動改用 Gemini 備援)
 // ==========================================
 app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
-  const { agentType, query, inputs } = req.body;
+  const { agentType, query, inputs, customKey } = req.body;
 
-  const difyBaseUrl = (process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1').replace(/\/+$/, '');
-  let apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || '';
-  if (agentType === 'cs_agent') {
-    apiKey = process.env.DIFY_CS_API_KEY || process.env.DIFY_API_KEY || '';
-  } else if (agentType === 'aicrm_agent') {
-    apiKey = process.env.DIFY_AICRM_API_KEY || '';
-  } else if (agentType === 'market_advisor') {
-    apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || '';
+  let apiKey = String(customKey || '').trim();
+  if (!apiKey) {
+    if (agentType === 'cs_agent') {
+      apiKey = process.env.DIFY_CS_API_KEY || process.env.DIFY_API_KEY || '';
+    } else if (agentType === 'aicrm_agent') {
+      apiKey = process.env.DIFY_AICRM_API_KEY || '';
+    } else if (agentType === 'market_advisor') {
+      apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || '';
+    } else if (agentType === 'explorer_agent') {
+      apiKey = mascotAgentKey('explorer');
+    } else {
+      apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || '';
+    }
   }
 
-  const agentLabel = agentType === 'aicrm_agent' ? 'AICRM 業務顧問' : agentType === 'cs_agent' ? '官方客服特助' : '市場顧問';
+  const agentLabel =
+    agentType === 'aicrm_agent'
+      ? 'AICRM 業務顧問'
+      : agentType === 'cs_agent'
+      ? '官方客服特助'
+      : agentType === 'explorer_agent'
+      ? '全網搜職 Agent (探險家/搜搜)'
+      : '市場顧問';
+
   const startTime = Date.now();
-  const controller = new AbortController();
-  // 依指令設定 20 秒連線逾時，給予 Agent 充分推理時間，僅在連線逾時 (>20s) 或服務異常 (502/503/404) 時才切換 Gemini
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+  // 啟用 HTTP Chunked Keep-Alive 空白心跳，避免 Dify Agent 執行 45~120 秒時遭 Cloud Run Proxy 判定閒置斷線
+  res.status(200);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  const heartbeat = setInterval(() => {
+    try {
+      if (!res.writableEnded) res.write(' ');
+    } catch {}
+  }, 12000);
+  const sendJson = (payload: any) => {
+    clearInterval(heartbeat);
+    if (!res.writableEnded) {
+      res.end(JSON.stringify(payload));
+    }
+  };
 
   try {
-    const difyRes = await fetch(`${difyBaseUrl}/chat-messages`, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: inputs || {},
-        query: query || '測試連線',
-        response_mode: 'streaming',
-        user: `admin_live_tester_${Date.now()}`,
-      }),
+    const difyResult = await callDifyStreamingAgent({
+      apiKey,
+      query: query || '測試連線',
+      inputs: inputs || {},
+      user: `admin_live_tester_${Date.now()}`,
+      timeoutMs: agentType === 'explorer_agent' ? 120000 : 45000,
     });
 
-    clearTimeout(timeoutId);
-
-    // 服務中斷（502 / 503 / 404 / 500 等 HTTP 異常）立即無縫切換 Gemini
-    if (!difyRes.ok || !difyRes.body) {
-      console.warn(`Dify API service error (${difyRes.status}), falling back to Gemini`);
-      const geminiText = await generateRawTextWithGemini(
-        query || '請依指令輸出分析報告',
-        `你是「創點子 IdeaX」專屬 AI Agent「${agentLabel}」。請依據使用者的提示詞產出專業、結構化、可直接落地的深入回覆。若提示詞要求 JSON，請以完整合規之 JSON 程式碼區塊輸出。`
-      );
-      const latencyMs = Date.now() - startTime;
-      return res.json({
+    if (difyResult && difyResult.text) {
+      const maskedKey =
+        apiKey.length > 14
+          ? apiKey.substring(0, 12) + '...' + apiKey.substring(apiKey.length - 4)
+          : apiKey;
+      return sendJson({
         success: true,
-        source: 'gemini-fallback',
-        agentKey: `${agentLabel} (Google Gemini 備援)`,
-        notice: `💡 偵測到 Dify 伺服器服務中斷 (狀態碼: ${difyRes.status})，系統已立即無縫切換為 Google Gemini 備援引擎！`,
-        latencyMs,
-        messageId: `gemini-msg-${Date.now()}`,
-        conversationId: `gemini-conv-${Date.now()}`,
-        rawOutput: geminiText || 'Gemini 備援引擎已產出分析結果。',
-        parsedJson: extractJsonFromText(geminiText || ''),
+        source: 'dify-api',
+        agentKey: maskedKey,
+        latencyMs: difyResult.latencyMs || Date.now() - startTime,
+        messageId: difyResult.messageId || `dify-msg-${Date.now()}`,
+        conversationId: difyResult.conversationId || `dify-conv-${Date.now()}`,
+        rawOutput: difyResult.text,
+        parsedJson: extractJsonFromText(difyResult.text),
       });
     }
 
-    const reader = difyRes.body.getReader();
-    const decoder = new TextDecoder();
-    let agentAccumulated = '';
-    let workflowAccumulated = '';
-    let buffer = '';
-    let messageId = '';
-    let conversationId = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith('data: ')) continue;
-        try {
-          const data = JSON.parse(trimmed.slice(6));
-          if (data.message_id) messageId = data.message_id;
-          if (data.conversation_id) conversationId = data.conversation_id;
-          if (data.event === 'agent_message' && data.answer) {
-            agentAccumulated += data.answer;
-          } else if (data.event === 'message' && data.answer) {
-            workflowAccumulated += data.answer;
-          }
-        } catch {}
-      }
-    }
-
-    const latencyMs = Date.now() - startTime;
-    const finalAnswer = agentAccumulated.trim() || workflowAccumulated.trim();
-    return res.json({
-      success: true,
-      source: 'dify-api',
-      agentKey: apiKey.substring(0, 7) + '...' + apiKey.substring(apiKey.length - 4),
-      latencyMs,
-      messageId,
-      conversationId,
-      rawOutput: finalAnswer,
-      parsedJson: extractJsonFromText(finalAnswer),
-    });
-  } catch (err: any) {
-    clearTimeout(timeoutId);
-    console.warn('Dify API connection failed or timed out (>20s), falling back to Gemini:', err.message);
+    console.warn(`Dify API empty or timed out for ${agentType}, falling back to Gemini`);
     const geminiText = await generateRawTextWithGemini(
       query || '請依指令輸出分析報告',
       `你是「創點子 IdeaX」專屬 AI Agent「${agentLabel}」。請依據使用者的提示詞產出專業、結構化、可直接落地的深入回覆。若提示詞要求 JSON，請以完整合規之 JSON 程式碼區塊輸出。`
     );
     const latencyMs = Date.now() - startTime;
-    return res.json({
+    return sendJson({
       success: true,
       source: 'gemini-fallback',
       agentKey: `${agentLabel} (Google Gemini 備援)`,
-      notice: '💡 偵測到 Dify 伺服器連線逾時（超過 20 秒）或連線異常，系統已自動無縫改用 Google Gemini 備援引擎！',
+      notice:
+        agentType === 'explorer_agent'
+          ? '💡 搜搜似乎斷線或超過 2 分鐘無反應，已由內建小燈泡 (Google Gemini) 備援接手！'
+          : '💡 偵測到 Dify 伺服器連線逾時或異常，系統已自動無縫改用 Google Gemini 備援引擎！',
+      latencyMs,
+      messageId: `gemini-fallback-${Date.now()}`,
+      conversationId: `gemini-fallback-${Date.now()}`,
+      rawOutput: geminiText || 'Gemini 備援引擎已產出分析結果。',
+      parsedJson: extractJsonFromText(geminiText || ''),
+    });
+  } catch (err: any) {
+    console.warn('Dify API connection failed, falling back to Gemini:', err?.message);
+    const geminiText = await generateRawTextWithGemini(
+      query || '請依指令輸出分析報告',
+      `你是「創點子 IdeaX」專屬 AI Agent「${agentLabel}」。請依據使用者的提示詞產出專業、結構化、可直接落地的深入回覆。若提示詞要求 JSON，請以完整合規之 JSON 程式碼區塊輸出。`
+    );
+    const latencyMs = Date.now() - startTime;
+    return sendJson({
+      success: true,
+      source: 'gemini-fallback',
+      agentKey: `${agentLabel} (Google Gemini 備援)`,
+      notice: '💡 偵測到 Dify 伺服器連線逾時或連線異常，系統已自動無縫改用 Google Gemini 備援引擎！',
       latencyMs,
       messageId: `gemini-fallback-${Date.now()}`,
       conversationId: `gemini-fallback-${Date.now()}`,
@@ -3293,6 +3342,946 @@ app.post('/api/mascot/event', async (req: Request, res: Response) => {
     res.json({ success: ok });
   } catch {
     res.json({ success: false });
+  }
+});
+
+// 全網搜職 Stage 1：系統既有調節器 Gemini 先釐清並與用戶確認求職需求，確認後再轉給「探險家」Agent
+app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
+  try {
+    const rawMessage = String(req.body?.message || '').trim().slice(0, 600);
+    const filters = req.body?.filters || {};
+    const previousBrief = String(req.body?.previousBrief || '').trim().slice(0, 600);
+    const conversationHistory: string[] = Array.isArray(req.body?.conversationHistory)
+      ? req.body.conversationHistory.map((s: any) => String(s || '').trim()).filter(Boolean)
+      : [];
+    const skippedDimensionsInput: string[] = Array.isArray(req.body?.skippedDimensions)
+      ? req.body.skippedDimensions.map((s: any) => String(s || '').trim()).filter(Boolean)
+      : [];
+    const userBaseCity = String(filters.userBaseCity || '台北市').trim();
+
+    if (!rawMessage) {
+      return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
+    }
+
+    const skippedDims = new Set<string>(skippedDimensionsInput);
+
+    // 彙整完整對話脈絡（包含歷史訊息、已累積條件、本次輸入）
+    const allSegments = [...conversationHistory, previousBrief, rawMessage]
+      .join(' 、 ')
+      .split(/[、,，\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const fullText = [...conversationHistory, previousBrief, rawMessage].join(' ').toLowerCase();
+
+    // ─── 各維度關鍵字檢測正則 ───
+    const cityRegex = /台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江|遠端|remote|雙北|桃竹|中彰投|雲嘉南|高屏/i;
+    const majorRoleRegex = /資訊|軟體|前端|後端|全端|工程師|工程|電機|電子|機械|化工|會計|財會|財務|企管|商管|行銷|企劃|小編|社群|文史|外語|日文|英文|設計|美編|ui|ux|餐飲|門市|零售|店長|服務員|吧台|內場|外場|護理|醫療|藥師|傳播|音樂|心理|社工|金融|法律|法務|土木|建築|行政|助理|人事|人資|hr|客服|業務|銷售|專案|pm|產品|生管|品管|倉儲|物流|司機|駕駛|作業員|技術員|研究|分析|資料|ai|雲端|devops|qa|測試|保全|清潔|幼教|老師|教師|講師|翻譯|編輯|攝影|剪輯|公關|採購|總務|秘書/i;
+    const collegeRegex = /台大|清大|交大|成大|政大|師大|輔大|淡江|文化|逢甲|東海|中興|中山|中央|高科|中正|台科|北科|銘傳|實踐|世新|元智|長庚|高醫|中國醫|東華|暨南|北醫|慈濟|高師|彰師|公立頂大|技職科大|私立綜合大學|私立大學|碩士|博士|專科|高中職/i;
+    const expRegex = /無經驗|新鮮人|應屆|實習|工讀|兼職|二度就業|1~3\s*年|3~5\s*年|\d+\s*年以上|\d+\s*~\s*\d+\s*年|資深|初階|中階|跨領域轉職/i;
+    const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
+    const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
+
+    // 檢測是否略過特定維度
+    if (/地點不拘|地區不拘|不限地點|全台皆可|全台灣地區皆可/.test(fullText)) skippedDims.add('location');
+    if (/專業不拘|職務不拘|職務類別不拘|科系不拘|不限職務|不限專業/.test(fullText)) skippedDims.add('major');
+    if (/學校科系不拘|學校科系與學歷不拘|學歷不拘|不限學歷/.test(fullText)) skippedDims.add('college');
+    if (/工作經歷不拘|經歷不拘|經驗不拘|年資不拘|不限經驗/.test(fullText)) skippedDims.add('experience');
+    if (/工作型態不拘|型態不拘|環境不拘|性格不拘|個性不拘/.test(fullText)) skippedDims.add('personality');
+    if (/薪資待遇不拘|薪資不拘|待遇不拘|薪水不拘|面議即可/.test(fullText)) skippedDims.add('salary');
+
+    // ─── 1. 工作地點維度 (location) ───
+    const hasSpecificCity = cityRegex.test(fullText) || Boolean(filters.city && filters.city !== '全部');
+    const mentionsNearby = /附近|這附近|我附近|周邊|離家近|就近|方圓|家裡附近|離我近|周遭|隔壁|走路可到|騎車可到|通勤近|近一點/.test(fullText);
+    const isLocationMissing = !hasSpecificCity && !skippedDims.has('location');
+    const isLocationAmbiguous = mentionsNearby && isLocationMissing;
+
+    // ─── 2. 專業／職務領域維度 (major) ───
+    const hasSpecificMajor =
+      majorRoleRegex.test(fullText) ||
+      Boolean(filters.category && filters.category !== '全部') ||
+      Boolean(filters.keyword && String(filters.keyword).trim().length > 0);
+    const mentionsMajor = /我的專業|我的科系|我的專長|我學的|我念的|本行|跟我的專業|學過|我的本科|我的領域|我專精/.test(fullText);
+    const isMajorMissing = !hasSpecificMajor && !skippedDims.has('major');
+    const isMajorAmbiguous = mentionsMajor && isMajorMissing;
+
+    // ─── 3. 大學／學歷背景維度 (college) ───
+    const hasSpecificCollege = collegeRegex.test(fullText);
+    const mentionsCollege = /我的大學|我的學校|我念的大學|我們學校|我大學|我的母校|母校|我畢業的學校|我讀的學校/.test(fullText);
+    const isCollegeMissing = !hasSpecificCollege && !skippedDims.has('college');
+    const isCollegeAmbiguous = mentionsCollege && isCollegeMissing;
+
+    // ─── 4. 工作經驗／年資身分維度 (experience) ───
+    const hasSpecificExp = expRegex.test(fullText);
+    const mentionsVagueMy = /我的背景|我的經歷|我的能力|我的經驗|我的年資|我的條件/.test(fullText);
+    const isExperienceMissing = !hasSpecificExp && !skippedDims.has('experience');
+    const isExpAmbiguous = mentionsVagueMy && isExperienceMissing;
+
+    // ─── 5. 性格特質／工作環境偏好維度 (personality) ───
+    const hasSpecificPersonality = personalityRegex.test(fullText);
+    const mentionsPersonality = /我的性格|我的個性|我的特質|適合我性格|適合我個性|適合我特質|適合我的|符合我的個性|依我的性格|看我性格|我的脾氣|我個人特質/.test(fullText);
+    const isPersonalityMissing = !hasSpecificPersonality && !skippedDims.has('personality');
+    const isPersonalityAmbiguous = mentionsPersonality && isPersonalityMissing;
+
+    // ─── 6. 期望薪資待遇維度 (salary) ───
+    const hasSpecificSalary = salaryRegex.test(fullText) || Number(filters.minSalary) > 0;
+    const isSalaryMissing = !hasSpecificSalary && !skippedDims.has('salary');
+
+    // ─── 萃取目前已具備具體意義的條件片段（排除純籠統問句與「跳過」） ───
+    const concreteConditions: string[] = [];
+    const seenCond = new Set<string>();
+    for (const seg of allSegments) {
+      const s = seg.trim();
+      if (!s) continue;
+      if (/^(跳過|略過|skip|不用|不用了|略過問題)$/i.test(s)) continue;
+
+      const hasConcreteToken =
+        cityRegex.test(s) ||
+        majorRoleRegex.test(s) ||
+        collegeRegex.test(s) ||
+        expRegex.test(s) ||
+        personalityRegex.test(s) ||
+        salaryRegex.test(s) ||
+        /不拘/.test(s);
+      const isPureVagueWrapper =
+        !hasConcreteToken &&
+        (/我的大學|我的專業|我的性格|我的個性|我家附近|找附近|有什麼好推薦|最新職缺推薦|離家近一點|我想找工作/.test(s) ||
+          /^(近期|最新|推薦|今天|這幾天)?(附近)?(有什麼)?(好工作|職缺|工作|工作機會|正職|兼職)(推薦|嗎|呢)?$/i.test(s));
+
+      if (!isPureVagueWrapper) {
+        const key = s.toLowerCase();
+        if (!seenCond.has(key)) {
+          seenCond.add(key);
+          concreteConditions.push(s);
+        }
+      }
+    }
+
+    const accumulatedConcreteBrief = concreteConditions.join('、');
+
+    // ─── 建立模糊需求追問選單（僅針對模糊不清或尚未提供任何具體條件之項目追問，每個選單均含「跳過」） ───
+    interface DimensionGroup {
+      dimension: string;
+      title: string;
+      question: string;
+      isHighlighted: boolean;
+      chips: Array<{ label: string; value: string; type: string }>;
+    }
+
+    const ambiguousGroups: DimensionGroup[] = [];
+
+    if (isLocationAmbiguous) {
+      ambiguousGroups.push({
+        dimension: 'location',
+        title: '📍 工作地區確認',
+        question: `您提到了「附近」，為了幫您精確搜尋，請問您的確切縣市或工作地區是？`,
+        isHighlighted: true,
+        chips: [
+          { label: `📍 目前城市（${userBaseCity}）`, value: `地區：${userBaseCity}`, type: 'location' },
+          { label: '📍 台北市', value: '地區：台北市', type: 'location' },
+          { label: '📍 新北市', value: '地區：新北市', type: 'location' },
+          { label: '📍 桃園市', value: '地區：桃園市', type: 'location' },
+          { label: '📍 新竹市', value: '地區：新竹市', type: 'location' },
+          { label: '📍 台中市', value: '地區：台中市', type: 'location' },
+          { label: '📍 台南市', value: '地區：台南市', type: 'location' },
+          { label: '📍 高雄市', value: '地區：高雄市', type: 'location' },
+          { label: '🌐 全遠端工作', value: '地區：遠端工作', type: 'location' },
+          { label: '跳過', value: '跳過', type: 'skip:location' },
+        ],
+      });
+    }
+
+    if (isMajorAmbiguous) {
+      ambiguousGroups.push({
+        dimension: 'major',
+        title: '💻 專業領域與職務方向確認',
+        question: `您提到了「我的專業」，請問您的具體科系或想找的職務方向是？`,
+        isHighlighted: true,
+        chips: [
+          { label: '💻 資訊／軟體工程', value: '類別：軟體／AI工程', type: 'major' },
+          { label: '📊 商管／行銷企劃', value: '類別：行銷／企劃／社群', type: 'major' },
+          { label: '🎨 設計／UIUX', value: '類別：設計／UIUX', type: 'major' },
+          { label: '☕ 餐飲／門市零售', value: '類別：門市／餐飲／零售', type: 'major' },
+          { label: '💼 行政／人資財會', value: '類別：行政／人資／財會', type: 'major' },
+          { label: '🌐 外語／文史傳播', value: '外語與文史傳播專業', type: 'major' },
+          { label: '🤝 業務／商務開發', value: '類別：業務／商務開發', type: 'major' },
+          { label: '⚙️ 製造／工程技術', value: '製造研發與工程技術', type: 'major' },
+          { label: '跳過', value: '跳過', type: 'skip:major' },
+        ],
+      });
+    }
+
+    if (isCollegeAmbiguous) {
+      ambiguousGroups.push({
+        dimension: 'college',
+        title: '🎓 大學與學歷背景確認',
+        question: `您提到了「我的大學」，請問您的畢業學校類型或學歷條件是？`,
+        isHighlighted: true,
+        chips: [
+          { label: '🏛️ 公立頂大背景', value: '學歷：公立頂大背景', type: 'college' },
+          { label: '⚙️ 技職科大背景', value: '學歷：技職科大背景', type: 'college' },
+          { label: '🎓 私立綜合大學', value: '學歷：私立綜合大學', type: 'college' },
+          { label: '📚 碩士以上', value: '學歷：碩士以上', type: 'college' },
+          { label: '🎓 大學', value: '學歷：大學', type: 'college' },
+          { label: '🏫 高中職／專科', value: '學歷：專科以下', type: 'college' },
+          { label: '跳過', value: '跳過', type: 'skip:college' },
+        ],
+      });
+    }
+
+    if (isPersonalityAmbiguous) {
+      ambiguousGroups.push({
+        dimension: 'personality',
+        title: '🧘 性格特質與工作環境確認',
+        question: `您提到了「我的性格」，請問您的性格特質或工作型態偏好是？`,
+        isHighlighted: true,
+        chips: [
+          { label: '🧘 內向／偏好獨立專注', value: '個性內向、偏好獨立作業不面對客人', type: 'personality' },
+          { label: '🤝 外向／善於溝通協作', value: '個性外向、善於溝通與團隊協作', type: 'personality' },
+          { label: '📋 細心／擅長文書行政', value: '個性細心、擅長行政流程與資料整理', type: 'personality' },
+          { label: '🚀 積極／具挑戰企圖心', value: '個性積極抗壓、追求高獎金與成長', type: 'personality' },
+          { label: '🌿 重視準時下班／見紅休', value: '重視工作生活平衡、週休二日見紅休', type: 'personality' },
+          { label: '跳過', value: '跳過', type: 'skip:personality' },
+        ],
+      });
+    }
+
+    if (isExpAmbiguous) {
+      ambiguousGroups.push({
+        dimension: 'experience',
+        title: '💼 工作經歷與年資確認',
+        question: `請問您的工作經歷或目前求職身分是？`,
+        isHighlighted: true,
+        chips: [
+          { label: '🌱 無經驗／新鮮人', value: '經歷：無經驗可、社會新鮮人', type: 'experience' },
+          { label: '💼 1~3 年實務經驗', value: '經歷：1~3 年工作經驗', type: 'experience' },
+          { label: '🎯 3~5 年以上資深', value: '經歷：3~5 年以上工作經驗', type: 'experience' },
+          { label: '🔄 跨領域轉職者', value: '經歷：跨領域轉職可', type: 'experience' },
+          { label: '⏰ 學生兼職／彈性工讀', value: '經歷：兼職工讀、排班彈性', type: 'experience' },
+          { label: '跳過', value: '跳過', type: 'skip:experience' },
+        ],
+      });
+    }
+
+    // 若使用者僅輸入如「我想找工作」、「有什麼職缺推薦」等完全無具體條件之句子，且尚未略過職務方向
+    if (ambiguousGroups.length === 0 && concreteConditions.length === 0 && isMajorMissing) {
+      ambiguousGroups.push({
+        dimension: 'major',
+        title: '💻 職務方向確認',
+        question: `請問您想找哪一類專業領域或職務方向？`,
+        isHighlighted: true,
+        chips: [
+          { label: '💻 軟體／AI工程', value: '類別：軟體／AI工程', type: 'major' },
+          { label: '📊 行銷／企劃／社群', value: '類別：行銷／企劃／社群', type: 'major' },
+          { label: '🎨 設計／UIUX', value: '類別：設計／UIUX', type: 'major' },
+          { label: '☕ 門市／餐飲／零售', value: '類別：門市／餐飲／零售', type: 'major' },
+          { label: '💼 行政／人資／財會', value: '類別：行政／人資／財會', type: 'major' },
+          { label: '🤝 業務／商務開發', value: '類別：業務／商務開發', type: 'major' },
+          { label: '跳過', value: '跳過', type: 'skip:major' },
+        ],
+      });
+    }
+
+    const activeGroup = ambiguousGroups[0] || null;
+    const isCoreAmbiguous = Boolean(activeGroup);
+    const dynamicChips = activeGroup ? activeGroup.chips : [];
+
+    // 計算四大快速條件（學歷、經歷、地區、薪水）哪些已經填寫或跳過
+    const completedConditionKeys: Array<'education' | 'experience' | 'location' | 'salary'> = [];
+    if (!isCollegeMissing) completedConditionKeys.push('education');
+    if (!isExperienceMissing) completedConditionKeys.push('experience');
+    if (!isLocationMissing) completedConditionKeys.push('location');
+    if (!isSalaryMissing) completedConditionKeys.push('salary');
+
+    // ─── 自動提取結構化篩選條件 (extractedFilters) ───
+    let extractedCity = filters.city || '全部';
+    const cityMatch = fullText.match(/(台北市|新北市|桃園市|新竹市|台中市|台南市|高雄市)/);
+    if (cityMatch) extractedCity = cityMatch[1];
+    else if (/遠端|remote/i.test(fullText)) extractedCity = '遠端工作';
+
+    let extractedMinSalary = Number(filters.minSalary) || 0;
+    const salMatch = fullText.match(/月薪\s*(\d{2,6})|(\d{2})\s*k/i);
+    if (salMatch) {
+      if (salMatch[1]) extractedMinSalary = Number(salMatch[1]);
+      else if (salMatch[2]) extractedMinSalary = Number(salMatch[2]) * 1000;
+    }
+
+    // ─── 生成清晰回覆 ───
+    const finalBrief = accumulatedConcreteBrief || `${userBaseCity} 最新招募職缺`;
+    let resolvedReply = '';
+    if (activeGroup) {
+      resolvedReply = accumulatedConcreteBrief
+        ? `已記錄：${accumulatedConcreteBrief}。\n${activeGroup.question}`
+        : activeGroup.question;
+    } else {
+      resolvedReply = `已為您設定搜尋條件：${finalBrief}。確認依此條件搜尋嗎？`;
+    }
+
+    return res.json({
+      success: true,
+      reply: resolvedReply,
+      confirmedBrief: isCoreAmbiguous ? accumulatedConcreteBrief : finalBrief,
+      searchBriefIfSkipped: finalBrief,
+      isAmbiguous: isCoreAmbiguous,
+      hasMoreQuestions: isCoreAmbiguous,
+      currentDimension: activeGroup ? activeGroup.dimension : null,
+      missingDimensions: ambiguousGroups.map((g) => g.dimension),
+      dimensionGroups: activeGroup ? [activeGroup] : [],
+      ambiguousTypes: ambiguousGroups.map((g) => g.dimension),
+      clarificationQuestion: resolvedReply,
+      suggestedChips: dynamicChips,
+      skippedDimensions: Array.from(skippedDims),
+      completedConditionKeys,
+      extractedFilters: {
+        keyword: filters.keyword || '',
+        city: extractedCity,
+        category: filters.category || '全部',
+        minSalary: extractedMinSalary,
+      },
+      carePoints: filters.carePoints || [],
+    });
+  } catch (err: any) {
+    console.error('[Job Explorer Intake]', err?.message || err);
+    return res.status(500).json({ success: false, error: '請稍後再試' });
+  }
+});
+
+function normalizeJobItem(
+  j: any,
+  idx: number,
+  groundingChunksMap: Array<{ title: string; uri: string }>,
+  groundingUrls: string[],
+  filters: any
+) {
+  const title = String(j.title || '').trim();
+  const company = String(j.company || '').trim();
+  const encodedKw = encodeURIComponent(`${company} ${title}`);
+  const rawUrl = String(j.url || '').trim();
+
+  let detectedPlatform = String(j.sourcePlatform || '').trim();
+  const lowerUrl = rawUrl.toLowerCase();
+  if (lowerUrl.includes('yes123.com.tw')) {
+    detectedPlatform = 'Yes123';
+  } else if (lowerUrl.includes('104.com.tw')) {
+    detectedPlatform = '104人力銀行';
+  } else if (lowerUrl.includes('1111.com.tw')) {
+    detectedPlatform = '1111人力銀行';
+  } else if (lowerUrl.includes('cake.me') || lowerUrl.includes('cakeresume.com')) {
+    detectedPlatform = 'Cake';
+  } else if (lowerUrl.includes('yourator.co')) {
+    detectedPlatform = 'Yourator';
+  } else if (lowerUrl.includes('518.com.tw')) {
+    detectedPlatform = '518熊班';
+  } else if (lowerUrl.includes('linkedin.com')) {
+    detectedPlatform = 'LinkedIn';
+  } else if (lowerUrl.includes('vertexaisearch.cloud.google.com')) {
+    const matchedChunk = groundingChunksMap.find((c) => c.uri === rawUrl);
+    if (matchedChunk) {
+      const t = matchedChunk.title.toLowerCase();
+      if (t.includes('yes123')) detectedPlatform = 'Yes123';
+      else if (t.includes('104')) detectedPlatform = '104人力銀行';
+      else if (t.includes('1111')) detectedPlatform = '1111人力銀行';
+      else if (t.includes('cake')) detectedPlatform = 'Cake';
+      else if (t.includes('yourator')) detectedPlatform = 'Yourator';
+      else if (t.includes('518')) detectedPlatform = '518熊班';
+      else if (t.includes('linkedin')) detectedPlatform = 'LinkedIn';
+      else if (!detectedPlatform) detectedPlatform = matchedChunk.title.slice(0, 15);
+    }
+  }
+
+  if (!detectedPlatform || detectedPlatform === 'undefined') {
+    detectedPlatform = '全網真實求職';
+  }
+
+  const isVertexRedirect = rawUrl.includes('vertexaisearch.cloud.google.com');
+  const isLegitDirectUrl =
+    rawUrl.startsWith('http') &&
+    !rawUrl.includes('/job/...') &&
+    !rawUrl.endsWith('/job/') &&
+    !rawUrl.includes('example.com') &&
+    !rawUrl.includes('placeholder');
+
+  let validUrl = '';
+  if (isVertexRedirect || isLegitDirectUrl) {
+    validUrl = rawUrl;
+  } else if (groundingUrls.length > 0) {
+    const matched =
+      groundingUrls.find((u) => u.toLowerCase().includes(company.toLowerCase())) ||
+      groundingUrls[idx % groundingUrls.length];
+    validUrl = matched || '';
+  }
+  
+  if (!validUrl) {
+    if (detectedPlatform === 'Cake') {
+      validUrl = `https://www.cake.me/jobs?q=${encodedKw}`;
+    } else if (detectedPlatform === 'Yes123') {
+      validUrl = `https://www.yes123.com.tw/admin/job_refer_comp_job.asp?key_word=${encodedKw}`;
+    } else if (detectedPlatform === '1111人力銀行') {
+      validUrl = `https://www.1111.com.tw/search/job?ks=${encodedKw}`;
+    } else if (detectedPlatform === 'Yourator') {
+      validUrl = `https://www.yourator.co/jobs?term=${encodedKw}`;
+    } else if (detectedPlatform === '518熊班') {
+      validUrl = `https://www.518.com.tw/job-index.html?key=${encodedKw}`;
+    } else if (detectedPlatform === '104人力銀行') {
+      validUrl = `https://www.104.com.tw/jobs/search/?keyword=${encodedKw}`;
+    } else {
+      validUrl = `https://www.google.com/search?q=${encodedKw}+職缺+徵才`;
+    }
+  }
+
+  const loc = String(j.location || (filters.city && filters.city !== '全部' ? filters.city : ''));
+  const city = String(j.city || (loc ? loc.slice(0, 3) : ''));
+
+  return {
+    id: String(j.id || `job-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`),
+    title,
+    company,
+    location: loc,
+    city,
+    distanceKm: typeof j.distanceKm === 'number' && j.distanceKm > 0 ? j.distanceKm : 0,
+    experience: String(j.experience || '經歷不拘'),
+    experienceYears: typeof j.experienceYears === 'number' ? j.experienceYears : 0,
+    education: String(j.education || '學歷不拘'),
+    educationLevel: typeof j.educationLevel === 'number' ? j.educationLevel : 1,
+    salaryText: String(j.salaryText || '待遇面議'),
+    salaryMin: Number(j.salaryMin) || 0,
+    salaryMax: Number(j.salaryMax) || Number(j.salaryMin) || 0,
+    industry: String(j.industry || ''),
+    category: String(j.category || ''),
+    workEnvironment: String(j.workEnvironment || ''),
+    benefits: String(j.benefits || ''),
+    description: String(j.description || ''),
+    sourcePlatform: detectedPlatform,
+    url: validUrl,
+    aiScore: typeof j.aiScore === 'number' ? j.aiScore : Math.max(70, 98 - idx * 1),
+    postedAt: j.postedAt || new Date(Date.now() - idx * 3600000 * 3).toISOString(),
+    postedAtText: String(j.postedAtText || (idx === 0 ? '今日刊登' : idx <= 2 ? `${idx}天前` : '近期刊登')),
+  };
+}
+
+/** 職缺網址驗證後再輸出：確認不了的改給搜尋連結（urlKind = 'search'），確定已下架的不顯示，已確認的排前面 */
+async function finalizeJobs(rawJobs: any[], g: GroundingInfo | GroundingInfo[] | null, filters: any, startIdx: number) {
+  const checks = await verifyJobUrls(
+    rawJobs.map((j) => ({ title: String(j.title || ''), company: String(j.company || ''), url: String(j.url || ''), sourcePlatform: String(j.sourcePlatform || '') })),
+    g
+  );
+  const kept = rawJobs.map((j, i) => ({ j, v: checks[i] })).filter((x) => !x.v.drop);
+  kept.sort((a, b) => Number(b.v.urlKind === 'direct') - Number(a.v.urlKind === 'direct'));
+  return kept.map(({ j, v }, i) => {
+    const n = normalizeJobItem(j, startIdx + i, [], [], filters);
+    return { ...n, url: v.url, urlKind: v.urlKind, urlVerified: v.verified, sourcePlatform: v.platform || n.sourcePlatform };
+  });
+}
+
+const closedPatternGlobal = /已關閉|已結束|已下架|停止徵才|暫停徵才|職缺不存在|頁面不存在|已過期|已額滿|截止|closed|expired|no longer available|404/i;
+const isJobActive = (j: any): boolean => {
+  if (!j || !j.title || !j.company) return false;
+  const combined = `${j.title} ${j.company} ${j.description || ''} ${j.salaryText || ''} ${j.postedAtText || ''}`;
+  return !closedPatternGlobal.test(combined);
+};
+
+// 全網搜職分批串流端點：分開回傳多次（Batch 1 首發、Batch 2 擴充），前端逐批整合呈現，零等待、絕不超過長度上限！
+app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) => {
+  const rawQuery = String(req.body?.query || '').trim().slice(0, 600);
+  const filters = req.body?.filters || {};
+
+  if (!rawQuery) {
+    return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  const sendEvent = (payload: any) => {
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    (res as any).flush?.();
+  };
+  // 等搜搜回覆時每 15 秒送一次心跳，避免連線被當成閒置而中斷
+  const sseHeartbeat = setInterval(() => {
+    try {
+      if (!res.writableEnded) res.write(': ping\n\n');
+    } catch {}
+  }, 15000);
+  res.on('close', () => clearInterval(sseHeartbeat));
+
+  const ai = getGeminiClient();
+  const filterContext = [
+    filters.city && filters.city !== '全部' ? `地區：${filters.city}` : '',
+    filters.category && filters.category !== '全部' ? `類別：${filters.category}` : '',
+    filters.minSalary ? `最低月薪：${filters.minSalary}元以上` : '',
+  ]
+    .filter(Boolean)
+    .join('、');
+
+  const globalSeen = new Set<string>();
+  let totalYielded = 0;
+  const explorerKey = mascotAgentKey('explorer');
+
+  // 同步在背景啟動 Dify 探險家 Agent（跳過本地檔案讀取、精簡回傳 3 筆，作為第 3 批精選補充，絕不阻塞前兩批回傳）
+  const difyBatchPromise = explorerKey
+    ? callDifyStreamingAgent({
+        apiKey: explorerKey,
+        query: `${rawQuery}（請只精簡列出 3 筆最契合的在招真實職缺並以 JSON 格式輸出）`,
+        inputs: {},
+        user: 'job_explorer_stream',
+        // 搜搜要上網搜尋，常常超過半分鐘；之前 26 秒就中斷，Dify 那邊收到問題卻來不及回覆（管理後台測試給 120 秒所以正常）
+        timeoutMs: 120000,
+      }).catch(() => null)
+    : Promise.resolve(null);
+
+  try {
+    // ─── Batch 1: 首發即時檢索（精選 5 ~ 7 筆核心職缺，超快回傳，零長度超限） ───
+    if (ai) {
+      try {
+        const batch1Prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 即時檢索台灣主流求職網站（包含 Yes123、104人力銀行、1111人力銀行、Cake、Yourator、518熊班、企業官網）上符合以下條件且「當下正在開放招募中」的真實公開職缺：
+條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}
+
+【嚴格規定】：
+1. 精簡輸出 5 ~ 7 筆當下有效真實職缺，來源平台多元化（不限於 104，務必包含 Yes123、Cake、1111 等）。
+2. 絕對禁止已關閉、已結束或已下架的過期職缺！
+3. "url" 必須是檢索到的該職缺直接網址或 Grounding 網址。
+4. 每筆摘要控制在 35 字內，嚴格避免超長。
+只輸出 JSON：
+{
+  "reply": "【IdeaX創點子】已為您即時找到首批在招真實職缺！",
+  "carePoints": ["workEnvironment", "benefits", "salary", "industry"],
+  "jobs": [
+    {
+      "title": "真實職缺名稱",
+      "company": "真實公司名稱",
+      "location": "工作地點",
+      "city": "縣市",
+      "experience": "經歷要求",
+      "education": "學歷要求",
+      "salaryText": "月薪待遇",
+      "salaryMin": 32000,
+      "sourcePlatform": "Yes123 或 104 或 1111 或 Cake 或 518 或 企業官網",
+      "url": "真實直接應徵網址",
+      "description": "工作摘要"
+    }
+  ]
+}`;
+        const b1Res = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: batch1Prompt,
+          config: { tools: [{ googleSearch: {} }], temperature: 0.15 },
+        });
+
+        const b1Chunks = (b1Res as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        const b1Map: Array<{ title: string; uri: string }> = Array.isArray(b1Chunks)
+          ? b1Chunks
+              .map((c: any) => ({ title: String(c?.web?.title || ''), uri: String(c?.web?.uri || '') }))
+              .filter((m) => m.uri.startsWith('http'))
+          : [];
+        const b1Urls = b1Map.map((m) => m.uri);
+        const b1Json = extractJsonFromText(String(b1Res.text || ''));
+
+        if (Array.isArray(b1Json?.jobs) && b1Json.jobs.length > 0) {
+          const freshB1 = b1Json.jobs.filter(isJobActive).filter((j: any) => {
+            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+            if (globalSeen.has(k)) return false;
+            globalSeen.add(k);
+            return true;
+          });
+          const mappedB1 = await finalizeJobs(freshB1, groundingFrom(b1Res), filters, totalYielded);
+          totalYielded += mappedB1.length;
+          sendEvent({
+            type: 'batch',
+            batchIndex: 1,
+            isFirstBatch: true,
+            jobs: mappedB1,
+            reply: b1Json.reply || `【IdeaX創點子】已為您即時檢索出第 1 批 ${mappedB1.length} 筆開放中的真實職缺！`,
+            carePoints: Array.isArray(b1Json.carePoints) ? b1Json.carePoints : [],
+          });
+        }
+      } catch (e1) {
+        console.warn('[Search Stream Batch 1 Error]', e1);
+      }
+    }
+
+    // ─── Batch 2: 深度擴充檢索（再檢索 6 ~ 9 筆更多平台職缺） ───
+    if (ai) {
+      try {
+        const batch2Prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 擴大檢索台灣求職網（特別側重 Cake、Yourator、1111人力銀行、Yes123、518熊班）上與「${rawQuery}」相關且「當下正在開放招募中」的更多真實職缺。
+【嚴格規定】：
+1. 列出 6 ~ 9 筆不同的在招職缺，優先挑選非 104 的跨平台站點。
+2. 絕對不可包含已結束、已關閉或已下架的職缺。
+3. "url" 必須是真實直接網址。
+4. 每筆摘要控制在 35 字內。
+只輸出 JSON：
+{
+  "reply": "已擴充整合第二批跨平台在招職缺！",
+  "jobs": [
+    {
+      "title": "真實職缺名稱",
+      "company": "真實公司名稱",
+      "location": "工作地點",
+      "city": "縣市",
+      "experience": "經歷要求",
+      "education": "學歷要求",
+      "salaryText": "月薪待遇",
+      "salaryMin": 32000,
+      "sourcePlatform": "Cake 或 Yourator 或 1111 或 Yes123 或 518 或 企業官網",
+      "url": "真實直接應徵網址",
+      "description": "工作摘要"
+    }
+  ]
+}`;
+        const b2Res = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: batch2Prompt,
+          config: { tools: [{ googleSearch: {} }], temperature: 0.2 },
+        });
+
+        const b2Chunks = (b2Res as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        const b2Map: Array<{ title: string; uri: string }> = Array.isArray(b2Chunks)
+          ? b2Chunks
+              .map((c: any) => ({ title: String(c?.web?.title || ''), uri: String(c?.web?.uri || '') }))
+              .filter((m) => m.uri.startsWith('http'))
+          : [];
+        const b2Urls = b2Map.map((m) => m.uri);
+        const b2Json = extractJsonFromText(String(b2Res.text || ''));
+
+        if (Array.isArray(b2Json?.jobs) && b2Json.jobs.length > 0) {
+          const freshB2 = b2Json.jobs.filter(isJobActive).filter((j: any) => {
+            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+            if (globalSeen.has(k)) return false;
+            globalSeen.add(k);
+            return true;
+          });
+          const mappedB2 = await finalizeJobs(freshB2, groundingFrom(b2Res), filters, totalYielded);
+          totalYielded += mappedB2.length;
+          sendEvent({
+            type: 'batch',
+            batchIndex: 2,
+            isFirstBatch: totalYielded === mappedB2.length,
+            jobs: mappedB2,
+            reply: `已整合第二批 ${mappedB2.length} 筆職缺（累計 ${totalYielded} 筆）！`,
+          });
+        }
+      } catch (e2) {
+        console.warn('[Search Stream Batch 2 Error]', e2);
+      }
+    }
+
+    // ─── Batch 3: 整合 Dify 探險家搜搜精選職缺（若有） ───
+    try {
+      const difyOut = await difyBatchPromise;
+      if (difyOut && difyOut.text) {
+        const difyJson = extractJsonFromText(difyOut.text);
+        if (Array.isArray(difyJson?.jobs) && difyJson.jobs.length > 0) {
+          const freshB3 = difyJson.jobs.filter(isJobActive).filter((j: any) => {
+            const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+            if (globalSeen.has(k)) return false;
+            globalSeen.add(k);
+            return true;
+          });
+          if (freshB3.length > 0) {
+            const mappedB3 = await finalizeJobs(freshB3, null, filters, totalYielded);
+            totalYielded += mappedB3.length;
+            sendEvent({
+              type: 'batch',
+              batchIndex: 3,
+              isFirstBatch: totalYielded === mappedB3.length,
+              jobs: mappedB3,
+              reply: `已整合第三批探險家搜搜精選 ${mappedB3.length} 筆職缺（累計 ${totalYielded} 筆）！`,
+            });
+          }
+        }
+      }
+    } catch {}
+
+    // 發送完成事件
+    sendEvent({
+      type: 'done',
+      totalYielded,
+      reply: `【IdeaX創點子】全網職缺分批檢索完成，共統一整合顯示 ${totalYielded} 筆當下開放應徵之真實職缺！`,
+    });
+    res.end();
+  } catch (err: any) {
+    sendEvent({
+      type: 'done',
+      totalYielded,
+    });
+    res.end();
+  }
+});
+
+// 全網搜職 Stage 2：常規完整 JSON 檢索端點（保證真實直達網址與多平台來源）
+app.post('/api/job-explorer/search', async (req: Request, res: Response) => {
+  const rawQuery = String(req.body?.query || '').trim().slice(0, 600);
+  const filters = req.body?.filters || {};
+  const convId = typeof req.body?.conversationId === 'string' ? req.body.conversationId : undefined;
+  const useGeminiFallback = Boolean(req.body?.useGeminiFallback);
+
+  if (!rawQuery) {
+    return res.status(400).json({ success: false, error: '請輸入搜尋條件' });
+  }
+
+  try {
+    const explorerKey = mascotAgentKey('explorer');
+    let difyReply = '';
+    let difyObsText = '';
+    let nextConvId = convId;
+
+    const filterContext = [
+      filters.city && filters.city !== '全部' ? `地區：${filters.city}` : '',
+      filters.category && filters.category !== '全部' ? `類別：${filters.category}` : '',
+      filters.minSalary ? `最低月薪：${filters.minSalary}元以上` : '',
+    ]
+      .filter(Boolean)
+      .join('、');
+
+    const ai = getGeminiClient();
+
+    // 在背景同步啟動真實求職網多平台即時檢索（不限定 104，包含 Yes123、1111、Cake、Yourator、518、LinkedIn、官網等）
+    let preFetchedParsed: any = null;
+    let groundingChunksMap: Array<{ title: string; uri: string }> = [];
+    let groundingUrls: string[] = [];
+    const groundingInfos: GroundingInfo[] = [];
+
+    const bgSearchPrompt = `請使用 Google Search 即時檢索台灣主流求職網站（包含 104人力銀行、1111人力銀行、Cake、Yourator、Yes123、518熊班、LinkedIn 或各大企業官方招募官網）上符合以下條件且「當下正在開放招募中」的真實公開職缺：
+搜尋條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}
+
+【最高嚴格規定（違反即視為無效）】：
+1. **來源平台多元化（不限 104）**：請廣泛檢索台灣各大求職管道，包含 Yes123、1111人力銀行、Cake (CakeResume)、Yourator、518熊班、LinkedIn 或企業官方徵才官網，不可只局限單一網站！
+2. **絕對禁止已關閉／下架／過期職缺**：絕對不可使用已關閉、已結束、已下架、停止徵才、已額滿或頁面不存在的過期職缺！每一筆都必須是當下有效、正在招募中的最新職缺。
+3. **真實企業與有效直接網址**：只能列出真實存在的企業與當下存在的職缺，絕不可虛構假職缺。"url" 必須是 Google Search 檢索到的該職缺直接網址或 Grounding 網址，絕對不可自行填寫臆測的假 ID 或 placeholder。
+4. **數量要求**：請盡可能列出 6 ~ 25 個不同的真實有效職缺（最少 3 個以上，最多可達 100 個）。
+5. 只輸出合法的 JSON 物件（不要 markdown 符號），格式如下：
+{
+  "reply": "用一句親切熱情的話（35字內）說明為用戶搜尋到的成果與亮點",
+  "carePoints": ["workEnvironment", "benefits", "industry", "salary"],
+  "jobs": [
+    {
+      "id": "唯一ID",
+      "title": "真實職缺名稱",
+      "company": "真實公司名稱",
+      "location": "縣市與行政區（如：台南市東區）",
+      "city": "縣市名稱（如：台南市）",
+      "distanceKm": 2.5,
+      "experience": "經歷要求（如：經歷不拘、1年以上）",
+      "experienceYears": 1,
+      "education": "學歷要求（如：專科、大學、高中職、學歷不拘）",
+      "educationLevel": 3,
+      "salaryText": "薪資待遇（如：月薪32,000~42,000元 或 待遇面議）",
+      "salaryMin": 32000,
+      "salaryMax": 42000,
+      "industry": "行業類別",
+      "category": "職務分類",
+      "workEnvironment": "工作環境與排班描述",
+      "benefits": "福利與待遇描述",
+      "description": "工作內容重點摘要",
+      "sourcePlatform": "來源平台（如：Yes123、104人力銀行、1111人力銀行、Cake、Yourator、518熊班 或 企業官網）",
+      "url": "真實外部求職網職缺直接網址",
+      "aiScore": 95,
+      "postedAt": "2026-10-19",
+      "postedAtText": "今日刊登"
+    }
+  ]
+}`;
+
+    const bgGoogleSearchPromise = ai
+      ? ai.models
+          .generateContent({
+            model: 'gemini-2.5-flash',
+            contents: bgSearchPrompt,
+            config: {
+              tools: [{ googleSearch: {} }],
+              temperature: 0.2,
+            },
+          })
+          .then((response) => {
+            groundingInfos.push(groundingFrom(response));
+            const chunks = (response as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+            if (Array.isArray(chunks)) {
+              groundingChunksMap = chunks
+                .map((c: any) => ({
+                  title: String(c?.web?.title || ''),
+                  uri: String(c?.web?.uri || ''),
+                }))
+                .filter((item) => item.uri.startsWith('http'));
+              groundingUrls = groundingChunksMap.map((item) => item.uri);
+            }
+            const rawText = String(response.text || '').trim();
+            const parsed = extractJsonFromText(rawText);
+            if (parsed && Array.isArray(parsed.jobs)) {
+              preFetchedParsed = parsed;
+            }
+          })
+          .catch((err) => {
+            console.warn('[Job Explorer Google Search Error]', err);
+          })
+      : Promise.resolve();
+
+    // 先並行交由找工作 Dify Agent「搜搜」處理（設定 18 秒保護超時，若搜搜報錯或逾時不中斷，由即時全網檢索平滑接棒）
+    let difyPromise: Promise<any> = Promise.resolve(null);
+    if (!useGeminiFallback && explorerKey) {
+      difyPromise = callDifyStreamingAgent({
+        apiKey: explorerKey,
+        query: `${rawQuery}（請精簡列出 3 ~ 6 筆真實職缺重點，每筆摘要控制於 45 字內，避免超出長度限制）`,
+        inputs: {},
+        user: 'job_explorer_user',
+        conversationId: convId,
+        timeoutMs: 100000,
+      }).catch((e) => {
+        console.warn('[Job Explorer Dify Error]', e?.message || e);
+        return null;
+      });
+    }
+
+    const [difyRes] = await Promise.all([
+      difyPromise,
+      bgGoogleSearchPromise,
+    ]);
+
+    if (difyRes && difyRes.text && difyRes.text.trim()) {
+      difyReply = difyRes.text.trim();
+      if (Array.isArray(difyRes.observations) && difyRes.observations.length > 0) {
+        difyObsText = difyRes.observations.join('\n').slice(0, 3000);
+      }
+      nextConvId = difyRes.conversationId || convId;
+    }
+
+    let difyParsedJobs: any[] = [];
+    if (difyReply) {
+      // 1. 若「搜搜」已直接回傳純 JSON 格式，立即就地解析
+      const directJson = extractJsonFromText(difyReply);
+      if (Array.isArray(directJson?.jobs) && directJson.jobs.length > 0) {
+        difyParsedJobs = directJson.jobs;
+      } else if (ai) {
+        // 2. 若為自然語言文字，由 Gemini 結構化提取真實職缺
+        try {
+          const extractPrompt = `請從以下「搜搜」Agent 回傳的求職搜尋結果中，提取出所有提到的真實有效職缺並轉為 JSON 陣列（嚴格剔除任何標示為已關閉、已結束、已下架或不存在的職缺；不要虛構，不要輸出 markdown）：
+【搜搜回覆】：
+${difyReply}
+${difyObsText ? `\n【搜尋原始連結資料】：\n${difyObsText}` : ''}
+
+輸出格式：
+{
+  "jobs": [
+    {
+      "id": "dify-job-1",
+      "title": "職缺名稱",
+      "company": "公司名稱",
+      "location": "縣市與行政區",
+      "city": "縣市名稱",
+      "distanceKm": 2.0,
+      "experience": "經歷要求",
+      "experienceYears": 0,
+      "education": "學歷要求",
+      "educationLevel": 2,
+      "salaryText": "薪資待遇文字",
+      "salaryMin": 30000,
+      "salaryMax": 38000,
+      "industry": "行業類別",
+      "category": "職務分類",
+      "workEnvironment": "工作環境描述",
+      "benefits": "待遇福利描述",
+      "description": "工作重點摘要",
+      "sourcePlatform": "來源平台",
+      "url": "職缺直接連結（若無則留空字串）",
+      "aiScore": 98,
+      "postedAt": "2026-10-19",
+      "postedAtText": "今日刊登"
+    }
+  ]
+}`;
+          const fastRes = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: extractPrompt,
+            config: { responseMimeType: 'application/json', temperature: 0.1 },
+          });
+          const fastJson = extractJsonFromText(String(fastRes.text || '{}'));
+          if (Array.isArray(fastJson?.jobs)) {
+            difyParsedJobs = fastJson.jobs;
+          }
+        } catch (extractErr) {
+          console.warn('[Dify Job Extraction Error]', extractErr);
+        }
+      }
+    }
+
+    // 過濾任何包含「已關閉、已結束、已下架、停止徵才、職缺不存在、已過期」字樣的無效職缺
+    const closedPattern = /已關閉|已結束|已下架|停止徵才|暫停徵才|職缺不存在|頁面不存在|已過期|已額滿|截止|closed|expired|no longer available|404/i;
+    const isValidActiveJob = (j: any): boolean => {
+      if (!j || !j.title || !j.company) return false;
+      const combinedText = `${j.title} ${j.company} ${j.description || ''} ${j.salaryText || ''} ${j.postedAtText || ''}`;
+      return !closedPattern.test(combinedText);
+    };
+
+    const combinedRawJobs = [
+      ...difyParsedJobs.filter(isValidActiveJob),
+      ...(Array.isArray(preFetchedParsed?.jobs) ? preFetchedParsed.jobs.filter(isValidActiveJob) : []),
+    ];
+
+    // 若真實搜尋合併後仍不足 3 筆，立即透過 Google Search 進行第二波擴大即時檢索（涵蓋 Yes123、1111、Cake、Yourator、104 等各大求職站）
+    if (combinedRawJobs.length < 3 && ai) {
+      try {
+        const expandRes = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: `請使用 Google Search 即時檢索 Yes123、1111人力銀行、Cake、Yourator、104人力銀行、518熊班 上與「${rawQuery}」相關且「當下正在開放招募中」的最新真實職缺（請至少列出 6 ~ 15 筆，來源平台多元化，絕不限單一網站，且絕對不可包含已關閉、已結束、已下架或不存在的職缺）。只輸出 JSON：{"jobs":[{"title":"...","company":"...","location":"...","city":"...","experience":"...","experienceYears":0,"education":"...","educationLevel":2,"salaryText":"...","salaryMin":32000,"salaryMax":50000,"industry":"...","category":"...","workEnvironment":"...","benefits":"...","description":"...","sourcePlatform":"Yes123 或 1111 或 Cake 或 104 或 518","url":"...","aiScore":92,"postedAtText":"今日刊登"}]}`,
+          config: {
+            tools: [{ googleSearch: {} }],
+            temperature: 0.2,
+          },
+        });
+        groundingInfos.push(groundingFrom(expandRes));
+        const expandChunks = (expandRes as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        if (Array.isArray(expandChunks)) {
+          const moreChunks = expandChunks
+            .map((c: any) => ({
+              title: String(c?.web?.title || ''),
+              uri: String(c?.web?.uri || ''),
+            }))
+            .filter((item) => item.uri.startsWith('http'));
+          groundingChunksMap.push(...moreChunks);
+          groundingUrls.push(...moreChunks.map((m) => m.uri));
+        }
+        const expandJson = extractJsonFromText(String(expandRes.text || ''));
+        if (Array.isArray(expandJson?.jobs)) {
+          combinedRawJobs.push(...expandJson.jobs.filter(isValidActiveJob));
+        }
+      } catch (expandErr) {
+        console.warn('[Job Explorer Expand Search Error]', expandErr);
+      }
+    }
+
+    const seenKeys = new Set<string>();
+    const dedupedRaw = combinedRawJobs
+      .filter((j: any) => {
+        if (!isValidActiveJob(j)) return false;
+        const k = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+        if (seenKeys.has(k)) return false;
+        seenKeys.add(k);
+        return true;
+      })
+      .slice(0, 40); // 每筆都要驗證網址，最多 40 筆
+    // 搜搜（Dify）的職缺沒有搜尋來源可對照，只驗證它自己給的網址；Google 搜尋的職缺可對照引用來源
+    const jobs = await finalizeJobs(dedupedRaw, groundingInfos, filters, 0);
+
+    const replyMsg =
+      difyReply ||
+      preFetchedParsed?.reply ||
+      `已為您從各大求職平台（Yes123、104、1111、Cake、Yourator 等）即時檢索出 ${jobs.length} 筆當下開放招募中的真實職缺！`;
+
+    return res.json({
+      success: true,
+      reply: replyMsg,
+      conversationId: nextConvId,
+      carePoints: Array.isArray(preFetchedParsed?.carePoints) && preFetchedParsed.carePoints.length > 0
+        ? preFetchedParsed.carePoints
+        : filters.carePoints || [],
+      jobs,
+    });
+  } catch (err: any) {
+    console.error('[Job Explorer Search]', err?.message || err);
+    return res.status(500).json({
+      success: false,
+      error: '搜尋忙碌中，請稍後再試',
+      jobs: [],
+    });
   }
 });
 

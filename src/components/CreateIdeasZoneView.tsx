@@ -94,6 +94,10 @@ interface CreateIdeasZoneViewProps {
   onOpenAuth?: () => void;
   onUpdateProposalPublication?: (proposalId: string, unpublishAt?: string, isUnpublished?: boolean) => void;
   onSwitchZone?: (zone: import('../types').SpecialZone) => void;
+  /** 獨立提案頁：要顯示的提案 ID（網址 /ideas/:id） */
+  detailProposalId?: string | null;
+  /** 從提案頁返回創點子列表的搜尋區 */
+  onBackFromDetail?: () => void;
 }
 
 export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
@@ -106,6 +110,8 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
   onOpenAuth,
   onUpdateProposalPublication,
   onSwitchZone,
+  detailProposalId,
+  onBackFromDetail,
 }) => {
   const {
     currentUser,
@@ -258,7 +264,23 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
     }
   };
 
+  // 獨立提案頁：網址上的提案 ID 改變時開啟對應提案（相關提案之間切換也會換網址）
+  useEffect(() => {
+    if (!detailProposalId) {
+      if (selectedProposalForDetail) setSelectedProposalForDetail(null);
+      return;
+    }
+    if (selectedProposalForDetail?.id === detailProposalId) return;
+    const found = proposalsList.find((p) => p.id === detailProposalId);
+    if (found) handleOpenProposalInCreateIdeas(found);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailProposalId, proposalsList.length]);
+
   const handleBackFromProposalDetail = () => {
+    if (onBackFromDetail) {
+      onBackFromDetail();
+      return;
+    }
     if (proposalHistory.length > 0) {
       const prevProposal = proposalHistory[proposalHistory.length - 1];
       setProposalHistory((prev) => prev.slice(0, -1));
@@ -496,7 +518,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
       <ProposalDetailFullPage
         proposal={liveProposal}
         allProposals={activeProposals}
-        onSelectProposal={(p) => handleOpenProposalInCreateIdeas(p)}
+        onSelectProposal={(p) => (detailProposalId !== undefined ? onSelectProposal(p) : handleOpenProposalInCreateIdeas(p))}
         isFromCreateIdeas={true}
         onBack={handleBackFromProposalDetail}
         onToggleLike={(pid) => {
@@ -564,6 +586,24 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
         }}
         showToast={showCenterToast}
       />
+    );
+  }
+
+  if (detailProposalId) {
+    const stillLoading = (questions || []).length === 0 && dbCompetitionProposals.length === 0;
+    return (
+      <div className="max-w-xl mx-auto my-16 p-6 rounded-2xl bg-white border border-stone-200 text-center space-y-3">
+        <p className="text-sm font-bold text-stone-800">{stillLoading ? '提案載入中…' : '找不到這個提案，可能已下架或網址有誤。'}</p>
+        {!stillLoading && (
+          <button
+            type="button"
+            onClick={() => (onBackFromDetail ? onBackFromDetail() : setSelectedProposalForDetail(null))}
+            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-sm font-bold cursor-pointer"
+          >
+            回到創點子
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -704,7 +744,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
           </div>
 
           {/* 下排：搜尋框 + 排序下拉選單 + 卡片檢視切換 (大卡片/條列式/小卡片) */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5">
+          <div id="create-ideas-search" className="scroll-mt-24 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5">
             <div className="relative flex-1 min-w-[160px]">
               <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -825,7 +865,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
               return (
                 <div
                   key={proposal.id}
-                  onClick={() => handleOpenProposalInCreateIdeas(proposal)}
+                  onClick={() => onSelectProposal(proposal)}
                   className="bg-white rounded-2xl border border-stone-200 hover:border-amber-400 p-3.5 sm:p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-3 group"
                 >
                   <div className="min-w-0 flex-1 space-y-1">
@@ -902,7 +942,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
               return (
                 <div
                   key={proposal.id}
-                  onClick={() => handleOpenProposalInCreateIdeas(proposal)}
+                  onClick={() => onSelectProposal(proposal)}
                   onMouseEnter={() => setHoveredProposalId(proposal.id)}
                   onMouseLeave={() => setHoveredProposalId((prev) => (prev === proposal.id ? null : prev))}
                   className="bg-white rounded-2xl border border-stone-200 hover:border-amber-400 overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group h-full"
@@ -1004,7 +1044,7 @@ export const CreateIdeasZoneView: React.FC<CreateIdeasZoneViewProps> = ({
             return (
               <div
                 key={proposal.id}
-                onClick={() => handleOpenProposalInCreateIdeas(proposal)}
+                onClick={() => onSelectProposal(proposal)}
                 onMouseEnter={() => setHoveredProposalId(proposal.id)}
                 onMouseLeave={() => setHoveredProposalId((prev) => (prev === proposal.id ? null : prev))}
                 className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 hover:border-amber-400 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden cursor-pointer group relative"
