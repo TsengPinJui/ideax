@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-export type MascotMood = 'idle' | 'happy' | 'sad' | 'think' | 'dizzy' | 'scared' | 'shy';
+export type MascotMood = 'idle' | 'happy' | 'sad' | 'think' | 'dizzy' | 'scared' | 'shy' | 'wow';
 export interface MascotTuning { k: number; damp: number; amp: number }
 export interface MascotEngineOptions {
   root: HTMLElement; shadow: HTMLElement; bubble: HTMLElement; bubbleText: HTMLElement;
@@ -19,7 +19,9 @@ export interface MascotEngineOptions {
 export interface MascotStage { x: number; y: number; lean?: number; look?: 'around' }
 export interface MascotEngine {
   setMood(m: MascotMood, ms?: number): void; say(text: string, ms?: number): void; jump(p?: number): void;
-  cheer(text?: string): void; sad(text?: string): void; embarrassed(text?: string): void; think(on: boolean): void; wave(text?: string): void;
+  cheer(text?: string): void; sad(text?: string): void;
+  /** 驚喜：燈泡亮起、睜大眼睛、嘴巴張成 O（例如有新提案時） */
+  surprise(text?: string, ms?: number): void; embarrassed(text?: string): void; think(on: boolean): void; wave(text?: string): void;
   poke(): void; shake(): void; setTuning(t: Partial<MascotTuning>): void; setBubbleDefault(t: string): void;
   enterFrom(): void; getMood(): MascotMood; refreshInsets(): void; destroy(): void;
   /** 舞台走位：指定站位（null 回到右下角）；teleport 直接瞬移（藏在對話框後面時用） */
@@ -408,12 +410,12 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
   function setMood(m, ms = 0) {
     if (m === 'sad' && S.mood !== 'sad') S.sadSince = performance.now();
     if (m !== 'sad' && m !== 'scared') S.sadLie = false;
-    if (m === 'happy' && S.mood !== 'happy') emit('glow'); // 亮起來（外層播放發亮音效）
+    if ((m === 'happy' || m === 'wow') && S.mood !== 'happy' && S.mood !== 'wow') emit('glow'); // 亮起來（外層播放發亮音效）
     if (m === 'scared' && S.mood !== 'scared') emit('scared'); // 嚇到（外層播放觸電聲＋電流聲）
     if (m !== 'scared' && S.mood === 'scared') emit('calm'); // 不嚇了（外層停掉電流聲）
     S.mood = m; S.moodUntil = ms ? performance.now() + ms : 0;
-    S.glowTarget = { happy: 1, sad: 0.03, think: 0.5, dizzy: 0.08, scared: 0.6, shy: 0.28 }[m] ?? 0.15;
-    S.pose = { happy: 'up', sad: 'cry', dizzy: 'fallen', scared: 'panic', shy: 'scratch' }[m] || 'idle';
+    S.glowTarget = { happy: 1, wow: 1, sad: 0.03, think: 0.5, dizzy: 0.08, scared: 0.6, shy: 0.28 }[m] ?? 0.15;
+    S.pose = { happy: 'up', wow: 'up', sad: 'cry', dizzy: 'fallen', scared: 'panic', shy: 'scratch' }[m] || 'idle';
     alarmEl.style.opacity = m === 'scared' ? '1' : '0';
     faceDirty = true;
   }
@@ -450,7 +452,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
         c.beginPath(); c.moveTo(x - 22, ey + 8); c.quadraticCurveTo(x, ey - 20, x + 22, ey + 8); c.stroke();
         continue;
       }
-      const ry = m === 'scared' ? 42 : 38, rx = 31;
+      const ry = m === 'scared' || m === 'wow' ? 42 : 38, rx = m === 'wow' ? 33 : 31;
       c.save(); c.beginPath(); c.ellipse(x, ey, rx, ry, 0, 0, Math.PI * 2); c.clip();
       const gw = c.createRadialGradient(x - 8, ey - 14, 4, x, ey, 44); gw.addColorStop(0, '#ffffff'); gw.addColorStop(1, '#efe6d6'); c.fillStyle = gw; c.fillRect(x - 40, ey - 50, 80, 100);
       if (m === 'dizzy') {
@@ -458,7 +460,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
         for (let a = 0; a < Math.PI * 6; a += 0.2) { const r = a * 3.3; c.lineTo(x + Math.cos(a + performance.now() / 200) * r, ey + Math.sin(a + performance.now() / 200) * r); }
         c.stroke();
       } else {
-        const ir = m === 'scared' ? 12 : 20, px = x + lx, py = ey + 6 + ly;
+        const ir = m === 'scared' ? 12 : m === 'wow' ? 15 : 20, px = x + lx, py = ey + 6 + ly;
         const gi = c.createRadialGradient(px - 4, py - 6, 2, px, py, ir); gi.addColorStop(0, '#a8743c'); gi.addColorStop(0.7, '#6b4220'); gi.addColorStop(1, '#3d2410');
         c.fillStyle = gi; c.beginPath(); c.arc(px, py, ir, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#1a0f07'; c.beginPath(); c.arc(px, py + 1, ir * 0.55, 0, Math.PI * 2); c.fill();
@@ -481,6 +483,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     const brow = (x1, y1, cx, cy, x2, y2) => { c.beginPath(); c.moveTo(x1, y1); c.quadraticCurveTo(cx, cy, x2, y2); c.stroke(); };
     if (m === 'sad' || m === 'scared' || m === 'shy') { brow(166, 104, 196, 98, 222, 80); brow(290, 80, 316, 98, 346, 104); }
     else if (m === 'happy') { brow(166, 92, 196, 70, 226, 86); brow(286, 86, 316, 70, 346, 92); }
+    else if (m === 'wow') { brow(166, 84, 196, 56, 226, 74); brow(286, 74, 316, 56, 346, 84); } // 眉毛挑高：咦！
     else { brow(166, 100, 196, 84, 226, 94); brow(286, 94, 316, 84, 346, 100); }
     // 嘴巴
     c.lineWidth = 8;
@@ -499,6 +502,12 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
       c.fillStyle = '#ff7f6e'; c.beginPath(); c.ellipse(256, 286, 26, 15, 0, 0, Math.PI * 2); c.fill();
       c.fillStyle = '#fff'; c.beginPath(); c.ellipse(256, 238, 40, 7, 0, 0, Math.PI * 2); c.fill(); c.restore();
       c.strokeStyle = INK; c.lineWidth = 4; c.beginPath(); c.moveTo(208, 236); c.quadraticCurveTo(256, 318, 304, 236); c.quadraticCurveTo(256, 250, 208, 236); c.stroke();
+    } else if (m === 'wow') {
+      // 😯 嘴巴張成小小的 O
+      c.save(); c.beginPath(); c.ellipse(256, 266, 18, 23, 0, 0, Math.PI * 2);
+      const gw2 = c.createLinearGradient(0, 243, 0, 289); gw2.addColorStop(0, '#5e1a10'); gw2.addColorStop(1, '#8a2c1a'); c.fillStyle = gw2; c.fill(); c.clip();
+      c.fillStyle = '#ff7f6e'; c.beginPath(); c.ellipse(256, 286, 12, 8, 0, 0, Math.PI * 2); c.fill(); c.restore();
+      c.strokeStyle = INK; c.lineWidth = 4; c.beginPath(); c.ellipse(256, 266, 18, 23, 0, 0, Math.PI * 2); c.stroke();
     } else if (m === 'scared') {
       c.fillStyle = '#7a2b1c'; c.beginPath(); c.ellipse(256, 262, 34, 30, 0, 0, Math.PI * 2); c.fill();
       c.fillStyle = '#fff'; c.fillRect(232, 236, 48, 10);
@@ -668,6 +677,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (S.mood === 'idle') gt = 0.14 + Math.sin(now / 900) * 0.06;
     if (S.mood === 'think') gt = 0.3 + (Math.sin(now / 90) > 0.3 ? 0.35 : 0);
     if (S.mood === 'happy') gt = S.jumpY < -10 ? 1.3 : 0.95;
+    if (S.mood === 'wow') gt = 1.15 + Math.sin(now / 160) * 0.12; // 整顆亮起來、微微閃
     if (S.mood === 'scared') { if (now > S.flickerAt) { S.flickerOn = !S.flickerOn; S.flickerAt = now + 40 + Math.random() * 110; if (S.flickerOn) emit('zap'); } S.glow = S.flickerOn ? 1 : 0.04; }
     else { if (S.mood === 'sad' && Math.random() < 0.006) S.glow = 0.16; S.glow += (gt - S.glow) * Math.min(1, dt * (gt > S.glow ? 9 : 4)); }
 
@@ -738,7 +748,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     dropsEl.style.opacity = wailing && !reduceMotion ? String(0.5 + 0.5 * Math.abs(Math.sin(now / 300))) : '0';
     dropsEl.style.transform = `translateY(${(now / 12) % 18 - 9}px)`;
     glowEl.style.transform = `scale(${0.8 + g * 0.45})`;
-    raysEl.style.opacity = S.mood === 'happy' ? String(Math.min(1, g)) : '0';
+    raysEl.style.opacity = S.mood === 'happy' || S.mood === 'wow' ? String(Math.min(1, g)) : '0';
     raysEl.style.transform = `scale(${1 + Math.sin(now / 120) * 0.05})`;
     alarmEl.style.transform = `translateY(${Math.sin(now / 80) * 3}px)`;
     if (!bubble.hidden) {
@@ -772,6 +782,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     jump: (p = 1) => jump(p),
     cheer: (text) => { if (S.mood === 'sad') return; setMood('happy', 2200); jump(1.1); if (text) say(text, 2400); },
     sad: (text) => { setMood('sad'); if (text) say(text, 1e9); },
+    surprise: (text, ms = 7000) => { S.sadLie = false; setMood('wow', ms); jump(0.7); if (text) say(text, ms); },
     think: (thinking) => { if (thinking) setMood('think'); else if (S.mood === 'think') setMood('idle'); },
     embarrassed: (text) => { setMood('shy', 5200); wobble(1.4); if (text) say(text, 4200); },
     wave: (text) => { S.waveUntil = performance.now() + 2400; if (text) say(text, 2200); },

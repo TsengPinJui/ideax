@@ -28,7 +28,7 @@ export const AGENT_PERSONAS: AgentPersona[] = [
     name: '搜搜',
     title: '探索者 Agent、偵查與傳令',
     avatar: '/avatars/agent-sousou.webp',
-    bio: '駕著筋斗雲跑遍國內外求職網，幫你把符合條件的職缺一次找齊。',
+    bio: '話不多，執行效率超高，接到任務瞬間飛到九霄雲天之外～最喜歡和好夥伴飛天雲騰雲駕霧（在網上衝浪）！駕著筋斗雲跑遍國內外求職網，幫你把符合條件的職缺一次找齊。',
     domain: '日常疑難',
   },
   {

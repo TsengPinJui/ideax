@@ -16,6 +16,8 @@ export type BaiMiaoBubble = {
   withIntroLink?: boolean;
   /** 正在執行任務：文字後面加上跳動的「…」 */
   busy?: boolean;
+  /** 不用訊息框：字直接浮在角色旁邊（白色描邊讓字在任何背景上都看得清楚） */
+  plain?: boolean;
 };
 
 import type { BaiMiaoEngine as Engine } from './baimiaoEngine';
@@ -95,8 +97,10 @@ export const BaiMiao: React.FC<Props> = ({
         <div
           role="status"
           aria-live="polite"
-          className="absolute z-10 w-max max-w-[260px] rounded-2xl border border-amber-200 bg-white/95 px-3 py-2 text-[12px] leading-relaxed text-stone-800 shadow-md backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200"
-          style={{ ...bubblePos, pointerEvents: 'auto' }}
+          className={bubble.plain
+            ? 'absolute z-10 w-max max-w-[240px] px-1 text-[12.5px] font-bold leading-snug text-stone-800 animate-in fade-in slide-in-from-bottom-1 duration-200'
+            : 'absolute z-10 w-max max-w-[260px] rounded-2xl border border-amber-200 bg-white/95 px-3 py-2 text-[12px] leading-relaxed text-stone-800 shadow-md backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200'}
+          style={{ ...bubblePos, pointerEvents: 'auto', ...(bubble.plain ? { textShadow: '0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff, 0 1px 0 #fff' } : {}) }}
         >
           <span>{bubble.text}</span>
           {bubble.busy && <span className="baimiao-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span>}

@@ -66,3 +66,8 @@
 .ixm-action { font: inherit; font-size: 12.5px; font-weight: 800; padding: 6px 12px; min-height: 36px; border-radius: 999px; border: 1px solid #f59e0b; background: #fff; color: #92400e; cursor: pointer; }
 .ixm-action:hover { background: #f59e0b; color: #1c1408; }
 .ixm-action:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
+/* 收起時有新提案：小按鈕裡的燈泡亮起來、輕輕閃 */
+.ixm-peek-new { background: #fffbeb; border-color: #fcd34d; box-shadow: 0 0 0 3px rgba(252, 211, 77, .35), 0 0 18px rgba(255, 194, 26, .55); animation: ixmPeekNew 1.6s ease-in-out infinite; }
+.ixm-peek-new svg { filter: drop-shadow(0 0 6px rgba(255, 194, 26, .9)); }
+@keyframes ixmPeekNew { 0%, 100% { box-shadow: 0 0 0 3px rgba(252, 211, 77, .25), 0 0 10px rgba(255, 194, 26, .35); } 50% { box-shadow: 0 0 0 4px rgba(252, 211, 77, .5), 0 0 22px rgba(255, 194, 26, .75); } }
+@media (prefers-reduced-motion: reduce) { .ixm-peek-new { animation: none; } }

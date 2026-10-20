@@ -36,7 +36,7 @@ const AGENTS: Agent[] = [
     title: '探索者 Agent、偵查與傳令',
     img: '/agents/sousou.webp',
     idCard: { thumb: '/agents/idcard-sousou-thumb.webp', full: '/agents/idcard-sousou.webp' },
-    intro: '駕著筋斗雲跑遍各大求職平台，幫你把符合條件的職缺一次找齊。',
+    intro: '話不多，執行效率超高，接到任務瞬間飛到九霄雲天之外～最喜歡做的事是和好夥伴飛天雲騰雲駕霧（在網上衝浪）！負責跑遍各大求職平台，幫你把符合條件的職缺一次找齊。',
     duties: ['跨平台搜尋正職、兼職與國外職缺', '依條件整理、排序職缺', '盡量直接連到職缺本頁'],
     spots: ['匯職缺頁左下角'],
     accent: 'from-blue-100 to-sky-50 border-blue-200',
@@ -81,7 +81,8 @@ const RESERVE = {
 };
 
 // 點小圖放大看身分證；Esc 或點背景關閉
-const IdCardViewer: React.FC<{ agent: Agent; onClose: () => void }> = ({ agent, onClose }) => {
+type Viewing = { src: string; alt: string; wide?: boolean };
+const ImageViewer: React.FC<{ item: Viewing; onClose: () => void }> = ({ item, onClose }) => {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -93,12 +94,12 @@ const IdCardViewer: React.FC<{ agent: Agent; onClose: () => void }> = ({ agent, 
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`${agent.name}的創點國身分證`}
+      aria-label={item.alt}
       onClick={onClose}
       className="fixed inset-0 z-[300] flex items-center justify-center bg-stone-950/75 p-4 backdrop-blur-sm animate-in fade-in duration-150"
     >
-      <div className="relative w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
-        <img src={agent.idCard!.full} alt={`${agent.name}的創點國身分證`} className="w-full h-auto rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200" />
+      <div className={`relative w-full ${item.wide ? 'max-w-3xl' : 'max-w-[min(90vh,48rem)]'}`} onClick={(e) => e.stopPropagation()}>
+        <img src={item.src} alt={item.alt} className="w-full h-auto max-h-[88vh] object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200" />
         <button
           type="button"
           onClick={onClose}
@@ -114,19 +115,31 @@ const IdCardViewer: React.FC<{ agent: Agent; onClose: () => void }> = ({ agent, 
 };
 
 export const AgentsIntroSection: React.FC = () => {
-  const [viewing, setViewing] = useState<Agent | null>(null);
+  const [viewing, setViewing] = useState<Viewing | null>(null);
   return (
   <div className="space-y-6 animate-in fade-in duration-200">
-    <div className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-yellow-50 p-5 sm:p-7 shadow-xs">
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-500 text-stone-950">原創 IP</span>
-        <h2 className="text-lg sm:text-xl font-black text-stone-900">原創 IP 與 Agent</h2>
+    <div className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-yellow-50 p-5 sm:p-7 shadow-xs grid grid-cols-1 md:grid-cols-[1fr_minmax(0,22rem)] gap-5 md:gap-8 items-center">
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-500 text-stone-950">原創 IP</span>
+          <h2 className="text-lg sm:text-xl font-black text-stone-900">原創 IP 與 Agent</h2>
+        </div>
+        <p className="mt-2 text-sm text-stone-600 leading-relaxed">每個 Agent 都有自己的角色和工作範圍。一群可靠的夥伴，守護你的創意路！</p>
+        <p className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-white/80 border border-amber-200 px-3 py-2 text-sm font-bold text-amber-800">
+          <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+          角色們都去工作了，快去網站尋找他們吧！
+        </p>
       </div>
-      <p className="mt-2 text-sm text-stone-600 leading-relaxed">每個 Agent 都有自己的角色和工作範圍。</p>
-      <p className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-white/80 border border-amber-200 px-3 py-2 text-sm font-bold text-amber-800">
-        <Sparkles className="w-4 h-4 text-amber-500" />
-        角色們都去工作了，快去網站尋找他們吧！
-      </p>
+      <button
+        type="button"
+        onClick={() => setViewing({ src: '/agents/group.webp', alt: 'IdeaX 創點子角色群像' })}
+        aria-label="放大看角色群像"
+        className="relative block w-full overflow-hidden rounded-2xl ring-1 ring-amber-200/80 shadow-sm cursor-zoom-in group"
+      >
+        <img src="/agents/group-900.webp" alt="IdeaX 創點子角色群像：一群可靠的夥伴，守護你的創意路！" loading="lazy" width={900} height={900}
+          className="block w-full h-auto aspect-square object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+        <span className="absolute bottom-2 right-2 rounded-lg bg-stone-900/70 px-2 py-0.5 text-[11px] font-bold text-white">點一下放大</span>
+      </button>
     </div>
 
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -147,7 +160,7 @@ export const AgentsIntroSection: React.FC = () => {
             {a.idCard && (
               <button
                 type="button"
-                onClick={() => setViewing(a)}
+                onClick={() => setViewing({ src: a.idCard!.full, alt: `${a.name}的創點國身分證`, wide: true })}
                 title="看身分證"
                 aria-label={`放大看${a.name}的創點國身分證`}
                 className="group relative shrink-0 -mt-1 rounded-lg ring-1 ring-black/10 bg-white shadow-sm overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md hover:-rotate-2 cursor-zoom-in"
@@ -189,7 +202,7 @@ export const AgentsIntroSection: React.FC = () => {
         </div>
       </div>
     </div>
-    {viewing && <IdCardViewer agent={viewing} onClose={() => setViewing(null)} />}
+    {viewing && <ImageViewer item={viewing} onClose={() => setViewing(null)} />}
   </div>
   );
 };

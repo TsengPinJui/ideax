@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
-import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
+import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, OPEN_QUESTION_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
+import type { NewProposalNotice } from './MascotHost';
 import { playBabble, playClank, playGlowSound, playShock, playZap, startCurrent, stopBabble, stopCurrent, unlockMascotAudio } from './mascotSound';
 import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
 
 const COLLAPSED_KEY = 'ideax_mascot_collapsed';
 const LAST_VISIT_KEY = 'ideax_mascot_last_visit';
 const IMPRESSION_KEY = 'ideax_mascot_impression';
+/** 已提醒過的最新提案時間（每篇只提醒一次） */
+const SEEN_NEW_KEY = 'ideax_mascot_seen_new_proposal';
+const NEW_SPEECH_MS = 9000;
 const DAY_MS = 86400000;
 const IDLE_SESSION_MS = 20000;
 
@@ -47,7 +51,7 @@ const Drop = ({ style }: { style: React.CSSProperties }) => (
   </svg>
 );
 
-const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ config, userId }) => {
+const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal?: NewProposalNotice | null }> = ({ config, userId, newProposal }) => {
   const [collapsed, setCollapsed] = useState(() => readLS(COLLAPSED_KEY) === '1');
   const [chatOpen, setChatOpen] = useState(false);
   const chatOpenRef = useRef(false);
@@ -222,6 +226,40 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
       if (engineRef.current === engine) engineRef.current = null;
     };
   }, [collapsed, markActive]);
+
+  // 有新的創新提案或刊登作品：燈泡亮起、😯「哦又有新提案囉！來去看看嗎？」，點泡泡直接打開那篇
+  const pendingNew = useRef<{ id: string; text: string; until: number } | null>(null);
+  const [hasUnseenNew, setHasUnseenNew] = useState(false);
+  useEffect(() => {
+    if (!newProposal) return;
+    const seen = Number(readLS(SEEN_NEW_KEY) || 0);
+    if (!seen) { writeLS(SEEN_NEW_KEY, String(newProposal.at)); return; } // 第一次來：從現在開始算，不提醒舊的
+    if (newProposal.at <= seen) return;
+    if (collapsed) { setHasUnseenNew(true); return; } // 收起來時只讓小按鈕亮起，叫出來再說
+    const t = window.setTimeout(() => {
+      const eng = engineRef.current;
+      if (!eng || chatOpenRef.current) return; // 對話中不打斷，下次再提醒
+      writeLS(SEEN_NEW_KEY, String(newProposal.at));
+      setHasUnseenNew(false);
+      const text = newProposal.kind === 'work' ? '哦又有新作品囉！來去看看嗎？' : '哦又有新提案囉！來去看看嗎？';
+      pendingNew.current = { id: newProposal.id, text, until: Date.now() + 60000 };
+      eng.surprise(text, NEW_SPEECH_MS);
+    }, 3200); // 等打招呼的動作做完
+    return () => window.clearTimeout(t);
+  }, [newProposal?.id, newProposal?.at, collapsed, chatOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onBubbleClick = () => {
+    const p = pendingNew.current;
+    // 泡泡還顯示著這句提醒時，點下去就打開那篇
+    if (p && Date.now() < p.until && bubbleTextRef.current?.textContent === p.text) {
+      pendingNew.current = null;
+      markActive();
+      try { window.dispatchEvent(new CustomEvent(OPEN_QUESTION_EVENT, { detail: { id: p.id } })); } catch {}
+      engineRef.current?.cheer('出發！');
+      return;
+    }
+    openChat();
+  };
 
   // 管理員儲存新設定 → 即時套用
   useEffect(() => {
@@ -467,7 +505,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
 
   if (collapsed) {
     return (
-      <button type="button" className="ixm-peek" style={{ bottom: measureInsets(false).bottom + 90 }} onClick={expand} aria-label="叫出燈泡吉祥物">
+      <button type="button" className={`ixm-peek${hasUnseenNew ? ' ixm-peek-new' : ''}`} style={{ bottom: measureInsets(false).bottom + 90 }} onClick={expand} aria-label={hasUnseenNew ? '有新提案！叫出燈泡吉祥物' : '叫出燈泡吉祥物'}>
         <svg width="22" height="30" viewBox="44 46 152 202" aria-hidden="true">
           <path d="M 88 184 C 80 167 54 152 54 118 A 66 66 0 0 1 186 118 C 186 152 160 167 152 184 Z" fill="#FFC21A" />
           <rect x="84" y="194" width="72" height="20" rx="10" fill="#2A2A2E" />
@@ -516,8 +554,8 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string }> = ({ conf
         hidden={chatOpen}
         aria-label={config.chatEnabled ? '打開提問視窗' : '和燈泡吉祥物互動'}
         style={{ transform: 'translate(-400px, -400px)' }}
-        onClick={openChat}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChat(); } }}
+        onClick={onBubbleClick}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBubbleClick(); } }}
       >
         <span ref={bubbleTextRef} className="ixm-bubble-text" aria-live="polite" />
         <button type="button" className="ixm-x" onClick={collapse} aria-label="收起吉祥物">×</button>

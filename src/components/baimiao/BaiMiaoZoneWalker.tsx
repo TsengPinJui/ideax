@@ -7,8 +7,14 @@ import { BaiMiao, BaiMiaoAction, BaiMiaoBubble } from './BaiMiao';
  * 再走回去，到最左邊做反方向的動作。走了幾趟之後會側躺撐著頭打瞌睡，再久一點就躺平呼呼大睡。
  * 點牠：睡著時會醒來；醒著時會自我介紹（附角色介紹頁的捷徑）。
  */
-export const BAIMIAO_INTRO =
-  '哈基米！我是白喵，剛被 IdeaX 聘為市場顧問，我負責幫你分析報告、找專家、獵人頭、貼標籤 XD，喔對，偶爾還會被 call 去當和事佬喔～';
+/** 自我介紹分兩段說（不用訊息框，直接把字浮在白喵旁邊） */
+export const BAIMIAO_INTRO_PARTS = [
+  '哈基米！我是白喵，剛被 IdeaX 聘為市場顧問～',
+  '我負責幫你分析報告、找專家、獵人頭、貼標籤 XD，喔對，偶爾還會被 call 去當和事佬喔～',
+] as const;
+export const BAIMIAO_INTRO = BAIMIAO_INTRO_PARTS.join('');
+const INTRO_PART1_MS = 3200;
+const INTRO_PART2_MS = 5200;
 
 const WALK_SPEED = 34; // px/s，慢慢走
 const LAPS_BEFORE_NAP = 2; // 來回走幾趟後開始打瞌睡
@@ -31,6 +37,12 @@ export const BaiMiaoZoneWalker: React.FC = () => {
   const clearTimers = () => { S.current.timers.forEach((t) => window.clearTimeout(t)); S.current.timers = []; };
   const later = (fn: () => void, ms: number) => { S.current.timers.push(window.setTimeout(fn, ms)); };
   const go = (p: Phase) => { S.current.phase = p; setPhase(p); };
+  const say = (text: string, extra?: Partial<BaiMiaoBubble>) => setBubble({ text, plain: true, ...extra });
+  /** 兩段自我介紹，說完再呼叫 done */
+  const sayIntro = (done: () => void) => {
+    say(BAIMIAO_INTRO_PARTS[0]);
+    later(() => { say(BAIMIAO_INTRO_PARTS[1], { withIntroLink: true }); later(done, INTRO_PART2_MS); }, INTRO_PART1_MS);
+  };
 
   const startWalking = useCallback((d: 1 | -1) => {
     S.current.dir = d; setDir(d); go('walk');
@@ -42,23 +54,23 @@ export const BaiMiaoZoneWalker: React.FC = () => {
     st.greets += 1;
     go('hi');
     const intro = st.greets % 3 === 2;
-    setBubble(intro ? { text: BAIMIAO_INTRO, withIntroLink: true } : { text: '嗨！' });
-    const holdMs = intro ? 7000 : 2600;
-    later(() => {
+    const next = () => {
       setBubble(null);
       if (st.greets >= LAPS_BEFORE_NAP * 2) {
         st.greets = 0;
         go('doze');
         later(() => { go('sleep'); later(() => wake('嗨！睡飽了～'), SLEEP_MS); }, DOZE_MS);
       } else startWalking(st.dir === 1 ? -1 : 1);
-    }, holdMs);
+    };
+    if (intro) sayIntro(next);
+    else { say('嗨！'); later(next, 2600); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startWalking]);
 
   const wake = (text: string) => {
     clearTimers();
     go('cheer');
-    setBubble({ text });
+    say(text);
     later(() => { setBubble(null); startWalking(S.current.dir === 1 ? -1 : 1); }, 2200);
   };
 
@@ -68,8 +80,7 @@ export const BaiMiaoZoneWalker: React.FC = () => {
     if (st.phase === 'doze' || st.phase === 'sleep') { wake('嗯…？嗨！'); return; }
     clearTimers();
     go('hi');
-    setBubble({ text: BAIMIAO_INTRO, withIntroLink: true });
-    later(() => { setBubble(null); startWalking(st.dir); }, 7000);
+    sayIntro(() => { setBubble(null); startWalking(st.dir); });
   };
 
   // 走路位置（requestAnimationFrame）
