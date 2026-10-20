@@ -161432,8 +161432,22 @@ function checkJobPage(url, title, company) {
   }
   return pageCache.get(key);
 }
+function shortCompany(company) {
+  const parts = String(company || "").split(/[_／/|｜]/).map((x2) => x2.trim()).filter(Boolean);
+  const pick = parts.length ? parts[parts.length - 1] : String(company || "");
+  const core = companyCore(pick).replace(/集團$/, "");
+  return core || companyCore(String(company || ""));
+}
+function shortTitle(title) {
+  const t2 = String(title || "").replace(/[【\[(（].*?[】\])）]/g, " ").replace(/急徵|誠徵|徵才|招募中|高薪/g, " ").replace(/\s*[-－–]\s*[^-－–]{1,10}$/, "").trim();
+  const m2 = t2.match(/([\u4e00-\u9fa5]{0,6}(?:工程師|設計師|分析師|架構師|研究員|專員|經理|副理|主任|助理|秘書|人員|店員|店長|主管|企劃|業務|顧問|客服|講師|老師|教師|護理師|藥師|技師|技術員|作業員|司機|廚師|師傅|會計|出納|行政|編輯|記者|工讀生|夥伴|實習生))\s*$/);
+  if (m2) return m2[1];
+  const en = t2.match(/([A-Za-z][A-Za-z ]{0,30}(?:Engineer|Developer|Designer|Manager|Analyst|Specialist|Assistant|Intern))\s*$/i);
+  if (en) return en[1].trim();
+  return t2.split(/\s+/).slice(-2).join(" ").slice(0, 20);
+}
 function searchUrlFor(title, company, platformName) {
-  const kw = encodeURIComponent(`${company} ${title}`.trim());
+  const kw = encodeURIComponent(`${shortCompany(company)} ${shortTitle(title)}`.trim());
   const p = PLATFORMS.find((pl) => pl.name === platformName || platformName && platformName.includes(pl.name.replace("\u4EBA\u529B\u9280\u884C", "")));
   if (p?.search) return p.search(kw);
   if (p) return `https://www.google.com/search?q=${kw}+site%3A${p.site}`;
@@ -161830,7 +161844,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "2.10.2";
+var APP_VERSION = "2.10.3";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
