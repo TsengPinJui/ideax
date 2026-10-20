@@ -1755,3 +1755,23 @@ export function subscribePresenceFromFirestore(callback: (onlineCount: number) =
 
 
 
+
+/**
+ * 記錄會員「最近上線時間」：登入的會員使用網站時，最多每 10 分鐘寫一次自己的 lastActiveAt。
+ * （之前沒有寫進會員資料，後台「最近上線」只能顯示假時間）
+ */
+export async function touchUserLastActive(userId?: string): Promise<void> {
+  if (!userId || userId === 'user-guest' || isQuotaExhausted) return;
+  const key = `ideax_last_active_touch_${userId}`;
+  try {
+    const last = Number(localStorage.getItem(key) || 0);
+    if (Date.now() - last < 10 * 60 * 1000) return;
+    localStorage.setItem(key, String(Date.now()));
+  } catch {}
+  try {
+    await updateDoc(doc(db, 'users', userId), { lastActiveAt: new Date().toISOString() });
+  } catch {
+    // 沒有權限或離線：下次再試
+    try { localStorage.removeItem(key); } catch {}
+  }
+}

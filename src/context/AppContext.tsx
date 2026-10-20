@@ -87,6 +87,7 @@ import {
   deleteUserAndAllRelatedDataFromFirestore,
   deleteUsersFromFirestore,
   subscribeToQuestions,
+  touchUserLastActive,
   subscribeToUsers,
   syncAnswerToFirestore,
   syncAnswersToFirestore,
@@ -1146,8 +1147,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // 2. 即時線上 Heartbeat & 實時監聽活躍連線數
   useEffect(() => {
     sendPresenceHeartbeat(currentUser?.id);
+    void touchUserLastActive(currentUser?.id);
     const heartbeatTimer = setInterval(() => {
       sendPresenceHeartbeat(currentUser?.id);
+      void touchUserLastActive(currentUser?.id); // 最多每 10 分鐘寫一次最近上線時間
     }, 25000);
 
     const unsub = subscribePresenceFromFirestore((count) => {

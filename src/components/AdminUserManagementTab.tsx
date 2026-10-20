@@ -48,6 +48,10 @@ import {
 import { AdminUserProfileModal } from './AdminUserProfileModal';
 import { AdminUserImpersonationModal } from './AdminUserImpersonationModal';
 import { AdminAuthBackfillCard } from './AdminAuthBackfillCard';
+
+/** 最近上線：登入時間與最近活動時間取比較晚的那個 */
+const latestSeen = (...ts: Array<string | undefined>) =>
+  ts.filter(Boolean).map((t) => new Date(t as string).getTime()).filter((n) => Number.isFinite(n)).reduce((a, b) => Math.max(a, b), 0);
 import { AdminAnswerSecretsCard, AdminPrivateProfilesCard } from './AdminAnswerSecretsCard';
 
 interface AdminUserManagementTabProps {
@@ -876,8 +880,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                           <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
                           <span>最近上線：<strong className="text-stone-700 font-mono">{
                             u.lastLoginAt || u.lastActiveAt
-                              ? new Date(u.lastLoginAt || u.lastActiveAt!).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-                              : isSelf ? '目前在線上' : '今日 14:20'
+                              ? new Date(latestSeen(u.lastLoginAt, u.lastActiveAt)).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                              : isSelf ? '目前在線上' : '尚無紀錄'
                           }</strong></span>
                         </span>
                         <span className="text-stone-300">·</span>
