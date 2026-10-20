@@ -31,7 +31,7 @@ export const ConsolidatedStatementModal: React.FC<ConsolidatedStatementModalProp
 }) => {
   const [recipientName, setRecipientName] = useState(currentUser?.name || '平台會員');
   const [taxId, setTaxId] = useState('');
-  const [statementTitle, setStatementTitle] = useState('IdeaX 創點子知識共享平台・多筆交易統一對帳結算單');
+  const [statementTitle, setStatementTitle] = useState('IdeaX 創點子・點子與人才媒合平台・多筆交易統一對帳結算單');
   const [customRemark, setCustomRemark] = useState('');
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -177,7 +177,7 @@ export const ConsolidatedStatementModal: React.FC<ConsolidatedStatementModalProp
 </head>
 <body>
   <div class="header">
-    <h1>IdeaX 智庫知識共享與專案諮詢平台</h1>
+    <h1>IdeaX 創點子・點子與人才媒合平台</h1>
     <p>多筆交易統一對帳結算單 (Consolidated Transaction Statement)</p>
     <div class="stmt-no">對帳單號：${statementNo}</div>
   </div>
@@ -232,7 +232,7 @@ export const ConsolidatedStatementModal: React.FC<ConsolidatedStatementModalProp
 
   <div class="stamp-box">
     <div style="font-weight: bold; color: #44403c; margin-bottom: 6px;">【官方平台審計與金流存證聲明】</div>
-    <div>1. 本對帳單係 IdeaX 創點子知識共享平台依據全站資料庫真實交易紀錄彙總產出，具備正式對帳與金流查核效力。</div>
+    <div>1. 本對帳單係 IdeaX 創點子・點子與人才媒合平台依據全站資料庫真實交易紀錄彙總產出，具備正式對帳與金流查核效力。</div>
     <div>2. 款項均經第三方金融信託金流與數位帳本嚴格稽核，若需索取特定單筆交易之營業發票或進一步報稅憑證，請洽詢官方財務中心。</div>
     <div>3. 查詢認證代碼：<span style="font-family: monospace; font-weight: bold; color: #1c1917;">${statementNo}</span></div>
 

@@ -141,7 +141,7 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
                   PWA 應用程式
                 </span>
               </div>
-              <p className="text-xs text-stone-300 font-bold mt-0.5">高價值問題與解決方案交易市場</p>
+              <p className="text-xs text-stone-300 font-bold mt-0.5">點子與人才媒合平台</p>
             </div>
           </div>
 

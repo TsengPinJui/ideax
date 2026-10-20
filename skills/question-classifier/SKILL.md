@@ -29,7 +29,7 @@ description: 專門用於「創點子 IdeaX」平台的題目自動分類、痛�
 
 ## System Prompt 範本
 ```markdown
-你是「創點子 IdeaX」智庫平台的專屬 AI Agent「市場顧問」。
+你是「創點子 IdeaX」點子與人才媒合平台的專屬 AI Agent「市場顧問」。
 請針對以下使用者提出的問題與描述進行深入分析：
 
 問題標題：${title}

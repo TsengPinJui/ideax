@@ -93,7 +93,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
 </head>
 <body>
   <div class="header">
-    <h1>IdeaX 智庫知識共享與專案諮詢平台</h1>
+    <h1>IdeaX 創點子・點子與人才媒合平台</h1>
     <p>平台媒合與技術服務費電子收據 (Platform Service Fee e-Receipt)</p>
     <div class="cert-no">發票／收據編號：${invoiceMockNo}</div>
   </div>
@@ -190,7 +190,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
 </head>
 <body>
   <div class="header">
-    <h1>IdeaX 知識智庫與專家諮詢平台</h1>
+    <h1>IdeaX 創點子・點子與人才媒合平台</h1>
     <p>專家勞務報酬暨代收轉付證明單 (Expert Remuneration & Escrow Transfer Statement)</p>
     <div class="cert-no">單據序號：${certificateNo}</div>
   </div>
@@ -277,7 +277,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
 </head>
 <body>
   <div class="header">
-    <h1>IdeaX 知識智庫與專家諮詢平台</h1>
+    <h1>IdeaX 創點子・點子與人才媒合平台</h1>
     <p>電子交易明細與對帳結算憑證 (Electronic Transaction Statement & Settlement Certificate)</p>
     <div class="cert-no">憑證序號：${certificateNo}</div>
   </div>
@@ -548,7 +548,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
               <div className="text-center pb-3 border-b-2 border-stone-200 space-y-1 relative">
                 <div className="flex items-center justify-center gap-2 text-amber-700 font-bold text-xs uppercase tracking-wider">
                   <Building2 className="w-3.5 h-3.5" />
-                  <span>IdeaX 智庫知識共享與專案諮詢平台</span>
+                  <span>IdeaX 創點子・點子與人才媒合平台</span>
                 </div>
                 <h2 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight">
                   電子交易明細與對帳結算憑證
@@ -672,7 +672,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
               <div className="text-center pb-3 border-b-2 border-blue-200 space-y-1 relative">
                 <div className="flex items-center justify-center gap-2 text-blue-700 font-bold text-xs uppercase tracking-wider">
                   <Receipt className="w-3.5 h-3.5" />
-                  <span>IdeaX 智庫知識共享與專案諮詢平台</span>
+                  <span>IdeaX 創點子・點子與人才媒合平台</span>
                 </div>
                 <h2 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight">
                   平台媒合與技術服務費電子收據 / 發票
@@ -757,7 +757,7 @@ export const TransactionCertificateModal: React.FC<TransactionCertificateModalPr
               <div className="text-center pb-3 border-b-2 border-emerald-200 space-y-1 relative">
                 <div className="flex items-center justify-center gap-2 text-emerald-700 font-bold text-xs uppercase tracking-wider">
                   <UserCheck className="w-3.5 h-3.5" />
-                  <span>IdeaX 智庫知識共享與專案諮詢平台</span>
+                  <span>IdeaX 創點子・點子與人才媒合平台</span>
                 </div>
                 <h2 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight">
                   專家勞務報酬暨代收轉付證明單

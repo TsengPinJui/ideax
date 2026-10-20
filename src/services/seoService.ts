@@ -3,7 +3,7 @@ import { StarSeasonProposal, STAR_SEASON_TRACKS } from '../types/competition';
 
 const DEFAULT_TITLE = 'IdeaX 創點子 — 讓想法發光 • IDEAS CONNECT POSSIBILITIES';
 const DEFAULT_DESC =
-  'IdeaX 創點子 — 讓想法發光！高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，Ideas Connect Possibilities。';
+  'IdeaX 創點子 — 讓想法發光！點子與人才媒合平台：生活痛點與解方、創意提案交流、職缺與專業媒合，一站完成，Ideas Connect Possibilities。';
 const DEFAULT_IMAGE = '/ideax-thumbnail.png';
 
 /**

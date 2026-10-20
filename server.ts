@@ -1486,7 +1486,7 @@ async function handleMarketAdvisorClassifyAndTag(req: Request, res: Response) {
     return res.status(400).json({ error: 'Title is required' });
   }
 
-  const prompt = `你是「創點子 IdeaX」智庫平台的專屬 AI Agent「市場顧問」。
+  const prompt = `你是「創點子 IdeaX」點子與人才媒合平台的專屬 AI Agent「市場顧問」。
 你專責三大關鍵使命：1. 獵頭顧問（媒合專家） 2. 題目分類與標籤歸納 3. 付費分析報告產出。
 本次請執行【題目分類與標籤歸納】：
 請針對以下使用者提出的問題與描述進行深入分析：
@@ -1687,7 +1687,7 @@ async function handleMarketAdvisorMediateDispute(req: Request, res: Response) {
 
   const escrowTotal = Number(totalEscrowAmount) || 2000;
 
-  const prompt = `你是「創點子 IdeaX」智庫平台的專屬 AI Agent「市場顧問」（專責智慧獵頭延攬、題目分類標籤、付費深度分析報告、智慧合約與商業履約調解仲裁）。
+  const prompt = `你是「創點子 IdeaX」點子與人才媒合平台的專屬 AI Agent「市場顧問」（專責智慧獵頭延攬、題目分類標籤、付費深度分析報告、智慧合約與商業履約調解仲裁）。
 本次請執行【智慧合約履約爭議調解與仲裁】：
 請參考全球頂尖金融智庫（如摩根大通 J.P. Morgan）之客觀證據鏈與防護欄治理方式，針對雙方發生的履約驗收爭議，平行提取並交叉比對：
 【維度一：原始需求目標】原始合約規格、指定成果指標、預定里程碑與金額。
@@ -2259,7 +2259,7 @@ async function handleMarketAdvisorPreliminaryReport(req: Request, res: Response)
     return res.status(400).json({ error: 'questionTitle is required' });
   }
 
-  const prompt = `你是「創點子 IdeaX」智庫平台的專屬 AI Agent「市場顧問」（專責智慧獵頭延攬、題目分類標籤、付費深度分析報告）。
+  const prompt = `你是「創點子 IdeaX」點子與人才媒合平台的專屬 AI Agent「市場顧問」（專責智慧獵頭延攬、題目分類標籤、付費深度分析報告）。
 針對用戶在平台上提出的懸賞問題，請產出極具深度、完全非樣板化、切中該特定產業實務痛點的《初步問題分析與解題報告》（付費分析報告）：
 
 【案件詳情】
@@ -4977,7 +4977,7 @@ async function startServer() {
 
       // 各頁面專屬 SEO Metadata 對應表
       let pageTitle = 'IdeaX 創點子 — 讓想法發光 • IDEAS CONNECT POSSIBILITIES';
-      let pageDesc = 'IdeaX 創點子 — 讓想法發光！高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現，Ideas Connect Possibilities。';
+      let pageDesc = 'IdeaX 創點子 — 讓想法發光！點子與人才媒合平台：生活痛點與解方、創意提案交流、職缺與專業媒合，一站完成，Ideas Connect Possibilities。';
       let pageImg = 'https://www.ideax.tw/圓角正向黃底燈泡.png';
 
       if (rawPath === '/challenge/rules' || rawPath === '/rules') {
@@ -5016,7 +5016,7 @@ async function startServer() {
         pageDesc = '集中管理您在 IdeaX 創點子的提問委託、專家解答提案、諮詢階段交付與已結案紀錄。';
       } else if (rawPath.startsWith('/about')) {
         pageTitle = '關於我們 — 讓想法發光，連接無限可能 | IdeaX 創點子';
-        pageDesc = '了解 IdeaX 創點子之核心願景、創始團隊與創新問題交易市場運作機制。';
+        pageDesc = '了解 IdeaX 創點子的核心願景、創始團隊，以及點子與人才如何在這裡媒合。';
       } else if (rawPath.startsWith('/question')) {
         pageTitle = '問題詳情與方案解答 | IdeaX 創點子';
         pageDesc = '查看此問題的詳細需求背景、懸賞階段以及專家所提出的專業解答方案。';

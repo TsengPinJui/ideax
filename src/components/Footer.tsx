@@ -248,7 +248,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick, onPostClick, onSearc
           <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
             <span>© {new Date().getFullYear()} 創點子 IdeaX</span>
             <span>·</span>
-            <span>讓創新想法化為真實價值</span>
+            <span>點子與人才媒合平台</span>
           </div>
 
           <div className="font-mono text-[10px] text-stone-600 select-none">
