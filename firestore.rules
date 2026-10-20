@@ -62,7 +62,8 @@ service cloud.firestore {
       return ['authorId', 'authorAuthUid', 'authorName', 'authorAvatar', 'title', 'description', 'bounty',
               'withheldBounty', 'postType', 'level', 'deadline', 'phases', 'isOfficial', 'publishIdentity',
               'status', 'isFeatured', 'disputeStatus', 'appName', 'youtubeUrl', 'coverImage', 'galleryImages',
-              'demoUrl', 'previewMode', 'fileUrl', 'updateLogs', 'specialZone', 'isStarSeason', 'isDelisted'];
+              'demoUrl', 'previewMode', 'fileUrl', 'updateLogs', 'specialZone', 'isStarSeason', 'isDelisted',
+              'externalLink', 'fileLink', 'techArchitecture', 'publishedPlatforms'];
     }
     match /questions/{questionId} {
       allow read: if true;
