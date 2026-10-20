@@ -28,6 +28,9 @@ const PLATFORMS: Platform[] = [
   { name: 'Yourator', host: /(^|\.)yourator\.co$/i, detail: /^\/companies\/[^/]+\/jobs\/\d+/i, site: 'yourator.co' },
   { name: 'Yes123', host: /(^|\.)yes123\.com\.tw$/i, detail: /job_refer_comp_job_detail|[?&](p_id|job_id)=/i, site: 'yes123.com.tw' },
   { name: '518熊班', host: /(^|\.)518\.com\.tw$/i, detail: /^\/job-[\w-]+\.html/i, site: '518.com.tw' },
+  // 兼職／打工平台
+  { name: '小雞上工', host: /(^|\.)chickpt\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: 'chickpt.com.tw' },
+  { name: 'Worky', host: /(^|\.)worky\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: 'worky.com.tw' },
   { name: 'LinkedIn', host: /(^|\.)linkedin\.com$/i, detail: /^\/jobs\/view\/[\w-]*\d+/i, search: (kw) => `https://www.linkedin.com/jobs/search/?keywords=${kw}`, site: 'linkedin.com' },
 ];
 
