@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { BaiMiao } from './baimiao/BaiMiao';
 import { useApp } from '../context/AppContext';
 import { ChatConversation, ChatMessage, Question, Answer } from '../types';
 import { mediateDisputeWithAI } from '../services/aiService';
@@ -8,7 +9,6 @@ import { SubmitAnswerModal } from './SubmitAnswerModal';
 import { HelpTooltip } from './HelpTooltip';
 import { ContractPreviewModal } from './ContractPreviewModal';
 import { ChatOnboardingGuide, CHAT_ONBOARDING_STORAGE_KEY } from './ChatOnboardingGuide';
-import { BaiMiaoTaskBanner } from './mascot/BaiMiaoSceneWidget';
 import { 
   ContractData, 
   buildContractFromOffer, 
@@ -1855,12 +1855,11 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                         {/* AI Dispute Mediation Formal Contract Card inside chat */}
                         {msg.aiMediation && (
                           <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-xs text-stone-900 space-y-3.5 w-full">
-                            {/* 白喵調解和事佬動態（坐下先戴眼鏡然後拿出紙筆書寫） */}
-                            <BaiMiaoTaskBanner
-                              scene="chat_mediator"
-                              compact
-                              customTaskStatus="白喵已乖巧坐下、先戴上圓框眼鏡並拿出小黃筆記本與鉛筆書寫，為雙方完成《履約偏差與和解建議書》客觀記錄！"
-                            />
+                            {/* 和事佬白喵：坐下戴眼鏡、拿紙筆把雙方說法記下來 */}
+                            <div className="flex items-center gap-2 rounded-xl bg-amber-50/70 border border-amber-200/70 px-2 py-1">
+                              <BaiMiao action="mediate" size={56} className="-my-1 shrink-0" />
+                              <span className="text-[11px] text-amber-900 font-bold leading-snug">白喵把雙方說法記下來了，整理成下面這份和解建議書～</span>
+                            </div>
 
                             {/* Contract Header */}
                             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
@@ -3312,6 +3311,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                   <span className="text-[10px] text-stone-500 font-medium">履約偏差分析與雙軌和解</span>
                 </div>
               </div>
+              {/* 和事佬白喵：坐下、戴眼鏡、拿紙筆記下雙方說法 */}
+              <BaiMiao
+                action="mediate"
+                size={78}
+                bubbleSide="left"
+                bubble={isAnalyzingMediation ? { text: '白喵正在整理雙方說法、擬和解方案', busy: true } : { text: '交給我，我來當和事佬～' }}
+                className="-my-3 ml-auto mr-1 hidden min-[400px]:block"
+              />
               <button
                 onClick={() => setIsMediationModalOpen(false)}
                 className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer"
@@ -3319,17 +3326,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ onOpenAiCrm, onOpenAdminMail
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            {/* 當需要調解時的聊天室：白喵坐下先戴眼鏡然後拿出紙筆書寫 */}
-            <BaiMiaoTaskBanner
-              scene="chat_mediator"
-              compact
-              customTaskStatus={
-                isAnalyzingMediation
-                  ? '白喵正在戴著眼鏡、低頭在筆記本上快速書寫雙方通訊紀錄與交付偏差，正在擬定雙軌和解協議...'
-                  : '白喵已經坐下、先戴好圓框眼鏡並拿出紙筆準備書寫！請填寫爭議重點，讓和事佬白喵為雙方公允調解～'
-              }
-            />
 
             <div className="space-y-2 text-xs text-stone-600 leading-relaxed">
               <p>

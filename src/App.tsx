@@ -12,6 +12,7 @@ import { SolversView } from './components/SolversView';
 import { JobExplorerView } from './components/JobExplorerView';
 import { MechanismView } from './components/MechanismView';
 import { AboutUsView } from './components/AboutUsView';
+import { BaiMiaoZoneWalker } from './components/baimiao/BaiMiaoZoneWalker';
 import { AboutUsModal } from './components/AboutUsModal';
 import { AuthModal } from './components/AuthModal';
 import { CustomerServiceModal } from './components/CustomerServiceModal';
@@ -218,7 +219,7 @@ function MainContent() {
           return 'solvers';
         }
 
-        // 2.1 全網搜職子網址: /jobs, /job-explorer
+        // 2.1 匯職缺子網址: /jobs, /job-explorer
         if (
           targetPath.includes('/jobs') ||
           targetPath.includes('/job-explorer') ||
@@ -306,7 +307,7 @@ function MainContent() {
         ) {
           return 'topup';
         }
-        if (targetPath.includes('/about') || search.includes('tab=about') || hash.includes('about')) {
+        if (targetPath.includes('/about') || /^\/agents\/?$/.test(targetPath) || search.includes('tab=about') || hash.includes('about')) {
           return 'about';
         }
         if (targetPath.includes('/leaderboard') || search.includes('tab=leaderboard') || hash.includes('leaderboard')) {
@@ -744,7 +745,24 @@ function MainContent() {
 
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [submitInitialType, setSubmitInitialType] = useState<'discussion' | 'solution'>('solution');
-  const [aboutPageSection, setAboutPageSection] = useState<string>('others');
+  const [aboutPageSection, setAboutPageSection] = useState<string>(() => {
+    try {
+      if (/^\/(about\/)?agents\/?$/.test(window.location.pathname)) return 'ip_agents';
+    } catch {}
+    return 'others';
+  });
+  // 角色訊息框裡的「認識白喵」捷徑：打開關於 IdeaX 的「原創 IP 與 Agent」
+  useEffect(() => {
+    const openAgents = () => {
+      setAboutPageSection('ip_agents');
+      setActiveTab('about');
+      try { window.history.pushState(null, '', '/about/agents'); } catch {}
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('ideax_open_agents', openAgents);
+    return () => window.removeEventListener('ideax_open_agents', openAgents);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 當任何卡片、痛點或提案關聯點擊設定 selectedQuestion 時，自動進入貼文詳情全頁
   useEffect(() => {
@@ -1330,6 +1348,10 @@ function MainContent() {
           else if (normalizedPath.includes('/participant')) subView = 'participant';
           else if (normalizedPath.includes('/ambassador')) subView = 'ambassador';
           window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView } }));
+        } else if (normalizedPath === '/about/agents' || normalizedPath === '/agents') {
+          // 原創 IP 與 Agent 介紹頁
+          setAboutPageSection('ip_agents');
+          setActiveTab('about');
         } else if (normalizedPath === '/about' || tabParam === 'about') {
           setActiveTab('about');
         } else if (normalizedPath === '/leaderboard' || tabParam === 'leaderboard') {
@@ -2022,6 +2044,9 @@ function MainContent() {
             <div id="market-grid" className="scroll-mt-20 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-1.5 pb-12 sm:pt-2 sm:pb-16">
               <div className="space-y-3 sm:space-y-6">
                 {/* 頂部特定主題專區切換列 (常駐置頂，手機版與電腦版皆完美適配無裁切，隨時切換) */}
+                {/* 市場顧問白喵在專區框上緣走來走去 */}
+                <div className="relative">
+                <BaiMiaoZoneWalker />
                 <SpecialZonesTopBar
                   currentZone={specialZone}
                   onSelectZone={handleSelectSpecialZone}
@@ -2037,6 +2062,7 @@ function MainContent() {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 />
+                </div>
 
                 {/* Special Zone Banners */}
                 {specialZone === 'vibecoding' && (
@@ -2847,7 +2873,7 @@ function MainContent() {
           </div>
         )}
 
-        {/* 1.9 Job Explorer Tab: 全網搜職 (探險家 AI) */}
+        {/* 1.9 Job Explorer Tab: 匯職缺 (探險家 AI) */}
         {activeTab === 'job_explorer' && <JobExplorerView />}
 
         {/* 2. Solvers Tab: Certified Experts */}

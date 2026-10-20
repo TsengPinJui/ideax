@@ -271,13 +271,13 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
 
         {/* Scrollable List */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-3.5">
-          {/* 🌟 核心功能入口：全網搜職、認證專家智庫 & 交易榮譽榜 */}
+          {/* 🌟 核心功能入口：匯職缺、認證專家智庫 & 交易榮譽榜 */}
           <div className="space-y-2 pb-1">
             <div className="text-[11px] font-bold text-stone-500 px-1 flex items-center justify-between">
-              <span>全網搜職、專家智庫與榮譽榜</span>
+              <span>匯職缺、專家智庫與榮譽榜</span>
             </div>
 
-            {/* ⓪ 全網搜職 (專家智庫上方) */}
+            {/* ⓪ 匯職缺 (專家智庫上方) */}
             <button
               onClick={() => {
                 if (onNavigateToJobExplorer) onNavigateToJobExplorer();
@@ -295,11 +295,9 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm font-black text-stone-900 group-hover:text-blue-700 transition-colors flex items-center gap-1.5">
-                    <span>全網搜職</span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-blue-100 text-blue-800 border border-blue-200">
-                      跨平台找工作
-                    </span>
+                    <span>匯職缺</span>
                   </div>
+                  <div className="text-[10px] sm:text-[11px] text-stone-500 font-medium leading-snug mt-0.5">一鍵彙集跨海內外全網所有職缺</div>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-blue-600 transition-colors shrink-0" />

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
+import { BaiMiao } from './baimiao/BaiMiao';
 import { useApp } from '../context/AppContext';
 import { Solver } from '../types';
 import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 import { HelpTooltip } from './HelpTooltip';
 import { GuestBoardGateBlurOverlay } from './GuestBoardGateBlurOverlay';
 import { isGuestUser } from '../utils/userDisplay';
-import { BaiMiaoTaskBanner } from './mascot/BaiMiaoSceneWidget';
 import {
   Sparkles,
   Search,
@@ -339,27 +339,30 @@ export const AiHeadhunterModal: React.FC<AiHeadhunterModalProps> = ({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-start gap-1 shrink-0">
+            {/* 市場顧問白喵拿望遠鏡幫你找人 */}
+            <BaiMiao
+              action={results && results.length > 0 && !isSearching ? 'cheer' : 'binoculars'}
+              size={84}
+              bubbleSide="left"
+              bubble={
+                isSearching
+                  ? { text: '白喵正在幫你找專家', busy: true }
+                  : results && results.length > 0
+                  ? { text: `找到 ${results.length} 位人選！` }
+                  : null
+              }
+              className="-my-2 hidden min-[380px]:block"
+            />
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-
-        {/* 付費獵頭專屬動作：白喵拿出望遠鏡眺望尋才 */}
-        <BaiMiaoTaskBanner
-          scene="headhunter_telescope"
-          compact
-          customTaskStatus={
-            isSearching
-              ? '白喵正在舉起望遠鏡全力掃描全站智庫，逐一比對專長與歷史實績，為您獵尋最契合的 4 位專家...'
-              : results && results.length > 0
-              ? `白喵用望遠鏡幫您鎖定了 ${results.length} 位高契合度領域專家！快往下查看白喵的推薦理由吧～`
-              : '白喵已拿出專業望遠鏡準備就緒！輸入您的痛點或條件，白喵立刻為您執行獵頭物色！'
-          }
-        />
 
         {/* Search Input Box */}
         <div className="space-y-3">

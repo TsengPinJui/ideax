@@ -160653,14 +160653,14 @@ function guardMascotQuestion(raw) {
       reply: `\u300C${crm.name}\u300D\u662F\u6703\u54E1\u8A02\u95B1\u529F\u80FD\uFF08\u300C${planName(crm.tiers[0])}\u300D\u4EE5\u4E0A\uFF09\uFF0C\u5C0F\u71C8\u6CE1\u4E0D\u80FD\u5728\u5C0D\u8A71\u6846\u5E6B\u4F60\u4F7F\u7528\u5594\uFF01\u8ACB\u5230 \u500B\u4EBA\u4E2D\u5FC3\uFF08\u96FB\u8166\u7248\u9EDE\u53F3\u4E0A\u89D2\u982D\u50CF\uFF0C\u624B\u6A5F\u7248\u9EDE\u5E95\u90E8\u300C\u6211\u7684\u300D\uFF09\u2192\u300CAI-CRM \u5BA2\u6236\u95DC\u4FC2\u7BA1\u7406\u300D\u4F7F\u7528\uFF1B\u60F3\u5347\u7D1A\u65B9\u6848\u53EF\u4EE5\u5230\u300C\u6703\u54E1\u65B9\u6848\u300D\u3002`
     };
   }
-  const JOB_SEARCH_RE = /全網搜職|探險家|找工作|求職|職缺|職位|工作建議|職涯建議|推薦.{0,6}工作|適合.{0,6}工作|(找|搜|尋|有沒有|推薦).{0,10}(工作|職缺|職位|正職|兼職|打工|實習|工程師|行政|門市|行銷|業務|設計)|應徵|轉職|跳槽|履歷|面試|月薪|年薪|底薪|頂薪/i;
+  const JOB_SEARCH_RE = /匯職缺|全網搜職|探險家|找工作|求職|職缺|職位|工作建議|職涯建議|推薦.{0,6}工作|適合.{0,6}工作|(找|搜|尋|有沒有|推薦).{0,10}(工作|職缺|職位|正職|兼職|打工|實習|工程師|行政|門市|行銷|業務|設計)|應徵|轉職|跳槽|履歷|面試|月薪|年薪|底薪|頂薪/i;
   if (JOB_SEARCH_RE.test(message2)) {
     return {
       action: "reply",
       reason: "paid_feature",
       feature: "job_explorer",
-      actions: [{ label: "\u524D\u5F80\u300C\u5168\u7DB2\u641C\u8077\u300D", to: "job_explorer" }],
-      reply: "\u5C0F\u71C8\u6CE1\u4E0D\u76F4\u63A5\u63D0\u4F9B\u5DE5\u4F5C\u5EFA\u8B70\u5594\uFF01\u8ACB\u9EDE\u64CA\u4E0B\u65B9\u6377\u5F91\u524D\u5F80\u300C\u5168\u7DB2\u641C\u8077\u300D\u8DE8\u5E73\u53F0\u627E\u5DE5\u4F5C\uFF0C\u6839\u64DA\u4F60\u7684\u7BE9\u9078\u689D\u4EF6\u8207\u9700\u6C42\u641C\u5C0B\u5408\u9069\u8077\u4F4D\u3002"
+      actions: [{ label: "\u524D\u5F80\u300C\u532F\u8077\u7F3A\u300D", to: "job_explorer" }],
+      reply: "\u5C0F\u71C8\u6CE1\u4E0D\u76F4\u63A5\u63D0\u4F9B\u5DE5\u4F5C\u5EFA\u8B70\u5594\uFF01\u8ACB\u9EDE\u64CA\u4E0B\u65B9\u6377\u5F91\u524D\u5F80\u300C\u532F\u8077\u7F3A\u300D\u8DE8\u5E73\u53F0\u627E\u5DE5\u4F5C\uFF0C\u6839\u64DA\u4F60\u7684\u7BE9\u9078\u689D\u4EF6\u8207\u9700\u6C42\u641C\u5C0B\u5408\u9069\u8077\u4F4D\u3002"
     };
   }
   return { action: "pass", message: maskPII(message2) };
@@ -160690,7 +160690,7 @@ var MASCOT_AGENTS = {
   explorer: {
     label: "\u63A2\u96AA\u5BB6",
     envKeys: ["DIFY_EXPLORER_API_KEY", "DIFY_JOB_EXPLORER_API_KEY", "DIFY_EXPLORER_WEB_URL"],
-    persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u5168\u7DB2\u641C\u8077 AI \u7279\u52A9\u300C\u63A2\u96AA\u5BB6\u300D\uFF0C\u5C08\u9580\u5728\u300C\u5168\u7DB2\u641C\u8077\u300D\u9801\u9762\u5354\u52A9\u6C42\u8077\u8005\u4EE5\u81EA\u7136\u8A9E\u8A00\u5206\u6790\u6700\u5728\u610F\u7684\u6C42\u8077\u689D\u4EF6\uFF08\u85AA\u8CC7\u3001\u5730\u9EDE\u3001\u7D93\u6B77\u3001\u5B78\u6B77\u3001\u884C\u696D\u3001\u5DE5\u4F5C\u74B0\u5883\u3001\u5176\u4ED6\u5F85\u9047\uFF09\uFF0C\u4E26\u7D50\u5408\u5168\u7DB2\u641C\u5C0B\u5A92\u5408\u9069\u5408\u8077\u4F4D\u3002"
+    persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u532F\u8077\u7F3A AI \u7279\u52A9\u300C\u63A2\u96AA\u5BB6\u300D\uFF0C\u5C08\u9580\u5728\u300C\u532F\u8077\u7F3A\u300D\u9801\u9762\u5354\u52A9\u6C42\u8077\u8005\u4EE5\u81EA\u7136\u8A9E\u8A00\u5206\u6790\u6700\u5728\u610F\u7684\u6C42\u8077\u689D\u4EF6\uFF08\u85AA\u8CC7\u3001\u5730\u9EDE\u3001\u7D93\u6B77\u3001\u5B78\u6B77\u3001\u884C\u696D\u3001\u5DE5\u4F5C\u74B0\u5883\u3001\u5176\u4ED6\u5F85\u9047\uFF09\uFF0C\u4E26\u7D50\u5408\u5168\u7DB2\u641C\u5C0B\u5A92\u5408\u9069\u5408\u8077\u4F4D\u3002"
   }
 };
 var DEFAULT_EXPLORER_UDIFY_URL = "https://udify.app/agent/bEV82Byu5zk9O4Q5";
@@ -160706,7 +160706,7 @@ var KEYWORDS = {
   cs: /登入|登錄|登出|密碼|帳號|帳戶|账户|账号|個人資料|頭像|暱稱|綁定|手機號|信箱|e-?mail|註冊|驗證|實名|點數|儲值|加值|退費|退款|付款|扣款|刷卡|發票|提領|出金|匯款|撥款|放款|驗收|方案|訂閱|會員|價格|費用|收費|抽成|手續費|懸賞規則|分級|\bL[0-4]\b|成為專家|專家認證|申請專家|專家申請|創星季|參賽|報名|規則|條款|怎麼用|如何使用|操作|教學|刪文|通知|錯誤|bug|當機|閃退|無法|不能|打不開|客服|工單|爭議|糾紛|檢舉|詐騙|停權|封鎖|隱私|個資/i,
   market_advisor: /找.{0,15}專家|推薦.{0,10}專家|專家推薦|合適的專家|適合的專家|媒合|獵頭|延攬|誰能解|誰可以幫|幫我分類|分類一下|歸類|標籤|題目價值|值多少|建議懸賞|懸賞多少|該定多少|定多少|分析報告|深度報告|診斷|調解建議|和解方案|需求蔓延|履約|市場分析|市場趨勢/i,
   aicrm: /接案|找案子|案源|商機|好題|高賞|高額懸賞|適合我.*題|推薦.*(題目|案子)|成案|意向|破冰|話術|跟進|追蹤客戶|客戶猶豫|發案方|實收|淨利|收益|來賺|賺錢|代操|拓客|潛在客戶|提案切入|切入方針/i,
-  explorer: /全網搜職|探險家/i
+  explorer: /匯職缺|全網搜職|探險家/i
 };
 function keywordMatches(message2) {
   return Object.keys(KEYWORDS).filter((a) => KEYWORDS[a].test(message2));
@@ -160739,7 +160739,7 @@ var PROXY_ROLES = {
     can: "\u5354\u52A9\u5C08\u5BB6\u8A66\u7B97\u5BE6\u6536\uFF08\u6B0A\u5A01\u65B9\u6848\u5E73\u53F0\u670D\u52D9\u8CBB 5%\u3001\u5BE6\u6536 95%\uFF1B\u5927\u5E2B\u65B9\u6848\u670D\u52D9\u8CBB 2%\u3001\u5BE6\u6536 98%\uFF1B\u4E00\u822C\u62BD\u6210 25%\uFF09\u3001\u5EFA\u8B70\u63D0\u6848\u5207\u5165\u65B9\u5F0F\uFF08\u5148\u5C0D\u7126\u95DC\u9375\u75DB\u9EDE\u2192\u63D0\u51FA\u67B6\u69CB\u8207\u91CC\u7A0B\u7891\u2192\u8AAA\u660E\u4EA4\u4ED8\u6E05\u55AE\u8207\u9A57\u6536\uFF09\u3001\u5EFA\u8B70\u8DDF\u9032\u6642\u6BB5\uFF08\u4E0A\u5348 10:00\uFF5E11:30\u3001\u5348\u5F8C 14:30\uFF5E16:00\u3001\u665A\u9593 19:30\uFF5E21:00\uFF09\u3001\u63D0\u4F9B\u7834\u51B0\u8A71\u8853\u65B9\u5411\u3002\u4E0D\u53EF\u4FDD\u8B49\u7372\u5229\u3002"
   },
   explorer: {
-    can: "\u5F15\u5C0E\u4F7F\u7528\u8005\u524D\u5F80\u300C\u5168\u7DB2\u641C\u8077\u300D\u9801\u9762\u4F7F\u7528\u300C\u63A2\u96AA\u5BB6\u300D\u641C\u5C0B\u8077\u7F3A\uFF0C\u5C0F\u71C8\u6CE1\u672C\u8EAB\u4E0D\u63D0\u4F9B\u5DE5\u4F5C\u5EFA\u8B70\u3002"
+    can: "\u5F15\u5C0E\u4F7F\u7528\u8005\u524D\u5F80\u300C\u532F\u8077\u7F3A\u300D\u9801\u9762\u4F7F\u7528\u300C\u63A2\u96AA\u5BB6\u300D\u641C\u5C0B\u8077\u7F3A\uFF0C\u5C0F\u71C8\u6CE1\u672C\u8EAB\u4E0D\u63D0\u4F9B\u5DE5\u4F5C\u5EFA\u8B70\u3002"
   }
 };
 async function proxyAnswerWithGemini(message2, agent, generateText, timeoutMs = 9e4) {
@@ -162440,7 +162440,7 @@ app.post("/api/admin/test-dify-agent", async (req, res) => {
       apiKey = process.env.DIFY_MARKET_ADVISOR_API_KEY || "";
     }
   }
-  const agentLabel = agentType === "aicrm_agent" ? "AICRM \u696D\u52D9\u9867\u554F" : agentType === "cs_agent" ? "\u5B98\u65B9\u5BA2\u670D\u7279\u52A9" : agentType === "explorer_agent" ? "\u5168\u7DB2\u641C\u8077 Agent (\u63A2\u96AA\u5BB6/\u641C\u641C)" : "\u5E02\u5834\u9867\u554F";
+  const agentLabel = agentType === "aicrm_agent" ? "AICRM \u696D\u52D9\u9867\u554F" : agentType === "cs_agent" ? "\u5B98\u65B9\u5BA2\u670D\u7279\u52A9" : agentType === "explorer_agent" ? "\u532F\u8077\u7F3A Agent (\u63A2\u96AA\u5BB6/\u641C\u641C)" : "\u5E02\u5834\u9867\u554F";
   const startTime = Date.now();
   res.status(200);
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -164517,7 +164517,7 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
     const runGroup = async (g) => {
       if (!ai) return;
       try {
-        const prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u5168\u7DB2\u641C\u8077\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u641C\u5C0B\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u3001\u800C\u4E14\u76EE\u524D\u4ECD\u5728\u62DB\u52DF\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\u3002
+        const prompt = `\u4F60\u662F\u300CIdeaX\u5275\u9EDE\u5B50\u300D\u5E73\u53F0\u7684\u532F\u8077\u7F3A\u7CFB\u7D71\u3002\u8ACB\u4F7F\u7528 Google Search \u641C\u5C0B\u7B26\u5408\u4EE5\u4E0B\u689D\u4EF6\u3001\u800C\u4E14\u76EE\u524D\u4ECD\u5728\u62DB\u52DF\u7684\u771F\u5BE6\u516C\u958B\u8077\u7F3A\u3002
 \u689D\u4EF6\uFF1A\u300C${rawQuery}\u300D${filterContext ? `\uFF08${filterContext}\uFF09` : ""}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
 \u9019\u6B21\u8ACB\u4EE5\u9019\u4E9B\u4F86\u6E90\u70BA\u4E3B\uFF1A${g.focus}\u3002
 

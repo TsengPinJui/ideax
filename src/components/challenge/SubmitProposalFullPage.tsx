@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BaiMiaoCardHopper } from '../baimiao/BaiMiaoCardHopper';
 import {
   Sparkles,
   Send,
@@ -1079,6 +1080,22 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
           </div>
         )}
 
+        <div className="relative">
+        {/* 市場顧問白喵在各個字卡之間跳來跳去，有任務時顯示進度 */}
+        <BaiMiaoCardHopper
+          cardsSelector="#star-tour-proposal-editor > *"
+          status={
+            isSubmitting
+              ? (formStage === 'pain_point' && painPointTrackChoice === 'auto' ? '白喵正在幫你分類、貼標籤' : '白喵正在幫你送出提案')
+              : isUploadingFile
+              ? '白喵正在幫你上傳檔案'
+              : isProcessingImages
+              ? '白喵正在整理圖片'
+              : isDraftSaving
+              ? '白喵正在幫你存草稿'
+              : null
+          }
+        />
         <form onSubmit={handleSubmit} id="star-tour-proposal-editor" className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 space-y-6 shadow-xs text-xs">
           {/* 1. 提案階段選擇（嚴格依照競賽時程開放與關閉） */}
           <div id="form-module-stage" className="space-y-2">
@@ -1822,6 +1839,7 @@ export const SubmitProposalFullPage: React.FC<SubmitProposalFullPageProps> = ({
             </button>
           </div>
         </form>
+        </div>
       </main>
 
       {/* 提案即時預覽彈窗 */}

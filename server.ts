@@ -1382,7 +1382,7 @@ app.post('/api/admin/test-dify-agent', async (req: Request, res: Response) => {
       : agentType === 'cs_agent'
       ? '官方客服特助'
       : agentType === 'explorer_agent'
-      ? '全網搜職 Agent (探險家/搜搜)'
+      ? '匯職缺 Agent (探險家/搜搜)'
       : '市場顧問';
 
   const startTime = Date.now();
@@ -3345,7 +3345,7 @@ app.post('/api/mascot/event', async (req: Request, res: Response) => {
   }
 });
 
-// 全網搜職 Stage 1：系統既有調節器 Gemini 先釐清並與用戶確認求職需求，確認後再轉給「探險家」Agent
+// 匯職缺 Stage 1：系統既有調節器 Gemini 先釐清並與用戶確認求職需求，確認後再轉給「探險家」Agent
 app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
   try {
     const rawMessage = String(req.body?.message || '').trim().slice(0, 600);
@@ -3849,7 +3849,7 @@ const isJobActive = (j: any): boolean => {
   return !closedPatternGlobal.test(combined);
 };
 
-// 全網搜職分批串流端點：分開回傳多次（Batch 1 首發、Batch 2 擴充），前端逐批整合呈現，零等待、絕不超過長度上限！
+// 匯職缺分批串流端點：分開回傳多次（Batch 1 首發、Batch 2 擴充），前端逐批整合呈現，零等待、絕不超過長度上限！
 app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) => {
   const rawQuery = String(req.body?.query || '').trim().slice(0, 600);
   const filters = req.body?.filters || {};
@@ -3934,7 +3934,7 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
     const runGroup = async (g: { label: string; focus: string; count: string }) => {
       if (!ai) return;
       try {
-        const prompt = `你是「IdeaX創點子」平台的全網搜職系統。請使用 Google Search 搜尋符合以下條件、而且目前仍在招募的真實公開職缺。
+        const prompt = `你是「IdeaX創點子」平台的匯職缺系統。請使用 Google Search 搜尋符合以下條件、而且目前仍在招募的真實公開職缺。
 條件：「${rawQuery}」${filterContext ? `（${filterContext}）` : ''}${partTimeHint(rawQuery)}${regionHint(rawQuery)}
 這次請以這些來源為主：${g.focus}。
 
@@ -4019,7 +4019,7 @@ ${JOB_JSON_SPEC}`;
   }
 });
 
-// 全網搜職 Stage 2：常規完整 JSON 檢索端點（保證真實直達網址與多平台來源）
+// 匯職缺 Stage 2：常規完整 JSON 檢索端點（保證真實直達網址與多平台來源）
 app.post('/api/job-explorer/search', async (req: Request, res: Response) => {
   const rawQuery = String(req.body?.query || '').trim().slice(0, 600);
   const filters = req.body?.filters || {};

@@ -10,3 +10,6 @@ coverage/
 # Firebase 服務帳戶金鑰（最高權限，絕不可上傳）
 service-account*.json
 *-firebase-adminsdk-*.json
+
+# Google AI Studio 的暫存檔（對話中的圖片等），不進版本庫
+.aistudio/

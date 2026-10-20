@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { playSousouSound, sousouWhoosh, sousouWindStart, sousouWindStop, sousouZip, sousouAha } from './sousouSound';
 
 /**
- * 全網搜職的探索者「搜搜」
+ * 匯職缺的探索者「搜搜」
  * - 平常停在畫面左下角
  * - 開始搜尋：筋斗雲冒出來、跳上去起飛，單手搭在額頭眺望，在畫面上飛來飛去（有風聲）
  * - 起飛：「咻」一下衝出去，身後拖著一道風尾

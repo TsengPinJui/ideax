@@ -60,7 +60,7 @@ export const AdminMascotRouteCheck: React.FC = () => {
                 </div>
                 {p && <p className="mt-1 font-bold text-amber-800">{p}</p>}
                 {r.agent === 'aicrm' && <p className="mt-1 text-stone-500">小燈泡不會轉接這位助理：AI-CRM 是會員功能，只能在網站介面使用（個人中心 →「AI-CRM 客戶關係管理」）。</p>}
-                {r.agent === 'explorer' && <p className="mt-1 text-stone-500">小燈泡不會轉接這位助理：小燈泡不提供工作建議，僅提供前往「全網搜職」的捷徑按鈕，由「探險家」在「全網搜職」頁面為用戶服務。</p>}
+                {r.agent === 'explorer' && <p className="mt-1 text-stone-500">小燈泡不會轉接這位助理：小燈泡不提供工作建議，僅提供前往「匯職缺」的捷徑按鈕，由「探險家」在「匯職缺」頁面為用戶服務。</p>}
               </li>
             );
           })}

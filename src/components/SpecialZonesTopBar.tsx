@@ -2,7 +2,6 @@ import React, { useMemo, useRef, useEffect } from 'react';
 import { SpecialZone, Question } from '../types';
 import { useApp } from '../context/AppContext';
 import { Sparkles } from 'lucide-react';
-import { SpecialZoneBorderBaiMiao } from './mascot/BaiMiaoSceneWidget';
 
 interface SpecialZonesTopBarProps {
   currentZone: SpecialZone;
@@ -195,9 +194,6 @@ export const SpecialZonesTopBar: React.FC<SpecialZonesTopBarProps> = ({
 
   return (
     <div className={`w-full max-w-full ${className}`}>
-      {/* 首頁專區選擇上方：市場顧問 Agent「白喵」在主題專區邊框上開心漫步、單腳接地揮手「嗨！」與側躺打瞌睡 */}
-      <SpecialZoneBorderBaiMiao />
-
       <div
         id="special-zones-navigation-bar"
         className="w-full max-w-full rounded-xl sm:rounded-2xl bg-white/95 sm:bg-gradient-to-b sm:from-white sm:to-stone-50/80 border border-stone-200/90 shadow-2xs sm:shadow-sm p-1.5 sm:p-3 transition-all"
