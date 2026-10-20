@@ -161383,6 +161383,30 @@ function companyCore(c) {
 function titleCore(t2) {
   return t2.replace(/[【\[(（].*?[】\])）]/g, "").replace(/\s+/g, "").slice(0, 8);
 }
+function titleKey(t2) {
+  return String(t2 || "").replace(/[【\[(（].*?[】\])）]/g, "").replace(/急徵|誠徵|徵才|招募中|高薪/g, "").replace(/[\s\-_/|.,，、·•:：+＋&＆]/g, "").toLowerCase();
+}
+function pageMatchesJob(pageText, title, company) {
+  const text = pageText.toLowerCase();
+  const c = companyCore(company).toLowerCase();
+  const t2 = titleKey(title);
+  const companyOk = c.length >= 2 && text.includes(c);
+  let titleOk = false;
+  if (t2.length >= 2) {
+    if (text.includes(t2.slice(0, 12))) titleOk = true;
+    else if (t2.length >= 4) {
+      const grams = /* @__PURE__ */ new Set();
+      for (let i2 = 0; i2 < t2.length - 1; i2++) grams.add(t2.slice(i2, i2 + 2));
+      let hit = 0;
+      grams.forEach((g) => {
+        if (text.includes(g)) hit++;
+      });
+      titleOk = hit / grams.size >= 0.75;
+    }
+  }
+  if (c.length >= 2 && t2.length >= 2) return companyOk && titleOk;
+  return c.length >= 2 ? companyOk : titleOk;
+}
 var pageCache = /* @__PURE__ */ new Map();
 function checkJobPage(url, title, company) {
   const key = `${url}|${title}|${company}`;
@@ -161397,8 +161421,7 @@ function checkJobPage(url, title, company) {
           const html = (await r2.text()).slice(0, 4e5);
           const text = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/\s+/g, "");
           if (CLOSED_PAGE.test(text)) return "closed";
-          const c = companyCore(company), t2 = titleCore(title);
-          if (c.length >= 2 && text.includes(c) || t2.length >= 2 && text.includes(t2)) return "ok";
+          if (pageMatchesJob(text, title, company)) return "ok";
           return text.length < 3e3 ? "unknown" : "mismatch";
         } catch {
           return "unknown";
@@ -161466,9 +161489,8 @@ async function verifyJobUrl(job, g) {
   for (const c of checks) {
     if (c.r === "ok") return { url: cleanJobUrl(c.u), urlKind: "direct", verified: true, platform: platformOf(c.u)?.name };
     if (c.r === "dead" || c.r === "closed") sawDeadOrClosed = true;
-    if (c.r === "unknown" && c.grounded && !fallbackGrounded) fallbackGrounded = c.u;
   }
-  if (fallbackGrounded) return { url: cleanJobUrl(fallbackGrounded), urlKind: "direct", verified: false, platform: platformOf(fallbackGrounded)?.name };
+  void fallbackGrounded;
   const platformName = candidates[0] ? platformOf(candidates[0].u)?.name : listPages[0] ? platformOf(listPages[0])?.name : void 0;
   const found = await findJobPageViaListings(title, company, listPages, platformName || job.sourcePlatform);
   if (found) return { url: found, urlKind: "direct", verified: true, platform: platformOf(found)?.name };
@@ -161511,7 +161533,10 @@ function pickJobLinkFromHtml(html, baseUrl, title, company) {
       }
       return best2 < 0 ? 0 : 2 + (600 - best2) / 600;
     };
-    const score = near(t2) + near(c);
+    const nt = near(t2), nc = near(c);
+    const both = t2.length >= 2 && c.length >= 2;
+    if (both ? !(nt > 0 && nc > 0) : nt + nc <= 0) continue;
+    const score = nt + nc;
     let clean = u.split("#")[0];
     if (/104\.com\.tw\/job\//i.test(clean)) clean = clean.split("?")[0];
     if (score >= 2 && (!best || score > best.score)) best = { url: clean, score };
@@ -161529,9 +161554,8 @@ async function check104Job(url, title, company) {
     const h2 = j?.data?.header;
     if (!h2) return j?.error ? "dead" : null;
     if (h2.isClosed || /關閉|下架/.test(String(j?.data?.switch || ""))) return "closed";
-    const name4 = String(h2.jobName || "").replace(/\s+/g, ""), cust = String(h2.custName || "").replace(/\s+/g, "");
-    const c = companyCore(company), t2 = titleCore(title);
-    return c.length >= 2 && cust.includes(c) || t2.length >= 2 && name4.includes(t2) ? "ok" : "mismatch";
+    const name4 = String(h2.jobName || ""), cust = String(h2.custName || "");
+    return pageMatchesJob(`${cust} ${name4}`.replace(/\s+/g, ""), title, company) ? "ok" : "mismatch";
   } catch {
     return null;
   }
@@ -161545,8 +161569,7 @@ async function checkLinkedInJob(url, title, company) {
     if (!r2.ok) return null;
     const text = (await r2.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, "");
     if (/Nolongeracceptingapplications|此職缺已不再接受應徵/i.test(text)) return "closed";
-    const c = companyCore(company), t2 = titleCore(title);
-    return c.length >= 2 && text.includes(c) || t2.length >= 2 && text.includes(t2) ? "ok" : "mismatch";
+    return pageMatchesJob(text, title, company) ? "ok" : "mismatch";
   } catch {
     return null;
   }
@@ -161738,6 +161761,9 @@ function seenJobBefore(seen, job) {
   keys.forEach((k) => seen.add(k));
   return false;
 }
+
+// src/data/versionData.ts
+var APP_VERSION = "2.10.0";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -164862,6 +164888,10 @@ async function parseJobIntakeWithGemini(params) {
   lastIntakeAiNote = notes.join("\uFF1B");
   return null;
 }
+app.get("/api/version", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store, max-age=0");
+  res.json({ version: APP_VERSION });
+});
 app.post("/api/job-explorer/intake", async (req, res) => {
   try {
     const rawMessage = String(req.body?.message || "").trim().slice(0, 600);

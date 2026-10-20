@@ -19,6 +19,7 @@ import { groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './
 import { ALL_JOB_SITES, COMPANY_SITE, MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
 import { FALLBACK_USD_RATES } from './src/data/currency';
 import { seenJobBefore } from './src/utils/jobDedupe';
+import { APP_VERSION } from './src/data/versionData';
 /** 國外主要城市（例如東京、舊金山灣區），用來辨識條件裡的國外城市 */
 const ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join('|'));
 
@@ -3744,6 +3745,12 @@ async function parseJobIntakeWithGemini(params: {
   lastIntakeAiNote = notes.join('；');
   return null;
 }
+
+// 前端定期問目前的版本：開著很久沒重新整理的頁面（例如手機上的 APP）才知道要更新
+app.get('/api/version', (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  res.json({ version: APP_VERSION });
+});
 
 app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
   try {

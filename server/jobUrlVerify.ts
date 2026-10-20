@@ -148,6 +148,37 @@ function titleCore(t: string): string {
   return t.replace(/[【\[(（].*?[】\])）]/g, '').replace(/\s+/g, '').slice(0, 8);
 }
 
+/** 職稱整理：去掉括號、急徵等雜字與標點，轉小寫 */
+function titleKey(t: string): string {
+  return String(t || '')
+    .replace(/[【\[(（].*?[】\])）]/g, '')
+    .replace(/急徵|誠徵|徵才|招募中|高薪/g, '')
+    .replace(/[\s\-_/|.,，、·•:：+＋&＆]/g, '')
+    .toLowerCase();
+}
+
+/** 頁面內容是不是這筆職缺：公司和職稱都要對上（只知道其中一個時，就看那一個） */
+export function pageMatchesJob(pageText: string, title: string, company: string): boolean {
+  const text = pageText.toLowerCase();
+  const c = companyCore(company).toLowerCase();
+  const t = titleKey(title);
+  const companyOk = c.length >= 2 && text.includes(c);
+  let titleOk = false;
+  if (t.length >= 2) {
+    if (text.includes(t.slice(0, 12))) titleOk = true;
+    else if (t.length >= 4) {
+      // 職稱寫法略有不同（例如「資深前端工程師」vs「前端工程師（React）」）：看兩字片段對上多少
+      const grams = new Set<string>();
+      for (let i = 0; i < t.length - 1; i++) grams.add(t.slice(i, i + 2));
+      let hit = 0;
+      grams.forEach((g) => { if (text.includes(g)) hit++; });
+      titleOk = hit / grams.size >= 0.75;
+    }
+  }
+  if (c.length >= 2 && t.length >= 2) return companyOk && titleOk;
+  return c.length >= 2 ? companyOk : titleOk;
+}
+
 export type PageCheck = 'ok' | 'closed' | 'mismatch' | 'dead' | 'unknown';
 
 const pageCache = new Map<string, Promise<PageCheck>>();
@@ -165,8 +196,8 @@ export function checkJobPage(url: string, title: string, company: string): Promi
           const html = (await r.text()).slice(0, 400_000);
           const text = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/\s+/g, '');
           if (CLOSED_PAGE.test(text)) return 'closed';
-          const c = companyCore(company), t = titleCore(title);
-          if ((c.length >= 2 && text.includes(c)) || (t.length >= 2 && text.includes(t))) return 'ok';
+          // 公司和職稱都要在頁面上對得到，才算是這筆職缺（只對到公司的，可能是同公司的其他職缺）
+          if (pageMatchesJob(text, title, company)) return 'ok';
           // 單頁式網站可能還沒渲染內容，只看得到 <title>，判斷不了
           return text.length < 3000 ? 'unknown' : 'mismatch';
         } catch {
@@ -268,10 +299,9 @@ export async function verifyJobUrl(
   for (const c of checks) {
     if (c.r === 'ok') return { url: cleanJobUrl(c.u), urlKind: 'direct', verified: true, platform: platformOf(c.u)?.name };
     if (c.r === 'dead' || c.r === 'closed') sawDeadOrClosed = true;
-    // 網站擋機器人看不到內容：只有 Google 真的搜到的頁面才採用
-    if (c.r === 'unknown' && c.grounded && !fallbackGrounded) fallbackGrounded = c.u;
   }
-  if (fallbackGrounded) return { url: cleanJobUrl(fallbackGrounded), urlKind: 'direct', verified: false, platform: platformOf(fallbackGrounded)?.name };
+  // 網站擋機器人、看不到內容的頁面：沒辦法確認是不是這筆職缺，不直接給（之前會給，常常連到別的職缺）
+  void fallbackGrounded;
 
   const platformName = candidates[0] ? platformOf(candidates[0].u)?.name : listPages[0] ? platformOf(listPages[0])?.name : undefined;
   const found = await findJobPageViaListings(title, company, listPages, platformName || job.sourcePlatform);
@@ -318,7 +348,11 @@ export function pickJobLinkFromHtml(html: string, baseUrl: string, title: string
       while (i !== -1) { const dist = Math.abs(from + i - m!.index); if (best < 0 || dist < best) best = dist; i = win.indexOf(needle, i + 1); }
       return best < 0 ? 0 : 2 + (600 - best) / 600;
     };
-    const score = near(t) + near(c);
+    const nt = near(t), nc = near(c);
+    // 職稱和公司都要出現在連結附近（只知道其中一個時看那一個），不然常會挑到同公司的其他職缺
+    const both = t.length >= 2 && c.length >= 2;
+    if (both ? !(nt > 0 && nc > 0) : nt + nc <= 0) continue;
+    const score = nt + nc;
     let clean = u.split('#')[0];
     if (/104\.com\.tw\/job\//i.test(clean)) clean = clean.split('?')[0];
     if (score >= 2 && (!best || score > best.score)) best = { url: clean, score };
@@ -338,9 +372,8 @@ async function check104Job(url: string, title: string, company: string): Promise
     const h = j?.data?.header;
     if (!h) return j?.error ? 'dead' : null;
     if (h.isClosed || /關閉|下架/.test(String(j?.data?.switch || ''))) return 'closed';
-    const name = String(h.jobName || '').replace(/\s+/g, ''), cust = String(h.custName || '').replace(/\s+/g, '');
-    const c = companyCore(company), t = titleCore(title);
-    return (c.length >= 2 && cust.includes(c)) || (t.length >= 2 && name.includes(t)) ? 'ok' : 'mismatch';
+    const name = String(h.jobName || ''), cust = String(h.custName || '');
+    return pageMatchesJob(`${cust} ${name}`.replace(/\s+/g, ''), title, company) ? 'ok' : 'mismatch';
   } catch {
     return null;
   }
@@ -356,8 +389,7 @@ async function checkLinkedInJob(url: string, title: string, company: string): Pr
     if (!r.ok) return null;
     const text = (await r.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, '');
     if (/Nolongeracceptingapplications|此職缺已不再接受應徵/i.test(text)) return 'closed';
-    const c = companyCore(company), t = titleCore(title);
-    return (c.length >= 2 && text.includes(c)) || (t.length >= 2 && text.includes(t)) ? 'ok' : 'mismatch';
+    return pageMatchesJob(text, title, company) ? 'ok' : 'mismatch';
   } catch {
     return null;
   }

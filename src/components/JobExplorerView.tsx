@@ -344,6 +344,8 @@ interface ChatMessage {
   conditionTags?: ConditionTag[];
   /** 搜尋過程中要使用者決定的選項（繼續等搜搜、派小燈泡、重新搜尋…） */
   searchActions?: SearchActionKey[];
+  /** 這則訊息對應的搜尋條件（頁面重開後還能「重新搜尋」） */
+  retryBrief?: string;
 }
 
 type SearchActionKey = 'wait' | 'bulb' | 'retry' | 'dismiss';
@@ -673,6 +675,38 @@ export const JobExplorerView: React.FC = () => {
   // 自然語言對話（僅在對話進行時展開，可隨時收合）
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  // ─── 保留這次的搜尋結果：點職缺連結出去、頁面被重新整理或 APP 重開，回來時結果還在（存在這台裝置，6 小時內有效） ───
+  const PERSIST_KEY = 'ideax_job_explorer_session_v1';
+  const PERSIST_TTL = 6 * 60 * 60 * 1000;
+  const restoredRef = useRef(false);
+  const restoreScrollRef = useRef<number | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PERSIST_KEY);
+      const saved = raw ? JSON.parse(raw) : null;
+      if (saved && Date.now() - Number(saved.at || 0) < PERSIST_TTL && (saved.jobs?.length || saved.messages?.length)) {
+        // 上次還在搜尋中就離開了：結果保留，訊息改成可以重新搜尋
+        const msgs: ChatMessage[] = (saved.messages || []).map((m: ChatMessage) =>
+          m.id === saved.searchingMsgId
+            ? { ...m, text: saved.jobs?.length ? `上次的搜尋在找到 ${saved.jobs.length} 筆後中斷了，結果都保留著。` : '上次的搜尋中斷了，要再搜一次嗎？', searchActions: saved.searchingBrief ? ['retry'] : undefined, retryBrief: saved.searchingBrief || undefined }
+            : { ...m, searchActions: m.searchActions?.filter((a) => a === 'retry') }
+        );
+        setMessages(msgs);
+        if (Array.isArray(saved.jobs)) setJobs(saved.jobs);
+        setHasSearched(Boolean(saved.hasSearched || saved.jobs?.length));
+        if (typeof saved.keyword === 'string') setKeyword(saved.keyword);
+        if (saved.selectedCity) setSelectedCity(saved.selectedCity);
+        if (saved.selectedCategory) setSelectedCategory(saved.selectedCategory);
+        if (saved.sortBy) setSortBy(saved.sortBy);
+        if (saved.sortOrder) setSortOrder(saved.sortOrder);
+        if (Array.isArray(saved.userCarePoints)) setUserCarePoints(saved.userCarePoints);
+        if (typeof saved.scrollY === 'number') restoreScrollRef.current = saved.scrollY;
+      }
+    } catch {}
+    restoredRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
 
   // AI 對話處理狀態（已收到、理解中、打字中）
@@ -792,6 +826,52 @@ export const JobExplorerView: React.FC = () => {
   };
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // 結果有變就存一份（稍等一下再存，避免每來一筆就寫一次）
+  useEffect(() => {
+    if (!restoredRef.current) return;
+    const t = window.setTimeout(() => {
+      try {
+        if (!messages.length && !jobs.length) { localStorage.removeItem(PERSIST_KEY); return; }
+        const sess = searchSessionRef.current;
+        localStorage.setItem(PERSIST_KEY, JSON.stringify({
+          at: Date.now(),
+          messages: messages.slice(-40),
+          jobs: jobs.slice(0, 100),
+          hasSearched,
+          keyword, selectedCity, selectedCategory, sortBy, sortOrder, userCarePoints,
+          searchingMsgId: isSearching && sess ? sess.botMsgId : null,
+          searchingBrief: isSearching && sess ? sess.brief : null,
+          scrollY: window.scrollY,
+        }));
+      } catch {}
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [messages, jobs, hasSearched, keyword, selectedCity, selectedCategory, sortBy, sortOrder, userCarePoints, isSearching]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 點出去前記下捲到哪裡，回來時捲回原位
+  useEffect(() => {
+    const save = () => {
+      if (document.visibilityState !== 'hidden') return;
+      try {
+        const raw = localStorage.getItem(PERSIST_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        saved.scrollY = window.scrollY;
+        localStorage.setItem(PERSIST_KEY, JSON.stringify(saved));
+      } catch {}
+    };
+    document.addEventListener('visibilitychange', save);
+    window.addEventListener('pagehide', save);
+    return () => { document.removeEventListener('visibilitychange', save); window.removeEventListener('pagehide', save); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (restoreScrollRef.current == null || !jobs.length) return;
+    const y = restoreScrollRef.current;
+    restoreScrollRef.current = null;
+    window.setTimeout(() => window.scrollTo({ top: y }), 120);
+  }, [jobs.length]);
 
   useEffect(() => {
     try {
@@ -1321,15 +1401,17 @@ export const JobExplorerView: React.FC = () => {
       setIsSearching(false);
       setArrivalOrder(false);
       setSearchProgressText('');
-      updateBotMsg(sess, { text: '搜搜這趟遲遲沒有回音，這次任務先暫停了。要重新搜尋，或派小燈泡去看看？', searchActions: ['retry', 'bulb'] });
+      updateBotMsg(sess, { text: '搜搜這趟遲遲沒有回音，這次任務先暫停了。要重新搜尋，或派小燈泡去看看？', searchActions: ['retry', 'bulb'], retryBrief: sess.brief });
     }, DIFY_PAUSE_MS));
   };
 
   const handleSearchAction = (msgId: string, action: SearchActionKey) => {
     const sess = searchSessionRef.current;
     if (!sess || sess.botMsgId !== msgId) {
-      // 舊的訊息：只能重新搜尋
+      // 舊的訊息（例如頁面重開後）：只能重新搜尋
+      const msg = messages.find((m) => m.id === msgId);
       setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, searchActions: undefined } : m)));
+      if (action === 'retry' && msg?.retryBrief) void handleForwardToExplorerAgent(msg.retryBrief);
       return;
     }
     if (action === 'wait') {
