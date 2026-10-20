@@ -233,12 +233,12 @@ export const GoogleSitelinksModal: React.FC<GoogleSitelinksModalProps> = ({
 
               {/* 主要大標題 */}
               <div className="text-base sm:text-lg font-bold text-[#1A0DAB] hover:underline cursor-pointer leading-snug">
-                IdeaX 創點子 — 讓想法發光 • 高價值問題懸賞與解決方案交易市場
+                IdeaX 創點子 — 讓想法發光 • 點子與人才媒合平台
               </div>
 
               {/* 摘要文字 */}
               <p className="text-xs text-[#4D5156] leading-relaxed">
-                高價值問題與解決方案交易市場，提供懸賞、深度解鎖、AI 智能媒合與專家變現。探索創新創業、技術研發與真實市場痛點，連結認證專家顧問共創價值。
+                點子與人才媒合平台：生活痛點與解方、創意提案交流、職缺與專業媒合，一站完成。探索創新創業、技術研發與真實市場痛點，連結認證專家顧問共創價值。
               </p>
 
               {/* 分組標籤切換 */}
