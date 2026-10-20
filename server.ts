@@ -4388,6 +4388,17 @@ const DIFY_SOURCE_RULES = `【搜尋規定】
 3. 只要近 30 天內仍在刊登的職缺；刊登日期太舊、頁面寫已關閉或已截止的不要列。
 4. url 只能填單一職缺的內頁網址，找不到就填空字串，不要填搜尋結果頁。`;
 
+/** 使用者在篩選裡只勾了部分求職網：交代搜搜只能從這些網站找（不然它照樣找 104，被篩掉後就一筆都沒有） */
+function difyRulesFor(chosenSites: string[]): string {
+  if (!chosenSites.length) return DIFY_SOURCE_RULES;
+  const names = chosenSites.map((x) => (x === COMPANY_SITE ? '各公司官網的徵才頁' : x)).join('、');
+  return `【搜尋規定】
+1. 只能從這些網站找：${names}。不要列出其他網站（例如沒勾選的 104、LinkedIn）的職缺。
+2. 每個網站分開搜尋，結果盡量分散在這些網站；同一家公司最多 2 筆。
+3. 只要近 30 天內仍在刊登的職缺；刊登日期太舊、頁面寫已關閉或已截止的不要列。
+4. url 只能填單一職缺的內頁網址，找不到就填空字串，不要填搜尋結果頁。sourcePlatform 填職缺實際所在的網站名稱。`;
+}
+
 function extractCompletedJobObjects(text: string): any[] {
   const k = text.indexOf('"jobs"');
   if (k < 0) return [];
@@ -4615,7 +4626,7 @@ ${JOB_JSON_SPEC}`;
       };
       const out = await callDifyStreamingAgent({
         apiKey: explorerKey,
-        query: `${rawQuery}（請盡量列出 8 筆以上符合條件、目前仍在招募的真實職缺，附職缺網址，並以 JSON 格式輸出）\n${DIFY_SOURCE_RULES}`,
+        query: `${rawQuery}（請盡量列出 8 筆以上符合條件、目前仍在招募的真實職缺，附職缺網址，並以 JSON 格式輸出）\n${difyRulesFor(chosenSites)}`,
         inputs: {},
         user: 'job_explorer_stream',
         // 搜搜要上網搜尋，常常超過半分鐘；前端最多等 80 秒（派小燈泡後會繼續收），這裡給 120 秒
