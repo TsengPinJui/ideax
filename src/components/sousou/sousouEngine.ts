@@ -8,7 +8,7 @@ export const SOUSOU_EXPRESSIONS = ['confident', 'happy', 'angry', 'surprised', '
 export const SOUSOU_ACTIONS = ['parked', 'takeoff', 'search', 'land', 'found', 'sorry', 'idle', 'think', 'wave', 'fly'];
 
 const C = {
-  fur: 0xd8cfc4, furDark: 0xb9ab9c, skin: 0xf3c7a4, tunic: 0xf3f1ec, navy: 0x1f2740, navyDark: 0x161b2c,
+  fur: 0xe6ded4, furDark: 0xc6b9ab, skin: 0xf3c7a4, tunic: 0xf3f1ec, navy: 0x1f2740, navyDark: 0x161b2c,
   blue: 0x2f5bd6, blueLight: 0x6d93f2, gold: 0xc9a14b, tail: 0xb8946f, boot: 0x2a2f42,
 };
 
@@ -18,7 +18,7 @@ export function createSousou(canvas, opts = {}) {
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.22;
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -26,8 +26,10 @@ export function createSousou(canvas, opts = {}) {
   camera.position.set(0, 1.72, 11.0);
   camera.lookAt(0, 1.45, 0);
 
-  scene.add(new THREE.HemisphereLight(0xeef3ff, 0x2a3350, 0.7));
-  const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(-3, 5, 6); scene.add(key);
+  // 網站是淺色背景：地面反光改成淺色，整體亮一點
+  scene.add(new THREE.HemisphereLight(0xf4f7ff, 0x9aa3bd, 1.15));
+  const key = new THREE.DirectionalLight(0xffffff, 1.9); key.position.set(-3, 5, 6); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xfff6ec, 0.7); fill.position.set(2, 1.5, 8); scene.add(fill);
   const rimL = new THREE.DirectionalLight(0x8fb0ff, 1.2); rimL.position.set(4, 3, -5); scene.add(rimL);
 
   const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, ...o });
@@ -202,7 +204,7 @@ export function createSousou(canvas, opts = {}) {
   const fx = faceCv.getContext('2d');
   const faceTex = new THREE.CanvasTexture(faceCv); faceTex.colorSpace = THREE.SRGBColorSpace; faceTex.anisotropy = 8;
   // 臉的貼圖稍微壓暗、減少環境反光，膚色和眼睛才不會被打光洗白
-  const faceMat = new THREE.MeshStandardMaterial({ map: faceTex, color: 0xd6d6d6, transparent: true, roughness: 0.8, envMapIntensity: 0.45, depthWrite: false });
+  const faceMat = new THREE.MeshStandardMaterial({ map: faceTex, color: 0xdedede, transparent: true, roughness: 0.8, envMapIntensity: 0.45, depthWrite: false });
   const faceGeo = new THREE.SphereGeometry(0.83, 64, 40, Math.PI / 2 - 0.86, 1.72, 0.9, 1.2);
   const face = mesh(faceGeo, faceMat, head, [0, 0, 0], [0, 0, 0], [1.02, 0.96, 0.94]); face.renderOrder = 2;
   // 鼻吻（立體一點）
