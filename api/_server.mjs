@@ -164054,6 +164054,56 @@ app.post("/api/mascot/event", async (req, res) => {
     res.json({ success: false });
   }
 });
+function parseSalaryText(text) {
+  const t2 = text.replace(/,/g, "");
+  const num = (v, unit) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 0;
+    if (unit && /萬/.test(unit)) return Math.round(n * 1e4);
+    if (unit && /k/i.test(unit)) return Math.round(n * 1e3);
+    return Math.round(n);
+  };
+  let m2 = t2.match(/時薪\s*(\d+(?:\.\d+)?)/);
+  if (m2) return { period: "hour", amount: num(m2[1]) };
+  m2 = t2.match(/年薪\s*(\d+(?:\.\d+)?)\s*(萬|k)?/i);
+  if (m2) return { period: "year", amount: num(m2[1], m2[2]) };
+  m2 = t2.match(/(?:月薪|薪水|薪資|底薪|保障薪)?\s*(\d+(?:\.\d+)?)\s*(萬|k)/i) || t2.match(/(?:月薪|薪水|薪資|底薪)\s*(\d{4,6})/);
+  if (m2) {
+    const amount = num(m2[1], m2[2]);
+    if (amount >= 1e3) return { period: "month", amount };
+  }
+  return null;
+}
+function buildJobConditionSummary(text, ctx) {
+  const lines = [];
+  const pick = (re) => {
+    const m2 = text.match(re);
+    return m2 ? m2[0] : "";
+  };
+  const jt = pick(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時/);
+  if (jt) lines.push(`\u5DE5\u4F5C\u578B\u614B\uFF1A${jt === "\u5168\u8077" ? "\u6B63\u8077" : jt}`);
+  else if (ctx.inferredJobType) lines.push(`\u5DE5\u4F5C\u578B\u614B\uFF1A${ctx.inferredJobType}\uFF08\u4F9D${ctx.inferredFrom}\u5224\u65B7\uFF09`);
+  const cities = text.match(/台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端/g);
+  const uniq = (a) => Array.from(new Set(a));
+  if (cities && cities.length) lines.push(`\u5730\u5340\uFF1A${uniq(cities.map((c) => c === "\u9060\u7AEF" ? "\u9060\u7AEF\u5DE5\u4F5C" : /[市縣]$/.test(c) ? c : c)).join("\u3001")}`);
+  else if (ctx.isTaiwanWide) lines.push("\u5730\u5340\uFF1A\u53F0\u7063\uFF08\u4E0D\u9650\u7E23\u5E02\uFF09");
+  else if (ctx.mentionsAbroad) {
+    const countries = text.match(/日本|新加坡|香港|澳門|中國大陸|美國|加拿大|英國|德國|法國|澳洲|紐西蘭|韓國|馬來西亞|越南|泰國|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|國外|海外/g);
+    if (countries) lines.push(`\u5730\u5340\uFF1A${uniq(countries).join("\u3001")}`);
+  }
+  const role = text.replace(/工作型態：[^、,，\s]+|地區：[^、,，\s]+|工作範圍：[^、,，\s]+|國家：[^、,，\s]+|學歷：[^、,，\s]+|經歷：[^、,，\s]+|薪資：[^、,，\s]+/g, " ").replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, " ").replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, " ").replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, " ").replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外/g, " ").replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, " ").replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, " ").replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, " ").trim().split(/\s+/).filter((w) => w.length >= 2 && !/^(跳過|略過|不拘)$/.test(w));
+  if (role.length) lines.push(`\u8077\u52D9\uFF1A${uniq(role).slice(0, 3).join("\u3001")}`);
+  const si = ctx.salaryInfo;
+  if (si) {
+    const label = si.period === "hour" ? "\u6642\u85AA" : si.period === "year" ? "\u5E74\u85AA" : "\u6708\u85AA";
+    lines.push(`\u85AA\u8CC7\uFF1A${label} ${si.amount.toLocaleString("en-US")} \u5143\u4EE5\u4E0A`);
+  } else if (/面議|不拘/.test(pick(/薪資待遇不拘|薪資不拘|面議/))) lines.push("\u85AA\u8CC7\uFF1A\u4E0D\u62D8");
+  const edu = pick(/碩士以上|博士|碩士|(?<!我的|我念的|我們|念的)大學(?!附近)|專科以下|專科|高中職|公立頂大背景|技職科大背景|私立綜合大學/);
+  if (edu) lines.push(`\u5B78\u6B77\uFF1A${edu}`);
+  const exp = pick(/無經驗|新鮮人|應屆|二度就業|\d+\s*~\s*\d+\s*年|\d+\s*年以上|資深|初階|中階|跨領域轉職/);
+  if (exp) lines.push(`\u7D93\u6B77\uFF1A${exp}`);
+  return lines;
+}
 app.post("/api/job-explorer/intake", async (req, res) => {
   try {
     const rawMessage = String(req.body?.message || "").trim().slice(0, 600);
@@ -164075,7 +164125,7 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
     const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
     const abroadRegex = /國外|海外|出國|外派|日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端/;
-    const taiwanScopeRegex = /工作範圍：台灣|在台灣|台灣的工作|國內/;
+    const taiwanScopeRegex = /工作範圍：台灣|在台灣|台灣的工作|國內|台灣|臺灣|全台/;
     const jobTypeRegex = /正職|全職|兼職|工讀|打工|實習|約聘|派遣|計時|part[\s-]?time|full[\s-]?time|intern/i;
     if (/地點不拘|地區不拘|不限地點|全台皆可|全台灣地區皆可/.test(fullText)) skippedDims.add("location");
     if (/專業不拘|職務不拘|職務類別不拘|科系不拘|不限職務|不限專業/.test(fullText)) skippedDims.add("major");
@@ -164084,17 +164134,21 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     if (/工作型態不拘|型態不拘|環境不拘|性格不拘|個性不拘/.test(fullText)) skippedDims.add("personality");
     if (/薪資待遇不拘|薪資不拘|待遇不拘|薪水不拘|面議即可/.test(fullText)) skippedDims.add("salary");
     if (/正職兼職都可|正職兼職皆可|全職兼職皆可|工作類型不拘/.test(fullText)) skippedDims.add("jobType");
-    const hasJobType = jobTypeRegex.test(fullText);
+    const salaryInfo = parseSalaryText(fullText);
+    const inferredJobType = jobTypeRegex.test(fullText) ? "" : /時薪|日薪/.test(fullText) || salaryInfo?.period === "hour" ? "\u517C\u8077" : /月薪|年薪/.test(fullText) || salaryInfo?.period === "month" || salaryInfo?.period === "year" ? "\u6B63\u8077" : "";
+    const inferredFrom = salaryInfo ? salaryInfo.period === "hour" ? "\u6642\u85AA" : salaryInfo.period === "year" ? "\u5E74\u85AA" : "\u6708\u85AA" : /年薪/.test(fullText) ? "\u5E74\u85AA" : /時薪/.test(fullText) ? "\u6642\u85AA" : "\u6708\u85AA";
+    const hasJobType = jobTypeRegex.test(fullText) || Boolean(inferredJobType);
     const isJobTypeMissing = !hasJobType && !skippedDims.has("jobType");
     const hasSpecificCity = cityRegex.test(fullText) || Boolean(filters.city && filters.city !== "\u5168\u90E8");
     const mentionsNearby = /附近|這附近|我附近|周邊|離家近|就近|方圓|家裡附近|離我近|周遭|隔壁|走路可到|騎車可到|通勤近|近一點/.test(fullText);
-    const isLocationMissing = !hasSpecificCity && !skippedDims.has("location");
+    const isTaiwanWide = !hasSpecificCity && /台灣|臺灣|全台/.test(fullText) && !/台灣與國外/.test(fullText);
+    const isLocationMissing = !hasSpecificCity && !isTaiwanWide && !skippedDims.has("location");
     const isLocationAmbiguous = mentionsNearby && isLocationMissing;
     const hasSpecificMajor = majorRoleRegex.test(fullText) || Boolean(filters.category && filters.category !== "\u5168\u90E8") || Boolean(filters.keyword && String(filters.keyword).trim().length > 0);
     const mentionsMajor = /我的專業|我的科系|我的專長|我學的|我念的|本行|跟我的專業|學過|我的本科|我的領域|我專精/.test(fullText);
     const isMajorMissing = !hasSpecificMajor && !skippedDims.has("major");
     const isMajorAmbiguous = mentionsMajor && isMajorMissing;
-    const hasSpecificCollege = collegeRegex.test(fullText);
+    const hasSpecificCollege = collegeRegex.test(fullText) || /(^|[\s、,，])(大學|大專|學士|高中|高職)(畢業)?(?=[\s、,，]|$)/.test(fullText);
     const mentionsCollege = /我的大學|我的學校|我念的大學|我們學校|我大學|我的母校|母校|我畢業的學校|我讀的學校/.test(fullText);
     const isCollegeMissing = !hasSpecificCollege && !skippedDims.has("college");
     const isCollegeAmbiguous = mentionsCollege && isCollegeMissing;
@@ -164264,18 +164318,27 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     if (cityMatch) extractedCity = cityMatch[1];
     else if (/遠端|remote/i.test(fullText)) extractedCity = "\u9060\u7AEF\u5DE5\u4F5C";
     let extractedMinSalary = Number(filters.minSalary) || 0;
-    const salMatch = fullText.match(/月薪\s*(\d{2,6})|(\d{2})\s*k/i);
-    if (salMatch) {
-      if (salMatch[1]) extractedMinSalary = Number(salMatch[1]);
-      else if (salMatch[2]) extractedMinSalary = Number(salMatch[2]) * 1e3;
-    }
-    const finalBrief = accumulatedConcreteBrief || `${userBaseCity} \u6700\u65B0\u62DB\u52DF\u8077\u7F3A`;
+    if (salaryInfo && salaryInfo.period === "month") extractedMinSalary = salaryInfo.amount;
+    const briefExtras = [inferredJobType ? `\u5DE5\u4F5C\u578B\u614B\uFF1A${inferredJobType}` : "", isTaiwanWide ? "\u5730\u5340\uFF1A\u53F0\u7063\u4E0D\u9650\u7E23\u5E02" : ""].filter(Boolean);
+    const finalBrief = [accumulatedConcreteBrief || (briefExtras.length ? "" : `${userBaseCity} \u6700\u65B0\u62DB\u52DF\u8077\u7F3A`), ...briefExtras].filter(Boolean).join("\u3001");
     let resolvedReply = "";
+    const summaryLines = buildJobConditionSummary(fullText, {
+      inferredJobType,
+      inferredFrom,
+      isTaiwanWide,
+      mentionsAbroad,
+      salaryInfo
+    });
+    const summaryText = summaryLines.length ? summaryLines.map((l) => `\u2022 ${l}`).join("\n") : "";
     if (activeGroup) {
-      resolvedReply = accumulatedConcreteBrief ? `\u5DF2\u8A18\u9304\uFF1A${accumulatedConcreteBrief}\u3002
+      resolvedReply = summaryText ? `\u5DF2\u8A18\u9304\uFF1A
+${summaryText}
+${activeGroup.question}` : accumulatedConcreteBrief ? `\u5DF2\u8A18\u9304\uFF1A${accumulatedConcreteBrief}\u3002
 ${activeGroup.question}` : activeGroup.question;
     } else {
-      resolvedReply = `\u5DF2\u70BA\u60A8\u8A2D\u5B9A\u641C\u5C0B\u689D\u4EF6\uFF1A${finalBrief}\u3002\u78BA\u8A8D\u4F9D\u6B64\u689D\u4EF6\u641C\u5C0B\u55CE\uFF1F`;
+      resolvedReply = summaryText ? `\u5DF2\u70BA\u60A8\u6574\u7406\u597D\u641C\u5C0B\u689D\u4EF6\uFF1A
+${summaryText}
+\u78BA\u8A8D\u4F9D\u6B64\u689D\u4EF6\u641C\u5C0B\u55CE\uFF1F` : `\u5DF2\u70BA\u60A8\u8A2D\u5B9A\u641C\u5C0B\u689D\u4EF6\uFF1A${finalBrief}\u3002\u78BA\u8A8D\u4F9D\u6B64\u689D\u4EF6\u641C\u5C0B\u55CE\uFF1F`;
     }
     return res.json({
       success: true,
