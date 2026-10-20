@@ -110,7 +110,47 @@ const EXPLORER_QUICK_PRESETS = [
   },
 ];
 
-export type QuickConditionKey = 'jobType' | 'education' | 'experience' | 'location' | 'salary';
+export type QuickConditionKey = 'jobType' | 'region' | 'education' | 'experience' | 'location' | 'salary';
+
+/** 選「國外」或「不限」時可以勾選的國家／地區 */
+export const JOB_COUNTRIES = ['日本', '新加坡', '香港', '中國大陸', '韓國', '馬來西亞', '越南', '澳洲', '紐西蘭', '美國', '加拿大', '英國', '德國', '全球遠端'];
+const REGION_ABROAD_VALUE = '工作範圍：國外';
+
+/** 台灣最低工資（勞動部公告）：2026 年月薪 29,500、時薪 196；2027/1/1 起月薪 30,900、時薪 205 */
+export function currentMinimumWage(now = Date.now()): { monthly: number; hourly: number } {
+  return now >= Date.parse('2027-01-01T00:00:00+08:00') ? { monthly: 30900, hourly: 205 } : { monthly: 29500, hourly: 196 };
+}
+const fmt = (n: number) => n.toLocaleString('en-US');
+
+/** 薪水選項：正職用月薪、兼職／計時用時薪，最低一檔就是法定最低工資 */
+function salaryOptionsFor(isHourly: boolean): Array<{ label: string; value: string; isSkip?: boolean }> {
+  const w = currentMinimumWage();
+  if (isHourly) {
+    const steps = [w.hourly, 220, 250, 300, 400].filter((v, i, a) => a.indexOf(v) === i && v >= w.hourly);
+    return [
+      ...steps.map((v, i) => ({
+        label: i === 0 ? `時薪 ${v} 元以上（最低工資）` : `時薪 ${v} 元以上`,
+        value: `薪水：時薪 ${v} 元以上`,
+      })),
+      { label: '薪資不拘', value: '薪資待遇不拘' },
+      { label: '跳過', value: '跳過', isSkip: true },
+    ];
+  }
+  const steps = [w.monthly, 35000, 45000, 60000, 80000].filter((v, i, a) => a.indexOf(v) === i && v >= w.monthly);
+  return [
+    ...steps.map((v, i) => ({
+      label: i === 0 ? `月薪 ${fmt(v)} 元以上（最低工資）` : `月薪 ${fmt(v)} 元以上`,
+      value: `薪水：月薪 ${fmt(v)} 元以上`,
+    })),
+    { label: '薪資不拘', value: '薪資待遇不拘' },
+    { label: '跳過', value: '跳過', isSkip: true },
+  ];
+}
+
+/** 這則對話的條件是不是兼職／計時（薪水改用時薪） */
+const isHourlyContext = (text: string) => /兼職|工讀|打工|計時|part[\s-]?time/i.test(text);
+const REGION_BOTH_VALUE = '工作範圍：台灣與國外皆可';
+const regionIncludesAbroad = (v?: string) => v === REGION_ABROAD_VALUE || v === REGION_BOTH_VALUE;
 
 export const QUICK_CONDITION_STEPS: Array<{
   key: QuickConditionKey;
@@ -127,6 +167,17 @@ export const QUICK_CONDITION_STEPS: Array<{
       { label: '兼職／工讀', value: '工作型態：兼職工讀' },
       { label: '實習', value: '工作型態：實習' },
       { label: '正職兼職都可以', value: '工作型態：正職兼職皆可' },
+      { label: '跳過', value: '跳過', isSkip: true },
+    ],
+  },
+  {
+    key: 'region',
+    label: '台灣／國外',
+    question: '要找台灣還是國外的工作？（選國外或不限，可以再勾選國家）',
+    options: [
+      { label: '台灣', value: '工作範圍：台灣' },
+      { label: '國外', value: REGION_ABROAD_VALUE },
+      { label: '不限（台灣＋國外）', value: REGION_BOTH_VALUE },
       { label: '跳過', value: '跳過', isSkip: true },
     ],
   },
@@ -156,7 +207,7 @@ export const QUICK_CONDITION_STEPS: Array<{
       { label: '1~3 年', value: '經歷：1~3 年工作經驗' },
       { label: '3~5 年', value: '經歷：3~5 年工作經驗' },
       { label: '5 年以上', value: '經歷：5 年以上資深經驗' },
-      { label: '學生兼職／工讀', value: '經歷：兼職工讀、排班彈性' },
+      { label: '學生／新手可', value: '經歷：學生或新手可、排班彈性' },
       { label: '跨領域轉職', value: '經歷：跨領域轉職可' },
       { label: '經歷不拘', value: '經歷不拘' },
       { label: '跳過', value: '跳過', isSkip: true },
@@ -183,16 +234,7 @@ export const QUICK_CONDITION_STEPS: Array<{
     key: 'salary',
     label: '薪水',
     question: '請問您期望的薪水待遇是？',
-    options: [
-      { label: '月薪 28,000 元以上', value: '薪水：月薪 28,000 元以上' },
-      { label: '月薪 35,000 元以上', value: '薪水：月薪 35,000 元以上' },
-      { label: '月薪 45,000 元以上', value: '薪水：月薪 45,000 元以上' },
-      { label: '月薪 60,000 元以上', value: '薪水：月薪 60,000 元以上' },
-      { label: '月薪 80,000 元以上', value: '薪水：月薪 80,000 元以上' },
-      { label: '時薪 200 元以上', value: '薪水：時薪 200 元以上' },
-      { label: '薪資不拘', value: '薪資待遇不拘' },
-      { label: '跳過', value: '跳過', isSkip: true },
-    ],
+    options: salaryOptionsFor(false),
   },
 ];
 
@@ -223,6 +265,7 @@ interface ChatMessage {
   activeConditionKey?: QuickConditionKey | null;
   completedConditionKeys?: QuickConditionKey[];
   selectedConditionMap?: Partial<Record<QuickConditionKey, string>>;
+  selectedCountries?: string[];
 }
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -376,47 +419,60 @@ export const JobExplorerView: React.FC = () => {
     );
   };
 
-  // 在「學歷、經歷、地區、薪水」中點選某個選項（或「跳過」），更新條件並自動進入下一個條件選擇
+  // 條件依固定順序組成搜尋說明；「台灣／國外」選了國外時，把勾選的國家放在括號裡
+  const QUICK_STEP_ORDER: QuickConditionKey[] = ['jobType', 'region', 'education', 'experience', 'location', 'salary'];
+  const composeConditionBrief = (
+    m: ChatMessage,
+    map: Partial<Record<QuickConditionKey, string>>,
+    countries: string[]
+  ) => {
+    const base = (m.baseBrief ?? m.pendingBrief ?? '').trim();
+    const parts = QUICK_STEP_ORDER.map((k) => {
+      const v = map[k];
+      if (!v) return '';
+      if (k === 'region' && regionIncludesAbroad(v) && countries.length > 0) return `${v}（${countries.join('、')}）`;
+      return v;
+    }).filter(Boolean);
+    return [base, ...parts].filter(Boolean).join('、') || `${userBaseCity} 最新招募職缺`;
+  };
+  const nextOpenStep = (from: QuickConditionKey, completed: QuickConditionKey[]): QuickConditionKey | null => {
+    const idx = QUICK_STEP_ORDER.indexOf(from);
+    for (let i = 1; i <= QUICK_STEP_ORDER.length; i++) {
+      const c = QUICK_STEP_ORDER[(idx + i) % QUICK_STEP_ORDER.length];
+      if (!completed.includes(c)) return c;
+    }
+    return null;
+  };
+
+  // 在各條件中點選某個選項（或「跳過」），更新條件並自動進入下一個條件選擇
   const handleSelectQuickConditionOption = (
     msgId: string,
     stepKey: QuickConditionKey,
     opt: { label: string; value: string; isSkip?: boolean }
   ) => {
-    const stepOrder: QuickConditionKey[] = ['jobType', 'education', 'experience', 'location', 'salary'];
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== msgId) return m;
-        const prevCompleted = m.completedConditionKeys || [];
-        const nextCompleted = prevCompleted.includes(stepKey)
-          ? prevCompleted
-          : [...prevCompleted, stepKey];
+        let nextCompleted = (m.completedConditionKeys || []).includes(stepKey)
+          ? [...(m.completedConditionKeys || [])]
+          : [...(m.completedConditionKeys || []), stepKey];
 
-        const nextMap: Partial<Record<QuickConditionKey, string>> = {
-          ...(m.selectedConditionMap || {}),
-        };
-        if (opt.isSkip) {
-          delete nextMap[stepKey];
-        } else {
-          nextMap[stepKey] = opt.value;
+        const nextMap: Partial<Record<QuickConditionKey, string>> = { ...(m.selectedConditionMap || {}) };
+        if (opt.isSkip) delete nextMap[stepKey];
+        else nextMap[stepKey] = opt.value;
+
+        // 只找國外：台灣縣市的「地區」條件就不用問了
+        if (stepKey === 'region' && opt.value === REGION_ABROAD_VALUE) {
+          delete nextMap.location;
+          if (!nextCompleted.includes('location')) nextCompleted = [...nextCompleted, 'location'];
         }
 
-        const base = (m.baseBrief ?? m.pendingBrief ?? '').trim();
-        const extraParts = stepOrder.map((k) => nextMap[k]).filter(Boolean) as string[];
-        const allParts = [base, ...extraParts].filter(Boolean);
-        const updatedBrief = allParts.join('、') || `${userBaseCity} 最新招募職缺`;
-
+        const countries = m.selectedCountries || [];
+        const updatedBrief = composeConditionBrief(m, nextMap, countries);
         setPendingConfirmedBrief(updatedBrief);
 
-        // 自動尋找下一個尚未選擇／跳過的條件並展開
-        const currentIdx = stepOrder.indexOf(stepKey);
-        let nextKey: QuickConditionKey | null = null;
-        for (let i = 1; i <= stepOrder.length; i++) {
-          const candidate = stepOrder[(currentIdx + i) % stepOrder.length];
-          if (!nextCompleted.includes(candidate)) {
-            nextKey = candidate;
-            break;
-          }
-        }
+        // 選了國外或不限：停在這一步讓使用者勾選國家，按「完成」再到下一個條件
+        const stayForCountries = stepKey === 'region' && regionIncludesAbroad(opt.value);
 
         return {
           ...m,
@@ -424,9 +480,35 @@ export const JobExplorerView: React.FC = () => {
           text: `已為您設定搜尋條件：${updatedBrief}。確認依此條件搜尋嗎？`,
           completedConditionKeys: nextCompleted,
           selectedConditionMap: nextMap,
-          activeConditionKey: nextKey,
+          activeConditionKey: stayForCountries ? 'region' : nextOpenStep(stepKey, nextCompleted),
         };
       })
+    );
+  };
+
+  // 勾選／取消國家
+  const handleToggleCountry = (msgId: string, country: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const cur = m.selectedCountries || [];
+        const countries = cur.includes(country) ? cur.filter((c) => c !== country) : [...cur, country];
+        const updatedBrief = composeConditionBrief(m, m.selectedConditionMap || {}, countries);
+        setPendingConfirmedBrief(updatedBrief);
+        return {
+          ...m,
+          selectedCountries: countries,
+          pendingBrief: updatedBrief,
+          text: `已為您設定搜尋條件：${updatedBrief}。確認依此條件搜尋嗎？`,
+        };
+      })
+    );
+  };
+
+  // 國家勾選完成，前往下一個條件
+  const handleFinishCountries = (msgId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, activeConditionKey: nextOpenStep('region', m.completedConditionKeys || []) } : m))
     );
   };
 
@@ -749,7 +831,7 @@ export const JobExplorerView: React.FC = () => {
       }
 
       // 若是從點選追問選項進入確認階段，自動展開下一個尚未選擇的條件（學歷、經歷、地區、薪水）
-      const stepOrder: QuickConditionKey[] = ['jobType', 'education', 'experience', 'location', 'salary'];
+      const stepOrder: QuickConditionKey[] = ['jobType', 'region', 'education', 'experience', 'location', 'salary'];
       const nextAutoConditionKey =
         !isAmb && customText !== undefined
           ? stepOrder.find((k) => !completedKeys.includes(k)) || null
@@ -1115,7 +1197,7 @@ export const JobExplorerView: React.FC = () => {
                   className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
                 >
                   <option value={0}>薪資：不限</option>
-                  <option value={28000}>28,000 元以上</option>
+                  <option value={currentMinimumWage().monthly}>{currentMinimumWage().monthly.toLocaleString('en-US')} 元以上（最低工資）</option>
                   <option value={35000}>35,000 元以上</option>
                   <option value={45000}>45,000 元以上</option>
                   <option value={60000}>60,000 元以上</option>
@@ -1311,7 +1393,14 @@ export const JobExplorerView: React.FC = () => {
                                         {activeStep.question}
                                       </div>
                                       <div className="flex flex-wrap gap-1.5">
-                                        {activeStep.options.map((opt, idx) => (
+                                        {(activeStep.key === 'salary'
+                                          ? salaryOptionsFor(
+                                              isHourlyContext(
+                                                `${m.selectedConditionMap?.jobType || ''} ${m.baseBrief || ''} ${m.pendingBrief || ''}`
+                                              )
+                                            )
+                                          : activeStep.options
+                                        ).map((opt, idx) => (
                                           <button
                                             key={idx}
                                             type="button"
@@ -1336,6 +1425,44 @@ export const JobExplorerView: React.FC = () => {
                                           </button>
                                         ))}
                                       </div>
+                                      {activeStep.key === 'region' &&
+                                        regionIncludesAbroad(m.selectedConditionMap?.region) && (
+                                          <div className="pt-2 border-t border-blue-100 space-y-1.5">
+                                            <div className="text-[11px] font-bold text-[#1e3a8a]">
+                                              想找哪些國家或地區？（可複選，不選就是全部國外）
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5">
+                                              {JOB_COUNTRIES.map((c) => {
+                                                const on = (m.selectedCountries || []).includes(c);
+                                                return (
+                                                  <button
+                                                    key={c}
+                                                    type="button"
+                                                    aria-pressed={on}
+                                                    disabled={isSearching || isRegulating}
+                                                    onClick={() => handleToggleCountry(m.id, c)}
+                                                    className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1 ${
+                                                      on
+                                                        ? 'bg-[#1e3a8a] text-white border-[#1e3a8a]'
+                                                        : 'bg-white hover:bg-blue-50 border-blue-200 text-stone-800'
+                                                    }`}
+                                                  >
+                                                    {on && <Check className="w-3 h-3 stroke-[3]" />}
+                                                    {c}
+                                                  </button>
+                                                );
+                                              })}
+                                              <button
+                                                type="button"
+                                                disabled={isSearching || isRegulating}
+                                                onClick={() => handleFinishCountries(m.id)}
+                                                className="px-3 py-1.5 rounded-lg text-[11px] font-black bg-amber-400 hover:bg-amber-300 text-stone-950 border border-amber-500 cursor-pointer active:scale-95"
+                                              >
+                                                完成，下一個條件
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
                                       <p className="text-[11px] text-stone-500 font-medium">
                                         提示：如果沒看到想要的條件，可以於上方對話框/搜尋框補充
                                       </p>

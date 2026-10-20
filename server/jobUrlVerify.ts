@@ -31,6 +31,13 @@ const PLATFORMS: Platform[] = [
   // 兼職／打工平台
   { name: '小雞上工', host: /(^|\.)chickpt\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: 'chickpt.com.tw' },
   { name: 'Worky', host: /(^|\.)worky\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: 'worky.com.tw' },
+  // 國際／海外求職平台
+  { name: 'Indeed', host: /(^|\.)indeed\.(com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/i, detail: /viewjob|\/rc\/clk|[?&]jk=|\/job\//i, search: (kw) => `https://www.indeed.com/jobs?q=${kw}`, site: 'indeed.com' },
+  { name: 'Glassdoor', host: /(^|\.)glassdoor\./i, detail: /job-listing|\/job\/|jobListingId=/i, site: 'glassdoor.com' },
+  { name: 'JobStreet', host: /(^|\.)jobstreet\./i, detail: /\/job\/\d+/i, site: 'jobstreet.com' },
+  { name: 'JobsDB', host: /(^|\.)jobsdb\./i, detail: /\/job\/\d+/i, site: 'jobsdb.com' },
+  { name: 'SEEK', host: /(^|\.)seek\.(com\.au|co\.nz)$/i, detail: /\/job\/\d+/i, site: 'seek.com.au' },
+  { name: 'MyCareersFuture', host: /(^|\.)mycareersfuture\.gov\.sg$/i, detail: /\/job\//i, site: 'mycareersfuture.gov.sg' },
   { name: 'LinkedIn', host: /(^|\.)linkedin\.com$/i, detail: /^\/jobs\/view\/[\w-]*\d+/i, search: (kw) => `https://www.linkedin.com/jobs/search/?keywords=${kw}`, site: 'linkedin.com' },
 ];
 
