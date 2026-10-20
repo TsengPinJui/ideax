@@ -161478,9 +161478,13 @@ async function verifyJobUrl(job, g) {
   let fallbackGrounded = null;
   const checks = await Promise.all(
     candidates.slice(0, 3).map(async (c) => {
+      if (/104\.com\.tw\/job\//i.test(c.u)) {
+        const r104 = await check104Job(c.u, title, company);
+        return { ...c, r: r104 || "unknown" };
+      }
       let r2 = await checkJobPage(c.u, title, company);
       if (r2 === "unknown" || r2 === "mismatch") {
-        const special = await check104Job(c.u, title, company) || await checkLinkedInJob(c.u, title, company);
+        const special = await checkLinkedInJob(c.u, title, company);
         if (special) r2 = special;
       }
       return { ...c, r: r2 };
@@ -161553,7 +161557,12 @@ async function check104Job(url, title, company) {
     const j = await r2.json().catch(() => null);
     const h2 = j?.data?.header;
     if (!h2) return j?.error ? "dead" : null;
-    if (h2.isClosed || /關閉|下架/.test(String(j?.data?.switch || ""))) return "closed";
+    const sw = String(j?.data?.switch ?? "").toLowerCase();
+    if (h2.isClosed || sw === "off" || /關閉|下架/.test(sw)) return "closed";
+    const closeDate = Date.parse(String(j?.data?.closeDate || "").replace(/\//g, "-"));
+    if (Number.isFinite(closeDate) && closeDate < Date.now()) return "closed";
+    const appear = Date.parse(String(h2.appearDate || "").replace(/\//g, "-"));
+    if (Number.isFinite(appear) && Date.now() - appear > 60 * 864e5) return "closed";
     const name4 = String(h2.jobName || ""), cust = String(h2.custName || "");
     return pageMatchesJob(`${cust} ${name4}`.replace(/\s+/g, ""), title, company) ? "ok" : "mismatch";
   } catch {
@@ -161594,6 +161603,7 @@ async function find104Job(title, company) {
       const j = await r2.json().catch(() => null);
       const list = Array.isArray(j?.data) ? j.data : Array.isArray(j?.data?.list) ? j.data.list : [];
       for (const it of list) {
+        if (String(it.switch ?? "on").toLowerCase() === "off") continue;
         const name4 = String(it.jobName || "").replace(/\s+/g, ""), cust = String(it.custName || "").replace(/\s+/g, "");
         const link = String(it?.link?.job || it.jobLink || "");
         if (!link) continue;
@@ -161760,7 +161770,16 @@ function base2(s2) {
   return String(s2 || "").replace(/[！-～]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248)).replace(/　/g, " ").replace(/臺/g, "\u53F0").toLowerCase();
 }
 function normalizeCompany(name4) {
-  return base2(name4).replace(COMPANY_SUFFIX, "").replace(/[\s\-_.,，、·•'"’()（）]/g, "");
+  return base2(name4).replace(/[（(【\[][^）)】\]]*[）)】\]]/g, " ").replace(COMPANY_SUFFIX, "").replace(/[\s\-_.,，、·•'"’()（）]/g, "");
+}
+function companyAliases(name4) {
+  const out = [normalizeCompany(name4)];
+  const inner = base2(name4).match(/[（(【\[]([^）)】\]]+)[）)】\]]/g) || [];
+  for (const m2 of inner) {
+    const v = normalizeCompany(m2.slice(1, -1));
+    if (v.length >= 2) out.push(v);
+  }
+  return out.filter((v, i2, a) => v && a.indexOf(v) === i2);
 }
 function normalizeTitle(title) {
   return base2(title).replace(TITLE_NOISE, "").replace(/[\s\-_/|.,，、·•'"’:：+＋&＆]/g, "");
@@ -161784,24 +161803,34 @@ function jobDedupeKeys(job) {
   const keys = [];
   const u = normalizeJobUrl(job.url || "");
   if (u) keys.push(`u:${u}`);
-  const c = normalizeCompany(job.company || "");
   const t2 = normalizeTitle(job.title || "");
-  if (c && t2) keys.push(`ct:${c}|${t2}`);
+  if (t2) for (const c of companyAliases(job.company || "")) keys.push(`ct:${c}|${t2}`);
   return keys;
 }
 function seenJobBefore(seen, job) {
   const keys = jobDedupeKeys(job);
   if (!keys.length) return false;
-  if (keys.some((k) => seen.has(k))) {
-    keys.forEach((k) => seen.add(k));
-    return true;
+  let dup = keys.some((k) => seen.has(k));
+  if (!dup) {
+    const t2 = normalizeTitle(job.title || "");
+    const cs = companyAliases(job.company || "");
+    if (t2 && cs.length) {
+      for (const k of seen) {
+        if (!k.startsWith("ct:") || !k.endsWith(`|${t2}`)) continue;
+        const sc = k.slice(3, k.length - t2.length - 1);
+        if (sc.length >= 2 && cs.some((c) => c.length >= 2 && (c.includes(sc) || sc.includes(c)))) {
+          dup = true;
+          break;
+        }
+      }
+    }
   }
   keys.forEach((k) => seen.add(k));
-  return false;
+  return dup;
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "2.10.1";
+var APP_VERSION = "2.10.2";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));

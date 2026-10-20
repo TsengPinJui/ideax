@@ -17,7 +17,21 @@ function base(s: string): string {
 }
 
 export function normalizeCompany(name: string): string {
-  return base(name).replace(COMPANY_SUFFIX, '').replace(/[\s\-_.,，、·•'"’()（）]/g, '');
+  return base(name)
+    .replace(/[（(【\[][^）)】\]]*[）)】\]]/g, ' ') // 括號裡的英文名、品牌名先拿掉
+    .replace(COMPANY_SUFFIX, '')
+    .replace(/[\s\-_.,，、·•'"’()（）]/g, '');
+}
+
+/** 另一種寫法的公司名（括號裡的品牌名，例如「統一超商（7-ELEVEN）」的 7-ELEVEN） */
+function companyAliases(name: string): string[] {
+  const out = [normalizeCompany(name)];
+  const inner = base(name).match(/[（(【\[]([^）)】\]]+)[）)】\]]/g) || [];
+  for (const m of inner) {
+    const v = normalizeCompany(m.slice(1, -1));
+    if (v.length >= 2) out.push(v);
+  }
+  return out.filter((v, i, a) => v && a.indexOf(v) === i);
 }
 
 export function normalizeTitle(title: string): string {
@@ -52,9 +66,8 @@ export function jobDedupeKeys(job: { company?: string; title?: string; url?: str
   const keys: string[] = [];
   const u = normalizeJobUrl(job.url || '');
   if (u) keys.push(`u:${u}`);
-  const c = normalizeCompany(job.company || '');
   const t = normalizeTitle(job.title || '');
-  if (c && t) keys.push(`ct:${c}|${t}`);
+  if (t) for (const c of companyAliases(job.company || '')) keys.push(`ct:${c}|${t}`);
   return keys;
 }
 
@@ -62,10 +75,19 @@ export function jobDedupeKeys(job: { company?: string; title?: string; url?: str
 export function seenJobBefore(seen: Set<string>, job: { company?: string; title?: string; url?: string }): boolean {
   const keys = jobDedupeKeys(job);
   if (!keys.length) return false;
-  if (keys.some((k) => seen.has(k))) {
-    keys.forEach((k) => seen.add(k)); // 補記另一把鑰匙，之後換寫法也認得出來
-    return true;
+  let dup = keys.some((k) => seen.has(k));
+  // 職稱一樣、公司名稱一個包含另一個（「台積電」vs「台積電新竹廠」、「7eleven統一超商」vs「統一超商」）也算同一筆
+  if (!dup) {
+    const t = normalizeTitle(job.title || '');
+    const cs = companyAliases(job.company || '');
+    if (t && cs.length) {
+      for (const k of seen) {
+        if (!k.startsWith('ct:') || !k.endsWith(`|${t}`)) continue;
+        const sc = k.slice(3, k.length - t.length - 1);
+        if (sc.length >= 2 && cs.some((c) => c.length >= 2 && (c.includes(sc) || sc.includes(c)))) { dup = true; break; }
+      }
+    }
   }
-  keys.forEach((k) => seen.add(k));
-  return false;
+  keys.forEach((k) => seen.add(k)); // 補記另一種寫法，之後換寫法也認得出來
+  return dup;
 }
