@@ -27,7 +27,12 @@ const PLATFORMS: Platform[] = [
   { name: 'Cake', host: /(^|\.)(cake\.me|cakeresume\.com)$/i, detail: /^\/companies\/[^/]+\/jobs\/[^/?#]+/i, search: (kw) => `https://www.cake.me/jobs/${kw}`, site: 'cake.me' },
   { name: 'Yourator', host: /(^|\.)yourator\.co$/i, detail: /^\/companies\/[^/]+\/jobs\/\d+/i, site: 'yourator.co' },
   { name: 'Yes123', host: /(^|\.)yes123\.com\.tw$/i, detail: /job_refer_comp_job_detail|[?&](p_id|job_id)=/i, site: 'yes123.com.tw' },
-  { name: '518熊班', host: /(^|\.)518\.com\.tw$/i, detail: /^\/job-[\w-]+\.html/i, site: '518.com.tw' },
+  { name: '518熊班', host: /(^|\.)518\.com\.tw$/i, detail: /^\/job-[\w-]+\.html/i, search: (kw) => `https://www.518.com.tw/job-index.html?ad=${kw}`, site: '518.com.tw' },
+  { name: 'Meet.jobs', host: /(^|\.)meet\.jobs$/i, detail: /\/jobs\/\d+/i, site: 'meet.jobs' },
+  { name: 'Glints', host: /(^|\.)glints\.com$/i, detail: /\/opportunities\/jobs\/[^/]+\/[\w-]{8,}/i, site: 'glints.com' },
+  { name: '台灣就業通', host: /(^|\.)taiwanjobs\.gov\.tw$/i, detail: /job_detail|jobdetail|HIRE_ID=|hireid=/i, site: 'taiwanjobs.gov.tw' },
+  { name: '事求人', host: /(^|\.)dgpa\.gov\.tw$/i, detail: /WANTF0000[2-9]|[?&](wid|work_id)=/i, site: 'web3.dgpa.gov.tw' },
+  { name: 'Tasker出任務', host: /(^|\.)tasker\.com\.tw$/i, detail: /\/cases\/\d+/i, site: 'tasker.com.tw' },
   // 兼職／打工平台
   { name: '小雞上工', host: /(^|\.)chickpt\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: 'chickpt.com.tw' },
   { name: 'Worky', host: /(^|\.)worky\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: 'worky.com.tw' },
@@ -38,6 +43,23 @@ const PLATFORMS: Platform[] = [
   { name: 'JobsDB', host: /(^|\.)jobsdb\./i, detail: /\/job\/\d+/i, site: 'jobsdb.com' },
   { name: 'SEEK', host: /(^|\.)seek\.(com\.au|co\.nz)$/i, detail: /\/job\/\d+/i, site: 'seek.com.au' },
   { name: 'MyCareersFuture', host: /(^|\.)mycareersfuture\.gov\.sg$/i, detail: /\/job\//i, site: 'mycareersfuture.gov.sg' },
+  // 日本、中國大陸、韓國、香港、歐美其他常見平台
+  { name: 'doda', host: /(^|\.)doda\.jp$/i, detail: /JobSearchDetail|j_jid__\d+/i, site: 'doda.jp' },
+  { name: 'Green', host: /(^|\.)green-japan\.com$/i, detail: /\/company\/\d+\/job\/\d+/i, site: 'green-japan.com' },
+  { name: 'Daijob', host: /(^|\.)daijob\.com$/i, detail: /\/jobs\/detail\/\d+/i, site: 'daijob.com' },
+  { name: 'リクナビNEXT', host: /(^|\.)next\.rikunabi\.com$/i, detail: /viewjob|\/company\/cmi\d+\/nx\d+/i, site: 'next.rikunabi.com' },
+  { name: 'CTgoodjobs', host: /(^|\.)ctgoodjobs\.hk$/i, detail: /\/job\/[\w-]+\/\d+|\/jobs?\/.*\d{5,}/i, site: 'ctgoodjobs.hk' },
+  { name: 'BOSS直聘', host: /(^|\.)zhipin\.com$/i, detail: /\/job_detail\//i, site: 'zhipin.com' },
+  { name: '前程無憂', host: /(^|\.)51job\.com$/i, detail: /\/\d{6,}\.html/i, site: '51job.com' },
+  { name: 'Saramin', host: /(^|\.)saramin\.co\.kr$/i, detail: /rec_idx=\d+/i, site: 'saramin.co.kr' },
+  { name: 'JobKorea', host: /(^|\.)jobkorea\.co\.kr$/i, detail: /\/Recruit\/GI_Read\/\d+/i, site: 'jobkorea.co.kr' },
+  { name: 'ZipRecruiter', host: /(^|\.)ziprecruiter\.com$/i, detail: /\/c\/[^/]+\/Job\/|\/jobs\/[\w-]+-[a-f0-9]{8}/i, site: 'ziprecruiter.com' },
+  { name: 'Wellfound', host: /(^|\.)wellfound\.com$/i, detail: /\/jobs\/\d+/i, site: 'wellfound.com' },
+  { name: 'StepStone', host: /(^|\.)stepstone\.(de|at|be|nl)$/i, detail: /stellenangebote--.*\d{6,}/i, site: 'stepstone.de' },
+  { name: 'Reed', host: /(^|\.)reed\.co\.uk$/i, detail: /\/jobs\/[\w-]+\/\d+/i, site: 'reed.co.uk' },
+  { name: 'Job Bank', host: /(^|\.)jobbank\.gc\.ca$/i, detail: /\/jobposting\/\d+/i, site: 'jobbank.gc.ca' },
+  { name: 'Remote OK', host: /(^|\.)remoteok\.(com|io)$/i, detail: /\/remote-jobs\/[\w-]+-\d+/i, site: 'remoteok.com' },
+  { name: 'We Work Remotely', host: /(^|\.)weworkremotely\.com$/i, detail: /\/remote-jobs\/[\w-]+/i, site: 'weworkremotely.com' },
   { name: 'LinkedIn', host: /(^|\.)linkedin\.com$/i, detail: /^\/jobs\/view\/[\w-]*\d+/i, search: (kw) => `https://www.linkedin.com/jobs/search/?keywords=${kw}`, site: 'linkedin.com' },
 ];
 
@@ -237,19 +259,19 @@ export async function verifyJobUrl(
     candidates.slice(0, 3).map(async (c) => {
       let r = await checkJobPage(c.u, title, company);
       if (r === 'unknown' || r === 'mismatch') {
-        const r104 = await check104Job(c.u, title, company);
-        if (r104) r = r104;
+        const special = (await check104Job(c.u, title, company)) || (await checkLinkedInJob(c.u, title, company));
+        if (special) r = special;
       }
       return { ...c, r };
     })
   );
   for (const c of checks) {
-    if (c.r === 'ok') return { url: c.u, urlKind: 'direct', verified: true, platform: platformOf(c.u)?.name };
+    if (c.r === 'ok') return { url: cleanJobUrl(c.u), urlKind: 'direct', verified: true, platform: platformOf(c.u)?.name };
     if (c.r === 'dead' || c.r === 'closed') sawDeadOrClosed = true;
     // 網站擋機器人看不到內容：只有 Google 真的搜到的頁面才採用
     if (c.r === 'unknown' && c.grounded && !fallbackGrounded) fallbackGrounded = c.u;
   }
-  if (fallbackGrounded) return { url: fallbackGrounded, urlKind: 'direct', verified: false, platform: platformOf(fallbackGrounded)?.name };
+  if (fallbackGrounded) return { url: cleanJobUrl(fallbackGrounded), urlKind: 'direct', verified: false, platform: platformOf(fallbackGrounded)?.name };
 
   const platformName = candidates[0] ? platformOf(candidates[0].u)?.name : listPages[0] ? platformOf(listPages[0])?.name : undefined;
   const found = await findJobPageViaListings(title, company, listPages, platformName || job.sourcePlatform);
@@ -324,6 +346,31 @@ async function check104Job(url: string, title: string, company: string): Promise
   }
 }
 
+/** LinkedIn 職缺：用公開（不用登入）的職缺內容確認職稱與公司 */
+async function checkLinkedInJob(url: string, title: string, company: string): Promise<PageCheck | null> {
+  const m = url.match(/linkedin\.com\/jobs\/view\/(?:[\w-]*-)?(\d{6,})/i);
+  if (!m) return null;
+  try {
+    const r = await fetchWithTimeout(`https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${m[1]}`, { headers: { Accept: 'text/html' } }, 5000);
+    if (r.status === 404 || r.status === 410) return 'dead';
+    if (!r.ok) return null;
+    const text = (await r.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, '');
+    if (/Nolongeracceptingapplications|此職缺已不再接受應徵/i.test(text)) return 'closed';
+    const c = companyCore(company), t = titleCore(title);
+    return (c.length >= 2 && text.includes(c)) || (t.length >= 2 && text.includes(t)) ? 'ok' : 'mismatch';
+  } catch {
+    return null;
+  }
+}
+
+/** 把 LinkedIn 職缺網址整理成標準格式（去掉追蹤參數） */
+function cleanJobUrl(u: string): string {
+  const li = u.match(/^(https?:\/\/[^/]*linkedin\.com\/jobs\/view\/(?:[\w-]*-)?\d{6,})/i);
+  if (li) return li[1];
+  if (/104\.com\.tw\/job\//i.test(u)) return u.split('?')[0].split('#')[0];
+  return u.split('#')[0];
+}
+
 /** 104 搜尋：用 104 的搜尋資料找到公司＋職稱相符的職缺內頁 */
 async function find104Job(title: string, company: string): Promise<string | null> {
   const kw = encodeURIComponent(`${company} ${title}`.trim());
@@ -357,7 +404,8 @@ async function findJobPageViaListings(title: string, company: string, listPages:
   const pages = [...listPages];
   const pl = PLATFORMS.find((p) => p.name === platformName || (platformName && platformName.includes(p.name.replace('人力銀行', ''))));
   const kw = encodeURIComponent(`${company} ${title}`.trim());
-  if (pl?.search) pages.push(pl.search(kw));
+  if (pl?.name === 'LinkedIn') pages.push(`https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${kw}&start=0`);
+  else if (pl?.search) pages.push(pl.search(kw));
   // 台灣職缺不知道來源時，先查 104
   if (!pl || pl.name === '104人力銀行') {
     const u = await find104Job(title, company);
@@ -369,7 +417,7 @@ async function findJobPageViaListings(title: string, company: string, listPages:
       if (!r.ok) continue;
       const html = (await r.text()).slice(0, 1_500_000);
       const u = pickJobLinkFromHtml(html, page, title, company);
-      if (u) return u;
+      if (u) return cleanJobUrl(u);
     } catch {}
   }
   return null;

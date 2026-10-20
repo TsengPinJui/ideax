@@ -4016,13 +4016,23 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
 }`;
     const isPartTime = Boolean(partTimeHint(rawQuery));
     const isAbroad = Boolean(regionHint(rawQuery));
-    const groups: Array<{ label: string; focus: string; count: string }> = [
-      { label: '主要人力銀行', focus: '104人力銀行、1111人力銀行、Yes123、518熊班', count: '12 ~ 15' },
-      { label: '新創與企業官網', focus: 'Cake、Yourator、LinkedIn，以及各公司官網的徵才頁', count: '12 ~ 15' },
-      { label: '相近職稱', focus: '把條件裡的職稱換成相近或同義的職稱（例如「門市人員」也找「門市專員、店員、儲備幹部」），在各大求職網站搜尋', count: '10 ~ 15' },
-    ];
-    if (isPartTime) groups.push({ label: '兼職平台', focus: '小雞上工、Worky、518熊班兼職、Yes123 打工、1111 兼職', count: '12 ~ 15' });
-    if (isAbroad) groups.push({ label: '國外求職平台', focus: 'LinkedIn、Indeed、Glassdoor 與職缺所在國家的主要求職網站', count: '12 ~ 15' });
+    // 只找國外時，不用搜台灣在地的人力銀行與公部門
+    const abroadOnly = isAbroad && !/台灣與國外皆可|台灣＋國外|台灣和國外|國內外/.test(rawQuery);
+    const groups: Array<{ label: string; focus: string; count: string }> = [];
+    if (!abroadOnly) {
+      groups.push(
+        { label: '主要人力銀行', focus: '104人力銀行、1111人力銀行、Yes123、518熊班', count: '12 ~ 15' },
+        { label: '新創與外商平台', focus: 'Cake、Yourator、Meet.jobs、Glints、LinkedIn、Indeed 台灣', count: '12 ~ 15' },
+        { label: '企業官網', focus: '各公司官網的徵才頁（careers／人才招募頁），包含上市櫃公司、外商與中小企業', count: '10 ~ 15' },
+        { label: '公部門與產業平台', focus: '台灣就業通、事求人（公職）、國營事業招考、各縣市就業服務站，以及這個職務所屬產業的專業求職網站或公會徵才', count: '8 ~ 12' },
+      );
+    }
+    groups.push({ label: '相近職稱', focus: '把條件裡的職稱換成相近或同義的職稱（例如「門市人員」也找「門市專員、店員、儲備幹部」），在各大求職網站搜尋', count: '10 ~ 15' });
+    if (isPartTime) groups.push({ label: '兼職平台', focus: '小雞上工、Worky、518熊班兼職、Yes123 打工、1111 兼職、Tasker 出任務（接案）', count: '12 ~ 15' });
+    if (isAbroad) {
+      groups.push({ label: '國外求職平台', focus: 'LinkedIn、Indeed、Glassdoor 與職缺所在國家的主要求職網站', count: '12 ~ 15' });
+      groups.push({ label: '國外在地平台', focus: '職缺所在國家或城市的在地求職網站（例如日本 doda、Green、Daijob；香港 JobsDB、CTgoodjobs；新加坡 MyCareersFuture；遠端 We Work Remotely、Remote OK）與企業官網', count: '10 ~ 15' });
+    }
 
     let batchNo = 0;
     const runGroup = async (g: { label: string; focus: string; count: string }) => {
@@ -4035,8 +4045,9 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
 規定：
 1. 盡量列出 ${g.count} 筆不同公司或不同職缺，越多越好，但每一筆都必須真的符合條件。
 2. 不可包含已關閉、已下架或過期的職缺，不可虛構公司或職缺。
-3. "url" 填搜尋到的職缺頁網址；不確定時留空字串，不要自己編網址。
-4. 每筆摘要 30 字內。
+3. "url" 必須是「單一職缺」的內頁網址（例如 104.com.tw/job/xxxx、1111.com.tw/job/123456、linkedin.com/jobs/view/123456），直接照搜尋結果裡的網址填，不要填搜尋結果頁、職缺列表頁或公司首頁；找不到該職缺內頁時留空字串，不要自己編網址。
+4. "sourcePlatform" 寫職缺實際所在的網站名稱（例如 104人力銀行、LinkedIn、公司官網）。
+5. 每筆摘要 30 字內。
 ${JOB_JSON_SPEC}`;
         const r = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
