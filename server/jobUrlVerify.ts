@@ -210,9 +210,32 @@ export function checkJobPage(url: string, title: string, company: string): Promi
   return pageCache.get(key)!;
 }
 
-/** 搜尋這個職缺的連結：有確定可用的站內搜尋就用站內，否則用 Google 限定該網站搜尋 */
+/** 搜尋用的公司簡稱：「特力集團_特力股份有限公司」→「特力」 */
+export function shortCompany(company: string): string {
+  const parts = String(company || '').split(/[_／/|｜]/).map((x) => x.trim()).filter(Boolean);
+  const pick = parts.length ? parts[parts.length - 1] : String(company || '');
+  const core = companyCore(pick).replace(/集團$/, '');
+  return core || companyCore(String(company || ''));
+}
+
+/** 搜尋用的職稱主體：「電商平台 react 前端工程師」→「前端工程師」 */
+export function shortTitle(title: string): string {
+  const t = String(title || '')
+    .replace(/[【\[(（].*?[】\])）]/g, ' ')
+    .replace(/急徵|誠徵|徵才|招募中|高薪/g, ' ')
+    .replace(/\s*[-－–]\s*[^-－–]{1,10}$/, '') // 「門市人員-台北信義」後面的地點拿掉
+    .trim();
+  const m = t.match(/([\u4e00-\u9fa5]{0,6}(?:工程師|設計師|分析師|架構師|研究員|專員|經理|副理|主任|助理|秘書|人員|店員|店長|主管|企劃|業務|顧問|客服|講師|老師|教師|護理師|藥師|技師|技術員|作業員|司機|廚師|師傅|會計|出納|行政|編輯|記者|工讀生|夥伴|實習生))\s*$/);
+  if (m) return m[1];
+  const en = t.match(/([A-Za-z][A-Za-z ]{0,30}(?:Engineer|Developer|Designer|Manager|Analyst|Specialist|Assistant|Intern))\s*$/i);
+  if (en) return en[1].trim();
+  return t.split(/\s+/).slice(-2).join(' ').slice(0, 20);
+}
+
+/** 搜尋這個職缺的連結：有確定可用的站內搜尋就用站內，否則用 Google 限定該網站搜尋
+ *  關鍵字只用「公司簡稱＋職稱主體」，太長的全名加完整職稱常常一筆都搜不到 */
 export function searchUrlFor(title: string, company: string, platformName?: string): string {
-  const kw = encodeURIComponent(`${company} ${title}`.trim());
+  const kw = encodeURIComponent(`${shortCompany(company)} ${shortTitle(title)}`.trim());
   const p = PLATFORMS.find((pl) => pl.name === platformName || (platformName && platformName.includes(pl.name.replace('人力銀行', ''))));
   if (p?.search) return p.search(kw);
   if (p) return `https://www.google.com/search?q=${kw}+site%3A${p.site}`;
