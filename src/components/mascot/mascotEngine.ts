@@ -773,7 +773,9 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (!bubble.hidden) {
       if (bubbleUntil && now > bubbleUntil) { bubbleText.textContent = bubbleDefault; bubbleUntil = 0; }
       const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
-      const bx = Math.max(12, Math.min(vw - bw - 12, S.x - bw + 20)), by = Math.max(12, S.y - msize().h * 0.95 - bh + S.jumpY);
+      // 手機上燈泡比較小，訊息框往下靠近燈泡一點（不然離太遠，像是飄在內容上）
+      const near = vw < 640 ? 38 : 0;
+      const bx = Math.max(12, Math.min(vw - bw - 12, S.x - bw + 20)), by = Math.max(12, S.y - msize().h * 0.95 - bh + S.jumpY + near);
       bubble.style.transform = `translate(${bx}px, ${by}px)`;
     }
     rafId = requestAnimationFrame(frame);
