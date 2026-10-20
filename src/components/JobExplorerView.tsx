@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { SousouFlyer } from './sousou/SousouFlyer';
 import { InlineConditionTag } from './jobExplorer/InlineConditionTag';
-import { accompanyDuringSearch } from './mascot/mascotConfig';
+import { accompanyDuringSearch, cheerMascot } from './mascot/mascotConfig';
 
 export type JobViewMode = 'large_card' | 'list' | 'small_card';
 export type JobSortKey =
@@ -341,7 +341,21 @@ interface ChatMessage {
   selectedCountries?: string[];
   selectedCities?: string[];
   conditionTags?: ConditionTag[];
+  /** 搜尋過程中要使用者決定的選項（繼續等搜搜、派小燈泡、重新搜尋…） */
+  searchActions?: SearchActionKey[];
 }
+
+type SearchActionKey = 'wait' | 'bulb' | 'retry' | 'dismiss';
+const SEARCH_ACTION_LABEL: Record<SearchActionKey, string> = {
+  wait: '繼續等待',
+  bulb: '💡 派小燈泡前去看看',
+  retry: '重新搜尋',
+  dismiss: '先不用',
+};
+/** 搜搜（Dify）等多久沒消息就問使用者、等多久就暫停 */
+const DIFY_ASK_MS = 50000;
+const DIFY_PAUSE_MS = 80000;
+const MAX_JOBS = 100;
 
 export function parseConditionTags(brief: string, intakeData?: any): ConditionTag[] {
   if (Array.isArray(intakeData?.conditionTags) && intakeData.conditionTags.length > 0) {
@@ -1057,102 +1071,159 @@ export const JobExplorerView: React.FC = () => {
     // 在工作搜索過程，讓右下角小燈泡自動出來陪伴（想看跳舞可以點小燈泡訊息框裡的跳舞鍵）
     accompanyDuringSearch('搜搜正在幫你找好工作，先來跟我玩吧 !');
 
-    const controller = new AbortController();
-    // 搜搜（Dify）最久可能要 2 分鐘，前端多留一點時間
-    const timeoutId = setTimeout(() => controller.abort(), 150000);
-
     const botMsgId = `exp-stream-${Date.now()}`;
     setMessages((prev) => [
       ...prev,
       {
         id: botMsgId,
         role: 'bot',
-        text: '已確認您的條件！正在分批即時檢索全網在招真實職缺（Yes123、Cake、1111、Yourator、104等），首批職缺即將送達...',
+        text: useGeminiFallback ? '小燈泡出發去全網找職缺了，找到就會陸續送上來…' : '已確認您的條件！搜搜駕著筋斗雲出發了，找到的職缺會每 4 筆陸續送上來…',
         confirmed: true,
       },
     ]);
+    setPendingConfirmedBrief('');
+    setPendingFallbackBrief('');
 
-    let streamSuccess = false;
-    let accumulatedJobs: JobListing[] = [];
-    const seenJobKeys = new Set<string>();
+    startSearchSession({
+      brief,
+      botMsgId,
+      startWith: useGeminiFallback ? 'gemini' : 'dify',
+      filters: {
+        keyword: keyword.trim(),
+        city: selectedCity,
+        userBaseCity,
+        category: selectedCategory,
+        minSalary: isHourlyFilter || regionFilter === '國外' ? 0 : minSalaryFilter,
+        maxExperienceYears: maxExpFilter,
+        maxEducationLevel: maxEduFilter,
+        carePoints: userCarePoints,
+        // 全選時不限制（搜最廣）；有取消勾選才只搜選到的求職網
+        sites: isSiteFiltered ? chosenSites : [],
+      },
+    });
+  };
 
+  // ─── 搜尋流程：先派搜搜（Dify）；50 秒沒消息就問要繼續等還是派小燈泡（本地 Gemini）；80 秒還沒消息就暫停 ───
+  type SearchSession = {
+    id: number;
+    brief: string;
+    botMsgId: string;
+    filters: any;
+    jobs: JobListing[];
+    seen: Set<string>;
+    controllers: AbortController[];
+    timers: number[];
+    difyGot: boolean;
+    difyDone: boolean;
+    difyRunning: boolean;
+    geminiStarted: boolean;
+    geminiDone: boolean;
+    paused: boolean;
+    finished: boolean;
+  };
+  const searchSessionRef = useRef<SearchSession | null>(null);
+  const [arrivalOrder, setArrivalOrder] = useState(false); // 搜尋中照抵達順序顯示，全部跑完再排序
+
+  const updateBotMsg = (sess: SearchSession, patch: Partial<ChatMessage>) => {
+    setMessages((prev) => prev.map((m) => (m.id === sess.botMsgId ? { ...m, ...patch } : m)));
+  };
+
+  const stopSearchSession = (sess: SearchSession | null) => {
+    if (!sess) return;
+    sess.timers.forEach((t) => window.clearTimeout(t));
+    sess.timers = [];
+    sess.controllers.forEach((c) => { try { c.abort(); } catch {} });
+    sess.controllers = [];
+  };
+  useEffect(() => () => stopSearchSession(searchSessionRef.current), []);
+
+  const finishSearchSession = (sess: SearchSession, note?: string) => {
+    if (sess.finished) return;
+    sess.finished = true;
+    sess.timers.forEach((t) => window.clearTimeout(t));
+    setArrivalOrder(false); // 全部跑完：整理排序
+    setSortBy('recommended');
+    setSortOrder('desc');
+    setIsSearching(false);
+    setIsGeminiFallbackSearching(false);
+    const n = sess.jobs.length;
+    setSearchProgressText(n ? `檢索整合完成，共 ${n} 筆真實職缺` : '');
+    if (note !== undefined) updateBotMsg(sess, { text: note });
+    else if (n) updateBotMsg(sess, { text: `找好了！共整合 ${n} 筆正在招募的職缺，已依推薦程度排序。`, searchActions: undefined });
+    window.setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+  };
+
+  /** 兩邊都跑完了嗎（搜搜結束或暫停，小燈泡沒派或也跑完） */
+  const maybeFinish = (sess: SearchSession) => {
+    if (sess.finished || searchSessionRef.current !== sess) return;
+    const difySettled = sess.difyDone || sess.paused;
+    const geminiSettled = !sess.geminiStarted || sess.geminiDone;
+    if (!difySettled || !geminiSettled) return;
+    if (sess.jobs.length > 0) { finishSearchSession(sess); return; }
+    // 沒找到：小燈泡也去過了就結束；還沒派過就問要不要派
+    if (sess.geminiStarted) {
+      finishSearchSession(sess, '這次沒有找到符合條件、正在招募的職缺，可以放寬一些條件再試試。');
+    } else if (!sess.paused) {
+      sess.finished = true;
+      setIsSearching(false);
+      setArrivalOrder(false);
+      updateBotMsg(sess, { text: '搜搜這趟沒帶回符合條件的職缺，要派小燈泡去看看嗎？', searchActions: ['bulb', 'dismiss'] });
+    }
+  };
+
+  const addSessionJobs = (sess: SearchSession, list: JobListing[], src: 'dify' | 'gemini') => {
+    if (searchSessionRef.current !== sess) return;
+    const fresh: JobListing[] = [];
+    for (const j of list) {
+      if (sess.jobs.length + fresh.length >= MAX_JOBS) break;
+      const key = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
+      if (sess.seen.has(key)) continue;
+      sess.seen.add(key);
+      fresh.push(j);
+    }
+    if (!fresh.length) return;
+    if (src === 'dify') sess.difyGot = true;
+    sess.jobs = [...sess.jobs, ...fresh];
+    setJobs([...sess.jobs]);
+    setStreamingBatchCount((c) => c + 1);
+    const who = src === 'dify' ? '搜搜' : '小燈泡';
+    setSearchProgressText(`${who}又帶回 ${fresh.length} 筆（累計 ${sess.jobs.length} 筆）…`);
+    // 有消息了：收起「要不要繼續等」的詢問
+    updateBotMsg(sess, { text: `${who}帶回 ${fresh.length} 筆職缺，目前累計 ${sess.jobs.length} 筆，還在繼續找…`, searchActions: undefined });
+  };
+
+  const runSearchStream = async (sess: SearchSession, src: 'dify' | 'gemini') => {
+    const controller = new AbortController();
+    sess.controllers.push(controller);
+    const safety = window.setTimeout(() => controller.abort(), 150000);
+    let difyUnavailable = false;
     try {
-      // 1. 優先透過 /api/job-explorer/search-stream 端點進行多批次回傳、前端逐批整合！
       const res = await fetch('/api/job-explorer/search-stream', {
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: brief,
-          filters: {
-            keyword: keyword.trim(),
-            city: selectedCity,
-            userBaseCity,
-            category: selectedCategory,
-            minSalary: isHourlyFilter || regionFilter === '國外' ? 0 : minSalaryFilter,
-            maxExperienceYears: maxExpFilter,
-            maxEducationLevel: maxEduFilter,
-            carePoints: userCarePoints,
-            // 全選時不限制（搜最廣）；有取消勾選才只搜選到的求職網
-            sites: isSiteFiltered ? chosenSites : [],
-          },
-        }),
+        body: JSON.stringify({ query: sess.brief, filters: sess.filters, source: src }),
       });
-
       if (res.ok && res.body) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder('utf-8');
         let buffer = '';
-
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
           const parts = buffer.split('\n\n');
           buffer = parts.pop() || '';
-
           for (const part of parts) {
             const trimmed = part.trim();
             if (!trimmed.startsWith('data: ')) continue;
             try {
-              const eventData = JSON.parse(trimmed.slice(6));
-              if (eventData.type === 'batch' && Array.isArray(eventData.jobs) && eventData.jobs.length > 0) {
-                streamSuccess = true;
-                const newItems: JobListing[] = [];
-                for (const j of eventData.jobs) {
-                  const key = `${String(j.company).trim()}_${String(j.title).trim()}`.toLowerCase();
-                  if (!seenJobKeys.has(key)) {
-                    seenJobKeys.add(key);
-                    newItems.push(j);
-                  }
-                }
-                accumulatedJobs = [...accumulatedJobs, ...newItems];
-                setJobs([...accumulatedJobs]);
-                setSortBy('recommended');
-                setSortOrder('desc');
-                setStreamingBatchCount(eventData.batchIndex || 1);
-                setSearchProgressText(`已收到第 ${eventData.batchIndex || 1} 批職缺（累計 ${accumulatedJobs.length} 筆）...`);
-
-                if (Array.isArray(eventData.carePoints) && eventData.carePoints.length > 0) {
-                  setUserCarePoints(eventData.carePoints);
-                }
-
-                if (eventData.reply) {
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === botMsgId
-                        ? { ...m, text: `${eventData.reply}（目前累計已整合 ${accumulatedJobs.length} 筆在招職缺）` }
-                        : m
-                    )
-                  );
-                }
-              } else if (eventData.type === 'done') {
-                streamSuccess = true;
-                const finalReply = eventData.reply || `全網職缺檢索完成，共整合 ${accumulatedJobs.length} 筆當下開放應徵之真實職缺！`;
-                setSearchProgressText(`檢索整合完成，共 ${accumulatedJobs.length} 筆真實職缺`);
-                setMessages((prev) =>
-                  prev.map((m) => (m.id === botMsgId ? { ...m, text: finalReply } : m))
-                );
+              const ev = JSON.parse(trimmed.slice(6));
+              if (ev.type === 'batch' && Array.isArray(ev.jobs)) {
+                addSessionJobs(sess, ev.jobs, src);
+                if (Array.isArray(ev.carePoints) && ev.carePoints.length > 0) setUserCarePoints(ev.carePoints);
+              } else if (ev.type === 'done' && ev.difyUnavailable) {
+                difyUnavailable = true;
               }
             } catch (parseError) {
               console.warn('[SSE Parse Error]', parseError);
@@ -1160,74 +1231,90 @@ export const JobExplorerView: React.FC = () => {
           }
         }
       }
-    } catch (streamErr) {
-      console.warn('[Stream Error]', streamErr);
+    } catch (err) {
+      if ((err as any)?.name !== 'AbortError') console.warn('[Stream Error]', err);
     } finally {
-      clearTimeout(timeoutId);
+      window.clearTimeout(safety);
     }
-
-    // 2. 若串流中斷或取得 0 筆，平滑降級至常規同步端點補位
-    if (!streamSuccess || accumulatedJobs.length === 0) {
-      try {
-        const syncRes = await fetch('/api/job-explorer/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: brief,
-            useGeminiFallback: true,
-            filters: {
-              keyword: keyword.trim(),
-              city: selectedCity,
-              userBaseCity,
-              category: selectedCategory,
-              minSalary: isHourlyFilter ? 0 : minSalaryFilter,
-              maxExperienceYears: maxExpFilter,
-              maxEducationLevel: maxEduFilter,
-              carePoints: userCarePoints,
-            },
-          }),
-        });
-
-        const syncData = await syncRes.json().catch(() => null);
-        if (syncRes.ok && syncData?.success && Array.isArray(syncData.jobs) && syncData.jobs.length > 0) {
-          setJobs(syncData.jobs.slice(0, 100));
-          setSortBy('recommended');
-          setSortOrder('desc');
-          setSearchProgressText(`檢索完成，共 ${syncData.jobs.length} 筆職缺`);
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === botMsgId
-                ? { ...m, text: syncData.reply || `已為您整合出 ${syncData.jobs.length} 筆當下開放應徵職缺！` }
-                : m
-            )
-          );
-        } else {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === botMsgId
-                ? { ...m, text: '未檢索到符合條件的在招職缺，建議您更換關鍵字或放寬條件再試。' }
-                : m
-            )
-          );
-        }
-      } catch {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === botMsgId
-              ? { ...m, text: '連線忙碌中，請點擊上方確認按鈕重新搜尋。' }
-              : m
-          )
-        );
-      }
+    if (searchSessionRef.current !== sess) return;
+    if (src === 'dify') {
+      sess.difyDone = true;
+      sess.difyRunning = false;
+      // 搜搜沒開（沒設定）：直接改派小燈泡，不用讓使用者等
+      if (difyUnavailable && !sess.geminiStarted && !sess.finished) { dispatchBulb(sess, '搜搜今天不在，小燈泡代班出發去找了！'); return; }
+    } else {
+      sess.geminiDone = true;
     }
+    maybeFinish(sess);
+  };
 
-    setPendingConfirmedBrief('');
-    setPendingFallbackBrief('');
-    setIsSearching(false);
-    setIsGeminiFallbackSearching(false);
-    setTimeout(() => {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 80);
+  const dispatchBulb = (sess: SearchSession, text = '小燈泡出發去看看了！找到的職缺會每 2 筆陸續送上來…') => {
+    if (sess.geminiStarted) return;
+    sess.geminiStarted = true;
+    sess.finished = false;
+    setIsSearching(true);
+    setIsGeminiFallbackSearching(true);
+    setArrivalOrder(true);
+    cheerMascot('小燈泡出發！');
+    updateBotMsg(sess, { text, searchActions: undefined });
+    void runSearchStream(sess, 'gemini');
+  };
+
+  const startSearchSession = (opts: { brief: string; botMsgId: string; filters: any; startWith: 'dify' | 'gemini' }) => {
+    stopSearchSession(searchSessionRef.current);
+    const sess: SearchSession = {
+      id: Date.now(), brief: opts.brief, botMsgId: opts.botMsgId, filters: opts.filters,
+      jobs: [], seen: new Set(), controllers: [], timers: [],
+      difyGot: false, difyDone: false, difyRunning: false, geminiStarted: false, geminiDone: false, paused: false, finished: false,
+    };
+    searchSessionRef.current = sess;
+    setJobs([]);
+    setStreamingBatchCount(0);
+    setArrivalOrder(true);
+    if (opts.startWith === 'gemini') {
+      sess.difyDone = true; // 使用者直接指定小燈泡：不派搜搜
+      dispatchBulb(sess, '小燈泡出發去全網找職缺了，找到就會每 2 筆陸續送上來…');
+      return;
+    }
+    sess.difyRunning = true;
+    void runSearchStream(sess, 'dify');
+    // 50 秒都沒有任何職缺：問使用者要繼續等，還是派小燈泡
+    sess.timers.push(window.setTimeout(() => {
+      if (searchSessionRef.current !== sess || sess.difyGot || sess.difyDone || sess.geminiStarted) return;
+      updateBotMsg(sess, { text: '搜搜似乎正經歷九九八十一難，是否繼續等待？或是派小燈泡前去看看？', searchActions: ['wait', 'bulb'] });
+      setSearchProgressText('搜搜還在路上…');
+    }, DIFY_ASK_MS));
+    // 80 秒還是沒消息（也沒派小燈泡）：主動暫停這次任務
+    sess.timers.push(window.setTimeout(() => {
+      if (searchSessionRef.current !== sess || sess.difyGot || sess.difyDone || sess.geminiStarted) return;
+      sess.paused = true;
+      sess.controllers.forEach((c) => { try { c.abort(); } catch {} });
+      sess.finished = true;
+      setIsSearching(false);
+      setArrivalOrder(false);
+      setSearchProgressText('');
+      updateBotMsg(sess, { text: '搜搜這趟遲遲沒有回音，這次任務先暫停了。要重新搜尋，或派小燈泡去看看？', searchActions: ['retry', 'bulb'] });
+    }, DIFY_PAUSE_MS));
+  };
+
+  const handleSearchAction = (msgId: string, action: SearchActionKey) => {
+    const sess = searchSessionRef.current;
+    if (!sess || sess.botMsgId !== msgId) {
+      // 舊的訊息：只能重新搜尋
+      setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, searchActions: undefined } : m)));
+      return;
+    }
+    if (action === 'wait') {
+      updateBotMsg(sess, { text: '好，繼續等搜搜回來…', searchActions: undefined });
+      setSearchProgressText('繼續等搜搜…');
+    } else if (action === 'bulb') {
+      dispatchBulb(sess);
+    } else if (action === 'retry') {
+      updateBotMsg(sess, { searchActions: undefined });
+      void handleForwardToExplorerAgent(sess.brief);
+    } else {
+      updateBotMsg(sess, { text: '好的，可以調整條件後再搜尋一次。', searchActions: undefined });
+    }
   };
 
   // Stage 1：自然語言輸入先經系統調節器詢問與收集各維度條件（地點、職務/專業、大學/學歷、年資、性格/環境、薪資），亦支援隨時略過問題直接搜尋
@@ -1535,6 +1622,8 @@ export const JobExplorerView: React.FC = () => {
       return 0;
     };
 
+    // 搜尋中照抵達順序顯示（不會一直跳位置），全部跑完再依排序方式整理
+    if (arrivalOrder && !showSavedOnly) return filtered;
     const dir = sortOrder === 'desc' ? -1 : 1;
     return [...filtered].sort((a, b) => {
       switch (sortBy) {
@@ -1576,6 +1665,7 @@ export const JobExplorerView: React.FC = () => {
     sortBy,
     sortOrder,
     fxRates,
+    arrivalOrder,
   ]);
 
   const handleSortClick = (key: JobSortKey) => {
@@ -2221,6 +2311,28 @@ export const JobExplorerView: React.FC = () => {
                               </div>
                             ) : (
                               <p className="whitespace-pre-wrap font-medium">{m.text}</p>
+                            )}
+
+                            {/* 搜尋中要使用者決定：繼續等搜搜／派小燈泡／重新搜尋 */}
+                            {m.role === 'bot' && m.searchActions && m.searchActions.length > 0 && (
+                              <div className="mt-2.5 flex flex-wrap gap-2">
+                                {m.searchActions.map((act) => (
+                                  <button
+                                    key={act}
+                                    type="button"
+                                    onClick={() => handleSearchAction(m.id, act)}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 ${
+                                      act === 'bulb'
+                                        ? 'bg-amber-400 hover:bg-amber-300 text-stone-950 shadow-xs'
+                                        : act === 'retry'
+                                        ? 'bg-[#1e3a8a] hover:bg-[#1e40af] text-white'
+                                        : 'bg-white hover:bg-stone-50 border border-stone-200 text-stone-700'
+                                    }`}
+                                  >
+                                    {SEARCH_ACTION_LABEL[act]}
+                                  </button>
+                                ))}
+                              </div>
                             )}
 
                             {/* 模糊條件追問選項（含「跳過」選項，加上上方補充提示） */}
