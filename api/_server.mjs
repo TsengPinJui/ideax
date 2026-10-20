@@ -161871,7 +161871,7 @@ async function callDifyStreamingAgent(params) {
     clearTimeout(timer);
   }
 }
-var CANDIDATE_MODELS = ["gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash"];
+var CANDIDATE_MODELS = ["gemini-3.8-flash", "gemini-3.1-flash-lite"];
 var isGeminiAuthDisabled = false;
 function isGeminiAuthError(err) {
   const msg = (err?.message || "").toLowerCase();
@@ -164512,6 +164512,69 @@ function parseSalaryText(text) {
   }
   return null;
 }
+var TAIWAN_CAMPUS_LANDMARKS = [
+  { pattern: /中正大學|中正大/i, city: "\u5609\u7FA9\u7E23", district: "\u6C11\u96C4\u9109", label: "\u5609\u7FA9\u7E23\u6C11\u96C4\u9109\uFF08\u4E2D\u6B63\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /陽明交通大學|陽明交大|交通大學|交大|清華大學|清大/i, city: "\u65B0\u7AF9\u5E02", district: "\u6771\u5340", label: "\u65B0\u7AF9\u5E02\u6771\u5340\uFF08\u6E05\u4EA4\uFF0F\u7AF9\u79D1\u5468\u908A\uFF09" },
+  { pattern: /成功大學|成大/i, city: "\u53F0\u5357\u5E02", district: "\u6771\u5340", label: "\u53F0\u5357\u5E02\u6771\u5340\uFF08\u6210\u529F\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /台灣大學|臺灣大學|台大|臺大/i, city: "\u53F0\u5317\u5E02", district: "\u5927\u5B89\u5340", label: "\u53F0\u5317\u5E02\u5927\u5B89\u5340\uFF08\u53F0\u7063\u5927\u5B78\uFF0F\u516C\u9928\u5546\u5708\uFF09" },
+  { pattern: /政治大學|政大/i, city: "\u53F0\u5317\u5E02", district: "\u6587\u5C71\u5340", label: "\u53F0\u5317\u5E02\u6587\u5C71\u5340\uFF08\u653F\u6CBB\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /中央大學|中大/i, city: "\u6843\u5712\u5E02", district: "\u4E2D\u58E2\u5340", label: "\u6843\u5712\u5E02\u4E2D\u58E2\u5340\uFF08\u4E2D\u592E\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /中興大學|興大/i, city: "\u53F0\u4E2D\u5E02", district: "\u5357\u5340", label: "\u53F0\u4E2D\u5E02\u5357\u5340\uFF08\u4E2D\u8208\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /中山大學/i, city: "\u9AD8\u96C4\u5E02", district: "\u9F13\u5C71\u5340", label: "\u9AD8\u96C4\u5E02\u9F13\u5C71\u5340\uFF08\u4E2D\u5C71\u5927\u5B78\uFF0F\u897F\u5B50\u7063\u5468\u908A\uFF09" },
+  { pattern: /台北大學|北大/i, city: "\u65B0\u5317\u5E02", district: "\u4E09\u5CFD\u5340", label: "\u65B0\u5317\u5E02\u4E09\u5CFD\u5340\uFF08\u53F0\u5317\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /海洋大學|海大/i, city: "\u57FA\u9686\u5E02", district: "\u4E2D\u6B63\u5340", label: "\u57FA\u9686\u5E02\u4E2D\u6B63\u5340\uFF08\u6D77\u6D0B\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /東華大學|東華/i, city: "\u82B1\u84EE\u7E23", district: "\u58FD\u8C50\u9109", label: "\u82B1\u84EE\u7E23\u58FD\u8C50\u9109\uFF08\u6771\u83EF\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /暨南大學|暨南國際大學|暨大/i, city: "\u5357\u6295\u7E23", district: "\u57D4\u91CC\u93AE", label: "\u5357\u6295\u7E23\u57D4\u91CC\u93AE\uFF08\u66A8\u5357\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /嘉義大學|嘉大/i, city: "\u5609\u7FA9\u5E02", district: "\u6771\u5340", label: "\u5609\u7FA9\u5E02\uFF08\u5609\u7FA9\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /高雄大學|高大/i, city: "\u9AD8\u96C4\u5E02", district: "\u6960\u6893\u5340", label: "\u9AD8\u96C4\u5E02\u6960\u6893\u5340\uFF08\u9AD8\u96C4\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /宜蘭大學|宜大/i, city: "\u5B9C\u862D\u7E23", district: "\u5B9C\u862D\u5E02", label: "\u5B9C\u862D\u7E23\u5B9C\u862D\u5E02\uFF08\u5B9C\u862D\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /台科大|臺灣科技大學|台灣科技大學/i, city: "\u53F0\u5317\u5E02", district: "\u5927\u5B89\u5340", label: "\u53F0\u5317\u5E02\u5927\u5B89\u5340\uFF08\u53F0\u79D1\u5927\u5468\u908A\uFF09" },
+  { pattern: /北科大|台北科技大學|臺北科技大學/i, city: "\u53F0\u5317\u5E02", district: "\u5927\u5B89\u5340", label: "\u53F0\u5317\u5E02\u5927\u5B89\u5340\uFF08\u5317\u79D1\u5927\u5468\u908A\uFF09" },
+  { pattern: /高科大|高雄科技大學|高科/i, city: "\u9AD8\u96C4\u5E02", district: "\u4E09\u6C11\u5340", label: "\u9AD8\u96C4\u5E02\uFF08\u9AD8\u79D1\u5927\u5468\u908A\uFF09" },
+  { pattern: /虎尾科大|虎科大|虎科/i, city: "\u96F2\u6797\u7E23", district: "\u864E\u5C3E\u93AE", label: "\u96F2\u6797\u7E23\u864E\u5C3E\u93AE\uFF08\u864E\u5C3E\u79D1\u5927\u5468\u908A\uFF09" },
+  { pattern: /雲林科技大學|雲科大|雲科/i, city: "\u96F2\u6797\u7E23", district: "\u6597\u516D\u5E02", label: "\u96F2\u6797\u7E23\u6597\u516D\u5E02\uFF08\u96F2\u79D1\u5927\u5468\u908A\uFF09" },
+  { pattern: /屏東科技大學|屏科大|屏科/i, city: "\u5C4F\u6771\u7E23", district: "\u5167\u57D4\u9109", label: "\u5C4F\u6771\u7E23\u5167\u57D4\u9109\uFF08\u5C4F\u79D1\u5927\u5468\u908A\uFF09" },
+  { pattern: /勤益科大|勤益科技大學/i, city: "\u53F0\u4E2D\u5E02", district: "\u592A\u5E73\u5340", label: "\u53F0\u4E2D\u5E02\u592A\u5E73\u5340\uFF08\u52E4\u76CA\u79D1\u5927\u5468\u908A\uFF09" },
+  { pattern: /輔仁大學|輔大/i, city: "\u65B0\u5317\u5E02", district: "\u65B0\u838A\u5340", label: "\u65B0\u5317\u5E02\u65B0\u838A\u5340\uFF08\u8F14\u4EC1\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /淡江大學|淡大/i, city: "\u65B0\u5317\u5E02", district: "\u6DE1\u6C34\u5340", label: "\u65B0\u5317\u5E02\u6DE1\u6C34\u5340\uFF08\u6DE1\u6C5F\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /文化大學|文大/i, city: "\u53F0\u5317\u5E02", district: "\u58EB\u6797\u5340", label: "\u53F0\u5317\u5E02\u58EB\u6797\u5340\uFF08\u6587\u5316\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /逢甲大學|逢甲/i, city: "\u53F0\u4E2D\u5E02", district: "\u897F\u5C6F\u5340", label: "\u53F0\u4E2D\u5E02\u897F\u5C6F\u5340\uFF08\u9022\u7532\u5927\u5B78\uFF0F\u9022\u7532\u5546\u5708\u5468\u908A\uFF09" },
+  { pattern: /東海大學|東大/i, city: "\u53F0\u4E2D\u5E02", district: "\u897F\u5C6F\u5340", label: "\u53F0\u4E2D\u5E02\u897F\u5C6F\u5340\uFF08\u6771\u6D77\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /中原大學|中原/i, city: "\u6843\u5712\u5E02", district: "\u4E2D\u58E2\u5340", label: "\u6843\u5712\u5E02\u4E2D\u58E2\u5340\uFF08\u4E2D\u539F\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /元智大學|元智/i, city: "\u6843\u5712\u5E02", district: "\u4E2D\u58E2\u5340", label: "\u6843\u5712\u5E02\u4E2D\u58E2\u5340\uFF08\u5143\u667A\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /世新大學|世新/i, city: "\u53F0\u5317\u5E02", district: "\u6587\u5C71\u5340", label: "\u53F0\u5317\u5E02\u6587\u5C71\u5340\uFF08\u4E16\u65B0\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /實踐大學|實踐/i, city: "\u53F0\u5317\u5E02", district: "\u4E2D\u5C71\u5340", label: "\u53F0\u5317\u5E02\u4E2D\u5C71\u5340\uFF08\u5BE6\u8E10\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /銘傳大學|銘傳/i, city: "\u53F0\u5317\u5E02", district: "\u58EB\u6797\u5340", label: "\u53F0\u5317\u5E02\u58EB\u6797\u5340\uFF08\u9298\u50B3\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /長庚大學|長庚/i, city: "\u6843\u5712\u5E02", district: "\u9F9C\u5C71\u5340", label: "\u6843\u5712\u5E02\u9F9C\u5C71\u5340\uFF08\u9577\u5E9A\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /高醫|高雄醫學大學/i, city: "\u9AD8\u96C4\u5E02", district: "\u4E09\u6C11\u5340", label: "\u9AD8\u96C4\u5E02\u4E09\u6C11\u5340\uFF08\u9AD8\u91AB\u5468\u908A\uFF09" },
+  { pattern: /中國醫|中國醫藥大學/i, city: "\u53F0\u4E2D\u5E02", district: "\u5317\u5340", label: "\u53F0\u4E2D\u5E02\u5317\u5340\uFF08\u4E2D\u570B\u91AB\u85E5\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /北醫|台北醫學大學/i, city: "\u53F0\u5317\u5E02", district: "\u4FE1\u7FA9\u5340", label: "\u53F0\u5317\u5E02\u4FE1\u7FA9\u5340\uFF08\u5317\u91AB\u5468\u908A\uFF09" },
+  { pattern: /慈濟大學|慈濟/i, city: "\u82B1\u84EE\u7E23", district: "\u82B1\u84EE\u5E02", label: "\u82B1\u84EE\u7E23\u82B1\u84EE\u5E02\uFF08\u6148\u6FDF\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /朝陽科大|朝陽科技大學/i, city: "\u53F0\u4E2D\u5E02", district: "\u9727\u5CF0\u5340", label: "\u53F0\u4E2D\u5E02\u9727\u5CF0\u5340\uFF08\u671D\u967D\u79D1\u5927\u5468\u908A\uFF09" },
+  { pattern: /靜宜大學|靜宜/i, city: "\u53F0\u4E2D\u5E02", district: "\u6C99\u9E7F\u5340", label: "\u53F0\u4E2D\u5E02\u6C99\u9E7F\u5340\uFF08\u975C\u5B9C\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /南台科大|南臺科技大學/i, city: "\u53F0\u5357\u5E02", district: "\u6C38\u5EB7\u5340", label: "\u53F0\u5357\u5E02\u6C38\u5EB7\u5340\uFF08\u5357\u53F0\u79D1\u5927\u5468\u908A\uFF09" },
+  { pattern: /崑山科大|崑山科技大學/i, city: "\u53F0\u5357\u5E02", district: "\u6C38\u5EB7\u5340", label: "\u53F0\u5357\u5E02\u6C38\u5EB7\u5340\uFF08\u5D11\u5C71\u79D1\u5927\u5468\u908A\uFF09" },
+  { pattern: /義守大學|義守/i, city: "\u9AD8\u96C4\u5E02", district: "\u5927\u6A39\u5340", label: "\u9AD8\u96C4\u5E02\u5927\u6A39\u5340\uFF08\u7FA9\u5B88\u5927\u5B78\u5468\u908A\uFF09" },
+  { pattern: /新竹科學園區|竹科/i, city: "\u65B0\u7AF9\u5E02", district: "\u6771\u5340", label: "\u65B0\u7AF9\u5E02\u6771\u5340\uFF08\u7AF9\u79D1\u5468\u908A\uFF09" },
+  { pattern: /中部科學園區|中科/i, city: "\u53F0\u4E2D\u5E02", district: "\u897F\u5C6F\u5340", label: "\u4E2D\u90E8\u79D1\u5B78\u5712\u5340\uFF08\u4E2D\u79D1\u5468\u908A\uFF09" },
+  { pattern: /南部科學園區|南科/i, city: "\u53F0\u5357\u5E02", district: "\u65B0\u5E02\u5340", label: "\u5357\u90E8\u79D1\u5B78\u5712\u5340\uFF08\u5357\u79D1\u5468\u908A\uFF09" },
+  { pattern: /內湖科技園區|內湖科學園區|內科/i, city: "\u53F0\u5317\u5E02", district: "\u5167\u6E56\u5340", label: "\u53F0\u5317\u5E02\u5167\u6E56\u5340\uFF08\u5167\u79D1\u5468\u908A\uFF09" },
+  { pattern: /南港軟體園區|南軟/i, city: "\u53F0\u5317\u5E02", district: "\u5357\u6E2F\u5340", label: "\u53F0\u5317\u5E02\u5357\u6E2F\u5340\uFF08\u5357\u8EDF\u5468\u908A\uFF09" },
+  { pattern: /台元科技園區|台元/i, city: "\u65B0\u7AF9\u7E23", district: "\u7AF9\u5317\u5E02", label: "\u65B0\u7AF9\u7E23\u7AF9\u5317\u5E02\uFF08\u53F0\u5143\u79D1\u6280\u5712\u5340\u5468\u908A\uFF09" },
+  { pattern: /華亞科技園區|華亞科/i, city: "\u6843\u5712\u5E02", district: "\u9F9C\u5C71\u5340", label: "\u6843\u5712\u5E02\u9F9C\u5C71\u5340\uFF08\u83EF\u4E9E\u79D1\u6280\u5712\u5340\u5468\u908A\uFF09" },
+  { pattern: /總統府/i, city: "\u53F0\u5317\u5E02", district: "\u4E2D\u6B63\u5340", label: "\u53F0\u5317\u5E02\u4E2D\u6B63\u5340\uFF08\u7E3D\u7D71\u5E9C\u5468\u908A\uFF09" },
+  { pattern: /台北車站|北車/i, city: "\u53F0\u5317\u5E02", district: "\u4E2D\u6B63\u5340", label: "\u53F0\u5317\u5E02\u4E2D\u6B63\u5340\uFF08\u53F0\u5317\u8ECA\u7AD9\u5468\u908A\uFF09" },
+  { pattern: /台北101|臺北101|信義商圈/i, city: "\u53F0\u5317\u5E02", district: "\u4FE1\u7FA9\u5340", label: "\u53F0\u5317\u5E02\u4FE1\u7FA9\u5340\uFF08\u53F0\u5317101\u5468\u908A\uFF09" },
+  { pattern: /板橋車站/i, city: "\u65B0\u5317\u5E02", district: "\u677F\u6A4B\u5340", label: "\u65B0\u5317\u5E02\u677F\u6A4B\u5340\uFF08\u677F\u6A4B\u8ECA\u7AD9\u5468\u908A\uFF09" }
+];
+function detectCampusLandmark(text) {
+  for (const item of TAIWAN_CAMPUS_LANDMARKS) {
+    if (item.pattern.test(text)) {
+      return item;
+    }
+  }
+  return null;
+}
 function buildJobConditionSummary(text, ctx) {
   const lines = [];
   const pick = (re) => {
@@ -164521,11 +164584,16 @@ function buildJobConditionSummary(text, ctx) {
   const jt = pick(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時/);
   if (jt) lines.push(`\u5DE5\u4F5C\u578B\u614B\uFF1A${jt === "\u5168\u8077" ? "\u6B63\u8077" : jt}`);
   else if (ctx.inferredJobType) lines.push(`\u5DE5\u4F5C\u578B\u614B\uFF1A${ctx.inferredJobType}\uFF08\u4F9D${ctx.inferredFrom}\u5224\u65B7\uFF09`);
+  const campus = ctx.campusLandmark || detectCampusLandmark(text);
   const cities = text.match(/台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端/g);
   const uniq = (a) => Array.from(new Set(a));
-  if (cities && cities.length) lines.push(`\u5730\u5340\uFF1A${uniq(cities.map((c) => c === "\u9060\u7AEF" ? "\u9060\u7AEF\u5DE5\u4F5C" : /[市縣]$/.test(c) ? c : c)).join("\u3001")}`);
-  else if (ctx.isTaiwanWide) lines.push("\u5730\u5340\uFF1A\u53F0\u7063\uFF08\u4E0D\u9650\u7E23\u5E02\uFF09");
-  else if (ctx.mentionsAbroad) {
+  if (campus) {
+    lines.push(`\u5730\u5340\uFF1A${campus.label}`);
+  } else if (cities && cities.length) {
+    lines.push(`\u5730\u5340\uFF1A${uniq(cities.map((c) => c === "\u9060\u7AEF" ? "\u9060\u7AEF\u5DE5\u4F5C" : /[市縣]$/.test(c) ? c : c)).join("\u3001")}`);
+  } else if (ctx.isTaiwanWide) {
+    lines.push("\u5730\u5340\uFF1A\u53F0\u7063\uFF08\u4E0D\u9650\u7E23\u5E02\uFF09");
+  } else if (ctx.mentionsAbroad) {
     const countries = text.match(/日本|新加坡|香港|澳門|中國大陸|美國|加拿大|英國|德國|法國|澳洲|紐西蘭|韓國|馬來西亞|越南|泰國|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|國外|海外/g);
     const abroadCities = text.match(new RegExp(ABROAD_CITY_RE.source, "g"));
     const cs = uniq(abroadCities || []);
@@ -164538,7 +164606,18 @@ function buildJobConditionSummary(text, ctx) {
     const list = [...parts, ...cs.filter((x2) => !used.has(x2))];
     if (list.length) lines.push(`\u5730\u5340\uFF1A${list.join("\u3001")}`);
   }
-  const role = text.replace(/工作型態：[^、,，]+|地區：[^、,，]+|工作範圍：[^、,，]+|國家：[^、,，]+|學歷：[^、,，]+|經歷：[^、,，]+|薪資：[^、,，]+|薪水：[^、,，]+|求職網：[^、,，]+/g, " ").replace(/us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|¥|rm|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣/gi, " ").replace(/工作環境|環境好|環境佳|環境|福利好|福利|待遇好|待遇|行業|產業|優先|重視|在意|最好|好的|佳/g, " ").replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, " ").replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, " ").replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, "g") : /$^/g, " ").replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, " ").replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外/g, " ").replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, " ").replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, " ").replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, " ").trim().split(/\s+/).filter((w) => w.length >= 2 && !/^(跳過|略過|不拘)$/.test(w));
+  const compMatch = text.match(/(?:目標公司|限定公司|指定公司|目標企業|想進|想去|限定)[：:]?\s*([^、,，\n]+)/);
+  if (compMatch) {
+    const c = compMatch[1].trim();
+    if (c && !/^(不限|不拘|無)$/.test(c)) lines.push(`\u76EE\u6A19\u516C\u53F8\uFF1A${c}`);
+    else if (/^(不限|不拘|無)$/.test(c)) lines.push("\u76EE\u6A19\u516C\u53F8\uFF1A\u4E0D\u62D8");
+  }
+  let cleanedForRole = text.replace(/(?:目標公司|限定公司|指定公司|目標企業|想進|想去|限定)[：:]?\s*[^、,，\n]+/g, " ").replace(/工作型態：[^、,，]+|地區：[^、,，]+|工作範圍：[^、,，]+|國家：[^、,，]+|學歷：[^、,，]+|經歷：[^、,，]+|薪資：[^、,，]+|薪水：[^、,，]+|求職網：[^、,，]+/g, " ").replace(/us\$|s\$|hk\$|a\$|nz\$|c\$|£|€|₩|¥|rm|月新台幣|新台幣|台幣|美元|美金|日圓|日幣|港幣|人民幣|歐元|英鎊|韓元|澳幣|加幣|新幣|twd|usd/gi, " ").replace(/工作環境|環境好|環境佳|環境|福利好|福利|待遇好|待遇|行業|產業|優先|重視|在意|最好|好的|佳/g, " ").replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*(?:新?台幣|台幣|美元|美金|usd|twd|ntd)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, " ").replace(/(?:全家|7-11|7-eleven|統一超商|萊爾富|ok超商|超商|便利商店|早餐店|咖啡廳|手搖飲|速食店|飲料店)/gi, " ").replace(/\d+\s*(?:m|米|公尺|km|公里)?\s*(?:以?內|半徑|周圍|周邊|距離)/gi, " ").replace(/\b\d+\s*m\b|\bm內\b/gi, " ");
+  for (const lm of TAIWAN_CAMPUS_LANDMARKS) {
+    cleanedForRole = cleanedForRole.replace(lm.pattern, " ");
+  }
+  cleanedForRole = cleanedForRole.replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, " ").replace(ABROAD_CITY_RE.source ? new RegExp(ABROAD_CITY_RE.source, "g") : /$^/g, " ").replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, " ").replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外|民雄|三峽|淡水|公館|士林|大安|中壢|壽豐|埔里|西屯/g, " ").replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, " ").replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, " ").replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, " ").trim();
+  const role = cleanedForRole.split(/\s+/).filter((w) => w.length >= 2 && !/^(跳過|略過|不拘|大學|科大|學校|附近|中正|總統府|早餐店|全家|超商|店員|m內|和全家)$/.test(w));
   if (role.length) lines.push(`\u8077\u52D9\uFF1A${uniq(role).slice(0, 3).join("\u3001")}`);
   const si = ctx.salaryInfo;
   const foreign = text.match(/薪水：([^、]+)/);
@@ -164547,8 +164626,8 @@ function buildJobConditionSummary(text, ctx) {
     const label = si.period === "hour" ? "\u6642\u85AA" : si.period === "year" ? "\u5E74\u85AA" : "\u6708\u85AA";
     lines.push(`\u85AA\u8CC7\uFF1A${label} ${si.amount.toLocaleString("en-US")} \u5143\u4EE5\u4E0A`);
   } else if (/面議|不拘/.test(pick(/薪資待遇不拘|薪資不拘|面議/))) lines.push("\u85AA\u8CC7\uFF1A\u4E0D\u62D8");
-  const edu = pick(/碩士以上|博士|碩士|(?<!我的|我念的|我們|念的)大學(?!附近)|專科以下|專科|高中職|公立頂大背景|技職科大背景|私立綜合大學/);
-  if (edu) lines.push(`\u5B78\u6B77\uFF1A${edu}`);
+  const edu = pick(/碩士以上|博士|碩士|(?<!我的|我念的|我們|念的)大學(?!附近)|專科以下|專科|高中職|國立大學|公立頂大背景|技職科大背景|私立大學/);
+  if (edu && !campus) lines.push(`\u5B78\u6B77\uFF1A${edu}`);
   const exp = pick(/無經驗|新鮮人|應屆|二度就業|\d+\s*~\s*\d+\s*年|\d+\s*年以上|資深|初階|中階|跨領域轉職/);
   if (exp) lines.push(`\u7D93\u6B77\uFF1A${exp}`);
   return lines;
@@ -164576,6 +164655,119 @@ app.get("/api/fx", async (_req, res) => {
   }
   return res.json({ base: "USD", rates: FALLBACK_USD_RATES, updatedAt: "", source: "fallback" });
 });
+async function parseJobIntakeWithGemini(params) {
+  const ai = getGeminiClient();
+  if (!ai) return null;
+  const prompt = `\u4F60\u662F\u4E00\u500B\u6975\u5EA6\u654F\u92B3\u3001\u7406\u89E3\u529B\u9AD8\u8D85\u7684\u300C\u6C42\u8077\u8A9E\u610F\u7406\u89E3\u8207\u7D50\u69CB\u5316\u689D\u4EF6\u5206\u6790\u300D\u5C08\u5BB6\u3002
+\u4F7F\u7528\u8005\u7684\u6700\u65B0\u8F38\u5165\u8A0A\u606F\uFF1A
+"""${params.rawMessage}"""
+
+\u5148\u524D\u7D2F\u7A4D\u689D\u4EF6\u6216\u5C0D\u8A71\u8108\u7D61\uFF1A
+"""${params.previousBrief || (params.conversationHistory.length ? params.conversationHistory.join("\u3001") : "\u7121")}"""
+
+\u4F7F\u7528\u8005\u5DF2\u660E\u78BA\u7565\u904E\u7684\u7DAD\u5EA6\uFF1A
+"""${params.skippedDimensions.join("\u3001") || "\u7121"}"""
+
+\u3010\u6838\u5FC3\u8A9E\u610F\u7406\u89E3\u8207\u5BE6\u9AD4\u62BD\u53D6\u8981\u6C42\uFF08\u52D9\u5FC5\u6DF1\u523B\u6D1E\u5BDF\uFF0C\u7D55\u4E0D\u53EF\u7C97\u66B4\u5B57\u9762\u62C6\u8A5E\uFF01\uFF09\u3011\uFF1A
+1. \u3010\u5730\u9EDE\u8207\u5730\u6A19 (locations)\u3011\uFF1A
+   - \u4F7F\u7528\u8005\u8AAA\u300C\u7E3D\u7D71\u5E9C\u9644\u8FD1\u300D\uFF0C\u5730\u9EDE\u5FC5\u9808\u6B78\u7D0D\u70BA\u300C\u53F0\u5317\u5E02\u4E2D\u6B63\u5340\uFF08\u7E3D\u7D71\u5E9C\u5468\u908A\uFF09\u300D\uFF0C\u300C\u7E3D\u7D71\u5E9C\u300D\u662F\u5730\u6A19\u7D55\u5C0D\u4E0D\u662F\u8077\u52D9\uFF01
+   - \u4F7F\u7528\u8005\u8AAA\u300C\u4E2D\u6B63\u5927\u5B78\u9644\u8FD1\u300D\uFF0C\u5730\u9EDE\u5FC5\u9808\u6B78\u7D0D\u70BA\u300C\u5609\u7FA9\u7E23\u6C11\u96C4\u9109\uFF08\u4E2D\u6B63\u5927\u5B78\u5468\u908A\uFF09\u300D\uFF0C\u300C\u4E2D\u6B63\u5927\u5B78\u300D\u662F\u5730\u6A19\u6821\u5712\u7D55\u5C0D\u4E0D\u662F\u8077\u52D9\uFF01
+   - \u300C\u5168\u5BB6100m\u5167\u300D\u3001\u300C\u6377\u904B\u516C\u9928\u7AD9\u65C1\u300D\u3001\u300C\u7AF9\u79D1\u9644\u8FD1\u300D\u7B49\u5C6C\u65BC\u7A7A\u9593\u7BC4\u570D\u3001\u53C3\u7167\u5E97\u5BB6\u8207\u8DDD\u96E2\u689D\u4EF6\uFF0C\u8ACB\u5B8C\u6574\u6B78\u7D0D\u5230\u5730\u9EDE\u63CF\u8FF0\u4E2D\uFF0C\u7D55\u4E0D\u53EF\u62C6\u788E\u6DF7\u5165\u8077\u52D9\uFF01
+   - \u627E\u8077\u7F3A\u6642\u3010\u5148\u4E0D\u8981\u9810\u8A2D\u53F0\u7063\u3011\uFF0C\u82E5\u4F7F\u7528\u8005\u672A\u63D0\u53CA\u5730\u9EDE\uFF0C\u4E14\u672A\u6307\u5B9A\u570B\u5916\uFF0C\u8ACB\u5728 location \u586B null\uFF0Ccity \u586B "\u5168\u90E8"\uFF08\u7576\u7528\u6236\u5F8C\u7E8C\u78BA\u5B9A\u9001\u51FA\u641C\u5C0B\u6642\u624D\u9810\u8A2D\u53F0\u7063\uFF09\u3002\u82E5\u63D0\u53CA\u570B\u5916\u570B\u5BB6\uFF08\u5982\u65E5\u672C\u3001\u65B0\u52A0\u5761\u3001\u7F8E\u570B\u3001\u570B\u5916\u7B49\uFF09\uFF0C\u586B\u5165\u8A72\u570B\u6216\u57CE\u5E02\u3002
+2. \u3010\u8077\u52D9\u540D\u7A31 (roles)\u3011\uFF1A
+   - \u7CBE\u78BA\u6293\u51FA\u4F7F\u7528\u8005\u771F\u6B63\u60F3\u627E\u7684\u8077\u52D9\u3001\u8077\u4F4D\u6216\u60F3\u8981\u7684\u5DE5\u4F5C\u89D2\u8272\uFF0C\u4F8B\u5982\u300CKTV\u670D\u52D9\u751F\u300D\u3001\u300C\u65E9\u9910\u5E97\u5E97\u54E1\u300D\u3001\u300C\u8EDF\u9AD4\u5DE5\u7A0B\u5E2B\u300D\u7B49\u3002
+   - \u56B4\u683C\u7981\u6B62\u628A\u5730\u6A19\u540D\uFF08\u5982\u7E3D\u7D71\u5E9C\u3001\u6210\u5927\u3001\u53F0\u5317\u5E02\uFF09\u3001\u5E97\u5BB6\u53C3\u7167\u7269\uFF08\u5982\u5168\u5BB6\u3001\u8D85\u5546\uFF09\u3001\u8DDD\u96E2\u8A5E\uFF08\u5982100m\u5167\u3001\u9644\u8FD1\u3001\u5468\u908A\uFF09\u7576\u4F5C\u8077\u52D9\uFF01
+   - \u82E5\u4F7F\u7528\u8005\u53EA\u8AAA\u4E86\u5730\u9EDE\u6216\u5B78\u6821\uFF08\u4F8B\u5982\u300C\u4E2D\u6B63\u5927\u5B78\u9644\u8FD1\u300D\uFF09\u800C\u5B8C\u5168\u6C92\u6709\u63D0\u53CA\u4EFB\u4F55\u8077\u52D9\uFF0Croles \u5FC5\u9808\u70BA\u7A7A\u9663\u5217 []\uFF0C\u7D55\u4E0D\u53EF\u62FF\u5730\u540D\u6216\u6821\u540D\uFF08\u5982\u4E2D\u6B63\uFF09\u7576\u4F5C\u8077\u52D9\uFF01
+3. \u3010\u76EE\u6A19\u516C\u53F8\uFF0F\u9650\u5B9A\u516C\u53F8 (companies)\u3011\uFF1A
+   - \u8B58\u5225\u4F7F\u7528\u8005\u662F\u5426\u6307\u5B9A\u76EE\u6A19\u516C\u53F8\u6216\u7279\u5B9A\u4F01\u696D\uFF08\u4F8B\u5982\uFF1A\u300C\u53F0\u7A4D\u96FB\u300D\u3001\u300C\u806F\u767C\u79D1\u300D\u3001\u300CGoogle\u300D\u3001\u300C\u661F\u5DF4\u514B\u300D\u3001\u300C\u9EA5\u7576\u52DE\u300D\u3001\u300C\u8AA0\u54C1\u300D\u7B49\uFF09\uFF0C\u82E5\u6709\u586B\u5165 companies \u9663\u5217\u3002
+   - \u82E5\u4F7F\u7528\u8005\u8868\u793A\u300C\u4E0D\u9650\u5B9A\u516C\u53F8\u300D\u3001\u300C\u4E0D\u9650\u516C\u53F8\u300D\u3001\u300C\u5404\u5BB6\u90FD\u53EF\u4EE5\u300D\u6216\u5B8C\u5168\u672A\u63D0\u53CA\u516C\u53F8\uFF0Ccompanies \u8A2D\u70BA\u7A7A\u9663\u5217 []\u3002
+   - \u5728 summaryLines \u4E2D\uFF1A\u82E5\u6709\u6307\u5B9A\u76EE\u6A19\u516C\u53F8\uFF0C\u689D\u5217 "\u76EE\u6A19\u516C\u53F8\uFF1A..."\uFF1B\u82E5\u4F7F\u7528\u8005\u660E\u78BA\u6307\u5B9A\u4E0D\u9650\u516C\u53F8\uFF0C\u53EF\u689D\u5217 "\u76EE\u6A19\u516C\u53F8\uFF1A\u4E0D\u62D8"\u3002
+4. \u3010\u85AA\u8CC7\u8207\u5E63\u5225 (salary)\u3011\uFF1A
+   - \u8B58\u5225\u85AA\u8CC7\u6578\u5B57\u3001\u5E63\u5225\u8207\u8A08\u85AA\u9031\u671F\uFF1A
+     - salaryCurrency: \u5E63\u5225\u4EE3\u78BC\uFF08\u5982 "TWD", "USD", "JPY", "EUR", "CNY", "GBP", "SGD", "HKD" \u7B49\uFF0C\u82E5\u63D0\u53CA\u53F0\u5E63\u6216\u672A\u6307\u660E\u570B\u5916\u8CA8\u5E63\u5247\u70BA "TWD"\uFF0C\u7F8E\u91D1/\u7F8E\u5143\u70BA "USD"\uFF09
+     - salaryPeriod: "\u6708\u85AA" | "\u5E74\u85AA" | "\u6642\u85AA"
+     - minSalary: \u7D14\u6574\u6578\uFF08\u4F8B\u5982 8000000\u300138000\u3001220 \u7B49\uFF0C\u82E5\u7121\u85AA\u8CC7\u8981\u6C42\u5247\u586B 0\uFF09
+     - salaryText: \u5B8C\u6574\u6587\u5B57\uFF08\u4F8B\u5982 "\u6708\u85AA 8,000,000 TWD \u4EE5\u4E0A"\uFF09
+   - \u56B4\u7981\u5C07\u85AA\u8CC7\u3001\u6578\u5B57\u6216\u5E63\u5225\uFF08\u5982\u300C\u6708\u65B0\u53F0\u5E63\u300D\u3001\u300C\u6708\u85AA\u53F0\u5E63\u300D\u3001\u300C\u7F8E\u5143\u300D\u3001\u300C8000000\u300D\uFF09\u6DF7\u5165\u8077\u52D9\u540D\u7A31\u4E2D\uFF01
+5. \u3010\u5DE5\u4F5C\u7D93\u6B77\u5E74\u8CC7 (experience)\u3011\uFF1A
+   - \u8B58\u5225\u5E74\u8CC7\u8981\u6C42\uFF0C\u4F8B\u5982 0\uFF08\u7121\u7D93\u9A57\u6216\u65B0\u9BAE\u4EBA\uFF09\u30011\u30012\u30013\u30015 \u5E74\u4EE5\u4E0A\u7B49\u3002experienceYears \u586B\u5165\u7D14\u6578\u5B57\uFF08\u7121\u8981\u6C42\u5247\u586B 0\uFF09\uFF0Cexperience \u586B\u63CF\u8FF0\u6587\u5B57\u3002
+6. \u3010\u5DE5\u4F5C\u578B\u614B (jobType)\u3011\uFF1A
+   - \u8B58\u5225\u662F\u5426\u6307\u5B9A\u300C\u6B63\u8077\u300D\u3001\u300C\u517C\u8077\u300D\uFF08\u542B\u6253\u5DE5\u3001\u5DE5\u8B80\u3001\u8A08\u6642\uFF09\u3001\u300C\u5BE6\u7FD2\u300D\u6216\u300C\u7686\u53EF\u300D\u3002\u82E5\u4F7F\u7528\u8005\u5B8C\u5168\u672A\u63D0\u53CA\uFF0C\u8A2D\u70BA null\u3002
+7. \u3010\u7D50\u69CB\u5316\u6A19\u7C64 (conditionTags)\u3011\uFF1A
+   - \u5C07\u6574\u7406\u597D\u7684\u5404\u500B\u689D\u4EF6\u8F49\u6210\u4E92\u52D5\u6A19\u7C64\u7269\u4EF6\u9663\u5217\uFF0C\u4F9B\u524D\u7AEF\u9032\u884C\u6A19\u7C64\u5316\u5448\u73FE\u3001\u4FEE\u6539\u3001\u65B0\u589E\u8207\u522A\u9664\uFF1A
+     - type: "role" | "company" | "salary" | "experience" | "location" | "jobType" | "education"
+     - label: \u986F\u793A\u540D\u7A31\uFF08\u5982 "\u8077\u52D9", "\u9650\u5B9A\u516C\u53F8", "\u85AA\u8CC7", "\u5E74\u8CC7", "\u5DE5\u4F5C\u578B\u614B", "\u5730\u5340", "\u5B78\u6B77"\uFF09
+     - value: \u6A19\u7C64\u986F\u793A\u6587\u5B57\uFF08\u4F8B\u5982 "\u7063\u5340\u9AD8\u7D1A\u5DE5\u7A0B\u5E2B"\u3001"Google"\u3001"\u6708\u85AA 8,000,000 TWD \u4EE5\u4E0A"\uFF09
+     - numValue: \u82E5\u662F\u85AA\u6C34\u6216\u5E74\u8CC7\uFF0C\u63D0\u4F9B\u7D14\u6578\u5B57
+     - salaryCurrency: \u82E5\u662F\u85AA\u8CC7\uFF0C\u586B\u5165\u5E63\u5225\u4EE3\u78BC
+     - salaryPeriod: \u82E5\u662F\u85AA\u8CC7\uFF0C\u586B\u5165 "\u6708\u85AA" | "\u5E74\u85AA" | "\u6642\u85AA"
+     - experienceYears: \u82E5\u662F\u5E74\u8CC7\uFF0C\u586B\u5165\u7D14\u6578\u5B57
+8. \u3010\u689D\u5217\u6458\u8981 (summaryLines)\u3011\uFF1A
+   - \u8ACB\u8F38\u51FA\u7C21\u6F54\u4E14\u9AD8\u6C34\u6E96\u7684\u689D\u5217\u6E05\u55AE\uFF08\u53EA\u5217\u51FA\u76EE\u524D\u5DF2\u78BA\u5B9A\u7684\u689D\u4EF6\uFF09\uFF0C\u4F8B\u5982\uFF1A
+     - "\u5DE5\u4F5C\u578B\u614B\uFF1A\u6B63\u8077"
+     - "\u8077\u52D9\uFF1A\u9AD8\u7D1A\u5DE5\u7A0B\u5E2B"
+     - "\u85AA\u8CC7\uFF1A\u6708\u85AA 8,000,000 TWD \u4EE5\u4E0A"
+     - "\u5730\u5340\uFF1A\u7F8E\u570B\u52A0\u5DDE\u7063\u5340"
+     - "\u76EE\u6A19\u516C\u53F8\uFF1AGoogle"
+
+\u8ACB\u52D9\u5FC5\u56B4\u683C\u8F38\u51FA\u5408\u6CD5\u7684 JSON \u7269\u4EF6\uFF08\u4E0D\u8981 markdown \u7B26\u865F\uFF09\uFF1A
+{
+  "companies": ["\u516C\u53F8\u540D\u7A311"],
+  "roles": ["\u8077\u52D9\u540D1"],
+  "location": "\u7D50\u69CB\u5316\u5730\u9EDE\u63CF\u8FF0\uFF0C\u82E5\u7121\u5247 null",
+  "city": "\u7E23\u5E02\u540D\uFF08\u5982\uFF1A\u53F0\u5317\u5E02\u3001\u5609\u7FA9\u7E23\uFF09\uFF0C\u82E5\u7121\u5247\u5168\u90E8",
+  "jobType": "\u6B63\u8077" | "\u517C\u8077" | "\u5BE6\u7FD2" | "\u7686\u53EF" | null,
+  "salaryText": "\u85AA\u8CC7\u8981\u6C42\u63CF\u8FF0\uFF0C\u82E5\u7121\u5247 null",
+  "salaryCurrency": "TWD" | "USD" | "JPY" | "EUR" | "CNY" | "GBP" | "SGD" | "HKD",
+  "salaryPeriod": "\u6708\u85AA" | "\u5E74\u85AA" | "\u6642\u85AA",
+  "minSalary": 0,
+  "education": "\u5B78\u6B77\u8981\u6C42\uFF0C\u82E5\u7121\u5247 null",
+  "experience": "\u7D93\u6B77\u8981\u6C42\uFF0C\u82E5\u7121\u5247 null",
+  "experienceYears": 0,
+  "conditionTags": [
+    {
+      "id": "tag-role",
+      "type": "role",
+      "label": "\u8077\u52D9",
+      "value": "\u8077\u52D9\u540D\u7A31"
+    }
+  ],
+  "carePoints": ["workEnvironment", "benefits", "industry", "salary", "distance"],
+  "summaryLines": ["\u5DE5\u4F5C\u578B\u614B\uFF1A...", "\u8077\u52D9\uFF1A...", "\u85AA\u8CC7\uFF1A..."],
+  "confirmedBrief": "\u7528\u65BC\u9001\u51FA\u641C\u5C0B\u7684\u7CBE\u7149\u6458\u8981\u5B57\u4E32",
+  "missingDimension": "jobType" | "major" | "location" | "company" | "salary" | null,
+  "clarificationQuestion": "\u89AA\u5207\u4E14\u6E96\u78BA\u7684\u4E00\u53E5\u8A71\u56DE\u8986\u8207\u8FFD\u554F",
+  "suggestedChips": [
+    {"label": "\u6309\u9215\u6587\u5B57", "value": "\u56DE\u586B\u6587\u5B57", "type": "\u7DAD\u5EA6\u985E\u578B"}
+  ],
+  "completedConditionKeys": ["jobType", "region", "company", "education", "experience", "location", "salary"]
+}
+`;
+  const modelsToTry = ["gemini-3.1-flash-lite", "gemini-3.8-flash"];
+  for (const model of modelsToTry) {
+    try {
+      const callPromise = ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          temperature: 0.1,
+          responseMimeType: "application/json"
+        }
+      });
+      const timeoutPromise = new Promise(
+        (_, reject) => setTimeout(() => reject(new Error(`Intake model timeout (${model})`)), 8e3)
+      );
+      const res = await Promise.race([callPromise, timeoutPromise]);
+      const parsed = extractJsonFromText(String(res.text || ""));
+      if (parsed && typeof parsed === "object" && Array.isArray(parsed.summaryLines)) {
+        return parsed;
+      }
+    } catch (err) {
+      console.warn(`[Gemini Intake Warning] (${model}):`, err?.message || err);
+    }
+  }
+  return null;
+}
 app.post("/api/job-explorer/intake", async (req, res) => {
   try {
     const rawMessage = String(req.body?.message || "").trim().slice(0, 600);
@@ -164588,11 +164780,64 @@ app.post("/api/job-explorer/intake", async (req, res) => {
       return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u641C\u5C0B\u689D\u4EF6" });
     }
     const skippedDims = new Set(skippedDimensionsInput);
+    const geminiIntake = await parseJobIntakeWithGemini({
+      rawMessage,
+      previousBrief,
+      conversationHistory,
+      skippedDimensions: Array.from(skippedDims),
+      userBaseCity
+    });
+    if (geminiIntake) {
+      const summaryText2 = Array.isArray(geminiIntake.summaryLines) && geminiIntake.summaryLines.length > 0 ? geminiIntake.summaryLines.map((l) => `\u2022 ${l}`).join("\n") : "";
+      const questionText = geminiIntake.clarificationQuestion || "\u8ACB\u554F\u60A8\u671F\u671B\u627E\u6B63\u8077\u9084\u662F\u517C\u8077\uFF1F";
+      const resolvedReply2 = summaryText2 ? `\u5DF2\u8A18\u9304\uFF1A
+${summaryText2}
+${questionText}` : questionText;
+      const isAmb = Boolean(geminiIntake.missingDimension);
+      const activeGroup2 = isAmb ? {
+        dimension: geminiIntake.missingDimension,
+        title: geminiIntake.missingDimension === "jobType" ? "\u{1F4BC} \u6B63\u8077\uFF0F\u517C\u8077" : geminiIntake.missingDimension === "major" ? "\u{1F4BB} \u8077\u52D9\u65B9\u5411\u78BA\u8A8D" : geminiIntake.missingDimension === "location" ? "\u{1F4CD} \u5DE5\u4F5C\u5730\u5340\u78BA\u8A8D" : "\u{1F4B0} \u671F\u671B\u5F85\u9047",
+        question: questionText,
+        isHighlighted: true,
+        chips: Array.isArray(geminiIntake.suggestedChips) && geminiIntake.suggestedChips.length > 0 ? geminiIntake.suggestedChips : [
+          { label: "\u6B63\u8077", value: "\u5DE5\u4F5C\u578B\u614B\uFF1A\u6B63\u8077", type: "jobType" },
+          { label: "\u517C\u8077\uFF0F\u5DE5\u8B80", value: "\u5DE5\u4F5C\u578B\u614B\uFF1A\u517C\u8077\u5DE5\u8B80", type: "jobType" },
+          { label: "\u5BE6\u7FD2", value: "\u5DE5\u4F5C\u578B\u614B\uFF1A\u5BE6\u7FD2", type: "jobType" },
+          { label: "\u6B63\u8077\u517C\u8077\u90FD\u53EF\u4EE5", value: "\u5DE5\u4F5C\u578B\u614B\uFF1A\u6B63\u8077\u517C\u8077\u7686\u53EF", type: "jobType" },
+          { label: "\u8DF3\u904E", value: "\u8DF3\u904E", type: "skip:jobType" }
+        ]
+      } : null;
+      const confirmedBrief = (geminiIntake.confirmedBrief || rawMessage).trim();
+      return res.json({
+        success: true,
+        reply: resolvedReply2,
+        confirmedBrief,
+        searchBriefIfSkipped: confirmedBrief,
+        isAmbiguous: isAmb,
+        hasMoreQuestions: isAmb,
+        currentDimension: geminiIntake.missingDimension || null,
+        missingDimensions: geminiIntake.missingDimension ? [geminiIntake.missingDimension] : [],
+        dimensionGroups: activeGroup2 ? [activeGroup2] : [],
+        ambiguousTypes: geminiIntake.missingDimension ? [geminiIntake.missingDimension] : [],
+        clarificationQuestion: questionText,
+        suggestedChips: activeGroup2 ? activeGroup2.chips : [],
+        skippedDimensions: Array.from(skippedDims),
+        completedConditionKeys: Array.isArray(geminiIntake.completedConditionKeys) ? geminiIntake.completedConditionKeys : [],
+        extractedFilters: {
+          keyword: filters.keyword || (Array.isArray(geminiIntake.roles) ? geminiIntake.roles.join(" ") : ""),
+          company: Array.isArray(geminiIntake.companies) && geminiIntake.companies.length > 0 ? geminiIntake.companies.join("\u3001") : filters.company || "",
+          city: geminiIntake.city || "\u5168\u90E8",
+          category: filters.category || "\u5168\u90E8",
+          minSalary: Number(geminiIntake.minSalary) || 0
+        },
+        carePoints: Array.isArray(geminiIntake.carePoints) ? geminiIntake.carePoints : filters.carePoints || []
+      });
+    }
     const allSegments = [...conversationHistory, previousBrief, rawMessage].join(" \u3001 ").split(/[、,，\n]+/).map((s2) => s2.trim()).filter(Boolean);
     const fullText = [...conversationHistory, previousBrief, rawMessage].join(" ").toLowerCase();
     const cityRegex = /台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江|遠端|remote|雙北|桃竹|中彰投|雲嘉南|高屏/i;
     const majorRoleRegex = /資訊|軟體|前端|後端|全端|工程師|工程|電機|電子|機械|化工|會計|財會|財務|企管|商管|行銷|企劃|小編|社群|文史|外語|日文|英文|設計|美編|ui|ux|餐飲|門市|零售|店長|服務員|吧台|內場|外場|護理|醫療|藥師|傳播|音樂|心理|社工|金融|法律|法務|土木|建築|行政|助理|人事|人資|hr|客服|業務|銷售|專案|pm|產品|生管|品管|倉儲|物流|司機|駕駛|作業員|技術員|研究|分析|資料|ai|雲端|devops|qa|測試|保全|清潔|幼教|老師|教師|講師|翻譯|編輯|攝影|剪輯|公關|採購|總務|秘書/i;
-    const collegeRegex = /台大|清大|交大|成大|政大|師大|輔大|淡江|文化|逢甲|東海|中興|中山|中央|高科|中正|台科|北科|銘傳|實踐|世新|元智|長庚|高醫|中國醫|東華|暨南|北醫|慈濟|高師|彰師|公立頂大|技職科大|私立綜合大學|私立大學|碩士|博士|專科|高中職/i;
+    const collegeRegex = /台大|清大|交大|成大|政大|師大|輔大|淡江|文化|逢甲|東海|中興|中山|中央|高科|中正|台科|北科|銘傳|實踐|世新|元智|長庚|高醫|中國醫|東華|暨南|北醫|慈濟|高師|彰師|國立大學|公立頂大|技職科大|私立大學|碩士|博士|專科|高中職/i;
     const expRegex = /無經驗|新鮮人|應屆|二度就業|1~3\s*年|3~5\s*年|\d+\s*年以上|\d+\s*~\s*\d+\s*年|資深|初階|中階|跨領域轉職/i;
     const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
     const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
@@ -164611,11 +164856,12 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     const inferredFrom = salaryInfo ? salaryInfo.period === "hour" ? "\u6642\u85AA" : salaryInfo.period === "year" ? "\u5E74\u85AA" : "\u6708\u85AA" : /年薪/.test(fullText) ? "\u5E74\u85AA" : /時薪/.test(fullText) ? "\u6642\u85AA" : "\u6708\u85AA";
     const hasJobType = jobTypeRegex.test(fullText) || Boolean(inferredJobType);
     const isJobTypeMissing = !hasJobType && !skippedDims.has("jobType");
-    const hasSpecificCity = cityRegex.test(fullText) || Boolean(filters.city && filters.city !== "\u5168\u90E8");
+    const campusLandmark = detectCampusLandmark(fullText);
+    const hasSpecificCity = cityRegex.test(fullText) || Boolean(campusLandmark) || Boolean(filters.city && filters.city !== "\u5168\u90E8");
     const mentionsNearby = /附近|這附近|我附近|周邊|離家近|就近|方圓|家裡附近|離我近|周遭|隔壁|走路可到|騎車可到|通勤近|近一點/.test(fullText);
     const isTaiwanWide = !hasSpecificCity && /台灣|臺灣|全台/.test(fullText) && !/台灣與國外/.test(fullText);
     const isLocationMissing = !hasSpecificCity && !isTaiwanWide && !skippedDims.has("location");
-    const isLocationAmbiguous = mentionsNearby && isLocationMissing;
+    const isLocationAmbiguous = Boolean(mentionsNearby && isLocationMissing && !campusLandmark);
     const hasSpecificMajor = majorRoleRegex.test(fullText) || Boolean(filters.category && filters.category !== "\u5168\u90E8") || Boolean(filters.keyword && String(filters.keyword).trim().length > 0);
     const mentionsMajor = /我的專業|我的科系|我的專長|我學的|我念的|本行|跟我的專業|學過|我的本科|我的領域|我專精/.test(fullText);
     const isMajorMissing = !hasSpecificMajor && !skippedDims.has("major");
@@ -164640,7 +164886,7 @@ app.post("/api/job-explorer/intake", async (req, res) => {
       const s2 = seg.trim();
       if (!s2) continue;
       if (/^(跳過|略過|skip|不用|不用了|略過問題)$/i.test(s2)) continue;
-      const hasConcreteToken = cityRegex.test(s2) || majorRoleRegex.test(s2) || collegeRegex.test(s2) || expRegex.test(s2) || personalityRegex.test(s2) || salaryRegex.test(s2) || jobTypeRegex.test(s2) || /不拘/.test(s2);
+      const hasConcreteToken = cityRegex.test(s2) || Boolean(detectCampusLandmark(s2)) || majorRoleRegex.test(s2) || collegeRegex.test(s2) || expRegex.test(s2) || personalityRegex.test(s2) || salaryRegex.test(s2) || jobTypeRegex.test(s2) || /不拘/.test(s2);
       const isPureVagueWrapper = !hasConcreteToken && (/我的大學|我的專業|我的性格|我的個性|我家附近|找附近|有什麼好推薦|最新職缺推薦|離家近一點|我想找工作/.test(s2) || /^(近期|最新|推薦|今天|這幾天)?(附近)?(有什麼)?(好工作|職缺|工作|工作機會|正職|兼職)(推薦|嗎|呢)?$/i.test(s2));
       if (!isPureVagueWrapper) {
         const key = s2.toLowerCase();
@@ -164649,6 +164895,9 @@ app.post("/api/job-explorer/intake", async (req, res) => {
           concreteConditions.push(s2);
         }
       }
+    }
+    if (campusLandmark && !concreteConditions.some((c) => c.includes(campusLandmark.label))) {
+      concreteConditions.unshift(`\u5730\u5340\uFF1A${campusLandmark.label}`);
     }
     const accumulatedConcreteBrief = concreteConditions.join("\u3001");
     const ambiguousGroups = [];
@@ -164713,9 +164962,10 @@ app.post("/api/job-explorer/intake", async (req, res) => {
         question: `\u60A8\u63D0\u5230\u4E86\u300C\u6211\u7684\u5927\u5B78\u300D\uFF0C\u8ACB\u554F\u60A8\u7684\u7562\u696D\u5B78\u6821\u985E\u578B\u6216\u5B78\u6B77\u689D\u4EF6\u662F\uFF1F`,
         isHighlighted: true,
         chips: [
+          { label: "\u{1F3DB}\uFE0F \u570B\u7ACB\u5927\u5B78", value: "\u5B78\u6B77\uFF1A\u570B\u7ACB\u5927\u5B78", type: "college" },
           { label: "\u{1F3DB}\uFE0F \u516C\u7ACB\u9802\u5927\u80CC\u666F", value: "\u5B78\u6B77\uFF1A\u516C\u7ACB\u9802\u5927\u80CC\u666F", type: "college" },
           { label: "\u2699\uFE0F \u6280\u8077\u79D1\u5927\u80CC\u666F", value: "\u5B78\u6B77\uFF1A\u6280\u8077\u79D1\u5927\u80CC\u666F", type: "college" },
-          { label: "\u{1F393} \u79C1\u7ACB\u7D9C\u5408\u5927\u5B78", value: "\u5B78\u6B77\uFF1A\u79C1\u7ACB\u7D9C\u5408\u5927\u5B78", type: "college" },
+          { label: "\u{1F393} \u79C1\u7ACB\u5927\u5B78", value: "\u5B78\u6B77\uFF1A\u79C1\u7ACB\u5927\u5B78", type: "college" },
           { label: "\u{1F4DA} \u78A9\u58EB\u4EE5\u4E0A", value: "\u5B78\u6B77\uFF1A\u78A9\u58EB\u4EE5\u4E0A", type: "college" },
           { label: "\u{1F393} \u5927\u5B78", value: "\u5B78\u6B77\uFF1A\u5927\u5B78", type: "college" },
           { label: "\u{1F3EB} \u9AD8\u4E2D\u8077\uFF0F\u5C08\u79D1", value: "\u5B78\u6B77\uFF1A\u5C08\u79D1\u4EE5\u4E0B", type: "college" },
@@ -164759,7 +165009,7 @@ app.post("/api/job-explorer/intake", async (req, res) => {
       ambiguousGroups.push({
         dimension: "major",
         title: "\u{1F4BB} \u8077\u52D9\u65B9\u5411\u78BA\u8A8D",
-        question: `\u8ACB\u554F\u60A8\u60F3\u627E\u54EA\u4E00\u985E\u5C08\u696D\u9818\u57DF\u6216\u8077\u52D9\u65B9\u5411\uFF1F`,
+        question: campusLandmark ? `\u5DF2\u78BA\u8A8D\u5730\u9EDE\u5728${campusLandmark.label}\uFF01\u8ACB\u554F\u60A8\u60F3\u627E\u54EA\u4E00\u985E\u8077\u52D9\u6216\u5C08\u696D\u65B9\u5411\uFF1F` : `\u8ACB\u554F\u60A8\u60F3\u627E\u54EA\u4E00\u985E\u5C08\u696D\u9818\u57DF\u6216\u8077\u52D9\u65B9\u5411\uFF1F`,
         isHighlighted: true,
         chips: [
           { label: "\u{1F4BB} \u8EDF\u9AD4\uFF0FAI\u5DE5\u7A0B", value: "\u985E\u5225\uFF1A\u8EDF\u9AD4\uFF0FAI\u5DE5\u7A0B", type: "major" },
@@ -164781,25 +165031,37 @@ app.post("/api/job-explorer/intake", async (req, res) => {
     if (mentionsAbroad || taiwanScopeRegex.test(fullText) || /工作範圍/.test(fullText) || hasSpecificCity || skippedDims.has("region")) {
       completedConditionKeys.push("region");
     }
+    if (/目標公司|限定公司|指定公司|不限公司|不拘公司/.test(fullText) || skippedDims.has("company") || Boolean(filters.company)) {
+      completedConditionKeys.push("company");
+    }
     if (!isCollegeMissing) completedConditionKeys.push("education");
     if (!isExperienceMissing) completedConditionKeys.push("experience");
     if (!isLocationMissing || mentionsAbroad && !/台灣與國外/.test(fullText)) completedConditionKeys.push("location");
     if (!isSalaryMissing) completedConditionKeys.push("salary");
     let extractedCity = filters.city || "\u5168\u90E8";
-    const cityMatch = fullText.match(/(台北市|新北市|桃園市|新竹市|台中市|台南市|高雄市)/);
-    if (cityMatch) extractedCity = cityMatch[1];
-    else if (/遠端|remote/i.test(fullText)) extractedCity = "\u9060\u7AEF\u5DE5\u4F5C";
+    if (campusLandmark) {
+      extractedCity = campusLandmark.city;
+    } else {
+      const cityMatch = fullText.match(/(台北市|新北市|桃園市|新竹市|台中市|台南市|高雄市|基隆市|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|嘉義市|屏東縣|宜蘭縣|花蓮縣|台東縣)/);
+      if (cityMatch) extractedCity = cityMatch[1];
+      else if (/遠端|remote/i.test(fullText)) extractedCity = "\u9060\u7AEF\u5DE5\u4F5C";
+    }
     let extractedMinSalary = Number(filters.minSalary) || 0;
     if (salaryInfo && salaryInfo.period === "month") extractedMinSalary = salaryInfo.amount;
-    const briefExtras = [inferredJobType ? `\u5DE5\u4F5C\u578B\u614B\uFF1A${inferredJobType}` : "", isTaiwanWide ? "\u5730\u5340\uFF1A\u53F0\u7063\u4E0D\u9650\u7E23\u5E02" : ""].filter(Boolean);
-    const finalBrief = [accumulatedConcreteBrief || (briefExtras.length ? "" : `${userBaseCity} \u6700\u65B0\u62DB\u52DF\u8077\u7F3A`), ...briefExtras].filter(Boolean).join("\u3001");
+    const briefExtras = [
+      inferredJobType ? `\u5DE5\u4F5C\u578B\u614B\uFF1A${inferredJobType}` : "",
+      campusLandmark ? `\u5730\u5340\uFF1A${campusLandmark.label}` : "",
+      isTaiwanWide ? "\u5730\u5340\uFF1A\u53F0\u7063\uFF08\u4E0D\u9650\u7E23\u5E02\uFF09" : ""
+    ].filter(Boolean);
+    const finalBrief = [accumulatedConcreteBrief || (briefExtras.length ? "" : "\u6700\u65B0\u5728\u62DB\u8077\u7F3A"), ...briefExtras].filter(Boolean).join("\u3001");
     let resolvedReply = "";
     const summaryLines = buildJobConditionSummary(fullText, {
       inferredJobType,
       inferredFrom,
       isTaiwanWide,
       mentionsAbroad,
-      salaryInfo
+      salaryInfo,
+      campusLandmark
     });
     const summaryText = summaryLines.length ? summaryLines.map((l) => `\u2022 ${l}`).join("\n") : "";
     if (activeGroup) {
@@ -165085,7 +165347,7 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
 5. \u6BCF\u7B46\u6458\u8981 30 \u5B57\u5167\u3002
 ${JOB_JSON_SPEC}`;
         const r2 = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.8-flash",
           contents: prompt,
           config: { tools: [{ googleSearch: {} }], temperature: 0.2 }
         });
@@ -165243,7 +165505,7 @@ app.post("/api/job-explorer/search", async (req, res) => {
   ]
 }`;
     const bgGoogleSearchPromise = ai ? ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       contents: bgSearchPrompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -165337,7 +165599,7 @@ ${difyObsText}` : ""}
   ]
 }`;
           const fastRes = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3.8-flash",
             contents: extractPrompt,
             config: { responseMimeType: "application/json", temperature: 0.1 }
           });
@@ -165363,7 +165625,7 @@ ${difyObsText}` : ""}
     if (combinedRawJobs.length < 3 && ai) {
       try {
         const expandRes = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.8-flash",
           contents: `\u8ACB\u4F7F\u7528 Google Search \u5373\u6642\u6AA2\u7D22 Yes123\u30011111\u4EBA\u529B\u9280\u884C\u3001Cake\u3001Yourator\u3001104\u4EBA\u529B\u9280\u884C\u3001518\u718A\u73ED \u4E0A\u8207\u300C${rawQuery}\u300D\u76F8\u95DC\u4E14\u300C\u7576\u4E0B\u6B63\u5728\u958B\u653E\u62DB\u52DF\u4E2D\u300D\u7684\u6700\u65B0\u771F\u5BE6\u8077\u7F3A\uFF08\u8ACB\u81F3\u5C11\u5217\u51FA 6 ~ 15 \u7B46\uFF0C\u4F86\u6E90\u5E73\u53F0\u591A\u5143\u5316\uFF0C\u7D55\u4E0D\u9650\u55AE\u4E00\u7DB2\u7AD9\uFF0C\u4E14\u7D55\u5C0D\u4E0D\u53EF\u5305\u542B\u5DF2\u95DC\u9589\u3001\u5DF2\u7D50\u675F\u3001\u5DF2\u4E0B\u67B6\u6216\u4E0D\u5B58\u5728\u7684\u8077\u7F3A\uFF09\u3002\u53EA\u8F38\u51FA JSON\uFF1A{"jobs":[{"title":"...","company":"...","location":"...","city":"...","experience":"...","experienceYears":0,"education":"...","educationLevel":2,"salaryText":"...","salaryMin":32000,"salaryMax":50000,"industry":"...","category":"...","workEnvironment":"...","benefits":"...","description":"...","sourcePlatform":"Yes123 \u6216 1111 \u6216 Cake \u6216 104 \u6216 518","url":"...","aiScore":92,"postedAtText":"\u4ECA\u65E5\u520A\u767B"}]}`,
           config: {
             tools: [{ googleSearch: {} }],

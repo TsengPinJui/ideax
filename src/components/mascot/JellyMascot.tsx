@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
-import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, OPEN_QUESTION_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
+import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, MASCOT_WAVE_DANCE_EVENT, OPEN_QUESTION_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
 import type { NewProposalNotice } from './MascotHost';
 import { playBabble, playClank, playGlowSound, playShock, playZap, startCurrent, stopBabble, stopCurrent, unlockMascotAudio } from './mascotSound';
 import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
@@ -135,10 +135,10 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
     return () => { window.clearInterval(t); window.removeEventListener('pagehide', onHide); flushSession(); flushChat(); };
   }, [flushSession, flushChat]);
 
-  // 匯職缺時自動現身並說：「搜搜正在忙的時候讓小燈泡來陪你玩吧~ \(≧▽≦)/」
+  // 匯職缺時自動現身並說：「搜搜正在幫你找好工作，先來跟我玩吧 !」
   useEffect(() => {
     const onSearchAccompany = (e: Event) => {
-      const speech = (e as CustomEvent).detail?.text || '搜搜正在忙的時候讓小燈泡來陪你玩吧~ \\(≧▽≦)/';
+      const speech = (e as CustomEvent).detail?.text || '搜搜正在幫你找好工作，先來跟我玩吧 !';
       writeLS(COLLAPSED_KEY, '0');
       setCollapsed(false);
       markActive();
@@ -148,6 +148,23 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
     };
     window.addEventListener(MASCOT_SEARCH_ACCOMPANY_EVENT, onSearchAccompany);
     return () => window.removeEventListener(MASCOT_SEARCH_ACCOMPANY_EVENT, onSearchAccompany);
+  }, [markActive]);
+
+  // 跳波浪舞：自動現身、雙手波浪流動與身體律動跳舞
+  useEffect(() => {
+    const onWaveDance = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      const speech = detail.text || '～♪ 來跟我一起跳波浪舞！～♬';
+      const durationMs = detail.durationMs || 5000;
+      writeLS(COLLAPSED_KEY, '0');
+      setCollapsed(false);
+      markActive();
+      setTimeout(() => {
+        engineRef.current?.waveDance(speech, durationMs);
+      }, 150);
+    };
+    window.addEventListener(MASCOT_WAVE_DANCE_EVENT, onWaveDance);
+    return () => window.removeEventListener(MASCOT_WAVE_DANCE_EVENT, onWaveDance);
   }, [markActive]);
 
   // 建立 / 拆除 3D 引擎（收起時整個拆掉，釋放 GPU）
@@ -558,6 +575,15 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBubbleClick(); } }}
       >
         <span ref={bubbleTextRef} className="ixm-bubble-text" aria-live="polite" />
+        <button
+          type="button"
+          className="ixm-x ixm-dance"
+          onClick={(e) => { e.stopPropagation(); markActive(); engineRef.current?.waveDance('～♪ 看我跳波浪舞！～♬', 6000); }}
+          aria-label="讓小燈泡跳波浪舞"
+          title="跳波浪舞"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="6.5" cy="18" r="2.6" fill="currentColor" /><circle cx="17.5" cy="16" r="2.6" fill="currentColor" /></svg>
+        </button>
         <button type="button" className="ixm-x" onClick={collapse} aria-label="收起吉祥物">×</button>
       </div>
       {grips.map((g, i) => <GripGlove key={`${g.dir}-${i}`} {...g} />)}

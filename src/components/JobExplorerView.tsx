@@ -22,8 +22,18 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
+  Plus,
+  Trash2,
+  Edit2,
+  Building,
+  Briefcase,
+  DollarSign,
+  MapPin,
+  Calendar,
+  GraduationCap,
 } from 'lucide-react';
 import { SousouFlyer } from './sousou/SousouFlyer';
+import { InlineConditionTag } from './jobExplorer/InlineConditionTag';
 import { accompanyDuringSearch } from './mascot/mascotConfig';
 
 export type JobViewMode = 'large_card' | 'list' | 'small_card';
@@ -113,7 +123,7 @@ const EXPLORER_QUICK_PRESETS = [
   },
 ];
 
-export type QuickConditionKey = 'jobType' | 'region' | 'education' | 'experience' | 'location' | 'salary' | 'priority';
+export type QuickConditionKey = 'jobType' | 'region' | 'company' | 'education' | 'experience' | 'location' | 'salary' | 'priority';
 
 /** 選「國外」或「不限」時可以勾選的國家／地區 */
 export const JOB_COUNTRIES = ['日本', '新加坡', '香港', '中國大陸', '韓國', '馬來西亞', '越南', '澳洲', '紐西蘭', '美國', '加拿大', '英國', '德國', '全球遠端'];
@@ -197,9 +207,19 @@ export const QUICK_CONDITION_STEPS: Array<{
     label: '台灣／國外',
     question: '要找台灣還是國外的工作？（選國外或不限，可以再勾選國家）',
     options: [
+      { label: '範圍不限（預設台灣）', value: '工作範圍：不限' },
       { label: '台灣', value: '工作範圍：台灣' },
       { label: '國外', value: REGION_ABROAD_VALUE },
-      { label: '不限（台灣＋國外）', value: REGION_BOTH_VALUE },
+      { label: '台灣＋國外皆可', value: REGION_BOTH_VALUE },
+      { label: '跳過', value: '跳過', isSkip: true },
+    ],
+  },
+  {
+    key: 'company',
+    label: '限定公司',
+    question: '請問您有無限定目標公司？（沒有的話點「不限公司」，有的話可自填公司名稱）',
+    options: [
+      { label: '不限公司', value: '目標公司：不拘' },
       { label: '跳過', value: '跳過', isSkip: true },
     ],
   },
@@ -211,10 +231,11 @@ export const QUICK_CONDITION_STEPS: Array<{
       { label: '高中職以下', value: '學歷：高中職以下' },
       { label: '專科', value: '學歷：專科' },
       { label: '大學', value: '學歷：大學' },
-      { label: '碩士以上', value: '學歷：碩士以上' },
+      { label: '國立大學', value: '學歷：國立大學' },
       { label: '公立頂大背景', value: '學歷：公立頂大背景' },
+      { label: '私立大學', value: '學歷：私立大學' },
       { label: '技職科大背景', value: '學歷：技職科大背景' },
-      { label: '私立綜合大學', value: '學歷：私立綜合大學' },
+      { label: '碩士以上', value: '學歷：碩士以上' },
       { label: '學歷不拘', value: '學歷不拘' },
       { label: '跳過', value: '跳過', isSkip: true },
     ],
@@ -274,6 +295,30 @@ export interface DimensionGroup {
   chips: Array<{ label: string; value: string; type: string }>;
 }
 
+export type ConditionTagType =
+  | 'jobType'
+  | 'role'
+  | 'salary'
+  | 'company'
+  | 'location'
+  | 'experience'
+  | 'education'
+  | 'carePoint'
+  | 'custom';
+
+export interface ConditionTag {
+  id: string;
+  type: ConditionTagType;
+  label: string; // e.g. "工作型態", "職務", "薪資", "限定公司", "地區", "年資", "學歷"
+  value: string; // display value e.g. "正職", "高級工程師", "月薪 8,000,000 TWD 以上", "Google"
+  numValue?: number; // numeric value for salary or years of exp
+  salaryCurrency?: CurrencyCode; // e.g. 'TWD', 'USD', 'JPY', 'EUR', 'CNY', 'GBP', 'SGD', etc.
+  salaryPeriod?: '月薪' | '年薪' | '時薪';
+  experienceYears?: number; // numeric years
+}
+
+export type AiIntakeStatus = 'idle' | 'received' | 'understanding' | 'typing';
+
 interface ChatMessage {
   id: string;
   role: 'user' | 'bot';
@@ -295,6 +340,176 @@ interface ChatMessage {
   selectedConditionMap?: Partial<Record<QuickConditionKey, string>>;
   selectedCountries?: string[];
   selectedCities?: string[];
+  conditionTags?: ConditionTag[];
+}
+
+export function parseConditionTags(brief: string, intakeData?: any): ConditionTag[] {
+  if (Array.isArray(intakeData?.conditionTags) && intakeData.conditionTags.length > 0) {
+    return intakeData.conditionTags.map((t: any, idx: number) => ({
+      id: t.id || `tag-${Date.now()}-${idx}`,
+      type: (t.type || 'custom') as ConditionTagType,
+      label: t.label || '條件',
+      value: String(t.value || '').trim(),
+      numValue: typeof t.numValue === 'number' ? t.numValue : undefined,
+      salaryCurrency: (t.salaryCurrency as CurrencyCode) || undefined,
+      salaryPeriod: t.salaryPeriod,
+      experienceYears: typeof t.experienceYears === 'number' ? t.experienceYears : undefined,
+    }));
+  }
+
+  const tags: ConditionTag[] = [];
+  const text = `${brief || ''} ${intakeData?.reply || ''}`.trim();
+
+  // 1. 工作型態
+  const jobTypeMatch = text.match(/工作型態[：:]\s*(正職|兼職工讀|兼職|工讀|打工|實習|皆可|正職兼職皆可)/i) ||
+    (intakeData?.jobType ? [null, intakeData.jobType] : null);
+  if (jobTypeMatch && jobTypeMatch[1]) {
+    tags.push({
+      id: `tag-jobType-${Date.now()}`,
+      type: 'jobType',
+      label: '工作型態',
+      value: jobTypeMatch[1].replace(/兼職工讀/, '兼職'),
+    });
+  }
+
+  // 2. 職務
+  let extractedRoles: string[] = [];
+  if (Array.isArray(intakeData?.roles) && intakeData.roles.length > 0) {
+    extractedRoles = intakeData.roles;
+  } else {
+    const roleMatch = text.match(/職務[：:]\s*([^、,，\n]+)/);
+    if (roleMatch && roleMatch[1]) {
+      extractedRoles = roleMatch[1].split(/[、,，]+/).map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  extractedRoles = extractedRoles
+    .map((r) => r.replace(/月新台幣|新台幣|台幣|美元|美金|日圓|港幣|人民幣|歐元|英鎊|twd|usd|\d+元|\d+k|\d+萬/gi, '').trim())
+    .filter(Boolean);
+  if (extractedRoles.length > 0) {
+    tags.push({
+      id: `tag-role-${Date.now()}`,
+      type: 'role',
+      label: '職務',
+      value: extractedRoles.join('、'),
+    });
+  }
+
+  // 3. 限定公司
+  let companyVal = '';
+  if (Array.isArray(intakeData?.companies) && intakeData.companies.length > 0) {
+    companyVal = intakeData.companies.join('、');
+  } else {
+    const compMatch = text.match(/(?:目標公司|限定公司|指定公司)[：:]\s*([^、,，\n]+)/);
+    if (compMatch && compMatch[1]) companyVal = compMatch[1].trim();
+  }
+  if (companyVal && !/^(不限|不拘|無)$/.test(companyVal)) {
+    tags.push({
+      id: `tag-company-${Date.now()}`,
+      type: 'company',
+      label: '限定公司',
+      value: companyVal,
+    });
+  }
+
+  // 4. 薪資
+  let numSalary = Number(intakeData?.minSalary) || 0;
+  let curr: CurrencyCode = (intakeData?.salaryCurrency as CurrencyCode) || 'TWD';
+  let period: '月薪' | '年薪' | '時薪' = intakeData?.salaryPeriod || '月薪';
+  const salaryMatch = text.match(/(?:薪水|薪資)[：:]\s*(時薪|月薪|年薪)?\s*([^\d\s]*)\s*([\d,]+)\s*(?:元|萬|k)?\s*([A-Za-z$¥€£]+)?/i);
+  if (salaryMatch) {
+    if (salaryMatch[1]) period = salaryMatch[1] as any;
+    const rawDigits = salaryMatch[3].replace(/,/g, '');
+    const parsed = parseInt(rawDigits, 10);
+    if (!isNaN(parsed) && parsed > 0) numSalary = parsed;
+    if (salaryMatch[4] || salaryMatch[2]) {
+      const codeOrSymbol = (salaryMatch[4] || salaryMatch[2]).toUpperCase();
+      const found = CURRENCIES.find((c) => c.code === codeOrSymbol || c.symbol === codeOrSymbol);
+      if (found) curr = found.code;
+    }
+  }
+  if (/美金|美元|usd/i.test(text)) curr = 'USD';
+  else if (/日幣|日圓|jpy/i.test(text)) curr = 'JPY';
+  else if (/歐元|eur/i.test(text)) curr = 'EUR';
+  else if (/英鎊|gbp/i.test(text)) curr = 'GBP';
+  else if (/人民幣|cny/i.test(text)) curr = 'CNY';
+
+  if (numSalary > 0) {
+    tags.push({
+      id: `tag-salary-${Date.now()}`,
+      type: 'salary',
+      label: '薪資',
+      value: `${period} ${numSalary.toLocaleString('en-US')} ${curr} 以上`,
+      numValue: numSalary,
+      salaryCurrency: curr,
+      salaryPeriod: period,
+    });
+  } else if (/薪資待遇不拘|不拘薪資/.test(text)) {
+    tags.push({
+      id: `tag-salary-${Date.now()}`,
+      type: 'salary',
+      label: '薪資',
+      value: '薪資不拘',
+      numValue: 0,
+      salaryCurrency: curr,
+      salaryPeriod: period,
+    });
+  }
+
+  // 5. 地區
+  const locMatch = text.match(/地區[：:]\s*([^、,，\n]+)/) || (intakeData?.location ? [null, intakeData.location] : null);
+  if (locMatch && locMatch[1]) {
+    tags.push({
+      id: `tag-location-${Date.now()}`,
+      type: 'location',
+      label: '地區',
+      value: locMatch[1].trim(),
+    });
+  }
+
+  // 6. 年資 / 經歷
+  const expMatch = text.match(/經歷[：:]\s*([^、,，\n]+)/) || (intakeData?.experience ? [null, intakeData.experience] : null);
+  if (expMatch && expMatch[1]) {
+    const yearsMatch = expMatch[1].match(/(\d+)\s*年/);
+    const yrs = yearsMatch ? parseInt(yearsMatch[1], 10) : 0;
+    tags.push({
+      id: `tag-exp-${Date.now()}`,
+      type: 'experience',
+      label: '年資',
+      value: expMatch[1].trim(),
+      numValue: yrs,
+      experienceYears: yrs,
+    });
+  }
+
+  // 7. 學歷
+  const eduMatch = text.match(/學歷[：:]\s*([^、,，\n]+)/) || (intakeData?.education ? [null, intakeData.education] : null);
+  if (eduMatch && eduMatch[1]) {
+    tags.push({
+      id: `tag-edu-${Date.now()}`,
+      type: 'education',
+      label: '學歷',
+      value: eduMatch[1].trim(),
+    });
+  }
+
+  return tags;
+}
+
+export function tagsToBrief(tags: ConditionTag[]): string {
+  if (!tags.length) return '';
+  return tags
+    .filter((t) => String(t.value || '').trim()) // 還沒填的新標籤不算進條件
+    .map((t) => {
+      if (t.type === 'company') return `限定公司：${t.value}`;
+      if (t.type === 'role') return `職務：${t.value}`;
+      if (t.type === 'salary') return `薪資：${t.value}`;
+      if (t.type === 'jobType') return `工作型態：${t.value}`;
+      if (t.type === 'location') return `地區：${t.value}`;
+      if (t.type === 'experience') return `經歷：${t.value}`;
+      if (t.type === 'education') return `學歷：${t.value}`;
+      return `${t.label}：${t.value}`;
+    })
+    .join('、');
 }
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -337,11 +552,13 @@ export const JobExplorerView: React.FC = () => {
   const [userBaseCity, setUserBaseCity] = useState('台北市');
   const [selectedCategory, setSelectedCategory] = useState('全部');
   const [minSalaryFilter, setMinSalaryFilter] = useState<number>(0);
-  // 篩選：正職／兼職、台灣／國外（含國家）
+  // 篩選：正職／兼職、台灣／國外（含國家，預設不限、先不預設台灣）
   const [jobTypeFilter, setJobTypeFilter] = useState<'全部' | '正職' | '兼職' | '實習'>('全部');
-  const [regionFilter, setRegionFilter] = useState<'台灣' | '國外' | '台灣與國外'>('台灣');
+  const [regionFilter, setRegionFilter] = useState<'全部' | '台灣' | '國外' | '台灣與國外'>('全部');
   const [countryFilter, setCountryFilter] = useState<string[]>([]);
   const [abroadCityFilter, setAbroadCityFilter] = useState<string[]>([]);
+  const [companyFilter, setCompanyFilter] = useState<string>('');
+  const [customCompanyInput, setCustomCompanyInput] = useState<string>('');
   // 只找國外：薪資用當地幣別（存選項文字），不套台灣的月薪門檻
   const [abroadSalaryFilter, setAbroadSalaryFilter] = useState('');
   // 顯示幣別：職缺薪資依當前匯率換算（記在這台裝置）
@@ -389,12 +606,15 @@ export const JobExplorerView: React.FC = () => {
   const filterBriefParts = (): string[] => {
     const parts: string[] = [];
     if (jobTypeFilter !== '全部') parts.push(`工作型態：${jobTypeFilter === '兼職' ? '兼職工讀' : jobTypeFilter}`);
-    if (regionFilter !== '台灣') {
+    if (regionFilter !== '全部' && regionFilter !== '台灣') {
       const v = regionFilter === '國外' ? '工作範圍：國外' : '工作範圍：台灣與國外皆可';
       parts.push(countryFilter.length ? `${v}（${formatCountryScope(countryFilter, abroadCityFilter)}）` : v);
+    } else if (regionFilter === '台灣') {
+      parts.push('工作範圍：台灣');
     }
     if (regionFilter === '國外') { if (abroadSalaryFilter) parts.push(abroadSalaryFilter); }
     else if (isHourlyFilter && minSalaryFilter > 0) parts.push(`薪水：時薪 ${minSalaryFilter} 元以上`);
+    if (companyFilter.trim()) parts.push(`目標公司：${companyFilter.trim()}`);
     if (isSiteFiltered) parts.push(`求職網：${chosenSites.join('、')}`);
     return parts;
   };
@@ -439,6 +659,122 @@ export const JobExplorerView: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+
+  // AI 對話處理狀態（已收到、理解中、打字中）
+  const [aiStatus, setAiStatus] = useState<AiIntakeStatus>('idle');
+
+  // 條件標籤編輯狀態（依標籤形式，可刪除、新增、編輯文字或數字與幣別）
+  const [isAddTagOpen, setIsAddTagOpen] = useState(false);
+  // 剛新增的標籤：一出現就直接在標籤上輸入
+  const [newTagId, setNewTagId] = useState<string | null>(null);
+
+  // 同步確定與整理後的條件標籤至篩選面板，搜尋過後仍可修改再次搜尋
+  const syncConditionsToFilters = (tags: ConditionTag[]) => {
+    for (const t of tags) {
+      if (t.type === 'role' && t.value) {
+        setKeyword(t.value);
+      } else if (t.type === 'company') {
+        const co = t.value.replace(/^(目標公司[：:]\s*|限定公司[：:]\s*)/, '').trim();
+        if (co && co !== '不拘' && co !== '不限' && co !== '不限公司') {
+          setCompanyFilter(co);
+        } else {
+          setCompanyFilter('');
+        }
+      } else if (t.type === 'location' && t.value) {
+        const cityList = [
+          '台北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣', '苗栗縣', '台中市',
+          '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣',
+          '宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', '金門縣', '連江縣', '遠端工作'
+        ];
+        const match = cityList.find((c) => t.value.includes(c) || c.includes(t.value));
+        if (match) setSelectedCity(match);
+      } else if (t.type === 'jobType' && t.value) {
+        if (/兼職|工讀|打工/.test(t.value)) setJobTypeFilter('兼職');
+        else if (/實習/.test(t.value)) setJobTypeFilter('實習');
+        else if (/正職/.test(t.value)) setJobTypeFilter('正職');
+      } else if (t.type === 'salary') {
+        if (typeof t.numValue === 'number' && t.numValue > 0) {
+          setMinSalaryFilter(t.numValue);
+        }
+      } else if (t.type === 'experience') {
+        if (typeof t.experienceYears === 'number') {
+          setMaxExpFilter(t.experienceYears);
+        }
+      } else if (t.type === 'education') {
+        if (/高中職/.test(t.value)) setMaxEduFilter(2);
+        else if (/專科/.test(t.value)) setMaxEduFilter(3);
+        else if (/大學/.test(t.value)) setMaxEduFilter(4);
+        else if (/碩士/.test(t.value)) setMaxEduFilter(5);
+      }
+    }
+  };
+
+  const handleDeleteConditionTag = (msgId: string, tagId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const currentTags = m.conditionTags || parseConditionTags(m.pendingBrief || m.text);
+        const nextTags = currentTags.filter((t) => t.id !== tagId);
+        const newBrief = tagsToBrief(nextTags);
+        setPendingConfirmedBrief(newBrief);
+        syncConditionsToFilters(nextTags);
+        return {
+          ...m,
+          conditionTags: nextTags,
+          pendingBrief: newBrief,
+          confirmed: false,
+          text: `已為您更新搜尋條件：\n確認依此條件搜尋嗎？`,
+        };
+      })
+    );
+  };
+
+  /** 在標籤上直接改完：整顆標籤換成新的值，並同步到搜尋條件與篩選 */
+  const handleUpdateConditionTag = (msgId: string, updated: ConditionTag) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const currentTags = m.conditionTags || parseConditionTags(m.pendingBrief || m.text);
+        const nextTags = currentTags.map((t) => (t.id === updated.id ? updated : t));
+        const newBrief = tagsToBrief(nextTags);
+        setPendingConfirmedBrief(newBrief);
+        syncConditionsToFilters(nextTags);
+        return { ...m, conditionTags: nextTags, pendingBrief: newBrief, confirmed: false };
+      })
+    );
+    if (newTagId === updated.id) setNewTagId(null);
+  };
+
+  const handleAddConditionTag = (msgId: string, type: ConditionTagType) => {
+    const newId = `tag-${type}-${Date.now()}`;
+    // 新標籤先留空，直接在標籤上填；沒填就自動移除（不要預先塞「台積電」「工程師」之類的值）
+    const LABELS: Record<string, string> = { company: '限定公司', salary: '薪資', experience: '年資', location: '地區', role: '職務', jobType: '工作型態', education: '學歷', custom: '自訂條件' };
+    const newTag: ConditionTag =
+      type === 'salary'
+        ? { id: newId, type: 'salary', label: '薪資', value: '', numValue: 0, salaryCurrency: displayCurrency || 'TWD', salaryPeriod: '月薪' }
+        : type === 'experience'
+        ? { id: newId, type: 'experience', label: '年資', value: '', numValue: 0, experienceYears: 0 }
+        : { id: newId, type, label: LABELS[type] || '條件', value: '' };
+    setNewTagId(newId);
+
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const currentTags = m.conditionTags || parseConditionTags(m.pendingBrief || m.text);
+        const nextTags = [...currentTags.filter((t) => t.type !== type), newTag];
+        const newBrief = tagsToBrief(nextTags);
+        setPendingConfirmedBrief(newBrief);
+        syncConditionsToFilters(nextTags);
+        return {
+          ...m,
+          conditionTags: nextTags,
+          pendingBrief: newBrief,
+          confirmed: false,
+        };
+      })
+    );
+    setIsAddTagOpen(false);
+  };
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -488,16 +824,58 @@ export const JobExplorerView: React.FC = () => {
     return found;
   };
 
-  // 點選需求追問快捷標籤（如：台北市、資訊軟體、內向獨立、或「跳過」），自動補充並進入下一個條件選擇
+  // 點選需求追問快捷標籤（如：正職、兼職、台北市、或「跳過」）
+  // 依指示：只有在用戶另外輸入時才需要調用 gemini 理解，若是選擇選項則不用，直接在前端結構化處理
   const handleSelectClarificationChip = (chip: { label: string; value: string; type: string }) => {
-    const skipDim = chip.type?.startsWith('skip:') ? chip.type.replace('skip:', '') : undefined;
-    if (skipDim) {
-      setSkippedDimensions((prev) => (prev.includes(skipDim) ? prev : [...prev, skipDim]));
+    const isSkip = chip.type?.startsWith('skip:') || chip.label === '跳過';
+    const dim = (chip.type?.replace(/^skip:/, '') || 'jobType') as QuickConditionKey;
+    if (isSkip && dim) {
+      setSkippedDimensions((prev) => (prev.includes(dim) ? prev : [...prev, dim]));
     }
-    void handleSendInput(chip.value, skipDim);
+
+    const lastBot = [...messages].reverse().find((m) => m.role === 'bot');
+    const userMsgId = `user-${Date.now()}`;
+    const nextCompleted = Array.from(new Set([...(lastBot?.completedConditionKeys || []), dim]));
+    const nextMap: Partial<Record<QuickConditionKey, string>> = { ...(lastBot?.selectedConditionMap || {}) };
+    if (!isSkip && chip.value) {
+      nextMap[dim] = chip.value;
+    }
+
+    const currentBrief = pendingConfirmedBrief || lastBot?.pendingBrief || '';
+    let updatedBrief = currentBrief;
+    if (!isSkip && chip.value && !currentBrief.includes(chip.value)) {
+      updatedBrief = currentBrief ? `${currentBrief}、${chip.value}` : chip.value;
+    }
+    setPendingConfirmedBrief(updatedBrief);
+
+    const stepOrder: QuickConditionKey[] = ['jobType', 'region', 'company', 'education', 'experience', 'location', 'salary', 'priority'];
+    const nextStep = stepOrder.find((k) => !nextCompleted.includes(k)) || null;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: userMsgId,
+        role: 'user',
+        text: chip.label,
+      },
+      {
+        id: `bot-opt-${Date.now()}`,
+        role: 'bot',
+        text: `已為您設定搜尋條件：${updatedBrief}。確認依此條件搜尋嗎？`,
+        baseBrief: updatedBrief,
+        pendingBrief: updatedBrief,
+        searchBriefIfSkipped: updatedBrief,
+        confirmed: false,
+        isAmbiguous: false,
+        hasMoreQuestions: false,
+        completedConditionKeys: nextCompleted,
+        activeConditionKey: nextStep,
+        selectedConditionMap: nextMap,
+      },
+    ]);
   };
 
-  // 點擊「學歷、經歷、地區、薪水」條件按鈕，切換該條件的選項面板
+  // 點擊「學歷、經歷、地區、薪水、限定公司」條件按鈕，切換該條件的選項面板
   const handleToggleQuickConditionStep = (msgId: string, key: QuickConditionKey) => {
     setMessages((prev) =>
       prev.map((m) => {
@@ -511,7 +889,7 @@ export const JobExplorerView: React.FC = () => {
   };
 
   // 條件依固定順序組成搜尋說明；「台灣／國外」選了國外時，把勾選的國家放在括號裡
-  const QUICK_STEP_ORDER: QuickConditionKey[] = ['jobType', 'region', 'education', 'experience', 'location', 'salary', 'priority'];
+  const QUICK_STEP_ORDER: QuickConditionKey[] = ['jobType', 'region', 'company', 'education', 'experience', 'location', 'salary', 'priority'];
   const composeConditionBrief = (
     m: ChatMessage,
     map: Partial<Record<QuickConditionKey, string>>,
@@ -522,6 +900,8 @@ export const JobExplorerView: React.FC = () => {
     const parts = QUICK_STEP_ORDER.map((k) => {
       const v = map[k];
       if (!v) return '';
+      const prefix = v.split('：')[0];
+      if (prefix && base.includes(prefix + '：')) return '';
       if (k === 'region' && regionIncludesAbroad(v) && countries.length > 0) return `${v}（${formatCountryScope(countries, cities)}）`;
       return v;
     }).filter(Boolean);
@@ -650,7 +1030,17 @@ export const JobExplorerView: React.FC = () => {
       const key = p.split('：')[0];
       return !rawBrief.includes(key);
     });
-    const brief = [rawBrief, ...extra].join('、');
+    let brief = [rawBrief, ...extra].join('、');
+
+    // 當用戶並未特別說要國外或是某個台灣以外的國家時才預設台灣去搜索
+    const mentionsAbroad = /國外|海外|出國|外派|日本|東京|大阪|新加坡|香港|澳門|中國大陸|美國|紐約|矽谷|舊金山|西雅圖|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端/i.test(brief);
+    const mentionsTaiwan = /台灣|臺灣|全台|台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江/i.test(brief);
+    if (!mentionsAbroad && !mentionsTaiwan && regionFilter !== '國外' && regionFilter !== '台灣與國外') {
+      brief = `${brief}（台灣）`;
+    }
+
+    // 同步確定的條件至篩選面板，並確保搜尋過後仍可在篩選或標籤中修改再次搜尋
+    syncConditionsToFilters(parseConditionTags(brief));
 
     if (msgIdToMark) {
       setMessages((prev) =>
@@ -664,8 +1054,8 @@ export const JobExplorerView: React.FC = () => {
     setSearchProgressText('正在啟動全網分批即時檢索...');
     setStreamingBatchCount(0);
 
-    // 在工作搜索過程，讓右下角小燈泡自動出來並陪伴
-    accompanyDuringSearch('搜搜正在忙的時候讓小燈泡來陪你玩吧~ \\(≧▽≦)/');
+    // 在工作搜索過程，讓右下角小燈泡自動出來陪伴（想看跳舞可以點小燈泡訊息框裡的跳舞鍵）
+    accompanyDuringSearch('搜搜正在幫你找好工作，先來跟我玩吧 !');
 
     const controller = new AbortController();
     // 搜搜（Dify）最久可能要 2 分鐘，前端多留一點時間
@@ -904,6 +1294,10 @@ export const JobExplorerView: React.FC = () => {
     }
 
     setIsRegulating(true);
+    setAiStatus('received');
+    await new Promise((r) => setTimeout(r, 200));
+    setAiStatus('understanding');
+
     const isSkipWord = /^(跳過|略過|skip)$/i.test(queryText);
     let nextBrief = isSkipWord
       ? pendingConfirmedBrief
@@ -932,6 +1326,9 @@ export const JobExplorerView: React.FC = () => {
       });
 
       const data = await res.json().catch(() => null);
+      setAiStatus('typing');
+      await new Promise((r) => setTimeout(r, 250));
+
       const isAmb = Boolean(data?.isAmbiguous);
       const hasMoreQ = Boolean(data?.hasMoreQuestions);
       const dimGroups: DimensionGroup[] = Array.isArray(data?.dimensionGroups) ? data.dimensionGroups : [];
@@ -957,20 +1354,16 @@ export const JobExplorerView: React.FC = () => {
         setUserCarePoints(data.carePoints);
       }
 
-      // 若是從點選追問選項進入確認階段，自動展開下一個尚未選擇的條件（學歷、經歷、地區、薪水）
-      // 優先顯示：使用者有講（或已在篩選設定）就不再問
-      // 只看可以排序的三項（行業、工作環境、其他待遇）；講到月薪、距離不算
+      const initialTags = parseConditionTags(cleanBrief, data);
+
       const RANKABLE: CarePointKey[] = ['industry', 'workEnvironment', 'benefits'];
       const hasPriority = [...(Array.isArray(data?.carePoints) ? data.carePoints : []), ...detected, ...userCarePoints].some((k: CarePointKey) => RANKABLE.includes(k));
       if (hasPriority && !completedKeys.includes('priority')) completedKeys.push('priority');
-      const stepOrder: QuickConditionKey[] = ['jobType', 'region', 'education', 'experience', 'location', 'salary', 'priority'];
-      // 點選項進來的：依序打開下一個沒填的條件；直接打字的：已講清楚的不再問，只在最後問「優先顯示」
+      const stepOrder: QuickConditionKey[] = ['jobType', 'region', 'company', 'education', 'experience', 'location', 'salary', 'priority'];
       const nextAutoConditionKey = isAmb
         ? null
         : customText !== undefined
         ? stepOrder.find((k) => !completedKeys.includes(k)) || null
-        : !completedKeys.includes('priority')
-        ? 'priority'
         : null;
 
       setMessages((prev) => [
@@ -980,7 +1373,7 @@ export const JobExplorerView: React.FC = () => {
           role: 'bot',
           text:
             data?.reply ||
-            `已為您設定搜尋條件：${cleanBrief}。確認依此條件搜尋嗎？`,
+            `已為您整理好搜尋條件：\n確認依此條件搜尋嗎？`,
           baseBrief: cleanBrief,
           pendingBrief: cleanBrief,
           searchBriefIfSkipped: skipSearchBrief,
@@ -995,10 +1388,12 @@ export const JobExplorerView: React.FC = () => {
           completedConditionKeys: completedKeys,
           activeConditionKey: nextAutoConditionKey,
           selectedConditionMap: {},
+          conditionTags: initialTags,
         },
       ]);
     } catch {
       const fallbackText = nextBrief || `${userBaseCity} 最新招募職缺`;
+      const fallbackTags = parseConditionTags(fallbackText);
       setPendingConfirmedBrief(fallbackText);
       setAmbiguousClarification(null);
       setMessages((prev) => [
@@ -1006,7 +1401,7 @@ export const JobExplorerView: React.FC = () => {
         {
           id: regMsgId,
           role: 'bot',
-          text: `已為您設定搜尋條件：${fallbackText}。確認依此條件搜尋嗎？`,
+          text: `已為您整理好搜尋條件：\n確認依此條件搜尋嗎？`,
           baseBrief: fallbackText,
           pendingBrief: fallbackText,
           searchBriefIfSkipped: fallbackText,
@@ -1014,10 +1409,12 @@ export const JobExplorerView: React.FC = () => {
           completedConditionKeys: [],
           activeConditionKey: null,
           selectedConditionMap: {},
+          conditionTags: fallbackTags,
         },
       ]);
     } finally {
       setIsRegulating(false);
+      setAiStatus('idle');
       setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }, 80);
@@ -1027,17 +1424,18 @@ export const JobExplorerView: React.FC = () => {
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (keyword.trim()) count++;
+    if (companyFilter.trim()) count++;
     if (selectedCity !== '全部') count++;
     if (selectedCategory !== '全部') count++;
     if (minSalaryFilter > 0 || abroadSalaryFilter) count++;
     if (jobTypeFilter !== '全部') count++;
-    if (regionFilter !== '台灣') count++;
+    if (regionFilter !== '全部') count++;
     if (isSiteFiltered) count++;
     if (maxExpFilter !== 'all') count++;
     if (maxEduFilter !== 'all') count++;
     if (userCarePoints.length > 0) count++;
     return count;
-  }, [keyword, selectedCity, selectedCategory, minSalaryFilter, maxExpFilter, maxEduFilter, userCarePoints, jobTypeFilter, regionFilter, isSiteFiltered, abroadSalaryFilter]);
+  }, [keyword, companyFilter, selectedCity, selectedCategory, minSalaryFilter, maxExpFilter, maxEduFilter, userCarePoints, jobTypeFilter, regionFilter, isSiteFiltered, abroadSalaryFilter]);
 
   // 合併目前列表（或僅顯示收藏職缺）並進行篩選與排序
   const filteredAndSortedJobs = useMemo(() => {
@@ -1195,6 +1593,7 @@ export const JobExplorerView: React.FC = () => {
 
   const resetAllFilters = () => {
     setKeyword('');
+    setCompanyFilter('');
     setSelectedCity('全部');
     setSelectedCategory('全部');
     setMinSalaryFilter(0);
@@ -1343,7 +1742,15 @@ export const JobExplorerView: React.FC = () => {
                   type="text"
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
-                  placeholder="關鍵字過濾..."
+                  placeholder="職務／關鍵字過濾..."
+                  className="px-3 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 bg-stone-50/70 focus:bg-white outline-none focus:border-[#1e3a8a]/50"
+                />
+
+                <input
+                  type="text"
+                  value={companyFilter}
+                  onChange={(e) => setCompanyFilter(e.target.value)}
+                  placeholder="限定公司（如：台積電、Google）..."
                   className="px-3 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 bg-stone-50/70 focus:bg-white outline-none focus:border-[#1e3a8a]/50"
                 />
 
@@ -1370,12 +1777,13 @@ export const JobExplorerView: React.FC = () => {
                     // 只找國外：薪資改用當地幣別，台幣門檻清掉；回到台灣則清掉國外薪資
                     if (v === '國外') setMinSalaryFilter(0); else setAbroadSalaryFilter('');
                     setRegionFilter(v);
-                    if (v === '台灣') setCountryFilter([]);
+                    if (v === '台灣' || v === '全部') setCountryFilter([]);
                     if (v === '國外') setSelectedCity('全部');
                   }}
                   className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
                 >
-                  <option value="台灣">範圍：台灣</option>
+                  <option value="全部">範圍：不限（預設）</option>
+                  <option value="台灣">台灣</option>
                   <option value="國外">國外</option>
                   <option value="台灣與國外">台灣＋國外</option>
                 </select>
@@ -1475,7 +1883,7 @@ export const JobExplorerView: React.FC = () => {
                 </select>
               </div>
 
-              {regionFilter !== '台灣' && (
+              {regionFilter !== '台灣' && regionFilter !== '全部' && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs font-semibold text-stone-500">國家／地區（可複選，不選就是全部國外）：</span>
                   {JOB_COUNTRIES.map((c) => {
@@ -1503,7 +1911,7 @@ export const JobExplorerView: React.FC = () => {
               )}
 
               {/* 國外：依勾選的國家列出主要城市（可複選，不選就是全國） */}
-              {regionFilter !== '台灣' && countryFilter.some((c) => (MAJOR_CITIES_BY_COUNTRY[c] || []).length > 0) && (
+              {regionFilter !== '台灣' && regionFilter !== '全部' && countryFilter.some((c) => (MAJOR_CITIES_BY_COUNTRY[c] || []).length > 0) && (
                 <div className="space-y-1">
                   <span className="text-xs font-semibold text-stone-500">城市（可複選，不選就是全國）：</span>
                   {countryFilter.filter((c) => (MAJOR_CITIES_BY_COUNTRY[c] || []).length > 0).map((c) => (
@@ -1710,7 +2118,110 @@ export const JobExplorerView: React.FC = () => {
                                 : 'bg-blue-50/70 text-stone-800 border border-blue-100'
                             }`}
                           >
-                            <p className="whitespace-pre-wrap font-medium">{m.text}</p>
+                            {/* 結構化條件標籤（依標籤形式，可刪除、新增、編輯文字或數字與幣別） */}
+                            {m.role === 'bot' && m.conditionTags && m.conditionTags.length > 0 ? (
+                              <div className="space-y-2.5">
+                                <div className="flex items-baseline justify-between gap-2">
+                                  <span className="font-bold text-stone-900 text-xs">搜尋條件</span>
+                                  <span className="text-[10px] text-stone-400 font-medium">點標籤就能直接修改</span>
+                                </div>
+
+                                {/* 標籤群組 */}
+                                <div className="flex flex-wrap gap-1.5 items-center">
+                                  {m.conditionTags.map((tag) => {
+                                                                        const tagColors = 'bg-white border-stone-200 text-stone-900';
+
+                                    const tagIcons = {
+                                      role: <Briefcase className="w-3.5 h-3.5 text-indigo-600 shrink-0" />,
+                                      company: <Building className="w-3.5 h-3.5 text-purple-600 shrink-0" />,
+                                      salary: <DollarSign className="w-3.5 h-3.5 text-emerald-600 shrink-0" />,
+                                      location: <MapPin className="w-3.5 h-3.5 text-sky-600 shrink-0" />,
+                                      jobType: <Briefcase className="w-3.5 h-3.5 text-cyan-600 shrink-0" />,
+                                      experience: <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />,
+                                      education: <GraduationCap className="w-3.5 h-3.5 text-rose-600 shrink-0" />,
+                                      carePoint: <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />,
+                                      custom: <Sparkles className="w-3.5 h-3.5 text-stone-600 shrink-0" />,
+                                    }[tag.type];
+
+                                    return (
+                                      <InlineConditionTag
+                                        key={tag.id}
+                                        tag={tag}
+                                        colors={tagColors}
+                                        icon={tagIcons}
+                                        autoEdit={newTagId === tag.id}
+                                        onSave={(next) => handleUpdateConditionTag(m.id, next)}
+                                        onDelete={() => { if (newTagId === tag.id) setNewTagId(null); handleDeleteConditionTag(m.id, tag.id); }}
+                                      />
+                                    );
+                                  })}
+
+                                  {/* 新增條件標籤按鈕 */}
+                                  <div className="relative inline-block">
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsAddTagOpen((v) => !v)}
+                                      className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg border border-dashed border-stone-300 text-stone-500 hover:border-blue-400 hover:text-[#1e3a8a] hover:bg-blue-50/60 text-xs font-bold transition-all cursor-pointer"
+                                    >
+                                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                      <span>新增條件</span>
+                                    </button>
+
+                                    {isAddTagOpen && (
+                                      <div className="absolute left-0 top-full mt-1.5 z-30 w-48 rounded-xl bg-white border border-stone-200 shadow-xl p-1.5 space-y-0.5 text-xs">
+                                        <div className="px-2 py-1 text-[10px] font-black text-stone-400 uppercase tracking-wider">
+                                          選擇新增維度
+                                        </div>
+                                        {[
+                                          { type: 'company', label: '🏢 限定公司（自填）' },
+                                          { type: 'salary', label: '💰 期望薪資（幣別/數字）' },
+                                          { type: 'experience', label: '⏳ 工作年資（數字）' },
+                                          { type: 'role', label: '💼 職務名稱' },
+                                          { type: 'location', label: '📍 工作地區' },
+                                          { type: 'jobType', label: '⏱️ 正職／兼職' },
+                                          { type: 'education', label: '🎓 學歷要求' },
+                                        ].map((item) => (
+                                          <button
+                                            key={item.type}
+                                            type="button"
+                                            onClick={() => handleAddConditionTag(m.id, item.type as ConditionTagType)}
+                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-blue-50 font-bold text-stone-700 transition-colors flex items-center justify-between cursor-pointer"
+                                          >
+                                            <span>{item.label}</span>
+                                            <Plus className="w-3 h-3 text-stone-400" />
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* 搜尋或再次送出按鈕 */}
+                                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                                  <button
+                                    type="button"
+                                    disabled={isSearching || isRegulating}
+                                    onClick={() => {
+                                      const currentTags = m.conditionTags || [];
+                                      syncConditionsToFilters(currentTags);
+                                      void handleForwardToExplorerAgent(m.pendingBrief, m.id);
+                                    }}
+                                    className="px-3.5 py-1.5 rounded-xl bg-[#1e3a8a] hover:bg-[#1e40af] disabled:opacity-50 text-white text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                                  >
+                                    <Check className="w-4 h-4 text-emerald-300 stroke-[3]" />
+                                    <span>{m.confirmed ? '用新條件再搜一次' : '確認搜尋'}</span>
+                                  </button>
+                                  {m.confirmed ? (
+                                    <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>已搜尋</span>
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="whitespace-pre-wrap font-medium">{m.text}</p>
+                            )}
 
                             {/* 模糊條件追問選項（含「跳過」選項，加上上方補充提示） */}
                             {m.role === 'bot' &&
@@ -1837,6 +2348,33 @@ export const JobExplorerView: React.FC = () => {
                                           </button>
                                         ))}
                                       </div>
+                                      {activeStep.key === 'company' && (
+                                        <div className="pt-2 border-t border-blue-100 flex items-center gap-2">
+                                          <input
+                                            type="text"
+                                            value={customCompanyInput}
+                                            onChange={(e) => setCustomCompanyInput(e.target.value)}
+                                            placeholder="自填目標公司名稱（如：台積電、Google、星巴克）..."
+                                            className="flex-1 px-2.5 py-1.5 rounded-lg border border-stone-200 text-xs font-bold text-stone-900 bg-white"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (customCompanyInput.trim()) {
+                                                handleSelectQuickConditionOption(m.id, 'company', {
+                                                  label: customCompanyInput.trim(),
+                                                  value: `目標公司：${customCompanyInput.trim()}`,
+                                                });
+                                                setCustomCompanyInput('');
+                                              }
+                                            }}
+                                            disabled={!customCompanyInput.trim()}
+                                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1e3a8a] text-white disabled:opacity-40 cursor-pointer"
+                                          >
+                                            確定
+                                          </button>
+                                        </div>
+                                      )}
                                       {activeStep.key === 'region' &&
                                         regionIncludesAbroad(m.selectedConditionMap?.region) && (
                                           <div className="pt-2 border-t border-blue-100 space-y-1.5">
@@ -1990,30 +2528,66 @@ export const JobExplorerView: React.FC = () => {
                         </div>
                       );
                     })}
+                    {/* AI 即時狀態指示器（已收到、理解中、打字中） */}
+                    {aiStatus !== 'idle' && (
+                      <div className="flex flex-col items-start animate-fade-in">
+                        <div className="max-w-[95%] sm:max-w-[88%] rounded-xl px-3.5 py-2 text-xs leading-relaxed bg-blue-50/90 text-stone-800 border border-blue-200 shadow-2xs flex items-center gap-2">
+                          {aiStatus === 'received' && (
+                            <>
+                              <CheckCircle2 className="w-4 h-4 text-blue-600 animate-bounce shrink-0" />
+                              <div className="flex items-center gap-1.5 font-bold text-blue-900">
+                                <span>已收到</span>
+                                <span className="text-[11px] text-blue-600 font-normal">（準備進行語意分析）</span>
+                              </div>
+                            </>
+                          )}
+                          {aiStatus === 'understanding' && (
+                            <>
+                              <Sparkles className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
+                              <div className="flex items-center gap-1.5 font-bold text-indigo-950">
+                                <span>理解中...</span>
+                                <span className="text-[11px] text-indigo-600 font-normal">（Gemini 深度剖析條件與語意）</span>
+                              </div>
+                            </>
+                          )}
+                          {aiStatus === 'typing' && (
+                            <>
+                              <Loader2 className="w-4 h-4 text-amber-600 animate-spin shrink-0" />
+                              <div className="flex items-center gap-1.5 font-bold text-stone-900">
+                                <span>打字中...</span>
+                                <span className="text-[11px] text-amber-700 font-normal">（正在生成結構化條件標籤）</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     <div ref={chatEndRef} />
                   </div>
                   <div className="flex items-center justify-end gap-3 px-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMessages([]);
-                        setPendingConfirmedBrief('');
-                        setPendingFallbackBrief('');
-                        setSkippedDimensions([]);
-                        setAmbiguousClarification(null);
-                      }}
-                      className="text-[11px] text-stone-400 hover:text-stone-600 cursor-pointer"
-                    >
-                      清除對話
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsChatCollapsed(true)}
-                      className="text-[11px] font-bold text-stone-500 hover:text-stone-800 flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <span>收合</span>
-                      <X className="w-3 h-3" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMessages([]);
+                          setPendingConfirmedBrief('');
+                          setPendingFallbackBrief('');
+                          setSkippedDimensions([]);
+                          setAmbiguousClarification(null);
+                        }}
+                        className="text-[11px] text-stone-400 hover:text-stone-600 cursor-pointer"
+                      >
+                        清除對話
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsChatCollapsed(true)}
+                        className="text-[11px] font-bold text-stone-500 hover:text-stone-800 flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <span>收合</span>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

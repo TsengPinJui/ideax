@@ -22,6 +22,8 @@ export interface MascotEngine {
   cheer(text?: string): void; sad(text?: string): void;
   /** 驚喜：燈泡亮起、睜大眼睛、嘴巴張成 O（例如有新提案時） */
   surprise(text?: string, ms?: number): void; embarrassed(text?: string): void; think(on: boolean): void; wave(text?: string): void;
+  /** 波浪舞：雙手流暢波浪律動、身體歡樂扭動跳躍 */
+  waveDance(text?: string, ms?: number): void;
   poke(): void; shake(): void; setTuning(t: Partial<MascotTuning>): void; setBubbleDefault(t: string): void;
   enterFrom(): void; getMood(): MascotMood; refreshInsets(): void; destroy(): void;
   /** 舞台走位：指定站位（null 回到右下角）；teleport 直接瞬移（藏在對話框後面時用） */
@@ -298,6 +300,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     fallen: { hand: [-1.1, -0.55, 0.6],   ctrl: [-1.0, 0.0, 0.4] },
   };
   const SHOULDER = new THREE.Vector3(0.66, 0.42, 0.12);
+  const DANCE_BEAT = 300; // 波浪舞一拍的毫秒數
   for (const side of ['L', 'R']) {
     const m = side === 'R' ? -1 : 1;
     arms[side].hand.set(POSES.idle.hand[0] * m, POSES.idle.hand[1], POSES.idle.hand[2]);
@@ -353,7 +356,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     yaw: 0, glow: 0.15, glowTarget: 0.15,
     mood: 'idle', moodUntil: 0, prevMood: 'idle',
     jumpY: 0, jumpV: 0, blinkAt: performance.now() + 2000, blink: 0,
-    lookX: 0, lookY: 0, pose: 'idle', waveUntil: 0, spinAt: 0, lastPointer: null,
+    lookX: 0, lookY: 0, pose: 'idle', waveUntil: 0, waveDanceUntil: 0, waveDanceStart: 0, danceHopAt: 0, spinAt: 0, lastPointer: null,
     flickerAt: 0, flickerOn: false, prevX: 0, prevY: 0, prevVx: 0, prevVy: 0, ax: 0, ay: 0,
     sadSince: 0, sadLie: false, lie: 0, sadMix: 0, puddle: 0, stage: null, talkUntil: 0, dropFromStage: false,
   };
@@ -568,7 +571,17 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
         if (side === 'L') { hx = -1.12; hy = 1.35; hz = 0.55; cx = -1.05; cy = 0.65; cz = 0.45; }
         else { hx = 0.36 + Math.sin(now / 95) * 0.05; hy = 1.62 + Math.cos(now / 95) * 0.04; hz = 1.18; cx = 1.05; cy = 0.85; cz = 0.75; }
       }
-      if (S.waveUntil > now && side === 'R') { hx = 1.2 + Math.sin(now / 110) * 0.18; hy = 2.1; hz = 0.4; cx = 1.15; cy = 0.95; }
+      if (S.waveDanceUntil > now) {
+        // 波浪舞：雙手往兩側伸直，波浪從左手 → 左手肘 → 右手肘 → 右手傳過去，每兩拍換方向傳回來
+        const back = Math.floor((now - S.waveDanceStart) / (DANCE_BEAT * 4)) % 2 === 1;
+        const pos = (p: number) => (back ? 3.2 - p : p); // 0 左手、1 左手肘、2.2 右手肘、3.2 右手
+        const w = (p: number) => Math.sin((now - S.waveDanceStart) / DANCE_BEAT * Math.PI - pos(p) * 0.95);
+        const handP = side === 'L' ? 0 : 3.2, elbowP = side === 'L' ? 1 : 2.2;
+        hx = (side === 'L' ? -1.62 : 1.62); hy = 0.9 + w(handP) * 0.6; hz = 0.32;
+        cx = (side === 'L' ? -1.18 : 1.18); cy = 0.62 + w(elbowP) * 0.42; cz = 0.24;
+      } else if (S.waveUntil > now && side === 'R') {
+        hx = 1.2 + Math.sin(now / 110) * 0.18; hy = 2.1; hz = 0.4; cx = 1.15; cy = 0.95;
+      }
       if (S.pose === 'up') hy += Math.sin(now / 140 + (m > 0 ? 0 : 1)) * 0.08;
       if (S.pose === 'panic') { hx += Math.sin(now / 60 + (m > 0 ? 0 : 2)) * 0.14; hy += Math.cos(now / 70 + (m > 0 ? 1 : 0)) * 0.12; }
       const a = arms[side];
@@ -625,7 +638,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     }
     if (S.jumpV || S.jumpY) {
       S.jumpV += 2400 * dt; S.jumpY += S.jumpV * dt;
-      if (S.jumpY > 0) { S.squashV += Math.min(10, S.jumpV * 0.012); for (let n = 0; n < NODES; n++) if (layerOf(n) > 0) nv[n].y -= Math.min(5, S.jumpV * 0.006) * layerOf(n) / 2; S.jumpY = 0; S.jumpV = 0; if (S.mood === 'happy' && S.moodUntil - now > 600) later(() => jump(0.7), 160); }
+      if (S.jumpY > 0) { S.squashV += Math.min(10, S.jumpV * 0.012); for (let n = 0; n < NODES; n++) if (layerOf(n) > 0) nv[n].y -= Math.min(5, S.jumpV * 0.006) * layerOf(n) / 2; S.jumpY = 0; S.jumpV = 0; if (S.mood === 'happy' && S.moodUntil - now > 600 && !(S.waveDanceUntil > now)) later(() => jump(0.7), 160); }
     }
     let sqT = 0;
     if (S.mode === 'drag') sqT = -Math.min(0.22, Math.hypot(S.vx, S.vy) / 6000);
@@ -646,6 +659,11 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (S.mood === 'sad') angT = S.sadLie ? -Math.PI / 2 : -0.1;
     if (S.mood === 'shy' && S.mode === 'home') angT = 0.13 + Math.sin(now / 320) * 0.04; // 微微低頭鞠躬
     if (S.stage && S.stage.lean != null && S.mode === 'home') angT = S.stage.lean; // 探頭時身體傾斜
+    // 波浪舞：身體跟著節拍左右擺、每拍輕輕跳一下（用原本的跳躍，不直接改位置）
+    if (S.waveDanceUntil > now && S.mode === 'home') {
+      angT = Math.sin((now - S.waveDanceStart) / DANCE_BEAT * Math.PI) * 0.13;
+      if (!reduceMotion && now >= S.danceHopAt && Math.abs(S.jumpY) < 0.5 && Math.abs(S.jumpV) < 1) { S.danceHopAt = now + DANCE_BEAT * 2; jump(0.3); } // 落地了才跳下一下，不會越跳越高
+    }
     if (S.mode === 'fly' && S.y < vh - insets.bottom - 2) { S.angle += S.tumbleV * dt; S.tumbleV *= 0.99; }
     else {
       S.angle = Math.atan2(Math.sin(S.angle), Math.cos(S.angle));
@@ -677,6 +695,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     if (S.mood === 'idle') gt = 0.14 + Math.sin(now / 900) * 0.06;
     if (S.mood === 'think') gt = 0.3 + (Math.sin(now / 90) > 0.3 ? 0.35 : 0);
     if (S.mood === 'happy') gt = S.jumpY < -10 ? 1.3 : 0.95;
+    if (S.waveDanceUntil > now) gt = 0.8 + Math.abs(Math.sin((now - S.waveDanceStart) / DANCE_BEAT * Math.PI)) * 0.45; // 燈光跟著節拍閃
     if (S.mood === 'wow') gt = 1.15 + Math.sin(now / 160) * 0.12; // 整顆亮起來、微微閃
     if (S.mood === 'scared') { if (now > S.flickerAt) { S.flickerOn = !S.flickerOn; S.flickerAt = now + 40 + Math.random() * 110; if (S.flickerOn) emit('zap'); } S.glow = S.flickerOn ? 1 : 0.04; }
     else { if (S.mood === 'sad' && Math.random() < 0.006) S.glow = 0.16; S.glow += (gt - S.glow) * Math.min(1, dt * (gt > S.glow ? 9 : 4)); }
@@ -786,6 +805,15 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
     think: (thinking) => { if (thinking) setMood('think'); else if (S.mood === 'think') setMood('idle'); },
     embarrassed: (text) => { setMood('shy', 5200); wobble(1.4); if (text) say(text, 4200); },
     wave: (text) => { S.waveUntil = performance.now() + 2400; if (text) say(text, 2200); },
+    waveDance: (text, ms = 6000) => {
+      if (S.mode !== 'home') return; // 被拖著或摔倒時不跳
+      const now = performance.now();
+      S.sadLie = false;
+      S.waveDanceStart = now; S.waveDanceUntil = now + ms; S.danceHopAt = now + DANCE_BEAT;
+      setMood('happy', ms);
+      S.pose = 'idle'; // 手的動作交給波浪舞
+      say(text || '～♪ 來跟我一起跳波浪舞！～♬', ms);
+    },
     poke: () => { const a = (Math.random() - 0.5) * 1.4; poke(new THREE.Vector3(Math.sin(a) * 0.95, 0.95 + 1.35 + Math.random() * 0.4, Math.cos(a) * 0.95), 4.2); },
     shake: () => { let i = 0; const t = setInterval(() => { if (destroyed) return clearInterval(t); wobble(i % 2 ? 2.4 : -2.4); if (++i >= 4) clearInterval(t); }, 110); cleanups.push(() => clearInterval(t)); },
     setTuning: (t) => { Object.assign(JELLY, t || {}); },
