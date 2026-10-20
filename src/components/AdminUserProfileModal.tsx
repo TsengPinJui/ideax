@@ -42,6 +42,7 @@ import { CopyableUserId } from './CopyableUserId';
 /** 最近上線：登入時間與最近活動時間取比較晚的那個 */
 const latestSeen = (...ts: Array<string | undefined>) =>
   ts.filter(Boolean).map((t) => new Date(t as string).getTime()).filter((n) => Number.isFinite(n)).reduce((a, b) => Math.max(a, b), 0);
+import { useUserActivityMap } from '../services/userActivity';
 import { getAdminSiteBadgeClass, getAdminSiteLabel } from '../utils/adminPermissions';
 
 interface AdminUserProfileModalProps {
@@ -61,6 +62,8 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
   onOpenChat,
   onEditUser,
 }) => {
+  // 會員最近上線時間（存在 user_activity）
+  const userActivity = useUserActivityMap();
   const { questions, answers, transactions, solvers, currentUser } = useApp();
   const [activeTab, setActiveTab] = useState<'bio' | 'questions' | 'answers' | 'finance' | 'security'>('bio');
 
@@ -484,7 +487,7 @@ export const AdminUserProfileModal: React.FC<AdminUserProfileModalProps> = ({
                     <span className="text-stone-400 block text-[11px]">最近上線時間</span>
                     <span className="font-bold text-stone-900 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                      <span>{user.lastLoginAt || user.lastActiveAt ? new Date(latestSeen(user.lastLoginAt, user.lastActiveAt)).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '尚無紀錄'}</span>
+                      <span>{user.lastLoginAt || user.lastActiveAt || userActivity[user.id] ? new Date(latestSeen(user.lastLoginAt, user.lastActiveAt, userActivity[user.id])).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '尚無紀錄'}</span>
                     </span>
                   </div>
 

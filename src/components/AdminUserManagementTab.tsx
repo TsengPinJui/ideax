@@ -52,6 +52,7 @@ import { AdminAuthBackfillCard } from './AdminAuthBackfillCard';
 /** 最近上線：登入時間與最近活動時間取比較晚的那個 */
 const latestSeen = (...ts: Array<string | undefined>) =>
   ts.filter(Boolean).map((t) => new Date(t as string).getTime()).filter((n) => Number.isFinite(n)).reduce((a, b) => Math.max(a, b), 0);
+import { useUserActivityMap } from '../services/userActivity';
 import { AdminAnswerSecretsCard, AdminPrivateProfilesCard } from './AdminAnswerSecretsCard';
 
 interface AdminUserManagementTabProps {
@@ -65,6 +66,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
   onOpenChat,
   onCloseParentModal,
 }) => {
+  // 會員最近上線時間（存在 user_activity）
+  const userActivity = useUserActivityMap();
   const {
     availableUsers,
     setAvailableUsers,
@@ -879,8 +882,8 @@ export const AdminUserManagementTab: React.FC<AdminUserManagementTabProps> = ({
                         <span className="flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
                           <span>最近上線：<strong className="text-stone-700 font-mono">{
-                            u.lastLoginAt || u.lastActiveAt
-                              ? new Date(latestSeen(u.lastLoginAt, u.lastActiveAt)).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                            u.lastLoginAt || u.lastActiveAt || userActivity[u.id]
+                              ? new Date(latestSeen(u.lastLoginAt, u.lastActiveAt, userActivity[u.id])).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
                               : isSelf ? '目前在線上' : '尚無紀錄'
                           }</strong></span>
                         </span>
