@@ -3346,6 +3346,77 @@ app.post('/api/mascot/event', async (req: Request, res: Response) => {
 });
 
 // 匯職缺 Stage 1：系統既有調節器 Gemini 先釐清並與用戶確認求職需求，確認後再轉給「探險家」Agent
+// ─── 匯職缺：條件解析小工具 ───
+/** 從文字抓出薪資（月薪 6 萬、60000、60k、時薪 200、年薪 80 萬） */
+function parseSalaryText(text: string): { period: 'month' | 'hour' | 'year'; amount: number } | null {
+  const t = text.replace(/,/g, '');
+  const num = (v: string, unit?: string) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 0;
+    if (unit && /萬/.test(unit)) return Math.round(n * 10000);
+    if (unit && /k/i.test(unit)) return Math.round(n * 1000);
+    return Math.round(n);
+  };
+  let m = t.match(/時薪\s*(\d+(?:\.\d+)?)/);
+  if (m) return { period: 'hour', amount: num(m[1]) };
+  m = t.match(/年薪\s*(\d+(?:\.\d+)?)\s*(萬|k)?/i);
+  if (m) return { period: 'year', amount: num(m[1], m[2]) };
+  m = t.match(/(?:月薪|薪水|薪資|底薪|保障薪)?\s*(\d+(?:\.\d+)?)\s*(萬|k)/i) || t.match(/(?:月薪|薪水|薪資|底薪)\s*(\d{4,6})/);
+  if (m) {
+    const amount = num(m[1], m[2]);
+    if (amount >= 1000) return { period: 'month', amount };
+  }
+  return null;
+}
+
+/** 把已經確定的條件整理成一行一項（工作型態、地區、職務、薪資、學歷、經歷） */
+function buildJobConditionSummary(
+  text: string,
+  ctx: { inferredJobType: string; inferredFrom: string; isTaiwanWide: boolean; mentionsAbroad: boolean; salaryInfo: ReturnType<typeof parseSalaryText> },
+): string[] {
+  const lines: string[] = [];
+  const pick = (re: RegExp) => { const m = text.match(re); return m ? m[0] : ''; };
+  // 工作型態
+  const jt = pick(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時/);
+  if (jt) lines.push(`工作型態：${jt === '全職' ? '正職' : jt}`);
+  else if (ctx.inferredJobType) lines.push(`工作型態：${ctx.inferredJobType}（依${ctx.inferredFrom}判斷）`);
+  // 地區
+  const cities = text.match(/台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端/g);
+  const uniq = (a: string[]) => Array.from(new Set(a));
+  if (cities && cities.length) lines.push(`地區：${uniq(cities.map((c) => (c === '遠端' ? '遠端工作' : /[市縣]$/.test(c) ? c : c))).join('、')}`);
+  else if (ctx.isTaiwanWide) lines.push('地區：台灣（不限縣市）');
+  else if (ctx.mentionsAbroad) {
+    const countries = text.match(/日本|新加坡|香港|澳門|中國大陸|美國|加拿大|英國|德國|法國|澳洲|紐西蘭|韓國|馬來西亞|越南|泰國|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|國外|海外/g);
+    if (countries) lines.push(`地區：${uniq(countries).join('、')}`);
+  }
+  // 職務：去掉地區、薪資、工作型態等字樣後剩下的部分
+  const role = text
+    .replace(/工作型態：[^、,，\s]+|地區：[^、,，\s]+|工作範圍：[^、,，\s]+|國家：[^、,，\s]+|學歷：[^、,，\s]+|經歷：[^、,，\s]+|薪資：[^、,，\s]+/g, ' ')
+    .replace(/(?:月薪|年薪|時薪|日薪|薪水|薪資|底薪|保障薪)?\s*\d+(?:\.\d+)?\s*(?:萬|k|元)?\s*(?:以上|起)?/gi, ' ')
+    .replace(/碩士以上|博士|碩士|大學|大專|學士|專科以下|專科|高中職|高中|高職|畢業|無經驗|新鮮人|應屆|二度就業|資深|初階|中階|跨領域轉職|\d+\s*~\s*\d+\s*年|\d+\s*年以上|年資|經驗/g, ' ')
+    .replace(/日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端|外派|出國/g, ' ')
+    .replace(/台灣|臺灣|全台|台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端|國外|海外/g, ' ')
+    .replace(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時|月薪|年薪|時薪|日薪|以上/g, ' ')
+    .replace(/我的大學|我的學校|我的專業|我的科系|我的性格|我的個性|我的背景|我家|家裡|附近|這附近|周邊|周遭|離家近|就近|有什麼|有沒有|推薦|好工作|工作機會|機會|最新|近期|今天|這幾天|嗎|呢|吧|我的/g, ' ')
+    .replace(/我想找|我要找|想找|幫我找|請幫我找|找|我想|我要|的|工作|職缺|相關|左右|大概|約|，|,|、|。|？|\?|\s+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length >= 2 && !/^(跳過|略過|不拘)$/.test(w));
+  if (role.length) lines.push(`職務：${uniq(role).slice(0, 3).join('、')}`);
+  // 薪資
+  const si = ctx.salaryInfo;
+  if (si) {
+    const label = si.period === 'hour' ? '時薪' : si.period === 'year' ? '年薪' : '月薪';
+    lines.push(`薪資：${label} ${si.amount.toLocaleString('en-US')} 元以上`);
+  } else if (/面議|不拘/.test(pick(/薪資待遇不拘|薪資不拘|面議/))) lines.push('薪資：不拘');
+  // 學歷、經歷（有講才列）
+  const edu = pick(/碩士以上|博士|碩士|(?<!我的|我念的|我們|念的)大學(?!附近)|專科以下|專科|高中職|公立頂大背景|技職科大背景|私立綜合大學/);
+  if (edu) lines.push(`學歷：${edu}`);
+  const exp = pick(/無經驗|新鮮人|應屆|二度就業|\d+\s*~\s*\d+\s*年|\d+\s*年以上|資深|初階|中階|跨領域轉職/);
+  if (exp) lines.push(`經歷：${exp}`);
+  return lines;
+}
+
 app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
   try {
     const rawMessage = String(req.body?.message || '').trim().slice(0, 600);
@@ -3382,7 +3453,8 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const personalityRegex = /內向|外向|安靜|活潑|細心|耐煩|善溝通|善於溝通|喜愛人群|獨立作業|不面對客人|抗壓|積極|冷靜|熱情|擅長協調|團隊協作|文書整理|排班彈性|見紅休|週休二日|正常班|日班|夜班|輪班|不加班|準時下班/i;
     const salaryRegex = /\d{2,6}\s*元|\d+\s*k|\d+\s*萬|月薪\s*\d+|時薪\s*\d+|年薪\s*\d+|底薪|保障薪/i;
     const abroadRegex = /國外|海外|出國|外派|日本|東京|大阪|新加坡|香港|澳門|中國大陸|大陸|上海|北京|深圳|廣州|美國|紐約|矽谷|加拿大|溫哥華|多倫多|英國|倫敦|德國|柏林|法國|澳洲|雪梨|墨爾本|紐西蘭|韓國|首爾|馬來西亞|吉隆坡|越南|泰國|曼谷|菲律賓|印尼|荷蘭|歐洲|北美|東南亞|全球遠端/;
-    const taiwanScopeRegex = /工作範圍：台灣|在台灣|台灣的工作|國內/;
+    // 講到「台灣／全台」就算指定了工作範圍（不一定要寫成「工作範圍：台灣」）
+    const taiwanScopeRegex = /工作範圍：台灣|在台灣|台灣的工作|國內|台灣|臺灣|全台/;
     const jobTypeRegex = /正職|全職|兼職|工讀|打工|實習|約聘|派遣|計時|part[\s-]?time|full[\s-]?time|intern/i;
 
     // 檢測是否略過特定維度
@@ -3395,13 +3467,25 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     if (/正職兼職都可|正職兼職皆可|全職兼職皆可|工作類型不拘/.test(fullText)) skippedDims.add('jobType');
 
     // ─── 0. 正職／兼職 (jobType)：沒說的話第一個先問這個 ───
-    const hasJobType = jobTypeRegex.test(fullText);
+    // 講「月薪、年薪」通常是正職，「時薪、日薪」通常是兼職，直接推斷不用再問
+    const salaryInfo = parseSalaryText(fullText);
+    const inferredJobType = jobTypeRegex.test(fullText)
+      ? ''
+      : /時薪|日薪/.test(fullText) || salaryInfo?.period === 'hour'
+      ? '兼職'
+      : /月薪|年薪/.test(fullText) || salaryInfo?.period === 'month' || salaryInfo?.period === 'year'
+      ? '正職'
+      : '';
+    const inferredFrom = salaryInfo ? (salaryInfo.period === 'hour' ? '時薪' : salaryInfo.period === 'year' ? '年薪' : '月薪') : /年薪/.test(fullText) ? '年薪' : /時薪/.test(fullText) ? '時薪' : '月薪';
+    const hasJobType = jobTypeRegex.test(fullText) || Boolean(inferredJobType);
     const isJobTypeMissing = !hasJobType && !skippedDims.has('jobType');
 
     // ─── 1. 工作地點維度 (location) ───
     const hasSpecificCity = cityRegex.test(fullText) || Boolean(filters.city && filters.city !== '全部');
     const mentionsNearby = /附近|這附近|我附近|周邊|離家近|就近|方圓|家裡附近|離我近|周遭|隔壁|走路可到|騎車可到|通勤近|近一點/.test(fullText);
-    const isLocationMissing = !hasSpecificCity && !skippedDims.has('location');
+    // 只說「台灣／全台」沒指定縣市：視為全台不限縣市，不再追問地點
+    const isTaiwanWide = !hasSpecificCity && /台灣|臺灣|全台/.test(fullText) && !/台灣與國外/.test(fullText);
+    const isLocationMissing = !hasSpecificCity && !isTaiwanWide && !skippedDims.has('location');
     const isLocationAmbiguous = mentionsNearby && isLocationMissing;
 
     // ─── 2. 專業／職務領域維度 (major) ───
@@ -3414,7 +3498,7 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     const isMajorAmbiguous = mentionsMajor && isMajorMissing;
 
     // ─── 3. 大學／學歷背景維度 (college) ───
-    const hasSpecificCollege = collegeRegex.test(fullText);
+    const hasSpecificCollege = collegeRegex.test(fullText) || /(^|[\s、,，])(大學|大專|學士|高中|高職)(畢業)?(?=[\s、,，]|$)/.test(fullText);
     const mentionsCollege = /我的大學|我的學校|我念的大學|我們學校|我大學|我的母校|母校|我畢業的學校|我讀的學校/.test(fullText);
     const isCollegeMissing = !hasSpecificCollege && !skippedDims.has('college');
     const isCollegeAmbiguous = mentionsCollege && isCollegeMissing;
@@ -3632,21 +3716,31 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     else if (/遠端|remote/i.test(fullText)) extractedCity = '遠端工作';
 
     let extractedMinSalary = Number(filters.minSalary) || 0;
-    const salMatch = fullText.match(/月薪\s*(\d{2,6})|(\d{2})\s*k/i);
-    if (salMatch) {
-      if (salMatch[1]) extractedMinSalary = Number(salMatch[1]);
-      else if (salMatch[2]) extractedMinSalary = Number(salMatch[2]) * 1000;
-    }
+    if (salaryInfo && salaryInfo.period === 'month') extractedMinSalary = salaryInfo.amount;
 
     // ─── 生成清晰回覆 ───
-    const finalBrief = accumulatedConcreteBrief || `${userBaseCity} 最新招募職缺`;
+    const briefExtras = [inferredJobType ? `工作型態：${inferredJobType}` : '', isTaiwanWide ? '地區：台灣不限縣市' : ''].filter(Boolean);
+    const finalBrief = [accumulatedConcreteBrief || (briefExtras.length ? '' : `${userBaseCity} 最新招募職缺`), ...briefExtras].filter(Boolean).join('、');
     let resolvedReply = '';
+    // 結構化整理已確定的條件（已確定的不再追問）
+    const summaryLines = buildJobConditionSummary(fullText, {
+      inferredJobType,
+      inferredFrom,
+      isTaiwanWide,
+      mentionsAbroad,
+      salaryInfo,
+    });
+    const summaryText = summaryLines.length ? summaryLines.map((l) => `• ${l}`).join('\n') : '';
     if (activeGroup) {
-      resolvedReply = accumulatedConcreteBrief
+      resolvedReply = summaryText
+        ? `已記錄：\n${summaryText}\n${activeGroup.question}`
+        : accumulatedConcreteBrief
         ? `已記錄：${accumulatedConcreteBrief}。\n${activeGroup.question}`
         : activeGroup.question;
     } else {
-      resolvedReply = `已為您設定搜尋條件：${finalBrief}。確認依此條件搜尋嗎？`;
+      resolvedReply = summaryText
+        ? `已為您整理好搜尋條件：\n${summaryText}\n確認依此條件搜尋嗎？`
+        : `已為您設定搜尋條件：${finalBrief}。確認依此條件搜尋嗎？`;
     }
 
     return res.json({
