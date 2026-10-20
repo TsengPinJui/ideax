@@ -83,6 +83,7 @@ import { isPainPointQuestion, isL0DiscussionQuestion } from '../utils/questionUt
 import { syncQuestionToFirestore } from '../services/firestoreSync';
 import { marketAdvisorAgent } from '../services/marketAdvisorAgent';
 import { getAnswerSpecifications } from '../utils/answerUtils';
+import { PublishedPlatformsBlock, usePlatformLinkChooser } from './PublishedPlatforms';
 import { VibeCodingCaseDetailContent } from './VibeCodingCaseDetailContent';
 import { findReferencedPainPoint, findProposalsReferencingPainPoint } from '../utils/painPointLinking';
 import { isSampleContent } from '../utils/sampleContent';
@@ -163,6 +164,8 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     isQuestionLiked,
     getQuestionLikesCount,
   } = useApp();
+  // 點「外部連結」時，先讓觀眾選作者填的上架平台
+  const platformChooser = usePlatformLinkChooser();
 
   const isPainPoint = isPainPointQuestion(question);
   const isSeconded = isQuestionSeconded(question.id);
@@ -1231,7 +1234,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
         ) : (
         <>
         {/* 多媒體大圖、YouTube 介紹影片、圖集、技術架構與線上網址 */}
-        {(question.youtubeUrl || question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || question.techArchitecture || question.demoUrl) && (
+        {(question.youtubeUrl || question.coverImage || (question.galleryImages && question.galleryImages.length > 0) || question.techArchitecture || question.demoUrl || (question.publishedPlatforms && question.publishedPlatforms.length > 0)) && (
           <div className="p-4 sm:p-5 rounded-2xl bg-stone-50/70 border border-stone-200/90 shadow-2xs space-y-4">
             {/* YouTube 介紹影片 */}
             {(() => {
@@ -1336,6 +1339,7 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                     href={question.demoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => platformChooser.onLinkClick(e, { title: question.appName || question.title, demoUrl: question.demoUrl, platforms: question.publishedPlatforms })}
                     className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                   >
                     <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -1343,7 +1347,9 @@ ${preliminaryReport.solvingDirections.riskWarnings.map((w) => `- ${w}`).join('\n
                   </a>
                 </div>
               )}
+              <PublishedPlatformsBlock platforms={question.publishedPlatforms} className="sm:col-span-2" />
             </div>
+            {platformChooser.chooser}
           </div>
         )}
 
