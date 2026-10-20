@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Sparkles, MapPin, Briefcase, Clock, X, IdCard } from 'lucide-react';
+import { Sparkles, MapPin, Briefcase, Clock, X, IdCard, Download, Loader2 } from 'lucide-react';
 
 /**
  * 關於 IdeaX →「原創 IP 與 Agent」：介紹站上各個 Agent 角色的名字、職位與負責的業務。
@@ -81,8 +81,37 @@ const RESERVE = {
 };
 
 // 點小圖放大看身分證；Esc 或點背景關閉
-type Viewing = { src: string; alt: string; wide?: boolean };
+type Viewing = { src: string; alt: string; wide?: boolean; /** 有值就顯示「儲存為明信片」，下載用的檔名（不含副檔名） */ saveAs?: string };
+
+/** 把圖片轉成 PNG 存到使用者裝置（PNG 在手機相簿、電腦都打得開） */
+async function savePostcard(src: string, name: string) {
+  const blob = await fetch(src).then((r) => r.blob());
+  let out: Blob = blob;
+  try {
+    const bmp = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bmp.width; canvas.height = bmp.height;
+    canvas.getContext('2d')!.drawImage(bmp, 0, 0);
+    out = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b || blob), 'image/png'));
+  } catch {}
+  const ext = out.type === 'image/png' ? 'png' : 'webp';
+  const url = URL.createObjectURL(out);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${name}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
 const ImageViewer: React.FC<{ item: Viewing; onClose: () => void }> = ({ item, onClose }) => {
+  const [saving, setSaving] = useState<'idle' | 'saving' | 'done'>('idle');
+  const save = async () => {
+    if (!item.saveAs || saving === 'saving') return;
+    setSaving('saving');
+    try { await savePostcard(item.src, item.saveAs); setSaving('done'); window.setTimeout(() => setSaving('idle'), 2500); }
+    catch { setSaving('idle'); window.open(item.src, '_blank', 'noopener'); } // 下載失敗就直接開圖片，讓使用者長按儲存
+  };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -99,7 +128,20 @@ const ImageViewer: React.FC<{ item: Viewing; onClose: () => void }> = ({ item, o
       className="fixed inset-0 z-[300] flex items-center justify-center bg-stone-950/75 p-4 backdrop-blur-sm animate-in fade-in duration-150"
     >
       <div className={`relative w-full ${item.wide ? 'max-w-3xl' : 'max-w-[min(90vh,48rem)]'}`} onClick={(e) => e.stopPropagation()}>
-        <img src={item.src} alt={item.alt} className="w-full h-auto max-h-[88vh] object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200" />
+        <img src={item.src} alt={item.alt} className={`w-full h-auto ${item.saveAs ? 'max-h-[78vh]' : 'max-h-[88vh]'} object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200`} />
+        {item.saveAs && (
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving === 'saving'}
+              className="inline-flex items-center gap-2 rounded-full bg-amber-400 hover:bg-amber-300 disabled:opacity-70 px-5 py-2.5 text-sm font-black text-stone-950 shadow-lg cursor-pointer active:scale-95 transition-all"
+            >
+              {saving === 'saving' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {saving === 'done' ? '已儲存！' : '儲存為明信片'}
+            </button>
+          </div>
+        )}
         <button
           type="button"
           onClick={onClose}
@@ -132,7 +174,7 @@ export const AgentsIntroSection: React.FC = () => {
       </div>
       <button
         type="button"
-        onClick={() => setViewing({ src: '/agents/group.webp', alt: 'IdeaX 創點子角色群像' })}
+        onClick={() => setViewing({ src: '/agents/group.webp', alt: 'IdeaX 創點子角色群像', saveAs: 'IdeaX創點子-角色群像' })}
         aria-label="放大看角色群像"
         className="relative block w-full overflow-hidden rounded-2xl ring-1 ring-amber-200/80 shadow-sm cursor-zoom-in group"
       >
@@ -160,7 +202,7 @@ export const AgentsIntroSection: React.FC = () => {
             {a.idCard && (
               <button
                 type="button"
-                onClick={() => setViewing({ src: a.idCard!.full, alt: `${a.name}的創點國身分證`, wide: true })}
+                onClick={() => setViewing({ src: a.idCard!.full, alt: `${a.name}的創點國身分證`, wide: true, saveAs: `創點國身分證-${a.name.replace(/[（(].*?[)）]/g, '').trim()}` })}
                 title="看身分證"
                 aria-label={`放大看${a.name}的創點國身分證`}
                 className="group relative shrink-0 -mt-1 rounded-lg ring-1 ring-black/10 bg-white shadow-sm overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md hover:-rotate-2 cursor-zoom-in"
