@@ -151372,8 +151372,8 @@ var AGENT_PERSONAS = [
   {
     id: "u-vc-agent-sousou",
     username: "ideax_sousou",
-    name: "\u63A2\u7D22\u8005\u30FB\u641C\u641C",
-    title: "\u627E\u5DE5\u4F5C Agent",
+    name: "\u641C\u641C",
+    title: "\u63A2\u7D22\u8005\u3001\u5075\u67E5\u8207\u50B3\u4EE4",
     avatar: "/avatars/agent-sousou.webp",
     bio: "\u99D5\u8457\u7B4B\u6597\u96F2\u8DD1\u904D\u570B\u5167\u5916\u6C42\u8077\u7DB2\uFF0C\u5E6B\u4F60\u628A\u7B26\u5408\u689D\u4EF6\u7684\u8077\u7F3A\u4E00\u6B21\u627E\u9F4A\u3002",
     domain: "\u65E5\u5E38\u7591\u96E3"
@@ -157798,7 +157798,8 @@ async function confirmFinalAwardByAdmin(params) {
   await batch.commit();
   return { success: true, message: `\u5DF2\u6210\u529F\u78BA\u8A8D\u540D\u6B21 (\u7B2C ${params.finalRank} \u540D) \u8207\u76F8\u95DC\u734E\u52F5\u6838\u51C6\uFF01` };
 }
-var DATABASE_PROPOSALS_SEED_VERSION = "v2026_10_20_db_v9";
+var DATABASE_PROPOSALS_SEED_VERSION = "v2026_10_20_db_v10";
+var agentAuthorFields = (x2) => typeof x2?.id === "string" && x2.id.includes("-agent-") && x2.authorName ? { authorName: x2.authorName, ...x2.authorTitle ? { authorTitle: x2.authorTitle } : {} } : {};
 var isDatabaseSeedInProgress = false;
 var isDatabaseSeedDone = false;
 async function ensureProposalsSyncedToFirestore(force = false) {
@@ -157951,6 +157952,7 @@ async function ensureProposalsSyncedToFirestore(force = false) {
             {
               images: p.images || [],
               authorAvatar: p.authorAvatar || null,
+              ...agentAuthorFields(p),
               referencedPainPoint: p.referencedPainPoint || null,
               sourcePainPointTitle: p.sourcePainPointTitle || null,
               updatedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -157971,6 +157973,7 @@ async function ensureProposalsSyncedToFirestore(force = false) {
               title: q.title,
               description: q.description,
               authorAvatar: q.authorAvatar || null,
+              ...agentAuthorFields(q),
               coverImage: q.coverImage || null,
               galleryImages: q.galleryImages || null,
               vibeCodingData: q.vibeCodingData || null,
