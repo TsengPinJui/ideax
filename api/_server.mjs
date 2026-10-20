@@ -160960,7 +160960,12 @@ var PLATFORMS = [
   { name: "Cake", host: /(^|\.)(cake\.me|cakeresume\.com)$/i, detail: /^\/companies\/[^/]+\/jobs\/[^/?#]+/i, search: (kw) => `https://www.cake.me/jobs/${kw}`, site: "cake.me" },
   { name: "Yourator", host: /(^|\.)yourator\.co$/i, detail: /^\/companies\/[^/]+\/jobs\/\d+/i, site: "yourator.co" },
   { name: "Yes123", host: /(^|\.)yes123\.com\.tw$/i, detail: /job_refer_comp_job_detail|[?&](p_id|job_id)=/i, site: "yes123.com.tw" },
-  { name: "518\u718A\u73ED", host: /(^|\.)518\.com\.tw$/i, detail: /^\/job-[\w-]+\.html/i, site: "518.com.tw" },
+  { name: "518\u718A\u73ED", host: /(^|\.)518\.com\.tw$/i, detail: /^\/job-[\w-]+\.html/i, search: (kw) => `https://www.518.com.tw/job-index.html?ad=${kw}`, site: "518.com.tw" },
+  { name: "Meet.jobs", host: /(^|\.)meet\.jobs$/i, detail: /\/jobs\/\d+/i, site: "meet.jobs" },
+  { name: "Glints", host: /(^|\.)glints\.com$/i, detail: /\/opportunities\/jobs\/[^/]+\/[\w-]{8,}/i, site: "glints.com" },
+  { name: "\u53F0\u7063\u5C31\u696D\u901A", host: /(^|\.)taiwanjobs\.gov\.tw$/i, detail: /job_detail|jobdetail|HIRE_ID=|hireid=/i, site: "taiwanjobs.gov.tw" },
+  { name: "\u4E8B\u6C42\u4EBA", host: /(^|\.)dgpa\.gov\.tw$/i, detail: /WANTF0000[2-9]|[?&](wid|work_id)=/i, site: "web3.dgpa.gov.tw" },
+  { name: "Tasker\u51FA\u4EFB\u52D9", host: /(^|\.)tasker\.com\.tw$/i, detail: /\/cases\/\d+/i, site: "tasker.com.tw" },
   // 兼職／打工平台
   { name: "\u5C0F\u96DE\u4E0A\u5DE5", host: /(^|\.)chickpt\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: "chickpt.com.tw" },
   { name: "Worky", host: /(^|\.)worky\.com\.tw$/i, detail: /\/[\w-]*\d{3,}/, site: "worky.com.tw" },
@@ -160971,6 +160976,23 @@ var PLATFORMS = [
   { name: "JobsDB", host: /(^|\.)jobsdb\./i, detail: /\/job\/\d+/i, site: "jobsdb.com" },
   { name: "SEEK", host: /(^|\.)seek\.(com\.au|co\.nz)$/i, detail: /\/job\/\d+/i, site: "seek.com.au" },
   { name: "MyCareersFuture", host: /(^|\.)mycareersfuture\.gov\.sg$/i, detail: /\/job\//i, site: "mycareersfuture.gov.sg" },
+  // 日本、中國大陸、韓國、香港、歐美其他常見平台
+  { name: "doda", host: /(^|\.)doda\.jp$/i, detail: /JobSearchDetail|j_jid__\d+/i, site: "doda.jp" },
+  { name: "Green", host: /(^|\.)green-japan\.com$/i, detail: /\/company\/\d+\/job\/\d+/i, site: "green-japan.com" },
+  { name: "Daijob", host: /(^|\.)daijob\.com$/i, detail: /\/jobs\/detail\/\d+/i, site: "daijob.com" },
+  { name: "\u30EA\u30AF\u30CA\u30D3NEXT", host: /(^|\.)next\.rikunabi\.com$/i, detail: /viewjob|\/company\/cmi\d+\/nx\d+/i, site: "next.rikunabi.com" },
+  { name: "CTgoodjobs", host: /(^|\.)ctgoodjobs\.hk$/i, detail: /\/job\/[\w-]+\/\d+|\/jobs?\/.*\d{5,}/i, site: "ctgoodjobs.hk" },
+  { name: "BOSS\u76F4\u8058", host: /(^|\.)zhipin\.com$/i, detail: /\/job_detail\//i, site: "zhipin.com" },
+  { name: "\u524D\u7A0B\u7121\u6182", host: /(^|\.)51job\.com$/i, detail: /\/\d{6,}\.html/i, site: "51job.com" },
+  { name: "Saramin", host: /(^|\.)saramin\.co\.kr$/i, detail: /rec_idx=\d+/i, site: "saramin.co.kr" },
+  { name: "JobKorea", host: /(^|\.)jobkorea\.co\.kr$/i, detail: /\/Recruit\/GI_Read\/\d+/i, site: "jobkorea.co.kr" },
+  { name: "ZipRecruiter", host: /(^|\.)ziprecruiter\.com$/i, detail: /\/c\/[^/]+\/Job\/|\/jobs\/[\w-]+-[a-f0-9]{8}/i, site: "ziprecruiter.com" },
+  { name: "Wellfound", host: /(^|\.)wellfound\.com$/i, detail: /\/jobs\/\d+/i, site: "wellfound.com" },
+  { name: "StepStone", host: /(^|\.)stepstone\.(de|at|be|nl)$/i, detail: /stellenangebote--.*\d{6,}/i, site: "stepstone.de" },
+  { name: "Reed", host: /(^|\.)reed\.co\.uk$/i, detail: /\/jobs\/[\w-]+\/\d+/i, site: "reed.co.uk" },
+  { name: "Job Bank", host: /(^|\.)jobbank\.gc\.ca$/i, detail: /\/jobposting\/\d+/i, site: "jobbank.gc.ca" },
+  { name: "Remote OK", host: /(^|\.)remoteok\.(com|io)$/i, detail: /\/remote-jobs\/[\w-]+-\d+/i, site: "remoteok.com" },
+  { name: "We Work Remotely", host: /(^|\.)weworkremotely\.com$/i, detail: /\/remote-jobs\/[\w-]+/i, site: "weworkremotely.com" },
   { name: "LinkedIn", host: /(^|\.)linkedin\.com$/i, detail: /^\/jobs\/view\/[\w-]*\d+/i, search: (kw) => `https://www.linkedin.com/jobs/search/?keywords=${kw}`, site: "linkedin.com" }
 ];
 var LIST_PAGE = /\/(jobs\/search|search|joblist|job-index\.html|jobs\/?$)|[?&](keyword|ks|q|term|key_word)=/i;
@@ -161112,18 +161134,18 @@ async function verifyJobUrl(job, g) {
     candidates.slice(0, 3).map(async (c) => {
       let r2 = await checkJobPage(c.u, title, company);
       if (r2 === "unknown" || r2 === "mismatch") {
-        const r104 = await check104Job(c.u, title, company);
-        if (r104) r2 = r104;
+        const special = await check104Job(c.u, title, company) || await checkLinkedInJob(c.u, title, company);
+        if (special) r2 = special;
       }
       return { ...c, r: r2 };
     })
   );
   for (const c of checks) {
-    if (c.r === "ok") return { url: c.u, urlKind: "direct", verified: true, platform: platformOf(c.u)?.name };
+    if (c.r === "ok") return { url: cleanJobUrl(c.u), urlKind: "direct", verified: true, platform: platformOf(c.u)?.name };
     if (c.r === "dead" || c.r === "closed") sawDeadOrClosed = true;
     if (c.r === "unknown" && c.grounded && !fallbackGrounded) fallbackGrounded = c.u;
   }
-  if (fallbackGrounded) return { url: fallbackGrounded, urlKind: "direct", verified: false, platform: platformOf(fallbackGrounded)?.name };
+  if (fallbackGrounded) return { url: cleanJobUrl(fallbackGrounded), urlKind: "direct", verified: false, platform: platformOf(fallbackGrounded)?.name };
   const platformName = candidates[0] ? platformOf(candidates[0].u)?.name : listPages[0] ? platformOf(listPages[0])?.name : void 0;
   const found = await findJobPageViaListings(title, company, listPages, platformName || job.sourcePlatform);
   if (found) return { url: found, urlKind: "direct", verified: true, platform: platformOf(found)?.name };
@@ -161191,6 +161213,27 @@ async function check104Job(url, title, company) {
     return null;
   }
 }
+async function checkLinkedInJob(url, title, company) {
+  const m2 = url.match(/linkedin\.com\/jobs\/view\/(?:[\w-]*-)?(\d{6,})/i);
+  if (!m2) return null;
+  try {
+    const r2 = await fetchWithTimeout(`https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${m2[1]}`, { headers: { Accept: "text/html" } }, 5e3);
+    if (r2.status === 404 || r2.status === 410) return "dead";
+    if (!r2.ok) return null;
+    const text = (await r2.text()).replace(/<[^>]+>/g, " ").replace(/\s+/g, "");
+    if (/Nolongeracceptingapplications|此職缺已不再接受應徵/i.test(text)) return "closed";
+    const c = companyCore(company), t2 = titleCore(title);
+    return c.length >= 2 && text.includes(c) || t2.length >= 2 && text.includes(t2) ? "ok" : "mismatch";
+  } catch {
+    return null;
+  }
+}
+function cleanJobUrl(u) {
+  const li = u.match(/^(https?:\/\/[^/]*linkedin\.com\/jobs\/view\/(?:[\w-]*-)?\d{6,})/i);
+  if (li) return li[1];
+  if (/104\.com\.tw\/job\//i.test(u)) return u.split("?")[0].split("#")[0];
+  return u.split("#")[0];
+}
 async function find104Job(title, company) {
   const kw = encodeURIComponent(`${company} ${title}`.trim());
   const c = companyCore(company), t2 = titleCore(title);
@@ -161222,7 +161265,8 @@ async function findJobPageViaListings(title, company, listPages, platformName) {
   const pages = [...listPages];
   const pl = PLATFORMS.find((p) => p.name === platformName || platformName && platformName.includes(p.name.replace("\u4EBA\u529B\u9280\u884C", "")));
   const kw = encodeURIComponent(`${company} ${title}`.trim());
-  if (pl?.search) pages.push(pl.search(kw));
+  if (pl?.name === "LinkedIn") pages.push(`https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${kw}&start=0`);
+  else if (pl?.search) pages.push(pl.search(kw));
   if (!pl || pl.name === "104\u4EBA\u529B\u9280\u884C") {
     const u = await find104Job(title, company);
     if (u) return u;
@@ -161233,7 +161277,7 @@ async function findJobPageViaListings(title, company, listPages, platformName) {
       if (!r2.ok) continue;
       const html = (await r2.text()).slice(0, 15e5);
       const u = pickJobLinkFromHtml(html, page, title, company);
-      if (u) return u;
+      if (u) return cleanJobUrl(u);
     } catch {
     }
   }
@@ -164569,13 +164613,22 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
 }`;
     const isPartTime = Boolean(partTimeHint(rawQuery));
     const isAbroad = Boolean(regionHint(rawQuery));
-    const groups = [
-      { label: "\u4E3B\u8981\u4EBA\u529B\u9280\u884C", focus: "104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED", count: "12 ~ 15" },
-      { label: "\u65B0\u5275\u8207\u4F01\u696D\u5B98\u7DB2", focus: "Cake\u3001Yourator\u3001LinkedIn\uFF0C\u4EE5\u53CA\u5404\u516C\u53F8\u5B98\u7DB2\u7684\u5FB5\u624D\u9801", count: "12 ~ 15" },
-      { label: "\u76F8\u8FD1\u8077\u7A31", focus: "\u628A\u689D\u4EF6\u88E1\u7684\u8077\u7A31\u63DB\u6210\u76F8\u8FD1\u6216\u540C\u7FA9\u7684\u8077\u7A31\uFF08\u4F8B\u5982\u300C\u9580\u5E02\u4EBA\u54E1\u300D\u4E5F\u627E\u300C\u9580\u5E02\u5C08\u54E1\u3001\u5E97\u54E1\u3001\u5132\u5099\u5E79\u90E8\u300D\uFF09\uFF0C\u5728\u5404\u5927\u6C42\u8077\u7DB2\u7AD9\u641C\u5C0B", count: "10 ~ 15" }
-    ];
-    if (isPartTime) groups.push({ label: "\u517C\u8077\u5E73\u53F0", focus: "\u5C0F\u96DE\u4E0A\u5DE5\u3001Worky\u3001518\u718A\u73ED\u517C\u8077\u3001Yes123 \u6253\u5DE5\u30011111 \u517C\u8077", count: "12 ~ 15" });
-    if (isAbroad) groups.push({ label: "\u570B\u5916\u6C42\u8077\u5E73\u53F0", focus: "LinkedIn\u3001Indeed\u3001Glassdoor \u8207\u8077\u7F3A\u6240\u5728\u570B\u5BB6\u7684\u4E3B\u8981\u6C42\u8077\u7DB2\u7AD9", count: "12 ~ 15" });
+    const abroadOnly = isAbroad && !/台灣與國外皆可|台灣＋國外|台灣和國外|國內外/.test(rawQuery);
+    const groups = [];
+    if (!abroadOnly) {
+      groups.push(
+        { label: "\u4E3B\u8981\u4EBA\u529B\u9280\u884C", focus: "104\u4EBA\u529B\u9280\u884C\u30011111\u4EBA\u529B\u9280\u884C\u3001Yes123\u3001518\u718A\u73ED", count: "12 ~ 15" },
+        { label: "\u65B0\u5275\u8207\u5916\u5546\u5E73\u53F0", focus: "Cake\u3001Yourator\u3001Meet.jobs\u3001Glints\u3001LinkedIn\u3001Indeed \u53F0\u7063", count: "12 ~ 15" },
+        { label: "\u4F01\u696D\u5B98\u7DB2", focus: "\u5404\u516C\u53F8\u5B98\u7DB2\u7684\u5FB5\u624D\u9801\uFF08careers\uFF0F\u4EBA\u624D\u62DB\u52DF\u9801\uFF09\uFF0C\u5305\u542B\u4E0A\u5E02\u6AC3\u516C\u53F8\u3001\u5916\u5546\u8207\u4E2D\u5C0F\u4F01\u696D", count: "10 ~ 15" },
+        { label: "\u516C\u90E8\u9580\u8207\u7522\u696D\u5E73\u53F0", focus: "\u53F0\u7063\u5C31\u696D\u901A\u3001\u4E8B\u6C42\u4EBA\uFF08\u516C\u8077\uFF09\u3001\u570B\u71DF\u4E8B\u696D\u62DB\u8003\u3001\u5404\u7E23\u5E02\u5C31\u696D\u670D\u52D9\u7AD9\uFF0C\u4EE5\u53CA\u9019\u500B\u8077\u52D9\u6240\u5C6C\u7522\u696D\u7684\u5C08\u696D\u6C42\u8077\u7DB2\u7AD9\u6216\u516C\u6703\u5FB5\u624D", count: "8 ~ 12" }
+      );
+    }
+    groups.push({ label: "\u76F8\u8FD1\u8077\u7A31", focus: "\u628A\u689D\u4EF6\u88E1\u7684\u8077\u7A31\u63DB\u6210\u76F8\u8FD1\u6216\u540C\u7FA9\u7684\u8077\u7A31\uFF08\u4F8B\u5982\u300C\u9580\u5E02\u4EBA\u54E1\u300D\u4E5F\u627E\u300C\u9580\u5E02\u5C08\u54E1\u3001\u5E97\u54E1\u3001\u5132\u5099\u5E79\u90E8\u300D\uFF09\uFF0C\u5728\u5404\u5927\u6C42\u8077\u7DB2\u7AD9\u641C\u5C0B", count: "10 ~ 15" });
+    if (isPartTime) groups.push({ label: "\u517C\u8077\u5E73\u53F0", focus: "\u5C0F\u96DE\u4E0A\u5DE5\u3001Worky\u3001518\u718A\u73ED\u517C\u8077\u3001Yes123 \u6253\u5DE5\u30011111 \u517C\u8077\u3001Tasker \u51FA\u4EFB\u52D9\uFF08\u63A5\u6848\uFF09", count: "12 ~ 15" });
+    if (isAbroad) {
+      groups.push({ label: "\u570B\u5916\u6C42\u8077\u5E73\u53F0", focus: "LinkedIn\u3001Indeed\u3001Glassdoor \u8207\u8077\u7F3A\u6240\u5728\u570B\u5BB6\u7684\u4E3B\u8981\u6C42\u8077\u7DB2\u7AD9", count: "12 ~ 15" });
+      groups.push({ label: "\u570B\u5916\u5728\u5730\u5E73\u53F0", focus: "\u8077\u7F3A\u6240\u5728\u570B\u5BB6\u6216\u57CE\u5E02\u7684\u5728\u5730\u6C42\u8077\u7DB2\u7AD9\uFF08\u4F8B\u5982\u65E5\u672C doda\u3001Green\u3001Daijob\uFF1B\u9999\u6E2F JobsDB\u3001CTgoodjobs\uFF1B\u65B0\u52A0\u5761 MyCareersFuture\uFF1B\u9060\u7AEF We Work Remotely\u3001Remote OK\uFF09\u8207\u4F01\u696D\u5B98\u7DB2", count: "10 ~ 15" });
+    }
     let batchNo = 0;
     const runGroup = async (g) => {
       if (!ai) return;
@@ -164587,8 +164640,9 @@ app.post("/api/job-explorer/search-stream", async (req, res) => {
 \u898F\u5B9A\uFF1A
 1. \u76E1\u91CF\u5217\u51FA ${g.count} \u7B46\u4E0D\u540C\u516C\u53F8\u6216\u4E0D\u540C\u8077\u7F3A\uFF0C\u8D8A\u591A\u8D8A\u597D\uFF0C\u4F46\u6BCF\u4E00\u7B46\u90FD\u5FC5\u9808\u771F\u7684\u7B26\u5408\u689D\u4EF6\u3002
 2. \u4E0D\u53EF\u5305\u542B\u5DF2\u95DC\u9589\u3001\u5DF2\u4E0B\u67B6\u6216\u904E\u671F\u7684\u8077\u7F3A\uFF0C\u4E0D\u53EF\u865B\u69CB\u516C\u53F8\u6216\u8077\u7F3A\u3002
-3. "url" \u586B\u641C\u5C0B\u5230\u7684\u8077\u7F3A\u9801\u7DB2\u5740\uFF1B\u4E0D\u78BA\u5B9A\u6642\u7559\u7A7A\u5B57\u4E32\uFF0C\u4E0D\u8981\u81EA\u5DF1\u7DE8\u7DB2\u5740\u3002
-4. \u6BCF\u7B46\u6458\u8981 30 \u5B57\u5167\u3002
+3. "url" \u5FC5\u9808\u662F\u300C\u55AE\u4E00\u8077\u7F3A\u300D\u7684\u5167\u9801\u7DB2\u5740\uFF08\u4F8B\u5982 104.com.tw/job/xxxx\u30011111.com.tw/job/123456\u3001linkedin.com/jobs/view/123456\uFF09\uFF0C\u76F4\u63A5\u7167\u641C\u5C0B\u7D50\u679C\u88E1\u7684\u7DB2\u5740\u586B\uFF0C\u4E0D\u8981\u586B\u641C\u5C0B\u7D50\u679C\u9801\u3001\u8077\u7F3A\u5217\u8868\u9801\u6216\u516C\u53F8\u9996\u9801\uFF1B\u627E\u4E0D\u5230\u8A72\u8077\u7F3A\u5167\u9801\u6642\u7559\u7A7A\u5B57\u4E32\uFF0C\u4E0D\u8981\u81EA\u5DF1\u7DE8\u7DB2\u5740\u3002
+4. "sourcePlatform" \u5BEB\u8077\u7F3A\u5BE6\u969B\u6240\u5728\u7684\u7DB2\u7AD9\u540D\u7A31\uFF08\u4F8B\u5982 104\u4EBA\u529B\u9280\u884C\u3001LinkedIn\u3001\u516C\u53F8\u5B98\u7DB2\uFF09\u3002
+5. \u6BCF\u7B46\u6458\u8981 30 \u5B57\u5167\u3002
 ${JOB_JSON_SPEC}`;
         const r2 = await ai.models.generateContent({
           model: "gemini-2.5-flash",
