@@ -308,6 +308,22 @@ export const JobExplorerView: React.FC = () => {
   const [userBaseCity, setUserBaseCity] = useState('台北市');
   const [selectedCategory, setSelectedCategory] = useState('全部');
   const [minSalaryFilter, setMinSalaryFilter] = useState<number>(0);
+  // 篩選：正職／兼職、台灣／國外（含國家）
+  const [jobTypeFilter, setJobTypeFilter] = useState<'全部' | '正職' | '兼職' | '實習'>('全部');
+  const [regionFilter, setRegionFilter] = useState<'台灣' | '國外' | '台灣與國外'>('台灣');
+  const [countryFilter, setCountryFilter] = useState<string[]>([]);
+  const isHourlyFilter = jobTypeFilter === '兼職';
+  /** 篩選條件組成的搜尋說明（正職／兼職、範圍、時薪） */
+  const filterBriefParts = (): string[] => {
+    const parts: string[] = [];
+    if (jobTypeFilter !== '全部') parts.push(`工作型態：${jobTypeFilter === '兼職' ? '兼職工讀' : jobTypeFilter}`);
+    if (regionFilter !== '台灣') {
+      const v = regionFilter === '國外' ? '工作範圍：國外' : '工作範圍：台灣與國外皆可';
+      parts.push(countryFilter.length ? `${v}（${countryFilter.join('、')}）` : v);
+    }
+    if (isHourlyFilter && minSalaryFilter > 0) parts.push(`薪水：時薪 ${minSalaryFilter} 元以上`);
+    return parts;
+  };
   const [maxExpFilter, setMaxExpFilter] = useState<number | 'all'>('all');
   const [maxEduFilter, setMaxEduFilter] = useState<number | 'all'>('all');
   const [showSavedOnly, setShowSavedOnly] = useState(false);
@@ -518,14 +534,20 @@ export const JobExplorerView: React.FC = () => {
     msgIdToMark?: string,
     useGeminiFallback = false
   ) => {
-    const brief = (
+    const rawBrief = (
       confirmedBriefToUse ||
       pendingFallbackBrief ||
       pendingConfirmedBrief ||
       keyword.trim() ||
       `${selectedCity !== '全部' ? selectedCity : ''}${selectedCategory !== '全部' ? selectedCategory : ''}職缺`
     ).trim();
-    if (!brief) return;
+    if (!rawBrief) return;
+    // 篩選裡設定的正職／兼職、台灣／國外，對話裡沒提到的話一併帶入
+    const extra = filterBriefParts().filter((p) => {
+      const key = p.split('：')[0];
+      return !rawBrief.includes(key);
+    });
+    const brief = [rawBrief, ...extra].join('、');
 
     if (msgIdToMark) {
       setMessages((prev) =>
@@ -574,7 +596,7 @@ export const JobExplorerView: React.FC = () => {
             city: selectedCity,
             userBaseCity,
             category: selectedCategory,
-            minSalary: minSalaryFilter,
+            minSalary: isHourlyFilter ? 0 : minSalaryFilter,
             maxExperienceYears: maxExpFilter,
             maxEducationLevel: maxEduFilter,
             carePoints: userCarePoints,
@@ -663,7 +685,7 @@ export const JobExplorerView: React.FC = () => {
               city: selectedCity,
               userBaseCity,
               category: selectedCategory,
-              minSalary: minSalaryFilter,
+              minSalary: isHourlyFilter ? 0 : minSalaryFilter,
               maxExperienceYears: maxExpFilter,
               maxEducationLevel: maxEduFilter,
               carePoints: userCarePoints,
@@ -798,7 +820,7 @@ export const JobExplorerView: React.FC = () => {
             city: selectedCity,
             userBaseCity,
             category: selectedCategory,
-            minSalary: minSalaryFilter,
+            minSalary: isHourlyFilter ? 0 : minSalaryFilter,
             carePoints: detected.length > 0 ? detected : userCarePoints,
           },
         }),
@@ -894,11 +916,13 @@ export const JobExplorerView: React.FC = () => {
     if (selectedCity !== '全部') count++;
     if (selectedCategory !== '全部') count++;
     if (minSalaryFilter > 0) count++;
+    if (jobTypeFilter !== '全部') count++;
+    if (regionFilter !== '台灣') count++;
     if (maxExpFilter !== 'all') count++;
     if (maxEduFilter !== 'all') count++;
     if (userCarePoints.length > 0) count++;
     return count;
-  }, [keyword, selectedCity, selectedCategory, minSalaryFilter, maxExpFilter, maxEduFilter, userCarePoints]);
+  }, [keyword, selectedCity, selectedCategory, minSalaryFilter, maxExpFilter, maxEduFilter, userCarePoints, jobTypeFilter, regionFilter]);
 
   // 合併目前列表（或僅顯示收藏職缺）並進行篩選與排序
   const filteredAndSortedJobs = useMemo(() => {
@@ -1054,6 +1078,9 @@ export const JobExplorerView: React.FC = () => {
     setSelectedCity('全部');
     setSelectedCategory('全部');
     setMinSalaryFilter(0);
+    setJobTypeFilter('全部');
+    setRegionFilter('台灣');
+    setCountryFilter([]);
     setMaxExpFilter('all');
     setMaxEduFilter('all');
     setUserCarePoints([]);
@@ -1151,7 +1178,7 @@ export const JobExplorerView: React.FC = () => {
           {/* 2. 可收合篩選面板 */}
           {isFilterOpen && (
             <div className="pt-2.5 border-t border-stone-100 space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <input
                   type="text"
                   value={keyword}
@@ -1161,7 +1188,39 @@ export const JobExplorerView: React.FC = () => {
                 />
 
                 <select
+                  value={jobTypeFilter}
+                  onChange={(e) => {
+                    const v = e.target.value as typeof jobTypeFilter;
+                    // 正職用月薪、兼職用時薪：切換時清掉薪資門檻
+                    if ((v === '兼職') !== isHourlyFilter) setMinSalaryFilter(0);
+                    setJobTypeFilter(v);
+                  }}
+                  className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
+                >
+                  <option value="全部">正職／兼職：不限</option>
+                  <option value="正職">正職</option>
+                  <option value="兼職">兼職／工讀</option>
+                  <option value="實習">實習</option>
+                </select>
+
+                <select
+                  value={regionFilter}
+                  onChange={(e) => {
+                    const v = e.target.value as typeof regionFilter;
+                    setRegionFilter(v);
+                    if (v === '台灣') setCountryFilter([]);
+                    if (v === '國外') setSelectedCity('全部');
+                  }}
+                  className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
+                >
+                  <option value="台灣">範圍：台灣</option>
+                  <option value="國外">國外</option>
+                  <option value="台灣與國外">台灣＋國外</option>
+                </select>
+
+                <select
                   value={selectedCity}
+                  disabled={regionFilter === '國外'}
                   onChange={(e) => setSelectedCity(e.target.value)}
                   className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
                 >
@@ -1196,13 +1255,16 @@ export const JobExplorerView: React.FC = () => {
                   onChange={(e) => setMinSalaryFilter(Number(e.target.value))}
                   className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
                 >
-                  <option value={0}>薪資：不限</option>
-                  <option value={currentMinimumWage().monthly}>{currentMinimumWage().monthly.toLocaleString('en-US')} 元以上（最低工資）</option>
-                  <option value={35000}>35,000 元以上</option>
-                  <option value={45000}>45,000 元以上</option>
-                  <option value={60000}>60,000 元以上</option>
-                  <option value={80000}>80,000 元以上</option>
-                  <option value={100000}>100,000 元以上</option>
+                  <option value={0}>{isHourlyFilter ? '時薪：不限' : '薪資：不限'}</option>
+                  {(isHourlyFilter
+                    ? [currentMinimumWage().hourly, 220, 250, 300, 400]
+                    : [currentMinimumWage().monthly, 35000, 45000, 60000, 80000, 100000]
+                  ).map((v, i) => (
+                    <option key={v} value={v}>
+                      {isHourlyFilter ? `時薪 ${v} 元以上` : `${v.toLocaleString('en-US')} 元以上`}
+                      {i === 0 ? '（最低工資）' : ''}
+                    </option>
+                  ))}
                 </select>
 
                 <select
@@ -1230,6 +1292,28 @@ export const JobExplorerView: React.FC = () => {
                   <option value="5">碩士以下</option>
                 </select>
               </div>
+
+              {regionFilter !== '台灣' && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-semibold text-stone-500">國家／地區（可複選，不選就是全部國外）：</span>
+                  {JOB_COUNTRIES.map((c) => {
+                    const on = countryFilter.includes(c);
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => setCountryFilter((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                          on ? 'bg-[#1e3a8a] text-white border-[#1e3a8a]' : 'bg-white hover:bg-blue-50/50 text-stone-600 border-stone-200'
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -1280,10 +1364,10 @@ export const JobExplorerView: React.FC = () => {
                     disabled={isSearching || isRegulating}
                     onClick={() => {
                       setIsFilterOpen(false);
-                      void handleForwardToExplorerAgent(
+                      const baseQuery =
                         keyword.trim() ||
-                          `${selectedCity !== '全部' ? selectedCity : ''}${selectedCategory !== '全部' ? selectedCategory : '職缺'}`
-                      );
+                        `${selectedCity !== '全部' ? selectedCity : ''}${selectedCategory !== '全部' ? selectedCategory : '職缺'}`;
+                      void handleForwardToExplorerAgent([baseQuery, ...filterBriefParts()].join('、'));
                     }}
                     className="px-3.5 py-1.5 rounded-lg bg-[#1e3a8a] hover:bg-[#1e40af] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
                   >
