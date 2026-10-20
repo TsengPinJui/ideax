@@ -31,7 +31,7 @@ const AGENTS: Agent[] = [
   },
   {
     name: '搜搜',
-    title: '探索者、偵查與傳令',
+    title: '探索者 Agent、偵查與傳令',
     img: '/agents/sousou.webp',
     idCard: { thumb: '/agents/idcard-sousou-thumb.webp', full: '/agents/idcard-sousou.webp' },
     intro: '駕著筋斗雲跑遍各大求職平台，幫你把符合條件的職缺一次找齊。',
