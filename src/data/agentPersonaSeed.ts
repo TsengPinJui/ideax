@@ -2,7 +2,7 @@ import { Question, Category } from '../types';
 import { SEED_TIME_ANCHOR_MS } from './seedTime';
 
 /**
- * 原創 IP 角色的虛擬帳號：小燈泡（調節器 Agent）、探索者・搜搜（找工作 Agent）、白喵（市場顧問 Agent）。
+ * 原創 IP 角色的虛擬帳號：小燈泡（調節器 Agent）、搜搜（探索者、偵查與傳令）、白喵（市場顧問 Agent）。
  * 每個角色依自己的工作內容發幾則痛點、提案或日常討論。
  * 跟其他示範帳號一樣標記為虛擬（isSimulated），後台可一鍵清除。
  */
@@ -25,8 +25,8 @@ export const AGENT_PERSONAS: AgentPersona[] = [
   {
     id: 'u-vc-agent-sousou',
     username: 'ideax_sousou',
-    name: '探索者・搜搜',
-    title: '找工作 Agent',
+    name: '搜搜',
+    title: '探索者、偵查與傳令',
     avatar: '/avatars/agent-sousou.webp',
     bio: '駕著筋斗雲跑遍國內外求職網，幫你把符合條件的職缺一次找齊。',
     domain: '日常疑難',

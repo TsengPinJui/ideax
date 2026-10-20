@@ -1,5 +1,6 @@
-import React from 'react';
-import { Sparkles, MapPin, Briefcase, Clock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Sparkles, MapPin, Briefcase, Clock, X, IdCard } from 'lucide-react';
 
 /**
  * 關於 IdeaX →「原創 IP 與 Agent」：介紹站上各個 Agent 角色的名字、職位與負責的業務。
@@ -9,6 +10,8 @@ type Agent = {
   name: string;
   title: string;
   img?: string;
+  /** 創點國虛擬身分證（小圖、原圖） */
+  idCard?: { thumb: string; full: string };
   intro: string;
   duties: string[];
   spots: string[];
@@ -20,15 +23,17 @@ const AGENTS: Agent[] = [
     name: '小燈泡',
     title: '調節器 Agent',
     img: '/agents/xiaodengpao.webp',
+    idCard: { thumb: '/agents/idcard-xiaodengpao-thumb.webp', full: '/agents/idcard-xiaodengpao.webp' },
     intro: 'IdeaX 的站內嚮導。聽懂你想問什麼，再把問題轉給最適合的助理處理。',
     duties: ['站內導覽與功能說明', '聽懂需求、分派給合適的 Agent', '客服問題的第一線接待'],
     spots: ['全站右下角'],
     accent: 'from-amber-100 to-yellow-50 border-amber-200',
   },
   {
-    name: '探索者・搜搜',
-    title: '找工作 Agent',
+    name: '搜搜',
+    title: '探索者、偵查與傳令',
     img: '/agents/sousou.webp',
+    idCard: { thumb: '/agents/idcard-sousou-thumb.webp', full: '/agents/idcard-sousou.webp' },
     intro: '駕著筋斗雲跑遍各大求職平台，幫你把符合條件的職缺一次找齊。',
     duties: ['跨平台搜尋正職、兼職與國外職缺', '依條件整理、排序職缺', '盡量直接連到職缺本頁'],
     spots: ['匯職缺頁左下角'],
@@ -38,6 +43,7 @@ const AGENTS: Agent[] = [
     name: '白喵',
     title: '市場顧問 Agent',
     img: '/agents/baimiao.webp',
+    idCard: { thumb: '/agents/idcard-baimiao-thumb.webp', full: '/agents/idcard-baimiao.webp' },
     intro: '哈基米！剛被 IdeaX 聘為市場顧問，負責分析報告、找專家、獵人頭、貼標籤，偶爾還會被 call 去當和事佬。',
     duties: ['題目自動分類與貼標籤', '智慧獵頭、專家媒合', '付費深度分析報告', '交易爭議調解（和事佬）'],
     spots: ['首頁主題專區上方', '提案編輯頁', '付費獵頭', '付費分析報告', '聊天室調解'],
@@ -51,7 +57,42 @@ const UPCOMING: Pick<Agent, 'name' | 'title' | 'duties'>[] = [
   { name: 'AICRM', title: '三合一 Agent（雷達＆軍師＆特助）', duties: ['案件雷達巡航', '成案意向分析', '建議最佳跟進時機'] },
 ];
 
-export const AgentsIntroSection: React.FC = () => (
+// 點小圖放大看身分證；Esc 或點背景關閉
+const IdCardViewer: React.FC<{ agent: Agent; onClose: () => void }> = ({ agent, onClose }) => {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${agent.name}的創點國身分證`}
+      onClick={onClose}
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-stone-950/75 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+    >
+      <div className="relative w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+        <img src={agent.idCard!.full} alt={`${agent.name}的創點國身分證`} className="w-full h-auto rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200" />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="關閉"
+          className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 w-9 h-9 rounded-full bg-white text-stone-800 shadow-lg flex items-center justify-center hover:bg-stone-100 cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+export const AgentsIntroSection: React.FC = () => {
+  const [viewing, setViewing] = useState<Agent | null>(null);
+  return (
   <div className="space-y-6 animate-in fade-in duration-200">
     <div className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-yellow-50 p-5 sm:p-7 shadow-xs">
       <div className="flex items-center gap-2">
@@ -71,12 +112,28 @@ export const AgentsIntroSection: React.FC = () => (
           <div className="h-40 flex items-end justify-center">
             {a.img && <img src={a.img} alt={a.name} loading="lazy" className="max-h-40 w-auto object-contain drop-shadow-sm" />}
           </div>
-          <div>
-            <h3 className="text-base font-black text-stone-900">{a.name}</h3>
-            <div className="mt-0.5 inline-flex items-center gap-1 text-xs font-bold text-stone-700">
-              <Briefcase className="w-3.5 h-3.5" />
-              {a.title}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-base font-black text-stone-900">{a.name}</h3>
+              <div className="mt-0.5 inline-flex items-center gap-1 text-xs font-bold text-stone-700">
+                <Briefcase className="w-3.5 h-3.5 shrink-0" />
+                {a.title}
+              </div>
             </div>
+            {a.idCard && (
+              <button
+                type="button"
+                onClick={() => setViewing(a)}
+                title="看身分證"
+                aria-label={`放大看${a.name}的創點國身分證`}
+                className="group relative shrink-0 -mt-1 rounded-lg ring-1 ring-black/10 bg-white shadow-sm overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md hover:-rotate-2 cursor-zoom-in"
+              >
+                <img src={a.idCard.thumb} alt="" loading="lazy" width={96} height={64} className="block w-24 h-16 object-cover" />
+                <span className="absolute bottom-0.5 right-0.5 inline-flex items-center gap-0.5 rounded-md bg-stone-900/70 px-1 py-px text-[9px] font-bold text-white">
+                  <IdCard className="w-2.5 h-2.5" />身分證
+                </span>
+              </button>
+            )}
           </div>
           <p className="text-xs text-stone-600 leading-relaxed">{a.intro}</p>
           <ul className="text-xs text-stone-700 space-y-1">
@@ -111,7 +168,9 @@ export const AgentsIntroSection: React.FC = () => (
         ))}
       </div>
     </div>
+    {viewing && <IdCardViewer agent={viewing} onClose={() => setViewing(null)} />}
   </div>
-);
+  );
+};
 
 export default AgentsIntroSection;
