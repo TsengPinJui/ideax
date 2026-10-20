@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PublishedPlatformsBadges, usePlatformLinkChooser, platformLinksOf } from './PublishedPlatforms';
 import { Question, Answer } from '../types';
 import { getQuestionVibeCategories } from './VibeCodingExhibitionView';
 import { ProposalChangelogSection } from './ProposalChangelogSection';
@@ -395,7 +396,11 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
     meta.captions[activeImageIdx] ||
     `${question.appName || question.title.split('：')[0]} 畫面 ${activeImageIdx + 1}`;
 
-  const demoUrl = question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl || '';
+  const platformChooser = usePlatformLinkChooser();
+  const workUrl = question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl || '';
+  const chooserItem = { title: question.appName || question.title, demoUrl: workUrl, platforms: question.publishedPlatforms };
+  // 作者沒填作品網址、但有填平台網址時，外部連結按鈕也照樣出現（嵌入預覽只用作品網址）
+  const demoUrl = workUrl || platformLinksOf(question.publishedPlatforms)[0]?.url || '';
   const previewMode: 'embed' | 'external' =
     question.previewMode || question.vibeCodingData?.previewMode || 'embed';
   const versionLabel = question.currentVersion || question.version || 'v1.0.0';
@@ -573,7 +578,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
                   href={demoUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => platformChooser.onLinkClick(e, chooserItem)}
                   className="shrink-0 px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1 transition-colors"
                 >
                   <span>開啟網站</span>
@@ -667,6 +672,7 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
               href={demoUrl}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => platformChooser.onLinkClick(e, chooserItem)}
               className="px-3.5 py-2 rounded-lg border border-indigo-600 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors"
             >
               <span>前往網站體驗</span>
@@ -756,13 +762,15 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
         )}
       </section>
 
-      {demoUrl && (
+      {workUrl && (
         <VibeCodingEmbedPreview
-          url={demoUrl}
+          url={workUrl}
           title={appName || question.title}
           previewMode={previewMode}
         />
       )}
+
+      {platformChooser.chooser}
 
       {/* 作品安全與責任歸屬警示橫幅 */}
       <div className="p-3.5 sm:p-4 rounded-xl bg-amber-50/90 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -929,6 +937,13 @@ export const VibeCodingCaseDetailContent: React.FC<VibeCodingCaseDetailContentPr
               <p className="text-xs font-mono text-stone-700 bg-stone-50 p-2.5 rounded-lg border border-stone-200 leading-relaxed">
                 {question.techArchitecture}
               </p>
+            )}
+
+            {question.publishedPlatforms && question.publishedPlatforms.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-[11px] font-bold text-stone-500">已上架平台</div>
+                <PublishedPlatformsBadges platforms={question.publishedPlatforms} />
+              </div>
             )}
 
             <div className="space-y-2.5">

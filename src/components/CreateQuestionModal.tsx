@@ -45,6 +45,8 @@ import {
   Images,
 } from 'lucide-react';
 import { PublishEffectPreviewModal } from './PublishEffectPreviewModal';
+import { PublishedPlatformsPicker, normalizePlatforms } from './PublishedPlatforms';
+import type { PublishedPlatform } from '../types';
 import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from '../utils/youtubeUtils';
 import {
   processUploadedImageFile,
@@ -207,6 +209,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
   const [techArchitecture, setTechArchitecture] = useState<string>('');
+  const [publishedPlatforms, setPublishedPlatforms] = useState<PublishedPlatform[]>([]);
   const [demoUrl, setDemoUrl] = useState<string>('');
   const [previewMode, setPreviewMode] = useState<'embed' | 'external'>('embed');
   const [currentVersion, setCurrentVersion] = useState<string>('v1.0.0');
@@ -670,6 +673,7 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
           : undefined,
         proposalProgressStage: postType === 'innovation_proposal' ? (proposalProgressStage || undefined) : undefined,
         techArchitecture: techArchitecture.trim() || undefined,
+        publishedPlatforms: postType === 'vibecoding_app' && normalizePlatforms(publishedPlatforms).length ? normalizePlatforms(publishedPlatforms) : undefined,
         demoUrl: demoUrl.trim() || externalLink.trim() || undefined,
         externalLink: externalLink.trim() || undefined,
         previewMode: postType === 'vibecoding_app' ? previewMode : undefined,
@@ -1600,6 +1604,9 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
                     className="w-full px-3 py-2 rounded-xl border border-purple-200 focus:border-purple-500 text-xs text-stone-900 outline-none bg-white font-mono"
                   />
                 </div>
+
+                {/* 已上架平台（選填、可複選、可附網址） */}
+                <PublishedPlatformsPicker value={publishedPlatforms} onChange={setPublishedPlatforms} />
 
                 {/* 網站網址與嵌入預覽設定 (沿用 demoUrl 並搭配 previewMode) */}
                 <div className="space-y-2.5">

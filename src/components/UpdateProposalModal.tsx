@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { PublishedPlatformsPicker, normalizePlatforms } from './PublishedPlatforms';
+import type { PublishedPlatform } from '../types';
 import { Question, VIBECODING_CATEGORIES, InnovationProgressStage, INNOVATION_PROGRESS_STAGES } from '../types';
 import { useApp } from '../context/AppContext';
 import { PainPointAutocompleteInput } from './PainPointAutocompleteInput';
@@ -76,6 +78,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
     question.previewMode || ((question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl) ? 'embed' : 'external')
   );
   const [techArchitecture, setTechArchitecture] = useState(question.techArchitecture || '');
+  const [publishedPlatforms, setPublishedPlatforms] = useState<PublishedPlatform[]>(() => normalizePlatforms(question.publishedPlatforms));
   const [coverImage, setCoverImage] = useState(question.coverImage || question.vibeCodingData?.coverImageUrl || '');
   const [galleryImages, setGalleryImages] = useState<string[]>(
     question.galleryImages || question.vibeCodingData?.screenshots || []
@@ -115,6 +118,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
         question.previewMode || ((question.demoUrl || question.externalLink || question.vibeCodingData?.demoUrl) ? 'embed' : 'external')
       );
       setTechArchitecture(question.techArchitecture || '');
+      setPublishedPlatforms(normalizePlatforms(question.publishedPlatforms));
       setCoverImage(question.coverImage || question.vibeCodingData?.coverImageUrl || '');
       setGalleryImages(question.galleryImages || question.vibeCodingData?.screenshots || []);
       setYoutubeUrl(question.youtubeUrl || question.vibeCodingData?.youtubeUrl || '');
@@ -216,6 +220,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
       previewMode: isVibeCoding ? previewMode : undefined,
       fileLink: fileLink.trim(),
       techArchitecture: techArchitecture.trim(),
+      ...(isVibeCoding ? { publishedPlatforms: normalizePlatforms(publishedPlatforms) } : {}),
       coverImage: coverImage.trim(),
       galleryImages,
       youtubeUrl: youtubeUrl.trim(),
@@ -602,6 +607,7 @@ export const UpdateProposalModal: React.FC<UpdateProposalModalProps> = ({
                 />
               </div>
             )}
+            {isVibeCoding && <PublishedPlatformsPicker value={publishedPlatforms} onChange={setPublishedPlatforms} />}
 
             {/* Cover & Gallery Images (僅創新提案與軟體作品支援圖片上傳，痛點不上傳圖片卡片一律文字顯示) */}
             {question.postType !== 'pain_point' && question.postType !== 'seek_solution' && (

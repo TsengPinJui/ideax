@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { PublishedPlatformsBadges, usePlatformLinkChooser, platformLinksOf } from './PublishedPlatforms';
 import { Question, MarketViewMode, SpecialZone } from '../types';
 import { useApp } from '../context/AppContext';
 import {
@@ -115,6 +116,8 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
   const handleOpenCreate = onOpenCreateApp || onOpenCreateVibeCoding || (() => {});
 
   const [showZoneHelp, setShowZoneHelp] = useState(false);
+  // 點「體驗」時，先讓觀眾選作者填的上架平台
+  const platformChooser = usePlatformLinkChooser();
   const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubcat, setSelectedSubcat] = useState<string>('all');
@@ -605,6 +608,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
                   {app.techArchitecture}
                 </div>
               )}
+              <PublishedPlatformsBadges platforms={app.publishedPlatforms} size="sm" max={3} linkable={false} className="mt-1" />
             </div>
           </div>
 
@@ -645,12 +649,12 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
             </div>
 
             <div className="flex items-center gap-2">
-              {app.demoUrl && (
+              {(app.demoUrl || platformLinksOf(app.publishedPlatforms).length > 0) && (
                 <a
-                  href={app.demoUrl}
+                  href={app.demoUrl || platformLinksOf(app.publishedPlatforms)[0]?.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => platformChooser.onLinkClick(e, { title: app.appName || app.title, demoUrl: app.demoUrl, platforms: app.publishedPlatforms })}
                   className="px-2.5 py-1 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold text-[10px] flex items-center gap-1 transition-colors"
                   title="開啟線上試用網址"
                 >
@@ -675,6 +679,7 @@ export const VibeCodingExhibitionView: React.FC<VibeCodingExhibitionViewProps> =
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200">
+      {platformChooser.chooser}
       {/* 專區 Main Banner Block (與創點子統一佈局) */}
       <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-indigo-500/10 via-indigo-100/40 to-purple-50 border-2 border-indigo-300 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-8 -mt-8 w-36 h-36 bg-indigo-200/40 rounded-full blur-2xl pointer-events-none" />

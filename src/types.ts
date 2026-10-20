@@ -218,6 +218,9 @@ export interface DeliveryPhase {
   acceptedAt?: string;
 }
 
+/** VibeCoding 作品上架平台：名稱（預設選項或自填）＋選填網址 */
+export interface PublishedPlatform { name: string; url?: string }
+
 export type PostType = 'seek_solution' | 'pain_point' | 'chat_discussion' | 'innovation_proposal' | 'vibecoding_app'; // 尋求解答 | 提出痛點 | 閒聊討論 | 創新提案
 
 export type SpecialZone = 'all' | 'l0_discussion' | 'pain_points' | 'create_ideas' | 'vibecoding'; // 全部 | L0問題討論區 | 痛點許願池 | 創點子(創新提案)
@@ -958,6 +961,7 @@ export interface Question {
   screenshots?: string[]; // 截圖清單（相容 galleryImages）
   version?: string; // 相容 currentVersion
   vibeCodingData?: any; // VibeCoding 專屬規格與作品資料
+  publishedPlatforms?: PublishedPlatform[]; // VibeCoding 作品已上架的平台（選填，可附網址）
   isSimulated?: boolean; // 是否為系統模擬貼文（可於未來一鍵刪除）
   simulatedBatchId?: string; // 模擬資料批次標記 (例如 ideax_virtual_seed_v1)
   tipsHistory?: Array<{
