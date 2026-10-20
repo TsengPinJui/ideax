@@ -2977,7 +2977,6 @@ export const JobExplorerView: React.FC = () => {
               <Info className="w-4 h-4 stroke-[2.5]" />
             </span>
             <p className="text-xs sm:text-sm leading-relaxed text-amber-950">
-              <span className="font-black">提示：</span>
               <span className="font-bold">部分求職網站可能無法附上正確網址，建議以關鍵字再到該網站搜索一次，就能找到該職缺啦！</span>
             </p>
           </div>
