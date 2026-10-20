@@ -500,7 +500,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <Sparkles className="w-4 h-4 text-amber-500" />
+                <Users className="w-4 h-4 text-amber-500" />
                 <span>原創IP與Agent</span>
               </button>
 
