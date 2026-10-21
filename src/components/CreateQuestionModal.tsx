@@ -684,7 +684,8 @@ export const CreateQuestionModal: React.FC<CreateQuestionModalProps> = ({
         authorAvatar,
         authorTitle,
         isOfficial: isPlatformOfficial,
-        publishIdentity,
+        // 發布身分只有管理員才有（一般會員不帶這個欄位）
+        publishIdentity: currentUser?.role === 'admin' ? publishIdentity : undefined,
         phases,
         aiAnalysis: finalAiResult
           ? {

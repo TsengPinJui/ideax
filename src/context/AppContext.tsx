@@ -8722,6 +8722,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [questions, resolvedDisputeIds]);
 
   // 全站統一追蹤客服工單受理數量 (pending 狀態之工單)
+  const isAdminForTickets = currentUser?.role === 'admin' && Boolean(firebaseUidState);
   const [pendingTicketsCount, setPendingTicketsCount] = useState<number>(() => {
     try {
       const tickets = getStoredTickets();
@@ -8741,11 +8742,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     updateTicketsFromStorage();
 
-    const unsub = subscribeToTickets((firestoreTickets) => {
-      if (firestoreTickets) {
-        setPendingTicketsCount(firestoreTickets.filter((t) => t.status === 'pending').length);
-      }
-    });
+    // 全站工單只有管理員需要（待處理數）；一般訪客不訂閱，避免讀到別人的工單
+    const unsub = isAdminForTickets
+      ? subscribeToTickets((firestoreTickets) => {
+          if (firestoreTickets) {
+            setPendingTicketsCount(firestoreTickets.filter((t) => t.status === 'pending').length);
+          }
+        })
+      : null;
 
     window.addEventListener('storage', updateTicketsFromStorage);
     window.addEventListener('customer_tickets_updated', updateTicketsFromStorage);
@@ -8755,7 +8759,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.removeEventListener('storage', updateTicketsFromStorage);
       window.removeEventListener('customer_tickets_updated', updateTicketsFromStorage);
     };
-  }, []);
+  }, [isAdminForTickets]);
 
   // 🤖 24hr AI 特助自動排程巡航代操背景處理引擎 (全自動依未來排定時序即時發送私聊提案)
   useEffect(() => {
