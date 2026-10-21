@@ -161443,7 +161443,8 @@ function mascotAgentKey(agent) {
   }
   return "";
 }
-var EVENT_TYPES = ["impression", "click", "drag", "open", "ask", "collapse", "expand", "session", "sad", "comfort", "unanswered", "chat_mascot", "chat_agent", "mascot_answered", "escalated"];
+var EVENT_TYPES = ["impression", "click", "drag", "open", "ask", "collapse", "expand", "session", "sad", "comfort", "unanswered", "chat_mascot", "chat_agent", "mascot_answered", "escalated", "nav", "nav_offer"];
+var NAV_TARGETS = /* @__PURE__ */ new Set(["explore", "solvers", "headhunter", "membership", "my_projects", "ai_crm", "job_explorer", "mailto", "ticket", "customer_service", "create", "dash:points_receivables", "dash:subscriptions", "dash:profile", "dash:real_name_auth", "dash:expert_certification", "dash:customer_service_report"]);
 async function getDb3() {
   if (!hasAdminCredentials) return null;
   const { getFirestore: getFirestore3, FieldValue: FieldValue4 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
@@ -161461,6 +161462,12 @@ async function recordMascotEvent(input) {
   if (!conn) return false;
   const { db, FieldValue: FieldValue4 } = conn;
   const patch = { [`counts.${type}`]: FieldValue4.increment(1), updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+  if (type === "nav" || type === "nav_offer") {
+    const target = String(input.target || "");
+    if (!NAV_TARGETS.has(target)) return false;
+    const key = (target === "mailto" ? "ticket" : target).replace(/:/g, "__");
+    patch[`${type === "nav" ? "navs" : "navOffers"}.${key}`] = FieldValue4.increment(1);
+  }
   if (type === "session" || type === "chat_mascot" || type === "chat_agent") {
     const ms = Math.max(0, Math.min(30 * 60 * 1e3, Math.floor(Number(input.durationMs) || 0)));
     patch[type === "session" ? "interactionMs" : type === "chat_mascot" ? "chatMascotMs" : "chatAgentMs"] = FieldValue4.increment(ms);
@@ -161483,7 +161490,7 @@ async function getMascotStats(days = 14) {
   return {
     days: snaps.map((s2, i2) => {
       const d = s2.exists ? s2.data() || {} : {};
-      return { day: ids[i2], counts: d.counts || {}, agents: d.agents || {}, interactionMs: d.interactionMs || 0, chatMascotMs: d.chatMascotMs || 0, chatAgentMs: d.chatAgentMs || 0 };
+      return { day: ids[i2], counts: d.counts || {}, agents: d.agents || {}, navs: d.navs || {}, navOffers: d.navOffers || {}, interactionMs: d.interactionMs || 0, chatMascotMs: d.chatMascotMs || 0, chatAgentMs: d.chatAgentMs || 0 };
     })
   };
 }
@@ -162112,7 +162119,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.4.0";
+var APP_VERSION = "3.4.1";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));

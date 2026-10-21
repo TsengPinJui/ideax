@@ -318,7 +318,10 @@ export function mascotAgentKey(agent: MascotAgent): string {
 }
 
 // ───────────── 統計 ─────────────
-const EVENT_TYPES = ['impression', 'click', 'drag', 'open', 'ask', 'collapse', 'expand', 'session', 'sad', 'comfort', 'unanswered', 'chat_mascot', 'chat_agent', 'mascot_answered', 'escalated'] as const;
+const EVENT_TYPES = ['impression', 'click', 'drag', 'open', 'ask', 'collapse', 'expand', 'session', 'sad', 'comfort', 'unanswered', 'chat_mascot', 'chat_agent', 'mascot_answered', 'escalated', 'nav', 'nav_offer'] as const;
+
+/** 小燈泡轉介的功能（和前端 MASCOT_NAV_TARGETS 一致；欄位名稱把「:」換成「__」） */
+const NAV_TARGETS = new Set(['explore', 'solvers', 'headhunter', 'membership', 'my_projects', 'ai_crm', 'job_explorer', 'mailto', 'ticket', 'customer_service', 'create', 'dash:points_receivables', 'dash:subscriptions', 'dash:profile', 'dash:real_name_auth', 'dash:expert_certification', 'dash:customer_service_report']);
 export type MascotEventType = (typeof EVENT_TYPES)[number];
 
 async function getDb() {
@@ -333,13 +336,20 @@ function twDay(d = new Date()): string {
   return new Date(d.getTime() + 8 * 3600000).toISOString().slice(0, 10);
 }
 
-export async function recordMascotEvent(input: { type: string; durationMs?: number; agent?: string; visitorId?: string }) {
+export async function recordMascotEvent(input: { type: string; durationMs?: number; agent?: string; visitorId?: string; target?: string }) {
   const type = String(input?.type || '') as MascotEventType;
   if (!EVENT_TYPES.includes(type)) return false;
   const conn = await getDb();
   if (!conn) return false;
   const { db, FieldValue } = conn;
   const patch: Record<string, any> = { [`counts.${type}`]: FieldValue.increment(1), updatedAt: new Date().toISOString() };
+  // 轉介：nav＝使用者點了小燈泡建議的功能；nav_offer＝小燈泡的回答裡建議了這個功能
+  if (type === 'nav' || type === 'nav_offer') {
+    const target = String(input.target || '');
+    if (!NAV_TARGETS.has(target)) return false;
+    const key = (target === 'mailto' ? 'ticket' : target).replace(/:/g, '__');
+    patch[`${type === 'nav' ? 'navs' : 'navOffers'}.${key}`] = FieldValue.increment(1);
+  }
   if (type === 'session' || type === 'chat_mascot' || type === 'chat_agent') {
     const ms = Math.max(0, Math.min(30 * 60 * 1000, Math.floor(Number(input.durationMs) || 0)));
     // session：和吉祥物互動的時間；chat_mascot／chat_agent：對話框裡跟小燈泡聊／跟 AI 客服談的時間
@@ -364,7 +374,7 @@ export async function getMascotStats(days = 14) {
   return {
     days: snaps.map((s: any, i: number) => {
       const d = s.exists ? s.data() || {} : {};
-      return { day: ids[i], counts: d.counts || {}, agents: d.agents || {}, interactionMs: d.interactionMs || 0, chatMascotMs: d.chatMascotMs || 0, chatAgentMs: d.chatAgentMs || 0 };
+      return { day: ids[i], counts: d.counts || {}, agents: d.agents || {}, navs: d.navs || {}, navOffers: d.navOffers || {}, interactionMs: d.interactionMs || 0, chatMascotMs: d.chatMascotMs || 0, chatAgentMs: d.chatAgentMs || 0 };
     }),
   };
 }
