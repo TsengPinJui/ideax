@@ -261,6 +261,34 @@ export async function callDifyStreamingAgent(params: {
 // Helper to generate content with fallback models and retry for 503 / high demand spikes
 const CANDIDATE_MODELS = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
 let isGeminiAuthDisabled = false;
+/** 最近一次 Gemini 失敗原因（給後台「內建 AI 模型」診斷用；不含金鑰） */
+let lastGeminiError = '';
+let lastGeminiErrorAt = '';
+function noteGeminiError(model: string, err: any) {
+  const status = err?.status || err?.code || '';
+  lastGeminiError = `${model}${status ? `（${status}）` : ''}：${String(err?.message || err).replace(/key=[^&\s]+/gi, 'key=***').slice(0, 220)}`;
+  lastGeminiErrorAt = new Date().toISOString();
+}
+/** 直接測 Gemini 能不能用（不經過 OpenAI） */
+async function pingGemini(): Promise<{ ok: boolean; ms: number; model: string; text?: string; error?: string }> {
+  const t0 = Date.now();
+  const model = CANDIDATE_MODELS[0];
+  if (!(process.env.GEMINI_API_KEY || process.env.API_KEY)) return { ok: false, ms: 0, model, error: '伺服器沒有設定 GEMINI_API_KEY' };
+  const ai = getGeminiClient();
+  if (!ai) return { ok: false, ms: 0, model, error: '無法建立 Gemini 連線' };
+  try {
+    const r: any = await Promise.race([
+      ai.models.generateContent({ model, contents: '只回覆兩個字：正常' }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('逾時 15 秒')), 15000)),
+    ]);
+    const text = String(r?.text || '').trim();
+    if (!text) return { ok: false, ms: Date.now() - t0, model, error: '回覆是空的' };
+    return { ok: true, ms: Date.now() - t0, model, text: text.slice(0, 40) };
+  } catch (err: any) {
+    noteGeminiError(model, err);
+    return { ok: false, ms: Date.now() - t0, model, error: lastGeminiError };
+  }
+}
 
 function isGeminiAuthError(err: any): boolean {
   const msg = (err?.message || '').toLowerCase();
@@ -304,10 +332,13 @@ async function generateWithGeminiFallback(prompt: string, schema: any) {
       } catch (err: any) {
         if (isGeminiAuthError(err)) {
           isGeminiAuthDisabled = true;
+          lastGeminiError = 'Gemini 金鑰無效或已被停用（401），重新部署前不會再嘗試';
+          lastGeminiErrorAt = new Date().toISOString();
           console.warn('Gemini service account is disabled/unauthenticated. Automatically routing all intelligence tasks to Dify Agent & heuristic engines.');
           return null;
         }
         console.warn(`Gemini schema error on ${model}:`, err.message);
+        noteGeminiError(model, err);
         const isUnavailable = err?.message?.includes('503') || err?.status === 'UNAVAILABLE' || err?.message?.includes('high demand');
         if (isUnavailable && attempt === 0) {
           await new Promise((r) => setTimeout(r, 400));
@@ -350,10 +381,13 @@ async function generateRawTextWithGemini(prompt: string, systemInstruction?: str
           } catch (err: any) {
             if (isGeminiAuthError(err)) {
               isGeminiAuthDisabled = true;
+          lastGeminiError = 'Gemini 金鑰無效或已被停用（401），重新部署前不會再嘗試';
+          lastGeminiErrorAt = new Date().toISOString();
               console.warn('Gemini service account is disabled/unauthenticated. Routing to fallback text generation.');
               break;
             }
             console.warn(`Gemini raw text error on ${model}:`, err.message);
+            noteGeminiError(model, err);
             const isUnavailable = err?.message?.includes('503') || err?.status === 'UNAVAILABLE' || err?.message?.includes('high demand');
             if (isUnavailable && attempt === 0) {
               await new Promise((r) => setTimeout(r, 400));
@@ -3943,6 +3977,7 @@ async function parseJobIntakeWithGemini(params: {
     } catch (err: any) {
       const msg = String(err?.message || err).slice(0, 160);
       notes.push(`${model}: ${msg}`);
+      noteGeminiError(model, err);
       console.warn(`[Gemini Intake Warning] (${model}):`, msg);
     }
   }
@@ -4037,7 +4072,7 @@ const requireAdmin = async (req: Request, res: Response) => {
 app.get('/api/admin/ai-provider', async (req: Request, res: Response) => {
   if (!(await requireAdmin(req, res))) return;
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ ok: true, provider: await getAiProvider(), effort: await getReasoningEffort(), effortForced: (process.env.AI_REASONING_EFFORT || '').trim() || null, openAiModel: OPENAI_MODEL, hasOpenAiKey: hasOpenAiKey(), forced: (process.env.AI_PROVIDER || '').trim() || null, lastOpenAiError: getLastOpenAiError() || null });
+  res.json({ ok: true, hasGeminiKey: Boolean(process.env.GEMINI_API_KEY || process.env.API_KEY), geminiAuthDisabled: isGeminiAuthDisabled, lastGeminiError: lastGeminiError || null, lastGeminiErrorAt: lastGeminiErrorAt || null, provider: await getAiProvider(), effort: await getReasoningEffort(), effortForced: (process.env.AI_REASONING_EFFORT || '').trim() || null, openAiModel: OPENAI_MODEL, hasOpenAiKey: hasOpenAiKey(), forced: (process.env.AI_PROVIDER || '').trim() || null, lastOpenAiError: getLastOpenAiError() || null });
 });
 app.post('/api/admin/ai-provider', async (req: Request, res: Response) => {
   if (!(await requireAdmin(req, res))) return;
@@ -4069,7 +4104,8 @@ app.post('/api/admin/ai-provider/test', async (req: Request, res: Response) => {
     text = await generateRawTextWithGemini(prompt, '你是求職條件整理助手，只輸出 JSON。');
     engine = text ? `Gemini${useOpenAi ? '（OpenAI 失敗，自動退回）' : ''}` : '';
   }
-  res.json({ ok: Boolean(text), engine, effort: useOpenAi ? await getReasoningEffort() : null, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, openAiError: useOpenAi ? getLastOpenAiError() || null : null });
+  const gemini = await pingGemini();
+  res.json({ gemini, ok: Boolean(text), engine, effort: useOpenAi ? await getReasoningEffort() : null, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, openAiError: useOpenAi ? getLastOpenAiError() || null : null });
 });
 
 // 首頁創點子播放區（預留）：管理員選擇播放來源，由伺服器確認管理員後寫入

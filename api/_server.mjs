@@ -161975,7 +161975,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.2.9";
+var APP_VERSION = "3.3.0";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -162174,6 +162174,32 @@ async function callDifyStreamingAgent(params) {
 }
 var CANDIDATE_MODELS = ["gemini-3.8-flash", "gemini-3.1-flash-lite"];
 var isGeminiAuthDisabled = false;
+var lastGeminiError = "";
+var lastGeminiErrorAt = "";
+function noteGeminiError(model, err) {
+  const status = err?.status || err?.code || "";
+  lastGeminiError = `${model}${status ? `\uFF08${status}\uFF09` : ""}\uFF1A${String(err?.message || err).replace(/key=[^&\s]+/gi, "key=***").slice(0, 220)}`;
+  lastGeminiErrorAt = (/* @__PURE__ */ new Date()).toISOString();
+}
+async function pingGemini() {
+  const t0 = Date.now();
+  const model = CANDIDATE_MODELS[0];
+  if (!(process.env.GEMINI_API_KEY || process.env.API_KEY)) return { ok: false, ms: 0, model, error: "\u4F3A\u670D\u5668\u6C92\u6709\u8A2D\u5B9A GEMINI_API_KEY" };
+  const ai = getGeminiClient();
+  if (!ai) return { ok: false, ms: 0, model, error: "\u7121\u6CD5\u5EFA\u7ACB Gemini \u9023\u7DDA" };
+  try {
+    const r2 = await Promise.race([
+      ai.models.generateContent({ model, contents: "\u53EA\u56DE\u8986\u5169\u500B\u5B57\uFF1A\u6B63\u5E38" }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("\u903E\u6642 15 \u79D2")), 15e3))
+    ]);
+    const text = String(r2?.text || "").trim();
+    if (!text) return { ok: false, ms: Date.now() - t0, model, error: "\u56DE\u8986\u662F\u7A7A\u7684" };
+    return { ok: true, ms: Date.now() - t0, model, text: text.slice(0, 40) };
+  } catch (err) {
+    noteGeminiError(model, err);
+    return { ok: false, ms: Date.now() - t0, model, error: lastGeminiError };
+  }
+}
 function isGeminiAuthError(err) {
   const msg = (err?.message || "").toLowerCase();
   return err?.status === 401 || err?.status === "UNAUTHENTICATED" || msg.includes("401") || msg.includes("deleted or disabled") || msg.includes("account_state_invalid") || msg.includes("api_key_invalid");
@@ -162208,10 +162234,13 @@ ${JSON.stringify(schema)}`, json: true });
       } catch (err) {
         if (isGeminiAuthError(err)) {
           isGeminiAuthDisabled = true;
+          lastGeminiError = "Gemini \u91D1\u9470\u7121\u6548\u6216\u5DF2\u88AB\u505C\u7528\uFF08401\uFF09\uFF0C\u91CD\u65B0\u90E8\u7F72\u524D\u4E0D\u6703\u518D\u5617\u8A66";
+          lastGeminiErrorAt = (/* @__PURE__ */ new Date()).toISOString();
           console.warn("Gemini service account is disabled/unauthenticated. Automatically routing all intelligence tasks to Dify Agent & heuristic engines.");
           return null;
         }
         console.warn(`Gemini schema error on ${model}:`, err.message);
+        noteGeminiError(model, err);
         const isUnavailable = err?.message?.includes("503") || err?.status === "UNAVAILABLE" || err?.message?.includes("high demand");
         if (isUnavailable && attempt === 0) {
           await new Promise((r2) => setTimeout(r2, 400));
@@ -162250,10 +162279,13 @@ async function generateRawTextWithGemini(prompt, systemInstruction) {
           } catch (err) {
             if (isGeminiAuthError(err)) {
               isGeminiAuthDisabled = true;
+              lastGeminiError = "Gemini \u91D1\u9470\u7121\u6548\u6216\u5DF2\u88AB\u505C\u7528\uFF08401\uFF09\uFF0C\u91CD\u65B0\u90E8\u7F72\u524D\u4E0D\u6703\u518D\u5617\u8A66";
+              lastGeminiErrorAt = (/* @__PURE__ */ new Date()).toISOString();
               console.warn("Gemini service account is disabled/unauthenticated. Routing to fallback text generation.");
               break;
             }
             console.warn(`Gemini raw text error on ${model}:`, err.message);
+            noteGeminiError(model, err);
             const isUnavailable = err?.message?.includes("503") || err?.status === "UNAVAILABLE" || err?.message?.includes("high demand");
             if (isUnavailable && attempt === 0) {
               await new Promise((r2) => setTimeout(r2, 400));
@@ -165293,6 +165325,7 @@ async function parseJobIntakeWithGemini(params) {
     } catch (err) {
       const msg = String(err?.message || err).slice(0, 160);
       notes.push(`${model}: ${msg}`);
+      noteGeminiError(model, err);
       console.warn(`[Gemini Intake Warning] (${model}):`, msg);
     }
   }
@@ -165396,7 +165429,7 @@ var requireAdmin2 = async (req, res) => {
 app.get("/api/admin/ai-provider", async (req, res) => {
   if (!await requireAdmin2(req, res)) return;
   res.setHeader("Cache-Control", "no-store");
-  res.json({ ok: true, provider: await getAiProvider(), effort: await getReasoningEffort(), effortForced: (process.env.AI_REASONING_EFFORT || "").trim() || null, openAiModel: OPENAI_MODEL, hasOpenAiKey: hasOpenAiKey(), forced: (process.env.AI_PROVIDER || "").trim() || null, lastOpenAiError: getLastOpenAiError() || null });
+  res.json({ ok: true, hasGeminiKey: Boolean(process.env.GEMINI_API_KEY || process.env.API_KEY), geminiAuthDisabled: isGeminiAuthDisabled, lastGeminiError: lastGeminiError || null, lastGeminiErrorAt: lastGeminiErrorAt || null, provider: await getAiProvider(), effort: await getReasoningEffort(), effortForced: (process.env.AI_REASONING_EFFORT || "").trim() || null, openAiModel: OPENAI_MODEL, hasOpenAiKey: hasOpenAiKey(), forced: (process.env.AI_PROVIDER || "").trim() || null, lastOpenAiError: getLastOpenAiError() || null });
 });
 app.post("/api/admin/ai-provider", async (req, res) => {
   if (!await requireAdmin2(req, res)) return;
@@ -165428,7 +165461,8 @@ app.post("/api/admin/ai-provider/test", async (req, res) => {
     text = await generateRawTextWithGemini(prompt, "\u4F60\u662F\u6C42\u8077\u689D\u4EF6\u6574\u7406\u52A9\u624B\uFF0C\u53EA\u8F38\u51FA JSON\u3002");
     engine = text ? `Gemini${useOpenAi ? "\uFF08OpenAI \u5931\u6557\uFF0C\u81EA\u52D5\u9000\u56DE\uFF09" : ""}` : "";
   }
-  res.json({ ok: Boolean(text), engine, effort: useOpenAi ? await getReasoningEffort() : null, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, openAiError: useOpenAi ? getLastOpenAiError() || null : null });
+  const gemini = await pingGemini();
+  res.json({ gemini, ok: Boolean(text), engine, effort: useOpenAi ? await getReasoningEffort() : null, ms: Date.now() - t0, sample, output: text ? text.slice(0, 1200) : null, openAiError: useOpenAi ? getLastOpenAiError() || null : null });
 });
 app.post("/api/admin/home-showcase-config", async (req, res) => {
   try {

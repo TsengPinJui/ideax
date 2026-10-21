@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#177',
+    version: 'v3.3.0',
+    releaseDate: '2026.10.21',
+    releaseTime: '19:16',
+    author: 'IdeaX 創點子團隊',
+    summary: 'AI 連線狀態診斷；會員 ID 顯示精簡。',
+    changes: [
+      '管理後台「內建 AI 模型」新增連線狀態：顯示 Gemini 與 OpenAI 是否設定金鑰、最近一次失敗原因，測試時也會直接測一次 Gemini，方便找出回答變成制式文字的原因；會員頁的 ID 只顯示「ID: …」。',
+      '平台版本推進至 v3.3.0 (#177)。',
+    ],
+  },
+  {
     seqNumber: '#176',
     version: 'v3.2.9',
     releaseDate: '2026.10.21',
@@ -2265,10 +2277,10 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         summary: '管理當前系統運作版本號、增量序號與最後更新時間戳記。',
         content: `### 當前運行版本與序號規格
 
-* **版本號碼**：v3.2.9
-* **遞增序號**：#176（從 #001 依序遞增）
+* **版本號碼**：v3.3.0
+* **遞增序號**：#177（從 #001 依序遞增）
 * **最後更新日期**：2026.10.19
-* **最後更新時間**：19:00（依發布時戳靜態留存，不隨時鐘跳動）
+* **最後更新時間**：19:16（依發布時戳靜態留存，不隨時鐘跳動）
 * **發布狀態**：Production（正式運作中）
 * **運作模式**：單日 0.2.0 增量限制、四選一平台運營模式與完整歷史版本隨時調閱與下載。`,
       },
@@ -2327,6 +2339,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#177** | **v3.3.0** | 2026.10.21 | 19:16 | IdeaX 創點子核心 | AI 連線診斷 |
 | **#176** | **v3.2.9** | 2026.10.21 | 19:00 | IdeaX 創點子核心 | 專人回報工單取代寫信 |
 | **#175** | **v3.2.8** | 2026.10.21 | 18:58 | IdeaX 創點子核心 | AI 推理等級調整 |
 | **#174** | **v3.2.7** | 2026.10.21 | 18:36 | IdeaX 創點子核心 | 內建 AI 改用 GPT-6 Luna |

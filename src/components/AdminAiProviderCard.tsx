@@ -9,8 +9,8 @@ import { getAuthHeaders } from '../services/authHeader';
  * 預設 GPT-6 Luna，出錯或沒有金鑰時會自動退回 Gemini。
  */
 type Effort = 'none' | 'low' | 'medium' | 'high' | 'xhigh';
-type Info = { provider: 'gemini' | 'openai'; effort: Effort; effortForced: string | null; openAiModel: string; hasOpenAiKey: boolean; forced: string | null; lastOpenAiError: string | null };
-type TestResult = { ok: boolean; engine: string; effort: Effort | null; ms: number; sample: string; output: string | null; openAiError: string | null };
+type Info = { hasGeminiKey: boolean; geminiAuthDisabled: boolean; lastGeminiError: string | null; lastGeminiErrorAt: string | null; provider: 'gemini' | 'openai'; effort: Effort; effortForced: string | null; openAiModel: string; hasOpenAiKey: boolean; forced: string | null; lastOpenAiError: string | null };
+type TestResult = { gemini?: { ok: boolean; ms: number; model: string; text?: string; error?: string }; ok: boolean; engine: string; effort: Effort | null; ms: number; sample: string; output: string | null; openAiError: string | null };
 
 const api = async (path: string, init?: RequestInit) => {
   const headers = await getAuthHeaders();
@@ -154,6 +154,26 @@ export const AdminAiProviderCard: React.FC = () => {
             <p className="text-[11px] text-rose-700">最近一次 OpenAI 錯誤：{info.lastOpenAiError}（已自動退回 Gemini）</p>
           )}
 
+          {/* 連線狀態：為什麼回答變成制式文字，看這裡 */}
+          <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 space-y-1.5 text-[11px]">
+            <div className="font-black text-stone-800">連線狀態</div>
+            <div className="flex items-start gap-1.5">
+              <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!info.hasGeminiKey || info.geminiAuthDisabled ? 'bg-rose-500' : info.lastGeminiError ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+              <span className="text-stone-700">
+                Gemini：{!info.hasGeminiKey ? '伺服器沒有設定 GEMINI_API_KEY' : info.geminiAuthDisabled ? '金鑰無效或已被停用' : '已設定金鑰'}
+                {info.lastGeminiError && <span className="block text-rose-700">最近錯誤{info.lastGeminiErrorAt ? `（${new Date(info.lastGeminiErrorAt).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}）` : ''}：{info.lastGeminiError}</span>}
+              </span>
+            </div>
+            <div className="flex items-start gap-1.5">
+              <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${info.hasOpenAiKey ? (info.lastOpenAiError ? 'bg-amber-500' : 'bg-emerald-500') : 'bg-stone-300'}`} />
+              <span className="text-stone-700">
+                OpenAI：{info.hasOpenAiKey ? `已設定金鑰（${info.openAiModel}）` : '沒有設定 OPENAI_API_KEY（目前不會用到）'}
+                {info.lastOpenAiError && <span className="block text-rose-700">最近錯誤：{info.lastOpenAiError}</span>}
+              </span>
+            </div>
+            <p className="text-stone-500">兩個都連不上時，小燈泡與匯職缺會改用固定回覆或規則整理，看起來就會很制式。</p>
+          </div>
+
           <div className="flex items-center gap-2 flex-wrap">
             <button type="button" onClick={runTest} disabled={testing} className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-60 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer">
               {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
@@ -166,9 +186,14 @@ export const AdminAiProviderCard: React.FC = () => {
             <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 space-y-1.5 text-[11px]">
               <div className="flex items-center gap-1.5 font-black text-stone-900">
                 {test.ok ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />}
-                {test.ok ? `回覆來自：${test.engine}${test.effort && !test.engine.startsWith('Gemini') ? `（推理：${test.effort}）` : ''}・${(test.ms / 1000).toFixed(1)} 秒` : '兩個模型都沒有回覆'}
+                {test.ok ? `整理條件的回覆來自：${test.engine}${test.effort && !test.engine.startsWith('Gemini') ? `（推理：${test.effort}）` : ''}・${(test.ms / 1000).toFixed(1)} 秒` : '兩個模型都沒有回覆'}
               </div>
               <div className="text-stone-500">測試句：「{test.sample}」</div>
+              {test.gemini && (
+                <div className={test.gemini.ok ? 'text-emerald-700' : 'text-rose-700'}>
+                  Gemini 直接測試：{test.gemini.ok ? `正常（${test.gemini.model}・${(test.gemini.ms / 1000).toFixed(1)} 秒）` : `失敗：${test.gemini.error}`}
+                </div>
+              )}
               {test.openAiError && <div className="text-rose-700">OpenAI 錯誤：{test.openAiError}</div>}
               {test.output && <pre className="whitespace-pre-wrap break-all font-mono text-[10.5px] text-stone-800 max-h-56 overflow-auto">{test.output}</pre>}
             </div>
