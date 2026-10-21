@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { SousouFlyer } from './sousou/SousouFlyer';
 import { useApp } from '../context/AppContext';
+import { CityMultiSelect } from './jobExplorer/CityMultiSelect';
 import { InlineConditionTag } from './jobExplorer/InlineConditionTag';
 import { seenJobBefore } from '../utils/jobDedupe';
 import { accompanyDuringSearch, cheerMascot } from './mascot/mascotConfig';
@@ -581,7 +582,9 @@ export const JobExplorerView: React.FC = () => {
 
   // 手動篩選條件
   const [keyword, setKeyword] = useState('');
-  const [selectedCity, setSelectedCity] = useState('全部');
+  // 地區可以多選：空陣列＝不限；selectedCity 是給搜尋條件文字用的合併字串
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const selectedCity = selectedCities.length ? selectedCities.join('、') : '全部';
   const [userBaseCity, setUserBaseCity] = useState('台北市');
   const [selectedCategory, setSelectedCategory] = useState('全部');
   const [minSalaryFilter, setMinSalaryFilter] = useState<number>(0);
@@ -732,7 +735,8 @@ export const JobExplorerView: React.FC = () => {
         if (Array.isArray(saved.jobs)) setJobs(saved.jobs);
         setHasSearched(Boolean(saved.hasSearched || saved.jobs?.length));
         if (typeof saved.keyword === 'string') setKeyword(saved.keyword);
-        if (saved.selectedCity) setSelectedCity(saved.selectedCity);
+        if (Array.isArray(saved.selectedCities)) setSelectedCities(saved.selectedCities.filter((c: unknown) => typeof c === 'string'));
+        else if (saved.selectedCity && saved.selectedCity !== '全部') setSelectedCities(String(saved.selectedCity).split('、').filter(Boolean));
         if (saved.selectedCategory) setSelectedCategory(saved.selectedCategory);
         if (saved.sortBy) setSortBy(saved.sortBy);
         if (saved.sortOrder) setSortOrder(saved.sortOrder);
@@ -749,7 +753,16 @@ export const JobExplorerView: React.FC = () => {
   const [aiStatus, setAiStatus] = useState<AiIntakeStatus>('idle');
 
   // 條件標籤編輯狀態（依標籤形式，可刪除、新增、編輯文字或數字與幣別）
-  const [isAddTagOpen, setIsAddTagOpen] = useState(false);
+  // 新增條件選單：記住是哪一則訊息打開的（不然每則訊息的選單會一起打開）
+  const [addTagOpenFor, setAddTagOpenFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!addTagOpenFor) return;
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement | null)?.closest?.('[data-add-tag-menu]')) setAddTagOpenFor(null);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [addTagOpenFor]);
   // 剛新增的標籤：一出現就直接在標籤上輸入
   const [newTagId, setNewTagId] = useState<string | null>(null);
 
@@ -780,8 +793,13 @@ export const JobExplorerView: React.FC = () => {
           '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣',
           '宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', '金門縣', '連江縣', '遠端工作'
         ];
-        const match = cityList.find((c) => t.value.includes(c) || c.includes(t.value));
-        if (match) setSelectedCity(match);
+        // 條件裡提到幾個縣市就選幾個（例如「台北市、新北市」；「台北」也算台北市；「北北基桃」展開成四個）
+        const v = t.value
+          .replace(/北北基桃/g, '台北市新北市基隆市桃園市').replace(/北北桃/g, '台北市新北市桃園市').replace(/北北基/g, '台北市新北市基隆市')
+          .replace(/雙北/g, '台北市新北市').replace(/桃竹苗/g, '桃園市新竹市新竹縣苗栗縣').replace(/桃竹竹/g, '桃園市新竹市新竹縣')
+          .replace(/中彰投/g, '台中市彰化縣南投縣').replace(/雲嘉南/g, '雲林縣嘉義市嘉義縣台南市').replace(/高屏/g, '高雄市屏東縣').replace(/花東/g, '花蓮縣台東縣');
+        const matches = cityList.filter((c) => v.includes(c) || (c !== '遠端工作' && v.includes(c.replace(/[市縣]$/, ''))) || (c === '遠端工作' && /遠端|在家工作/.test(v)));
+        if (matches.length) setSelectedCities(matches);
       } else if (t.type === 'jobType' && t.value) {
         if (/兼職|工讀|打工/.test(t.value)) setJobTypeFilter('兼職');
         else if (/實習/.test(t.value)) setJobTypeFilter('實習');
@@ -867,7 +885,7 @@ export const JobExplorerView: React.FC = () => {
         };
       })
     );
-    setIsAddTagOpen(false);
+    setAddTagOpenFor(null);
   };
 
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -884,7 +902,7 @@ export const JobExplorerView: React.FC = () => {
           messages: messages.slice(-40),
           jobs: jobs.slice(0, 100),
           hasSearched,
-          keyword, selectedCity, selectedCategory, sortBy, sortOrder, userCarePoints,
+          keyword, selectedCity, selectedCities, selectedCategory, sortBy, sortOrder, userCarePoints,
           searchingMsgId: isSearching && sess ? sess.botMsgId : null,
           searchingBrief: isSearching && sess ? sess.brief : null,
           scrollY: window.scrollY,
@@ -1681,7 +1699,7 @@ export const JobExplorerView: React.FC = () => {
     let count = 0;
     if (keyword.trim()) count++;
     if (companyFilter.trim()) count++;
-    if (selectedCity !== '全部') count++;
+    if (selectedCities.length) count++;
     if (selectedCategory !== '全部') count++;
     if (minSalaryFilter > 0 || abroadSalaryFilter) count++;
     if (jobTypeFilter !== '全部') count++;
@@ -1729,14 +1747,16 @@ export const JobExplorerView: React.FC = () => {
     });
 
     let filtered = withDynamicDistance.filter((job) => {
-      if (selectedCity !== '全部') {
-        const normSelected = selectedCity.replace(/臺/g, '台');
+      if (selectedCities.length) {
+        // 多選：符合任何一個地區就留下
         const normLoc = `${job.location || ''} ${job.city || ''}`.replace(/臺/g, '台');
-        if (selectedCity === '遠端工作') {
-          if (!/遠端|WFH|居家/i.test(`${job.workEnvironment} ${job.title} ${job.description}`)) return false;
-        } else if (normLoc.trim() && !normLoc.includes(normSelected) && !normLoc.includes(normSelected.slice(0, 2))) {
-          return false;
-        }
+        const isRemote = /遠端|WFH|居家/i.test(`${job.workEnvironment} ${job.title} ${job.description}`);
+        const hit = selectedCities.some((c) => {
+          if (c === '遠端工作') return isRemote;
+          const norm = c.replace(/臺/g, '台');
+          return !normLoc.trim() || normLoc.includes(norm) || normLoc.includes(norm.slice(0, 2));
+        });
+        if (!hit) return false;
       }
       if (selectedCategory !== '全部' && job.category && job.category !== selectedCategory && !job.industry.includes(selectedCategory)) {
         return false;
@@ -1825,7 +1845,7 @@ export const JobExplorerView: React.FC = () => {
     showSavedOnly,
     userBaseCity,
     userCarePoints,
-    selectedCity,
+    selectedCities,
     selectedCategory,
     minSalaryFilter,
     maxExpFilter,
@@ -1857,7 +1877,7 @@ export const JobExplorerView: React.FC = () => {
   const resetAllFilters = () => {
     setKeyword('');
     setCompanyFilter('');
-    setSelectedCity('全部');
+    setSelectedCities([]);
     setSelectedCategory('全部');
     setMinSalaryFilter(0);
     setJobTypeFilter('全部');
@@ -1894,13 +1914,13 @@ export const JobExplorerView: React.FC = () => {
         {/* 頂部主區塊：搜尋輸入框維持在最上方，下方為篩選面板與對話確認區 */}
         <div className="bg-white rounded-2xl border border-stone-200/90 p-2.5 sm:p-3 shadow-2xs space-y-2.5">
           {/* 1. 頂部主操作列：自然語言／關鍵字輸入 ＋ 搜尋鈕 ＋ 篩選收合鈕 ＋ 收藏切換 */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 void handleSendInput();
               }}
-              className="flex-1 flex items-center gap-2 min-w-0"
+              className="w-full sm:w-auto sm:flex-1 flex items-center gap-2 min-w-0"
             >
               <div className="relative flex-1 min-w-0">
                 <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1927,6 +1947,8 @@ export const JobExplorerView: React.FC = () => {
               </button>
             </form>
 
+            {/* 工具按鈕：手機版放第二行靠右，不跟輸入框搶寬度 */}
+            <div className="w-full sm:w-auto flex items-center justify-end gap-2 shrink-0">
             {/* 篩選條件收合按鈕 */}
             <button
               type="button"
@@ -1976,6 +1998,7 @@ export const JobExplorerView: React.FC = () => {
             >
               <HelpCircle className="w-4 h-4" />
             </button>
+            </div>
           </div>
 
           {isHelpOpen && (
@@ -2041,7 +2064,7 @@ export const JobExplorerView: React.FC = () => {
                     if (v === '國外') setMinSalaryFilter(0); else setAbroadSalaryFilter('');
                     setRegionFilter(v);
                     if (v === '台灣' || v === '全部') setCountryFilter([]);
-                    if (v === '國外') setSelectedCity('全部');
+                    if (v === '國外') setSelectedCities([]);
                   }}
                   className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
                 >
@@ -2051,22 +2074,7 @@ export const JobExplorerView: React.FC = () => {
                   <option value="台灣與國外">台灣＋國外</option>
                 </select>
 
-                <select
-                  value={selectedCity}
-                  disabled={regionFilter === '國外'}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-stone-50/70 focus:bg-white outline-none cursor-pointer"
-                >
-                  <option value="全部">地區：不限</option>
-                  <option value="台北市">台北市</option>
-                  <option value="新北市">新北市</option>
-                  <option value="桃園市">桃園市</option>
-                  <option value="新竹市">新竹市</option>
-                  <option value="台中市">台中市</option>
-                  <option value="台南市">台南市</option>
-                  <option value="高雄市">高雄市</option>
-                  <option value="遠端工作">遠端工作</option>
-                </select>
+                <CityMultiSelect value={selectedCities} onChange={setSelectedCities} disabled={regionFilter === '國外'} />
 
                 <select
                   value={selectedCategory}
@@ -2420,20 +2428,24 @@ export const JobExplorerView: React.FC = () => {
                                   })}
 
                                   {/* 新增條件標籤按鈕 */}
-                                  <div className="relative inline-block">
+                                  <div className="relative inline-block" data-add-tag-menu>
                                     <button
                                       type="button"
-                                      onClick={() => setIsAddTagOpen((v) => !v)}
+                                      onClick={() => setAddTagOpenFor((v) => (v === m.id ? null : m.id))}
+                                      aria-expanded={addTagOpenFor === m.id}
                                       className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg border border-dashed border-stone-300 text-stone-500 hover:border-blue-400 hover:text-[#1e3a8a] hover:bg-blue-50/60 text-xs font-bold transition-all cursor-pointer"
                                     >
                                       <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                                       <span>新增條件</span>
                                     </button>
 
-                                    {isAddTagOpen && (
-                                      <div className="absolute left-0 top-full mt-1.5 z-30 w-48 rounded-xl bg-white border border-stone-200 shadow-xl p-1.5 space-y-0.5 text-xs">
-                                        <div className="px-2 py-1 text-[10px] font-black text-stone-400 uppercase tracking-wider">
-                                          選擇新增維度
+                                    {addTagOpenFor === m.id && (
+                                      <div className="fixed inset-x-3 bottom-24 z-[70] sm:absolute sm:inset-auto sm:left-0 sm:top-full sm:mt-1.5 sm:z-30 sm:w-56 rounded-2xl sm:rounded-xl bg-white border border-stone-200 shadow-2xl sm:shadow-xl p-2 sm:p-1.5 space-y-0.5 text-xs">
+                                        <div className="px-2 py-1 flex items-center justify-between">
+                                          <span className="text-[11px] sm:text-[10px] font-black text-stone-500 sm:text-stone-400">新增哪一種條件？</span>
+                                          <button type="button" onClick={() => setAddTagOpenFor(null)} aria-label="關閉" className="sm:hidden p-1 rounded-md text-stone-400 hover:text-stone-700 cursor-pointer">
+                                            <X className="w-4 h-4" />
+                                          </button>
                                         </div>
                                         {[
                                           { type: 'company', label: '🏢 限定公司（自填）' },
@@ -2448,7 +2460,7 @@ export const JobExplorerView: React.FC = () => {
                                             key={item.type}
                                             type="button"
                                             onClick={() => handleAddConditionTag(m.id, item.type as ConditionTagType)}
-                                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-blue-50 font-bold text-stone-700 transition-colors flex items-center justify-between cursor-pointer"
+                                            className="w-full text-left px-3 sm:px-2.5 py-2.5 sm:py-1.5 rounded-lg hover:bg-blue-50 font-bold text-sm sm:text-xs text-stone-700 transition-colors flex items-center justify-between cursor-pointer"
                                           >
                                             <span>{item.label}</span>
                                             <Plus className="w-3 h-3 text-stone-400" />

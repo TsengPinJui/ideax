@@ -162054,7 +162054,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.3.4";
+var APP_VERSION = "3.3.5";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -165017,13 +165017,29 @@ function cnSmallNumber(s2) {
   return NaN;
 }
 function normalizeChineseAmounts(t2) {
-  return t2.replace(/([一二兩三四五六七八九])([一二三四五六七八九])萬/g, (_, a) => String(CN_DIGIT[a] * 1e4)).replace(/([一二兩三四五六七八九十]{1,3})萬([一二三四五六七八九])?/g, (all, a, b) => {
+  return t2.replace(/月(?:薪)?(?:至少|最少|最低|起碼|要|大概)\s*(?=[\d一二兩三四五六七八九十])/g, "\u6708\u85AA").replace(/時(?:薪)?(?:至少|最少|最低|起碼|要|大概)\s*(?=[\d一二兩三四五六七八九十])/g, "\u6642\u85AA").replace(/([一二兩三四五六七八九])([一二三四五六七八九])萬/g, (_, a) => String(CN_DIGIT[a] * 1e4)).replace(/([一二兩三四五六七八九十]{1,3})萬([一二三四五六七八九])?/g, (all, a, b) => {
     const n = cnSmallNumber(a);
     return Number.isNaN(n) ? all : String(n * 1e4 + (b ? CN_DIGIT[b] * 1e3 : 0));
   }).replace(/([一二兩三四五六七八九])百([一二三四五六七八九])?/g, (_, a, b) => String(CN_DIGIT[a] * 100 + (b ? CN_DIGIT[b] * 10 : 0)));
 }
+var REGION_ALIASES = [
+  [/北北基桃/g, "\u53F0\u5317\u5E02 \u65B0\u5317\u5E02 \u57FA\u9686\u5E02 \u6843\u5712\u5E02"],
+  [/北北桃/g, "\u53F0\u5317\u5E02 \u65B0\u5317\u5E02 \u6843\u5712\u5E02"],
+  [/北北基/g, "\u53F0\u5317\u5E02 \u65B0\u5317\u5E02 \u57FA\u9686\u5E02"],
+  [/雙北/g, "\u53F0\u5317\u5E02 \u65B0\u5317\u5E02"],
+  [/桃竹苗/g, "\u6843\u5712\u5E02 \u65B0\u7AF9\u5E02 \u65B0\u7AF9\u7E23 \u82D7\u6817\u7E23"],
+  [/桃竹竹/g, "\u6843\u5712\u5E02 \u65B0\u7AF9\u5E02 \u65B0\u7AF9\u7E23"],
+  [/中彰投/g, "\u53F0\u4E2D\u5E02 \u5F70\u5316\u7E23 \u5357\u6295\u7E23"],
+  [/雲嘉南/g, "\u96F2\u6797\u7E23 \u5609\u7FA9\u5E02 \u5609\u7FA9\u7E23 \u53F0\u5357\u5E02"],
+  [/高屏/g, "\u9AD8\u96C4\u5E02 \u5C4F\u6771\u7E23"],
+  [/花東/g, "\u82B1\u84EE\u7E23 \u53F0\u6771\u7E23"]
+];
+function expandRegionAliases(t2) {
+  return REGION_ALIASES.reduce((acc, [re, v]) => acc.replace(re, ` ${v} `), t2);
+}
 var PREFERENCE_RULES = [
   { dimension: "schedule", re: /週休二日|周休二日/, value: "\u9031\u4F11\u4E8C\u65E5" },
+  { dimension: "other", re: /大眾交通|大眾運輸|捷運站?附近|近捷運|公車站?附近|火車站附近|交通方便/, value: "\u8FD1\u5927\u773E\u904B\u8F38\uFF08\u6377\u904B\u3001\u516C\u8ECA\u3001\u706B\u8ECA\u7AD9\uFF09" },
   { dimension: "schedule", re: /不輪班|不要輪班|固定班/, value: "\u56FA\u5B9A\u73ED\u3001\u4E0D\u8F2A\u73ED" },
   { dimension: "schedule", re: /接小孩|接送小孩/, value: "\u65E9\u73ED\u6216 15:30 \u524D\u4E0B\u73ED\uFF08\u8981\u63A5\u5C0F\u5B69\uFF09" },
   { dimension: "schedule", re: /只上?早班|早上班/, value: "\u65E9\u73ED" },
@@ -165147,7 +165163,7 @@ app.get("/api/fx", async (_req, res) => {
   return res.json({ base: "USD", rates: FALLBACK_USD_RATES, updatedAt: "", source: "fallback" });
 });
 var lastIntakeAiNote = "";
-var NOT_A_ROLE_RE = /週休|周休|輪班|排班|早班|晚班|夜班|大夜|不加班|準時下班|接小孩|接送|下午|上午|早上|晚上|中午|假日|不要太|一點|彈性(工時|上下班)|遠端|在家工作|混合辦公|員工餐|供餐|供宿|宿舍|交通補助|年終|獎金|勞健保|福利|附近|離家|通勤|新鮮人|二度就業|退伍|轉職|會(日文|英文|韓文)|英文(流利|好)|駕照|證照|月薪|時薪|年薪|薪水|不用面對|不要太累|輕鬆|安靜|寵物友善/;
+var NOT_A_ROLE_RE = /大眾交通|大眾運輸|交通|捷運|公車|至少|最少|最低|起碼|週休|周休|輪班|排班|早班|晚班|夜班|大夜|不加班|準時下班|接小孩|接送|下午|上午|早上|晚上|中午|假日|不要太|一點|彈性(工時|上下班)|遠端|在家工作|混合辦公|員工餐|供餐|供宿|宿舍|交通補助|年終|獎金|勞健保|福利|附近|離家|通勤|新鮮人|二度就業|退伍|轉職|會(日文|英文|韓文)|英文(流利|好)|駕照|證照|月薪|時薪|年薪|薪水|不用面對|不要太累|輕鬆|安靜|寵物友善/;
 var INTAKE_PREF_LABELS = {
   industry: "\u7522\u696D",
   schedule: "\u73ED\u5225\u5DE5\u6642",
@@ -165231,6 +165247,8 @@ async function parseJobIntakeWithGemini(params) {
    - \u4F7F\u7528\u8005\u8AAA\u300C\u7E3D\u7D71\u5E9C\u9644\u8FD1\u300D\uFF0C\u5730\u9EDE\u5FC5\u9808\u6B78\u7D0D\u70BA\u300C\u53F0\u5317\u5E02\u4E2D\u6B63\u5340\uFF08\u7E3D\u7D71\u5E9C\u5468\u908A\uFF09\u300D\uFF0C\u300C\u7E3D\u7D71\u5E9C\u300D\u662F\u5730\u6A19\u7D55\u5C0D\u4E0D\u662F\u8077\u52D9\uFF01
    - \u4F7F\u7528\u8005\u8AAA\u300C\u4E2D\u6B63\u5927\u5B78\u9644\u8FD1\u300D\uFF0C\u5730\u9EDE\u5FC5\u9808\u6B78\u7D0D\u70BA\u300C\u5609\u7FA9\u7E23\u6C11\u96C4\u9109\uFF08\u4E2D\u6B63\u5927\u5B78\u5468\u908A\uFF09\u300D\uFF0C\u300C\u4E2D\u6B63\u5927\u5B78\u300D\u662F\u5730\u6A19\u6821\u5712\u7D55\u5C0D\u4E0D\u662F\u8077\u52D9\uFF01
    - \u300C\u5168\u5BB6100m\u5167\u300D\u3001\u300C\u6377\u904B\u516C\u9928\u7AD9\u65C1\u300D\u3001\u300C\u7AF9\u79D1\u9644\u8FD1\u300D\u7B49\u5C6C\u65BC\u7A7A\u9593\u7BC4\u570D\u3001\u53C3\u7167\u5E97\u5BB6\u8207\u8DDD\u96E2\u689D\u4EF6\uFF0C\u8ACB\u5B8C\u6574\u6B78\u7D0D\u5230\u5730\u9EDE\u63CF\u8FF0\u4E2D\uFF0C\u7D55\u4E0D\u53EF\u62C6\u788E\u6DF7\u5165\u8077\u52D9\uFF01
+   - \u7E23\u5E02\u5408\u7A31\u8981\u5C55\u958B\u6210\u5404\u7E23\u5E02\uFF0C\u7528\u300C\u3001\u300D\u5206\u9694\uFF1A\u300C\u5317\u5317\u57FA\u6843\u300D\u2192\u300C\u53F0\u5317\u5E02\u3001\u65B0\u5317\u5E02\u3001\u57FA\u9686\u5E02\u3001\u6843\u5712\u5E02\u300D\uFF0C\u300C\u96D9\u5317\u300D\u2192\u300C\u53F0\u5317\u5E02\u3001\u65B0\u5317\u5E02\u300D\uFF0C\u300C\u5317\u5317\u57FA\u300D\u300C\u6843\u7AF9\u7AF9\u300D\u300C\u6843\u7AF9\u82D7\u300D\u300C\u4E2D\u5F70\u6295\u300D\u300C\u96F2\u5609\u5357\u300D\u300C\u9AD8\u5C4F\u300D\u300C\u82B1\u6771\u300D\u540C\u7406\u3002
+   - \u300C\u5927\u773E\u4EA4\u901A\u9644\u8FD1\u300D\u300C\u6377\u904B\u7AD9\u9644\u8FD1\u300D\u300C\u4EA4\u901A\u65B9\u4FBF\u300D\u662F\u901A\u52E4\u504F\u597D\uFF0C\u4E0D\u662F\u5730\u9EDE\uFF1A\u653E\u9032 preferences\uFF08dimension "other"\uFF0Cvalue\u300C\u8FD1\u5927\u773E\u904B\u8F38\uFF08\u6377\u904B\u3001\u516C\u8ECA\u3001\u706B\u8ECA\u7AD9\uFF09\u300D\uFF09\u3002
    - \u627E\u8077\u7F3A\u6642\u3010\u5148\u4E0D\u8981\u9810\u8A2D\u53F0\u7063\u3011\uFF0C\u82E5\u4F7F\u7528\u8005\u672A\u63D0\u53CA\u5730\u9EDE\uFF0C\u4E14\u672A\u6307\u5B9A\u570B\u5916\uFF0C\u8ACB\u5728 location \u586B null\uFF0Ccity \u586B "\u5168\u90E8"\uFF08\u7576\u7528\u6236\u5F8C\u7E8C\u78BA\u5B9A\u9001\u51FA\u641C\u5C0B\u6642\u624D\u9810\u8A2D\u53F0\u7063\uFF09\u3002\u82E5\u63D0\u53CA\u570B\u5916\u570B\u5BB6\uFF08\u5982\u65E5\u672C\u3001\u65B0\u52A0\u5761\u3001\u7F8E\u570B\u3001\u570B\u5916\u7B49\uFF09\uFF0C\u586B\u5165\u8A72\u570B\u6216\u57CE\u5E02\u3002
 2. \u3010\u8077\u52D9\u540D\u7A31 (roles)\u3011\uFF1A
    - \u7CBE\u78BA\u6293\u51FA\u4F7F\u7528\u8005\u771F\u6B63\u60F3\u627E\u7684\u8077\u52D9\u3001\u8077\u4F4D\u6216\u60F3\u8981\u7684\u5DE5\u4F5C\u89D2\u8272\uFF0C\u4F8B\u5982\u300CKTV\u670D\u52D9\u751F\u300D\u3001\u300C\u65E9\u9910\u5E97\u5E97\u54E1\u300D\u3001\u300C\u8EDF\u9AD4\u5DE5\u7A0B\u5E2B\u300D\u7B49\u3002
@@ -165648,8 +165666,8 @@ ${questionText}` : questionText) + roleSwitchTip;
         roleSwitched: geminiIntake.newRoleDifferentFromPrevious === true
       });
     }
-    const allSegments = normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage].join(" \u3001 ")).split(/[、,，\n]+/).map((s2) => s2.trim()).filter(Boolean);
-    const fullText = normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage].join(" ")).toLowerCase();
+    const allSegments = expandRegionAliases(normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage].join(" \u3001 "))).split(/[、,，\n]+/).map((s2) => s2.trim()).filter(Boolean);
+    const fullText = expandRegionAliases(normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage].join(" "))).toLowerCase();
     const cityRegex = /台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江|遠端|remote|雙北|桃竹|中彰投|雲嘉南|高屏/i;
     const majorRoleRegex = /資訊|軟體|前端|後端|全端|工程師|工程|電機|電子|機械|化工|會計|財會|財務|企管|商管|行銷|企劃|小編|社群|文史|外語|日文|英文|設計|美編|ui|ux|餐飲|門市|零售|店長|服務員|吧台|內場|外場|護理|醫療|藥師|傳播|音樂|心理|社工|金融|法律|法務|土木|建築|行政|助理|人事|人資|hr|客服|業務|銷售|專案|pm|產品|生管|品管|倉儲|物流|司機|駕駛|作業員|技術員|研究|分析|資料|ai|雲端|devops|qa|測試|保全|清潔|幼教|老師|教師|講師|翻譯|編輯|攝影|剪輯|公關|採購|總務|秘書/i;
     const collegeRegex = /台大|清大|交大|成大|政大|師大|輔大|淡江|文化|逢甲|東海|中興|中山|中央|高科|中正|台科|北科|銘傳|實踐|世新|元智|長庚|高醫|中國醫|東華|暨南|北醫|慈濟|高師|彰師|國立大學|公立頂大|技職科大|私立大學|碩士|博士|專科|高中職/i;
