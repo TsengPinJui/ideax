@@ -98,7 +98,7 @@ export async function computeBidirectionalHandshake({
         solverId: s.id,
         solver: s,
         matchScore,
-        matchReason: `專長領域【${s.domain || s.skills[0] || '技術架構'}】精準契合本題痛點，歷史評等達 ${s.rating || 5.0} 星。`,
+        matchReason: `專長領域【${s.domain || s.skills[0] || '技術架構'}】精準契合本題痛點${s.rating ? `，歷史評等 ${s.rating} 星` : ''}。`,
       };
     });
   }

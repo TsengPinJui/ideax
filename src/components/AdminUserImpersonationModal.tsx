@@ -310,7 +310,7 @@ export const AdminUserImpersonationModal: React.FC<AdminUserImpersonationModalPr
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-black text-stone-900 font-mono">
-                      {user.rating || 5.0}
+                      {user.rating ? user.rating : '尚無評價'}
                     </span>
                     <span className="text-xs text-stone-500">★ 滿分 5.0</span>
                   </div>
@@ -336,7 +336,7 @@ export const AdminUserImpersonationModal: React.FC<AdminUserImpersonationModalPr
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-stone-200">
                     <span className="text-stone-400 text-[11px]">採納成功率</span>
-                    <span className="text-lg font-black text-emerald-600 block mt-1 font-mono">{solverInfo?.acceptedRate || 85}%</span>
+                    <span className="text-lg font-black text-emerald-600 block mt-1 font-mono">{solverInfo?.acceptedRate ? `${solverInfo.acceptedRate}%` : '—'}</span>
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-stone-200">
                     <span className="text-stone-400 text-[11px]">交易流水數</span>
@@ -617,7 +617,7 @@ export const AdminUserImpersonationModal: React.FC<AdminUserImpersonationModalPr
                 <div className="space-y-1.5 text-stone-700">
                   <div>認證專家標籤：<b>{user.verifiedExpert ? '已通過認證專家標章' : '一般用戶身分'}</b></div>
                   <div>方案採納次數：<b>{solverInfo?.answerCount || 0} 次</b></div>
-                  <div>口碑評價評分：<b>{user.rating || 5.0} 星</b></div>
+                  <div>口碑評價評分：<b>{user.rating ? `${user.rating} 星` : '尚無評價'}</b></div>
                 </div>
               </div>
             </div>
