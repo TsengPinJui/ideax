@@ -162054,7 +162054,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.3.7";
+var APP_VERSION = "3.3.8";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -165092,8 +165092,16 @@ function buildJobConditionSummary(text, ctx) {
     const m2 = text.match(re);
     return m2 ? m2[0] : "";
   };
-  const jt = pick(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時/);
-  if (jt) lines.push(`\u5DE5\u4F5C\u578B\u614B\uFF1A${jt === "\u5168\u8077" ? "\u6B63\u8077" : jt}`);
+  const jtSet = /* @__PURE__ */ new Set();
+  if (/(正職|全職).{0,4}(兼職|工讀|打工).{0,4}(皆可|都可以|都行|也可以)|皆可|正職兼職/.test(text)) {
+    jtSet.add("\u6B63\u8077");
+    jtSet.add("\u517C\u8077");
+  }
+  for (const w of text.match(/正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時/g) || []) {
+    jtSet.add(/正職|全職/.test(w) ? "\u6B63\u8077" : /兼職|工讀|打工|計時/.test(w) ? "\u517C\u8077" : w);
+  }
+  const jt = ["\u6B63\u8077", "\u517C\u8077", "\u5BE6\u7FD2", "\u7D04\u8058", "\u6D3E\u9063"].filter((x2) => jtSet.has(x2)).join("\u3001");
+  if (jt) lines.push(`\u5DE5\u4F5C\u578B\u614B\uFF1A${jt}`);
   else if (ctx.inferredJobType) lines.push(`\u5DE5\u4F5C\u578B\u614B\uFF1A${ctx.inferredJobType}\uFF08\u4F9D${ctx.inferredFrom}\u5224\u65B7\uFF09`);
   const campus = ctx.campusLandmark || detectCampusLandmark(text);
   const cities = text.match(/台北市?|新北市?|基隆市?|桃園市?|新竹[市縣]?|苗栗縣?|台中市?|彰化縣?|南投縣?|雲林縣?|嘉義[市縣]?|台南市?|高雄市?|屏東縣?|宜蘭縣?|花蓮縣?|台東縣?|澎湖縣?|金門縣?|遠端/g);
@@ -165291,7 +165299,8 @@ async function parseJobIntakeWithGemini(params) {
 5. \u3010\u5DE5\u4F5C\u7D93\u6B77\u5E74\u8CC7 (experience)\u3011\uFF1A
    - \u8B58\u5225\u5E74\u8CC7\u8981\u6C42\uFF0C\u4F8B\u5982 0\uFF08\u7121\u7D93\u9A57\u6216\u65B0\u9BAE\u4EBA\uFF09\u30011\u30012\u30013\u30015 \u5E74\u4EE5\u4E0A\u7B49\u3002experienceYears \u586B\u5165\u7D14\u6578\u5B57\uFF08\u7121\u8981\u6C42\u5247\u586B 0\uFF09\uFF0Cexperience \u586B\u63CF\u8FF0\u6587\u5B57\u3002
 6. \u3010\u5DE5\u4F5C\u578B\u614B (jobType)\u3011\uFF1A
-   - \u8B58\u5225\u662F\u5426\u6307\u5B9A\u300C\u6B63\u8077\u300D\u3001\u300C\u517C\u8077\u300D\uFF08\u542B\u6253\u5DE5\u3001\u5DE5\u8B80\u3001\u8A08\u6642\uFF09\u3001\u300C\u5BE6\u7FD2\u300D\u6216\u300C\u7686\u53EF\u300D\u3002\u82E5\u4F7F\u7528\u8005\u5B8C\u5168\u672A\u63D0\u53CA\uFF0C\u8A2D\u70BA null\u3002
+   - \u8B58\u5225\u662F\u5426\u6307\u5B9A\u300C\u6B63\u8077\u300D\u3001\u300C\u517C\u8077\u300D\uFF08\u542B\u6253\u5DE5\u3001\u5DE5\u8B80\u3001\u8A08\u6642\uFF09\u3001\u300C\u5BE6\u7FD2\u300D\u3002\u53EF\u4EE5\u597D\u5E7E\u500B\uFF0C\u7528\u300C\u3001\u300D\u5206\u9694\uFF0C\u4F8B\u5982\u300C\u6B63\u8077\u3001\u517C\u8077\u300D\u300C\u517C\u8077\u3001\u5BE6\u7FD2\u300D\uFF1B\u8AAA\u300C\u6B63\u8077\u517C\u8077\u90FD\u53EF\u4EE5\u300D\u300C\u7686\u53EF\u300D\u586B\u300C\u6B63\u8077\u3001\u517C\u8077\u300D\u3002\u82E5\u4F7F\u7528\u8005\u5B8C\u5168\u672A\u63D0\u53CA\uFF0C\u8A2D\u70BA null\u3002
+   - \u3010\u6240\u6709\u689D\u4EF6\u90FD\u53EF\u4EE5\u6709\u591A\u500B\u503C\u3011\uFF1A\u8077\u52D9\uFF08roles\uFF09\u3001\u516C\u53F8\uFF08companies\uFF09\u3001\u5730\u5340\uFF08location \u7528\u300C\u3001\u300D\u5206\u9694\u5404\u7E23\u5E02\uFF09\u3001\u5DE5\u4F5C\u578B\u614B\u90FD\u7167\u4F7F\u7528\u8005\u8AAA\u7684\u5168\u90E8\u5217\u51FA\uFF0C\u4E0D\u8981\u53EA\u6311\u4E00\u500B\u3002
 7. \u3010\u7D50\u69CB\u5316\u6A19\u7C64 (conditionTags)\u3011\uFF1A
    - \u5C07\u6574\u7406\u597D\u7684\u5404\u500B\u689D\u4EF6\u8F49\u6210\u4E92\u52D5\u6A19\u7C64\u7269\u4EF6\u9663\u5217\uFF0C\u4F9B\u524D\u7AEF\u9032\u884C\u6A19\u7C64\u5316\u5448\u73FE\u3001\u4FEE\u6539\u3001\u65B0\u589E\u8207\u522A\u9664\uFF1A
      - type: "role" | "company" | "salary" | "experience" | "location" | "jobType" | "education"
@@ -165325,7 +165334,7 @@ async function parseJobIntakeWithGemini(params) {
   "roles": ["\u8077\u52D9\u540D1"],
   "location": "\u7D50\u69CB\u5316\u5730\u9EDE\u63CF\u8FF0\uFF0C\u82E5\u7121\u5247 null",
   "city": "\u7E23\u5E02\u540D\uFF08\u5982\uFF1A\u53F0\u5317\u5E02\u3001\u5609\u7FA9\u7E23\uFF09\uFF0C\u82E5\u7121\u5247\u5168\u90E8",
-  "jobType": "\u6B63\u8077" | "\u517C\u8077" | "\u5BE6\u7FD2" | "\u7686\u53EF" | null,
+  "jobType": "\u6B63\u8077" | "\u517C\u8077" | "\u5BE6\u7FD2"\uFF0C\u53EF\u4EE5\u597D\u5E7E\u500B\u7528\u300C\u3001\u300D\u5206\u9694\uFF08\u4F8B\u5982 "\u6B63\u8077\u3001\u517C\u8077"\uFF09| null,
   "salaryText": "\u85AA\u8CC7\u8981\u6C42\u63CF\u8FF0\uFF0C\u82E5\u7121\u5247 null",
   "salaryCurrency": "TWD" | "USD" | "JPY" | "EUR" | "CNY" | "GBP" | "SGD" | "HKD",
   "salaryPeriod": "\u6708\u85AA" | "\u5E74\u85AA" | "\u6642\u85AA",

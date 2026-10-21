@@ -253,6 +253,7 @@ let danceOut: GainNode | null = null;
 let danceTimer: number | null = null;
 
 export function stopDanceMusic() {
+  danceUntil = 0;
   if (danceTimer) { window.clearTimeout(danceTimer); danceTimer = null; }
   const g = danceOut;
   danceOut = null;
@@ -266,10 +267,22 @@ export function stopDanceMusic() {
   } catch {}
 }
 
+let danceUntil = 0; // 跳舞期間不另外播「開心」音效，避免和音樂疊在一起
+
 export function playDanceMusic(ms: number, beatMs = 300, volume = 1) {
   stopDanceMusic();
-  const c = ready();
-  if (!c || ms <= 0) return;
+  const c = getCtx();
+  if (!c || ms <= 0 || document.hidden) return;
+  danceUntil = performance.now() + ms;
+  // 音訊還在暫停（剛點下去、手機切回來）：等它恢復再開始，不要直接沒聲音
+  if (c.state !== 'running') {
+    void c.resume().then(() => { if (performance.now() < danceUntil - 300) startDance(c, danceUntil - performance.now(), beatMs, volume); }).catch(() => {});
+    return;
+  }
+  startDance(c, ms, beatMs, volume);
+}
+
+function startDance(c: AudioContext, ms: number, beatMs: number, volume: number) {
   try {
     const out = c.createGain();
     out.gain.value = volume;
@@ -307,4 +320,24 @@ export function playDanceMusic(ms: number, beatMs = 300, volume = 1) {
       if (danceOut === out) { danceOut = null; try { out.disconnect(); } catch {} }
     }, ms + 900);
   } catch {}
+}
+
+// ── 開心：玻璃風鈴「叮叮叮↑」 ──
+let happyAt = -Infinity;
+/** 小燈泡開心亮起來：三個往上爬的玻璃叮噹，最後一顆亮晶晶（跳舞中不播；2.5 秒內不重複） */
+export function playHappySound(volume = 1) {
+  const now = performance.now();
+  if (now < danceUntil || now - happyAt < 2500) return;
+  const c = getCtx();
+  if (!c || document.hidden) return;
+  happyAt = now;
+  const go = () => {
+    try {
+      const t = c.currentTime + 0.01;
+      [1046.5, 1318.5, 1568].forEach((f, i) => glassTink(c, t + i * 0.085, f, volume * 1.05));
+      tone(c, t + 0.26, 'sine', 2093, 0.05 * volume, 0.004, 0.45);
+      tone(c, t + 0.26, 'sine', 3136, 0.018 * volume, 0.003, 0.3);
+    } catch {}
+  };
+  if (c.state === 'running') go(); else void c.resume().then(go).catch(() => {});
 }

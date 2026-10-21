@@ -3,7 +3,7 @@ import './mascot.css';
 import { createMascotEngine, type MascotEngine } from './mascotEngine';
 import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, MASCOT_WAVE_DANCE_EVENT, OPEN_QUESTION_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
 import type { NewProposalNotice } from './MascotHost';
-import { playBabble, playClank, playDanceMusic, playGlowSound, playShock, playZap, startCurrent, stopBabble, stopCurrent, stopDanceMusic, unlockMascotAudio } from './mascotSound';
+import { playBabble, playClank, playDanceMusic, playGlowSound, playHappySound, playShock, playZap, startCurrent, stopBabble, stopCurrent, stopDanceMusic, unlockMascotAudio } from './mascotSound';
 import { unlockAgentVoices } from '../agents/agentVoices';
 import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
 
@@ -197,7 +197,8 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
           }
           markActive();
           // 從對話框上被拖下來摔暈：過一會兒自己再爬回對話框頂部
-          if (type === 'glow') { if (configRef.current.soundEnabled && data === 1) playGlowSound(); return; } // 只有重要提示（新提案）才出聲，平常開心亮起不出聲
+          // 亮起來：有新提案（重要提示）播開燈音效；平常開心播玻璃風鈴「叮叮叮↑」
+          if (type === 'glow') { if (configRef.current.soundEnabled) { if (data === 1) playGlowSound(); else playHappySound(); } return; }
           if (type === 'dropped') { window.setTimeout(() => { if (chatOpenRef.current) setClimbNonce((n) => n + 1); }, 3400); return; }
           trackMascotEvent(type);
         },
