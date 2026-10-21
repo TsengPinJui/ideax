@@ -16,6 +16,16 @@ export function getBaseUrl(): string {
   return 'https://www.ideax.tw';
 }
 
+/**
+ * 給 Google 的正式網址（canonical）。ideax.tw 和 www.ideax.tw 內容一樣，
+ * 統一指向 www，免得 Google 把兩邊當成重複網頁而不收錄。
+ * 分享連結仍用目前網址，登入狀態不受影響。
+ */
+export const SITE_ORIGIN = 'https://www.ideax.tw';
+export function toCanonicalUrl(url: string): string {
+  return url.replace(/^https?:\/\/(www\.)?ideax\.tw(?=[/?#]|$)/i, SITE_ORIGIN);
+}
+
 export function toAbsoluteImageUrl(url?: string): string {
   if (!url) return `${getBaseUrl()}/ideax-thumbnail.png`;
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -111,7 +121,7 @@ export function updateSEOForQuestion(question: Question | null, answers: Answer[
     .trim();
   const metaDescription = cleanDesc.length > 0 ? cleanDesc.slice(0, 155) : DEFAULT_DESC;
 
-  const canonicalUrl = getQuestionShareUrl(question);
+  const canonicalUrl = toCanonicalUrl(getQuestionShareUrl(question));
   const qImages = (question as any).images || (question as any).imageUrls || [];
   const imageUrl = qImages && qImages.length > 0 ? qImages[0] : (question.authorAvatar || DEFAULT_IMAGE);
   const absoluteImageUrl = toAbsoluteImageUrl(imageUrl);
@@ -273,7 +283,7 @@ export function updateSEOForProposal(proposal: StarSeasonProposal | null) {
     .trim();
   const metaDescription = cleanDesc.length > 0 ? cleanDesc.slice(0, 155) : 'IdeaX 創星季競賽提案，讓校園與青年創新想法獲得真實市場驗證！';
 
-  const canonicalUrl = getProposalShareUrl(proposal);
+  const canonicalUrl = toCanonicalUrl(getProposalShareUrl(proposal));
   const imageUrl = proposal.images && proposal.images.length > 0 ? proposal.images[0] : `${getBaseUrl()}/去背創星季.png`;
 
   // 更新 DOM
@@ -426,6 +436,18 @@ export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
     description: '匯聚創新創業、技術研發、品牌策略、AI 應用等跨領域官方認證專家與專業解題顧問。',
     keywords: ['找專家', '認證專家', '顧問諮詢', '解題高手', '專家智庫', '接案專家'],
     icon: 'GraduationCap',
+  },
+  {
+    id: 'job_explorer',
+    name: '匯職缺',
+    category: 'ideax',
+    categoryLabel: 'IdeaX 創點子',
+    path: '/jobs',
+    queryParam: '?tab=jobs',
+    title: '匯職缺 — IdeaX 創點子 AI 一次彙整各大求職網職缺',
+    description: '說出想找的工作、地區與薪資，搜搜和小燈泡幫你一次彙整 104、1111、Yes123、518、Cake、Yourator、LinkedIn 等求職網站正在招募的職缺，自動去除重複、依條件排序。',
+    keywords: ['匯職缺', '找工作', '職缺搜尋', '求職', '人力銀行', '兼職', '打工', 'AI 找工作'],
+    icon: 'Briefcase',
   },
   {
     id: 'membership',
@@ -582,7 +604,7 @@ export function updateSEOForSubpage(subpageId: string) {
   const twitterImage = document.querySelector('meta[name="twitter:image"]');
   let canonicalLink = document.querySelector('link[rel="canonical"]');
 
-  const fullUrl = getSitelinkFullUrl(sitelink);
+  const fullUrl = toCanonicalUrl(getSitelinkFullUrl(sitelink));
   const imageUrl = sitelink.category === 'star_season' ? `${getBaseUrl()}/去背創星季.png` : `${getBaseUrl()}/ideax-thumbnail.png`;
 
   if (titleTag) titleTag.innerText = sitelink.title;
@@ -666,13 +688,13 @@ export function resetSEOToDefault() {
   if (metaDesc) metaDesc.setAttribute('content', DEFAULT_DESC);
   if (ogTitle) ogTitle.setAttribute('content', DEFAULT_TITLE);
   if (ogDesc) ogDesc.setAttribute('content', DEFAULT_DESC);
-  if (ogUrl) ogUrl.setAttribute('content', `${getBaseUrl()}/`);
+  if (ogUrl) ogUrl.setAttribute('content', `${toCanonicalUrl(getBaseUrl())}/`);
   if (ogType) ogType.setAttribute('content', 'website');
   if (ogImage) ogImage.setAttribute('content', toAbsoluteImageUrl(DEFAULT_IMAGE));
   if (twitterTitle) twitterTitle.setAttribute('content', DEFAULT_TITLE);
   if (twitterDesc) twitterDesc.setAttribute('content', DEFAULT_DESC);
   if (twitterImage) twitterImage.setAttribute('content', toAbsoluteImageUrl(DEFAULT_IMAGE));
-  if (canonicalLink) canonicalLink.setAttribute('href', `${getBaseUrl()}/`);
+  if (canonicalLink) canonicalLink.setAttribute('href', `${toCanonicalUrl(getBaseUrl())}/`);
 
   removeElementById('ideax-schema-qapage');
   removeElementById('ideax-schema-proposal');

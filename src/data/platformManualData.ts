@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#163',
+    version: 'v3.0.7',
+    releaseDate: '2026.10.21',
+    releaseTime: '13:09',
+    author: 'IdeaX 創點子團隊',
+    summary: '各分頁可被 Google 正確收錄。',
+    changes: [
+      '匯職缺（/jobs）等主要分頁改為各自擁有標題、描述與正式網址（canonical），不再被 Google 當成首頁的重複頁；ideax.tw 與 www.ideax.tw 統一指向同一個正式網址；網站地圖新增匯職缺、VibeCoding 展場、會員方案等分頁。',
+      '平台版本推進至 v3.0.7 (#163)。',
+    ],
+  },
+  {
     seqNumber: '#162',
     version: 'v3.0.6',
     releaseDate: '2026.10.21',
@@ -2097,10 +2109,10 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         summary: '管理當前系統運作版本號、增量序號與最後更新時間戳記。',
         content: `### 當前運行版本與序號規格
 
-* **版本號碼**：v3.0.6
-* **遞增序號**：#162（從 #001 依序遞增）
+* **版本號碼**：v3.0.7
+* **遞增序號**：#163（從 #001 依序遞增）
 * **最後更新日期**：2026.10.19
-* **最後更新時間**：13:03（依發布時戳靜態留存，不隨時鐘跳動）
+* **最後更新時間**：13:09（依發布時戳靜態留存，不隨時鐘跳動）
 * **發布狀態**：Production（正式運作中）
 * **運作模式**：單日 0.2.0 增量限制、四選一平台運營模式與完整歷史版本隨時調閱與下載。`,
       },
@@ -2159,6 +2171,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#163** | **v3.0.7** | 2026.10.21 | 13:09 | IdeaX 創點子核心 | 分頁 SEO 收錄修正 |
 | **#162** | **v3.0.6** | 2026.10.21 | 13:03 | IdeaX 創點子核心 | 管理員設定搜尋框 |
 | **#161** | **v3.0.5** | 2026.10.21 | 08:15 | IdeaX 創點子核心 | 降低資料庫用量 |
 | **#160** | **v3.0.4** | 2026.10.21 | 07:55 | IdeaX 創點子核心 | 最近上線時間修正 |

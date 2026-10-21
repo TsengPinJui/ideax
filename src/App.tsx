@@ -839,6 +839,7 @@ function MainContent() {
           if (curPath !== '/jobs' && curPath !== '/job-explorer') {
             window.history.pushState({ tab: 'job_explorer' }, '', '/jobs');
           }
+          updateSEOForSubpage('job_explorer');
         } else if (activeTab === 'chat') {
           if (curPath !== '/chat') {
             window.history.pushState({ tab: 'chat' }, '', '/chat');
@@ -970,6 +971,12 @@ function MainContent() {
         window.history.pushState({ sitelink: 'solvers' }, '', '/solvers');
       } catch {}
       updateSEOForSubpage('solvers');
+    } else if (item.id === 'job_explorer') {
+      setActiveTab('job_explorer');
+      try {
+        window.history.pushState({ sitelink: 'job_explorer' }, '', '/jobs');
+      } catch {}
+      updateSEOForSubpage('job_explorer');
     } else if (item.id === 'my_projects') {
       setActiveTab('my_projects');
       try {
