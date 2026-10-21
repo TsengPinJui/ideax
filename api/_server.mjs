@@ -165607,7 +165607,8 @@ var PUBLIC_METRIC_KEYS = [
   "showTotalGMV",
   "showTodayVisitors",
   "showNewMembers7d",
-  "showJobsUsers"
+  "showJobsUsers",
+  "showPublicMetrics"
 ];
 app.post("/api/admin/public-metrics-config", async (req, res) => {
   try {

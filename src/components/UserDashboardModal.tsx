@@ -1,7 +1,7 @@
 import { realSurvey } from '../utils/surveyData';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData, Transaction, Question } from '../types';
+import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData, Transaction, Question, PUBLIC_METRIC_TOGGLE_KEYS, countPublicMetrics } from '../types';
 import { LEVEL_CONFIGS, isMockTransactionId, isRealRegisteredUser } from '../data/mockData';
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { HelpTooltip } from './HelpTooltip';
@@ -3589,8 +3589,25 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+<div
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white border border-amber-300 shadow-2xs"
+                    >
+                      <span className="text-[11px] font-black text-amber-950">{(publicMetricsConfig.showPublicMetrics !== false) ? '首頁顯示中' : '首頁不顯示'}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={(publicMetricsConfig.showPublicMetrics !== false)}
+                        aria-label="首頁公開數據統一開關"
+                        onClick={(e) => { e.stopPropagation(); updatePublicMetricsConfig({ showPublicMetrics: !(publicMetricsConfig.showPublicMetrics !== false) }); }}
+                        className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${(publicMetricsConfig.showPublicMetrics !== false) ? 'bg-amber-500' : 'bg-stone-300'}`}
+                        title={(publicMetricsConfig.showPublicMetrics !== false) ? '關閉：首頁不顯示任何公開數據' : '開啟：首頁顯示下面選好的數據'}
+                      >
+                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${(publicMetricsConfig.showPublicMetrics !== false) ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
                     <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-200/90 text-amber-950 border border-amber-300 w-fit">
-                      已公開 {Object.values(publicMetricsConfig).filter(Boolean).length} / 14 項指標
+                      已選 {countPublicMetrics(publicMetricsConfig)} / {PUBLIC_METRIC_TOGGLE_KEYS.length} 項指標
                     </span>
                     <button
                       type="button"
@@ -3602,8 +3619,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                   </div>
                 </div>
 
+                {publicMetricsConfig.showPublicMetrics === false && (
+                  <p className="text-xs font-bold text-amber-900 bg-white/70 border border-amber-200 rounded-xl px-3 py-2">統一開關關閉中：首頁目前不顯示任何公開數據。下面的選擇會保留，打開統一開關後才會顯示。</p>
+                )}
                 {isPublicMetricsExpanded && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1 animate-in fade-in duration-200">
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1 animate-in fade-in duration-200 ${publicMetricsConfig.showPublicMetrics === false ? 'opacity-60' : ''}`}>
                   {/* Metric 1: 網站總瀏覽量 */}
                   <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                     publicMetricsConfig.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'

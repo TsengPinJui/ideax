@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { SubscriptionTier } from '../types';
+import { SubscriptionTier, PUBLIC_METRIC_TOGGLE_KEYS, countPublicMetrics } from '../types';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { isMockTransactionId, isMockQuestionId, isRealRegisteredUser } from '../data/mockData';
 import { getTransactionBadge } from './AdminTransactionsTab';
@@ -580,8 +580,25 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </p>
             </div>
             <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300 w-fit">
-                已公開 {Object.values(localPublicMetrics).filter(Boolean).length} / 14 項指標
+<div
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white border border-amber-300 shadow-2xs"
+                    >
+                      <span className="text-[11px] font-black text-amber-950">{(localPublicMetrics.showPublicMetrics !== false) ? '首頁顯示中' : '首頁不顯示'}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={(localPublicMetrics.showPublicMetrics !== false)}
+                        aria-label="首頁公開數據統一開關"
+                        onClick={(e) => { e.stopPropagation(); setLocalPublicMetrics((prev) => ({ ...prev, showPublicMetrics: prev.showPublicMetrics === false })); }}
+                        className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${(localPublicMetrics.showPublicMetrics !== false) ? 'bg-amber-500' : 'bg-stone-300'}`}
+                        title={(localPublicMetrics.showPublicMetrics !== false) ? '關閉：首頁不顯示任何公開數據' : '開啟：首頁顯示下面選好的數據'}
+                      >
+                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${(localPublicMetrics.showPublicMetrics !== false) ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300 w-fit">
+                已選 {countPublicMetrics(localPublicMetrics)} / {PUBLIC_METRIC_TOGGLE_KEYS.length} 項指標
               </span>
               <button
                 type="button"
@@ -609,8 +626,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
             </div>
           </div>
 
+          {localPublicMetrics.showPublicMetrics === false && (
+            <p className="text-xs font-bold text-amber-900 bg-white/70 border border-amber-200 rounded-xl px-3 py-2">統一開關關閉：儲存後首頁不顯示任何公開數據。下面的選擇會保留，打開統一開關後才會顯示。</p>
+          )}
           {isPublicMetricsExpanded && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 animate-in fade-in duration-200 pt-1">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 animate-in fade-in duration-200 pt-1 ${localPublicMetrics.showPublicMetrics === false ? 'opacity-60' : ''}`}>
             {/* Metric 1: 網站造訪量 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showTotalViews ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
@@ -1838,7 +1858,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               {pendingConfirm.type === 'savePublicMetrics' && (
                 <div>
                   <p className="font-bold text-stone-900 mb-1">
-                    首頁公開指標展示將更新為目前勾選之 {Object.values(localPublicMetrics).filter(Boolean).length} 項指標：
+                    {localPublicMetrics.showPublicMetrics === false ? '統一開關關閉：首頁將不顯示任何公開數據（已選的項目會保留）。' : `首頁公開指標展示將更新為目前勾選之 ${countPublicMetrics(localPublicMetrics)} 項指標：`}
                   </p>
                   <p className="text-stone-600 text-[11px]">
                     設定儲存後將即時同步至首頁即時運營數據看板。

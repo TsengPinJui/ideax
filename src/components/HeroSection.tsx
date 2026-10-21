@@ -237,6 +237,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   const allMetricItems = useMemo(() => {
     const list: { key: string; label: string; value: string; unit?: string; accent?: string }[] = [];
+    // 統一開關關閉：首頁不顯示任何公開數據
+    if (publicMetricsConfig.showPublicMetrics === false) return list;
     if (publicMetricsConfig.showQuestionsCount) list.push({ key: 'questions', label: '發布卡片', value: questionsCountFormatted, unit: '張' });
     if (publicMetricsConfig.showProposalsCount) list.push({ key: 'proposals', label: '專家提案', value: proposalsCountFormatted, unit: '件' });
     if (publicMetricsConfig.showVerifiedSolvers) list.push({ key: 'solvers', label: '認證專家', value: verifiedSolversFormatted, unit: '位' });
@@ -322,7 +324,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
 
         {/* Clean Collapsible Metrics Bar (精簡橫條 + 可展開完整指標) */}
-        {(allMetricItems.length > 0 || (publicMetricsConfig.showHighestBounty && currentHighestBounty > 0)) && (
+        {(allMetricItems.length > 0 || (publicMetricsConfig.showPublicMetrics !== false && publicMetricsConfig.showHighestBounty && currentHighestBounty > 0)) && (
           <div className="mt-2.5 sm:mt-3.5 pt-2 sm:pt-3 border-t border-stone-200/60 max-w-5xl lg:max-w-6xl mx-auto">
             <div className="flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-8 lg:gap-x-10 gap-y-2 text-center">
               {visibleMetrics.map((m) => (
@@ -336,7 +338,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               ))}
 
               {/* 當前最高賞金快捷膠囊 */}
-              {publicMetricsConfig.showHighestBounty && currentHighestBounty > 0 && (
+              {publicMetricsConfig.showPublicMetrics !== false && publicMetricsConfig.showHighestBounty && currentHighestBounty > 0 && (
                 <button
                   id="highest-bounty-section"
                   onClick={onLeaderboardClick}

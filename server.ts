@@ -4127,7 +4127,7 @@ app.get('/api/admin/user-activity', async (req: Request, res: Response) => {
 const PUBLIC_METRIC_KEYS = [
   'showSolvedCount', 'showTotalBounty', 'showAvgResponseSpeed', 'showSatisfactionRate', 'showHighestBounty',
   'showTotalViews', 'showUniqueVisitors', 'showOnlineUsers', 'showTotalMembers', 'showVerifiedSolvers', 'showQuestionsCount',
-  'showProposalsCount', 'showTotalDeals', 'showTotalGMV', 'showTodayVisitors', 'showNewMembers7d', 'showJobsUsers',
+  'showProposalsCount', 'showTotalDeals', 'showTotalGMV', 'showTodayVisitors', 'showNewMembers7d', 'showJobsUsers', 'showPublicMetrics',
 ];
 app.post('/api/admin/public-metrics-config', async (req: Request, res: Response) => {
   try {
