@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { isRealRegisteredUser } from '../data/mockData';
+import { getCachedRealTrafficStats } from './AdminSiteTrafficChart';
 import { ArrowRight, Sparkles, ShieldCheck, Compass, ChevronDown, ChevronUp } from 'lucide-react';
 import { Category } from '../types';
 import { IdeaXLogo } from './IdeaXLogo';
@@ -39,9 +41,42 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     uniqueVisitorsCount,
     onlineUsersCount,
     realRegisteredUsersCount,
+    availableUsers,
   } = useApp();
 
   const [isMetricsExpanded, setIsMetricsExpanded] = useState(false);
+
+  // 今日不重複訪客（瀏覽統計更新時跟著變）
+  const utc8Today = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+  const [todayVisitors, setTodayVisitors] = useState(() => Number(getCachedRealTrafficStats().visitorsDaily?.[utc8Today()]) || 0);
+  useEffect(() => {
+    const on = () => setTodayVisitors(Number(getCachedRealTrafficStats().visitorsDaily?.[utc8Today()]) || 0);
+    window.addEventListener('ideax_site_traffic_updated', on);
+    return () => window.removeEventListener('ideax_site_traffic_updated', on);
+  }, []);
+
+  // 近 7 天新註冊會員（依註冊日期，不含測試帳號）
+  const newMembers7d = useMemo(() => {
+    if (!publicMetricsConfig.showNewMembers7d) return 0;
+    const since = Date.now() - 7 * 86400000;
+    return (availableUsers || []).filter((u) => {
+      if (!isRealRegisteredUser(u)) return false;
+      const t = Date.parse(String((u as any).registeredAt || u.createdAt || u.joinedDate || ''));
+      return Number.isFinite(t) && t >= since;
+    }).length;
+  }, [availableUsers, publicMetricsConfig.showNewMembers7d]);
+
+  // 匯職缺使用人次：開關打開時才去拿（伺服器只回傳累計數字）
+  const [jobsUsers, setJobsUsers] = useState(0);
+  useEffect(() => {
+    if (!publicMetricsConfig.showJobsUsers) return;
+    let alive = true;
+    fetch('/api/feature-usage/totals')
+      .then((r) => r.json())
+      .then((j) => { if (alive) setJobsUsers(Number(j?.totals?.jobs) || 0); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [publicMetricsConfig.showJobsUsers]);
 
   // 1. 網站造訪量
   const siteVisitsFormatted = useMemo(() => {
@@ -206,6 +241,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     if (publicMetricsConfig.showTotalBounty) list.push({ key: 'bounty', label: '累計懸賞', value: totalBountyFormatted, accent: 'text-amber-600' });
     if (publicMetricsConfig.showTotalViews) list.push({ key: 'views', label: '總瀏覽', value: siteVisitsFormatted });
     if (publicMetricsConfig.showUniqueVisitors && (uniqueVisitorsCount || 0) > 0) list.push({ key: 'visitors', label: '不重複訪客', value: (uniqueVisitorsCount || 0).toLocaleString(), unit: '位' });
+    if (publicMetricsConfig.showTodayVisitors) list.push({ key: 'today_visitors', label: '今日訪客', value: todayVisitors.toLocaleString(), unit: '位' });
+    if (publicMetricsConfig.showNewMembers7d) list.push({ key: 'new_members', label: '本週新會員', value: newMembers7d.toLocaleString(), unit: '位', accent: 'text-purple-600' });
+    if (publicMetricsConfig.showJobsUsers) list.push({ key: 'jobs_users', label: '匯職缺使用', value: jobsUsers.toLocaleString(), unit: '人次' });
     if (publicMetricsConfig.showOnlineUsers) list.push({ key: 'online', label: '線上人數', value: onlineUsersFormatted, unit: '位', accent: 'text-emerald-600' });
     if (publicMetricsConfig.showTotalMembers) list.push({ key: 'members', label: '註冊會員', value: totalMembersFormatted, unit: '位' });
     if (publicMetricsConfig.showTotalDeals) list.push({ key: 'deals', label: '已成交', value: totalDealsFormatted, unit: '筆' });
@@ -218,6 +256,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     const noSolvedYet = isZeroLike(solvedCountFormatted);
     return list.filter((m) => !isZeroLike(m.value) && !(noSolvedYet && (m.key === 'speed' || m.key === 'satisfaction')));
   }, [
+    todayVisitors,
+    newMembers7d,
+    jobsUsers,
     publicMetricsConfig,
     questionsCountFormatted,
     proposalsCountFormatted,

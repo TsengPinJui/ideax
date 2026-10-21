@@ -1468,7 +1468,10 @@ export interface PublicMetricsConfig {
   showSatisfactionRate: boolean;   // 方案採納滿意度 / 滿意度
   showHighestBounty: boolean;      // 當前最高賞金
   showTotalViews?: boolean;        // 網站總瀏覽量（進入網站的總瀏覽次數）
-  showUniqueVisitors?: boolean;    // 造訪用戶（不重複裝置數）
+  showUniqueVisitors?: boolean;    // 不重複訪客（不重複裝置數）
+  showTodayVisitors?: boolean;     // 今日不重複訪客
+  showNewMembers7d?: boolean;      // 近 7 天新註冊會員
+  showJobsUsers?: boolean;         // 匯職缺使用人次（累計）
   showOnlineUsers?: boolean;       // 即時線上人數
   showTotalMembers?: boolean;      // 總註冊用戶
   showVerifiedSolvers?: boolean;   // 認證專家

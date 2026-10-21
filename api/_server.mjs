@@ -161550,6 +161550,18 @@ async function getFeatureUsage(days = 30) {
     total: totalSnap?.exists && totalSnap.data()?.counts || {}
   };
 }
+var publicTotalsCache = { at: 0, totals: {} };
+async function getPublicFeatureTotals() {
+  if (Date.now() - publicTotalsCache.at < 5 * 60 * 1e3) return publicTotalsCache.totals;
+  const conn = await getDb4();
+  if (!conn) return {};
+  const snap = await conn.db.collection("feature_usage").doc("_total").get();
+  const raw = snap.exists && snap.data()?.counts || {};
+  const totals = {};
+  for (const k of Object.keys(FEATURE_LABELS)) totals[k] = Number(raw[k]) || 0;
+  publicTotalsCache = { at: Date.now(), totals };
+  return totals;
+}
 
 // server/jobUrlVerify.ts
 var PLATFORMS = [
@@ -164965,6 +164977,14 @@ app.post("/api/feature-usage", async (req, res) => {
     res.json({ success: false });
   }
 });
+app.get("/api/feature-usage/totals", async (_req, res) => {
+  try {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json({ success: true, totals: await getPublicFeatureTotals() });
+  } catch {
+    res.json({ success: false, totals: {} });
+  }
+});
 app.get("/api/admin/feature-usage", async (req, res) => {
   try {
     res.json({ success: true, ...await getFeatureUsage(Number(req.query.days) || 30) });
@@ -165584,7 +165604,10 @@ var PUBLIC_METRIC_KEYS = [
   "showQuestionsCount",
   "showProposalsCount",
   "showTotalDeals",
-  "showTotalGMV"
+  "showTotalGMV",
+  "showTodayVisitors",
+  "showNewMembers7d",
+  "showJobsUsers"
 ];
 app.post("/api/admin/public-metrics-config", async (req, res) => {
   try {

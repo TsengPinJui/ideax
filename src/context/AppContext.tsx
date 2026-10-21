@@ -1847,6 +1847,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showProposalsCount: false,
     showTotalDeals: false,
     showTotalGMV: false,
+    showTodayVisitors: false,
+    showNewMembers7d: false,
+    showJobsUsers: false,
   };
 
   const [publicMetricsConfig, setPublicMetricsConfig] = useState<PublicMetricsConfig>(() => {
