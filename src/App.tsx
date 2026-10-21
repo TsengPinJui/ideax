@@ -2053,11 +2053,9 @@ function MainContent() {
               onSelectProposal={(proposal) => openIdeaDetail(proposal.id)}
               onBackFromDetail={backToIdeasSearch}
               onOpenCreateProposal={() => {
+                // 創點子專區的「發布創新提案」走一般發布頁（創新提案），不是創星季競賽報名
                 setCreateIdeasDetailId(null);
-                setActiveTab('star_season');
-                setTimeout(() => {
-                  window.dispatchEvent(new CustomEvent('ideax_challenge_navigate', { detail: { subView: 'submit' } }));
-                }, 0);
+                handleOpenCreateWithType('innovation_proposal');
               }}
               onOpenAuth={() => openAuthModal('login')}
             />
@@ -2137,21 +2135,7 @@ function MainContent() {
                 {specialZone === 'create_ideas' && (
                   <CreateIdeasZoneView
                     onSelectProposal={(proposal) => openIdeaDetail(proposal.id)}
-                    onOpenCreateProposal={() => {
-                      window.history.pushState(
-                        { ideaxMain: true, tab: 'star_season', subView: 'submit' },
-                        '',
-                        '/challenge/submit'
-                      );
-                      setActiveTab('star_season');
-                      setTimeout(() => {
-                        window.dispatchEvent(
-                          new CustomEvent('ideax_challenge_navigate', {
-                            detail: { subView: 'submit' },
-                          })
-                        );
-                      }, 50);
-                    }}
+                    onOpenCreateProposal={() => handleOpenCreateWithType('innovation_proposal')}
                     onCloseZone={() => {
                       setSpecialZone('all');
                     }}
