@@ -160,7 +160,7 @@ export const AgentsIntroSection: React.FC = () => {
   const [viewing, setViewing] = useState<Viewing | null>(null);
   return (
   <div className="space-y-6 animate-in fade-in duration-200">
-    <div className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-yellow-50 p-5 sm:p-7 shadow-xs grid grid-cols-1 md:grid-cols-[1fr_minmax(0,22rem)] gap-5 md:gap-8 items-center">
+    <div className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-yellow-50 p-5 sm:p-7 shadow-xs grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-5 md:gap-8 items-center">
       <div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-500 text-stone-950">原創 IP</span>
@@ -174,12 +174,12 @@ export const AgentsIntroSection: React.FC = () => {
       </div>
       <button
         type="button"
-        onClick={() => setViewing({ src: '/agents/group.webp', alt: 'IdeaX 創點子角色群像', saveAs: 'IdeaX創點子-角色群像' })}
+        onClick={() => setViewing({ src: '/agents/group.webp?v=2', alt: 'IdeaX 創點子角色群像', wide: true, saveAs: 'IdeaX創點子-角色群像' })}
         aria-label="放大看角色群像"
         className="relative block w-full overflow-hidden rounded-2xl ring-1 ring-amber-200/80 shadow-sm cursor-zoom-in group"
       >
-        <img src="/agents/group-900.webp" alt="IdeaX 創點子角色群像：一群可靠的夥伴，守護你的創意路！" loading="lazy" width={900} height={900}
-          className="block w-full h-auto aspect-square object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+        <img src="/agents/group-900.webp?v=2" alt="IdeaX 創點子角色群像：一群可靠的夥伴，守護你的創意路！" loading="lazy" width={900} height={600}
+          className="block w-full h-auto aspect-[3/2] object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
         <span className="absolute bottom-2 right-2 rounded-lg bg-stone-900/70 px-2 py-0.5 text-[11px] font-bold text-white">點一下放大</span>
       </button>
     </div>
