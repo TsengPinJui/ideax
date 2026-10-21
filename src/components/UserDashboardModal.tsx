@@ -18,6 +18,7 @@ import { AdminUserAnalyticsTab } from './AdminUserAnalyticsTab';
 import { AdminSiteTrafficChart } from './AdminSiteTrafficChart';
 import { AdminGrowthTrendsCard } from './AdminGrowthTrendsCard';
 import { AdminFeatureUsageCard } from './AdminFeatureUsageCard';
+import { AdminMascotStatsShortcut } from './AdminMascotStatsShortcut';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { ExpertCertificationApplyModal } from './ExpertCertificationApplyModal';
 import { RealNameAuthTab } from './RealNameAuthTab';
@@ -3192,7 +3193,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 {/* 各大功能使用比例 */}
                 <AdminFeatureUsageCard />
 
-                {/* 吉祥物互動統計 */}
+                {/* 吉祥物互動統計：捷徑到 AI-CRM 分頁的小燈泡統計 */}
+                <AdminMascotStatsShortcut onGo={() => setActiveTab('admin_aicrm')} />
 
                 {/* 第二排：總註冊用戶 ＋ 認證專家 (雙欄並排) */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">

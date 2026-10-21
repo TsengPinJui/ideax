@@ -8,6 +8,8 @@ import { CompetitionAdminReviewTab } from './CompetitionAdminReviewTab';
 import { AdminSiteTrafficChart } from './AdminSiteTrafficChart';
 import { AdminGrowthTrendsCard } from './AdminGrowthTrendsCard';
 import { AdminFeatureUsageCard } from './AdminFeatureUsageCard';
+import { AdminMascotStatsShortcut } from './AdminMascotStatsShortcut';
+import { openDashboardTab } from '../utils/adminShortcuts';
 import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
 import {
   X,
@@ -496,7 +498,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         {/* 各大功能使用比例 */}
         <AdminFeatureUsageCard />
 
-        {/* 吉祥物互動統計 */}
+        {/* 吉祥物互動統計：捷徑到會員後台 AI-CRM 分頁的小燈泡統計 */}
+        <AdminMascotStatsShortcut onGo={() => openDashboardTab('admin_aicrm')} />
 
         {/* 1. 平台獲利數據與核心運營指標 */}
         <div>
