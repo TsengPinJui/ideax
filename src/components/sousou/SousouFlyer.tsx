@@ -64,12 +64,17 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
   };
 
   // 左下角停靠點（避開手機版底部選單）
+  // 底部選單高度每秒量一次就好（之前每一格都量，會逼瀏覽器一直重算整頁排版）
+  const trailCleared = useRef(false);
+  const navCache = useRef({ at: 0, h: 0 });
   const dock = () => {
     const s = state.current.size;
-    let bottom = 10;
-    const nav = document.querySelector('[data-ixm-avoid="bottom"]') as HTMLElement | null;
-    if (nav && nav.offsetParent !== null) bottom += nav.getBoundingClientRect().height;
-    return { x: 6, y: window.innerHeight - s - bottom };
+    const now = performance.now();
+    if (now - navCache.current.at > 1000) {
+      const nav = document.querySelector('[data-ixm-avoid="bottom"]') as HTMLElement | null;
+      navCache.current = { at: now, h: nav && nav.offsetParent !== null ? nav.getBoundingClientRect().height : 0 };
+    }
+    return { x: 6, y: window.innerHeight - s - 10 - navCache.current.h };
   };
 
   // 載入 3D 角色
@@ -111,8 +116,11 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
       const dpr = Math.min(2, window.devicePixelRatio || 1), W = window.innerWidth, H = window.innerHeight;
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
       const g = cv.getContext('2d'); if (!g) return;
-      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
       while (S.trail.length && now - S.trail[0].t > LIFE) S.trail.shift();
+      // 沒有風線時不用每一格清整個螢幕大小的畫布
+      if (S.trail.length < 2 && trailCleared.current) return;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+      trailCleared.current = S.trail.length < 2;
       const pts = S.trail; if (pts.length < 2) return;
       const sc = S.size / 168;
       g.lineCap = 'butt'; // 分段畫，圓頭會在交疊處形成一顆顆珠子
