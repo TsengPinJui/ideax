@@ -68,13 +68,8 @@ import { syncUserToFirestore, getUserFromFirestore } from '../services/firestore
 import { recordUserBoard, recordUserSpecialZone } from '../services/recommendationService';
 import { CompetitionTermsModal, CompetitionDocumentKey } from './challenge/CompetitionTermsModal';
 
-// 管理員 Email 白名單（建置時由環境變數 ADMIN_EMAILS 注入，多組以逗號分隔）
-const ADMIN_EMAIL_ALLOWLIST: string[] = String(process.env.ADMIN_EMAILS || 'john25893619@gmail.com')
-  .split(',')
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
-const isAllowlistedAdminEmail = (email: string): boolean =>
-  ADMIN_EMAIL_ALLOWLIST.includes(email.trim().toLowerCase());
+// 管理員 Email 白名單：共用 services/accountGuard（切換帳號的安全檢查也用同一份）
+import { isAllowlistedAdminEmail, isLocalDevHost } from '../services/accountGuard';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -515,7 +510,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           }
 
           const effectiveUser = checkRes.restoredUser || matched;
-          switchAccount(effectiveUser.id);
+          switchAccount(effectiveUser.id, { authenticatedUid: fbUser.uid });
 
           if (rememberMe) {
             localStorage.setItem(
@@ -593,7 +588,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       // 4. 非 Email 格式（使用者帳號 / 手機號碼 / ID 登入）：
       //    由伺服器查出對應 Email 並驗證密碼（Email 屬私密資料，前端不會拿到）
-      const finishLogin = (u: any, rememberIdentifier: string) => {
+      const finishLogin = (u: any, rememberIdentifier: string, authenticatedUid?: string) => {
         if (u.role === 'admin') {
           setErrorMsg('管理員請改用已授權的管理員 Email 與密碼登入。');
           setIsLoading(false);
@@ -606,7 +601,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
         const effectiveUser = checkRes.restoredUser || u;
-        switchAccount(effectiveUser.id);
+        switchAccount(effectiveUser.id, { authenticatedUid });
         if (rememberMe) {
           localStorage.setItem(
             STORAGE_REMEMBER_LOGIN_KEY,
@@ -628,7 +623,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           setIsLoading(false);
           return;
         }
-        finishLogin(matched, identifier);
+        finishLogin(matched, identifier, fbUser.uid);
         return;
       } catch (serverErr: any) {
         // 舊版本機帳號（未在 Firebase 註冊）：比對本機註冊時留存的密碼
@@ -670,7 +665,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
       const effectiveUser = checkRes.restoredUser || existing;
-      switchAccount(effectiveUser.id);
+      switchAccount(effectiveUser.id, { authenticatedUid: fbUser.uid });
       setSuccessMsg(`${label} 登入成功。`);
       setTimeout(() => onClose(), 400);
       return;
@@ -833,7 +828,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
         const effectiveUser = checkRes.restoredUser || existing;
-        switchAccount(effectiveUser.id);
+        switchAccount(effectiveUser.id, { authenticatedUid: fbUser.uid });
         setSuccessMsg('手機簡訊登入成功。');
         setTimeout(() => onClose(), 400);
       } else {
@@ -1124,8 +1119,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }
           })();
         } catch (authErr: any) {
-          console.warn('Firebase register notice:', authErr);
+          // 安全：Firebase 註冊失敗（例如 Email 已被註冊）就停下來，不再建立只存在這台裝置、沒有真正登入的帳號
+          const code = String(authErr?.code || '');
+          setErrorMsg(
+            code.includes('email-already-in-use') ? '這個 Email 已經註冊過了，請直接登入；忘記密碼可以點「忘記密碼」重設。'
+            : code.includes('weak-password') ? '密碼太簡單，請改用 6 ~ 20 位英數組合。'
+            : code.includes('invalid-email') ? 'Email 格式不正確，請重新確認。'
+            : `註冊失敗：${authErr?.message || '請稍後再試'}`
+          );
+          setIsLoading(false);
+          return;
         }
+      }
+      // 正式站一定要有真正的 Firebase 帳號才能建立會員（本機開發除外）
+      if (!registeredUid && !isLocalDevHost()) {
+        setErrorMsg('註冊失敗：無法建立登入帳號，請稍後再試或改用 Google 登入。');
+        setIsLoading(false);
+        return;
       }
 
       const chosenDomains: string[] = regInterests; // 只用使用者自己選的興趣；沒選時主領域另有「創新創業」保底

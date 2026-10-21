@@ -1,4 +1,5 @@
 import { realSurvey } from '../utils/surveyData';
+import { isLocalDevHost } from '../services/accountGuard';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Category, SubscriptionTier, ProblemLevel, BankAccountInfo, SUBSCRIPTION_PLANS, RECHARGE_PACKAGES, User, UserSurveyData, Transaction, Question, PUBLIC_METRIC_TOGGLE_KEYS, countPublicMetrics } from '../types';
@@ -9644,8 +9645,8 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                     }
                   });
 
-                  // 2. 固定保留之 1~3 核心測試身分（未列入者自動補齊，供免密碼隨時切換驗證）
-                  CORE_TEST_ACCOUNTS.forEach((cta) => {
+                  // 2. 內建測試身分：只在本機開發時補上（正式站不列出，也不能免密碼切換）
+                  (isLocalDevHost() ? CORE_TEST_ACCOUNTS : []).forEach((cta) => {
                     const aliasId = USER_ALIAS_MAP[cta.id];
                     if (!displayedUserIds.has(cta.id) && (!aliasId || !displayedUserIds.has(aliasId))) {
                       const rawU = availableUsers.find((user) => user.id === cta.id || (aliasId && user.id === aliasId)) || cta;
