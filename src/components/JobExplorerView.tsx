@@ -37,6 +37,7 @@ import { SousouFlyer } from './sousou/SousouFlyer';
 import { useApp } from '../context/AppContext';
 import { CityMultiSelect, CategoryMultiSelect } from './jobExplorer/CityMultiSelect';
 import { ChipMultiSelect } from './jobExplorer/ChipMultiSelect';
+import { JobsInstallPrompt } from './jobExplorer/JobsInstallPrompt';
 import { InlineConditionTag } from './jobExplorer/InlineConditionTag';
 import { seenJobBefore } from '../utils/jobDedupe';
 import { accompanyDuringSearch, cheerMascot } from './mascot/mascotConfig';
@@ -3028,6 +3029,9 @@ export const JobExplorerView: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* 找到職缺後：提示把匯職缺加到主畫面／安裝（瀏覽器支援時直接出現「安裝」鍵） */}
+        {jobs.length > 0 && <JobsInstallPrompt />}
 
         {/* 排序列 ＆ 大卡片／條列式／小卡片切換（手機橫向滑動不擁擠） */}
         <div className="flex items-center justify-between gap-2">
