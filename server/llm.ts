@@ -1,18 +1,18 @@
 /**
- * 內建 AI 模型切換：Gemini（預設）或 OpenAI GPT-5.6 Luna。
+ * 內建 AI 模型：預設 OpenAI GPT-6 Luna，可在後台切回 Gemini。
  * - 管理員在後台切換，存在 platform_settings/global.aiProvider；伺服器每 60 秒重讀一次
  * - 選 OpenAI 時先用 OpenAI；沒有金鑰、逾時或出錯，呼叫端會自動退回 Gemini
- * - 需要 Vercel 環境變數 OPENAI_API_KEY；可用 OPENAI_MODEL 換模型（預設 gpt-5.6-luna）
+ * - 需要 Vercel 環境變數 OPENAI_API_KEY；可用 OPENAI_MODEL 換模型（預設 gpt-6-luna）
  * - 金鑰只在伺服器使用，不會傳到前端
  */
 import { adminDb } from './competitionService';
 
 export type AiProvider = 'gemini' | 'openai';
 
-export const OPENAI_MODEL = (process.env.OPENAI_MODEL || 'gpt-5.6-luna').trim();
+export const OPENAI_MODEL = (process.env.OPENAI_MODEL || 'gpt-6-luna').trim();
 export const hasOpenAiKey = () => Boolean((process.env.OPENAI_API_KEY || '').trim());
 
-let cached: { provider: AiProvider; at: number } = { provider: 'gemini', at: 0 };
+let cached: { provider: AiProvider; at: number } = { provider: 'openai', at: 0 };
 let lastOpenAiError = '';
 export const getLastOpenAiError = () => lastOpenAiError;
 
@@ -24,7 +24,8 @@ export async function getAiProvider(): Promise<AiProvider> {
   try {
     const snap = await adminDb.collection('platform_settings').doc('global').get();
     const v = snap.exists ? (snap.data() as any)?.aiProvider : null;
-    cached = { provider: v === 'openai' ? 'openai' : 'gemini', at: Date.now() };
+    // 沒設定過就用 GPT-6 Luna；管理員選過 Gemini 才用 Gemini
+    cached = { provider: v === 'gemini' ? 'gemini' : 'openai', at: Date.now() };
   } catch {
     cached = { ...cached, at: Date.now() };
   }
