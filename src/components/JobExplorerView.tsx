@@ -807,16 +807,20 @@ export const JobExplorerView: React.FC = () => {
       </span>
     ) : null;
 
-  // ─── 保留這次的搜尋結果：點職缺連結出去、頁面被重新整理或 APP 重開，回來時結果還在（存在這台裝置，6 小時內有效） ───
+  // ─── 保留這次的搜尋結果：離開匯職缺頁（換到網站其他頁、關閉、重新整理）5 分鐘內回來，結果和條件還在；
+  //     超過 5 分鐘就一律重新設定條件。停在匯職缺頁上（包含點職缺連結到新分頁看）不會過期。 ───
   const PERSIST_KEY = 'ideax_job_explorer_session_v1';
-  const PERSIST_TTL = 6 * 60 * 60 * 1000;
+  const PERSIST_TTL = 5 * 60 * 1000;
+  /** 離開的時間：明確離開 > 最後一次切到背景（手機直接關掉 APP 時記不到離開） > 最後一次存檔 */
+  const leftAtOf = (saved: any) => Number(saved?.leftAt || saved?.hiddenAt || saved?.at || 0);
   const restoredRef = useRef(false);
   const restoreScrollRef = useRef<number | null>(null);
   useEffect(() => {
     try {
       const raw = localStorage.getItem(PERSIST_KEY);
       const saved = raw ? JSON.parse(raw) : null;
-      if (saved && Date.now() - Number(saved.at || 0) < PERSIST_TTL && (saved.jobs?.length || saved.messages?.length)) {
+      if (saved && Date.now() - leftAtOf(saved) >= PERSIST_TTL) localStorage.removeItem(PERSIST_KEY);
+      else if (saved && (saved.jobs?.length || saved.messages?.length)) {
         // 上次還在搜尋中就離開了：結果保留，訊息改成可以重新搜尋
         const msgs: ChatMessage[] = (saved.messages || []).map((m: ChatMessage) =>
           m.id === saved.searchingMsgId
@@ -835,6 +839,9 @@ export const JobExplorerView: React.FC = () => {
         if (saved.sortOrder) setSortOrder(saved.sortOrder);
         if (Array.isArray(saved.userCarePoints)) setUserCarePoints(saved.userCarePoints);
         if (typeof saved.scrollY === 'number') restoreScrollRef.current = saved.scrollY;
+        // 回到匯職缺頁了：離開時間歸零，之後停多久都不會過期
+        saved.leftAt = null; saved.hiddenAt = null;
+        localStorage.setItem(PERSIST_KEY, JSON.stringify(saved));
       }
     } catch {}
     restoredRef.current = true;
@@ -998,6 +1005,8 @@ export const JobExplorerView: React.FC = () => {
         const sess = searchSessionRef.current;
         localStorage.setItem(PERSIST_KEY, JSON.stringify({
           at: Date.now(),
+          leftAt: null,
+          hiddenAt: document.visibilityState === 'hidden' ? Date.now() : null,
           messages: messages.slice(-40),
           jobs: jobs.slice(0, 100),
           hasSearched,
@@ -1011,21 +1020,30 @@ export const JobExplorerView: React.FC = () => {
     return () => window.clearTimeout(t);
   }, [messages, jobs, hasSearched, keyword, selectedCity, selectedCategory, sortBy, sortOrder, userCarePoints, isSearching]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 點出去前記下捲到哪裡，回來時捲回原位
+  // 記下離開時間與捲動位置：切到背景只記「最後在背景的時間」（回來就清掉），真正離開匯職缺頁或關閉才算離開
   useEffect(() => {
-    const save = () => {
-      if (document.visibilityState !== 'hidden') return;
+    const patch = (fn: (saved: any) => void) => {
       try {
         const raw = localStorage.getItem(PERSIST_KEY);
         if (!raw) return;
         const saved = JSON.parse(raw);
-        saved.scrollY = window.scrollY;
+        fn(saved);
         localStorage.setItem(PERSIST_KEY, JSON.stringify(saved));
       } catch {}
     };
-    document.addEventListener('visibilitychange', save);
-    window.addEventListener('pagehide', save);
-    return () => { document.removeEventListener('visibilitychange', save); window.removeEventListener('pagehide', save); };
+    const markLeft = () => patch((saved) => { saved.scrollY = window.scrollY; saved.leftAt = Date.now(); });
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') patch((saved) => { saved.scrollY = window.scrollY; saved.hiddenAt = Date.now(); });
+      else patch((saved) => { saved.hiddenAt = null; });
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', markLeft);
+    return () => {
+      // 換到網站的其他頁面也算離開
+      markLeft();
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', markLeft);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
