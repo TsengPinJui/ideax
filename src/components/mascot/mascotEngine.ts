@@ -812,9 +812,9 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
       const now = performance.now();
       S.sadLie = false;
       S.waveDanceStart = now; S.waveDanceUntil = now + ms; S.danceHopAt = now + DANCE_BEAT;
+      emit('dance', ms); // 外層播放跳舞音樂（先於開心，跳舞時就不另外播開心音效）
       setMood('happy', ms);
       S.pose = 'idle'; // 手的動作交給波浪舞
-      emit('dance', ms); // 外層播放跳舞音樂
       say(text || '～♪ 來跟我一起跳波浪舞！～♬', ms);
     },
     poke: () => { const a = (Math.random() - 0.5) * 1.4; poke(new THREE.Vector3(Math.sin(a) * 0.95, 0.95 + 1.35 + Math.random() * 0.4, Math.cos(a) * 0.95), 4.2); },

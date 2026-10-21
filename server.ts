@@ -3668,8 +3668,14 @@ function buildJobConditionSummary(
   const lines: string[] = [];
   const pick = (re: RegExp) => { const m = text.match(re); return m ? m[0] : ''; };
   // 工作型態
-  const jt = pick(/正職兼職皆可|正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時/);
-  if (jt) lines.push(`工作型態：${jt === '全職' ? '正職' : jt}`);
+  // 工作型態可以好幾個（「正職、兼職」「正職兼職都可以」）
+  const jtSet = new Set<string>();
+  if (/(正職|全職).{0,4}(兼職|工讀|打工).{0,4}(皆可|都可以|都行|也可以)|皆可|正職兼職/.test(text)) { jtSet.add('正職'); jtSet.add('兼職'); }
+  for (const w of text.match(/正職|全職|兼職工讀|兼職|工讀|打工|實習|約聘|派遣|計時/g) || []) {
+    jtSet.add(/正職|全職/.test(w) ? '正職' : /兼職|工讀|打工|計時/.test(w) ? '兼職' : w);
+  }
+  const jt = ['正職', '兼職', '實習', '約聘', '派遣'].filter((x) => jtSet.has(x)).join('、');
+  if (jt) lines.push(`工作型態：${jt}`);
   else if (ctx.inferredJobType) lines.push(`工作型態：${ctx.inferredJobType}（依${ctx.inferredFrom}判斷）`);
 
   // 地區
@@ -3891,7 +3897,8 @@ async function parseJobIntakeWithGemini(params: {
 5. 【工作經歷年資 (experience)】：
    - 識別年資要求，例如 0（無經驗或新鮮人）、1、2、3、5 年以上等。experienceYears 填入純數字（無要求則填 0），experience 填描述文字。
 6. 【工作型態 (jobType)】：
-   - 識別是否指定「正職」、「兼職」（含打工、工讀、計時）、「實習」或「皆可」。若使用者完全未提及，設為 null。
+   - 識別是否指定「正職」、「兼職」（含打工、工讀、計時）、「實習」。可以好幾個，用「、」分隔，例如「正職、兼職」「兼職、實習」；說「正職兼職都可以」「皆可」填「正職、兼職」。若使用者完全未提及，設為 null。
+   - 【所有條件都可以有多個值】：職務（roles）、公司（companies）、地區（location 用「、」分隔各縣市）、工作型態都照使用者說的全部列出，不要只挑一個。
 7. 【結構化標籤 (conditionTags)】：
    - 將整理好的各個條件轉成互動標籤物件陣列，供前端進行標籤化呈現、修改、新增與刪除：
      - type: "role" | "company" | "salary" | "experience" | "location" | "jobType" | "education"
@@ -3925,7 +3932,7 @@ async function parseJobIntakeWithGemini(params: {
   "roles": ["職務名1"],
   "location": "結構化地點描述，若無則 null",
   "city": "縣市名（如：台北市、嘉義縣），若無則全部",
-  "jobType": "正職" | "兼職" | "實習" | "皆可" | null,
+  "jobType": "正職" | "兼職" | "實習"，可以好幾個用「、」分隔（例如 "正職、兼職"）| null,
   "salaryText": "薪資要求描述，若無則 null",
   "salaryCurrency": "TWD" | "USD" | "JPY" | "EUR" | "CNY" | "GBP" | "SGD" | "HKD",
   "salaryPeriod": "月薪" | "年薪" | "時薪",
