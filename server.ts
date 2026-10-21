@@ -16,6 +16,7 @@ import { LoginError, migratePrivateProfiles, passwordLogin } from './server/priv
 import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
 import { classifyMascotQuestion, extractUdifyAppCode, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, MASCOT_REFER_007_REPLY, MASCOT_REFER_007_ACTIONS, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken, adminDb, isVerifiedAdmin } from './server/competitionService';
+import { recordFeatureUse, getFeatureUsage } from './server/featureUsage';
 import { diagnoseJobUrl, groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './server/jobUrlVerify';
 import { ALL_JOB_SITES, COMPANY_SITE, MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
 import { FALLBACK_USD_RATES } from './src/data/currency';
@@ -3403,6 +3404,23 @@ app.post('/api/mascot/ask', async (req: Request, res: Response) => {
 });
 
 // 吉祥物互動統計（不需登入；只累加當日計數）
+// 各大功能使用統計：前端每位訪客每天每個功能回報一次
+app.post('/api/feature-usage', async (req: Request, res: Response) => {
+  try {
+    res.json({ success: await recordFeatureUse(req.body?.feature) });
+  } catch {
+    res.json({ success: false });
+  }
+});
+
+app.get('/api/admin/feature-usage', async (req: Request, res: Response) => {
+  try {
+    res.json({ success: true, ...(await getFeatureUsage(Number(req.query.days) || 30)) });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '讀取失敗' });
+  }
+});
+
 app.post('/api/mascot/event', async (req: Request, res: Response) => {
   try {
     const ok = await recordMascotEvent(req.body || {});

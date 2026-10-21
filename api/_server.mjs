@@ -161488,6 +161488,62 @@ async function getMascotStats(days = 14) {
   };
 }
 
+// server/featureUsage.ts
+var FEATURE_LABELS = {
+  explore: "\u9996\u9801\u63A2\u7D22",
+  question: "\u5361\u7247\u5167\u5BB9\u9801",
+  jobs: "\u532F\u8077\u7F3A",
+  vibecoding: "VibeCoding \u5C55\u5834",
+  painpoints: "\u75DB\u9EDE",
+  create: "\u767C\u5E03\u5275\u9EDE\u5B50",
+  discussion: "\u8A0E\u8AD6\u5340",
+  solvers: "\u5C08\u5BB6",
+  challenge: "\u5275\u661F\u5B63",
+  membership: "\u6703\u54E1\u8207\u5132\u503C",
+  my_projects: "\u6211\u7684\u6848\u4EF6",
+  agents: "\u95DC\u65BC\u8207\u89D2\u8272",
+  mascot_chat: "\u5C0F\u71C8\u6CE1\u5C0D\u8A71",
+  customer_service: "\u5BA2\u670D\uFF08\u591A\u6167\uFF09"
+};
+async function getDb4() {
+  if (!hasAdminCredentials) return null;
+  const { getFirestore: getFirestore3, FieldValue: FieldValue4 } = await Promise.resolve().then(() => (init_firestore(), firestore_exports));
+  const app2 = getApps()[0];
+  const dbId = firebase_applet_config_default.firestoreDatabaseId;
+  return { db: dbId ? getFirestore3(app2, dbId) : getFirestore3(app2), FieldValue: FieldValue4 };
+}
+function twDay2(d = /* @__PURE__ */ new Date()) {
+  return new Date(d.getTime() + 8 * 36e5).toISOString().slice(0, 10);
+}
+async function recordFeatureUse(feature) {
+  const f3 = String(feature || "");
+  if (!(f3 in FEATURE_LABELS)) return false;
+  const conn = await getDb4();
+  if (!conn) return false;
+  const { db, FieldValue: FieldValue4 } = conn;
+  const day = twDay2();
+  await Promise.all([
+    db.collection("feature_usage").doc(day).set({ day, counts: { [f3]: FieldValue4.increment(1) } }, { merge: true }),
+    db.collection("feature_usage").doc("_total").set({ counts: { [f3]: FieldValue4.increment(1) }, updatedAt: (/* @__PURE__ */ new Date()).toISOString() }, { merge: true })
+  ]);
+  return true;
+}
+async function getFeatureUsage(days = 30) {
+  const conn = await getDb4();
+  if (!conn) return { labels: FEATURE_LABELS, days: [], total: {} };
+  const { db } = conn;
+  const n = Math.max(1, Math.min(120, Math.floor(days) || 30));
+  const ids = [];
+  for (let i2 = n - 1; i2 >= 0; i2--) ids.push(twDay2(new Date(Date.now() - i2 * 864e5)));
+  const snaps = await db.getAll(...ids.map((id) => db.collection("feature_usage").doc(id)), db.collection("feature_usage").doc("_total"));
+  const totalSnap = snaps.pop();
+  return {
+    labels: FEATURE_LABELS,
+    days: snaps.map((s2, i2) => ({ day: ids[i2], counts: s2.exists && s2.data()?.counts || {} })),
+    total: totalSnap?.exists && totalSnap.data()?.counts || {}
+  };
+}
+
 // server/jobUrlVerify.ts
 var PLATFORMS = [
   { name: "104\u4EBA\u529B\u9280\u884C", host: /(^|\.)104\.com\.tw$/i, detail: /^\/job\/[a-z0-9]{4,}/i, search: (kw) => `https://www.104.com.tw/jobs/search/?keyword=${kw}`, site: "104.com.tw" },
@@ -162056,7 +162112,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.3.9";
+var APP_VERSION = "3.4.0";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -164893,6 +164949,20 @@ app.post("/api/mascot/ask", async (req, res) => {
   } catch (err) {
     console.error("[Mascot Ask]", err?.message || err);
     res.status(500).json({ success: false, error: "\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF0C\u8ACB\u7A0D\u5F8C\u518D\u8A66" });
+  }
+});
+app.post("/api/feature-usage", async (req, res) => {
+  try {
+    res.json({ success: await recordFeatureUse(req.body?.feature) });
+  } catch {
+    res.json({ success: false });
+  }
+});
+app.get("/api/admin/feature-usage", async (req, res) => {
+  try {
+    res.json({ success: true, ...await getFeatureUsage(Number(req.query.days) || 30) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err?.message || "\u8B80\u53D6\u5931\u6557" });
   }
 });
 app.post("/api/mascot/event", async (req, res) => {

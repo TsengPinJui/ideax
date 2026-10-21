@@ -17,6 +17,7 @@ import { AdminMailDisputesTab } from './AdminMailDisputesTab';
 import { AdminUserAnalyticsTab } from './AdminUserAnalyticsTab';
 import { AdminSiteTrafficChart } from './AdminSiteTrafficChart';
 import { AdminGrowthTrendsCard } from './AdminGrowthTrendsCard';
+import { AdminFeatureUsageCard } from './AdminFeatureUsageCard';
 import { exportSurveyToExcelXlsx } from '../utils/exportSurveyExcel';
 import { ExpertCertificationApplyModal } from './ExpertCertificationApplyModal';
 import { RealNameAuthTab } from './RealNameAuthTab';
@@ -3187,6 +3188,9 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
 
                 {/* 成長趨勢：註冊會員、不重複訪客 */}
                 <AdminGrowthTrendsCard />
+
+                {/* 各大功能使用比例 */}
+                <AdminFeatureUsageCard />
 
                 {/* 吉祥物互動統計 */}
 
