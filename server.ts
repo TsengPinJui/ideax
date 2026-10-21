@@ -16,7 +16,7 @@ import { LoginError, migratePrivateProfiles, passwordLogin } from './server/priv
 import { guardMascotQuestion, redactMascotReply } from './server/mascotGuard';
 import { classifyMascotQuestion, extractUdifyAppCode, fetchDifyAppName, getMascotStats, mascotSelfAnswer, planMascotRoute, MASCOT_AGENT_NAME_HINTS, mascotAgentKeyInfo, MASCOT_AGENTS, MASCOT_AGENT_WAIT_MS, MASCOT_APOLOGY_REPLY, MASCOT_OUT_OF_SCOPE_REPLY, MASCOT_REFER_007_REPLY, MASCOT_REFER_007_ACTIONS, mascotAgentKey, normalizeAgentReply, proxyAnswerWithGemini, recordMascotEvent, type MascotAgent } from './server/mascot';
 import { verifyAuthToken, adminDb, isVerifiedAdmin } from './server/competitionService';
-import { recordFeatureUse, getFeatureUsage } from './server/featureUsage';
+import { recordFeatureUse, getFeatureUsage, getPublicFeatureTotals } from './server/featureUsage';
 import { diagnoseJobUrl, groundingFrom, verifyJobUrls, platformOf, type GroundingInfo } from './server/jobUrlVerify';
 import { ALL_JOB_SITES, COMPANY_SITE, MAJOR_CITIES_BY_COUNTRY } from './src/data/jobSites';
 import { FALLBACK_USD_RATES } from './src/data/currency';
@@ -3413,6 +3413,16 @@ app.post('/api/feature-usage', async (req: Request, res: Response) => {
   }
 });
 
+// 首頁公開指標：各功能累計人次（只有數字）
+app.get('/api/feature-usage/totals', async (_req: Request, res: Response) => {
+  try {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json({ success: true, totals: await getPublicFeatureTotals() });
+  } catch {
+    res.json({ success: false, totals: {} });
+  }
+});
+
 app.get('/api/admin/feature-usage', async (req: Request, res: Response) => {
   try {
     res.json({ success: true, ...(await getFeatureUsage(Number(req.query.days) || 30)) });
@@ -4117,7 +4127,7 @@ app.get('/api/admin/user-activity', async (req: Request, res: Response) => {
 const PUBLIC_METRIC_KEYS = [
   'showSolvedCount', 'showTotalBounty', 'showAvgResponseSpeed', 'showSatisfactionRate', 'showHighestBounty',
   'showTotalViews', 'showUniqueVisitors', 'showOnlineUsers', 'showTotalMembers', 'showVerifiedSolvers', 'showQuestionsCount',
-  'showProposalsCount', 'showTotalDeals', 'showTotalGMV',
+  'showProposalsCount', 'showTotalDeals', 'showTotalGMV', 'showTodayVisitors', 'showNewMembers7d', 'showJobsUsers',
 ];
 app.post('/api/admin/public-metrics-config', async (req: Request, res: Response) => {
   try {

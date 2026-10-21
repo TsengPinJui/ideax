@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { MonitorPlay, Trophy, Megaphone, Hand, Check, Search, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HOME_SHOWCASE_MAX_CUSTOM, type HomeShowcaseMode, type Question } from '../types';
+import { useShowcaseSlides } from './HomeShowcasePlayer';
 
 const TYPE_LABEL: Record<string, string> = {
   innovation_proposal: '創點子提案',
@@ -107,17 +108,18 @@ const CustomShowcasePicker: React.FC<{ ids: string[]; disabled: boolean; onChang
 };
 
 /**
- * 管理儀表板：首頁「創點子」播放區（預留）
- * 先讓管理員選好要播放哪一種內容；播放功能開放前，首頁仍顯示原本的創點子標誌。
+ * 管理儀表板：首頁「創點子」播放區
+ * 啟用並勾選要播放的內容後，首頁最上方改成輪播；沒有可播放的內容時仍顯示創點子標誌。
  */
 const MODES: Array<{ id: HomeShowcaseMode; name: string; desc: string; icon: React.ReactNode }> = [
-  { id: 'excellent', name: '優秀作品', desc: '播放創星季比賽的優秀作品', icon: <Trophy className="w-4 h-4" /> },
-  { id: 'paid', name: '付費推播', desc: '播放購買推播的作品或廣告', icon: <Megaphone className="w-4 h-4" /> },
+  { id: 'excellent', name: '優秀作品', desc: '創星季參賽作品，依按讚、附議、支持點數取前 8 名', icon: <Trophy className="w-4 h-4" /> },
+  { id: 'paid', name: '付費推播', desc: '發布時加購推播、仍在招募中的卡片（標示「推播」）', icon: <Megaphone className="w-4 h-4" /> },
   { id: 'custom', name: '管理員自選', desc: '由管理員挑選要播放的作品', icon: <Hand className="w-4 h-4" /> },
 ];
 
 export const AdminHomeShowcaseCard: React.FC = () => {
   const { homeShowcaseConfig, updateHomeShowcaseConfig } = useApp();
+  const slides = useShowcaseSlides();
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
@@ -143,10 +145,12 @@ export const AdminHomeShowcaseCard: React.FC = () => {
           <div>
             <h4 className="font-black text-sm sm:text-base text-sky-950 flex items-center gap-2 flex-wrap">
               <span>首頁創點子播放區</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-sky-700 border border-sky-200">預留・尚未播放</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${enabled && slides.length ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-stone-500 border-stone-200'}`}>
+                {!enabled ? '未啟用' : slides.length ? `播放中・${slides.length} 個` : '沒有可播放的內容'}
+              </span>
             </h4>
             <p className="text-xs text-sky-900/70 mt-0.5">
-              首頁最上方的創點子區塊之後會變成播放區。先在這裡勾選要播放什麼（可複選）；播放功能開放前，首頁仍顯示原本的創點子標誌。
+              啟用後，首頁最上方的創點子標誌會換成輪播（每 5 秒換一個，滑鼠移上去或手指按住會暫停）。可複選，依「優秀作品 → 付費推播 → 自選」的順序串起來，最多 12 個；沒有可播放的內容時仍顯示創點子標誌。
             </p>
           </div>
         </div>
@@ -196,8 +200,8 @@ export const AdminHomeShowcaseCard: React.FC = () => {
       )}
 
       <p className="text-[11px] text-sky-900/70">
-        可複選，勾選多項時之後會輪流播放。目前設定：
-        {enabled ? (chosen ? `啟用，播放${chosen}` : '啟用，但還沒勾選要播放的內容') : '關閉（首頁顯示創點子標誌）'}
+        目前設定：
+        {enabled ? (chosen ? `啟用，播放${chosen}${slides.length ? `，共 ${slides.length} 個` : '，但目前沒有符合的內容（首頁顯示創點子標誌）'}` : '啟用，但還沒勾選要播放的內容') : '關閉（首頁顯示創點子標誌）'}
         {saving ? '・儲存中…' : savedAt ? '・已儲存' : ''}
       </p>
     </div>

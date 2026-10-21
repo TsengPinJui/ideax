@@ -8,6 +8,8 @@ import { CompetitionAdminReviewTab } from './CompetitionAdminReviewTab';
 import { AdminSiteTrafficChart } from './AdminSiteTrafficChart';
 import { AdminGrowthTrendsCard } from './AdminGrowthTrendsCard';
 import { AdminFeatureUsageCard } from './AdminFeatureUsageCard';
+import { AdminMascotStatsShortcut } from './AdminMascotStatsShortcut';
+import { openDashboardTab } from '../utils/adminShortcuts';
 import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
 import {
   X,
@@ -496,7 +498,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         {/* 各大功能使用比例 */}
         <AdminFeatureUsageCard />
 
-        {/* 吉祥物互動統計 */}
+        {/* 吉祥物互動統計：捷徑到會員後台 AI-CRM 分頁的小燈泡統計 */}
+        <AdminMascotStatsShortcut onGo={() => openDashboardTab('admin_aicrm')} />
 
         {/* 1. 平台獲利數據與核心運營指標 */}
         <div>
@@ -654,6 +657,81 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               >
                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
                   localPublicMetrics.showUniqueVisitors ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 1b: 今日訪客 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showTodayVisitors ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">今日訪客</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">今日人數</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">今天來過網站的不重複訪客（同一裝置當天只算一次）</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showTodayVisitors: !prev.showTodayVisitors }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showTodayVisitors ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showTodayVisitors ? '點擊隱藏此指標' : '點擊公開此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showTodayVisitors ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 1b: 近 7 天新會員 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showNewMembers7d ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">近 7 天新會員</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">成長</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">最近 7 天新註冊的會員人數（不含測試帳號）</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showNewMembers7d: !prev.showNewMembers7d }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showNewMembers7d ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showNewMembers7d ? '點擊隱藏此指標' : '點擊公開此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showNewMembers7d ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+
+            {/* Metric 1b: 匯職缺使用人次 */}
+            <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+              localPublicMetrics.showJobsUsers ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
+            }`}>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-stone-900">匯職缺使用人次</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">功能熱度</span>
+                </div>
+                <p className="text-[11px] text-stone-500 mt-0.5">用過匯職缺的人次（每位訪客每天算一次，v3.4.0 起記錄）</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocalPublicMetrics(prev => ({ ...prev, showJobsUsers: !prev.showJobsUsers }))}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 ${
+                  localPublicMetrics.showJobsUsers ? 'bg-amber-500' : 'bg-stone-300'
+                }`}
+                title={localPublicMetrics.showJobsUsers ? '點擊隱藏此指標' : '點擊公開此指標'}
+              >
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  localPublicMetrics.showJobsUsers ? 'translate-x-5' : 'translate-x-0'
                 }`} />
               </button>
             </div>

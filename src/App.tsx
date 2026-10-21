@@ -39,6 +39,7 @@ import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } 
 import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
 import { trackPageView } from './utils/googleAnalytics';
 import { trackFeature, featureFromPath } from './services/featureUsage';
+import { OPEN_DASHBOARD_TAB_EVENT } from './utils/adminShortcuts';
 import {
   recordUserSearchKeyword,
   recordUserBoard,
@@ -1096,6 +1097,20 @@ function MainContent() {
     window.addEventListener('ideax:open-question', onOpenQuestion);
     return () => window.removeEventListener('ideax:open-question', onOpenQuestion);
   }, [questions]);
+
+  // 管理員頁面的捷徑：打開會員後台的管理分頁（只接受白名單分頁，且只有管理員）
+  useEffect(() => {
+    const onOpenTab = (e: Event) => {
+      const tab = String((e as CustomEvent).detail?.tab || '');
+      if (tab !== 'admin_aicrm' || currentUser.role !== 'admin') return;
+      setSelectedQuestion(null);
+      setUserDashboardTab(tab as any);
+      setActiveTab('user_dashboard');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener(OPEN_DASHBOARD_TAB_EVENT, onOpenTab);
+    return () => window.removeEventListener(OPEN_DASHBOARD_TAB_EVENT, onOpenTab);
+  }, [currentUser.role]);
 
   // 小燈泡對話框的功能捷徑：只打開網站頁面（白名單），需要登入的頁面先請訪客登入
   useEffect(() => {

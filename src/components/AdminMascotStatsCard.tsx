@@ -84,7 +84,7 @@ export const AdminMascotStatsCard: React.FC = () => {
   ];
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 space-y-4">
+    <div id="admin-mascot-stats" className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 space-y-4 scroll-mt-24">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-amber-600" />
@@ -125,7 +125,7 @@ export const AdminMascotStatsCard: React.FC = () => {
             {(() => {
               const keys = Array.from(new Set([...Object.keys(total.navs), ...Object.keys(total.navOffers)])).filter((k) => k in NAV_LABELS);
               const clicks = keys.reduce((n, k) => n + (total.navs[k] || 0), 0);
-              if (!keys.length) return <p className="text-[11px] text-stone-500">v3.4.1 起開始記錄；小燈泡在回答裡建議功能、使用者點下去之後就會出現。</p>;
+              if (!keys.length) return <p className="text-[11px] text-stone-500">v3.4.0 起開始記錄；小燈泡在回答裡建議功能、使用者點下去之後就會出現。</p>;
               const rowsN = keys
                 .map((k) => ({ k, n: total.navs[k] || 0, offer: total.navOffers[k] || 0 }))
                 .sort((x, y) => y.n - x.n || y.offer - x.offer);

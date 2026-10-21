@@ -76,7 +76,7 @@ export interface MascotDayStats {
   day: string;
   counts: Partial<Record<MascotEventType | 'ask', number>>;
   agents: Partial<Record<MascotAgent, number>>;
-  /** 小燈泡轉介：使用者點了哪個功能／回答裡建議了哪個功能（v3.4.1 起） */
+  /** 小燈泡轉介：使用者點了哪個功能／回答裡建議了哪個功能（v3.4.0 起） */
   navs?: Record<string, number>;
   navOffers?: Record<string, number>;
   interactionMs: number;

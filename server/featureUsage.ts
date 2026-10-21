@@ -67,3 +67,17 @@ export async function getFeatureUsage(days = 30) {
     total: (totalSnap?.exists && totalSnap.data()?.counts) || {},
   };
 }
+
+/** 首頁公開指標用：只回傳累計人次（不含任何個人資料），快取 5 分鐘 */
+let publicTotalsCache: { at: number; totals: Record<string, number> } = { at: 0, totals: {} };
+export async function getPublicFeatureTotals(): Promise<Record<string, number>> {
+  if (Date.now() - publicTotalsCache.at < 5 * 60 * 1000) return publicTotalsCache.totals;
+  const conn = await getDb();
+  if (!conn) return {};
+  const snap = await conn.db.collection('feature_usage').doc('_total').get();
+  const raw = (snap.exists && snap.data()?.counts) || {};
+  const totals: Record<string, number> = {};
+  for (const k of Object.keys(FEATURE_LABELS)) totals[k] = Number(raw[k]) || 0;
+  publicTotalsCache = { at: Date.now(), totals };
+  return totals;
+}
