@@ -1115,6 +1115,8 @@ function MainContent() {
       else if (to === 'my_projects') setActiveTab('my_projects');
       else if (to === 'ai_crm') setActiveTab('ai_crm');
       else if (to === 'customer_service') { openCustomerService(); return; }
+      // 需要專人處理：打開客服視窗的「專人回報工單」（舊的「寫信給客服」按鈕也導到這裡）
+      else if (to === 'ticket' || to === 'mailto') { openCustomerService({ tab: 'ticket' }); return; }
       else if (to === 'create') setActiveTab('create_question');
       else if (to.startsWith('dash:') && DASH_TABS.has(to.slice(5))) {
         setUserDashboardTab(to.slice(5) as any);

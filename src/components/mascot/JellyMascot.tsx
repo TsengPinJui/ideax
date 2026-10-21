@@ -369,7 +369,6 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
   const goTo = (to: string) => {
     if (!MASCOT_NAV_TARGETS.has(to)) return;
     markActive();
-    if (to === 'mailto') { window.location.href = 'mailto:support@ideax.tw'; return; }
     try { window.dispatchEvent(new CustomEvent(MASCOT_NAVIGATE_EVENT, { detail: { to } })); } catch {}
     if (window.innerWidth < WIDE_MIN) setChatOpen(false);
   };

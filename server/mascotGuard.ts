@@ -1,7 +1,7 @@
 /**
  * 問問小燈泡的個資護欄（在轉接任何助理之前、以及回覆送出之前執行）：
  * 1. 詢問「別人」的帳戶、交易、聯絡方式等資料 → 直接婉拒，不轉接
- * 2. 詢問「自己」的帳目、點數、交易、訂單等資料 → 不讓 AI 回答，告訴他去哪裡自己查，或寫信給人工客服
+ * 2. 詢問「自己」的帳目、點數、交易、訂單等資料 → 不讓 AI 回答，告訴他去哪裡自己查，或填寫平台內建的「專人回報工單」
  * 3. 問題裡的 Email、電話、身分證字號、銀行帳號 → 先遮掉再交給助理（無法驗證身分，不讓助理拿去查人）
  * 4. 助理或 Gemini 的回覆若出現上述資料 → 遮掉（官方信箱除外）
  * 5. 平台的付費功能（AI 獵頭、解鎖方案、深度分析報告、AI-CRM）不能透過小燈泡或任何 AI 免費使用：
@@ -18,7 +18,8 @@ export const SUPPORT_EMAIL = 'support@ideax.tw';
  * 只負責「打開網站頁面」，功能本身仍由使用者在網站介面操作。
  */
 export interface MascotAction { label: string; to: string }
-const MAIL_ACTION: MascotAction = { label: '寫信給人工客服', to: 'mailto' };
+/** 需要專人處理：打開客服視窗的「專人回報工單」（平台內建，不用寄信） */
+const MAIL_ACTION: MascotAction = { label: '填寫專人回報工單', to: 'ticket' };
 const DASHBOARD_HINT = '個人中心（電腦版點右上角頭像，手機版點底部「我的」）';
 const MASK = '［已隱藏］';
 
@@ -149,7 +150,7 @@ export function guardMascotQuestion(raw: string): MascotGuardResult {
       action: 'reply',
       reason: 'others',
       actions: [MAIL_ACTION],
-      reply: '為了保護每位用戶的隱私，小燈泡不能提供或查詢其他人的帳戶、交易或聯絡資料喔！如果你和對方有交易上的問題，可以在案件的聊天室溝通，或寫信到 support@ideax.tw 請人工客服協助。',
+      reply: '為了保護每位用戶的隱私，小燈泡不能提供或查詢其他人的帳戶、交易或聯絡資料喔！如果你和對方有交易上的問題，可以在案件的聊天室溝通，或填寫客服視窗的「專人回報工單」請專人協助。',
     };
   }
 
@@ -160,7 +161,7 @@ export function guardMascotQuestion(raw: string): MascotGuardResult {
         action: 'reply',
         reason: 'own_account',
         actions: [...topic.actions, MAIL_ACTION],
-        reply: `你的個人帳目資料只有你自己看得到，小燈泡沒辦法替你查喔！請到 ${topic.where} 查看；如果資料有疑問，可以寫信到 ${SUPPORT_EMAIL}，人工客服會協助你確認（平日 09:30～18:30）。`,
+        reply: `你的個人帳目資料只有你自己看得到，小燈泡沒辦法替你查喔！請到 ${topic.where} 查看；如果資料有疑問，可以填寫客服視窗的「專人回報工單」，專人會協助你確認。`,
       };
     }
   }

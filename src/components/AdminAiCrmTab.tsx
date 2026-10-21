@@ -1927,7 +1927,7 @@ export const AdminAiCrmTab: React.FC<AdminAiCrmTabProps> = ({ onOpenAiCrm }) => 
                             ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
                             : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
                         }`}>
-                          {difyLiveResponse.source === 'gemini-fallback' ? 'Gemini 2.5 Flash' : 'Dify Live API'}
+                          {difyLiveResponse.source === 'gemini-fallback' ? 'Gemini（備援）' : 'Dify Live API'}
                         </span>
                         <span className="text-xs text-stone-400">
                           耗時：<strong className="text-amber-300 font-mono">{difyLiveResponse.latencyMs || 0} ms</strong>

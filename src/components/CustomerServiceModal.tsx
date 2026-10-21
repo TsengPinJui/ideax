@@ -137,6 +137,9 @@ export const CustomerServiceModal: React.FC = () => {
       setTicketName(currentUser?.name || '');
       setTicketEmail(currentUser?.email || '');
 
+      // 從「填寫專人回報工單」按鈕打開：直接到工單分頁
+      if (customerServiceContext?.tab === 'ticket') setActiveTab('ticket');
+
       const newConvId = `conv-${Date.now().toString(36)}`;
       setConversationId(newConvId);
 
@@ -658,9 +661,6 @@ export const CustomerServiceModal: React.FC = () => {
                 <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                   <span>找不到想查的問題？讓多慧即時解答</span>
-                </span>
-                <span className="text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
-                  ⚡ Dify Live Agent
                 </span>
               </div>
               <form onSubmit={handleAskAgentCustomFaq} className="flex items-center gap-2">
