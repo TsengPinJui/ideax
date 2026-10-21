@@ -53,6 +53,14 @@ service cloud.firestore {
           get(/databases/$(database)/documents/users/$(data.get(appIdField, ''))).data.get('authUid', '') == request.auth.uid)
       );
     }
+    // 會員編號是不是自己的：編號就是登入帳號，或該會員資料的 authUid 是自己
+    function ownsAppId(appId) {
+      return isSignedIn() && appId is string && appId != '' && (
+        appId == request.auth.uid ||
+        (exists(/databases/$(database)/documents/users/$(appId)) &&
+          get(/databases/$(database)/documents/users/$(appId)).data.get('authUid', '') == request.auth.uid)
+      );
+    }
     function changedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
@@ -67,13 +75,21 @@ service cloud.firestore {
     }
     match /questions/{questionId} {
       allow read: if true;
+      // 新發布：作者必須是自己的會員帳號；官方身分、精選只有管理員能設定
       allow create: if isAdmin() || (
-        isSignedIn() && request.resource.data.get('authorAuthUid', '') == request.auth.uid
+        isSignedIn() && request.resource.data.get('authorAuthUid', '') == request.auth.uid &&
+        ownsAppId(request.resource.data.get('authorId', '')) &&
+        request.resource.data.get('isOfficial', false) != true &&
+        request.resource.data.get('isFeatured', false) != true &&
+        request.resource.data.get('publishIdentity', '') != 'platform'
       );
       allow update: if isAdmin() || (
         ownsVia(resource.data, 'authorAuthUid', 'authorId') &&
         (!('authorAuthUid' in changedKeys()) || request.resource.data.authorAuthUid == request.auth.uid) &&
-        !('authorId' in changedKeys())
+        !('authorId' in changedKeys()) &&
+        !('isOfficial' in changedKeys() && request.resource.data.isOfficial == true) &&
+        !('isFeatured' in changedKeys() && request.resource.data.isFeatured == true) &&
+        !('publishIdentity' in changedKeys() && request.resource.data.publishIdentity == 'platform')
       ) || (
         isSignedIn() && !changedKeys().hasAny(protectedQuestionFields())
       );
@@ -99,6 +115,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isAdmin() || (
         isSignedIn() && request.resource.data.get('solverAuthUid', '') == request.auth.uid &&
+        ownsAppId(request.resource.data.get('solverId', '')) &&
         noPublicPaidContent(request.resource.data) &&
         request.resource.data.get('unlockedByUserIds', []).size() == 0
       );
@@ -217,10 +234,25 @@ service cloud.firestore {
     function becomesVerified(field) {
       return request.resource.data.get(field, '') == 'verified' && resource.data.get(field, '') != 'verified';
     }
+    // 別的會員（非本人、非管理員）只能改的欄位：評價與統計數字
+    function crossUserCounterFields() {
+      return ['rating', 'reviewCount', 'acceptedSolutionsCount', 'submittedSolutionsCount', 'acceptanceRate',
+              'reputation', 'reputationPoints', 'levelAnswerCounts', 'levelQuestionCounts', 'achievementsCount',
+              'weeklyTop10DiscussionCount', 'weeklyTop10SolutionCount', 'weeklyTop10Honors', 'updatedAt'];
+    }
+    function notSelfVerified() {
+      return request.resource.data.get('verifiedBadge', null) in [null, false, ''] &&
+        request.resource.data.get('verifiedExpert', false) != true &&
+        request.resource.data.get('realNameAuthStatus', '') != 'verified' &&
+        request.resource.data.get('expertCertStatus', '') != 'verified';
+    }
     match /users/{userId} {
       allow read: if true;
+      // 建立會員資料：只能建立自己的（文件編號是登入帳號，或 authUid 是自己），且不能一開始就是已認證
       allow create: if isAdmin() || (
         isSignedIn() &&
+        (request.auth.uid == userId || request.resource.data.get('authUid', '') == request.auth.uid) &&
+        notSelfVerified() &&
         !request.resource.data.keys().hasAny(privateProfileFields()) &&
         request.resource.data.get('balance', 0) == 0 &&
         request.resource.data.get('withheldPoints', 0) == 0 &&
@@ -236,21 +268,59 @@ service cloud.firestore {
         request.resource.data.get('accountType', '') != 'admin' &&
         !becomesVerified('realNameAuthStatus') &&
         !becomesVerified('expertCertStatus') &&
-        !(request.resource.data.get('verifiedExpert', false) == true && resource.data.get('verifiedExpert', false) != true)
+        !(request.resource.data.get('verifiedExpert', false) == true && resource.data.get('verifiedExpert', false) != true) &&
+        (!('verifiedBadge' in request.resource.data.diff(resource.data).affectedKeys()) ||
+          request.resource.data.get('verifiedBadge', null) in [null, false, ''])
       ) || (
         isSignedIn() &&
         !request.resource.data.keys().hasAny(privateProfileFields()) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedUserFields().concat(identityUserFields()))
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(crossUserCounterFields())
       );
       allow delete: if isAdmin();
     }
 
+    // 認證審核資料（含專家證明）：本人與管理員可讀；本人不能把自己改成已認證
     match /certifications/{certId} {
-      allow read, write: if true;
+      allow read: if isAdmin() || ownsUserDoc(certId);
+      allow create, update: if isAdmin() || (ownsUserDoc(certId) &&
+        request.resource.data.get('realNameAuthStatus', '') != 'verified' &&
+        request.resource.data.get('expertCertStatus', '') != 'verified' &&
+        request.resource.data.get('status', '') != 'verified');
+      allow delete: if isAdmin();
     }
 
+    // 稽核紀錄：前端只寫不讀；只有管理員能讀與刪
     match /audit_logs/{logId} {
-      allow read, write: if true;
+      allow read, delete: if isAdmin();
+      allow create, update: if true;
+    }
+
+    // 客服工單與客服對話：提出者本人（userAuthUid）與管理員能讀；
+    // 未登入訪客可留單，但讀不到任何人的工單
+    function isGuestSupportDoc(d) {
+      return d.get('userAuthUid', '') == '' && d.get('userId', '') in ['user-guest', 'guest', ''];
+    }
+    match /customer_support_tickets/{ticketId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.get('userAuthUid', '') == request.auth.uid);
+      allow create: if isAdmin() ||
+        (isSignedIn() && request.resource.data.get('userAuthUid', '') == request.auth.uid) ||
+        isGuestSupportDoc(request.resource.data);
+      allow update: if isAdmin() ||
+        (isSignedIn() && resource.data.get('userAuthUid', '') == request.auth.uid &&
+          request.resource.data.get('userAuthUid', '') == request.auth.uid) ||
+        (isGuestSupportDoc(resource.data) && isGuestSupportDoc(request.resource.data));
+      allow delete: if isAdmin();
+    }
+    match /customer_support_conversations/{convId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.get('userAuthUid', '') == request.auth.uid);
+      allow create: if isAdmin() ||
+        (isSignedIn() && request.resource.data.get('userAuthUid', '') == request.auth.uid) ||
+        isGuestSupportDoc(request.resource.data);
+      allow update: if isAdmin() ||
+        (isSignedIn() && resource.data.get('userAuthUid', '') == request.auth.uid &&
+          request.resource.data.get('userAuthUid', '') == request.auth.uid) ||
+        (isGuestSupportDoc(resource.data) && isGuestSupportDoc(request.resource.data));
+      allow delete: if isAdmin();
     }
 
     // 3. 互動通知與評價體系類 (Engagement, Notifications & Reviews)
@@ -275,32 +345,45 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isSignedIn() && resource.data.get('recipientAuthUid', '') == request.auth.uid);
     }
 
+    // 收藏與按讚紀錄：只有本人與管理員
     match /bookmarks/{userId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin() || ownsUserDoc(userId);
     }
 
+    // 專家名錄：所有人可讀；本人可更新自己的介紹，但不能自己加認證標章
     match /solvers/{solverId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isAdmin() || (ownsUserDoc(solverId) &&
+        request.resource.data.get('verifiedBadge', false) in [null, false, ''] &&
+        request.resource.data.get('verifiedExpert', false) != true);
+      allow update: if isAdmin() || (ownsUserDoc(solverId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['verifiedBadge', 'verifiedExpert', 'tier', 'rating', 'reviewCount']));
+      allow delete: if isAdmin();
     }
 
     // 4. 法律合規與平台設定類 (Compliance & Platform Settings)
     match /terms_agreements/{agreementId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin() || ownsUserDoc(agreementId);
     }
 
-    // 平台設定：所有人可讀；全站營運模式與設定（global）只有管理員能改
+    // 平台設定：所有人可讀；只有管理員能改（流量統計、永久刪除清單由伺服器服務帳戶寫入）
     match /platform_settings/{settingId} {
       allow read: if true;
-      allow write: if isAdmin() || settingId != 'global';
+      allow write: if isAdmin();
     }
 
-    // Default fallback
-    // 注意：Firestore 規則是「任一條允許即放行」，因此萬用規則必須排除上方受保護的集合
+    // 其他集合（創星季提案、功能使用統計、上線紀錄、在線人數等）：
+    // 一律由伺服器服務帳戶寫入；前端只保留公開提案與連線測試的讀取，其餘只有管理員
+    match /competition_proposals/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /_connection_test/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
     match /{collectionId}/{document=**} {
-      allow read, write: if !(collectionId in ['admins', 'user_private', 'transactions', 'conversations', 'notifications',
-        'points_ledger', 'points_escrow', 'questions', 'answers', 'users', 'payout_requests', 'answer_secrets', 'platform_settings', 'mascot_stats',
-        'competition_private_submissions', 'competition_accounts', 'competition_participant_registrations',
-        'competition_judge_applications', 'competition_support_records', 'competition_audit_logs']);
+      allow read, write: if isAdmin();
     }
   }
 }
