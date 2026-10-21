@@ -22,6 +22,7 @@ import {
   Share2,
   Info,
   MessageCircle,
+  Briefcase,
 } from 'lucide-react';
 import { GOOGLE_SITELINKS, GoogleSitelinkItem, getSitelinkFullUrl } from '../services/seoService';
 
@@ -93,6 +94,8 @@ export const GoogleSitelinksModal: React.FC<GoogleSitelinksModalProps> = ({
         return <FileText className="w-4 h-4 text-indigo-500 shrink-0" />;
       case 'Trophy':
         return <Trophy className="w-4 h-4 text-amber-500 shrink-0" />;
+      case 'Briefcase':
+        return <Briefcase className="w-4 h-4 text-blue-600 shrink-0" />;
       case 'MessageCircle':
         return <MessageCircle className="w-4 h-4 text-sky-500 shrink-0" />;
       default:
