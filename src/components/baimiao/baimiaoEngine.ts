@@ -2,9 +2,9 @@
 // 身體分成頭、身體、左右手、左右腳、尾巴幾個部件，每個動作是一組部件位置；切換動作時平滑過渡，
 // 每一幀再疊上呼吸、走路、揮手等小動作。表情畫在頭部的臉群組裡。
 
-export const BAIMIAO_ACTIONS = ['idle', 'walk', 'hi', 'hop', 'binoculars', 'mediate', 'inspect', 'doze', 'sleep', 'cheer'] as const;
+export const BAIMIAO_ACTIONS = ['idle', 'walk', 'run', 'hi', 'hop', 'play', 'angry', 'binoculars', 'mediate', 'inspect', 'doze', 'sleep', 'cheer'] as const;
 export type BaiMiaoActionName = (typeof BAIMIAO_ACTIONS)[number];
-export const BAIMIAO_EXPRESSIONS = ['happy', 'grin', 'smile', 'focused', 'surprised', 'wink', 'asleep'] as const;
+export const BAIMIAO_EXPRESSIONS = ['happy', 'grin', 'smile', 'focused', 'surprised', 'wink', 'asleep', 'angry'] as const;
 
 const INK = '#4a3a30';
 const FUR = '#fffdf8';
@@ -45,7 +45,12 @@ const STAND_ORDER: PartName[] = ['tail', 'body', 'legR', 'legL', 'note', 'head',
 const POSES: Record<string, Pose> = {
   idle: {},
   walk: {},
+  run: {},
   hop: {},
+  // 拍毛線球：身體前傾、兩隻前腳輪流往前撥
+  play: { body: { r: 8 }, head: { x: 108, y: 92, r: 6 }, armR: { x: 74, r: -40 }, armL: { x: 128, r: -60 }, padsR: true, padsL: true },
+  // 生氣：雙手握拳舉高、跺腳
+  angry: { body: { sy: 1.03 }, head: { y: 86 }, armR: { x: 66, y: 126, r: 128 }, armL: { x: 134, y: 126, r: -128 }, armLenR: 0.9, armLenL: 0.9, padsR: true, padsL: true },
   cheer: { armR: { r: 150 }, armL: { r: -150 }, padsR: true, padsL: true },
   // 面向使用者：右腳著地、左腳離地往外抬；右手（畫面左）高舉揮手，左手（畫面右）平舉保持平衡
   hi: {
@@ -92,7 +97,7 @@ const POSES: Record<string, Pose> = {
   },
 };
 
-const EXPR_OF: Record<string, string> = { idle: 'happy', walk: 'happy', hi: 'grin', hop: 'happy', cheer: 'grin', binoculars: 'focused', mediate: 'focused', inspect: 'focused', doze: 'asleep', sleep: 'asleep' };
+const EXPR_OF: Record<string, string> = { idle: 'happy', walk: 'happy', run: 'focused', play: 'grin', angry: 'angry', hi: 'grin', hop: 'happy', cheer: 'grin', binoculars: 'focused', mediate: 'focused', inspect: 'focused', doze: 'asleep', sleep: 'asleep' };
 
 const svgNS = 'http://www.w3.org/2000/svg';
 
@@ -255,6 +260,12 @@ export function createBaiMiao(host: HTMLElement, opts: { action?: string; facing
     const eye = (s: number) => {
       const cx = 22 * s + lx, cy = 3;
       if (closed || e === 'asleep') return `<path d="M${cx - 8} ${cy} q 8 6 16 0" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+      if (e === 'angry') {
+        // 怒目：眉毛往中間壓、眼睛瞇成三角
+        return `<path d="M${cx + 10 * s} ${cy - 13} L${cx - 7 * s} ${cy - 6}" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>
+          <path d="M${cx - 7} ${cy - 2} Q ${cx} ${cy + 1} ${cx + 7} ${cy - 2} Q ${cx + 3} ${cy + 7} ${cx} ${cy + 7} Q ${cx - 4} ${cy + 7} ${cx - 7} ${cy - 2} Z" fill="#2a1d18"/>
+          <circle cx="${cx - 1.5}" cy="${cy + 1.5}" r="1.4" fill="#fff"/>`;
+      }
       if (e === 'grin') return `<path d="M${cx - 7 * s} ${cy - 7} L${cx + 6 * s} ${cy} L${cx - 7 * s} ${cy + 7}" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
       if (e === 'wink' && s === 1) return `<path d="M${cx - 8} ${cy + 2} q 8 -7 16 0" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
       const rx = e === 'surprised' ? 8.5 : e === 'focused' ? 6.8 : 7.6, ry = e === 'surprised' ? 10.5 : e === 'focused' ? 8.4 : 9.6;
@@ -273,6 +284,14 @@ export function createBaiMiao(host: HTMLElement, opts: { action?: string; facing
       const h = 10 * open + 2;
       mouth = `<path d="M${nx - 8} ${my} Q ${nx - 4} ${my + 2.2} ${nx} ${my} Q ${nx + 4} ${my + 2.2} ${nx + 8} ${my} C ${nx + 8} ${my + h} ${nx - 8} ${my + h} ${nx - 8} ${my} Z" fill="#c23d50" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>
         <path d="M${nx - 4.6} ${my + h * 0.72} q 4.6 -${(h * 0.42).toFixed(2)} 9.2 0 q -4.6 ${(h * 0.34).toFixed(2)} -9.2 0 Z" fill="#f58b98"/>`;
+    } else if (e === 'angry') {
+      // 張嘴大罵：露出小虎牙，額頭冒青筋
+      const h = 8 + 6 * open;
+      mouth = `<path d="M${nx - 9} ${my + 1} Q ${nx} ${my - 3} ${nx + 9} ${my + 1} Q ${nx + 7} ${my + h} ${nx} ${my + h} Q ${nx - 7} ${my + h} ${nx - 9} ${my + 1} Z" fill="#c23d50" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M${nx - 6} ${my + 0.6} l 1.6 3.6 l 1.6 -3.4 Z M${nx + 6} ${my + 0.6} l -1.6 3.6 l -1.6 -3.4 Z" fill="#fff"/>
+        <g transform="translate(${30 + lx} -30)" stroke="#e5484d" stroke-width="2.6" stroke-linecap="round" fill="none">
+          <path d="M-7 -2 q 4 -1 5 -5 M2 -7 q 1 4 5 5 M7 2 q -4 1 -5 5 M-2 7 q -1 -4 -5 -5"/>
+        </g>`;
     } else if (e === 'surprised') {
       mouth = `<ellipse cx="${nx}" cy="${my + 4}" rx="3.6" ry="4.4" fill="#c23d50" stroke="${INK}" stroke-width="1.6"/>`;
     } else {
@@ -346,6 +365,29 @@ export function createBaiMiao(host: HTMLElement, opts: { action?: string; facing
       target.legR.r = Math.sin(ph) * 14; target.legL.r = -Math.sin(ph) * 14;
       target.tail.r = 8 + Math.sin(ph) * 6;
       look = 0.8;
+    } else if (a === 'run') {
+      // 衝刺：步伐快、身體前傾
+      const ph = t * 13;
+      bob = -Math.abs(Math.sin(ph)) * 6 * calm;
+      target.body.r = 8 + Math.sin(ph) * 3; target.head.r = 6 + Math.sin(ph) * 2; target.head.x += 4;
+      target.armR.r += Math.sin(ph) * 46; target.armL.r += Math.sin(ph) * 46;
+      target.legR.y -= Math.max(0, Math.sin(ph)) * 10; target.legL.y -= Math.max(0, -Math.sin(ph)) * 10;
+      target.legR.r = Math.sin(ph) * 26; target.legL.r = -Math.sin(ph) * 26;
+      target.tail.r = -14 + Math.sin(ph) * 8;
+      look = 1;
+    } else if (a === 'play') {
+      // 兩隻前腳輪流往前撥
+      const ph = at * 9;
+      target.armR.r += Math.max(0, Math.sin(ph)) * -50; target.armL.r += Math.max(0, -Math.sin(ph)) * -50;
+      target.armR.x += Math.max(0, Math.sin(ph)) * 10; target.armL.x += Math.max(0, -Math.sin(ph)) * 10;
+      bob = -Math.abs(Math.sin(ph / 2)) * 3; target.tail.r = 14 + Math.sin(at * 7) * 14; look = 0.8;
+    } else if (a === 'angry') {
+      // 跺腳、握拳發抖
+      const st = Math.sin(at * 16);
+      bob = -Math.max(0, st) * 4;
+      target.legR.y -= Math.max(0, st) * 6; target.legL.y -= Math.max(0, -st) * 6;
+      target.armR.r += Math.sin(at * 22) * 6; target.armL.r -= Math.sin(at * 22) * 6;
+      target.head.x += Math.sin(at * 30) * 1.2; target.tail.r = -30 + Math.sin(at * 20) * 6; look = 0;
     } else if (a === 'hi') {
       target.armR.r += Math.sin(at * 10) * 16; target.armL.r += Math.sin(at * 3) * 5;
       bob = -Math.max(0, Math.sin(Math.min(1, at / 0.35) * Math.PI)) * 8;
@@ -400,7 +442,7 @@ export function createBaiMiao(host: HTMLElement, opts: { action?: string; facing
     }
     applyOrder(P.order || STAND_ORDER);
     // 往左走時整隻左右翻轉；「嗨」在右端用右手（畫面左邊那隻）揮，左端則左右相反
-    curFacing = a === 'walk' || a === 'hi' ? (facing >= 0 ? 1 : -1) : 1;
+    curFacing = a === 'walk' || a === 'run' || a === 'play' || a === 'hi' ? (facing >= 0 ? 1 : -1) : 1;
     rootG.setAttribute('transform', `translate(100 ${bob.toFixed(2)}) scale(${curFacing} 1) translate(-100 0)`);
     // 耳朵偶爾抖一下
     const tw = Math.pow(Math.max(0, Math.sin(t * 1.3)), 30) * 10;
