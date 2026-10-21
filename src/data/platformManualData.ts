@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#179',
+    version: 'v3.3.2',
+    releaseDate: '2026.10.21',
+    releaseTime: '19:28',
+    author: 'IdeaX 創點子團隊',
+    summary: '內建 AI 新增 Claude Haiku 5.5，三個模型都能調強度與測試。',
+    changes: [
+      '管理後台「內建 AI 模型」新增 Claude Haiku 5.5：可在 GPT-6 Luna、Claude Haiku 5.5、Gemini 3.8 Flash 之間選擇使用中的模型；三個模型各自可調推理強度、各自一鍵測試並顯示金鑰與錯誤狀態。使用中的模型出錯時自動退回 Gemini。',
+      '平台版本推進至 v3.3.2 (#179)。',
+    ],
+  },
+  {
     seqNumber: '#178',
     version: 'v3.3.1',
     releaseDate: '2026.10.21',
@@ -2289,10 +2301,10 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         summary: '管理當前系統運作版本號、增量序號與最後更新時間戳記。',
         content: `### 當前運行版本與序號規格
 
-* **版本號碼**：v3.3.1
-* **遞增序號**：#178（從 #001 依序遞增）
+* **版本號碼**：v3.3.2
+* **遞增序號**：#179（從 #001 依序遞增）
 * **最後更新日期**：2026.10.19
-* **最後更新時間**：19:19（依發布時戳靜態留存，不隨時鐘跳動）
+* **最後更新時間**：19:28（依發布時戳靜態留存，不隨時鐘跳動）
 * **發布狀態**：Production（正式運作中）
 * **運作模式**：單日 0.2.0 增量限制、四選一平台運營模式與完整歷史版本隨時調閱與下載。`,
       },
@@ -2351,6 +2363,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#179** | **v3.3.2** | 2026.10.21 | 19:28 | IdeaX 創點子核心 | 內建 AI 三模型 |
 | **#178** | **v3.3.1** | 2026.10.21 | 19:19 | IdeaX 創點子核心 | 回答音效 |
 | **#177** | **v3.3.0** | 2026.10.21 | 19:16 | IdeaX 創點子核心 | AI 連線診斷 |
 | **#176** | **v3.2.9** | 2026.10.21 | 19:00 | IdeaX 創點子核心 | 專人回報工單取代寫信 |
