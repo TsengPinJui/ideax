@@ -7,6 +7,7 @@ import { IdeaXLogo } from './IdeaXLogo';
 import { HelpTooltip } from './HelpTooltip';
 import { useApp } from '../context/AppContext';
 import { YellowLiquidHeroBackground } from './YellowLiquidHeroBackground';
+import { HomeShowcasePlayer, useShowcaseSlides } from './HomeShowcasePlayer';
 
 interface HeroSectionProps {
   searchQuery?: string;
@@ -45,6 +46,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   } = useApp();
 
   const [isMetricsExpanded, setIsMetricsExpanded] = useState(false);
+  // 首頁創點子播放區：管理員啟用且有可播放的內容時，取代創點子標誌
+  const showcaseSlides = useShowcaseSlides();
 
   // 今日不重複訪客（瀏覽統計更新時跟著變）
   const utc8Today = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
@@ -282,24 +285,30 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       <YellowLiquidHeroBackground className="h-full" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex flex-col items-center text-center max-w-3xl lg:max-w-5xl mx-auto">
-          {/* Official IdeaX Brand Display - 手機版精巧緊湊、電腦版大氣通透
-              首頁創點子播放區（預留）：管理員在儀表板選擇播放「優秀作品／付費推播／自選」（homeShowcaseConfig）。
-              播放功能開放前一律顯示創點子標誌；之後在這個區塊依 homeShowcaseConfig.modes（可複選）輪流播放。 */}
-          <div data-home-showcase-slot={homeShowcaseConfig.enabled ? homeShowcaseConfig.modes.join(',') || 'none' : 'off'} className="relative mb-2 sm:mb-4 group inline-flex max-w-[90%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto justify-center">
-            <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
-            <div className="relative py-2 px-4 sm:py-3.5 sm:px-6 md:py-4 md:px-8 lg:py-5 lg:px-10 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/85 border border-amber-200/70 shadow-sm flex items-center justify-center gap-2.5 sm:gap-4 md:gap-5 transition-all duration-300">
-              <img
-                src="/logo-bulb.png"
-                alt="IdeaX 燈泡"
-                className="h-16 sm:h-24 md:h-32 lg:h-36 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
-              />
-              <img
-                src="/logo-chuangdianzi-text.png"
-                alt="創點子 IdeaX"
-                className="h-11 sm:h-16 md:h-[88px] lg:h-[104px] w-auto object-contain shrink-0"
-              />
+          {/* 首頁創點子播放區：管理員在儀表板啟用並勾選「優秀作品／付費推播／自選」（homeShowcaseConfig，可複選）後輪流播放；
+              沒有啟用或沒有可播放的內容時，顯示創點子標誌 */}
+          {showcaseSlides.length > 0 ? (
+            <div data-home-showcase-slot={homeShowcaseConfig.modes.join(',')} className="relative mb-2 sm:mb-4 w-full max-w-[94%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto">
+              <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
+              <HomeShowcasePlayer slides={showcaseSlides} />
             </div>
-          </div>
+          ) : (
+            <div data-home-showcase-slot={homeShowcaseConfig.enabled ? homeShowcaseConfig.modes.join(',') || 'none' : 'off'} className="relative mb-2 sm:mb-4 group inline-flex max-w-[90%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto justify-center">
+              <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
+              <div className="relative py-2 px-4 sm:py-3.5 sm:px-6 md:py-4 md:px-8 lg:py-5 lg:px-10 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/85 border border-amber-200/70 shadow-sm flex items-center justify-center gap-2.5 sm:gap-4 md:gap-5 transition-all duration-300">
+                <img
+                  src="/logo-bulb.png"
+                  alt="IdeaX 燈泡"
+                  className="h-16 sm:h-24 md:h-32 lg:h-36 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
+                />
+                <img
+                  src="/logo-chuangdianzi-text.png"
+                  alt="創點子 IdeaX"
+                  className="h-11 sm:h-16 md:h-[88px] lg:h-[104px] w-auto object-contain shrink-0"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Main Headline */}
           <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-[42px] font-black text-stone-900 tracking-tight leading-snug my-1 sm:my-2">
