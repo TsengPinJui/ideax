@@ -577,7 +577,7 @@ export function createSousou(canvas, opts = {}) {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     const t = now / 1000; actionT += dt;
-    if (!actionLoop && actionT > (action === 'takeoff' ? 1.1 : action === 'land' ? 1.0 : 3.2)) {
+    if (!actionLoop && actionT > (action === 'takeoff' ? 1.1 : action === 'land' ? 1.0 : action === 'sorry' ? 3.8 : 3.2)) {
       if (action === 'takeoff') play('search');
       else if (action === 'land') play(opts.afterLand || 'parked');
       else play(cloudOn ? 'idle' : 'parked');
@@ -612,7 +612,17 @@ export function createSousou(canvas, opts = {}) {
     } else if (a === 'wave') {
       P = { ...P, Rz: 1.2, Rx: -1.6, Re: -0.9 + Math.sin(at * 9) * 0.45, headRoll: 0.12, lookX: 0, lookY: 0 };
     } else if (a === 'sorry') {
-      P = { ...P, Rik: 'scratch', Lz: -0.3, Lx: -0.4, Le: -1.2, headPitch: 0.3, headRoll: -0.1, headYaw: 0.1, lookY: 0.5, lookX: 0.2, lean: 0.08 };
+      if (at < 0.8) {
+        // 先抓抓頭
+        P = { ...P, Rik: 'scratch', Lz: -0.3, Lx: -0.4, Le: -1.2, headPitch: 0.3, headRoll: -0.1, headYaw: 0.1, lookY: 0.5, lookX: 0.2, lean: 0.08 };
+      } else {
+        // 沒找到職缺：「撲通」跪下，雙手撐地、頭低低的，肩膀一抽一抽
+        const sob = at > 1.2 ? Math.sin(t * 13) * 0.012 : 0;
+        // 身體轉成斜側面，才看得出是跪著
+        P = { ...P, yaw: 0.65, legX: -0.1, shinX: 1.7, hipY: 0.34, lean: 0.6, bob: sob,
+          headPitch: 0.45, headRoll: 0, headYaw: -0.25, lookX: -0.4, lookY: 0.8,
+          Rz: 0.22, Rx: -1.15, Re: -0.1, Rhx: 0.9, Lz: -0.22, Lx: -1.15, Le: -0.1, Lhx: 0.9 };
+      }
     } else if (a === 'fly') {
       P = { ...P, lean: 0.35, rootRot: -0.12, Rz: 0.9, Rx: 0.7, Re: -0.3, Lz: -0.9, Lx: 0.7, Le: -0.3, kneel: 0.45, headPitch: -0.1, headYaw: 0.25, lookX: 0.8, lookY: -0.1, bob: Math.sin(t * 4) * 0.05 };
     }
@@ -620,7 +630,7 @@ export function createSousou(canvas, opts = {}) {
     // 整體位置與轉向（飛行方向）
     root.position.y = ease('bob', P.bob, dt, 10) + 0.05;
     const hd = ease('heading', heading, dt, 4);
-    root.rotation.y = hd * 0.55;
+    root.rotation.y = hd * 0.55 + ease('yaw', P.yaw || 0, dt, 6);
     root.rotation.z = ease('rootRot', P.rootRot, dt, 4) - hd * 0.12;
     rider.rotation.x = ease('lean', P.lean + Math.abs(hd) * 0.12, dt, 6);
     torso.rotation.y = ease('twist', P.torsoTwist, dt, 5);
@@ -629,8 +639,11 @@ export function createSousou(canvas, opts = {}) {
     head.rotation.x = ease('hp', P.headPitch, dt, 6);
     head.rotation.z = ease('hr', P.headRoll, dt, 6);
     const kn = ease('kneel', P.kneel, dt, 6);
-    for (const s of [-1, 1]) { legs[s].leg.rotation.x = -kn * 0.6; legs[s].shin.rotation.x = kn * 1.1; }
-    hips.position.y = 0.62 - kn * 0.12;
+    // 跪下時直接指定大腿／小腿角度與臀部高度（膝蓋著地）；平常依蹲的程度計算
+    const legT = ease('legX', P.legX ?? -kn * 0.6, dt, 9);
+    const shinT = ease('shinX', P.shinX ?? kn * 1.1, dt, 9);
+    for (const s of [-1, 1]) { legs[s].leg.rotation.x = legT; legs[s].shin.rotation.x = shinT; }
+    hips.position.y = ease('hipY', P.hipY ?? 0.62 - kn * 0.12, dt, 9);
 
     // 手臂：一般姿勢用角度，遮陽／摸下巴／抓頭用 IK
     for (const s of [1, -1]) {

@@ -9,7 +9,8 @@ import { OPEN_QUESTION_EVENT } from './mascot/mascotConfig';
  * 首頁創點子播放區：依管理員在儀表板勾選的內容輪流播放（可複選，照「優秀作品 → 付費推播 → 自選」的順序串起來）
  * - 優秀作品：創星季參賽作品，依按讚、附議、支持點數排出前 8 名
  * - 付費推播：發布時加購推播（大聲公）且仍在招募中的卡片；卡片上標「推播」
- * - 管理員自選：照勾選順序
+ * - 管理員自選：照勾選順序（虛擬卡片也能選）
+ * - 「包含虛擬卡片」開著時（預設），優秀作品、付費推播也會納入虛擬（模擬）卡片
  * 沒有任何可播放的內容時，外層照舊顯示創點子標誌
  */
 
@@ -48,7 +49,8 @@ export function useShowcaseSlides(): Slide[] {
     const cfg = homeShowcaseConfig;
     if (!cfg?.enabled || !cfg.modes?.length) return [];
     const all = (questions || []).filter(isLive);
-    const real = all.filter((q) => !q.isSimulated && !q.simulatedBatchId);
+    // 虛擬（模擬）卡片：管理員打開「包含虛擬卡片」時，優秀作品、付費推播也會播放
+    const real = cfg.includeSimulated === false ? all.filter((q) => !q.isSimulated && !q.simulatedBatchId) : all;
     const byId = new Map(all.map((q) => [q.id, q]));
     const out: Slide[] = [];
     const seen = new Set<string>();

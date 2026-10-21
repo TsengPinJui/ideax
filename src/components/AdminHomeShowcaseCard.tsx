@@ -95,7 +95,10 @@ const CustomShowcasePicker: React.FC<{ ids: string[]; disabled: boolean; onChang
                 {x.coverImage ? <img src={x.coverImage} alt="" className="w-9 h-9 rounded-md object-cover shrink-0" /> : <span className="w-9 h-9 rounded-md bg-stone-100 shrink-0" />}
                 <span className="min-w-0 flex-1">
                   <span className="block text-xs font-bold text-stone-900 truncate">{x.title}</span>
-                  <span className="block text-[10px] text-stone-500 truncate">{TYPE_LABEL[x.postType || ''] || '卡片'}・{x.authorName}</span>
+                  <span className="block text-[10px] text-stone-500 truncate">
+                    {(x.isSimulated || x.simulatedBatchId) && <span className="mr-1 px-1 rounded bg-violet-100 text-violet-700 font-bold">虛擬</span>}
+                    {TYPE_LABEL[x.postType || ''] || '卡片'}・{x.authorName}
+                  </span>
                 </span>
               </label>
             );
@@ -123,7 +126,7 @@ export const AdminHomeShowcaseCard: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  const save = async (patch: { enabled?: boolean; modes?: HomeShowcaseMode[]; customIds?: string[] }) => {
+  const save = async (patch: { enabled?: boolean; modes?: HomeShowcaseMode[]; customIds?: string[]; includeSimulated?: boolean }) => {
     setSaving(true);
     const ok = await updateHomeShowcaseConfig(patch);
     setSaving(false);
@@ -131,6 +134,7 @@ export const AdminHomeShowcaseCard: React.FC = () => {
   };
 
   const { enabled, modes, customIds } = homeShowcaseConfig;
+  const includeSimulated = homeShowcaseConfig.includeSimulated !== false;
   const toggleMode = (id: HomeShowcaseMode) =>
     save({ modes: modes.includes(id) ? modes.filter((x) => x !== id) : MODES.map((m) => m.id).filter((x) => x === id || modes.includes(x)) });
   const chosen = MODES.filter((m) => modes.includes(m.id)).map((m) => (m.id === 'custom' ? `「${m.name}（${(customIds || []).length} 個）」` : `「${m.name}」`)).join('、');
@@ -194,6 +198,24 @@ export const AdminHomeShowcaseCard: React.FC = () => {
           );
         })}
       </div>
+
+      {/* 虛擬卡片：真實作品還不多時先打開，讓播放區有內容 */}
+      <label className="flex items-center justify-between gap-3 rounded-xl border border-sky-200 bg-white px-3 py-2.5 cursor-pointer">
+        <span className="min-w-0">
+          <span className="block text-xs font-black text-sky-950">包含虛擬卡片</span>
+          <span className="block text-[11px] text-stone-500">「優秀作品」「付費推播」也播放平台的虛擬（模擬）卡片；真實作品夠多後可以關掉。「管理員自選」一律可以選虛擬卡片。</span>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={includeSimulated}
+          disabled={saving}
+          onClick={() => save({ includeSimulated: !includeSimulated })}
+          className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer shrink-0 disabled:opacity-60 ${includeSimulated ? 'bg-sky-500' : 'bg-stone-300'}`}
+        >
+          <span className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${includeSimulated ? 'translate-x-5' : 'translate-x-0'}`} />
+        </button>
+      </label>
 
       {modes.includes('custom') && (
         <CustomShowcasePicker ids={customIds || []} disabled={saving} onChange={(next) => save({ customIds: next })} />

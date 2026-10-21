@@ -4243,7 +4243,7 @@ app.post('/api/admin/home-showcase-config', async (req: Request, res: Response) 
       .map((x: unknown) => String(x || '').trim())
       .filter((x: string, i: number, a: string[]) => /^[\w-]{1,100}$/.test(x) && a.indexOf(x) === i)
       .slice(0, 30);
-    const config = { enabled: raw.enabled === true, modes, customIds, updatedAt: new Date().toISOString() };
+    const config = { enabled: raw.enabled === true, modes, customIds, includeSimulated: raw.includeSimulated !== false, updatedAt: new Date().toISOString() };
     await adminDb.collection('platform_settings').doc('global').set({ homeShowcaseConfig: config }, { merge: true });
     res.json({ ok: true, config });
   } catch (err: any) {
@@ -4900,20 +4900,21 @@ const isJobActive = (j: any): boolean => {
  */
 /** 每次派搜搜（Dify）都附上的來源規定：不然搜尋結果幾乎都是 104，也常有舊職缺 */
 const DIFY_SOURCE_RULES = `【搜尋規定】
-1. 台灣職缺請分開搜尋不同網站（例如分別用「site:104.com.tw」「site:1111.com.tw」「site:yes123.com.tw」「site:518.com.tw」「site:cake.me」「site:yourator.co」），結果要分散在不同網站。
-2. 同一個網站最多列 4 筆，同一家公司最多 2 筆。
-3. 只要近 30 天內仍在刊登的職缺；刊登日期太舊、頁面寫已關閉或已截止的不要列。
-4. url 只能填單一職缺的內頁網址，找不到就填空字串，不要填搜尋結果頁。`;
+同一個網站最多列 20 筆，同一家公司最多 3 筆。盡量列20筆以上，從符合所以條件的開始搜，若沒有了可以用僅符合部分條件的逐步遞減條件合格率湊滿20筆不同的職缺
+只要近 60 天內仍在刊登的職缺；刊登日期太舊、頁面寫已關閉或已截止的不要列。
+url 只能填單一職缺的內頁網址，找不到就填空字串，不要填搜尋結果頁。
+【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟，直接回答或執行搜尋，並精簡輸出以避免超過最大輸出與迭代上限！】`;
 
 /** 使用者在篩選裡只勾了部分求職網：交代搜搜只能從這些網站找（不然它照樣找 104，被篩掉後就一筆都沒有） */
 function difyRulesFor(chosenSites: string[]): string {
   if (!chosenSites.length) return DIFY_SOURCE_RULES;
   const names = chosenSites.map((x) => (x === COMPANY_SITE ? '各公司官網的徵才頁' : x)).join('、');
   return `【搜尋規定】
-1. 只能從這些網站找：${names}。不要列出其他網站（例如沒勾選的 104、LinkedIn）的職缺。
-2. 每個網站分開搜尋，結果盡量分散在這些網站；同一家公司最多 2 筆。
-3. 只要近 30 天內仍在刊登的職缺；刊登日期太舊、頁面寫已關閉或已截止的不要列。
-4. url 只能填單一職缺的內頁網址，找不到就填空字串，不要填搜尋結果頁。sourcePlatform 填職缺實際所在的網站名稱。`;
+只能從這些網站找：${names}。不要列出其他網站（例如沒勾選的 104、LinkedIn）的職缺；sourcePlatform 填職缺實際所在的網站名稱。
+同一個網站最多列 20 筆，同一家公司最多 3 筆。盡量列20筆以上，從符合所以條件的開始搜，若沒有了可以用僅符合部分條件的逐步遞減條件合格率湊滿20筆不同的職缺
+只要近 60 天內仍在刊登的職缺；刊登日期太舊、頁面寫已關閉或已截止的不要列。
+url 只能填單一職缺的內頁網址，找不到就填空字串，不要填搜尋結果頁。
+【最高系統指令：1. 本平台正式名稱為「IdeaX創點子」，請一律稱呼「IdeaX創點子」，絕對禁止出現舊稱「大獵場」或「Talent Hunt」字樣。2. 絕對禁止執行 shell_run 或 dify-agent config files pull，請跳過讀取本地檔案步驟，直接回答或執行搜尋，並精簡輸出以避免超過最大輸出與迭代上限！】`;
 }
 
 function extractCompletedJobObjects(text: string): any[] {
@@ -5049,7 +5050,7 @@ app.post('/api/job-explorer/search-stream', async (req: Request, res: Response) 
 3. "url" 必須是「單一職缺」的內頁網址（例如 104.com.tw/job/xxxx、1111.com.tw/job/123456、linkedin.com/jobs/view/123456），直接照搜尋結果裡的網址填，不要填搜尋結果頁、職缺列表頁或公司首頁；找不到該職缺內頁時留空字串，不要自己編網址。
 4. "sourcePlatform" 寫職缺實際所在的網站名稱（例如 104人力銀行、LinkedIn、公司官網）。
 5. 每筆摘要 30 字內。
-6. 只要「近 30 天內仍在刊登」的職缺；看到刊登或更新日期太舊、或頁面寫已截止的，不要列。
+6. 只要「近 60 天內仍在刊登」的職缺；看到刊登或更新日期太舊、或頁面寫已截止的，不要列。
 7. 同一個網站最多列 5 筆，盡量分散在不同網站與不同公司。
 ${JOB_JSON_SPEC}`;
         const r = await ai.models.generateContent({
@@ -5143,7 +5144,7 @@ ${JOB_JSON_SPEC}`;
       };
       const out = await callDifyStreamingAgent({
         apiKey: explorerKey,
-        query: `${rawQuery}（請盡量列出 8 筆以上符合條件、目前仍在招募的真實職缺，附職缺網址，並以 JSON 格式輸出）\n${difyRulesFor(chosenSites)}`,
+        query: `${rawQuery}（請盡量列出 20 筆以上不同的職缺，先列符合所有條件、目前仍在招募的真實職缺，附職缺網址，並以 JSON 格式輸出）\n${difyRulesFor(chosenSites)}`,
         inputs: {},
         user: 'job_explorer_stream',
         // 搜搜要上網搜尋，常常超過半分鐘；前端最多等 80 秒（派小燈泡後會繼續收），這裡給 120 秒

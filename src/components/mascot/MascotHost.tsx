@@ -1,15 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import JellyMascot from './JellyMascot';
+import { supportsWebGL } from '../../utils/webglSupport';
 
-function supportsWebGL() {
-  try {
-    const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-  } catch {
-    return false;
-  }
-}
 
 export type NewProposalNotice = { id: string; kind: 'proposal' | 'work'; at: number };
 

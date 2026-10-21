@@ -133,7 +133,7 @@ function normalizeHomeShowcase(raw: any): HomeShowcaseConfig {
   const list: unknown[] = Array.isArray(raw?.modes) ? raw.modes : raw?.mode ? [raw.mode] : ['excellent'];
   const modes = HOME_SHOWCASE_MODES.filter((m) => list.includes(m));
   const customIds = Array.isArray(raw?.customIds) ? raw.customIds.filter((x: unknown) => typeof x === 'string' && x).slice(0, 30) : [];
-  return { enabled: raw?.enabled === true, modes, customIds, updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : undefined };
+  return { enabled: raw?.enabled === true, modes, customIds, includeSimulated: raw?.includeSimulated !== false, updatedAt: typeof raw?.updatedAt === 'string' ? raw.updatedAt : undefined };
 }
 import { getStoredTickets } from '../services/customerSupportService';
 import { CenterToastData } from '../components/CenterToast';
@@ -1872,7 +1872,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setHomeShowcaseConfig(next);
     homeShowcaseSavingRef.current += 1;
     try {
-      const r = await saveHomeShowcaseConfig({ enabled: next.enabled, modes: next.modes, customIds: next.customIds });
+      const r = await saveHomeShowcaseConfig({ enabled: next.enabled, modes: next.modes, customIds: next.customIds, includeSimulated: next.includeSimulated });
       if (!r.ok) {
         setHomeShowcaseConfig(before);
         alert(`首頁播放區設定沒有儲存成功：${(r.message || '請稍後再試').replace(/[。.]$/, '')}。`);
