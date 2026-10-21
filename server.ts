@@ -4151,7 +4151,12 @@ app.post('/api/admin/home-showcase-config', async (req: Request, res: Response) 
     const raw = req.body?.config || {};
     const list: unknown[] = Array.isArray(raw.modes) ? raw.modes : [];
     const modes = ['excellent', 'paid', 'custom'].filter((m) => list.includes(m)); // 可複選
-    const config = { enabled: raw.enabled === true, modes, updatedAt: new Date().toISOString() };
+    // 管理員自選的作品 ID：只收合法格式、去重、最多 30 個
+    const customIds = (Array.isArray(raw.customIds) ? raw.customIds : [])
+      .map((x: unknown) => String(x || '').trim())
+      .filter((x: string, i: number, a: string[]) => /^[\w-]{1,100}$/.test(x) && a.indexOf(x) === i)
+      .slice(0, 30);
+    const config = { enabled: raw.enabled === true, modes, customIds, updatedAt: new Date().toISOString() };
     await adminDb.collection('platform_settings').doc('global').set({ homeShowcaseConfig: config }, { merge: true });
     res.json({ ok: true, config });
   } catch (err: any) {
