@@ -4,6 +4,7 @@ import { createMascotEngine, type MascotEngine } from './mascotEngine';
 import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, MASCOT_WAVE_DANCE_EVENT, OPEN_QUESTION_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
 import type { NewProposalNotice } from './MascotHost';
 import { playBabble, playClank, playDanceMusic, playGlowSound, playHappySound, playShock, playZap, startCurrent, stopBabble, stopCurrent, stopDanceMusic, unlockMascotAudio } from './mascotSound';
+import { trackFeature } from '../../services/featureUsage';
 import { unlockAgentVoices } from '../agents/agentVoices';
 import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
 
@@ -412,6 +413,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
     // 手機：對話框上方保留小燈泡站的空間
     setChatMaxH(window.innerWidth < WIDE_MIN ? `calc(100vh - ${cb + 200}px)` : undefined);
     setChatOpen(true);
+    trackFeature('mascot_chat');
     trackMascotEvent('open');
     if (!msgs.length) setMsgs([{ id: ++msgSeq.current, who: 'bot', text: configRef.current.bubbleText, tag: '小燈泡' }]);
     window.setTimeout(() => inputRef.current?.focus(), 50);

@@ -38,6 +38,7 @@ import { isMockQuestionId } from './data/mockData';
 import { isPainPointQuestion, isL0DiscussionQuestion, isVibeCodingAppQuestion } from './utils/questionUtils';
 import { updateSEOForQuestion, updateSEOForSubpage, resetSEOToDefault, GOOGLE_SITELINKS, GoogleSitelinkItem } from './services/seoService';
 import { trackPageView } from './utils/googleAnalytics';
+import { trackFeature, featureFromPath } from './services/featureUsage';
 import {
   recordUserSearchKeyword,
   recordUserBoard,
@@ -914,6 +915,8 @@ function MainContent() {
     try {
       const curPath = window.location.pathname + window.location.search + window.location.hash;
       trackPageView(curPath || '/', document.title);
+      // 各大功能使用統計（每位訪客每天每個功能算一次）
+      trackFeature(featureFromPath(window.location.pathname, Boolean(selectedQuestion?.id)));
     } catch {}
   }, [activeTab, specialZone, selectedQuestion?.id]);
 

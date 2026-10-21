@@ -1,4 +1,5 @@
 import { DEFAULT_MASCOT_CONFIG, cheerMascot, normalizeMascotConfig, type MascotConfig } from '../components/mascot/mascotConfig';
+import { trackFeature } from '../services/featureUsage';
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Question,
@@ -1812,6 +1813,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [ratingTarget, setRatingTarget] = useState<any>(null);
 
   const openCustomerService = (ctx?: any) => {
+    trackFeature('customer_service');
     setCustomerServiceContext(ctx || null);
     setIsCustomerServiceOpen(true);
   };

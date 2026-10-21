@@ -43,57 +43,70 @@ const daysBetween = (from: string, to: string): string[] => {
 
 const sumOf = (m: Record<string, number>, keys: string[]) => keys.reduce((n, k) => n + (Number(m[k]) || 0), 0);
 
-/** 小型趨勢圖：每日用長條、累計用折線；推估的部分淡色＋虛線 */
-const TrendChart: React.FC<{ points: Point[]; kind: 'bar' | 'line'; color: string; unit: string }> = ({ points, kind, color, unit }) => {
+/** 疊圖：每日用長條（左軸）、累計用折線（右軸）；推估的部分淡色長條＋虛線 */
+const ComboChart: React.FC<{ daily: Point[]; cumulative: Point[]; barColor: string; lineColor: string; dailyLabel: string; cumLabel: string }> = ({ daily, cumulative, barColor, lineColor, dailyLabel, cumLabel }) => {
   const [hover, setHover] = useState<number | null>(null);
-  if (!points.length) return <div className="h-40 flex items-center justify-center text-xs text-stone-400">還沒有資料</div>;
-  const W = 640, H = 200, L = 40, R = 12, T = 14, B = 26;
+  if (!daily.length) return <div className="h-40 flex items-center justify-center text-xs text-stone-400">還沒有資料</div>;
+  const W = 640, H = 210, L = 38, R = 44, T = 14, B = 26;
   const pw = W - L - R, ph = H - T - B;
-  const max = Math.max(1, ...points.map((p) => p.value));
-  const niceMax = (() => { const p = Math.pow(10, Math.floor(Math.log10(max))); return Math.ceil(max / p) * p; })();
-  const x = (i: number) => L + (points.length === 1 ? pw / 2 : (i / (points.length - 1)) * pw);
-  const y = (v: number) => T + ph - (v / niceMax) * ph;
-  const bw = Math.max(1.5, Math.min(18, (pw / points.length) * 0.7));
-  const ticks = [0, 0.5, 1].map((f) => Math.round(niceMax * f));
-  const labelEvery = Math.max(1, Math.ceil(points.length / 6));
-  const firstReal = points.findIndex((p) => !p.estimated);
-  const linePart = (from: number, to: number) => points.slice(from, to + 1).map((p, k) => `${k ? 'L' : 'M'}${x(from + k).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ');
-  const h = hover !== null ? points[hover] : points[points.length - 1];
+  const nice = (m: number) => { const v = Math.max(1, m); const p = Math.pow(10, Math.floor(Math.log10(v))); const f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; };
+  const dMax = nice(Math.max(...daily.map((p) => p.value)));
+  const cVals = cumulative.map((p) => p.value);
+  const cMin0 = Math.min(...cVals), cMax0 = Math.max(...cVals);
+  // 累計軸不一定從 0 開始，讓曲線的起伏看得出來
+  const cMin = cMax0 - cMin0 < cMax0 * 0.15 ? Math.max(0, Math.floor(cMin0 - (cMax0 - cMin0 || cMax0 * 0.1))) : 0;
+  const cMax = cMin + nice(cMax0 - cMin);
+  const n = daily.length;
+  const x = (i: number) => L + (n === 1 ? pw / 2 : (i / (n - 1)) * pw);
+  const yD = (v: number) => T + ph - (v / dMax) * ph;
+  const yC = (v: number) => T + ph - ((v - cMin) / Math.max(1, cMax - cMin)) * ph;
+  const bw = Math.max(1.5, Math.min(18, (pw / n) * 0.65));
+  const fr = [0, 0.5, 1];
+  const labelEvery = Math.max(1, Math.ceil(n / 6));
+  const firstReal = cumulative.findIndex((p) => !p.estimated);
+  const linePart = (from: number, to: number) => cumulative.slice(from, to + 1).map((p, k) => `${k ? 'L' : 'M'}${x(from + k).toFixed(1)},${yC(p.value).toFixed(1)}`).join(' ');
+  const i = hover !== null ? hover : n - 1;
+  const d = daily[i], c = cumulative[i];
 
   return (
     <div>
-      <div className="text-[11px] text-stone-600 mb-1 h-4">
-        <span className="font-mono">{h.date}</span>：<b className="text-stone-900">{h.value.toLocaleString()}</b> {unit}
-        {h.estimated && <span className="ml-1 text-amber-700">（推估）</span>}
+      <div className="flex items-center justify-between gap-2 flex-wrap text-[11px] text-stone-600 mb-1 min-h-4">
+        <span>
+          <span className="font-mono">{d.date}</span>：
+          <span className="inline-block w-2 h-2 rounded-sm align-middle mr-0.5" style={{ background: barColor }} />{dailyLabel} <b className="text-stone-900">{d.value.toLocaleString()}</b>
+          <span className="mx-1.5 text-stone-300">｜</span>
+          <span className="inline-block w-3 h-0.5 align-middle mr-0.5" style={{ background: lineColor }} />{cumLabel} <b className="text-stone-900">{c.value.toLocaleString()}</b>
+          {(d.estimated || c.estimated) && <span className="ml-1 text-amber-700">（含推估）</span>}
+        </span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" onMouseLeave={() => setHover(null)} role="img" aria-label="趨勢圖">
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="#e7e5e4" strokeDasharray={t ? '3 3' : undefined} />
-            <text x={L - 6} y={y(t) + 3} textAnchor="end" fontSize="10" fill="#a8a29e">{t.toLocaleString()}</text>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" onMouseLeave={() => setHover(null)} role="img" aria-label={`${dailyLabel}與${cumLabel}疊圖`}>
+        {fr.map((f) => (
+          <g key={f}>
+            <line x1={L} x2={W - R} y1={T + ph - f * ph} y2={T + ph - f * ph} stroke="#e7e5e4" strokeDasharray={f ? '3 3' : undefined} />
+            <text x={L - 6} y={T + ph - f * ph + 3} textAnchor="end" fontSize="10" fill={barColor}>{Math.round(dMax * f).toLocaleString()}</text>
+            <text x={W - R + 6} y={T + ph - f * ph + 3} textAnchor="start" fontSize="10" fill={lineColor}>{Math.round(cMin + (cMax - cMin) * f).toLocaleString()}</text>
           </g>
         ))}
-        {kind === 'bar'
-          ? points.map((p, i) => (
-              <rect key={p.date} x={x(i) - bw / 2} y={y(p.value)} width={bw} height={Math.max(0, T + ph - y(p.value))} rx={Math.min(3, bw / 3)}
-                fill={color} opacity={p.estimated ? 0.35 : hover === i ? 1 : 0.85} />
-            ))
-          : (
-            <>
-              {firstReal !== 0 && <path d={linePart(0, firstReal < 0 ? points.length - 1 : firstReal)} fill="none" stroke={color} strokeWidth="2" strokeDasharray="5 4" opacity="0.55" />}
-              {firstReal >= 0 && <path d={linePart(firstReal, points.length - 1)} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />}
-            </>
-          )}
-        {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={T} y2={T + ph} stroke="#a8a29e" strokeDasharray="2 3" />}
-        {points.map((p, i) => (i % labelEvery === 0 || i === points.length - 1) && (
-          <text key={`l-${p.date}`} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="#a8a29e">{p.date.slice(5).replace('-', '/')}</text>
+        {daily.map((p, k) => (
+          <rect key={p.date} x={x(k) - bw / 2} y={yD(p.value)} width={bw} height={Math.max(0, T + ph - yD(p.value))} rx={Math.min(3, bw / 3)}
+            fill={barColor} opacity={p.estimated ? 0.28 : hover === k ? 0.95 : 0.6} />
         ))}
-        {/* 滑鼠／手指感應區 */}
-        {points.map((p, i) => (
-          <rect key={`h-${p.date}`} x={x(i) - pw / points.length / 2} y={T} width={Math.max(2, pw / points.length)} height={ph} fill="transparent"
-            onMouseEnter={() => setHover(i)} onTouchStart={() => setHover(i)} />
+        {firstReal !== 0 && <path d={linePart(0, firstReal < 0 ? n - 1 : firstReal)} fill="none" stroke={lineColor} strokeWidth="2" strokeDasharray="5 4" opacity="0.6" />}
+        {firstReal >= 0 && <path d={linePart(firstReal, n - 1)} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" />}
+        <circle cx={x(i)} cy={yC(c.value)} r="3.5" fill="#fff" stroke={lineColor} strokeWidth="2" />
+        {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={T} y2={T + ph} stroke="#a8a29e" strokeDasharray="2 3" />}
+        {daily.map((p, k) => (k % labelEvery === 0 || k === n - 1) && (
+          <text key={`l-${p.date}`} x={x(k)} y={H - 8} textAnchor="middle" fontSize="10" fill="#a8a29e">{p.date.slice(5).replace('-', '/')}</text>
+        ))}
+        {daily.map((p, k) => (
+          <rect key={`h-${p.date}`} x={x(k) - pw / n / 2} y={T} width={Math.max(2, pw / n)} height={ph} fill="transparent"
+            onMouseEnter={() => setHover(k)} onTouchStart={() => setHover(k)} />
         ))}
       </svg>
+      <div className="flex items-center gap-3 text-[10px] text-stone-500">
+        <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: barColor, opacity: 0.6 }} />{dailyLabel}（左軸）</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3.5 h-0.5" style={{ background: lineColor }} />{cumLabel}（右軸）</span>
+      </div>
     </div>
   );
 };
@@ -172,18 +185,6 @@ export const AdminGrowthTrendsCard: React.FC = () => {
   }, [memberDaily, members.undated]);
 
   const recent = (pts: Point[], n: number) => pts.slice(-n).reduce((s, p) => s + p.value, 0);
-  const [memberView, setMemberView] = useState<'daily' | 'cumulative'>('cumulative');
-  const [visitorView, setVisitorView] = useState<'daily' | 'cumulative'>('daily');
-
-  const Toggle: React.FC<{ value: 'daily' | 'cumulative'; onChange: (v: 'daily' | 'cumulative') => void; labels: [string, string] }> = ({ value, onChange, labels }) => (
-    <div className="inline-flex rounded-lg border border-stone-200 p-0.5 bg-stone-50 text-[11px] font-bold">
-      {(['daily', 'cumulative'] as const).map((v, i) => (
-        <button key={v} type="button" onClick={() => onChange(v)} className={`px-2 py-1 rounded-md cursor-pointer ${value === v ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-500'}`}>
-          {labels[i]}
-        </button>
-      ))}
-    </div>
-  );
 
   return (
     <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-4">
@@ -210,14 +211,13 @@ export const AdminGrowthTrendsCard: React.FC = () => {
         <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 text-xs font-black text-stone-900"><Users className="w-4 h-4 text-purple-600" />註冊會員</div>
-            <Toggle value={memberView} onChange={setMemberView} labels={['每日新註冊', '累計']} />
           </div>
           <div className="flex gap-4 text-[11px] text-stone-600">
             <span>累計 <b className="text-stone-900 text-sm">{members.total.toLocaleString()}</b> 位</span>
             <span>近 7 天 +<b className="text-stone-900">{recent(memberDaily, 7)}</b></span>
             <span>近 30 天 +<b className="text-stone-900">{recent(memberDaily, 30)}</b></span>
           </div>
-          <TrendChart points={cut(memberView === 'daily' ? memberDaily : memberCumulative)} kind={memberView === 'daily' ? 'bar' : 'line'} color="#7c3aed" unit="位" />
+          <ComboChart daily={cut(memberDaily)} cumulative={cut(memberCumulative)} barColor="#a78bfa" lineColor="#6d28d9" dailyLabel="每日新註冊" cumLabel="累計會員" />
           <p className="text-[10px] text-stone-400">依每位會員的註冊日期重建，和「註冊會員」總數一致（不含測試帳號）{members.undated ? `；${members.undated} 位沒有註冊日期，算在最早一天` : ''}。</p>
         </div>
 
@@ -225,18 +225,15 @@ export const AdminGrowthTrendsCard: React.FC = () => {
         <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 text-xs font-black text-stone-900"><Fingerprint className="w-4 h-4 text-amber-600" />不重複訪客</div>
-            <Toggle value={visitorView} onChange={setVisitorView} labels={['每日', '累計']} />
           </div>
           <div className="flex gap-4 text-[11px] text-stone-600">
             <span>累計 <b className="text-stone-900 text-sm">{visitors.total.toLocaleString()}</b> 位</span>
             <span>今日 <b className="text-stone-900">{(visitors.daily[visitors.daily.length - 1]?.value || 0).toLocaleString()}</b></span>
             <span>近 7 天平均 <b className="text-stone-900">{Math.round(recent(visitors.daily, 7) / 7).toLocaleString()}</b>／日</span>
           </div>
-          <TrendChart points={cut(visitorView === 'daily' ? visitors.daily : visitors.cumulative)} kind={visitorView === 'daily' ? 'bar' : 'line'} color="#d97706" unit="位" />
+          <ComboChart daily={cut(visitors.daily)} cumulative={cut(visitors.cumulative)} barColor="#f59e0b" lineColor="#b45309" dailyLabel="每日訪客" cumLabel="累計訪客" />
           <p className="text-[10px] text-stone-400">
-            {visitorView === 'daily'
-              ? `每日不重複訪客：${visitors.firstTracked ? `${visitors.firstTracked} 起為實際記錄` : '尚無實際記錄'}；更早的日子由當天瀏覽量換算（淡色＝推估）。`
-              : `累計不重複訪客：${visitors.firstNew ? `${visitors.firstNew} 起為實際記錄` : '從今天起開始實際記錄'}；更早的依每日訪客數按比例推算（虛線＝推估），最後一天等於實際累計。`}
+            {`每日訪客：${visitors.firstTracked ? `${visitors.firstTracked} 起為實際記錄` : '尚無實際記錄'}，更早由瀏覽量換算；累計訪客：${visitors.firstNew ? `${visitors.firstNew} 起為實際記錄` : '從 v3.3.9 起實際記錄'}，更早按比例推算。淡色長條、虛線＝推估。`}
           </p>
         </div>
       </div>

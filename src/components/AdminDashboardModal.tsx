@@ -7,6 +7,7 @@ import { getTransactionBadge } from './AdminTransactionsTab';
 import { CompetitionAdminReviewTab } from './CompetitionAdminReviewTab';
 import { AdminSiteTrafficChart } from './AdminSiteTrafficChart';
 import { AdminGrowthTrendsCard } from './AdminGrowthTrendsCard';
+import { AdminFeatureUsageCard } from './AdminFeatureUsageCard';
 import { APP_VERSION, APP_RELEASE_DATE, APP_LAST_UPDATED } from '../data/versionData';
 import {
   X,
@@ -491,6 +492,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
         {/* 成長趨勢：註冊會員、不重複訪客 */}
         <AdminGrowthTrendsCard />
+
+        {/* 各大功能使用比例 */}
+        <AdminFeatureUsageCard />
 
         {/* 吉祥物互動統計 */}
 
