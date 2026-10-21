@@ -57,6 +57,38 @@ function maskPII(text: string): string {
     .replace(LONG_DIGITS_RE, MASK);
 }
 
+/**
+ * 指名找角色（007、aicrm、多慧、客服、搜搜、白喵…）：先介紹是誰、給捷徑，
+ * 不然「找 aicrm 顧問」會被當成「找顧問」＝AI 獵頭。
+ */
+const AGENT_INTENT_RE = /找|問|叫|聯絡|聯繫|轉接|轉給|轉到|呼叫|召喚|見|認識|介紹|是誰|誰是|在哪|去哪|跟.{0,4}聊|和.{0,4}聊|我要|我想/;
+const AGENT_DIRECTORY: Array<{ key: string; re: RegExp; reply: string; actions: MascotAction[] }> = [
+  {
+    key: '007',
+    re: /007|ai[\s-]*crm|\bcrm\b|業務顧問|crm\s*(顧問|助理|agent)/i,
+    reply: '007 是我們的 AI CRM Agent 🤖，身上有雷達、軍師、特助三件法寶：巡航找案子、分析成案意向、管理跟進任務。點下面的按鈕，我帶你去 007 的基地～',
+    actions: [{ label: '帶我去找 007', to: 'ai_crm' }],
+  },
+  {
+    key: 'duohui',
+    re: /多慧|頂多慧|貓頭鷹|官方客服|客服(人員|專員|助理|agent)?|真人客服|人工客服/i,
+    reply: '多慧是我們的官方客服 Agent 🦉，平台操作、點數託管、驗收撥款、退款爭議都可以問她。點下面的按鈕直接打開客服視窗；也可以把問題打給我，我幫你轉給她。',
+    actions: [{ label: '找多慧（客服）', to: 'customer_service' }, MAIL_ACTION],
+  },
+  {
+    key: 'sousou',
+    re: /搜搜|探索者|探險家|找工作.{0,3}(agent|助理)/i,
+    reply: '搜搜是我們的探索者 Agent，在「匯職缺」幫你一次搜遍各大求職網。點下面的按鈕去找他～',
+    actions: [{ label: '前往「匯職缺」', to: 'job_explorer' }],
+  },
+  {
+    key: 'baimiao',
+    re: /白喵|市場顧問/,
+    reply: '白喵是我們的市場顧問 Agent 🐱，你發布問題時她會幫忙分類、貼標籤；想問題目分類、懸賞建議，直接把問題打給我，我幫你轉給白喵。',
+    actions: [{ label: '去發布問題', to: 'create' }],
+  },
+];
+
 // 付費功能：命中「要求執行」的說法才攔下；純粹詢問用法或價格（且沒有要求執行）就放行給客服說明
 const PAID_FEATURES: Array<{ key: string; name: string; doRe: RegExp; where: string; actions: MascotAction[] }> = [
   {
@@ -102,7 +134,7 @@ const ASK_ABOUT_RE = /怎麼(用|使用|開通|申請|收費)|如何(使用|開�
 const DO_IT_RE = /幫我|給我|替我|請(你)?(幫|直接)|直接|推薦|告訴我|寫(一|個|份|段)|產生|生成|分析一下/;
 
 export type MascotGuardResult =
-  | { action: 'reply'; reason: 'others' | 'own_account' | 'paid_feature'; reply: string; feature?: string; actions: MascotAction[] }
+  | { action: 'reply'; reason: 'others' | 'own_account' | 'paid_feature' | 'agent_directory'; reply: string; feature?: string; actions: MascotAction[] }
   | { action: 'pass'; message: string };
 
 export function guardMascotQuestion(raw: string): MascotGuardResult {
@@ -131,6 +163,12 @@ export function guardMascotQuestion(raw: string): MascotGuardResult {
         reply: `你的個人帳目資料只有你自己看得到，小燈泡沒辦法替你查喔！請到 ${topic.where} 查看；如果資料有疑問，可以寫信到 ${SUPPORT_EMAIL}，人工客服會協助你確認（平日 09:30～18:30）。`,
       };
     }
+  }
+
+  // 指名找角色：介紹並給捷徑（訊息短、而且有「找／問／是誰…」的意思才算）
+  if (message.length <= 40 && AGENT_INTENT_RE.test(message)) {
+    const who = AGENT_DIRECTORY.find((a) => a.re.test(message));
+    if (who) return { action: 'reply', reason: 'agent_directory', feature: who.key, reply: who.reply, actions: who.actions };
   }
 
   // 付費功能：要求直接執行就說明並指路；只是詢問用法或價格就放行給客服

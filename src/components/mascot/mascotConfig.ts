@@ -75,7 +75,7 @@ export const MASCOT_PREVIEW_EVENT = 'ideax:mascot-preview';
 /** 小燈泡對話框的功能捷徑：只允許這些網站內的目的地（伺服器送來其他值會被忽略） */
 export const MASCOT_NAVIGATE_EVENT = 'ideax:mascot-navigate';
 export const MASCOT_NAV_TARGETS = new Set([
-  'explore', 'solvers', 'headhunter', 'membership', 'my_projects', 'ai_crm', 'job_explorer', 'mailto',
+  'explore', 'solvers', 'headhunter', 'membership', 'my_projects', 'ai_crm', 'job_explorer', 'mailto', 'customer_service', 'create',
   'dash:points_receivables', 'dash:subscriptions', 'dash:profile', 'dash:real_name_auth', 'dash:expert_certification', 'dash:customer_service_report',
 ]);
 

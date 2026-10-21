@@ -160886,6 +160886,33 @@ var LONG_DIGITS_RE = /\b\d{10,16}\b/g;
 function maskPII(text) {
   return text.replace(EMAIL_RE, (m2) => m2.toLowerCase().endsWith("@ideax.tw") ? m2 : MASK).replace(PHONE_RE, MASK).replace(TWID_RE, MASK).replace(LONG_DIGITS_RE, MASK);
 }
+var AGENT_INTENT_RE = /找|問|叫|聯絡|聯繫|轉接|轉給|轉到|呼叫|召喚|見|認識|介紹|是誰|誰是|在哪|去哪|跟.{0,4}聊|和.{0,4}聊|我要|我想/;
+var AGENT_DIRECTORY = [
+  {
+    key: "007",
+    re: /007|ai[\s-]*crm|\bcrm\b|業務顧問|crm\s*(顧問|助理|agent)/i,
+    reply: "007 \u662F\u6211\u5011\u7684 AI CRM Agent \u{1F916}\uFF0C\u8EAB\u4E0A\u6709\u96F7\u9054\u3001\u8ECD\u5E2B\u3001\u7279\u52A9\u4E09\u4EF6\u6CD5\u5BF6\uFF1A\u5DE1\u822A\u627E\u6848\u5B50\u3001\u5206\u6790\u6210\u6848\u610F\u5411\u3001\u7BA1\u7406\u8DDF\u9032\u4EFB\u52D9\u3002\u9EDE\u4E0B\u9762\u7684\u6309\u9215\uFF0C\u6211\u5E36\u4F60\u53BB 007 \u7684\u57FA\u5730\uFF5E",
+    actions: [{ label: "\u5E36\u6211\u53BB\u627E 007", to: "ai_crm" }]
+  },
+  {
+    key: "duohui",
+    re: /多慧|頂多慧|貓頭鷹|官方客服|客服(人員|專員|助理|agent)?|真人客服|人工客服/i,
+    reply: "\u591A\u6167\u662F\u6211\u5011\u7684\u5B98\u65B9\u5BA2\u670D Agent \u{1F989}\uFF0C\u5E73\u53F0\u64CD\u4F5C\u3001\u9EDE\u6578\u8A17\u7BA1\u3001\u9A57\u6536\u64A5\u6B3E\u3001\u9000\u6B3E\u722D\u8B70\u90FD\u53EF\u4EE5\u554F\u5979\u3002\u9EDE\u4E0B\u9762\u7684\u6309\u9215\u76F4\u63A5\u6253\u958B\u5BA2\u670D\u8996\u7A97\uFF1B\u4E5F\u53EF\u4EE5\u628A\u554F\u984C\u6253\u7D66\u6211\uFF0C\u6211\u5E6B\u4F60\u8F49\u7D66\u5979\u3002",
+    actions: [{ label: "\u627E\u591A\u6167\uFF08\u5BA2\u670D\uFF09", to: "customer_service" }, MAIL_ACTION]
+  },
+  {
+    key: "sousou",
+    re: /搜搜|探索者|探險家|找工作.{0,3}(agent|助理)/i,
+    reply: "\u641C\u641C\u662F\u6211\u5011\u7684\u63A2\u7D22\u8005 Agent\uFF0C\u5728\u300C\u532F\u8077\u7F3A\u300D\u5E6B\u4F60\u4E00\u6B21\u641C\u904D\u5404\u5927\u6C42\u8077\u7DB2\u3002\u9EDE\u4E0B\u9762\u7684\u6309\u9215\u53BB\u627E\u4ED6\uFF5E",
+    actions: [{ label: "\u524D\u5F80\u300C\u532F\u8077\u7F3A\u300D", to: "job_explorer" }]
+  },
+  {
+    key: "baimiao",
+    re: /白喵|市場顧問/,
+    reply: "\u767D\u55B5\u662F\u6211\u5011\u7684\u5E02\u5834\u9867\u554F Agent \u{1F431}\uFF0C\u4F60\u767C\u5E03\u554F\u984C\u6642\u5979\u6703\u5E6B\u5FD9\u5206\u985E\u3001\u8CBC\u6A19\u7C64\uFF1B\u60F3\u554F\u984C\u76EE\u5206\u985E\u3001\u61F8\u8CDE\u5EFA\u8B70\uFF0C\u76F4\u63A5\u628A\u554F\u984C\u6253\u7D66\u6211\uFF0C\u6211\u5E6B\u4F60\u8F49\u7D66\u767D\u55B5\u3002",
+    actions: [{ label: "\u53BB\u767C\u5E03\u554F\u984C", to: "create" }]
+  }
+];
 var PAID_FEATURES = [
   {
     key: "headhunter",
@@ -160958,6 +160985,10 @@ function guardMascotQuestion(raw) {
       };
     }
   }
+  if (message2.length <= 40 && AGENT_INTENT_RE.test(message2)) {
+    const who = AGENT_DIRECTORY.find((a) => a.re.test(message2));
+    if (who) return { action: "reply", reason: "agent_directory", feature: who.key, reply: who.reply, actions: who.actions };
+  }
   const paid = PAID_FEATURES.find((f3) => f3.doRe.test(message2));
   if (paid && !(ASK_ABOUT_RE.test(message2) && !DO_IT_RE.test(message2))) {
     return {
@@ -160997,23 +161028,23 @@ function redactMascotReply(text) {
 // server/mascot.ts
 var MASCOT_AGENTS = {
   cs: {
-    label: "\u5B98\u65B9\u5BA2\u670D\u7279\u52A9",
+    label: "\u591A\u6167\uFF08\u5B98\u65B9\u5BA2\u670D\uFF09",
     envKeys: ["DIFY_CS_API_KEY", "DIFY_API_KEY"],
     persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u5B98\u65B9\u5BA2\u670D\u7279\u52A9\uFF0C\u8CA0\u8CAC\u5E33\u865F\uFF0F\u5E33\u6236\u3001\u767B\u5165\u3001\u500B\u4EBA\u8CC7\u6599\u3001\u9EDE\u6578\u5132\u503C\u8207\u64A5\u6B3E\u3001\u61F8\u8CDE\u5206\u7D1A\u898F\u5247\u3001\u9000\u6B3E\u8207\u722D\u8B70\u7533\u8A34\u3001\u6703\u54E1\u65B9\u6848\u3001\u6210\u70BA\u5C08\u5BB6\u3001\u5275\u661F\u5B63\u5831\u540D\u3001\u5E73\u53F0\u64CD\u4F5C\u8207\u932F\u8AA4\u56DE\u5831\u7B49\u554F\u984C\u3002\u56DE\u7B54\u7C21\u6F54\u3001\u53CB\u5584\u3001\u5177\u9AD4\uFF1B\u4E0D\u78BA\u5B9A\u7684\u8CC7\u8A0A\u8ACB\u5F15\u5C0E\u806F\u7E6B support@ideax.tw\uFF0C\u4E0D\u8981\u634F\u9020\u3002"
   },
   market_advisor: {
-    label: "\u5E02\u5834\u9867\u554F",
+    label: "\u767D\u55B5\uFF08\u5E02\u5834\u9867\u554F\uFF09",
     envKeys: ["DIFY_MARKET_ADVISOR_API_KEY"],
     persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u5E02\u5834\u9867\u554F\uFF0C\u8CA0\u8CAC\u984C\u76EE\u5206\u985E\u8207\u50F9\u503C\u5206\u7D1A\uFF08L0\uFF5EL4\uFF09\u3001\u5EFA\u8B70\u61F8\u8CDE\u8207\u6A19\u7C64\u3001\u5A92\u5408\u63A8\u85A6\u5408\u9069\u7684\u5C08\u5BB6\u3001\u6DF1\u5EA6\u554F\u984C\u5206\u6790\u5831\u544A\uFF0C\u4EE5\u53CA\u5408\u7D04\u5C65\u7D04\u722D\u8B70\u7684\u8ABF\u89E3\u5EFA\u8B70\u3002\u8A9E\u6C23\u5BA2\u89C0\u5C08\u696D\u3002"
   },
   aicrm: {
-    label: "\u696D\u52D9\u9867\u554F",
+    label: "007\uFF08AI CRM\uFF09",
     envKeys: ["DIFY_AICRM_API_KEY"],
     // 沒設定就由小燈泡（Gemini）代答，不借用客服的金鑰
     persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u696D\u52D9\u9867\u554F\uFF08AI-CRM \u7279\u52A9\uFF09\uFF0C\u5354\u52A9\u8A8D\u8B49\u5C08\u5BB6\u627E\u9AD8\u50F9\u503C\u6848\u5B50\u8207\u61F8\u8CDE\u597D\u984C\u3001\u8A55\u4F30\u767C\u6848\u65B9\u6210\u6848\u610F\u5411\u3001\u8A66\u7B97\u5BE6\u6536\u6DE8\u5229\u3001\u898F\u5283\u63D0\u6848\u5207\u5165\u65B9\u5F0F\u8207\u8DDF\u9032\u6642\u6BB5\u3001\u64B0\u5BEB\u7834\u51B0\u8A71\u8853\u3002\u4E0D\u8A87\u5927\u4FDD\u8B49\u7372\u5229\u3002"
   },
   explorer: {
-    label: "\u63A2\u96AA\u5BB6",
+    label: "\u641C\u641C\uFF08\u63A2\u7D22\u8005\uFF09",
     envKeys: ["DIFY_EXPLORER_API_KEY", "DIFY_JOB_EXPLORER_API_KEY", "DIFY_EXPLORER_WEB_URL"],
     persona: "\u4F60\u662F\u300C\u5275\u9EDE\u5B50 IdeaX\u300D\u532F\u8077\u7F3A AI \u7279\u52A9\u300C\u63A2\u96AA\u5BB6\u300D\uFF0C\u5C08\u9580\u5728\u300C\u532F\u8077\u7F3A\u300D\u9801\u9762\u5354\u52A9\u6C42\u8077\u8005\u4EE5\u81EA\u7136\u8A9E\u8A00\u5206\u6790\u6700\u5728\u610F\u7684\u6C42\u8077\u689D\u4EF6\uFF08\u85AA\u8CC7\u3001\u5730\u9EDE\u3001\u7D93\u6B77\u3001\u5B78\u6B77\u3001\u884C\u696D\u3001\u5DE5\u4F5C\u74B0\u5883\u3001\u5176\u4ED6\u5F85\u9047\uFF09\uFF0C\u4E26\u7D50\u5408\u5168\u7DB2\u641C\u5C0B\u5A92\u5408\u9069\u5408\u8077\u4F4D\u3002"
   }
@@ -161849,7 +161880,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.2.0";
+var APP_VERSION = "3.2.1";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -166093,7 +166124,7 @@ app.post("/api/admin/mascot-route-test", async (req, res) => {
     const raw = String(req.body?.message || "").trim().slice(0, 500);
     if (!raw) return res.status(400).json({ success: false, error: "\u8ACB\u8F38\u5165\u6E2C\u8A66\u554F\u984C" });
     const guard = guardMascotQuestion(raw);
-    const guardLabel = { others: "\uFF08\u8B77\u6B04\uFF1A\u4E0D\u63D0\u4F9B\u4ED6\u4EBA\u8CC7\u6599\uFF09", own_account: "\uFF08\u8B77\u6B04\uFF1A\u5F15\u5C0E\u81EA\u884C\u67E5\u770B\u5E33\u76EE\uFF09", paid_feature: "\uFF08\u8B77\u6B04\uFF1A\u4ED8\u8CBB\u529F\u80FD\u8ACB\u5230\u7DB2\u7AD9\u4ECB\u9762\u4F7F\u7528\uFF09" };
+    const guardLabel = { others: "\uFF08\u8B77\u6B04\uFF1A\u4E0D\u63D0\u4F9B\u4ED6\u4EBA\u8CC7\u6599\uFF09", own_account: "\uFF08\u8B77\u6B04\uFF1A\u5F15\u5C0E\u81EA\u884C\u67E5\u770B\u5E33\u76EE\uFF09", paid_feature: "\uFF08\u8B77\u6B04\uFF1A\u4ED8\u8CBB\u529F\u80FD\u8ACB\u5230\u7DB2\u7AD9\u4ECB\u9762\u4F7F\u7528\uFF09", agent_directory: "\uFF08\u6307\u540D\u627E\u89D2\u8272\uFF1A\u4ECB\u7D39\u4E26\u7D66\u6377\u5F91\uFF09" };
     if (guard.action === "reply") return res.json({ success: true, agent: "none", label: guardLabel[guard.reason], routedBy: "guard", answer: guard.reply, actions: guard.actions });
     const message2 = guard.message;
     const plan = await planMascotRoute(message2, generateRawTextWithGemini);

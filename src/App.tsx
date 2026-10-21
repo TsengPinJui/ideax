@@ -1114,6 +1114,8 @@ function MainContent() {
       } else if (to === 'membership') setActiveTab('membership');
       else if (to === 'my_projects') setActiveTab('my_projects');
       else if (to === 'ai_crm') setActiveTab('ai_crm');
+      else if (to === 'customer_service') { openCustomerService(); return; }
+      else if (to === 'create') setActiveTab('create_question');
       else if (to.startsWith('dash:') && DASH_TABS.has(to.slice(5))) {
         setUserDashboardTab(to.slice(5) as any);
         setActiveTab('user_dashboard');
@@ -1122,7 +1124,7 @@ function MainContent() {
     };
     window.addEventListener('ideax:mascot-navigate', onMascotNavigate);
     return () => window.removeEventListener('ideax:mascot-navigate', onMascotNavigate);
-  }, [currentUser.id, promptLogin]);
+  }, [currentUser.id, promptLogin, openCustomerService]);
 
   // Guest intercept: if guest tries to view personal center or my projects or create question, redirect to login
   useEffect(() => {
