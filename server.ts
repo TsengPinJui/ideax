@@ -3797,6 +3797,32 @@ app.get('/api/admin/user-activity', async (req: Request, res: Response) => {
   }
 });
 
+// 首頁公開數據開關：由伺服器確認是管理員後寫入（不受前端連線／登入狀態影響）
+const PUBLIC_METRIC_KEYS = [
+  'showSolvedCount', 'showTotalBounty', 'showAvgResponseSpeed', 'showSatisfactionRate', 'showHighestBounty',
+  'showTotalViews', 'showOnlineUsers', 'showTotalMembers', 'showVerifiedSolvers', 'showQuestionsCount',
+  'showProposalsCount', 'showTotalDeals', 'showTotalGMV',
+];
+app.post('/api/admin/public-metrics-config', async (req: Request, res: Response) => {
+  try {
+    const au = await verifyAuthToken(req.headers.authorization as string | undefined);
+    if (!au) return res.status(401).json({ ok: false, reason: 'not_signed_in' });
+    if (!(await isVerifiedAdmin(au.uid))) return res.status(403).json({ ok: false, reason: 'not_admin' });
+    const raw = req.body?.config || {};
+    const config: Record<string, boolean> = {};
+    for (const k of PUBLIC_METRIC_KEYS) if (typeof raw[k] === 'boolean') config[k] = raw[k];
+    if (!Object.keys(config).length) return res.status(400).json({ ok: false, reason: 'empty' });
+    await adminDb.collection('platform_settings').doc('global').set(
+      { publicMetricsConfig: config, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+    res.json({ ok: true, config });
+  } catch (err: any) {
+    console.warn('[public-metrics-config]', err?.code || err?.message);
+    res.status(500).json({ ok: false, reason: 'write_failed' });
+  }
+});
+
 // 前端定期問目前的版本：開著很久沒重新整理的頁面（例如手機上的 APP）才知道要更新
 app.get('/api/version', (_req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store, max-age=0');

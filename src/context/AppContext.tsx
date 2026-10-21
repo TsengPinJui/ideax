@@ -121,6 +121,7 @@ import {
   sendPresenceHeartbeat,
   subscribePresenceFromFirestore,
   CategorizedSyncResult,
+  savePublicMetricsConfig,
 } from '../services/firestoreSync';
 import { getStoredTickets } from '../services/customerSupportService';
 import { CenterToastData } from '../components/CenterToast';
@@ -1166,7 +1167,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // 3. 實時監聽全站平台「數據顯示設定與營運模式」(Public Metrics Config & Platform Settings)
   useEffect(() => {
     const unsub = subscribePlatformSettingsFromFirestore((settings) => {
-      if (settings.publicMetricsConfig) {
+      if (settings.publicMetricsConfig && publicMetricsSavingRef.current === 0) {
         setPublicMetricsConfig((prev) => {
           const merged = { ...prev, ...settings.publicMetricsConfig };
           try {
@@ -1842,19 +1843,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return defaultPublicMetricsConfig;
   });
+  // 最新的開關狀態（連按好幾個時不會用到舊值）與「正在儲存」計數
+  const publicMetricsConfigRef = useRef(publicMetricsConfig);
+  useEffect(() => { publicMetricsConfigRef.current = publicMetricsConfig; }, [publicMetricsConfig]);
+  const publicMetricsSavingRef = useRef(0);
 
   const updatePublicMetricsConfig = (config: Partial<PublicMetricsConfig>) => {
-    setPublicMetricsConfig((prev) => {
-      const next = { ...prev, ...config };
-      try {
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}public_metrics_config`, JSON.stringify(next));
-      } catch (e) {
-        console.error(e);
-      }
-      // 全站實時同步指標展示設定至 Firestore 雲端，使其他所有使用者與瀏覽器即時生效
-      syncPlatformSettingsToFirestore({ publicMetricsConfig: next });
-      return next;
-    });
+    const before = publicMetricsConfigRef.current;
+    const next = { ...before, ...config };
+    publicMetricsConfigRef.current = next;
+    setPublicMetricsConfig(next);
+    try {
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}public_metrics_config`, JSON.stringify(next));
+    } catch {}
+    // 存到雲端讓全站生效；存的期間不讓雲端舊值把開關蓋回去，失敗就退回並告知
+    publicMetricsSavingRef.current += 1;
+    savePublicMetricsConfig(next as unknown as Record<string, boolean>)
+      .then((r) => {
+        if (r.ok) return;
+        if (publicMetricsConfigRef.current === next) {
+          publicMetricsConfigRef.current = before;
+          setPublicMetricsConfig(before);
+          try { localStorage.setItem(`${STORAGE_KEY_PREFIX}public_metrics_config`, JSON.stringify(before)); } catch {}
+        }
+        const why = r.message ? r.message.replace(/[。.]$/, '')
+          : r.reason === 'not_signed_in' ? '登入狀態已過期，請重新登入後再試'
+          : r.reason === 'not_admin' ? '這個帳號沒有管理員權限'
+          : '請稍後再試';
+        alert(`首頁數據開關沒有儲存成功：${why}。`);
+      })
+      .finally(() => {
+        publicMetricsSavingRef.current = Math.max(0, publicMetricsSavingRef.current - 1);
+      });
   };
 
   // 燈泡吉祥物設定：雲端 platform_settings/global.mascotConfig，本機快取讓吉祥物不用等雲端就能出現

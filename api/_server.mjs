@@ -161846,7 +161846,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.0.8";
+var APP_VERSION = "3.0.9";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -165016,6 +165016,40 @@ app.get("/api/admin/user-activity", async (req, res) => {
     res.json({ ok: true, activity: map });
   } catch {
     res.status(500).json({ ok: false });
+  }
+});
+var PUBLIC_METRIC_KEYS = [
+  "showSolvedCount",
+  "showTotalBounty",
+  "showAvgResponseSpeed",
+  "showSatisfactionRate",
+  "showHighestBounty",
+  "showTotalViews",
+  "showOnlineUsers",
+  "showTotalMembers",
+  "showVerifiedSolvers",
+  "showQuestionsCount",
+  "showProposalsCount",
+  "showTotalDeals",
+  "showTotalGMV"
+];
+app.post("/api/admin/public-metrics-config", async (req, res) => {
+  try {
+    const au = await verifyAuthToken(req.headers.authorization);
+    if (!au) return res.status(401).json({ ok: false, reason: "not_signed_in" });
+    if (!await isVerifiedAdmin(au.uid)) return res.status(403).json({ ok: false, reason: "not_admin" });
+    const raw = req.body?.config || {};
+    const config = {};
+    for (const k of PUBLIC_METRIC_KEYS) if (typeof raw[k] === "boolean") config[k] = raw[k];
+    if (!Object.keys(config).length) return res.status(400).json({ ok: false, reason: "empty" });
+    await adminDb.collection("platform_settings").doc("global").set(
+      { publicMetricsConfig: config, updatedAt: (/* @__PURE__ */ new Date()).toISOString() },
+      { merge: true }
+    );
+    res.json({ ok: true, config });
+  } catch (err) {
+    console.warn("[public-metrics-config]", err?.code || err?.message);
+    res.status(500).json({ ok: false, reason: "write_failed" });
   }
 });
 app.get("/api/version", (_req, res) => {

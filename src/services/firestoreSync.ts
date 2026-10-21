@@ -1760,6 +1760,34 @@ export function subscribePresenceFromFirestore(callback: (onlineCount: number) =
  * 記錄會員「最近上線時間」：登入的會員使用網站時，最多每 10 分鐘回報一次。
  * 由伺服器寫到獨立的 user_activity（不寫進會員資料：會員資料大家都在即時監聽，每寫一次所有在線的人都要重讀）。
  */
+/** 儲存首頁公開數據開關：先走伺服器（確認管理員後寫入），不行再直接寫資料庫 */
+export async function savePublicMetricsConfig(config: Record<string, boolean>): Promise<{ ok: boolean; reason?: string; message?: string }> {
+  let reason = '';
+  let message = '';
+  try {
+    const headers = await getAuthHeaders();
+    if (headers.Authorization) {
+      const r = await fetch('/api/admin/public-metrics-config', { method: 'POST', headers, body: JSON.stringify({ config }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j?.ok) return { ok: true };
+      reason = j?.reason || (r.status === 401 ? 'not_signed_in' : r.status === 403 ? 'not_admin' : `http_${r.status}`);
+      message = typeof j?.error === 'string' ? j.error : '';
+    } else {
+      reason = 'not_signed_in';
+    }
+  } catch {
+    reason = 'network';
+  }
+  // 備援：直接寫入（資料庫規則允許管理員時會成功）
+  try {
+    await setDoc(doc(db, 'platform_settings', 'global'), { publicMetricsConfig: config, updatedAt: new Date().toISOString() }, { merge: true });
+    return { ok: true };
+  } catch (err: any) {
+    handleFirestoreError('savePublicMetricsConfig', err);
+    return { ok: false, reason: reason || err?.code || 'write_failed', message };
+  }
+}
+
 export async function touchUserLastActive(userId?: string): Promise<void> {
   if (!userId || userId === 'user-guest') return;
   const key = `ideax_last_active_touch_${userId}`;
