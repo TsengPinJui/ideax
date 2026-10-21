@@ -3546,6 +3546,9 @@ function cnSmallNumber(s: string): number {
 }
 function normalizeChineseAmounts(t: string): string {
   return t
+    // 「月至少 30000」「時薪最少 200」這類說法統一成「月薪 30000」「時薪 200」
+    .replace(/月(?:薪)?(?:至少|最少|最低|起碼|要|大概)\s*(?=[\d一二兩三四五六七八九十])/g, '月薪')
+    .replace(/時(?:薪)?(?:至少|最少|最低|起碼|要|大概)\s*(?=[\d一二兩三四五六七八九十])/g, '時薪')
     .replace(/([一二兩三四五六七八九])([一二三四五六七八九])萬/g, (_, a) => String(CN_DIGIT[a] * 10000))
     .replace(/([一二兩三四五六七八九十]{1,3})萬([一二三四五六七八九])?/g, (all, a, b) => {
       const n = cnSmallNumber(a);
@@ -3554,9 +3557,27 @@ function normalizeChineseAmounts(t: string): string {
     .replace(/([一二兩三四五六七八九])百([一二三四五六七八九])?/g, (_, a, b) => String(CN_DIGIT[a] * 100 + (b ? CN_DIGIT[b] * 10 : 0)));
 }
 
+/** 常見的縣市合稱展開成各縣市（「北北基桃」→ 台北市 新北市 基隆市 桃園市） */
+const REGION_ALIASES: Array<[RegExp, string]> = [
+  [/北北基桃/g, '台北市 新北市 基隆市 桃園市'],
+  [/北北桃/g, '台北市 新北市 桃園市'],
+  [/北北基/g, '台北市 新北市 基隆市'],
+  [/雙北/g, '台北市 新北市'],
+  [/桃竹苗/g, '桃園市 新竹市 新竹縣 苗栗縣'],
+  [/桃竹竹/g, '桃園市 新竹市 新竹縣'],
+  [/中彰投/g, '台中市 彰化縣 南投縣'],
+  [/雲嘉南/g, '雲林縣 嘉義市 嘉義縣 台南市'],
+  [/高屏/g, '高雄市 屏東縣'],
+  [/花東/g, '花蓮縣 台東縣'],
+];
+function expandRegionAliases(t: string): string {
+  return REGION_ALIASES.reduce((acc, [re, v]) => acc.replace(re, ` ${v} `), t);
+}
+
 /** 規則版：把口語的偏好轉成具體條件（AI 沒回應時使用） */
 const PREFERENCE_RULES: Array<{ dimension: string; re: RegExp; value: string | ((m: RegExpMatchArray) => string) }> = [
   { dimension: 'schedule', re: /週休二日|周休二日/, value: '週休二日' },
+  { dimension: 'other', re: /大眾交通|大眾運輸|捷運站?附近|近捷運|公車站?附近|火車站附近|交通方便/, value: '近大眾運輸（捷運、公車、火車站）' },
   { dimension: 'schedule', re: /不輪班|不要輪班|固定班/, value: '固定班、不輪班' },
   { dimension: 'schedule', re: /接小孩|接送小孩/, value: '早班或 15:30 前下班（要接小孩）' },
   { dimension: 'schedule', re: /只上?早班|早上班/, value: '早班' },
@@ -3735,7 +3756,7 @@ app.get('/api/fx', async (_req: Request, res: Response) => {
 let lastIntakeAiNote = '';
 
 /** 看起來是「條件」而不是職務的詞：AI 誤放進職務時移出來 */
-const NOT_A_ROLE_RE = /週休|周休|輪班|排班|早班|晚班|夜班|大夜|不加班|準時下班|接小孩|接送|下午|上午|早上|晚上|中午|假日|不要太|一點|彈性(工時|上下班)|遠端|在家工作|混合辦公|員工餐|供餐|供宿|宿舍|交通補助|年終|獎金|勞健保|福利|附近|離家|通勤|新鮮人|二度就業|退伍|轉職|會(日文|英文|韓文)|英文(流利|好)|駕照|證照|月薪|時薪|年薪|薪水|不用面對|不要太累|輕鬆|安靜|寵物友善/;
+const NOT_A_ROLE_RE = /大眾交通|大眾運輸|交通|捷運|公車|至少|最少|最低|起碼|週休|周休|輪班|排班|早班|晚班|夜班|大夜|不加班|準時下班|接小孩|接送|下午|上午|早上|晚上|中午|假日|不要太|一點|彈性(工時|上下班)|遠端|在家工作|混合辦公|員工餐|供餐|供宿|宿舍|交通補助|年終|獎金|勞健保|福利|附近|離家|通勤|新鮮人|二度就業|退伍|轉職|會(日文|英文|韓文)|英文(流利|好)|駕照|證照|月薪|時薪|年薪|薪水|不用面對|不要太累|輕鬆|安靜|寵物友善/;
 const INTAKE_PREF_LABELS: Record<string, string> = {
   industry: '產業', schedule: '班別工時', workMode: '工作方式', benefits: '福利',
   environment: '工作環境', skills: '技能證照', background: '個人背景', other: '其他偏好',
@@ -3822,6 +3843,8 @@ async function parseJobIntakeWithGemini(params: {
    - 使用者說「總統府附近」，地點必須歸納為「台北市中正區（總統府周邊）」，「總統府」是地標絕對不是職務！
    - 使用者說「中正大學附近」，地點必須歸納為「嘉義縣民雄鄉（中正大學周邊）」，「中正大學」是地標校園絕對不是職務！
    - 「全家100m內」、「捷運公館站旁」、「竹科附近」等屬於空間範圍、參照店家與距離條件，請完整歸納到地點描述中，絕不可拆碎混入職務！
+   - 縣市合稱要展開成各縣市，用「、」分隔：「北北基桃」→「台北市、新北市、基隆市、桃園市」，「雙北」→「台北市、新北市」，「北北基」「桃竹竹」「桃竹苗」「中彰投」「雲嘉南」「高屏」「花東」同理。
+   - 「大眾交通附近」「捷運站附近」「交通方便」是通勤偏好，不是地點：放進 preferences（dimension "other"，value「近大眾運輸（捷運、公車、火車站）」）。
    - 找職缺時【先不要預設台灣】，若使用者未提及地點，且未指定國外，請在 location 填 null，city 填 "全部"（當用戶後續確定送出搜尋時才預設台灣）。若提及國外國家（如日本、新加坡、美國、國外等），填入該國或城市。
 2. 【職務名稱 (roles)】：
    - 精確抓出使用者真正想找的職務、職位或想要的工作角色，例如「KTV服務生」、「早餐店店員」、「軟體工程師」等。
@@ -4262,12 +4285,12 @@ app.post('/api/job-explorer/intake', async (req: Request, res: Response) => {
     }
 
     // 若 Gemini 暫不可用，以本機規則引擎備援
-    const allSegments = normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage]
-      .join(' 、 '))
+    const allSegments = expandRegionAliases(normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage]
+      .join(' 、 ')))
       .split(/[、,，\n]+/)
       .map((s) => s.trim())
       .filter(Boolean);
-    const fullText = normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage].join(' ')).toLowerCase();
+    const fullText = expandRegionAliases(normalizeChineseAmounts([...conversationHistory, previousBrief, rawMessage].join(' '))).toLowerCase();
 
     // ─── 各維度關鍵字檢測正則 ───
     const cityRegex = /台北|新北|基隆|桃園|新竹|苗栗|台中|彰化|南投|雲林|嘉義|台南|高雄|屏東|宜蘭|花蓮|台東|澎湖|金門|連江|遠端|remote|雙北|桃竹|中彰投|雲嘉南|高屏/i;
