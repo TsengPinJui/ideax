@@ -1442,6 +1442,20 @@ export interface BidirectionalHandshakeMatch {
   createdAt: string;
 }
 
+/**
+ * 首頁「創點子」播放區（目前預留：先保存設定，播放功能之後再開放）
+ * - excellent：創星季比賽的優秀作品
+ * - paid：付費推播
+ * - custom：管理員自選
+ */
+export type HomeShowcaseMode = 'excellent' | 'paid' | 'custom';
+export interface HomeShowcaseConfig {
+  enabled: boolean;
+  mode: HomeShowcaseMode;
+  updatedAt?: string;
+}
+export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, mode: 'excellent' };
+
 export interface PublicMetricsConfig {
   showSolvedCount: boolean;        // 累計解決難題 / 已解決題數
   showTotalBounty: boolean;        // 累計懸賞金額
