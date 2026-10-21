@@ -373,6 +373,8 @@ export interface GoogleSitelinkItem {
   description: string;
   keywords: string[];
   icon: string;
+  /** 分享預覽圖（選填，JPG/PNG；沒有就用預設縮圖） */
+  image?: { url: string; width: number; height: number; type: string };
 }
 
 export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
@@ -448,6 +450,19 @@ export const GOOGLE_SITELINKS: GoogleSitelinkItem[] = [
     description: '說出想找的工作、地區與薪資，搜搜和小燈泡幫你一次彙整 104、1111、Yes123、518、Cake、Yourator、LinkedIn 等求職網站正在招募的職缺，自動去除重複、依條件排序。',
     keywords: ['匯職缺', '找工作', '職缺搜尋', '求職', '人力銀行', '兼職', '打工', 'AI 找工作'],
     icon: 'Briefcase',
+  },
+  {
+    id: 'agents',
+    name: '原創 IP 與 Agent',
+    category: 'ideax',
+    categoryLabel: 'IdeaX 創點子',
+    path: '/agents',
+    queryParam: '?tab=about',
+    title: '原創 IP 與 Agent — IdeaX 創點子的角色們：小燈泡、搜搜、白喵、多慧、007',
+    description: '認識 IdeaX 創點子的原創角色與 AI Agent：站內嚮導小燈泡、找工作的探索者搜搜、市場顧問白喵、官方客服多慧、AI CRM Agent 007。看看他們各自負責什麼、在網站哪裡出沒，還能下載角色身分證明信片！',
+    keywords: ['原創 IP', 'AI Agent', '角色介紹', '小燈泡', '搜搜', '白喵', '多慧', '007', '吉祥物', '創點國'],
+    icon: 'Users',
+    image: { url: '/agents/group-og.jpg', width: 1200, height: 800, type: 'image/jpeg' },
   },
   {
     id: 'membership',
@@ -605,7 +620,7 @@ export function updateSEOForSubpage(subpageId: string) {
   let canonicalLink = document.querySelector('link[rel="canonical"]');
 
   const fullUrl = toCanonicalUrl(getSitelinkFullUrl(sitelink));
-  const imageUrl = sitelink.category === 'star_season' ? `${getBaseUrl()}/去背創星季.png` : `${getBaseUrl()}/ideax-thumbnail.png`;
+  const imageUrl = sitelink.image ? `${getBaseUrl()}${sitelink.image.url}` : sitelink.category === 'star_season' ? `${getBaseUrl()}/去背創星季.png` : `${getBaseUrl()}/ideax-thumbnail.png`;
 
   if (titleTag) titleTag.innerText = sitelink.title;
   if (metaDesc) metaDesc.setAttribute('content', sitelink.description);

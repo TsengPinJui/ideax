@@ -54,6 +54,7 @@ import { PlatformRolesSpectrumView } from './PlatformRolesSpectrumView';
 import { APP_VERSION } from '../data/versionData';
 import { triggerDirectAppDownloadOrInstall, downloadAppLauncherFile } from '../services/pwaInstaller';
 import { getPlatformFaqs } from '../services/customerSupportService';
+import { updateSEOForSubpage, resetSEOToDefault } from '../services/seoService';
 import { FaqItem } from '../types';
 
 interface AboutUsViewProps {
@@ -62,6 +63,8 @@ interface AboutUsViewProps {
   isModal?: boolean;
   onStartOnboarding?: () => void;
   onNavigateToStarSeason?: () => void;
+  /** 網站上的「關於」頁：切到原創 IP 與 Agent 時網址變成 /agents（有自己的標題與分享圖），其他分頁是 /about */
+  syncUrl?: boolean;
 }
 
 type MainTab = 'intro' | 'ip_agents' | 'download_app' | 'contact' | 'terms' | 'others';
@@ -72,6 +75,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
   isModal = false,
   onStartOnboarding,
   onNavigateToStarSeason,
+  syncUrl = false,
 }) => {
   const { currentUser, openCustomerService, addNotification, openPwaInstallModal } = useApp();
   const [copiedAppUrl, setCopiedAppUrl] = useState(false);
@@ -145,6 +149,21 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({
     return null;
   });
   const [activeTimelineStep, setActiveTimelineStep] = useState<number>(3);
+  // 角色頁有自己的網址：/agents
+  useEffect(() => {
+    if (!syncUrl) return;
+    try {
+      const p = window.location.pathname;
+      if (activeTab === 'ip_agents') {
+        if (p !== '/agents') window.history.replaceState(window.history.state, '', '/agents');
+        updateSEOForSubpage('agents');
+      } else if (/^\/(about\/)?agents\/?$/.test(p)) {
+        window.history.replaceState(window.history.state, '', '/about');
+        resetSEOToDefault();
+      }
+    } catch {}
+  }, [activeTab, syncUrl]);
+
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 

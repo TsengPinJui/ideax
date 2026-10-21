@@ -79,6 +79,10 @@
       "destination": "/seo/challenge__rules.html"
     },
     {
+      "source": "/agents",
+      "destination": "/seo/agents.html"
+    },
+    {
       "source": "/((?!api/|assets/|sw\\.js|manifest\\.json|robots\\.txt|sitemap\\.xml|favicon.*|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|woff2?|ttf|eot|json|xml|txt)).*)",
       "destination": "/app.html"
     }

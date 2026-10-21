@@ -756,7 +756,7 @@ function MainContent() {
     const openAgents = () => {
       setAboutPageSection('ip_agents');
       setActiveTab('about');
-      try { window.history.pushState(null, '', '/about/agents'); } catch {}
+      try { window.history.pushState(null, '', '/agents'); } catch {}
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     window.addEventListener('ideax_open_agents', openAgents);
@@ -1426,8 +1426,16 @@ function MainContent() {
   }, [questions.length]);
 
   // Synchronize browser URL & dynamic SEO (Title, Description, Schema.org QAPage)
+  // 只在「打開問題」或「從問題回來」時改 SEO；沒有打開問題時不要動，否則會把 /jobs、/agents 等分頁自己的標題與正式網址蓋回首頁
+  const seoHadQuestion = useRef(false);
   useEffect(() => {
-    updateSEOForQuestion(selectedQuestion, answers);
+    if (selectedQuestion) {
+      seoHadQuestion.current = true;
+      updateSEOForQuestion(selectedQuestion, answers);
+    } else if (seoHadQuestion.current) {
+      seoHadQuestion.current = false;
+      updateSEOForQuestion(null, answers);
+    }
 
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -3080,6 +3088,7 @@ function MainContent() {
             <AboutUsView
               key={aboutPageSection}
               initialSection={aboutPageSection}
+              syncUrl
               onBack={() => setActiveTab('explore')}
               onStartOnboarding={() => {
                 setIsOnboardingFromAbout(true);
