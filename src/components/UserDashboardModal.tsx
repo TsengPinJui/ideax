@@ -142,6 +142,7 @@ import {
 } from 'lucide-react';
 import { CURRENT_TERMS_VERSION } from '../data/termsData';
 import { CORE_TEST_ACCOUNTS } from '../data/mockData';
+import { AdminSettingsSearch } from './AdminSettingsSearch';
 import { AiCrmView } from './AiCrmView';
 
 export type UserDashboardTab =
@@ -2177,6 +2178,12 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
                 </button>
               ))}
             </div>
+            {/* 管理員設定搜尋框 */}
+            <AdminSettingsSearch
+              activeTab={activeTab}
+              onNavigate={(t) => { setAdminCategoryFilter('all'); setActiveTab(t as any); setMobileMenuOpen(false); }}
+              className="w-72 shrink-0 ml-3"
+            />
           </div>
 
           {/* Filtered Admin Tabs */}
@@ -2328,6 +2335,11 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
         <div className="sm:hidden flex-1 overflow-y-auto bg-stone-50/90 p-2.5 space-y-2">
           {currentUser.role === 'admin' ? (
             <div className="space-y-3">
+              {/* 手機版選單：管理員設定搜尋框 */}
+              <AdminSettingsSearch
+                activeTab={activeTab}
+                onNavigate={(t) => { setActiveTab(t as any); setMobileMenuOpen(false); }}
+              />
               {/* 分類 0: 📊 總覽與平台數據 (置頂) */}
               <div className="bg-white rounded-xl border border-purple-200 p-1.5 space-y-0.5 shadow-2xs">
                 <p className="px-2 pt-1 pb-1 text-[10px] font-black text-purple-900 uppercase tracking-wider flex items-center justify-between border-b border-purple-100/80 mb-1">
@@ -3059,7 +3071,7 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
       )}
 
       {/* Body Content */}
-      <div className={`p-2.5 sm:p-6 space-y-3.5 sm:space-y-6 ${!isFullPage ? 'overflow-y-auto' : ''} ${
+      <div data-admin-search-root className={`p-2.5 sm:p-6 space-y-3.5 sm:space-y-6 ${!isFullPage ? 'overflow-y-auto' : ''} ${
         mobileMenuOpen ? 'hidden sm:block' : 'block'
       }`}>
         {/* Mobile Navigation Return Bar */}
@@ -3076,6 +3088,14 @@ export const UserDashboardModal: React.FC<UserDashboardModalProps> = ({
             {TAB_NAME_MAP[activeTab] || '功能分頁'}
           </span>
         </div>
+        {/* 手機版：管理員設定搜尋框 */}
+        {currentUser.role === 'admin' && (
+          <AdminSettingsSearch
+            activeTab={activeTab}
+            onNavigate={(t) => { setActiveTab(t as any); setMobileMenuOpen(false); }}
+            className="sm:hidden -mt-1"
+          />
+        )}
         {msg && (
           <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[150] px-5 py-2.5 rounded-full bg-stone-900/95 text-white text-xs font-black shadow-2xl backdrop-blur-md flex items-center gap-2 border border-stone-700/80 animate-in fade-in slide-in-from-top-4 duration-200">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
