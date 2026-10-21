@@ -3834,8 +3834,9 @@ app.post('/api/admin/home-showcase-config', async (req: Request, res: Response) 
     if (!au) return res.status(401).json({ ok: false, error: '登入狀態已過期，請重新登入後再試' });
     if (!(await isVerifiedAdmin(au.uid))) return res.status(403).json({ ok: false, error: '這個帳號沒有管理員權限' });
     const raw = req.body?.config || {};
-    const mode = ['excellent', 'paid', 'custom'].includes(raw.mode) ? raw.mode : 'excellent';
-    const config = { enabled: raw.enabled === true, mode, updatedAt: new Date().toISOString() };
+    const list: unknown[] = Array.isArray(raw.modes) ? raw.modes : [];
+    const modes = ['excellent', 'paid', 'custom'].filter((m) => list.includes(m)); // 可複選
+    const config = { enabled: raw.enabled === true, modes, updatedAt: new Date().toISOString() };
     await adminDb.collection('platform_settings').doc('global').set({ homeShowcaseConfig: config }, { merge: true });
     res.json({ ok: true, config });
   } catch (err: any) {
