@@ -4118,7 +4118,7 @@ app.post('/api/admin/ai-provider/test', async (req: Request, res: Response) => {
   let text: string | null = null;
   let error = '';
   if (!hasProviderKey(p)) {
-    error = p === 'openai' ? '沒有設定 OPENAI_API_KEY' : p === 'anthropic' ? '沒有設定 ANTHROPIC_API_KEY' : '沒有設定 GEMINI_API_KEY';
+    error = p === 'openai' ? '沒有設定 OPENAI_API_KEY' : p === 'anthropic' ? '沒有設定 CLAUDE_API_KEY' : '沒有設定 GEMINI_API_KEY';
   } else if (p === 'openai') {
     text = await openAiGenerate({ prompt, json: true });
     if (!text) error = getLastProviderError('openai');

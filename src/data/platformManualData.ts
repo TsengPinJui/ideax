@@ -41,6 +41,18 @@ export interface PlatformVersionLog {
 
 export const INITIAL_VERSION_LOGS: PlatformVersionLog[] = [
   {
+    seqNumber: '#180',
+    version: 'v3.3.3',
+    releaseDate: '2026.10.21',
+    releaseTime: '19:31',
+    author: 'IdeaX 創點子團隊',
+    summary: 'Claude 金鑰改用 CLAUDE_API_KEY。',
+    changes: [
+      'Claude Haiku 5.5 的金鑰環境變數改為 CLAUDE_API_KEY（舊名稱 ANTHROPIC_API_KEY 仍可使用）。',
+      '平台版本推進至 v3.3.3 (#180)。',
+    ],
+  },
+  {
     seqNumber: '#179',
     version: 'v3.3.2',
     releaseDate: '2026.10.21',
@@ -2301,10 +2313,10 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
         summary: '管理當前系統運作版本號、增量序號與最後更新時間戳記。',
         content: `### 當前運行版本與序號規格
 
-* **版本號碼**：v3.3.2
-* **遞增序號**：#179（從 #001 依序遞增）
+* **版本號碼**：v3.3.3
+* **遞增序號**：#180（從 #001 依序遞增）
 * **最後更新日期**：2026.10.19
-* **最後更新時間**：19:28（依發布時戳靜態留存，不隨時鐘跳動）
+* **最後更新時間**：19:31（依發布時戳靜態留存，不隨時鐘跳動）
 * **發布狀態**：Production（正式運作中）
 * **運作模式**：單日 0.2.0 增量限制、四選一平台運營模式與完整歷史版本隨時調閱與下載。`,
       },
@@ -2363,6 +2375,7 @@ export const DEFAULT_PLATFORM_DOCUMENTS: PlatformDocument[] = [
 
 | 序號 | 版本號 | 發布日期 | 發布時間 (UTC+8) | 責任單位 | 主要更新項目 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#180** | **v3.3.3** | 2026.10.21 | 19:31 | IdeaX 創點子核心 | Claude 金鑰名稱 |
 | **#179** | **v3.3.2** | 2026.10.21 | 19:28 | IdeaX 創點子核心 | 內建 AI 三模型 |
 | **#178** | **v3.3.1** | 2026.10.21 | 19:19 | IdeaX 創點子核心 | 回答音效 |
 | **#177** | **v3.3.0** | 2026.10.21 | 19:16 | IdeaX 創點子核心 | AI 連線診斷 |

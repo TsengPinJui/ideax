@@ -17,7 +17,7 @@ type TestResult = { ok: boolean; provider: Provider; model: string; effort: Effo
 
 const META: Record<Provider, { name: string; price: string; envKey: string }> = {
   openai: { name: 'GPT-6 Luna', price: '輸入 $0.10／輸出 $0.50 每百萬 tokens', envKey: 'OPENAI_API_KEY' },
-  anthropic: { name: 'Claude Haiku 5.5', price: '輸入 $0.10 起／輸出 $0.50 起 每百萬 tokens', envKey: 'ANTHROPIC_API_KEY' },
+  anthropic: { name: 'Claude Haiku 5.5', price: '輸入 $0.10 起／輸出 $0.50 起 每百萬 tokens', envKey: 'CLAUDE_API_KEY' },
   gemini: { name: 'Gemini 3.8 Flash', price: '輸入 $0.75／輸出 $3.75 每百萬 tokens（備援）', envKey: 'GEMINI_API_KEY' },
 };
 const EFFORT_LABEL: Record<Effort, { name: string; desc: string }> = {
