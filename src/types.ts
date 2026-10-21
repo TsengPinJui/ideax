@@ -1443,7 +1443,7 @@ export interface BidirectionalHandshakeMatch {
 }
 
 /**
- * 首頁「創點子」播放區（目前預留：先保存設定，播放功能之後再開放）
+ * 首頁「創點子」播放區（目前預留：先保存設定，播放功能之後再開放）；播放內容可複選
  * - excellent：創星季比賽的優秀作品
  * - paid：付費推播
  * - custom：管理員自選
@@ -1451,10 +1451,12 @@ export interface BidirectionalHandshakeMatch {
 export type HomeShowcaseMode = 'excellent' | 'paid' | 'custom';
 export interface HomeShowcaseConfig {
   enabled: boolean;
-  mode: HomeShowcaseMode;
+  /** 可複選：要播放哪幾種內容 */
+  modes: HomeShowcaseMode[];
   updatedAt?: string;
 }
-export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, mode: 'excellent' };
+export const HOME_SHOWCASE_MODES: HomeShowcaseMode[] = ['excellent', 'paid', 'custom'];
+export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, modes: ['excellent'] };
 
 export interface PublicMetricsConfig {
   showSolvedCount: boolean;        // 累計解決難題 / 已解決題數

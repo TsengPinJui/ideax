@@ -18,14 +18,17 @@ export const AdminHomeShowcaseCard: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  const save = async (patch: { enabled?: boolean; mode?: HomeShowcaseMode }) => {
+  const save = async (patch: { enabled?: boolean; modes?: HomeShowcaseMode[] }) => {
     setSaving(true);
     const ok = await updateHomeShowcaseConfig(patch);
     setSaving(false);
     if (ok) setSavedAt(Date.now());
   };
 
-  const { enabled, mode } = homeShowcaseConfig;
+  const { enabled, modes } = homeShowcaseConfig;
+  const toggleMode = (id: HomeShowcaseMode) =>
+    save({ modes: modes.includes(id) ? modes.filter((x) => x !== id) : MODES.map((m) => m.id).filter((x) => x === id || modes.includes(x)) });
+  const chosen = MODES.filter((m) => modes.includes(m.id)).map((m) => `「${m.name}」`).join('、');
 
   return (
     <div className="p-4 sm:p-5 rounded-2xl bg-sky-50/70 border border-sky-200 space-y-3.5 shadow-2xs">
@@ -40,7 +43,7 @@ export const AdminHomeShowcaseCard: React.FC = () => {
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-sky-700 border border-sky-200">預留・尚未播放</span>
             </h4>
             <p className="text-xs text-sky-900/70 mt-0.5">
-              首頁最上方的創點子區塊之後會變成播放區。先在這裡選好要播放什麼；播放功能開放前，首頁仍顯示原本的創點子標誌。
+              首頁最上方的創點子區塊之後會變成播放區。先在這裡勾選要播放什麼（可複選）；播放功能開放前，首頁仍顯示原本的創點子標誌。
             </p>
           </div>
         </div>
@@ -57,27 +60,27 @@ export const AdminHomeShowcaseCard: React.FC = () => {
         </button>
       </div>
 
-      <div className={`grid grid-cols-1 sm:grid-cols-3 gap-2.5 transition-opacity ${enabled ? '' : 'opacity-60'}`} role="radiogroup" aria-label="播放內容">
+      <div className={`grid grid-cols-1 sm:grid-cols-3 gap-2.5 transition-opacity ${enabled ? '' : 'opacity-60'}`} role="group" aria-label="播放內容（可複選）">
         {MODES.map((m) => {
-          const active = mode === m.id;
+          const active = modes.includes(m.id);
           return (
             <button
               key={m.id}
               type="button"
-              role="radio"
+              role="checkbox"
               aria-checked={active}
-              onClick={() => !active && save({ mode: m.id })}
+              onClick={() => toggleMode(m.id)}
               disabled={saving}
               className={`text-left p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 disabled:cursor-wait ${
                 active ? 'bg-white border-sky-400 ring-2 ring-sky-200 shadow-2xs' : 'bg-white/60 border-stone-200 hover:border-sky-300'
               }`}
             >
-              <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? 'bg-sky-500 text-white' : 'bg-stone-100 text-stone-500'}`}>{m.icon}</span>
+              <span className={`w-5 h-5 mt-1 rounded-md border-2 flex items-center justify-center shrink-0 ${active ? 'bg-sky-500 border-sky-500 text-white' : 'bg-white border-stone-300'}`}>
+                {active && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              </span>
+              <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? 'bg-sky-100 text-sky-700' : 'bg-stone-100 text-stone-500'}`}>{m.icon}</span>
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1.5 text-xs font-black text-stone-900">
-                  {m.name}
-                  {active && <Check className="w-3.5 h-3.5 text-sky-600" />}
-                </span>
+                <span className="block text-xs font-black text-stone-900">{m.name}</span>
                 <span className="block text-[11px] text-stone-500 mt-0.5 leading-snug">{m.desc}</span>
               </span>
             </button>
@@ -86,7 +89,8 @@ export const AdminHomeShowcaseCard: React.FC = () => {
       </div>
 
       <p className="text-[11px] text-sky-900/70">
-        目前設定：{enabled ? `啟用，播放「${MODES.find((m) => m.id === mode)?.name}」` : '關閉（首頁顯示創點子標誌）'}
+        可複選，勾選多項時之後會輪流播放。目前設定：
+        {enabled ? (chosen ? `啟用，播放${chosen}` : '啟用，但還沒勾選要播放的內容') : '關閉（首頁顯示創點子標誌）'}
         {saving ? '・儲存中…' : savedAt ? '・已儲存' : ''}
       </p>
     </div>

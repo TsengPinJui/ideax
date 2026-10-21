@@ -243,8 +243,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         <div className="flex flex-col items-center text-center max-w-3xl lg:max-w-5xl mx-auto">
           {/* Official IdeaX Brand Display - 手機版精巧緊湊、電腦版大氣通透
               首頁創點子播放區（預留）：管理員在儀表板選擇播放「優秀作品／付費推播／自選」（homeShowcaseConfig）。
-              播放功能開放前一律顯示創點子標誌；之後在這個區塊依 homeShowcaseConfig.mode 換成播放內容。 */}
-          <div data-home-showcase-slot={homeShowcaseConfig.enabled ? homeShowcaseConfig.mode : 'off'} className="relative mb-2 sm:mb-4 group inline-flex max-w-[90%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto justify-center">
+              播放功能開放前一律顯示創點子標誌；之後在這個區塊依 homeShowcaseConfig.modes（可複選）輪流播放。 */}
+          <div data-home-showcase-slot={homeShowcaseConfig.enabled ? homeShowcaseConfig.modes.join(',') || 'none' : 'off'} className="relative mb-2 sm:mb-4 group inline-flex max-w-[90%] sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto justify-center">
             <div className="absolute inset-0 rounded-2xl sm:rounded-3xl bg-amber-400/25 blur-xl scale-105 pointer-events-none" />
             <div className="relative py-2 px-4 sm:py-3.5 sm:px-6 md:py-4 md:px-8 lg:py-5 lg:px-10 rounded-2xl sm:rounded-3xl backdrop-blur-md bg-white/85 border border-amber-200/70 shadow-sm flex items-center justify-center gap-2.5 sm:gap-4 md:gap-5 transition-all duration-300">
               <img
