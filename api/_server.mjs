@@ -160974,8 +160974,8 @@ function guardMascotQuestion(raw) {
       action: "reply",
       reason: "paid_feature",
       feature: crm.key,
-      actions: [{ label: "\u6253\u958B AI-CRM", to: "ai_crm" }, { label: "\u67E5\u770B\u6703\u54E1\u65B9\u6848", to: "membership" }],
-      reply: `\u300C${crm.name}\u300D\u662F\u6703\u54E1\u8A02\u95B1\u529F\u80FD\uFF08\u300C${planName(crm.tiers[0])}\u300D\u4EE5\u4E0A\uFF09\uFF0C\u5C0F\u71C8\u6CE1\u4E0D\u80FD\u5728\u5C0D\u8A71\u6846\u5E6B\u4F60\u4F7F\u7528\u5594\uFF01\u8ACB\u5230 \u500B\u4EBA\u4E2D\u5FC3\uFF08\u96FB\u8166\u7248\u9EDE\u53F3\u4E0A\u89D2\u982D\u50CF\uFF0C\u624B\u6A5F\u7248\u9EDE\u5E95\u90E8\u300C\u6211\u7684\u300D\uFF09\u2192\u300CAI-CRM \u5BA2\u6236\u95DC\u4FC2\u7BA1\u7406\u300D\u4F7F\u7528\uFF1B\u60F3\u5347\u7D1A\u65B9\u6848\u53EF\u4EE5\u5230\u300C\u6703\u54E1\u65B9\u6848\u300D\u3002`
+      actions: [{ label: "\u5E36\u6211\u53BB\u627E 007", to: "ai_crm" }, { label: "\u67E5\u770B\u6703\u54E1\u65B9\u6848", to: "membership" }],
+      reply: `\u300C${crm.name}\u300D\u662F\u6703\u54E1\u8A02\u95B1\u529F\u80FD\uFF08\u300C${planName(crm.tiers[0])}\u300D\u4EE5\u4E0A\uFF09\uFF0C\u7531 AI CRM Agent 007 \u8CA0\u8CAC\uFF0C\u5C0F\u71C8\u6CE1\u4E0D\u80FD\u5728\u5C0D\u8A71\u6846\u5E6B\u4F60\u4F7F\u7528\u5594\uFF01\u8ACB\u5230 \u500B\u4EBA\u4E2D\u5FC3\uFF08\u96FB\u8166\u7248\u9EDE\u53F3\u4E0A\u89D2\u982D\u50CF\uFF0C\u624B\u6A5F\u7248\u9EDE\u5E95\u90E8\u300C\u6211\u7684\u300D\uFF09\u2192\u300CAI-CRM \u5BA2\u6236\u95DC\u4FC2\u7BA1\u7406\u300D\u4F7F\u7528\uFF1B\u60F3\u5347\u7D1A\u65B9\u6848\u53EF\u4EE5\u5230\u300C\u6703\u54E1\u65B9\u6848\u300D\u3002`
     };
   }
   const JOB_SEARCH_RE = /匯職缺|全網搜職|探險家|找工作|求職|職缺|職位|工作建議|職涯建議|推薦.{0,6}工作|適合.{0,6}工作|(找|搜|尋|有沒有|推薦).{0,10}(工作|職缺|職位|正職|兼職|打工|實習|工程師|行政|門市|行銷|業務|設計)|應徵|轉職|跳槽|履歷|面試|月薪|年薪|底薪|頂薪/i;
@@ -161042,6 +161042,8 @@ function parseAgent(text) {
   return m2 ? m2[1] : null;
 }
 var MASCOT_OUT_OF_SCOPE_REPLY = "\u9019\u500B\u554F\u984C\u6211\u9084\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\u5594~\u5C0F\u71C8\u6CE1\u5C07\u6301\u7E8C\u5B78\u7FD2\uFF01";
+var MASCOT_REFER_007_REPLY = "\u9019\u984C\u8981\u627E\u6211\u5011\u7684 007\uFF01\u{1F916} \u4ED6\u662F AI CRM Agent\uFF0C\u8EAB\u4E0A\u6709\u96F7\u9054\u3001\u8ECD\u5E2B\u3001\u7279\u52A9\u4E09\u4EF6\u6CD5\u5BF6\uFF1A\u5DE1\u822A\u627E\u6848\u5B50\u3001\u5206\u6790\u6210\u6848\u610F\u5411\u3001\u5E6B\u4F60\u7BA1\u7406\u8DDF\u9032\u4EFB\u52D9\u3002\u9EDE\u4E0B\u9762\u7684\u6309\u9215\uFF0C\u6211\u5E36\u4F60\u53BB 007 \u7684\u57FA\u5730\uFF5E";
+var MASCOT_REFER_007_ACTIONS = [{ label: "\u5E36\u6211\u53BB\u627E 007", to: "ai_crm" }];
 var MASCOT_APOLOGY_REPLY = "\u9019\u500B\u554F\u984C\u5C0F\u71C8\u6CE1\u9084\u8981\u56DE\u53BB\u7814\u7A76\u7814\u7A76\uFF01\u5F88\u62B1\u6B49\u8B93\u4F60\u90FD\u90A3\u9EBC\u4E45~";
 var MASCOT_AGENT_WAIT_MS = 18e4;
 var PROXY_FACTS = `IdeaX \u5275\u9EDE\u5B50\u5E73\u53F0\u57FA\u672C\u898F\u5247\uFF08\u4EE5\u7DB2\u7AD9\u6700\u65B0\u516C\u544A\u70BA\u6E96\uFF09\uFF1A
@@ -161123,6 +161125,7 @@ none = \u8207 IdeaX \u5E73\u53F0\u3001\u63D0\u554F\u89E3\u984C\u3001\u627E\u5C08
 var CHAT_RE = /^(你好|您好|妳好|嗨|哈囉|安安|hi|hello|hey|yo|早安|午安|晚安|早|謝謝|感謝|謝啦|掰掰|再見|bye)|你是誰|妳是誰|你叫什麼|你幾歲|你住(在)?哪|你(好|很|真)可愛|好可愛|陪我聊|聊聊天|聊天|好無聊|無聊|哈哈|笑死|我好累|好累|加油|心情|你會什麼|你可以做什麼|你喜歡/i;
 async function planMascotRoute(message2, generateText) {
   const hits = keywordMatches(message2);
+  if (hits.length === 1 && hits[0] === "aicrm") return { agent: "refer_007", escalateTo: null, by: "keyword" };
   if (!hits.length && CHAT_RE.test(message2)) return { agent: "mascot", escalateTo: null, by: "keyword" };
   if (hits.length === 1 && hits[0] === "market_advisor") return { agent: "market_advisor", escalateTo: null, by: "keyword" };
   if (hits.length && !hits.includes("market_advisor")) return { agent: "mascot", escalateTo: "cs", by: "keyword" };
@@ -161846,7 +161849,7 @@ function seenJobBefore(seen, job) {
 }
 
 // src/data/versionData.ts
-var APP_VERSION = "3.1.0";
+var APP_VERSION = "3.2.0";
 
 // server.ts
 var ABROAD_CITY_RE = new RegExp(Object.values(MAJOR_CITIES_BY_COUNTRY).flat().join("|"));
@@ -164548,6 +164551,11 @@ app.post("/api/mascot/route", async (req, res) => {
       });
       return res.json({ success: true, outOfScope: true, reply: MASCOT_OUT_OF_SCOPE_REPLY, routedBy: plan.by });
     }
+    if (plan.agent === "refer_007") {
+      void recordMascotEvent({ type: "ask" }).catch(() => {
+      });
+      return res.json({ success: true, outOfScope: true, reply: MASCOT_REFER_007_REPLY, actions: MASCOT_REFER_007_ACTIONS, referredTo: "aicrm", routedBy: plan.by });
+    }
     if (plan.agent === "mascot") {
       return res.json({ success: true, agent: "mascot", agentLabel: "\u5C0F\u71C8\u6CE1", escalateTo: plan.escalateTo, routedBy: plan.by, available: true });
     }
@@ -166091,6 +166099,7 @@ app.post("/api/admin/mascot-route-test", async (req, res) => {
     const plan = await planMascotRoute(message2, generateRawTextWithGemini);
     const by2 = plan.by;
     if (plan.agent === "none") return res.json({ success: true, agent: "none", label: "\uFF08\u4E0D\u8F49\u63A5\uFF0C\u56DE\u8986\u66AB\u6642\u7121\u6CD5\u56DE\u7B54\uFF09", routedBy: by2 });
+    if (plan.agent === "refer_007") return res.json({ success: true, agent: "mascot", label: "\u5C0F\u71C8\u6CE1\u4ECB\u7D39 007\uFF0C\u5E36\u5230 AI-CRM \u9801", routedBy: by2, answer: MASCOT_REFER_007_REPLY, actions: MASCOT_REFER_007_ACTIONS });
     let agent;
     if (plan.agent === "mascot") {
       const t0 = Date.now();

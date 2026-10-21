@@ -54,11 +54,11 @@ const AGENTS: Agent[] = [
   {
     name: '頂多慧（多慧）',
     title: '官方客服 Agent',
-    img: '/agents/duohui.webp',
+    img: '/agents/duohui.webp?v=2',
     idCard: { thumb: '/agents/idcard-duohui-thumb.webp', full: '/agents/idcard-duohui.webp' },
     intro: '精靈族的貓頭鷹，看起來聰明、喜歡與不同的人交流。IdeaX 的 25hr 官方客服（超時工作中…），有任何問題都可以來找多慧！',
     duties: ['回答站上各種問題、操作引導', '點數託管與驗收撥款說明', '交付爭議與退款政策', '會員方案與認證流程'],
-    spots: ['客服頁'],
+    spots: ['客服視窗', '儲值與會員方案', '點數 & 收支', '我的案件（驗收）'],
     accent: 'from-emerald-100 to-green-50 border-emerald-200',
   },
   {
@@ -69,7 +69,7 @@ const AGENTS: Agent[] = [
     idCard: { thumb: '/agents/idcard-agent007-thumb.webp', full: '/agents/idcard-agent007.webp' },
     intro: '人機族的 AI CRM Agent，集雷達、軍師、特助三件法寶於一身：可以探測客戶動態、謀定策略、管理任務。',
     duties: ['雷達：案件巡航、掃描市場與潛在機會', '軍師：客群與成案意向分析、提供策略', '特助：任務管理、建議最佳跟進時機'],
-    spots: ['AI-CRM 功能頁'],
+    spots: ['AI-CRM 功能頁', '小燈泡轉介'],
     accent: 'from-violet-100 to-purple-50 border-violet-200',
   },
 ];

@@ -4,6 +4,7 @@ import { createMascotEngine, type MascotEngine } from './mascotEngine';
 import { MASCOT_CHEER_EVENT, MASCOT_NAV_TARGETS, MASCOT_NAVIGATE_EVENT, MASCOT_PREVIEW_EVENT, MASCOT_SEARCH_ACCOMPANY_EVENT, MASCOT_WAVE_DANCE_EVENT, OPEN_QUESTION_EVENT, normalizeMascotConfig, type MascotConfig } from './mascotConfig';
 import type { NewProposalNotice } from './MascotHost';
 import { playBabble, playClank, playGlowSound, playShock, playZap, startCurrent, stopBabble, stopCurrent, unlockMascotAudio } from './mascotSound';
+import { unlockAgentVoices } from '../agents/agentVoices';
 import { askMascot, routeMascot, trackMascotEvent, type MascotAction, type MascotAgent } from '../../services/mascotApi';
 
 const COLLAPSED_KEY = 'ideax_mascot_collapsed';
@@ -193,7 +194,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
           }
           markActive();
           // 從對話框上被拖下來摔暈：過一會兒自己再爬回對話框頂部
-          if (type === 'glow') { if (configRef.current.soundEnabled) playGlowSound(); return; }
+          if (type === 'glow') { if (configRef.current.soundEnabled && data === 1) playGlowSound(); return; } // 只有重要提示（新提案）才出聲，平常開心亮起不出聲
           if (type === 'dropped') { window.setTimeout(() => { if (chatOpenRef.current) setClimbNonce((n) => n + 1); }, 3400); return; }
           trackMascotEvent(type);
         },
@@ -261,6 +262,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
       const text = newProposal.kind === 'work' ? '哦又有新作品囉！來去看看嗎？' : '哦又有新提案囉！來去看看嗎？';
       pendingNew.current = { id: newProposal.id, text, until: Date.now() + 60000 };
       eng.surprise(text, NEW_SPEECH_MS);
+      if (configRef.current.soundEnabled) window.setTimeout(() => playBabble(1400, text), 450); // 重要提示：說話出聲
     }, 3200); // 等打招呼的動作做完
     return () => window.clearTimeout(t);
   }, [newProposal?.id, newProposal?.at, collapsed, chatOpen]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -286,7 +288,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
 
   // 第一次點網頁時解鎖音效（瀏覽器規定）
   useEffect(() => {
-    const unlock = () => unlockMascotAudio();
+    const unlock = () => { unlockMascotAudio(); unlockAgentVoices(); };
     window.addEventListener('pointerdown', unlock, { once: true, capture: true });
     window.addEventListener('keydown', unlock, { once: true, capture: true });
     return () => { window.removeEventListener('pointerdown', unlock, { capture: true }); window.removeEventListener('keydown', unlock, { capture: true }); };
@@ -358,8 +360,7 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
       settled = true;
       if (typeof ResizeObserver === 'function' && chatRef.current) { ro = new ResizeObserver(() => onResize()); ro.observe(chatRef.current); }
       eng.jump(0.5);
-      eng.talk(1300); // 像在說開場白
-      if (configRef.current.soundEnabled) playBabble(1300, configRef.current.bubbleText.slice(0, 16));
+      eng.talk(1300); // 像在說開場白（閒聊不出聲）
     })();
     return () => { cancelled = true; ro?.disconnect(); window.removeEventListener('resize', onResize); };
   }, [chatOpen, climbNonce]);
@@ -389,7 +390,8 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
     if (!dur) { setMsgs((m) => [...m, { id, who: 'bot', text, tag, actions: safeActions }]); setLiveText(text); resolve(); return; }
     setMsgs((m) => [...m, { id, who: 'bot', text, tag, reveal: 0, actions: safeActions }]);
     engineRef.current?.talk(dur);
-    if (configRef.current.soundEnabled) playBabble(dur, text); // 說話音效跟著逐字出現
+    // 說話音效：只有附上操作引導（按鈕）的回覆才出聲，一般聊天不出聲
+    if (configRef.current.soundEnabled && safeActions.length > 0) playBabble(dur, text);
     const t0 = Date.now();
     if (revealTimer.current) window.clearInterval(revealTimer.current);
     revealTimer.current = window.setInterval(() => {

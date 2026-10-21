@@ -152,8 +152,8 @@ export function guardMascotQuestion(raw: string): MascotGuardResult {
       action: 'reply',
       reason: 'paid_feature',
       feature: crm.key,
-      actions: [{ label: '打開 AI-CRM', to: 'ai_crm' }, { label: '查看會員方案', to: 'membership' }],
-      reply: `「${crm.name}」是會員訂閱功能（「${planName(crm.tiers[0])}」以上），小燈泡不能在對話框幫你使用喔！請到 個人中心（電腦版點右上角頭像，手機版點底部「我的」）→「AI-CRM 客戶關係管理」使用；想升級方案可以到「會員方案」。`,
+      actions: [{ label: '帶我去找 007', to: 'ai_crm' }, { label: '查看會員方案', to: 'membership' }],
+      reply: `「${crm.name}」是會員訂閱功能（「${planName(crm.tiers[0])}」以上），由 AI CRM Agent 007 負責，小燈泡不能在對話框幫你使用喔！請到 個人中心（電腦版點右上角頭像，手機版點底部「我的」）→「AI-CRM 客戶關係管理」使用；想升級方案可以到「會員方案」。`,
     };
   }
 

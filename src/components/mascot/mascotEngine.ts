@@ -413,7 +413,7 @@ export function createMascotEngine(o: MascotEngineOptions): MascotEngine {
   function setMood(m, ms = 0) {
     if (m === 'sad' && S.mood !== 'sad') S.sadSince = performance.now();
     if (m !== 'sad' && m !== 'scared') S.sadLie = false;
-    if ((m === 'happy' || m === 'wow') && S.mood !== 'happy' && S.mood !== 'wow') emit('glow'); // 亮起來（外層播放發亮音效）
+    if ((m === 'happy' || m === 'wow') && S.mood !== 'happy' && S.mood !== 'wow') emit('glow', m === 'wow' ? 1 : 0); // 亮起來；1＝有新提案這種重要提示（外層只在這時播放發亮音效）
     if (m === 'scared' && S.mood !== 'scared') emit('scared'); // 嚇到（外層播放觸電聲＋電流聲）
     if (m !== 'scared' && S.mood === 'scared') emit('calm'); // 不嚇了（外層停掉電流聲）
     S.mood = m; S.moodUntil = ms ? performance.now() + ms : 0;

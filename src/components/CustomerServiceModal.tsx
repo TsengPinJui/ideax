@@ -44,6 +44,17 @@ import {
 } from '../services/customerSupportService';
 import { searchFaqs } from '../data/faqData';
 import { CopyableUserId } from './CopyableUserId';
+import { duohuiHoot, duohuiSpeak } from './agents/agentVoices';
+
+/** 官方客服 Agent「多慧」的各種表情與姿勢 */
+const DUOHUI = {
+  happy: '/agents/duohui/happy.webp',
+  focus: '/agents/duohui/focus.webp',
+  answer: '/agents/duohui/answer.webp',
+  guide: '/agents/duohui/guide.webp',
+  support: '/agents/duohui/support.webp',
+  warm: '/agents/duohui/warm.webp',
+};
 
 type ServiceCategory =
   | 'delivery_dispute'
@@ -64,12 +75,23 @@ export const CustomerServiceModal: React.FC = () => {
     transactions,
     questions,
     answers,
+    mascotConfig,
   } = useApp();
+  const soundOn = mascotConfig?.soundEnabled !== false;
 
   const [activeTab, setActiveTab] = useState<'ai_agent' | 'faq' | 'ticket'>('ai_agent');
 
   // AI Agent Chat State
   const [messages, setMessages] = useState<CustomerSupportMessage[]>([]);
+  // 多慧回答使用者的問題（操作引導）才出聲；開場打招呼不出聲
+  const spokenIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last || last.role === 'user' || spokenIds.current.has(last.id)) return;
+    spokenIds.current.add(last.id);
+    if (last.id.startsWith('msg-welcome') || messages.length < 2) return;
+    if (soundOn) duohuiSpeak(last.text);
+  }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
   const [inputMessage, setInputMessage] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>('');
@@ -124,9 +146,9 @@ export const CustomerServiceModal: React.FC = () => {
         {
           id: `msg-welcome-${Date.now()}`,
           role: 'assistant',
-          text: currentUser
-            ? `您好，**${currentUser.name}**！我是 IdeaX 平台官方 AI 客服助理。\n\n我已安全連接您的個人資料庫（UID: \`#${currentUser.id}\`）。您可以直接向我詢問平台操作規範、爭議仲裁，或點選下方按鈕直接查詢您的點數、訂單與成案進度！`
-            : `您好！我是 IdeaX 平台官方 AI 客服助理。請問有什麼平台使用、收費方案或專案發案規則我可以為您服務？`,
+          text: currentUser && currentUser.id !== 'user-guest'
+            ? `嗨，${currentUser.name}！我是多慧，IdeaX 的官方客服（25hr 超時工作中…）🦉\n\n平台操作、點數託管、驗收撥款、爭議退款都可以問我；也可以點下方按鈕，我帶你去查點數、訂單與成案進度！`
+            : `嗨！我是多慧，IdeaX 的官方客服 🦉\n平台怎麼用、收費方案、發案規則，都可以問我喔！`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           quickOptions: [
             '查詢我的點數餘額',
@@ -365,6 +387,7 @@ export const CustomerServiceModal: React.FC = () => {
 
     saveTicketToStorage(newTicket);
     setSubmittedTicket(newTicket);
+    if (soundOn) duohuiHoot(); // 重要提示：工單已受理
   };
 
   const filteredFaqs = searchFaqs(faqSearch, faqList).filter((item) =>
@@ -377,15 +400,15 @@ export const CustomerServiceModal: React.FC = () => {
         {/* Modal Top Header */}
         <div className="p-3.5 sm:p-4.5 border-b border-stone-100 flex items-center justify-between bg-stone-50/90 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center font-black shadow-2xs">
-              <Bot className="w-5 h-5 text-stone-950" />
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-50 border border-emerald-200 flex items-center justify-center shadow-2xs overflow-hidden shrink-0">
+              <img src={DUOHUI.happy} alt="官方客服 Agent 多慧" className="w-10 h-10 object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm sm:text-base font-black text-stone-900">客服與回報</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>24hr 即時連線</span>
+                  <span>多慧 25hr 在線</span>
                 </span>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
@@ -452,13 +475,26 @@ export const CustomerServiceModal: React.FC = () => {
           <div className="flex-1 flex flex-col overflow-hidden bg-stone-50/30">
             {/* Messages Scroll Area */}
             <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4">
+              {/* 多慧在這裡回答問題 */}
+              <div className="flex items-center gap-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/70 px-3 py-2">
+                <img src={DUOHUI.answer} alt="" className="w-16 h-16 object-contain shrink-0" />
+                <div className="text-[11px] sm:text-xs text-emerald-900 leading-relaxed">
+                  <div className="font-black text-sm text-emerald-950">多慧・官方客服 Agent</div>
+                  看起來聰明、喜歡和不同的人交流。有問題就交給我！
+                </div>
+              </div>
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                  className={`flex ${msg.role === 'user' ? 'flex-col items-end' : 'items-start gap-2'}`}
                 >
+                  {msg.role !== 'user' && (
+                    <img src={DUOHUI.happy} alt="多慧" className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200 object-contain shrink-0 mt-0.5" />
+                  )}
+                  <div className={msg.role === 'user' ? 'contents' : 'flex flex-col items-start min-w-0 max-w-[88%] sm:max-w-[80%]'}>
+                  {msg.role !== 'user' && <span className="text-[10px] font-black text-emerald-800 mb-0.5 px-1">多慧</span>}
                   <div
-                    className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-3.5 py-3 text-xs sm:text-sm leading-relaxed shadow-2xs ${
+                    className={`${msg.role === 'user' ? 'max-w-[88%] sm:max-w-[80%]' : 'max-w-full'} rounded-2xl px-3.5 py-3 text-xs sm:text-sm leading-relaxed shadow-2xs ${
                       msg.role === 'user'
                         ? 'bg-stone-900 text-white rounded-br-xs'
                         : 'bg-white border border-stone-200/90 text-stone-850 rounded-bl-xs'
@@ -516,17 +552,16 @@ export const CustomerServiceModal: React.FC = () => {
                     )}
                   </div>
                   <span className="text-[10px] text-stone-400 mt-1 px-1">{msg.timestamp}</span>
+                  </div>
                 </div>
               ))}
 
               {isAiLoading && (
                 <div className="flex items-start gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
-                    <Bot className="w-4 h-4 text-amber-700" />
-                  </div>
+                  <img src={DUOHUI.focus} alt="" className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200 object-contain shrink-0" />
                   <div className="px-3 py-2 rounded-2xl bg-white border border-stone-200 text-xs text-stone-500 flex items-center gap-1.5">
-                    <RefreshCw className="w-3 h-3 animate-spin text-amber-600" />
-                    <span>AI 客服助理正在調閱資料庫中...</span>
+                    <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />
+                    <span>多慧正在翻資料…</span>
                   </div>
                 </div>
               )}
@@ -537,7 +572,7 @@ export const CustomerServiceModal: React.FC = () => {
             <div className="px-4 py-1.5 bg-white border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-500">
               <span className="flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-amber-600" />
-                <span>此對話由 IdeaX 官方 AI 客服驅動</span>
+                <span>由官方客服 Agent 多慧為你服務</span>
               </span>
               <div className="flex items-center gap-2">
                 <span>這回答有幫助嗎？</span>
@@ -601,6 +636,10 @@ export const CustomerServiceModal: React.FC = () => {
         {/* Tab 2: FAQ Knowledge Base (實體 AI Agent 深度接入) */}
         {activeTab === 'faq' && (
           <div className="flex-1 flex flex-col overflow-hidden p-4 sm:p-5 space-y-3.5">
+            <div className="flex items-center gap-2.5 -mb-1">
+              <img src={DUOHUI.guide} alt="" className="w-12 h-12 object-contain shrink-0" />
+              <p className="text-xs text-emerald-900 font-bold leading-relaxed">多慧把大家最常問的整理好了，先搜搜看；找不到再直接問我！</p>
+            </div>
             {/* Search Input */}
             <div className="relative">
               <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -815,8 +854,9 @@ export const CustomerServiceModal: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
             {submittedTicket ? (
               <div className="py-10 text-center space-y-3">
-                <CheckCircle2 className="w-14 h-14 text-emerald-600 mx-auto animate-in zoom-in-75 duration-200" />
+                <img src={DUOHUI.warm} alt="多慧" className="w-24 h-24 object-contain mx-auto animate-in zoom-in-75 duration-200" />
                 <h4 className="font-black text-lg text-stone-900">客服工單已成功受理！</h4>
+                <p className="text-xs font-bold text-emerald-800">多慧收到你的回報囉，會盯著直到處理好！</p>
                 <div className="inline-block p-2 rounded-xl bg-amber-50 border border-amber-200 font-mono text-xs font-bold text-amber-900">
                   工單單號：#{submittedTicket.id}
                 </div>
@@ -838,8 +878,8 @@ export const CustomerServiceModal: React.FC = () => {
               </div>
             ) : (
               <form onSubmit={handleTicketSubmit} className="space-y-4">
-                <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-amber-700 shrink-0" />
+                <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 flex items-center gap-2.5">
+                  <img src={DUOHUI.support} alt="多慧" className="w-12 h-12 object-contain shrink-0" />
                   <span>
                     提交官方工單後，系統將自動分派至爭議調解委員會，並於 1 個工作天內聯繫您。
                   </span>
