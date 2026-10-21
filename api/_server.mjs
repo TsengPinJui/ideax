@@ -168050,8 +168050,22 @@ function withTimeout(p, ms) {
   return Promise.race([p, new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
 }
 async function touchPresence(sessionId) {
+  const id = sessionId.slice(0, 64).replace(/\//g, "_");
+  if (hasAdminCredentials) {
+    try {
+      const { fs: fs5 } = await loadServerFs();
+      await fs5.collection(PRESENCE_COLLECTION).doc(id).set({ lastSeen: Date.now() });
+      if (Math.random() < 0.02) {
+        const old = await fs5.collection(PRESENCE_COLLECTION).where("lastSeen", "<", Date.now() - 864e5).limit(100).get();
+        await Promise.all(old.docs.map((d) => d.ref.delete().catch(() => {
+        })));
+      }
+    } catch {
+    }
+    return;
+  }
   try {
-    await setDoc(doc(rawFirestoreDb, PRESENCE_COLLECTION, sessionId.slice(0, 64).replace(/\//g, "_")), {
+    await setDoc(doc(rawFirestoreDb, PRESENCE_COLLECTION, id), {
       lastSeen: Date.now()
     });
   } catch {
@@ -168070,6 +168084,15 @@ async function touchPresence(sessionId) {
 async function getOnlineCount() {
   if (Date.now() - cachedOnline.at < 15e3) return cachedOnline.count;
   try {
+    if (hasAdminCredentials) {
+      const { fs: fs5 } = await loadServerFs();
+      const agg = await withTimeout(
+        fs5.collection(PRESENCE_COLLECTION).where("lastSeen", ">=", Date.now() - PRESENCE_WINDOW_MS).count().get(),
+        4e3
+      );
+      cachedOnline = { count: Math.max(1, agg.data().count), at: Date.now() };
+      return cachedOnline.count;
+    }
     const snap = await withTimeout(
       getCountFromServer(
         query(collection(rawFirestoreDb, PRESENCE_COLLECTION), where("lastSeen", ">=", Date.now() - PRESENCE_WINDOW_MS))
@@ -168116,11 +168139,7 @@ async function getRealSiteTrafficStats() {
   if (!raw?.pageviewBaselineApplied) {
     baseVisits = PAGEVIEW_BASELINE_TARGET - sumDaily;
     try {
-      await setDoc(
-        doc(rawFirestoreDb, "platform_settings", "site_traffic_stats"),
-        { baseVisits, pageviewBaselineApplied: true },
-        { merge: true }
-      );
+      await upsertMirrorAndFirestoreDoc("platform_settings", "site_traffic_stats", { baseVisits, pageviewBaselineApplied: true }, true);
     } catch {
     }
   }
@@ -168148,21 +168167,36 @@ async function recordRealSiteVisit(sessionId, visitor = {}) {
   }
   const nowParts = getUtc8PartsServer(Date.now());
   try {
-    const ref = doc(rawFirestoreDb, "platform_settings", "site_traffic_stats");
-    await setDoc(
-      ref,
-      {
-        hourly: { [nowParts.hourKey]: increment(1) },
-        daily: { [nowParts.dateKey]: increment(1) },
-        ...visitor.newToday ? {
-          visitorsHourly: { [nowParts.hourKey]: increment(1) },
-          visitorsDaily: { [nowParts.dateKey]: increment(1) }
-        } : {},
-        ...visitor.newEver ? { uniqueVisitorsTotal: increment(1), newVisitorsDaily: { [nowParts.dateKey]: increment(1) } } : {},
-        lastUpdatedUtc8: nowParts.fullDateTime
-      },
-      { merge: true }
-    );
+    if (hasAdminCredentials) {
+      const { fs: fs5, FV } = await loadServerFs();
+      const inc = FV.increment(1);
+      await fs5.collection("platform_settings").doc("site_traffic_stats").set(
+        {
+          hourly: { [nowParts.hourKey]: inc },
+          daily: { [nowParts.dateKey]: inc },
+          ...visitor.newToday ? { visitorsHourly: { [nowParts.hourKey]: inc }, visitorsDaily: { [nowParts.dateKey]: inc } } : {},
+          ...visitor.newEver ? { uniqueVisitorsTotal: inc, newVisitorsDaily: { [nowParts.dateKey]: inc } } : {},
+          lastUpdatedUtc8: nowParts.fullDateTime
+        },
+        { merge: true }
+      );
+    } else {
+      const ref = doc(rawFirestoreDb, "platform_settings", "site_traffic_stats");
+      await setDoc(
+        ref,
+        {
+          hourly: { [nowParts.hourKey]: increment(1) },
+          daily: { [nowParts.dateKey]: increment(1) },
+          ...visitor.newToday ? {
+            visitorsHourly: { [nowParts.hourKey]: increment(1) },
+            visitorsDaily: { [nowParts.dateKey]: increment(1) }
+          } : {},
+          ...visitor.newEver ? { uniqueVisitorsTotal: increment(1), newVisitorsDaily: { [nowParts.dateKey]: increment(1) } } : {},
+          lastUpdatedUtc8: nowParts.fullDateTime
+        },
+        { merge: true }
+      );
+    }
   } catch (err) {
     if (!isQuotaError(err)) {
       console.warn("[SiteTraffic] increment failed:", err?.message);
@@ -168171,10 +168205,11 @@ async function recordRealSiteVisit(sessionId, visitor = {}) {
   const current = await getRealSiteTrafficStats();
   if (!current.firstRecordedAtUtc8) {
     try {
-      await setDoc(
-        doc(rawFirestoreDb, "platform_settings", "site_traffic_stats"),
+      await upsertMirrorAndFirestoreDoc(
+        "platform_settings",
+        "site_traffic_stats",
         { firstRecordedAtUtc8: nowParts.fullDateTime, firstHourKey: nowParts.hourKey, firstDateKey: nowParts.dateKey },
-        { merge: true }
+        true
       );
     } catch {
     }
@@ -169327,7 +169362,9 @@ router.get("/db-mirror", async (req, res) => {
   try {
     await ensureProposalsSyncedToFirestore();
     const questions = Object.values(getMirrorCollectionMap("questions"));
-    const answers = Object.values(getMirrorCollectionMap("answers"));
+    const answers = Object.values(getMirrorCollectionMap("answers")).map(
+      (a) => a && typeof a === "object" && isProtectedAnswer(a) ? { ...splitAnswerForStorage(a).publicAnswer, hasProtectedContent: Boolean(a.hasProtectedContent || a.fullContent || a.meetingDetails || a.attachments?.length) } : a
+    );
     const users = Object.values(getMirrorCollectionMap("users")).map(stripUserSecretsForPublic);
     const competitionProposals = Object.values(getMirrorCollectionMap("competition_proposals"));
     const deletedSettings = getMirrorCollectionMap("platform_settings")?.permanently_deleted_questions;
@@ -169362,9 +169399,20 @@ router.post("/db-mirror/:collection/:docId", async (req, res) => {
     if (!await isVerifiedAdmin(authUser.uid)) {
       const snap = await adminDb.collection(colName).doc(docId).get();
       const existingDoc = snap.exists ? snap.data() : null;
+      const changedTo = (k) => data[k] !== void 0 && JSON.stringify(data[k]) !== JSON.stringify(existingDoc ? existingDoc[k] : void 0);
+      const touchesAdminOnly = changedTo("isOfficial") && data.isOfficial === true || changedTo("isFeatured") && data.isFeatured === true || changedTo("publishIdentity") && data.publishIdentity === "platform";
+      if (touchesAdminOnly) {
+        return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u53EA\u6709\u7BA1\u7406\u54E1\u80FD\u4EE5\u5B98\u65B9\u8EAB\u5206\u767C\u5E03\u6216\u8A2D\u70BA\u7CBE\u9078" });
+      }
       if (!existingDoc) {
         if (String(data.authorAuthUid || "") !== authUser.uid) {
           return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u767C\u5E03\u8005\u8EAB\u5206\u4E0D\u7B26" });
+        }
+        if (!await isContentOwner({ authorId: data.authorId }, authUser.uid)) {
+          return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u767C\u5E03\u8005\u8EAB\u5206\u4E0D\u7B26" });
+        }
+        if (/官方/.test(String(data.authorName || ""))) {
+          return res.status(403).json({ success: false, error: "\u672A\u6388\u6B0A\uFF1A\u4E0D\u53EF\u4F7F\u7528\u5B98\u65B9\u540D\u7A31\u767C\u5E03" });
         }
       } else if (!await isContentOwner(existingDoc, authUser.uid)) {
         const changed = Object.keys(data || {}).filter((k) => JSON.stringify(data[k]) !== JSON.stringify(existingDoc[k]));

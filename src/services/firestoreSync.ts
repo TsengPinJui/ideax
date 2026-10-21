@@ -1541,8 +1541,11 @@ export async function syncTicketToFirestore(ticket: CustomerSupportTicket): Prom
   if (isQuotaExhausted) return false;
   try {
     const docRef = doc(db, 'customer_support_tickets', ticket.id);
+    const myUid = getMyAuthUid();
     await setDoc(docRef, {
       ...ticket,
+      // 只有提出者本人（登入帳號）與管理員能讀這張工單
+      ...(myUid && !(ticket as any).userAuthUid && ticket.userId === getMyAppUserId() ? { userAuthUid: myUid } : {}),
       updatedAt: new Date().toISOString(),
     }, { merge: true });
     return true;
@@ -1592,8 +1595,10 @@ export async function syncCustomerSupportConversationToFirestore(conv: CustomerS
   if (isQuotaExhausted) return false;
   try {
     const docRef = doc(db, 'customer_support_conversations', conv.id);
+    const myUid = getMyAuthUid();
     await setDoc(docRef, {
       ...conv,
+      ...(myUid && !(conv as any).userAuthUid && conv.userId === getMyAppUserId() ? { userAuthUid: myUid } : {}),
       updatedAt: new Date().toISOString(),
     }, { merge: true });
     return true;

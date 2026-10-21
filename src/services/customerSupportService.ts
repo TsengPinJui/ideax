@@ -98,16 +98,14 @@ export function saveTicketToStorage(ticket: CustomerSupportTicket) {
       {
         id: `audit-tk-${ticket.id}`,
         adminId: 'system-ticket',
-        action: `用戶提報客服工單: #${ticket.id} (${ticket.title})`,
+        action: `用戶提報客服工單: #${ticket.id}`,
         targetUserId: ticket.userId,
+        // 稽核紀錄不放 Email 與工單內文（個資只留在工單本身）
         details: {
           ticketId: ticket.id,
-          userName: ticket.userName,
-          userEmail: ticket.userEmail,
           category: ticket.category,
           priority: ticket.priority,
           status: ticket.status,
-          description: ticket.description,
         },
         createdAt: new Date().toISOString(),
       },
