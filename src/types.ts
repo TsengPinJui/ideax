@@ -1455,10 +1455,12 @@ export interface HomeShowcaseConfig {
   modes: HomeShowcaseMode[];
   /** 管理員自選：要播放的作品（問題／提案）ID，最多 30 個，依勾選順序 */
   customIds: string[];
+  /** 優秀作品、付費推播也播放虛擬（模擬）卡片；真實作品夠多後可以關掉。預設開 */
+  includeSimulated?: boolean;
   updatedAt?: string;
 }
 export const HOME_SHOWCASE_MODES: HomeShowcaseMode[] = ['excellent', 'paid', 'custom'];
-export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, modes: ['excellent'], customIds: [] };
+export const DEFAULT_HOME_SHOWCASE_CONFIG: HomeShowcaseConfig = { enabled: false, modes: ['excellent'], customIds: [], includeSimulated: true };
 export const HOME_SHOWCASE_MAX_CUSTOM = 30;
 
 export interface PublicMetricsConfig {

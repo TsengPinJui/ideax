@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { playSousouSound, sousouWindStop, sousouAha } from './sousouSound';
+import { supportsWebGL } from '../../utils/webglSupport';
 
 /**
  * 匯職缺的探索者「搜搜」
@@ -18,14 +19,6 @@ type Engine = {
   destroy: () => void;
 };
 
-function supportsWebGL() {
-  try {
-    const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-  } catch {
-    return false;
-  }
-}
 
 const sizeFor = () => (window.innerWidth < 640 ? 138 : 196);
 
@@ -206,7 +199,7 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
         if (soundRef.current) sousouWindStop();
         const found = S.resultCount > 0;
         engineRef.current?.play(found ? 'found' : 'sorry');
-        later(() => engineRef.current?.play('land'), found ? 2600 : 2200);
+        later(() => engineRef.current?.play('land'), found ? 2600 : 3600);
       }
     };
     raf = requestAnimationFrame(tick);
@@ -252,7 +245,7 @@ export const SousouFlyer: React.FC<Props> = ({ searching, resultCount }) => {
       const found = S.resultCount > 0;
       if (found) aha();
       engineRef.current?.play(found ? 'found' : 'sorry');
-      later(() => engineRef.current?.play('land'), found ? 2600 : 2200);
+      later(() => engineRef.current?.play('land'), found ? 2600 : 3600);
     }
     if (!searching) S.launched = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
