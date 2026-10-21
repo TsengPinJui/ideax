@@ -725,16 +725,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               </button>
             </div>
 
-            {/* Metric 5: 問題數量 */}
+            {/* Metric 5: 發布卡片 */}
             <div className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
               localPublicMetrics.showQuestionsCount ? 'bg-white border-amber-300 shadow-2xs' : 'bg-stone-50/80 border-stone-200 opacity-60'
             }`}>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-xs text-stone-900">問題數量</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">市場難題</span>
+                  <span className="font-extrabold text-xs text-stone-900">發布卡片</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">單位：張</span>
                 </div>
-                <p className="text-[11px] text-stone-500 mt-0.5">全站發布之公開懸賞與客製委託難題</p>
+                <p className="text-[11px] text-stone-500 mt-0.5">全站公開發布的卡片數（問題、痛點、提案等）</p>
               </div>
               <button
                 type="button"
