@@ -83,7 +83,7 @@ export const CustomerServiceModal: React.FC = () => {
 
   // AI Agent Chat State
   const [messages, setMessages] = useState<CustomerSupportMessage[]>([]);
-  // 多慧回答使用者的問題（操作引導）才出聲；開場打招呼不出聲
+  // 多慧的每一則回答都出聲；開場打招呼不出聲
   const spokenIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     const last = messages[messages.length - 1];
@@ -320,6 +320,7 @@ export const CustomerServiceModal: React.FC = () => {
         userContext: currentUser ? { userId: currentUser.id, userName: currentUser.name, userRole: currentUser.role } : null,
       });
       setFaqConsultResults((prev) => ({ ...prev, [faq.id]: result }));
+      if (soundOn) duohuiSpeak(String(result?.explanation || faq.question)); // 多慧的回答都伴隨音效
     } catch (e) {
       console.warn('FAQ Agent consult error:', e);
     } finally {
@@ -344,6 +345,7 @@ export const CustomerServiceModal: React.FC = () => {
         userContext: currentUser ? { userId: currentUser.id, userName: currentUser.name, userRole: currentUser.role } : null,
       });
       setCustomConsultResult(result);
+      if (soundOn) duohuiSpeak(String(result?.explanation || query)); // 多慧的回答都伴隨音效
 
       // 自動記錄至後台收集池供管理員 AI 聚類彙整
       recordCollectedQuestion({

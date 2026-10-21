@@ -389,8 +389,8 @@ const JellyMascot: React.FC<{ config: MascotConfig; userId?: string; newProposal
     if (!dur) { setMsgs((m) => [...m, { id, who: 'bot', text, tag, actions: safeActions }]); setLiveText(text); resolve(); return; }
     setMsgs((m) => [...m, { id, who: 'bot', text, tag, reveal: 0, actions: safeActions }]);
     engineRef.current?.talk(dur);
-    // 說話音效：只有附上操作引導（按鈕）的回覆才出聲，一般聊天不出聲
-    if (configRef.current.soundEnabled && safeActions.length > 0) playBabble(dur, text);
+    // 說話音效：小燈泡每一則回答都出聲（打開對話框的開場白、平常閒晃不出聲）
+    if (configRef.current.soundEnabled) playBabble(dur, text);
     const t0 = Date.now();
     if (revealTimer.current) window.clearInterval(revealTimer.current);
     revealTimer.current = window.setInterval(() => {
